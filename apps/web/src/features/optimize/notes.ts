@@ -29,22 +29,22 @@ const RULES: readonly Rule[] = [
     (m) => {
       const channels = m[1]!.split(/,\s*/).filter(Boolean);
       return channels.length === 1
-        ? `The model sees ${channels[0]}'s effect pick up before it tails off, so this is the best plan found, not one proven to be the very best.`
-        : `The model sees the effects of ${listWords(channels)} pick up before they tail off, so this is the best plan found, not one proven to be the very best.`;
+        ? `The effect of ${channels[0]} increases and then decreases. Thus, this plan is the best plan that the model found. It is possibly not the very best plan.`
+        : `The effects of ${listWords(channels)} increase and then decrease. Thus, this plan is the best plan that the model found. It is possibly not the very best plan.`;
     },
   ],
-  [/^Frontier optimizes/, () => "“What other budgets would bring” shows the best plan for each total budget. Adding money is worth it while each extra unit brings back more than it costs."],
+  [/^Frontier optimizes/, () => "“What other budgets would bring” shows the best plan for each total budget. More money is a good decision while each extra unit gives back more than it costs."],
   [
     /^(\d+) channel\(s\) are recommended beyond the spend range/,
     (m) => {
       const n = Number(m[1]);
-      return `${n} channel${n === 1 ? "" : "s"} would spend more than the data has seen, so the figures there are less certain. Try a smaller increase first, or test it, before a big one.`;
+      return `${n} channel${n === 1 ? "" : "s"} will spend more than the data shows. Thus, the figures for these channels are less certain. Before a big increase, try a smaller increase or test it.`;
     },
   ],
-  [/^Per-channel caps above ([\d.e+-]+)x current spend are clamped/, (m) => `Limits above ${m[1]} times today's spend were lowered to ${m[1]} times, the most the model can judge.`],
-  [/^Total budget exceeds the sum of per-channel caps/, () => "The budget is more than the channel limits allow in total, so part of it could not be placed."],
-  [/^The constrained allocator's inner solver failed/, () => "Part of the search for the best plan did not finish cleanly. The plan is usable, but its ranges may be a little too narrow."],
-  [/^Near-zero posterior spread/, () => "The ranges look unusually narrow; treat the figures with some caution."],
+  [/^Per-channel caps above ([\d.e+-]+)x current spend are clamped/, (m) => `The model lowered the limits above ${m[1]} times today's spend to ${m[1]} times. This is the maximum that the model can estimate.`],
+  [/^Total budget exceeds the sum of per-channel caps/, () => "The budget is more than the total of the channel limits. Thus, the model did not put all of the budget in the channels."],
+  [/^The constrained allocator's inner solver failed/, () => "Part of the search for the best plan did not finish correctly. You can use the plan, but its ranges can be a little too narrow."],
+  [/^Near-zero posterior spread/, () => "The ranges are unusually narrow. Be careful when you use the figures."],
 ];
 
 /** Plain sentences for the notes this module knows; the rest (as written) for experts. */

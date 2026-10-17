@@ -77,7 +77,7 @@ export function VisualBuilder({ text, document, onText, schema, shape, sources, 
 
   const commit = (next: string | null, done?: [string, string?]) => {
     if (next === null) {
-      toast.error("Fix the YAML first", "The spec does not parse, so the builder cannot change it. Switch to the YAML view.");
+      toast.error("Correct the YAML first", "The builder cannot read the YAML of the spec. Go to the YAML view and correct the YAML.");
       return;
     }
     if (next !== text) onText(next);
@@ -118,7 +118,7 @@ export function VisualBuilder({ text, document, onText, schema, shape, sources, 
       <div className="grid min-w-0 content-start gap-2" role="list" aria-label="Spec blocks">
         {!doc ? (
           <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/8 px-3 py-2 text-[13px]">
-            The YAML does not parse, so the blocks cannot be shown. Fix it in the YAML view.
+            The app cannot read the YAML, so it cannot show the blocks. Correct the YAML in the YAML view.
           </p>
         ) : (
           <>
@@ -155,7 +155,7 @@ export function VisualBuilder({ text, document, onText, schema, shape, sources, 
               id="model"
               title="Model"
               color={KIND_COLOR.model}
-              summary={shape.modelUse ?? "no model: drop one here"}
+              summary={shape.modelUse ?? "no model: drag a model here"}
               open={open.has("model")}
               onToggle={() => toggle("model")}
               accepts={["model"]}
@@ -350,10 +350,10 @@ function DataForm({ text, doc, schema, shape, sources, commit, disabled }: FormP
 
   return (
     <>
-      <Field label="Dataset" htmlFor={`${id}-ds`} hint="Or drop a dataset from the palette on this block.">
+      <Field label="Dataset" htmlFor={`${id}-ds`} hint="Select a dataset. Or drag a dataset from the palette to this block.">
         <NativeSelect id={`${id}-ds`} value={current} disabled={disabled} onChange={(e) => commit(setDataset(text, e.target.value))}>
           <option value="" disabled>
-            Choose a dataset
+            Select a dataset
           </option>
           {current && !known.includes(current) ? <option value={current}>{current}</option> : null}
           {sources.datasets.map((d) => (
@@ -372,7 +372,7 @@ function DataForm({ text, doc, schema, shape, sources, commit, disabled }: FormP
           <BindingTable
             key={kindOf}
             label={kindOf === "dims" ? "Bind dims" : "Bind variables"}
-            hint={model ? `Canonical names ${model.id} expects, and the dataset column each one reads.` : "Canonical name → dataset column. Pick a model to see the names it expects."}
+            hint={model ? `The canonical names that ${model.id} needs, and the dataset column for each name.` : "Canonical name → dataset column. Select a model to see the names that it needs."}
             canonical={canon}
             wanted={new Set(kindOf === "dims" ? wanted.dims : wanted.vars)}
             bound={bound}
@@ -392,7 +392,7 @@ function DataForm({ text, doc, schema, shape, sources, commit, disabled }: FormP
             disabled={disabled}
             onChange={(e) => commit(setPath(text, ["data", "split"], e.target.value ? { kind: e.target.value } : undefined))}
           >
-            <option value="">No split (fit on everything)</option>
+            <option value="">No split (fit on all the data)</option>
             {kinds.map((k) => (
               <option key={k.kind} value={k.kind}>
                 {k.kind.replace(/_/g, " ")}
@@ -501,7 +501,7 @@ function BindingRow({
         {expected ? null : <span className="ml-1 text-muted-foreground">(custom)</span>}
       </label>
       <NativeSelect id={id} className="h-8" value={column} disabled={disabled} onChange={(e) => onSet(canonical, e.target.value)}>
-        <option value="">{expected ? "Not bound (keeps its dataset name)" : "Remove"}</option>
+        <option value="">{expected ? "Not bound (uses its dataset name)" : "Remove"}</option>
         {column && !options.includes(column) ? <option value={column}>{column}</option> : null}
         {options.map((o) => (
           <option key={o} value={o}>
@@ -577,7 +577,7 @@ function PipelineBlocks({
   return (
     <div className="grid gap-2" role="group" aria-label="Pipeline">
       <div className="flex items-center gap-2 px-1 pt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        Pipeline <span className="font-normal normal-case">{pipeline.length ? `${pipeline.length} step${pipeline.length === 1 ? "" : "s"}, in order` : "no steps: drag one here from the palette"}</span>
+        Pipeline <span className="font-normal normal-case">{pipeline.length ? `${pipeline.length} step${pipeline.length === 1 ? "" : "s"}, in order` : "no steps: drag a step here from the palette"}</span>
       </div>
       <DropZone index={0} onDrop={drop} disabled={disabled} label="Drop a step at the start" />
       {pipeline.map((raw, i) => {
@@ -659,7 +659,7 @@ function StepBlock({
             e.dataTransfer.setData(MOVE_MIME, String(index));
             e.dataTransfer.effectAllowed = "move";
           }}
-          title="Drag to reorder"
+          title="Drag the step to change its position."
           aria-hidden
           className={cn("rounded p-1 text-muted-foreground", !disabled && "cursor-grab hover:bg-accent active:cursor-grabbing")}
           data-drag-step={index}
@@ -695,7 +695,7 @@ function StepBlock({
           empty="This step has no settings."
         />
       ) : (
-        <p className="text-[13px] text-muted-foreground">{use ? `${use} is not in the catalog; edit its settings in the YAML view.` : "This step has no `use`."}</p>
+        <p className="text-[13px] text-muted-foreground">{use ? `${use} is not in the catalog. Edit its settings in the YAML view.` : "This step has no `use`."}</p>
       )}
     </Block>
   );
@@ -706,9 +706,9 @@ function StepIdField({ index, current, taken, text, commit, disabled }: { index:
   const [draft, setDraft] = useState(current);
   useEffect(() => setDraft(current), [current]);
   const problem =
-    draft === current ? null : !STEP_ID.test(draft) ? "Lower case letters, digits and _, starting with a letter or _." : taken.includes(draft) ? "Another step has this id." : null;
+    draft === current ? null : !STEP_ID.test(draft) ? "Use lower case letters, digits and _. Start with a letter or _." : taken.includes(draft) ? "Another step has this id. Type a different id." : null;
   return (
-    <Field label="Step id" htmlFor={id} error={problem} hint="Later steps and the split's after_step refer to it; renaming updates the split.">
+    <Field label="Step id" htmlFor={id} error={problem} hint="Later steps and the after_step of the split use this id. If you change the id, the app also changes it in the split.">
       <Input
         id={id}
         className="h-8 font-mono"
@@ -745,7 +745,7 @@ function ModelForm({ text, doc, schema, shape, sources, issues, commit, disabled
   );
   return (
     <>
-      <Field label="Model" htmlFor={`${id}-use`} hint={model?.about?.summary_plain ?? "Or drop a model from the palette on this block. A different model clears the settings."}>
+      <Field label="Model" htmlFor={`${id}-use`} hint={model?.about?.summary_plain ?? "Select a model. Or drag a model from the palette to this block. If you change the model, the app removes the settings."}>
         <NativeSelect
           id={`${id}-use`}
           value={models.some((m) => m.id === currentId) ? currentId : current}
@@ -756,7 +756,7 @@ function ModelForm({ text, doc, schema, shape, sources, issues, commit, disabled
           }}
         >
           <option value="" disabled>
-            Choose a model
+            Select a model
           </option>
           {current && !models.some((m) => m.id === currentId) ? <option value={current}>{current}</option> : null}
           {models.map((m) => (
@@ -781,7 +781,7 @@ function ModelForm({ text, doc, schema, shape, sources, issues, commit, disabled
           />
         </fieldset>
       ) : current ? (
-        <p className="text-[13px] text-muted-foreground">{model ? "This model has no settings." : `${current} is not in the catalog; edit its settings in the YAML view.`}</p>
+        <p className="text-[13px] text-muted-foreground">{model ? "This model has no settings." : `${current} is not in the catalog. Edit its settings in the YAML view.`}</p>
       ) : null}
       {fit && current ? (
         <details className="rounded-md border p-3">
@@ -818,7 +818,7 @@ function OutputsForm({ text, doc, shape, sources, commit, disabled }: FormProps)
     <>
       <ChipGroup
         label="Plots"
-        hint="Click to include or leave out. Recommended by the model first; drop more from the palette."
+        hint="Click a plot to add it or remove it. The plots that the model recommends show first. Drag more plots from the palette."
         options={[...plotOptions.map((p) => ({ value: p.body, title: p.description ?? p.body })), ...plots.filter((p) => !plotOptions.some((o) => o.body === p)).map((p) => ({ value: p, title: p }))]}
         selected={plots}
         onToggle={(v) => toggleIn("plots", plots, v)}
@@ -827,7 +827,7 @@ function OutputsForm({ text, doc, shape, sources, commit, disabled }: FormProps)
       {model?.derived?.length || derived.length ? (
         <ChipGroup
           label="Derived outputs"
-          hint={model ? `Quantities ${model.id} computes after the fit.` : "Quantities the model computes after the fit."}
+          hint={model ? `The quantities that ${model.id} calculates after the fit.` : "The quantities that the model calculates after the fit."}
           options={[...(model?.derived ?? []).map((d) => ({ value: d.name, title: d.description ?? d.name })), ...derived.filter((d) => !model?.derived?.some((x) => x.name === d)).map((d) => ({ value: d, title: d }))]}
           selected={derived}
           onToggle={(v) => toggleIn("derived", derived, v)}

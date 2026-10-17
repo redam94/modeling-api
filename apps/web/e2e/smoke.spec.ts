@@ -328,9 +328,9 @@ test("score form errors are marked on their fields and focus the first one", asy
   const draws = page.getByLabel("Draws");
   await expect(draws).toBeFocused();
   await expect(draws).toHaveAttribute("aria-invalid", "true");
-  await expect(draws).toHaveAccessibleDescription(/Draws must be between 0 and 10000\..*0 returns summaries only\./);
+  await expect(draws).toHaveAccessibleDescription(/The number of draws is not correct\. Type a number from 0 to 10000\..*If you type 0, you get only summaries\./);
   await expect(page.getByLabel("Variables (optional)")).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByRole("alert").filter({ hasText: "Draws must be between" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "The number of draws is not correct" })).toBeVisible();
   await expect(page.getByLabel("Seed (optional)")).not.toHaveAttribute("aria-invalid");
 });
 

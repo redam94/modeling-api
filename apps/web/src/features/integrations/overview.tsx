@@ -57,7 +57,7 @@ function InputSheetHelp({ endpoint }: { endpoint: Endpoint }) {
       <p className="text-[13px] font-medium">The Input sheet: {table.conditions_on_actuals ? "your latest actuals and the dates to forecast" : "the dates to forecast"}</p>
       <InputTablePreview table={table} maxRows={4} />
       <p className="text-xs text-muted-foreground">
-        {actualsHint(table)} Dates as yyyy-MM-dd. Run <Mono>{fn}()</Mono> once to create the sheet with the periods after the fit.
+        {actualsHint(table)} Type dates as yyyy-MM-dd. Run <Mono>{fn}()</Mono> one time to create the sheet with the periods after the fit.
       </p>
     </div>
   );
@@ -75,19 +75,19 @@ function SheetsSteps({ endpoint }: { endpoint: Endpoint }) {
           </Link>{" "}
           that can only score <Mono>{endpoint.alias}</Mono>.
         </li>
-        <li>In the sheet: Extensions → Apps Script, and paste the code below.</li>
+        <li>In the sheet, open Extensions → Apps Script. Paste the code that follows.</li>
         <li>
-          Project Settings → Script properties: add <Mono>MAPI_TOKEN</Mono> with the token.
+          Open Project Settings → Script properties. Add <Mono>MAPI_TOKEN</Mono> with the token.
         </li>
         <li>
-          Optional: put your own rows in a sheet named <Mono>Input</Mono> (a header row with the endpoint&apos;s dims and inputs, one row per coordinate); otherwise the example call is scored.
+          Optional: put your own rows in a sheet with the name <Mono>Input</Mono>. Use a header row with the dims and inputs of the endpoint, and one row for each coordinate. If there is no Input sheet, the script scores the example call.
         </li>
         <li>
-          Run the function; the forecast (mean and 90% interval per coordinate) lands in a sheet named <Mono>Result</Mono>, under a note on what it was conditioned on (&ldquo;Forecast updated with 3 actuals …&rdquo;).
+          Run the function. The forecast (mean and 90% interval for each coordinate) goes into a sheet with the name <Mono>Result</Mono>. A note above it tells what the forecast used (&ldquo;Forecast updated with 3 actuals …&rdquo;).
         </li>
       </ol>
       <InputSheetHelp endpoint={endpoint} />
-      {snippets.isPending ? <LoadingRows rows={2} /> : script ? <CodeBlock code={script.code} label="Apps Script" language="apps_script" /> : <p className="text-[13px] text-muted-foreground">No Apps Script snippet for this endpoint.</p>}
+      {snippets.isPending ? <LoadingRows rows={2} /> : script ? <CodeBlock code={script.code} label="Apps Script" language="apps_script" /> : <p className="text-[13px] text-muted-foreground">This endpoint has no Apps Script snippet.</p>}
     </div>
   );
 }
@@ -116,7 +116,7 @@ function SheetsCard({ goTo }: { goTo: (tab: HubTab) => void }) {
         </>
       ) : (
         <>
-          <p className="text-[13px] text-muted-foreground">A sheet calls an endpoint: a stable name for one fitted model. Promote a model first.</p>
+          <p className="text-[13px] text-muted-foreground">A sheet calls an endpoint. An endpoint is a stable name for one fitted model. Promote a model first.</p>
           <Button variant="outline" size="sm" className="w-fit" onClick={() => goTo("endpoints")}>
             Set up an endpoint <ArrowRight />
           </Button>
@@ -136,7 +136,7 @@ function BiCard({ goTo }: { goTo: (tab: HubTab) => void }) {
   const [sharing, setSharing] = useState<SavedPlot | null>(null);
   const [created, setCreated] = useState<{ c: PlotEmbedCreated; title: string } | null>(null);
   return (
-    <GuidedCard icon={<BarChart3 />} title="BI dashboard" description="Put a live, read-only chart into Looker Studio, Power BI or Notion with an embed link (for Slack, post the PNG).">
+    <GuidedCard icon={<BarChart3 />} title="BI dashboard" description="Put a live, read-only chart into Looker Studio, Power BI or Notion with an embed link. For Slack, post the PNG.">
       {saved.isPending ? (
         <LoadingRows rows={2} />
       ) : chosen ? (
@@ -150,7 +150,7 @@ function BiCard({ goTo }: { goTo: (tab: HubTab) => void }) {
               ))}
             </NativeSelect>
           </Field>
-          <p className="text-[13px] text-muted-foreground">The link expires (30 days by default) and can be revoked at any time. Paste it as an embed or iframe URL.</p>
+          <p className="text-[13px] text-muted-foreground">The link expires after 30 days (the default). You can revoke it at any time. Paste it as an embed or iframe URL.</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={!canEmbed} onClick={() => setSharing(chosen)}>
               <Share2 /> Create embed link
@@ -162,13 +162,13 @@ function BiCard({ goTo }: { goTo: (tab: HubTab) => void }) {
         </>
       ) : (
         <>
-          <p className="text-[13px] text-muted-foreground">Save a plot from a fitted model first; plots of the platform&apos;s recipes can be shared by link.</p>
+          <p className="text-[13px] text-muted-foreground">Save a plot from a fitted model first. You can share plots of the platform recipes by link.</p>
           <Button variant="outline" size="sm" className="w-fit" onClick={() => goTo("sharing")}>
             Save a model plot <ArrowRight />
           </Button>
         </>
       )}
-      <p className="text-xs text-muted-foreground">Need numbers instead of a chart? Score an endpoint from the BI tool&apos;s scheduled script (see the curl or Python snippet).</p>
+      <p className="text-xs text-muted-foreground">To get numbers and not a chart, score an endpoint from a scheduled script in the BI tool. Use the curl or Python snippet.</p>
       {sharing ? (
         <CreateEmbedDialog
           plot={sharing}
@@ -191,9 +191,9 @@ function WebhookCard({ goTo }: { goTo: (tab: HubTab) => void }) {
   const [created, setCreated] = useState<WebhookCreated | null>(null);
   return (
     <GuidedCard icon={<WebhookIcon />} title="Webhook" description="Get a signed call in your own system when a model is ready or a run fails.">
-      <p className="text-[13px] text-muted-foreground">Point it at a Zapier or Make hook, a Slack workflow or your pipeline. Every delivery is signed, retried and logged.</p>
+      <p className="text-[13px] text-muted-foreground">Use the URL of a Zapier or Make hook, a Slack workflow or your pipeline. The platform signs each delivery, tries it again if it fails and records it in a log.</p>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" disabled={!canCreate} title={canCreate ? undefined : "Project admins set up webhooks"} onClick={() => setCreating(true)}>
+        <Button size="sm" disabled={!canCreate} title={canCreate ? undefined : "Only project admins can set up webhooks."} onClick={() => setCreating(true)}>
           <WebhookIcon /> Set up a webhook
         </Button>
         <Button size="sm" variant="ghost" onClick={() => goTo("webhooks")}>
@@ -247,7 +247,7 @@ export function IntegrationsOverview({ goTo }: { goTo: (tab: HubTab) => void }) 
         </h2>
         <ul className="grid gap-2">
           <ExpertLink icon={<Plug />} title="Endpoints and aliases" action={<Button size="sm" variant="outline" onClick={() => goTo("endpoints")}>Open</Button>}>
-            Promotion gated on the scorecard, history and rollback, the input contract, Try it, and snippets for Python, TypeScript, curl, R, Apps Script and a notebook cell.
+            Promote with the scorecard gate, see the history and roll back. See the input contract and Try it. Get snippets for Python, TypeScript, curl, R, Apps Script and a notebook cell.
           </ExpertLink>
           <ExpertLink
             icon={<KeyRound />}
@@ -258,7 +258,7 @@ export function IntegrationsOverview({ goTo }: { goTo: (tab: HubTab) => void }) 
               </Button>
             }
           >
-            A <Mono>score:&lt;endpoint&gt;</Mono> token can read and score one endpoint and nothing else; give it a rate limit and a compute budget.
+            A <Mono>score:&lt;endpoint&gt;</Mono> token can read and score only one endpoint. Give it a rate limit and a compute budget.
           </ExpertLink>
           <ExpertLink
             icon={<BookOpen />}
@@ -278,7 +278,7 @@ export function IntegrationsOverview({ goTo }: { goTo: (tab: HubTab) => void }) 
               </span>
             }
           >
-            Every operation of this server, from its own OpenAPI 3.1 document.
+            All operations of this server, from its OpenAPI 3.1 document.
           </ExpertLink>
         </ul>
       </section>

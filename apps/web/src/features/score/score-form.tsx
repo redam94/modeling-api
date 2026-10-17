@@ -43,10 +43,10 @@ const ADVANCED_FIELDS = /^(inputsStage|scenario|sideTables\.|summary|draws|vars|
 const DATASET_ONLY: ScoreMode[] = ["filter", "evaluate"];
 
 const FUTURE_OPTIONS: { value: FutureCovariates; label: string; hint: string }[] = [
-  { value: "carry_last", label: "Repeat the last value", hint: "Blank future values repeat each series' latest value." },
-  { value: "seasonal_naive", label: "Same period a year earlier", hint: "Blank future values copy the value one season before." },
-  { value: "zero", label: "Zero (nothing planned)", hint: "Blank future values are zero, e.g. no spend planned." },
-  { value: "supplied", label: "None: I give every value", hint: "Every future value must be typed or in the dataset; a gap is an error." },
+  { value: "carry_last", label: "Repeat the last value", hint: "A blank future value gets the latest value of its series." },
+  { value: "seasonal_naive", label: "Same period a year earlier", hint: "A blank future value gets the value from one season before." },
+  { value: "zero", label: "Zero (nothing planned)", hint: "A blank future value is zero. For example, use this when no spend is planned." },
+  { value: "supplied", label: "None: I give every value", hint: "Type each future value, or put it in the dataset. A missing value causes an error." },
 ];
 
 function problemFor(problems: FormProblem[], field: string): string | undefined {
@@ -75,15 +75,15 @@ function modeText(mode: ScoreMode, inputs: ModelInputSchema | null, periods: str
         detail: `${what} for the next ${Number.isInteger(n) && n > 0 && unit ? plural(n, unit) : "periods"} after the fitted history.`,
       };
     case "predict":
-      return { title: "Predict", detail: `${what} for the input values you give (in-sample when you give none).` };
+      return { title: "Predict", detail: `${what} for the input values that you give. If you give no values, the prediction is in-sample.` };
     case "counterfactual":
-      return { title: "What if", detail: `${what} with changed inputs, compared with the inputs as they are.` };
+      return { title: "What if", detail: `${what} with changed inputs, compared with the inputs without changes.` };
     case "simulate":
       return { title: "Simulate", detail: `Synthetic ${what} drawn from the model.` };
     case "filter":
-      return { title: "Update with new data", detail: "Update the model's latest state with new observations (state-space models; a dataset)." };
+      return { title: "Update with new data", detail: "Update the latest state of the model with new observations. This mode is for state-space models and needs a dataset." };
     case "evaluate":
-      return { title: "Evaluate", detail: "Score held-out data and compute accuracy metrics (a dataset)." };
+      return { title: "Evaluate", detail: "Score held-out data and calculate accuracy metrics. This mode needs a dataset." };
   }
 }
 
@@ -210,18 +210,18 @@ export function ScoreFormView({
     const notes: { ok: boolean; text: string }[] = [];
     if (form.source === "typed") {
       if (summary.filled) notes.push({ ok: true, text: `${summary.filled} typed value${summary.filled === 1 ? "" : "s"} over ${plural(summary.rows, "row")}` });
-      else if (form.mode === "forecast") notes.push({ ok: true, text: "No values typed: the forecast fills future inputs as chosen below" });
-      else notes.push({ ok: false, text: "Type at least one value, or score without new data" });
+      else if (form.mode === "forecast") notes.push({ ok: true, text: "No values are typed. The forecast fills in future inputs as you select below." });
+      else notes.push({ ok: false, text: "No values are typed. Type one or more values, or score without new data." });
     } else if (form.source === "dataset") {
-      notes.push(form.data.trim() ? { ok: true, text: `Data from ${form.data.trim()}` } : { ok: false, text: "Choose a dataset" });
+      notes.push(form.data.trim() ? { ok: true, text: `Data from ${form.data.trim()}` } : { ok: false, text: "No dataset is selected. Select a dataset." });
     } else {
-      notes.push({ ok: true, text: form.mode === "forecast" ? "No new data: forecast from the end of the fit" : "No new data: in-sample" });
+      notes.push({ ok: true, text: form.mode === "forecast" ? "No new data: the model forecasts from the end of the fit" : "No new data: the model scores in-sample" });
     }
     if (form.mode === "forecast" && futureVars.length && form.futureCovariates === "supplied") {
       const missing = form.source === "typed" ? futureVars.filter((v) => summary.emptyColumns.includes(v) || summary.partialDrivers.includes(v)) : form.source === "none" ? futureVars : [];
-      if (missing.length) notes.push({ ok: false, text: `Every future value of ${missing.join(", ")} is needed (or choose how to fill blanks)` });
+      if (missing.length) notes.push({ ok: false, text: `Some future values of ${missing.join(", ")} are missing. Type all the values, or select how to fill blanks.` });
     }
-    if (form.mode === "counterfactual" && !form.interventions.length && !form.scenario.trim()) notes.push({ ok: false, text: "Add a change to compare against" });
+    if (form.mode === "counterfactual" && !form.interventions.length && !form.scenario.trim()) notes.push({ ok: false, text: "There is no change to compare. Add a change." });
     return notes;
   })();
 
@@ -233,7 +233,7 @@ export function ScoreFormView({
       try {
         const data = gridToInline(columns, rows, hdim);
         if (data) inline = { data: data };
-        else if (form.mode !== "forecast") extra.push({ field: "values", message: "Type at least one value, or choose “No new data”." });
+        else if (form.mode !== "forecast") extra.push({ field: "values", message: "No values are typed. Type one or more values, or select “No new data”." });
       } catch (e) {
         extra.push({ field: "values", message: e instanceof Error ? e.message : String(e) });
       }
@@ -329,9 +329,9 @@ export function ScoreFormView({
         title="Values to score"
         hint={
           form.source === "typed"
-            ? "Type the inputs the model should use. Rows start with the periods and levels the model knows; edit, add or paste rows."
+            ? "Type the inputs for the model. The rows start with the periods and levels that the model knows. You can edit, add or paste rows."
             : form.source === "dataset"
-              ? "A dataset with the inputs, in the units of the entry stage."
+              ? "Select a dataset with the inputs. The values must be in the units of the entry stage."
               : undefined
         }
       >
@@ -340,14 +340,14 @@ export function ScoreFormView({
           value={form.source}
           onValueChange={(v) => set("source", v)}
           options={[
-            ...(canType ? [{ value: "typed" as const, label: "Type values", title: "Enter the values here, no upload needed" }] : []),
-            { value: "dataset" as const, label: "Use a dataset", title: "A dataset you uploaded under Datasets" },
-            ...(!DATASET_ONLY.includes(form.mode) ? [{ value: "none" as const, label: "No new data", title: form.mode === "forecast" ? "Forecast from the end of the fit" : "Score the fitted data" }] : []),
+            ...(canType ? [{ value: "typed" as const, label: "Type values", title: "Type the values here. You do not have to upload a file." }] : []),
+            { value: "dataset" as const, label: "Use a dataset", title: "Use a dataset that you uploaded in Datasets." },
+            ...(!DATASET_ONLY.includes(form.mode) ? [{ value: "none" as const, label: "No new data", title: form.mode === "forecast" ? "Forecast from the end of the fit." : "Score the fitted data." }] : []),
           ]}
           className="w-fit"
         />
         {inputsMissing ? (
-          <p className="text-xs text-muted-foreground">This version was fitted before the platform stored its inputs, so values cannot be typed: use a dataset, or refit it.</p>
+          <p className="text-xs text-muted-foreground">The platform did not keep the inputs of this version when it was fitted, so you cannot type values. Use a dataset, or fit the model again.</p>
         ) : null}
 
         {form.source === "typed" && canType ? (
@@ -381,7 +381,7 @@ export function ScoreFormView({
                 <option key={r} value={r} />
               ))}
             </datalist>
-            <Field label="Dataset" htmlFor="score-data" error={problemFor(problems, "data")} hint="Upload one under Datasets first.">
+            <Field label="Dataset" htmlFor="score-data" error={problemFor(problems, "data")} hint="If the dataset is not in the list, upload it in Datasets first.">
               <div className="flex gap-2">
                 <Input id="score-data" value={form.data} onChange={(e) => set("data", e.target.value)} placeholder="dataset://default/eu_media_future@v1" className="font-mono" list="score-datasets" />
                 <Button variant="outline" asChild>
@@ -412,7 +412,7 @@ export function ScoreFormView({
       <Step
         n={form.mode === "forecast" ? 4 : 3}
         title={form.mode === "counterfactual" ? "What to change" : "Changes (optional)"}
-        hint={form.mode === "counterfactual" ? "The result compares the model with these changes against the model without them." : "Change a variable on some levels before scoring, e.g. spend × 1.2 where channel = tv."}
+        hint={form.mode === "counterfactual" ? "The result compares the model with these changes to the model without them." : "Change a variable on some levels before you score. For example, spend × 1.2 where channel = tv."}
       >
         <InterventionRows form={form} set={set} problems={problems} vars={vars.filter((v) => v.role !== "target").map((v) => v.name)} levelHint={levelHint} />
       </Step>
@@ -420,7 +420,7 @@ export function ScoreFormView({
       <details className="rounded-lg border p-3" open={problems.some((p) => ADVANCED_FIELDS.test(p.field)) || undefined}>
         <summary className="cursor-pointer text-[13px] font-medium">Advanced</summary>
         <div className="mt-4 grid gap-5">
-          <Field label="Inputs enter at stage" htmlFor="inputs-stage" error={problemFor(problems, "inputsStage")} hint="Send data in the units of this stage. Typed values use the raw stage.">
+          <Field label="Inputs enter at stage" htmlFor="inputs-stage" error={problemFor(problems, "inputsStage")} hint="Send data in the units of this stage. Typed values always use the raw stage.">
             <NativeSelect id="inputs-stage" value={form.inputsStage} onChange={(e) => set("inputsStage", e.target.value)} className="w-48 font-mono">
               {stages.map((s) => (
                 <option key={s} value={s}>
@@ -429,7 +429,7 @@ export function ScoreFormView({
               ))}
             </NativeSelect>
           </Field>
-          <Field label="Scenario dataset (optional)" htmlFor="scenario" error={problemFor(problems, "scenario")} hint="A changed copy of the input data. What-if compares it against the input data.">
+          <Field label="Scenario dataset (optional)" htmlFor="scenario" error={problemFor(problems, "scenario")} hint="A changed copy of the input data. What if compares it with the input data.">
             <Input id="scenario" value={form.scenario} onChange={(e) => set("scenario", e.target.value)} placeholder="dataset://default/plan_2027h1@v1" className="font-mono" list="score-datasets" />
           </Field>
           {sideTables.length ? (
@@ -438,7 +438,7 @@ export function ScoreFormView({
               {sideTables.map((t) =>
                 t.policy === "pinned" ? (
                   <p key={t.name} className="text-xs text-muted-foreground">
-                    <Mono>{t.name}</Mono> is pinned: scoring replays <Mono>{t.ref}</Mono> from the fit.
+                    <Mono>{t.name}</Mono> is pinned. When you score, the server uses <Mono>{t.ref}</Mono> from the fit again.
                   </p>
                 ) : (
                   <Field
@@ -446,7 +446,7 @@ export function ScoreFormView({
                     label={t.name}
                     htmlFor={`side-${t.name}`}
                     error={problemFor(problems, `sideTables.${t.name}`)}
-                    hint={t.policy === "supplied" ? "Required when a step before the entry stage uses it; it must cover the scored dates." : "Optional: defaults to its latest version."}
+                    hint={t.policy === "supplied" ? "Necessary if a step before the entry stage uses it. It must include all the scored dates." : "Optional. If you leave it blank, the server uses its latest version."}
                   >
                     <Input id={`side-${t.name}`} value={form.sideTables[t.name] ?? ""} onChange={(e) => set("sideTables", { ...form.sideTables, [t.name]: e.target.value })} className="font-mono" list="score-datasets" />
                   </Field>
@@ -467,7 +467,7 @@ export function ScoreFormView({
             </li>
           ))}
         </ul>
-        {error ? <ErrorNotice error={error} title="Scoring was refused" /> : null}
+        {error ? <ErrorNotice error={error} title="The server refused the score request" /> : null}
         <div>
           <Button type="submit" disabled={submitting}>
             <Gauge /> {submitting ? "Scoring…" : modeText(form.mode, inputs, form.horizonPeriods).title}
@@ -538,7 +538,7 @@ function InterventionRows({
       ) : null}
       {form.interventions.length && levelHint ? (
         <p className="text-xs text-muted-foreground">
-          “where” takes <Mono>dim=level</Mono> pairs separated by <Mono>;</Mono> (blank: everywhere). Levels: {levelHint}
+          In “where”, type <Mono>dim=level</Mono> pairs with <Mono>;</Mono> between them. Leave it blank for all levels. Levels: {levelHint}
         </p>
       ) : null}
       <Button
@@ -581,8 +581,8 @@ function OutputSettings({
             value={form.output.kind}
             onValueChange={(v) => setOut("kind", v)}
             options={[
-              { value: "expected", label: "Expected", title: "The mean response, without observation noise" },
-              { value: "predictive", label: "Predictive", title: "Includes observation noise" },
+              { value: "expected", label: "Expected", title: "The mean response, without observation noise." },
+              { value: "predictive", label: "Predictive", title: "The response with observation noise." },
             ]}
           />
         </div>
@@ -597,7 +597,7 @@ function OutputSettings({
       </div>
       <div className="grid gap-1.5">
         <span className="text-[13px] font-medium">Summaries</span>
-        {representation ? <p className="text-xs text-muted-foreground">This model returns {representation}, so these are the summaries it can give.</p> : null}
+        {representation ? <p className="text-xs text-muted-foreground">This model returns {representation}. It can give only these summaries.</p> : null}
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Summaries" aria-invalid={summaryProblem ? true : undefined}>
           {options.map((s) => {
             const on = form.output.summary.includes(s);
@@ -625,11 +625,11 @@ function OutputSettings({
           label="Draws"
           htmlFor="out-draws"
           error={problemFor(problems, "draws")}
-          hint={rules && !rules.draws ? `Not available: this model returns ${representation}.` : "0 returns summaries only."}
+          hint={rules && !rules.draws ? `Not available. This model returns ${representation}.` : "If you type 0, you get only summaries."}
         >
           <Input id="out-draws" inputMode="numeric" value={form.output.draws} disabled={Boolean(rules && !rules.draws)} onChange={(e) => setOut("draws", e.target.value)} />
         </Field>
-        <Field label="Variables (optional)" htmlFor="out-vars" error={problemFor(problems, "vars")} hint="Comma-separated; empty means all outputs.">
+        <Field label="Variables (optional)" htmlFor="out-vars" error={problemFor(problems, "vars")} hint="Type names with a comma between them. Leave it empty to get all outputs.">
           <Input id="out-vars" value={form.output.vars} onChange={(e) => setOut("vars", e.target.value)} className="font-mono" placeholder="y_hat" />
         </Field>
         <Field label="Seed (optional)" htmlFor="seed" error={problemFor(problems, "seed")}>

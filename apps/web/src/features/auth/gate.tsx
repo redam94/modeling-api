@@ -75,7 +75,7 @@ export function WorkspaceGate({ children }: { children: ReactNode }) {
     if (me.error instanceof ApiError && me.error.status === 401) return <SignInScreen info={info} />;
     return (
       <CenteredPanel>
-        <ErrorNotice error={me.error} title="Your workspace could not be loaded" />
+        <ErrorNotice error={me.error} title="The app cannot load your workspace" />
         <Button variant="outline" onClick={() => void me.refetch()}>
           <RefreshCw /> Try again
         </Button>
@@ -98,7 +98,7 @@ function Splash() {
     <div className="grid min-h-svh place-items-center bg-background" role="status" aria-live="polite">
       <div className="flex items-center gap-3 text-muted-foreground">
         <Spinner />
-        <span>Loading your workspace…</span>
+        <span>The app loads your workspace…</span>
       </div>
     </div>
   );
@@ -130,7 +130,7 @@ export function SignInScreen({ info }: { info: SessionInfo | null }) {
           <div className="grid gap-2">
             <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.015em]">Sign in to your workspace</h1>
             <p className="text-muted-foreground">
-              Use your organisation account. You will be sent to your identity provider and brought back here.
+              Use your organisation account. The app sends you to your identity provider. Then the identity provider sends you back here.
             </p>
           </div>
           <Button
@@ -150,7 +150,7 @@ export function SignInScreen({ info }: { info: SessionInfo | null }) {
             </a>
           </p>
           <p className="text-xs text-muted-foreground">
-            The app never sees your password or an OAuth token: the API keeps the session in a secure,
+            The app never sees your password or an OAuth token. The API keeps the session in a secure,
             HTTP-only cookie.
           </p>
         </div>
@@ -199,7 +199,7 @@ function SessionExpiredDialog({ info }: { info: SessionInfo | null }) {
       <DialogContent>
         <DialogTitle>Your session has ended</DialogTitle>
         <DialogDescription>
-          Sign in again to keep working. Until then the page stays as it is, but nothing can be loaded or saved.
+          Sign in again to continue your work. Until you sign in, the page does not change, but the app cannot load or save data.
         </DialogDescription>
         <DialogFooter>
           <Button variant="ghost" onClick={dismiss}>
@@ -237,8 +237,8 @@ export function NoProjectScreen({ email }: { email: string | null }) {
         <Logo className="size-7" />
         <h1 className="text-lg font-semibold">You are not in a project yet</h1>
         <p className="text-muted-foreground">
-          You are signed in{email ? ` as ${email}` : ""}, but no project has added you. Ask a project or organisation
-          admin to invite {email ?? "you"}; the invitation is picked up the next time you sign in.
+          You are signed in{email ? ` as ${email}` : ""}, but no project has added you. Ask a project admin or an
+          organisation admin to invite {email ?? "you"}. The app finds the invitation the next time that you sign in.
         </p>
         <div className="flex gap-2 pt-1">
           <Button variant="outline" onClick={() => void signOut()}>

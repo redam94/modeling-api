@@ -122,8 +122,8 @@ function parseList(text: string, itemType: FieldModel["itemType"]): { ok: true; 
     .filter(Boolean);
   if (itemType === "string" || itemType === null) return { ok: true, value: parts };
   const nums = parts.map(Number);
-  if (nums.some((n) => !Number.isFinite(n))) return { ok: false, error: "Use numbers separated by commas." };
-  if (itemType === "integer" && nums.some((n) => !Number.isInteger(n))) return { ok: false, error: "Use whole numbers separated by commas." };
+  if (nums.some((n) => !Number.isFinite(n))) return { ok: false, error: "Type numbers with a comma between each number." };
+  if (itemType === "integer" && nums.some((n) => !Number.isInteger(n))) return { ok: false, error: "Type whole numbers with a comma between each number." };
   return { ok: true, value: nums };
 }
 
@@ -131,8 +131,8 @@ type Source = "value" | "param" | "expr";
 
 function SourcePicker({ value, onChange, bindings, label }: { value: Source; onChange: (s: Source) => void; bindings: BindingOptions; label: string }) {
   const options: { value: Source; label: string; title: string }[] = [{ value: "value", label: "Value", title: "A fixed value" }];
-  if (bindings.params.length) options.push({ value: "param", label: "Parameter", title: "A workflow parameter chosen per run" });
-  if (bindings.expressions) options.push({ value: "expr", label: "Expression", title: "Computed from upstream results" });
+  if (bindings.params.length) options.push({ value: "param", label: "Parameter", title: "A workflow parameter that you set for each run" });
+  if (bindings.expressions) options.push({ value: "expr", label: "Expression", title: "A value that the app calculates from upstream results" });
   if (options.length < 2) return null;
   return <SegmentedControl label={`Where ${label} comes from`} value={value} onValueChange={onChange} options={options} className="h-7" />;
 }
@@ -191,15 +191,15 @@ function SchemaField({
     setLocalError(null);
   }, [value, field.kind]);
 
-  const hintParts = [field.description, field.default !== undefined ? `Default: ${display(field.default)}` : null, field.minimum !== null || field.maximum !== null ? `Range ${field.minimum ?? "…"} to ${field.maximum ?? "…"}` : null].filter(Boolean);
+  const hintParts = [field.description, field.default !== undefined ? `Default: ${display(field.default)}` : null, field.minimum !== null || field.maximum !== null ? `Range: ${field.minimum ?? "…"} to ${field.maximum ?? "…"}` : null].filter(Boolean);
   const hint = hintParts.join(" · ") || undefined;
-  const label = `${field.label}${field.required ? " (required)" : ""}`;
+  const label = `${field.label}${field.required ? " (necessary)" : ""}`;
 
   let control: React.ReactNode;
   if (source === "param" && bindings) {
     control = (
       <NativeSelect id={id} value={isParamRef(value) ? value.$param : ""} disabled={disabled} onChange={(e) => onChange(e.target.value ? { $param: e.target.value } : undefined)}>
-        <option value="">Choose a parameter</option>
+        <option value="">Select a parameter</option>
         {bindings.params.map((p) => (
           <option key={p} value={p}>
             params.{p}
@@ -341,7 +341,7 @@ function SchemaField({
             emit(JSON.parse(e.target.value) as Json);
             setLocalError(null);
           } catch {
-            setLocalError("Not valid JSON yet.");
+            setLocalError("The JSON is not correct. Correct the JSON.");
           }
         }}
       />
@@ -436,7 +436,7 @@ export function SchemaForm({
       ))}
       {unknown.length ? (
         <p role="alert" className="text-xs text-warning">
-          Not a setting of this item: {unknown.join(", ")}. Remove {unknown.length === 1 ? "it" : "them"} in the YAML view.
+          This item does not have {unknown.length === 1 ? "this setting" : "these settings"}: {unknown.join(", ")}. Remove {unknown.length === 1 ? "it" : "them"} in the YAML view.
         </p>
       ) : null}
     </div>

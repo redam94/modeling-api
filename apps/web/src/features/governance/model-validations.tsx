@@ -36,7 +36,7 @@ function RequestForm({ modelId, version }: { modelId: string; version: number })
       { note: note.trim() || null, policy_ids: extra, ...(dataset ? { dataset } : {}) },
       {
         onSuccess: (v) => {
-          toast.success("Validation requested", "The checks run in the sandbox; this page updates when they finish.");
+          toast.success("Validation requested", "The checks run in the sandbox. This page updates when they finish.");
           void navigate({ to: "/validations/$validationId", params: { validationId: v.id } });
         },
       },
@@ -45,9 +45,9 @@ function RequestForm({ modelId, version }: { modelId: string; version: number })
   return (
     <form className="grid gap-4" onSubmit={submit} aria-label="Request a validation">
       <div className="grid gap-2">
-        <p className="text-[13px] font-medium">Policies it is held to</p>
+        <p className="text-[13px] font-medium">Policies that apply</p>
         <p className="text-xs text-muted-foreground" data-testid="policies-in-force-note">
-          Every policy in force for this kind of model always applies. Tick a policy to hold this version to it as well.
+          All policies in force for this type of model apply. To apply one more policy to this version, select it.
         </p>
         {items.length ? (
           <ul className="grid gap-1.5" aria-label="Also hold it to">
@@ -76,10 +76,10 @@ function RequestForm({ modelId, version }: { modelId: string; version: number })
             })}
           </ul>
         ) : (
-          <p className="text-[13px] text-muted-foreground">{policies.isPending ? "Loading the policies…" : "No policy is in force; the platform's defaults apply."}</p>
+          <p className="text-[13px] text-muted-foreground">{policies.isPending ? "Loading the policies…" : "No policy is in force. The default rules of the platform apply."}</p>
         )}
       </div>
-      <DatasetRefPicker value={dataset} onChange={setDataset} label="Data to check against" required={false} hint="Leave empty to use the data the model was fitted on." />
+      <DatasetRefPicker value={dataset} onChange={setDataset} label="Data to check against" required={false} hint="To use the dataset of the fit, keep this field empty." />
       <Field label="Note (optional)" htmlFor="val-note">
         <Textarea id="val-note" maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Q4 refresh with the price driver" />
       </Field>
@@ -102,7 +102,7 @@ export function ModelValidations({ modelId, version }: { modelId: string; versio
     <div className="grid gap-5">
       <PageHeader
         title={`Validation of ${model.data?.name ?? shortId(modelId)} v${version}`}
-        description="Run the governance checks on this version, and follow its approval."
+        description="Run the governance checks on this version. Then monitor its approval."
         actions={
           <Button variant="outline" asChild>
             <Link to="/models/$modelId/versions/$version" params={{ modelId, version: String(version) }}>
@@ -150,7 +150,7 @@ export function ModelValidations({ modelId, version }: { modelId: string; versio
                   </Table>
                 ) : (
                   <EmptyState icon={<ShieldCheck />} title="Not validated yet">
-                    Request a validation to run the governance checks on this version.
+                    To run the governance checks on this version, request a validation.
                   </EmptyState>
                 )
               }
@@ -161,10 +161,10 @@ export function ModelValidations({ modelId, version }: { modelId: string; versio
           <CardHeader>
             <div>
               <CardTitle>Request a validation</CardTitle>
-              <CardDescription>The checks run in the sandbox; a reviewer approves when a policy asks for one.</CardDescription>
+              <CardDescription>The checks run in the sandbox. If a policy needs approval, a reviewer approves the validation.</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>{mayValidate ? <RequestForm modelId={modelId} version={version} /> : <p className="text-[13px] text-muted-foreground">Requesting a validation needs the runner role.</p>}</CardContent>
+          <CardContent>{mayValidate ? <RequestForm modelId={modelId} version={version} /> : <p className="text-[13px] text-muted-foreground">You need the runner role to request a validation.</p>}</CardContent>
         </Card>
       </div>
     </div>
@@ -178,15 +178,15 @@ export function NotValidatedNotice({ modelId, version }: { modelId: string; vers
   return (
     <div role="alert" className="grid gap-2 rounded-md border border-destructive/35 bg-destructive/6 p-3 text-[13px]" data-testid="not-validated">
       <p className="flex items-center gap-2 font-medium">
-        <ShieldAlert className="size-4 text-destructive" aria-hidden /> A governance policy requires a validated model
+        <ShieldAlert className="size-4 text-destructive" aria-hidden /> A governance policy needs a validated model
       </p>
       <p className="text-muted-foreground">
         {latest ? (
           <>
-            Its latest validation is <ValidationBadge status={latest.status} />. Promotion needs it validated; no override passes this rule.
+            Its latest validation is <ValidationBadge status={latest.status} />. You can promote only a validated version. No override can skip this rule.
           </>
         ) : (
-          "This version has not been submitted for validation."
+          "Nobody submitted this version for validation."
         )}
       </p>
       <div className="flex flex-wrap gap-2">

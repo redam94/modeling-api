@@ -40,7 +40,7 @@ export function guidedTemplateForModel(templates: readonly { id: string; plugin:
   return templates.find((t) => pluginId(t.plugin) === modelId)?.id ?? null;
 }
 
-export const EXPERT_HINT = "Expert mode shows every setting of the model as text (YAML) for you to fill in.";
+export const EXPERT_HINT = "Expert mode shows every setting of the model as text (YAML). You fill in the settings.";
 
 export interface StartOptions {
   /** For a model in Guided mode: the Guided template that uses it, `null` when none does. */
@@ -60,7 +60,7 @@ export function startTarget(kind: AboutKind, id: string, persona: Persona = "exp
         return { kind: "guided", to: "/guided/new/$templateId", params: { templateId: opts.templateForModel }, label: "Start a guided analysis" };
       }
       return opts.locked
-        ? { kind: "expert", to: "/build/new", search: { model: id }, label: "Needs Expert mode", hint: "This model has no Guided setup yet, and this project is locked to Guided mode. A project admin can set it up.", locked: true }
+        ? { kind: "expert", to: "/build/new", search: { model: id }, label: "Needs Expert mode", hint: "This model has no Guided setup yet. This project is locked to Guided mode. A project admin can set up the model.", locked: true }
         : { kind: "expert", to: "/build/new", search: { model: id }, label: "Set up in Expert mode", hint: `This model has no Guided setup yet. ${EXPERT_HINT}`, locked: false };
     case "workflow_template":
       return persona === "guided"

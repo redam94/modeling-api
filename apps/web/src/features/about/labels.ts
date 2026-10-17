@@ -2,16 +2,16 @@
 import type { AboutKind, Difficulty, Recommendation, TypicalRuntime } from "./types";
 
 export const DIFFICULTY_META: Record<Difficulty, { label: string; description: string; variant: "success" | "info" | "warning" }> = {
-  beginner: { label: "Beginner friendly", description: "No statistics background needed.", variant: "success" },
-  intermediate: { label: "Some experience", description: "Easier if you know the basics of statistics.", variant: "info" },
-  expert: { label: "For experts", description: "Needs statistical expertise to set up and read well.", variant: "warning" },
+  beginner: { label: "Beginner friendly", description: "You do not need knowledge of statistics.", variant: "success" },
+  intermediate: { label: "Some experience", description: "It is easier if you know the basics of statistics.", variant: "info" },
+  expert: { label: "For experts", description: "You need good knowledge of statistics to set it up and to read the results.", variant: "warning" },
 };
 
 export const RUNTIME_META: Record<TypicalRuntime, { label: string; description: string }> = {
-  instant: { label: "Instant", description: "Under a second." },
-  seconds: { label: "Seconds", description: "A few seconds to a minute." },
-  minutes: { label: "Minutes", description: "One to fifteen minutes." },
-  long: { label: "Longer", description: "More than fifteen minutes on typical data." },
+  instant: { label: "Instant", description: "Less than one second." },
+  seconds: { label: "Seconds", description: "From some seconds to one minute." },
+  minutes: { label: "Minutes", description: "From one to fifteen minutes." },
+  long: { label: "Longer", description: "More than fifteen minutes on usual data." },
 };
 
 export const KIND_META: Record<AboutKind, { label: string; plural: string }> = {

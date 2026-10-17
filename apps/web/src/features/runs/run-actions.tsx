@@ -20,7 +20,7 @@ export function RunActions({ run }: { run: Run }) {
   const grants = useGrants();
   const canCancel = can(grants, "cancel", "run");
   const canRun = can(grants, "create", "run");
-  const needs = (action: "cancel" | "create") => (grants.projectRole ? `Needs the runner role (yours is ${grants.projectRole})` : `Not allowed to ${action} runs`);
+  const needs = (action: "cancel" | "create") => (grants.projectRole ? `You need the runner role. Your role is ${grants.projectRole}.` : `You cannot ${action} runs.`);
   const [retryOpen, setRetryOpen] = useState(false);
   return (
     <>
@@ -30,10 +30,10 @@ export function RunActions({ run }: { run: Run }) {
           disabled={cancel.isPending || !canCancel}
           title={canCancel ? undefined : needs("cancel")}
           onClick={() => {
-            if (!window.confirm("Cancel this run? Checkpointed fits stop as partial and can be resumed.")) return;
+            if (!window.confirm("Cancel this run? Fits with checkpoints stop as partial. You can resume them.")) return;
             cancel.mutate(run.id, {
-              onSuccess: () => toast.info("Cancellation requested"),
-              onError: (e) => toast.error("Cancel failed", errorMessage(e)),
+              onSuccess: () => toast.info("The app sent the cancel request"),
+              onError: (e) => toast.error("Cannot cancel the run", errorMessage(e)),
             });
           }}
         >
@@ -47,7 +47,7 @@ export function RunActions({ run }: { run: Run }) {
           onClick={() =>
             resume.mutate(run.id, {
               onSuccess: () => toast.success("Run resumed from its checkpoints"),
-              onError: (e) => toast.error("Resume failed", errorMessage(e)),
+              onError: (e) => toast.error("Cannot resume the run", errorMessage(e)),
             })
           }
         >
@@ -84,8 +84,8 @@ function RetryDialog({ run, onClose }: { run: Run; onClose: () => void }) {
         <DialogTitle>Retry as a new run</DialogTitle>
         <DialogDescription>
           {suggested
-            ? `The run ran out of resources at class ${run.resource_class}. Retrying at ${suggested} usually fixes this.`
-            : "A new run is created from the same inputs; this one stays as it is."}
+            ? `The run did not have sufficient resources at class ${run.resource_class}. A retry at ${suggested} usually solves this problem.`
+            : "The app makes a new run from the same inputs. This run does not change."}
         </DialogDescription>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Resource class" htmlFor="retry-rc">
@@ -104,12 +104,12 @@ function RetryDialog({ run, onClose }: { run: Run; onClose: () => void }) {
               ))}
             </NativeSelect>
           </Field>
-          <Field label="Seed (optional)" htmlFor="retry-seed" hint={seedValid ? undefined : "Use a whole number below 2³²."}>
+          <Field label="Seed (optional)" htmlFor="retry-seed" hint={seedValid ? undefined : "The seed is not correct. Type a whole number less than 2³²."}>
             <Input id="retry-seed" inputMode="numeric" value={seed} onChange={(e) => setSeed(e.target.value)} aria-invalid={!seedValid} />
           </Field>
         </div>
         {retry.isError ? (
-          <ErrorNotice error={retry.error} title="The retry could not start" onRetry={() => retry.reset()} />
+          <ErrorNotice error={retry.error} title="Cannot start the retry" onRetry={() => retry.reset()} />
         ) : null}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>

@@ -44,7 +44,7 @@ export function ShownOnceDialog({
   value,
   copyLabel,
   children,
-  acknowledge = "I have stored it somewhere safe",
+  acknowledge = "I put it in a safe location",
   onClose,
 }: {
   title: string;
@@ -58,7 +58,7 @@ export function ShownOnceDialog({
 }) {
   const [acknowledged, setAcknowledged] = useState(false);
   const close = () => {
-    if (acknowledged || window.confirm("Close without copying? It cannot be shown again.")) onClose();
+    if (acknowledged || window.confirm("Close the dialog? You did not copy the value, and the app cannot show it again.")) onClose();
   };
   return (
     <Dialog open onOpenChange={(o) => !o && close()}>

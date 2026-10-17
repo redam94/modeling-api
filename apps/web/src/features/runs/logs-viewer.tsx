@@ -128,7 +128,7 @@ export function LogsViewer({ runId, live }: { runId: string; live: boolean }) {
           <ArrowDownToLine /> Follow
         </Button>
       </div>
-      {logs.isError ? <ErrorNotice error={logs.error} title="Logs could not be loaded" /> : null}
+      {logs.isError ? <ErrorNotice error={logs.error} title="Cannot load the logs" /> : null}
       <div
         ref={scrollRef}
         role="log"
@@ -139,7 +139,7 @@ export function LogsViewer({ runId, live }: { runId: string; live: boolean }) {
       >
         {lines.length === 0 ? (
           <p className="p-4 font-sans text-[13px] text-muted-foreground">
-            {logs.isPending ? "Loading logs…" : needle ? "No lines match the filter." : live ? "No output captured yet." : "This run wrote no output."}
+            {logs.isPending ? "Loading logs…" : needle ? "No lines match the filter." : live ? "The run has no output yet." : "This run wrote no output."}
           </p>
         ) : virtualItems.length === 0 ? (
           // Before the first layout pass (and in non-layout environments) render a plain slice.
@@ -168,12 +168,12 @@ export function LogsViewer({ runId, live }: { runId: string; live: boolean }) {
       </div>
       {logs.data?.dropped ? (
         <p className="text-xs text-muted-foreground">
-          Showing the latest {MAX_LOG_LINES.toLocaleString()} lines; {logs.data.dropped.toLocaleString()} older lines are not kept in view.
+          The log shows the latest {MAX_LOG_LINES.toLocaleString()} lines. It does not show {logs.data.dropped.toLocaleString()} older lines.
         </p>
       ) : null}
       {logs.data?.behind ? (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          {live ? "Loading newer lines…" : "Newer lines are not loaded yet."}
+          {live ? "Loading newer lines…" : "The app did not load the newer lines."}
           {live ? null : (
             <Button variant="outline" size="sm" onClick={() => void logs.refetch()} disabled={logs.isFetching}>
               Load more

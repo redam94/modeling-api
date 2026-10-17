@@ -150,7 +150,7 @@ test("a viewer sees why run actions are unavailable", async ({ page }) => {
   await page.goto(`/runs/${RUNNING}`);
   const cancel = page.getByRole("button", { name: "Cancel" });
   await expect(cancel).toBeDisabled();
-  await expect(cancel).toHaveAttribute("title", "Needs the runner role (yours is viewer)");
+  await expect(cancel).toHaveAttribute("title", "You need the runner role. Your role is viewer.");
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "The admin console is for platform operators" })).toBeVisible();
 });

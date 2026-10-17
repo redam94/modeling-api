@@ -35,7 +35,7 @@ export function specStarterFor(modelId: string, opts: { version?: string | null;
     `  name: new-${short}`,
     "  project: default",
     "data:",
-    "  # Point at your dataset and map its columns to the model's roles.",
+    "  # Set your dataset here. Map its columns to the roles of the model.",
     "  dataset: dataset://default/my-dataset@latest",
     "  bind:",
     "    dims: {time: date}",

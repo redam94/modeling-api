@@ -51,8 +51,8 @@ function ComparisonView({ c }: { c: Comparison }) {
         <Mono className="text-xs text-muted-foreground">{c.variable}</Mono>
       </div>
       <p className="text-[13px] text-muted-foreground">
-        On the periods you gave actuals for (◆), the predictions are one-step-ahead: what the model expected for each period before it saw that actual.
-        After the last actual (dashed) it forecasts.
+        For the periods that have actuals (◆), the predictions are one-step-ahead. Each prediction is the value that the model expected before it saw that actual.
+        After the last actual (dashed line), the model forecasts.
       </p>
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="How close the one-step-ahead predictions were">
         <Stat label="Actuals compared" value={String(m.n)} />
@@ -103,7 +103,7 @@ function ComparisonView({ c }: { c: Comparison }) {
                   <TD className="text-right tabular">{fmt(p.actual)}</TD>
                   <TD className="text-right tabular">{fmt(p.predicted)}</TD>
                   {c.band ? (
-                    <TD className={cn("text-right tabular", outside && "text-warning")} title={outside ? "The actual is outside this band" : undefined}>
+                    <TD className={cn("text-right tabular", outside && "text-warning")} title={outside ? "The actual is outside this band." : undefined}>
                       {fmt(p.lower)} – {fmt(p.upper)}
                     </TD>
                   ) : null}

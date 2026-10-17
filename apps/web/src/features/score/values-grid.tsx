@@ -117,7 +117,7 @@ export function ValuesGrid({
               size="sm"
               variant="outline"
               disabled={fillCol < 0 || fillValue.trim() === ""}
-              title="Put this value in every blank cell of the column"
+              title="Puts this value in each blank cell of the column."
               onClick={() => onRows(fillColumn(rows, fillCol, fillValue.trim()))}
             >
               <PaintBucket /> Fill blanks
@@ -130,7 +130,7 @@ export function ValuesGrid({
         <Button type="button" variant="outline" size="sm" onClick={() => setPasting((p) => !p)} aria-expanded={pasting}>
           <ClipboardPaste /> Paste from a spreadsheet
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onReset} title="Start again from the periods and levels the model knows">
+        <Button type="button" variant="ghost" size="sm" onClick={onReset} title="Starts again from the periods and levels that the model knows.">
           <RotateCcw /> Reset
         </Button>
       </div>
@@ -145,7 +145,7 @@ export function ValuesGrid({
           htmlFor="values-paste"
           hint={
             <>
-              A header row ({columns.map((c) => c.name).join(", ")}) then one row per period and level; tabs or commas. Columns are matched by name.
+              Paste a header row ({columns.map((c) => c.name).join(", ")}), then one row for each period and level. Use tabs or commas between values. The app matches the columns by name.
             </>
           }
         >

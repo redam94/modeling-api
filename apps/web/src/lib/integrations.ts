@@ -10,19 +10,19 @@ export const ALIAS_RE = /^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$/;
 
 export const WEBHOOK_EVENTS: { type: WebhookEventType; label: string; description: string }[] = [
   { type: "run.succeeded", label: "Run succeeded", description: "A fit, score, ingest or render run finished." },
-  { type: "run.failed", label: "Run failed", description: "A run failed or was cancelled." },
+  { type: "run.failed", label: "Run failed", description: "A run failed or a user cancelled it." },
   { type: "model.version.ready", label: "Model version ready", description: "A fit produced a model version, with its scorecard verdict." },
-  { type: "endpoint.promoted", label: "Endpoint promoted", description: "An alias points at a new version (a promotion or a rollback)." },
-  { type: "score.completed", label: "Score completed", description: "A score run finished, with the endpoint when it came through one." },
-  { type: "tenant.deletion.completed", label: "Organisation deleted", description: "The organisation was purged. The last event it ever sends." },
+  { type: "endpoint.promoted", label: "Endpoint promoted", description: "An alias points to a new version after a promotion or a rollback." },
+  { type: "score.completed", label: "Score completed", description: "A score run finished. The event includes the endpoint if the call used one." },
+  { type: "tenant.deletion.completed", label: "Organisation deleted", description: "The platform deleted all data of the organisation. This is the last event that it sends." },
 ];
 
 export const DELIVERY_META: Record<DeliveryStatus, { label: string; variant: "success" | "warning" | "danger" | "outline" | "info"; description: string }> = {
-  pending: { label: "Pending", variant: "info", description: "Queued for its first try." },
-  succeeded: { label: "Delivered", variant: "success", description: "Your receiver answered 2xx." },
-  retrying: { label: "Retrying", variant: "warning", description: "The last try failed; another one is scheduled." },
-  failed: { label: "Failed", variant: "danger", description: "Every retry failed (or the receiver answered 410 Gone)." },
-  blocked: { label: "Blocked", variant: "danger", description: "The URL resolved to an address the platform never calls (SSRF protection)." },
+  pending: { label: "Pending", variant: "info", description: "The delivery waits for its first try." },
+  succeeded: { label: "Delivered", variant: "success", description: "Your receiver sent a 2xx answer." },
+  retrying: { label: "Retrying", variant: "warning", description: "The last try failed. The platform will try again." },
+  failed: { label: "Failed", variant: "danger", description: "All retries failed, or the receiver sent a 410 Gone answer." },
+  blocked: { label: "Blocked", variant: "danger", description: "The URL goes to an address that the platform never calls. This gives protection against SSRF." },
 };
 
 /** The retry schedule after a failed delivery (`mapi_spec.webhooks`). */
@@ -51,7 +51,7 @@ export interface WebhookForm {
 export function validateWebhookForm(f: WebhookForm): Partial<Record<keyof WebhookForm, string>> {
   const errors: Partial<Record<keyof WebhookForm, string>> = {};
   const url = f.url.trim();
-  if (url.length < 9 || url.length > 2048) errors.url = "Enter the full URL of your receiver, such as https://hooks.example.com/mapi.";
+  if (url.length < 9 || url.length > 2048) errors.url = "Type the full URL of your receiver, for example https://hooks.example.com/mapi.";
   else {
     let parsed: URL | null = null;
     try {
@@ -59,12 +59,12 @@ export function validateWebhookForm(f: WebhookForm): Partial<Record<keyof Webhoo
     } catch {
       parsed = null;
     }
-    if (!parsed || (parsed.protocol !== "https:" && parsed.protocol !== "http:")) errors.url = "Enter an https:// URL.";
-    else if (parsed.username || parsed.password) errors.url = "Leave credentials out of the URL; verify the signature instead.";
-    else if (parsed.hash) errors.url = "A webhook URL cannot have a #fragment.";
+    if (!parsed || (parsed.protocol !== "https:" && parsed.protocol !== "http:")) errors.url = "Type an https:// URL.";
+    else if (parsed.username || parsed.password) errors.url = "Remove the credentials from the URL. Verify the signature instead.";
+    else if (parsed.hash) errors.url = "A webhook URL cannot have a #fragment. Remove the #fragment.";
   }
-  if (!f.events.length) errors.events = "Pick at least one event.";
-  if (f.description.length > 500) errors.description = "At most 500 characters.";
+  if (!f.events.length) errors.events = "Select one or more events.";
+  if (f.description.length > 500) errors.description = "The maximum is 500 characters.";
   return errors;
 }
 
@@ -74,8 +74,8 @@ const ORIGIN_RE = /^https:\/\/[a-z0-9.-]{1,253}(?::[0-9]{1,5})?$/;
 export function parseAllowedOrigins(text: string): { origins: string[]; error: string | null } {
   const origins = [...new Set(text.split(/[\s,]+/).map((o) => o.trim().replace(/\/+$/, "").toLowerCase()).filter(Boolean))];
   const bad = origins.find((o) => !ORIGIN_RE.test(o));
-  if (bad) return { origins, error: `“${bad.slice(0, 60)}” is not an https origin (https://host or https://host:port).` };
-  if (origins.length > 10) return { origins, error: "At most 10 sites." };
+  if (bad) return { origins, error: `“${bad.slice(0, 60)}” is not an https origin. Type https://host or https://host:port.` };
+  if (origins.length > 10) return { origins, error: "The maximum is 10 sites." };
   return { origins, error: null };
 }
 
@@ -87,14 +87,14 @@ export function iframeSnippet(url: string, title: string): string {
 
 /** Parse the "Try it" payload editor: a JSON object, or a message saying what is wrong. */
 export function parseCallJson(text: string): { value: Record<string, unknown> | null; error: string | null } {
-  if (new TextEncoder().encode(text).length > 5 * 1024 * 1024) return { value: null, error: "The payload is larger than the 5 MB an inline call may carry." };
+  if (new TextEncoder().encode(text).length > 5 * 1024 * 1024) return { value: null, error: "The payload is larger than 5 MB. This is the maximum for an inline call." };
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch (e) {
     return { value: null, error: `Not valid JSON: ${e instanceof Error ? e.message : String(e)}` };
   }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return { value: null, error: "The call must be a JSON object." };
-  if ("model" in parsed) return { value: null, error: "Leave out “model”: the endpoint decides which version scores the call." };
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return { value: null, error: "The call is not a JSON object. Type a JSON object." };
+  if ("model" in parsed) return { value: null, error: "Remove “model”. The endpoint selects the version that scores the call." };
   return { value: parsed as Record<string, unknown>, error: null };
 }

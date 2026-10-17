@@ -12,7 +12,7 @@ import type { ValidationStatus } from "./types";
 export function ValidationBadge({ status, className }: { status: ValidationStatus | null; className?: string }) {
   if (!status) {
     return (
-      <Badge variant="outline" className={className} title="No validation was requested for this version." data-validation-status="none">
+      <Badge variant="outline" className={className} title="Nobody requested a validation for this version." data-validation-status="none">
         <ShieldQuestion aria-hidden /> Not validated
       </Badge>
     );

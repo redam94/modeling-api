@@ -44,7 +44,7 @@ export function CatalogBrowser({ selected, onSelect }: { selected: string | null
     return m;
   }, [index.data]);
   if (index.isPending) return <LoadingRows rows={6} />;
-  if (index.isError) return <ErrorNotice error={index.error} title="The catalog could not be loaded" onRetry={() => void index.refetch()} />;
+  if (index.isError) return <ErrorNotice error={index.error} title="The app cannot load the catalog" onRetry={() => void index.refetch()} />;
   const open = parseAboutKey(selected);
   const entry = open ? index.data.byKey.get(aboutKey(open.kind, open.id)) : undefined;
   const kinds = KIND_ORDER.filter((k) => counts.get(k));
@@ -53,7 +53,7 @@ export function CatalogBrowser({ selected, onSelect }: { selected: string | null
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
         <div className="grid gap-0.5">
           <p className="font-semibold tracking-tight">Not sure where to start?</p>
-          <p className="text-[13px] text-muted-foreground">Answer a few questions about your goal and your data and get ranked suggestions.</p>
+          <p className="text-[13px] text-muted-foreground">Answer some questions about your goal and your data. The app then shows suggestions in order of fit.</p>
         </div>
         <Button asChild>
           <Link to="/choose">
@@ -82,7 +82,7 @@ export function CatalogBrowser({ selected, onSelect }: { selected: string | null
         <div className="flex flex-wrap gap-2">
           <div className="relative min-w-[14rem] flex-1 sm:max-w-sm">
             <Search aria-hidden className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-            <Input aria-label="Search the catalog" placeholder="Search: forecast, seasonality, holdout…" value={text} onChange={(e) => setText(e.target.value)} className="pl-8" />
+            <Input aria-label="Search the catalog" placeholder="Type a word, for example forecast, seasonality or holdout" value={text} onChange={(e) => setText(e.target.value)} className="pl-8" />
           </div>
           <NativeSelect aria-label="Difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty | "all")} className="w-48">
             <option value="all">Any difficulty</option>
@@ -101,8 +101,8 @@ export function CatalogBrowser({ selected, onSelect }: { selected: string | null
           ))}
         </ul>
       ) : (
-        <EmptyState icon={<Search />} title="Nothing matches">
-          Try another word, or clear the filters.
+        <EmptyState icon={<Search />} title="No item matches">
+          Type a different word, or clear the filters.
         </EmptyState>
       )}
       {entry ? (

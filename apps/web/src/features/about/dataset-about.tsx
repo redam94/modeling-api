@@ -26,7 +26,7 @@ export function DatasetAboutCard({ datasetId, actions }: { datasetId: string; ac
   const [draft, setDraft] = useState<string | null>(null);
   const editing = draft !== null;
   if (about.isPending) return <LoadingRows rows={2} />;
-  if (about.isError) return <ErrorNotice error={about.error} title="The dataset's About could not be loaded" />;
+  if (about.isError) return <ErrorNotice error={about.error} title="The app cannot load the About card of the dataset" />;
   const a = about.data;
   const save = () => {
     if (draft === null) return;
@@ -38,7 +38,7 @@ export function DatasetAboutCard({ datasetId, actions }: { datasetId: string; ac
           setDraft(null);
           toast.success("Description saved");
         },
-        onError: (e) => toast.error("The description was not saved", errorMessage(e)),
+        onError: (e) => toast.error("The app did not save the description", errorMessage(e)),
       },
     );
   };
@@ -47,7 +47,7 @@ export function DatasetAboutCard({ datasetId, actions }: { datasetId: string; ac
       <CardHeader>
         <div className="grid gap-1">
           <CardTitle id="dataset-about-h">About this dataset</CardTitle>
-          <CardDescription>What it holds, in plain words: the owner&apos;s description and a summary made from the data.</CardDescription>
+          <CardDescription>This card tells what the dataset holds, in plain words. It shows the description of the owner and a summary from the data.</CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">{actions}</div>
       </CardHeader>
@@ -74,8 +74,8 @@ export function DatasetAboutCard({ datasetId, actions }: { datasetId: string; ac
               <Field
                 label="Describe the data for your colleagues"
                 htmlFor="ds-about-text"
-                hint={`Where it comes from, how often it is refreshed, what to watch out for. ${DESCRIPTION_MAX - (draft?.length ?? 0)} characters left.`}
-                error={(draft?.length ?? 0) > DESCRIPTION_MAX ? "That is too long." : undefined}
+                hint={`Tell where the data comes from, how frequently it is refreshed and what to be careful about. ${DESCRIPTION_MAX - (draft?.length ?? 0)} characters left.`}
+                error={(draft?.length ?? 0) > DESCRIPTION_MAX ? "The text is too long. Make it shorter." : undefined}
               >
                 <Textarea id="ds-about-text" value={draft ?? ""} onChange={(e) => setDraft(e.target.value)} rows={4} autoFocus />
               </Field>
@@ -93,7 +93,7 @@ export function DatasetAboutCard({ datasetId, actions }: { datasetId: string; ac
               {a.description_user}
             </p>
           ) : (
-            <p className="text-[13px] text-muted-foreground">No description yet.{editable ? " Add one so others know where the data comes from." : ""}</p>
+            <p className="text-[13px] text-muted-foreground">There is no description yet.{editable ? " Add a description so that other persons know where the data comes from." : ""}</p>
           )}
         </section>
         <section className="grid content-start gap-2" aria-labelledby="ds-summary-h">

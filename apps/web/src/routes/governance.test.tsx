@@ -60,7 +60,7 @@ describe("Governance", () => {
     await user.type(fail, "0.05");
     await user.click(within(editor).getByRole("button", { name: "Save version 3" }));
     // The thresholds break the rule: nothing is sent.
-    expect(await within(holdout).findByText(/The fail limit must be at least the warn limit/)).toBeInTheDocument();
+    expect(await within(holdout).findByText(/The fail limit is less than the warn limit/)).toBeInTheDocument();
     expect(seen.some((r) => r.method === "PUT")).toBe(false);
     await user.clear(fail);
     await user.type(fail, "0.3");
@@ -83,7 +83,7 @@ describe("Governance", () => {
     expect(view.querySelector('article[data-check="null.permutation_target"]')).toHaveTextContent("than all 19 fits with the drivers price shuffled");
     const form = within(view).getByTestId("decision-form");
     await user.click(within(form).getByRole("button", { name: "Reject" }));
-    expect(within(form).getByText("Say why you reject it.")).toBeInTheDocument();
+    expect(within(form).getByText("The comment is empty. Type the reason for the rejection.")).toBeInTheDocument();
     expect(seen.some((r) => r.path.endsWith("/approvals"))).toBe(false);
     await user.type(within(form).getByLabelText("Comment"), "Convincing null tests.");
     await user.click(within(form).getByRole("button", { name: "Approve" }));
@@ -114,7 +114,7 @@ describe("Governance", () => {
     const user = userEvent.setup();
     renderApp("/models/mdl_01jaf3c1d2e3f4g5h6j7k8m9n0/versions/1/validations");
     const form = await screen.findByRole("form", { name: "Request a validation" });
-    expect(within(form).getByTestId("policies-in-force-note")).toHaveTextContent("Every policy in force for this kind of model always applies.");
+    expect(within(form).getByTestId("policies-in-force-note")).toHaveTextContent("All policies in force for this type of model apply.");
     const boxes = await within(form).findAllByRole("checkbox");
     expect(boxes.length).toBeGreaterThan(0);
     for (const box of boxes) expect(box).not.toBeChecked();

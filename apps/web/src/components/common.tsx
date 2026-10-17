@@ -374,7 +374,7 @@ export function JsonBlock({ value, className, maxHeight = "28rem" }: { value: un
   try {
     text = JSON.stringify(value, null, 2) ?? "null";
   } catch {
-    text = "(not serialisable)";
+    text = "(cannot show as JSON)";
   }
   return (
     <pre

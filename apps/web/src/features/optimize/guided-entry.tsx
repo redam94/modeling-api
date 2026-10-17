@@ -20,7 +20,7 @@ export function OptimiseBudgetCard({ mv, specId }: { mv: ModelVersion; specId: s
               <Wallet aria-hidden className="size-4 text-primary" /> Optimise my budget
             </span>
           </CardTitle>
-          <CardDescription>Instead of moving sliders, let the model find the split that brings the most - with your limits per channel and the range of likely outcomes.</CardDescription>
+          <CardDescription>Let the model find the split that gives the best result. You do not move the sliders. The model uses your limits for each channel and shows the range of likely results.</CardDescription>
         </div>
         <Button asChild>
           <Link to="/models/$modelId/versions/$version/optimize" params={{ modelId: mv.model_id, version: String(mv.version) }} search={{ back: specId }}>
@@ -29,7 +29,7 @@ export function OptimiseBudgetCard({ mv, specId }: { mv: ModelVersion; specId: s
         </Button>
       </CardHeader>
       <CardContent>
-        <p className="text-xs text-muted-foreground">Keeps today&apos;s total unless you choose another one. Nothing changes until you act on the plan.</p>
+        <p className="text-xs text-muted-foreground">The plan keeps today&apos;s total, unless you select a different total. Nothing changes until you use the plan.</p>
       </CardContent>
     </Card>
   );

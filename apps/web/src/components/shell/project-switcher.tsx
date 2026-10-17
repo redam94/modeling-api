@@ -93,7 +93,7 @@ export function ProjectSwitcher({ className }: { className?: string }) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-[70vh] w-72 overflow-y-auto">
-          {tenants.length === 0 ? <DropdownMenuLabel>You are not a member of any project.</DropdownMenuLabel> : null}
+          {tenants.length === 0 ? <DropdownMenuLabel>You are not a member of a project.</DropdownMenuLabel> : null}
           {tenants.map((t, i) => {
             const projects = ws.choices.filter((c) => c.tenant.id === t.tenant.id);
             return (
@@ -166,13 +166,13 @@ function NewProjectDialog({ tenantId, onClose }: { tenantId: string; onClose: ()
   const [idTouched, setIdTouched] = useState(false);
   const [description, setDescription] = useState("");
   const effectiveId = idTouched ? id : slugify(name);
-  const idError = effectiveId && !SLUG_RE.test(effectiveId) ? "Lowercase letters, digits, - and _ (start and end with a letter or digit)." : undefined;
+  const idError = effectiveId && !SLUG_RE.test(effectiveId) ? "Use lowercase letters, digits, - and _. Start and end with a letter or digit." : undefined;
   const tenant = ws.choices.find((c) => c.tenant.id === tenantId)?.tenant;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogTitle>New project in {tenant?.name ?? tenantId}</DialogTitle>
-        <DialogDescription>Projects hold datasets, specs, runs and models. You become its admin through your organisation role.</DialogDescription>
+        <DialogDescription>A project holds datasets, specs, runs and models. Your organisation role makes you the admin of the project.</DialogDescription>
         <form
           className="grid gap-4"
           onSubmit={(e) => {
@@ -185,7 +185,7 @@ function NewProjectDialog({ tenantId, onClose }: { tenantId: string; onClose: ()
                   toast.success("Project created", `${p.name} (${tenantId}/${p.id})`);
                   onClose();
                 },
-                onError: (err) => toast.error("The project could not be created", errorMessage(err)),
+                onError: (err) => toast.error("The app cannot create the project", errorMessage(err)),
               },
             );
           }}
@@ -193,7 +193,7 @@ function NewProjectDialog({ tenantId, onClose }: { tenantId: string; onClose: ()
           <Field label="Name" htmlFor="np-name">
             <Input id="np-name" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
           </Field>
-          <Field label="Id" htmlFor="np-id" hint={`Used in refs such as dataset://${effectiveId || "growth"}/…; cannot be changed.`} error={idError}>
+          <Field label="Id" htmlFor="np-id" hint={`The app uses the id in references, for example dataset://${effectiveId || "growth"}/…. You cannot change the id later.`} error={idError}>
             <Input
               id="np-id"
               className="font-mono"

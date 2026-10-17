@@ -31,7 +31,7 @@ function groupsOf(catalog: CatalogResponse | null, datasets: Dataset[]): Group[]
   groups.push({
     key: "dataset",
     title: "Datasets",
-    hint: "Drop on the Data block.",
+    hint: "Drag a dataset to the Data block.",
     items: datasets.map((d) => ({
       kind: "dataset",
       id: `${d.ref}@latest`,
@@ -45,7 +45,7 @@ function groupsOf(catalog: CatalogResponse | null, datasets: Dataset[]): Group[]
     groups.push({
       key: `step:${kind}`,
       title: STEP_KIND_LABEL[kind] ?? kind,
-      hint: "Drop between steps in the pipeline.",
+      hint: "Drag a step to a position between steps in the pipeline.",
       items: steps
         .filter((s) => s.kind === kind)
         .map((s) => ({
@@ -63,7 +63,7 @@ function groupsOf(catalog: CatalogResponse | null, datasets: Dataset[]): Group[]
     groups.push({
       key: `model:${ns}`,
       title: `Models · ${ns}`,
-      hint: "Drop on the Model block.",
+      hint: "Drag a model to the Model block.",
       items: models
         .filter((m) => m.id.split(".")[0] === ns)
         .map((m) => ({
@@ -78,7 +78,7 @@ function groupsOf(catalog: CatalogResponse | null, datasets: Dataset[]): Group[]
   groups.push({
     key: "plot",
     title: "Plots",
-    hint: "Drop on the Outputs block.",
+    hint: "Drag a plot to the Outputs block.",
     items: (catalog?.plots ?? [])
       .filter((p) => !p.yanked)
       .map((p) => ({ kind: "plot", id: p.id, title: p.title, detail: p.about?.summary_plain ?? null, keywords: p.id })),
@@ -163,7 +163,7 @@ export function SpecPalette({
             </ul>
           </details>
         ))}
-        {groups.length === 0 ? <p className="px-2 text-[13px] text-muted-foreground">{q ? `Nothing matches “${q}”.` : "Loading the catalog…"}</p> : null}
+        {groups.length === 0 ? <p className="px-2 text-[13px] text-muted-foreground">{q ? `No item matches “${q}”. Type a different word.` : "The app gets the catalog…"}</p> : null}
       </div>
       {current ? (
         <div className="grid gap-2 rounded-lg border bg-card p-3">
@@ -179,7 +179,7 @@ export function SpecPalette({
           </Button>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">Drag an item onto the spec, or pick it and press Add.</p>
+        <p className="text-xs text-muted-foreground">Drag an item to the spec. Or select the item and click Add.</p>
       )}
     </section>
   );

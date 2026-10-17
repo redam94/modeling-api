@@ -89,7 +89,7 @@ export function runCostView(cost: RunCost | null | undefined): CostView | null {
   }
   if (micros == null) return null;
   const parts = [
-    estimated ? "Estimate before metering" : "Metered",
+    estimated ? "Estimate (not metered yet)" : "Metered",
     cost.price_version ? `price table ${cost.price_version}` : null,
     cost.vcpu_seconds != null ? formatVcpuSeconds(cost.vcpu_seconds) : null,
     cost.attempts_billed ? `${cost.attempts_billed} attempt${cost.attempts_billed === 1 ? "" : "s"} billed` : null,

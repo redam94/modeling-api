@@ -127,7 +127,7 @@ export function PlotFrame({
       </div>
       {status === "error" && error ? (
         <figcaption role="alert" className="text-xs text-destructive">
-          The plot could not be rendered: {error}
+          The app cannot show the plot: {error}
         </figcaption>
       ) : null}
     </figure>

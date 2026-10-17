@@ -10,17 +10,17 @@ export const GATE_META: Record<GateOutcome, { label: string; variant: "success" 
   allowed: {
     label: "Passes the gate",
     variant: "success",
-    description: "The sanity scorecard passes: any project admin (or an endpoints:promote token) can promote it.",
+    description: "The sanity scorecard passes. A project admin or an endpoints:promote token can promote the version.",
   },
   needs_override: {
     label: "Needs an override",
     variant: "warning",
-    description: "A project admin signed in to the app must override the gate with a reason; the override is audited.",
+    description: "A project admin must sign in to the app and override the gate with a reason. The audit log records the override.",
   },
   blocked: {
     label: "Blocked",
     variant: "danger",
-    description: "The version cannot serve this endpoint. Fix the cause and promote a new version.",
+    description: "The version cannot serve this endpoint. Correct the cause and promote a new version.",
   },
 };
 
@@ -62,8 +62,8 @@ export function previewScorecardGate(
   const reasons: GateReason[] = [];
   const add = (code: GateReason["code"], outcome: GateOutcome, message_plain: string, check: string | null = null) =>
     reasons.push({ code, outcome, message_plain: message_plain.slice(0, 500), check });
-  if (opts.partial) add("PARTIAL_MODEL", "blocked", "The fit was interrupted before it finished.");
-  if (opts.fitMode === "train_only") add("TRAIN_ONLY", "blocked", "The model was fitted without its holdout data; endpoints need a refit on all data.");
+  if (opts.partial) add("PARTIAL_MODEL", "blocked", "The fit stopped before it was complete.");
+  if (opts.fitMode === "train_only") add("TRAIN_ONLY", "blocked", "The model was fitted without its holdout data. An endpoint needs a refit on all the data.");
   const failing: string[] = [];
   if (!scorecard) {
     add("NO_SCORECARD", "needs_override", "The model has no sanity scorecard.");
@@ -84,14 +84,14 @@ export function previewScorecardGate(
       add(
         "NOT_EVALUATED",
         "needs_override",
-        `The model was never scored on held-out data, so its forecast error is unknown (${why}). Add a holdout split (data.split) and holdout metrics (evaluate.metrics), then refit.`,
+        `The model has no score on held-out data. Thus, its forecast error is not known (${why}). Add a holdout split (data.split) and holdout metrics (evaluate.metrics). Then fit the model again.`,
         check,
       );
     }
     for (const check of new Set(opts.requiredChecks ?? [])) {
       if (scored.has(check) || failing.includes(check)) continue;
       failing.push(check);
-      add("NOT_EVALUATED", "needs_override", `${check}: this check could not be run (${skipped[check] ?? "it is not on the scorecard"}).`, check);
+      add("NOT_EVALUATED", "needs_override", `${check}: this check did not run (${skipped[check] ?? "it is not on the scorecard"}).`, check);
     }
     if (scorecard.overall !== "pass" && !reasons.some((r) => r.code === "SCORECARD_WARN" || r.code === "SCORECARD_FAIL")) {
       add(scorecard.overall === "fail" ? "SCORECARD_FAIL" : "SCORECARD_WARN", scorecard.overall === "fail" ? "blocked" : "needs_override", "The scorecard did not pass.");

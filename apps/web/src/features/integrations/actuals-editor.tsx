@@ -31,10 +31,10 @@ function targetsOf(table: InputTable): string {
 /** How to fill the table, in one sentence. */
 export function actualsHint(table: InputTable): string {
   const targets = targetsOf(table);
-  const drivers = (table.columns ?? []).some((c) => c.role === "driver") ? " Blank driver cells on those rows are carried forward from the latest value." : "";
+  const drivers = (table.columns ?? []).some((c) => c.role === "driver") ? " On those rows, the model uses the latest value for blank driver cells." : "";
   return table.conditions_on_actuals
-    ? `Fill ${targets} on the periods you have actuals for, and leave it blank on the dates to forecast. The model updates its state with the actuals - it is not refitted - and forecasts the blank rows.${drivers}`
-    : `List the dates to forecast with ${targets} left blank. This model forecasts from the end of its fitted history: it refuses actuals rather than ignore them.${drivers}`;
+    ? `Type ${targets} on the periods that have actuals. Leave ${targets} blank on the dates to forecast. The model updates its state with the actuals and forecasts the blank rows. It does not fit again.${drivers}`
+    : `Type the dates to forecast and leave ${targets} blank. This model forecasts from the end of its fitted history. It refuses actuals. It does not ignore them.${drivers}`;
 }
 
 /** A read-only preview of the Input sheet: the header row and the first periods after the fit. */
@@ -68,7 +68,7 @@ export function InputTablePreview({ table, maxRows = 4, label = "Input sheet lay
         ) : (
           <TR>
             <TD colSpan={columns.length} className="text-muted-foreground">
-              One row per period (and per level of the other columns).
+              One row for each period (and for each level of the other columns).
             </TD>
           </TR>
         )}
@@ -140,7 +140,7 @@ export function ActualsEditor({ schema, onUse }: { schema: EndpointSchema; onUse
                   <Input
                     aria-label={`${c.name}, row ${i + 1}`}
                     className={cn("h-8 min-w-24 font-mono text-xs", c.role === "target" && "bg-primary/6")}
-                    placeholder={c.role === "target" ? "blank: forecast" : c.role === "driver" ? "blank: carried forward" : ""}
+                    placeholder={c.role === "target" ? "blank: forecast" : c.role === "driver" ? "blank: latest value" : ""}
                     value={r[j] ?? ""}
                     onChange={(e) => set(i, j, e.target.value)}
                   />
@@ -177,11 +177,11 @@ export function ActualsEditor({ schema, onUse }: { schema: EndpointSchema; onUse
         </Button>
         <span className="text-xs text-muted-foreground" aria-live="polite">
           {actuals} actual{actuals === 1 ? "" : "s"}, {blank} period{blank === 1 ? "" : "s"} to forecast
-          {blank === 0 ? ` (then ${String((schema.example as { horizon?: { periods?: number } }).horizon?.periods ?? 8)} periods are appended)` : ""}
+          {blank === 0 ? ` (the app adds ${String((schema.example as { horizon?: { periods?: number } }).horizon?.periods ?? 8)} periods)` : ""}
         </span>
       </div>
       {pasting ? (
-        <Field label="Rows copied from a sheet" htmlFor="actuals-paste" hint={<>A header row ({(table.columns ?? []).map((c) => c.name).join(", ")}) then one row per period; tabs or commas.</>}>
+        <Field label="Rows copied from a sheet" htmlFor="actuals-paste" hint={<>Paste a header row ({(table.columns ?? []).map((c) => c.name).join(", ")}), then one row for each period. Use tabs or commas between the values.</>}>
           <div className="grid gap-2">
             <Textarea id="actuals-paste" className="min-h-24 font-mono text-xs" value={pasted} onChange={(e) => setPasted(e.target.value)} spellCheck={false} />
             <Button

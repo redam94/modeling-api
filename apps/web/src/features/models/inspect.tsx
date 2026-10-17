@@ -24,7 +24,7 @@ const STATUS_ICON = {
 } as const;
 
 export function ScorecardView({ scorecard }: { scorecard: Scorecard | null | undefined }) {
-  if (!scorecard) return <p className="text-muted-foreground">No scorecard for this version.</p>;
+  if (!scorecard) return <p className="text-muted-foreground">This version has no scorecard.</p>;
   return (
     <ul className="grid gap-3">
       {(scorecard.items ?? []).map((item) => (
@@ -76,7 +76,7 @@ export function DiagnosticsTable({ diagnostics, capabilities }: { diagnostics: D
         <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/8 p-3 text-[13px]">
           <AlertTriangle className="mt-0.5 size-4 text-warning" />
           <span>
-            LOO is not valid for this model{capabilities.loo_invalid_reason ? `: ${capabilities.loo_invalid_reason}` : "."} Pareto-k and elpd_loo are not reported.
+            LOO is not valid for this model{capabilities.loo_invalid_reason ? `: ${capabilities.loo_invalid_reason}` : "."} The app does not show Pareto-k and elpd_loo.
           </span>
         </div>
       ) : null}
@@ -86,7 +86,7 @@ export function DiagnosticsTable({ diagnostics, capabilities }: { diagnostics: D
         columns={diagnosticColumns}
         filterPlaceholder="Filter by code, variable or message"
         initialSorting={[{ id: "severity", desc: true }]}
-        empty="No diagnostics were recorded."
+        empty="This version has no diagnostics."
       />
     </div>
   );
@@ -167,9 +167,9 @@ function GroupDetail({ group }: { group: TreeGroup }) {
 export function TreeBrowser({ mv }: { mv: ModelVersion }) {
   const { present, query } = useBundleView(mv, "ui/tree_index.json", parseTreeIndex);
   const [selected, setSelected] = useState<string | null>(null);
-  if (!present) return <EmptyState icon={<FolderTree />} title="No tree index in this bundle">The runner writes ui/tree_index.json for fitted bundles.</EmptyState>;
+  if (!present) return <EmptyState icon={<FolderTree />} title="This bundle has no tree index">The runner writes ui/tree_index.json for fitted bundles.</EmptyState>;
   if (query.isPending) return <LoadingRows rows={5} />;
-  if (query.isError) return <ErrorNotice error={query.error} title="The tree index could not be loaded" />;
+  if (query.isError) return <ErrorNotice error={query.error} title="Cannot load the tree index" />;
   const groups = query.data.groups;
   const current = groups.find((g) => g.path === selected) ?? groups[0];
   return (
@@ -221,7 +221,7 @@ export function PreprocessViewer({ mv }: { mv: ModelVersion }) {
   const { present, query } = useBundleView(mv, "ui/preprocess.json", parsePreprocess);
   if (!present) return <p className="text-muted-foreground">This bundle has no preprocessing view (ui/preprocess.json).</p>;
   if (query.isPending) return <LoadingRows rows={4} />;
-  if (query.isError) return <ErrorNotice error={query.error} title="The preprocessing state could not be loaded" />;
+  if (query.isError) return <ErrorNotice error={query.error} title="Cannot load the preprocessing state" />;
   if (!query.data.steps.length) return <p className="text-muted-foreground">This model has no preprocessing steps.</p>;
   return (
     <div className="grid gap-4">
@@ -239,11 +239,11 @@ export function PreprocessViewer({ mv }: { mv: ModelVersion }) {
           </CardHeader>
           <CardContent className="grid gap-4">
             {Object.keys(s.learned).length ? <JsonBlock value={s.learned} maxHeight="10rem" /> : null}
-            {s.learnedTruncated ? <p className="text-xs text-muted-foreground">Some learned values are too large to show here; they are in the bundle.</p> : null}
+            {s.learnedTruncated ? <p className="text-xs text-muted-foreground">Some learned values are too large to show here. They are in the bundle.</p> : null}
             {s.arrays.map((a) => <StateArrayView key={a.name} array={a} />)}
             {s.omitted.length ? (
               <p className="text-xs text-muted-foreground">
-                Not shown (too large or more than two dimensions): <Mono>{s.omitted.join(", ")}</Mono>
+                Not shown because they are too large or have more than two dimensions: <Mono>{s.omitted.join(", ")}</Mono>
               </p>
             ) : null}
             {!s.arrays.length && !s.omitted.length && !Object.keys(s.learned).length ? <p className="text-muted-foreground">No learned state.</p> : null}

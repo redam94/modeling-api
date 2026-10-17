@@ -57,7 +57,7 @@ export function DeletionProgress({ deletion }: { deletion: TenantDeletion }) {
       ) : null}
       {deletion.retained && Object.keys(deletion.retained).length ? (
         <details className="text-[13px]">
-          <summary className="cursor-pointer text-muted-foreground">What is kept, and why</summary>
+          <summary className="cursor-pointer text-muted-foreground">What the app keeps, and why</summary>
           <ul className="mt-1 list-disc pl-5 text-muted-foreground">
             {Object.entries(deletion.retained).map(([k, v]) => (
               <li key={k}>{v}</li>

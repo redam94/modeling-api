@@ -56,12 +56,12 @@ export function validateMappings(mappings: ColumnMapping[]): MappingProblem[] {
   const problems: MappingProblem[] = [];
   const dims = mappings.filter((m) => m.as === "dim");
   const vars = mappings.filter((m) => m.as === "var");
-  if (!dims.length) problems.push({ column: null, message: "Map at least one column as a dim." });
-  if (!vars.length) problems.push({ column: null, message: "Map at least one column as a variable." });
+  if (!dims.length) problems.push({ column: null, message: "Map one or more columns as a dim." });
+  if (!vars.length) problems.push({ column: null, message: "Map one or more columns as a variable." });
   const seen = new Set<string>();
   for (const m of [...dims, ...vars]) {
-    if (!NAME_RE.test(m.name)) problems.push({ column: m.column, message: `"${m.name}" is not a valid name.` });
-    if (seen.has(m.name)) problems.push({ column: m.column, message: `The name "${m.name}" is used twice.` });
+    if (!NAME_RE.test(m.name)) problems.push({ column: m.column, message: `"${m.name}" is not a valid name. Start with a letter or _. Then use letters, digits, _, . and - (a maximum of 128 characters).` });
+    if (seen.has(m.name)) problems.push({ column: m.column, message: `Two columns use the name "${m.name}". Give each column a different name.` });
     seen.add(m.name);
   }
   return problems;
