@@ -149,7 +149,8 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
     const monitor = page.getByTestId("run-monitor");
     await step("workflow.run", async () => {
       await expect(monitor.getByTestId("run-status")).toHaveText(/Queued|Running|Succeeded/);
-      await expect(page.getByTestId("canvas-node-adf")).toHaveAttribute("data-status", /queued|running|succeeded/);
+      // the seasonal test runs first; the unit-root tests wait for its decision
+      await expect(page.getByTestId("canvas-node-seas")).toHaveAttribute("data-status", /queued|running|succeeded/);
       await expect(monitor).toHaveAttribute("data-status", "succeeded", { timeout: WORKFLOW_TIMEOUT });
     });
     const summary = page.getByTestId("run-summary");
@@ -178,8 +179,9 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
 
     await page.getByRole("tab", { name: /Decisions/ }).click();
     const decisions = page.getByTestId("branch-decision");
-    await expect(decisions.first()).toContainText("The condition was met.");
-    await expect(decisions.filter({ hasText: "nodes.adf.reject" }).first()).toBeVisible();
+    // the seasonal decision comes first (not needed); then the differencing decision (met)
+    await expect(decisions.first()).toContainText("The condition was not met.");
+    await expect(decisions.filter({ hasText: "nodes.adf.reject" }).first()).toContainText("The condition was met.");
 
     await step("workflow.model_explorer", async () => {
       await page.getByTestId("run-models").getByRole("link", { name: /in the Model Explorer/ }).first().click();
