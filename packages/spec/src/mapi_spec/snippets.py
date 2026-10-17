@@ -599,8 +599,8 @@ function mapiSheetToXr_(values, example, inputs, zone) {{
     if (typeof v !== "string") return cell(v);
     const text = v.trim();
     if (text === "") return null;
-    if (/^[-+]?\d{{1,3}}(,\d{{3}})+(\.\d+)?$/.test(text)) return Number(text.replace(/,/g, ""));
-    return /^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(text) ? Number(text) : text;
+    if (/^[-+]?\\d{{1,3}}(,\\d{{3}})+(\\.\\d+)?$/.test(text)) return Number(text.replace(/,/g, ""));
+    return /^[-+]?(\\d+(\\.\\d*)?|\\.\\d+)([eE][-+]?\\d+)?$/.test(text) ? Number(text) : text;
   }};
   const coords = {{}};
   const index = {{}};
