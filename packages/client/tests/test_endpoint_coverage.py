@@ -164,6 +164,7 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "list_model_versions": lambda: c.list_model_versions("mdl_1", None, None),
     "get_model_version": lambda: c.get_model_version("mdl_1", 1),
     "get_model_artifact": lambda: c.get_model_artifact("mdl_1", 1, "bundle.zarr.zip"),
+    "get_model_inputs": lambda: c.get_model_inputs("mdl_1", 1, 12),
     "score_model": lambda: c.score_model("mdl_1", 1, _SCORE, wait=60, idempotency_key="k"),
     "list_plots": lambda: c.list_plots("mdl_1", 1, None, None),
     "get_plot": lambda: c.get_plot("mdl_1", 1, "core.ppc_fan"),

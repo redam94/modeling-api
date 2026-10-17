@@ -1753,6 +1753,7 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "GET", "/v1/models/{model_id}/versions/{version}/inputs", "get_model_inputs",
         "What a score call can send: the input contract, the fitted coordinates and the input "
         "table", "ModelInputSchema", 200, errors=(*_NF, _E.CAPABILITY_UNSUPPORTED),
+        query=("periods",),
     ),
     # plots
     EndpointDecl(

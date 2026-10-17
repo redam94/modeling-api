@@ -39,6 +39,7 @@ from mapi_spec.api import (
     MembershipCreate,
     MembershipUpdate,
     Model,
+    ModelInputSchema,
     ModelVersion,
     Page,
     PlotListItem,
@@ -433,6 +434,16 @@ def get_model_version(model_id: str, version: int) -> Call[ModelVersion]:
 def get_model_artifact(model_id: str, version: int, name: str) -> Call[ArtifactLink]:
     path = f"{_mv(model_id, version)}/artifacts/{artifact_path(name)}"
     return Call("GET", path, parse_model(ArtifactLink))
+
+
+def get_model_inputs(
+    model_id: str, version: int, periods: int | None = None
+) -> Call[ModelInputSchema]:
+    """What a score call can send: the input contract and the input table."""
+    params: dict[str, str | int | list[str]] = {} if periods is None else {"periods": periods}
+    return Call(
+        "GET", f"{_mv(model_id, version)}/inputs", parse_model(ModelInputSchema), params=params
+    )
 
 
 def score_model(
