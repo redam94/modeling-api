@@ -89,6 +89,7 @@ class ExpressionLimits:
     max_number_digits: int = 30
     max_steps: int = 10_000
     max_result_len: int = 10_000
+    max_data_depth: int = 64
 
 
 LIMITS: Final = ExpressionLimits()
@@ -525,18 +526,6 @@ def _type_name(v: object) -> str:
     return "value"
 
 
-def _json_eq(a: object, b: object) -> bool:
-    if isinstance(a, bool) or isinstance(b, bool):
-        return isinstance(a, bool) and isinstance(b, bool) and a is b
-    if _is_num(a) and _is_num(b):
-        return float(a) == float(b)  # type: ignore[arg-type]
-    if isinstance(a, list) and isinstance(b, list):
-        return len(a) == len(b) and all(_json_eq(x, y) for x, y in zip(a, b, strict=True))
-    if isinstance(a, dict) and isinstance(b, dict):
-        return a.keys() == b.keys() and all(_json_eq(a[k], b[k]) for k in a)
-    return type(a) is type(b) and a == b
-
-
 class _Evaluator:
     def __init__(self, env: Mapping[str, object], limits: ExpressionLimits) -> None:
         self.env = env
@@ -547,6 +536,33 @@ class _Evaluator:
         self.steps += 1
         if self.steps > self.limits.max_steps:
             raise _eval_err("the condition takes too many steps to evaluate")
+
+    def _eq(self, a: object, b: object) -> bool:
+        """JSON equality (``1 == 1.0``, ``true != 1``) without recursion: every element
+        compared is a step, and data nested deeper than ``max_data_depth`` is refused."""
+        stack: list[tuple[object, object, int]] = [(a, b, 0)]
+        while stack:
+            self._tick()
+            x, y, depth = stack.pop()
+            if depth > self.limits.max_data_depth:
+                raise _eval_err("the values are nested too deeply to compare")
+            if isinstance(x, bool) or isinstance(y, bool):
+                if not (isinstance(x, bool) and isinstance(y, bool) and x is y):
+                    return False
+            elif _is_num(x) and _is_num(y):
+                if x != y:  # exact for any int and float, never overflows
+                    return False
+            elif isinstance(x, list) and isinstance(y, list):
+                if len(x) != len(y):
+                    return False
+                stack.extend((u, v, depth + 1) for u, v in zip(x, y, strict=True))
+            elif isinstance(x, dict) and isinstance(y, dict):
+                if x.keys() != y.keys():
+                    return False
+                stack.extend((x[k], y[k], depth + 1) for k in x)
+            elif not (type(x) is type(y) and x == y):
+                return False
+        return True
 
     def lookup(self, ref: Ref) -> object:
         cur: object = (
@@ -624,30 +640,33 @@ class _Evaluator:
         if op in ("/", "%") and y == 0:
             raise _eval_err("division by zero")
         result: float | int
-        if op == "+":
-            result = x + y
-        elif op == "-":
-            result = x - y
-        elif op == "*":
-            if isinstance(x, int) and isinstance(y, int) and abs(x) * abs(y) > 10**30:
-                raise _eval_err("number result is too large")
-            result = x * y
-        elif op == "/":
-            result = x / y
-        else:
-            result = x % y
+        try:
+            if op == "+":
+                result = x + y
+            elif op == "-":
+                result = x - y
+            elif op == "*":
+                if isinstance(x, int) and isinstance(y, int) and abs(x) * abs(y) > 10**30:
+                    raise _eval_err("number result is too large")
+                result = x * y
+            elif op == "/":
+                result = x / y
+            else:
+                result = x % y
+        except (OverflowError, ArithmeticError):  # an int too large to mix with a float
+            raise _eval_err("number result is too large") from None
         if isinstance(result, float) and not math.isfinite(result):
             raise _eval_err("number result is not finite")
         return result
 
     def _compare(self, op: str, a: object, b: object) -> bool:
         if op == "==":
-            return _json_eq(a, b)
+            return self._eq(a, b)
         if op == "!=":
-            return not _json_eq(a, b)
+            return not self._eq(a, b)
         if op in ("in", "not in"):
             if isinstance(b, list):
-                found = any(_json_eq(a, x) for x in b)
+                found = any(self._eq(a, x) for x in b)
             elif isinstance(b, str) and isinstance(a, str):
                 found = a in b
             else:
@@ -727,8 +746,15 @@ class Expression:
         """Evaluate over ``env`` (``{"nodes": {...}, "params": {...}, ...}``, JSON data).
 
         Raises ``MapiError(EXPRESSION_ERROR)`` with a plain message on a type error, a missing
-        reference or a blown limit."""
-        out = _Evaluator(env, self.limits).value(self.root)
+        reference or a blown limit - and never any other exception, whatever the data."""
+        try:
+            out = _Evaluator(env, self.limits).value(self.root)
+        except MapiError:
+            raise
+        except (ArithmeticError, RecursionError, ValueError, TypeError, LookupError) as exc:
+            raise _eval_err(
+                f"the condition cannot be evaluated on this data ({type(exc).__name__})"
+            ) from None
         return out  # type: ignore[return-value]
 
     def evaluate_bool(self, env: Mapping[str, object]) -> bool:

@@ -58,6 +58,7 @@ from mapi_spec.workflow import (
     NodeOutputRef,
     NodeResultSidecar,
     NodeRunStatus,
+    WorkflowEventType,
     WorkflowNodeJob,
     WorkflowRunCreate,
     WorkflowRunStatus,
@@ -71,7 +72,7 @@ from mapi_workflows.binding import (
     canonical_steps,
     model_input_schema,
 )
-from mapi_workflows.engine import UNKNOWN, Action, CacheHit, WorkflowEngine
+from mapi_workflows.engine import UNKNOWN, Action, CacheHit, EngineEvent, WorkflowEngine
 from mapi_workflows.orchestrator import BoundValue, evidence_pack
 from mapi_workflows.payloads import MetricsCandidate, MetricsPayload, clean_number
 from mapi_workflows.specs import MODEL_LABEL, model_spec_document, node_model_name
@@ -177,7 +178,7 @@ class WorkflowOrchestrator:
                 await self.tick(run_id)
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # pragma: no cover - tick records a run's own failures
                 log.exception("advancing workflow run %s failed", run_id)
         return len(ids)
 
@@ -189,7 +190,118 @@ class WorkflowOrchestrator:
 
     # ---------------------------------------------------------------------------- tick
     async def tick(self, run_id: str) -> WorkflowRunStatus | None:
-        """Advance one run (a no-op when another orchestrator holds it)."""
+        """Advance one run (a no-op when another orchestrator holds it).
+
+        Never raises for a run's own problem: an unexpected exception while advancing it
+        (bad data reaching an expression, a bug) is recorded as the run's error in a fresh
+        transaction, so the next pass stops its children and fails it; a run that raises
+        again with an error recorded is failed outright (:meth:`_stop_poisoned`). Either
+        way its ``updated_at`` moves, so it cannot keep the head of the loop's queue."""
+        try:
+            return await self._tick(run_id)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            log.exception("advancing workflow run %s failed", run_id)
+            return await self._stop_poisoned(run_id, exc)
+
+    async def _stop_poisoned(self, run_id: str, exc: Exception) -> WorkflowRunStatus | None:
+        async with self.ctx.db.session() as s:
+            wr = (
+                await s.execute(
+                    select(m.WorkflowRunRow)
+                    .where(m.WorkflowRunRow.run_id == run_id)
+                    .with_for_update(skip_locked=True)
+                )
+            ).scalar_one_or_none()
+            if wr is None or WorkflowRunStatus(wr.status).terminal:
+                return None
+            ts = now()
+            wr.updated_at = ts
+            if wr.error is None:
+                error = NodeError(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=(
+                        "the workflow run could not be advanced "
+                        f"({type(exc).__name__}); it is being stopped"
+                    ),
+                )
+                wr.error = error.model_dump(mode="json", exclude_none=True)
+                return WorkflowRunStatus(wr.status)
+            # it raised again with an error recorded: stop it without the engine
+            error = NodeError.model_validate(wr.error)
+            run = (
+                await s.execute(select(m.Run).where(m.Run.id == run_id).with_for_update())
+            ).scalar_one()
+            rows = (
+                await s.execute(
+                    select(m.WorkflowNodeRunRow).where(m.WorkflowNodeRunRow.run_id == run_id)
+                )
+            ).scalars()
+            for row in rows:
+                if NodeRunStatus(row.status).done:
+                    continue
+                with contextlib.suppress(MapiError):
+                    await self._stop_child(s, row)
+                row.status = NodeRunStatus.CANCELLED.value
+                row.skipped_reason = error.message[:500]
+                row.finished_at = row.updated_at = ts
+            wr.status = WorkflowRunStatus.FAILED.value
+            wr.finished_at = ts
+            set_parent_state(run, WorkflowRunStatus.FAILED, error)
+            await append_events(
+                s,
+                wr,
+                [
+                    EngineEvent(
+                        WorkflowEventType.RUN_FAILED,
+                        None,
+                        {"status": "failed", "code": error.code.value, "message": error.message},
+                        ts,
+                    )
+                ],
+            )
+            await emit_event(
+                s,
+                tenant_id=wr.tenant_id,
+                project_id=wr.project_id,
+                event_type=WebhookEventType.WORKFLOW_RUN_FAILED,
+                data={
+                    "run_id": wr.run_id,
+                    "workflow_id": wr.workflow_id,
+                    "revision": wr.revision,
+                    "status": "failed",
+                    "trigger": wr.trigger,
+                    "code": error.code.value,
+                    "message": error.message[:500],
+                },
+            )
+            await s.flush()
+            return WorkflowRunStatus.FAILED
+
+    async def _stop_child(self, s: AsyncSession, row: m.WorkflowNodeRunRow) -> None:
+        if row.child_run_id is None:
+            return
+        if row.phase == _PHASE_SUB:
+            sub = await s.get(m.WorkflowRunRow, row.child_run_id)
+            if sub is not None:
+                await request_cancel(s, sub)
+            return
+        child = await s.get(m.Run, row.child_run_id, with_for_update=True)
+        state = RunState(child.state) if child is not None else None
+        if (
+            child is not None
+            and state is not None
+            and not state.terminal
+            and state
+            not in (
+                RunState.CANCELLING,
+                RunState.FINALIZING,
+            )
+        ):
+            await apply_transition(s, child, RunTrigger.CANCEL, Actor.API)
+
+    async def _tick(self, run_id: str) -> WorkflowRunStatus | None:
         async with self.ctx.db.session() as s:
             wr = (
                 await s.execute(

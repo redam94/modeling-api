@@ -3,6 +3,7 @@ poisoned runs, fan-out limits, automation, cost roll-ups and route races."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -165,3 +166,91 @@ async def test_a_grid_search_over_a_backtest_plan_refits_the_winner(
     # the winner is fitted on all the data (a backtest plan is not a holdout)
     assert "split" not in fit.payload["data"]
     assert fit.payload["model"]["settings"]["order"] in ([1, 0, 0], [2, 0, 0])
+
+
+# ========================================================================= poisoned runs
+
+HUGE = int("9" * 400)
+
+
+async def test_a_number_parameter_too_large_is_refused_at_start(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await put_dataset(ctx, "sales", weekly_series(80))
+    adf = {**ADF, "with": {"alpha": {"$expr": "params.x * 0.0 + 0.05"}}}
+    doc = _doc([adf], name="poison", params={"x": {"type": "number", "default": 1}})
+    wf = await _create(client, doc)
+    body = json.dumps({"inputs": {"data": DATA}, "params": {"x": HUGE}})
+    r = await client.post(
+        f"/v1/workflows/{wf}/runs",
+        content=body.encode(),
+        headers={"content-type": "application/json"},
+    )
+    assert r.status_code == 422 and r.json()["code"] == "WORKFLOW_INVALID", r.text
+
+
+async def test_an_expression_overflowing_on_nested_data_fails_the_node(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await put_dataset(ctx, "sales", weekly_series(80))
+    adf = {**ADF, "with": {"alpha": {"$expr": "params.cfg.x * 0.0 + 0.05"}}}
+    doc = _doc([adf], name="poison2", params={"cfg": {"type": "object", "default": {}}})
+    wf = await _create(client, doc)
+    body = json.dumps({"inputs": {"data": DATA}, "params": {"cfg": {"x": HUGE}}})
+    r = await client.post(
+        f"/v1/workflows/{wf}/runs",
+        content=body.encode(),
+        headers={"content-type": "application/json"},
+    )
+    assert r.status_code == 202, r.text
+    rid = r.json()["run_id"]
+    assert await drive(ctx, rid, max_rounds=5) is WorkflowRunStatus.FAILED
+    view = (await client.get(f"/v1/workflow-runs/{rid}")).json()
+    assert view["nodes"][0]["error"]["code"] == "EXPRESSION_ERROR"
+
+
+async def test_a_run_that_cannot_be_advanced_is_failed_and_others_go_on(
+    client: httpx.AsyncClient, ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_workflows.engine import WorkflowEngine
+
+    await put_dataset(ctx, "sales", weekly_series(80))
+    wf = await _create(client, _doc([ADF], name="two"))
+    bad, good = await _start(client, wf), await _start(client, wf)
+    real_step = WorkflowEngine.step
+
+    def step(self: WorkflowEngine) -> Any:
+        if self.run_meta.get("id") == bad:
+            raise OverflowError("int too large to convert to float")
+        return real_step(self)
+
+    monkeypatch.setattr(WorkflowEngine, "step", step)
+    orch = WorkflowOrchestrator(ctx)
+    assert await orch.tick(bad) is WorkflowRunStatus.QUEUED  # recorded, not raised
+    # the loop goes on with the other run; the next pass over the bad one fails it
+    assert await drive(ctx, good) is WorkflowRunStatus.SUCCEEDED
+    view = (await client.get(f"/v1/workflow-runs/{bad}")).json()
+    assert view["error"]["code"] == "INTERNAL_ERROR" and "OverflowError" in view["error"]["message"]
+    assert (await client.get(f"/v1/runs/{bad}")).json()["state"] == "failed"
+
+
+async def test_a_run_that_keeps_raising_is_stopped_with_its_children(
+    client: httpx.AsyncClient, ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await put_dataset(ctx, "sales", weekly_series(80))
+    rid = await _start(client, await _create(client, _doc([ADF], name="stuck")))
+    orch = WorkflowOrchestrator(ctx)
+    await orch.tick(rid)  # the adf child is queued
+
+    async def boom(*_a: Any, **_k: Any) -> Any:
+        raise RecursionError("maximum recursion depth exceeded")
+
+    monkeypatch.setattr(WorkflowOrchestrator, "_sub_ports", boom)
+    await orch.tick(rid)
+    assert await orch.tick(rid) is WorkflowRunStatus.FAILED
+    view = (await client.get(f"/v1/workflow-runs/{rid}")).json()
+    assert view["status"] == "failed" and view["nodes"][0]["status"] == "cancelled"
+    child = (await client.get(f"/v1/runs/{view['nodes'][0]['run_id']}")).json()
+    assert child["state"] in ("cancelling", "cancelled")
+    events = (await client.get(f"/v1/workflow-runs/{rid}/events")).json()["items"]
+    assert events[-1]["type"] == "workflow.run.failed"

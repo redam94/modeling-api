@@ -164,7 +164,8 @@ Reading it from the top:
 
 `params`
 :   Everything a user may change per run, each with a type, a default and bounds. A run that
-    passes `{"alpha": "x"}` is refused with `422` and the pointer `/params/alpha`.
+    passes `{"alpha": "x"}` is refused with `422` and the pointer `/params/alpha`; so is a
+    number larger than 1e15 either way (conditions and `$expr` compute with parameters).
 
 `adf`, `kpss`, `pp`, `za`
 :   Four unit-root tests on the raw series. ADF and Phillips-Perron's null hypothesis is
@@ -403,7 +404,11 @@ execution: {max_parallel: 4, timeout: 2h}
 
 `execution` applies to the whole run: how many nodes run at once and a deadline after which
 the run fails with `TIMEOUT`. A failed node without `on_failure: continue` fails the run; the
-nodes still pending are cancelled, and the run's `error` names the node.
+nodes still pending are cancelled, the ones running are stopped, and the run's `error` names
+the node. A condition or `$expr` that cannot be computed on the data it reads (a number too
+large, values nested too deeply) fails its node with `EXPRESSION_ERROR`. Should the
+orchestrator itself be unable to advance a run, the run fails with `INTERNAL_ERROR` and its
+running children are stopped; other runs are not held up.
 
 ## Where nodes run
 

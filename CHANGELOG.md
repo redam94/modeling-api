@@ -419,6 +419,15 @@ milestone releases are tagged on `main`.
   rolling origin, expanding window - which is what a search needs: the refit of the winner
   reused the backtest plan as a fit split. The winner is now fitted on all the data for a
   backtest plan (a holdout plan is still kept).
+- **spec, server** (security): an exception other than `MapiError` while advancing a workflow
+  run - a 400-digit number parameter multiplied by a float in a `$expr` (`OverflowError`), or
+  deeply nested data compared in a condition (`RecursionError`) - escaped the orchestrator's
+  pass, left the run `queued` until its deadline (up to 7 days) and, with enough such runs
+  at the head of the loop's queue, stopped every tenant's workflows. The condition language
+  now raises only `EXPRESSION_ERROR` (arithmetic guarded, equality iterative and bounded to
+  64 levels), number parameters (and defaults) are limited to 1e15 in magnitude, and a run
+  the orchestrator cannot advance is failed (`INTERNAL_ERROR`) with its children stopped
+  instead of being retried at the head of the queue.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
