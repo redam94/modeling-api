@@ -47,7 +47,7 @@ export function recommend(
   questions: readonly ChooserQuestion[],
   answers: Record<string, string[]>,
   candidates: readonly { kind: AboutKind; id: string; about: About }[],
-  opts: { limit?: number; includeAbout?: boolean } = {},
+  opts: { limit?: number; includeAbout?: boolean; fallback?: readonly { kind: AboutKind; id: string; about: About }[] } = {},
 ): ChooserResult {
   const byId = new Map(questions.map((q) => [q.id, q]));
   const given = new Map(Object.entries(answers).map(([k, v]) => [k, new Set(v)]));
@@ -55,7 +55,7 @@ export function recommend(
   const expRank = exp ? Math.min(...[...exp].map((v) => DIFFICULTY_RANK[v as keyof typeof DIFFICULTY_RANK])) : null;
   const speed = given.get("speed");
   const speedCap = speed ? Math.min(...[...speed].map((v) => SPEED_MAX[v as keyof typeof SPEED_MAX])) : null;
-  const scored: { score: number; matches: number; diff: number; id: string; rec: Recommendation; goal: boolean }[] = [];
+  const scored: { score: number; matches: number; diff: number; id: string; rec: Recommendation; goal: boolean; silent: boolean }[] = [];
   for (const { kind, id, about } of candidates) {
     let points = 0;
     let total = 0;
@@ -104,6 +104,7 @@ export function recommend(
       diff: DIFFICULTY_RANK[about.difficulty],
       id,
       goal: goalMatch,
+      silent: !about.fits?.goal,
       rec: {
         kind,
         id,
@@ -119,7 +120,12 @@ export function recommend(
     });
   }
   let pool = scored;
-  if (given.has("goal") && scored.some((s) => s.goal)) pool = scored.filter((s) => s.goal);
+  // an item made for other goals is never recommended; with no starting point made for the
+  // goal, the building blocks (`fallback`) are ranked instead
+  if (given.has("goal")) {
+    if (opts.fallback && !scored.some((s) => s.goal)) return recommend(questions, answers, opts.fallback, { limit: opts.limit, includeAbout: opts.includeAbout });
+    pool = scored.filter((s) => s.goal || s.silent);
+  }
   // ties: more answers fitted explicitly first, then the easier item, then the id
   pool.sort((a, b) => b.score - a.score || b.matches - a.matches || a.diff - b.diff || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return {

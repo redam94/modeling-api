@@ -398,6 +398,14 @@ milestone releases are tagged on `main`.
   Parameters now merge by strictness (the stricter number, the union of lists and of
   expected signs, the tenant's value otherwise), so tenant policies are a floor for
   parameters too.
+- **spec, server, web**: *Help me choose* with a goal no starting point was made for
+  ("Check or prepare my data") listed every model and template anyway, the first as "Best
+  match" at 0% with "Not made for: check or prepare my data". An item made for other goals
+  is now never recommended; when no model or template fits the goal, the building blocks
+  that do (preparation steps, workflow nodes, governance checks) are ranked instead; the
+  time-series readiness workflow template is now offered for "Check or prepare my data";
+  and the web app only calls an item the best match when it fits more answers than it
+  misses.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

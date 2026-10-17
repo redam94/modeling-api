@@ -109,6 +109,14 @@ async def test_recommendations_for_a_non_technical_user(client: httpx.AsyncClien
     assert ranked and all(i.startswith("ts.") for i in ranked[:3])
     assert {"ts.var", "ts.vecm"} & set(ranked[:5])
 
+    # every item is made for the goal; none is "Not made for" it (regression: 0% best match)
+    for goal in ("check_data", "validate_model", "find_regimes", "explain_drivers"):
+        r = await client.get("/v1/catalog/recommendations", params={"goal": goal})
+        items = r.json()["items"]
+        assert items, goal
+        assert all(not any("Not made for" in c for c in i["cautions_plain"]) for i in items)
+        assert all(i["score"] > 0.5 for i in items), goal
+
     r = await client.get("/v1/catalog/recommendations", params={"goal": "astrology"})
     assert r.status_code == 422
     assert r.json()["code"] == "CHOOSER_ANSWER_INVALID"

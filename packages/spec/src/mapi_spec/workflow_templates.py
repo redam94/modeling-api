@@ -130,7 +130,7 @@ TS_READINESS_ARIMAX = WorkflowTemplate(
                  "split.expanding_window"],
         references=[AboutReference(title="Hyndman & Athanasopoulos, Forecasting: Principles "
                                    "and Practice", url="https://otexts.com/fpp3/")],
-        fits={"goal": ["forecast"], "data_shape": ["one_series"],
+        fits={"goal": ["forecast", "check_data"], "data_shape": ["one_series"],
               "frequency": ["daily", "weekly", "monthly"], "history": ["medium", "long"]},
     ),
     document=_doc(

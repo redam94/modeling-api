@@ -274,6 +274,10 @@ _STARTING_POINTS: frozenset[AboutKind] = frozenset(
     {AboutKind.MODEL, AboutKind.TEMPLATE, AboutKind.WORKFLOW_TEMPLATE}
 )
 """What "Help me choose" ranks without a ``kind``: things a user starts from."""
+_BUILDING_BLOCKS: frozenset[AboutKind] = frozenset(
+    {AboutKind.STEP, AboutKind.NODE, AboutKind.CHECK}
+)
+"""What it ranks instead when no starting point is made for the user's goal."""
 
 
 def catalog_abouts(catalog: Catalog) -> list[CatalogAbout]:
@@ -358,9 +362,16 @@ async def recommend_catalog_items(
     query = {k: request.query_params.getlist(k) for k in request.query_params}
     answers = chooser_answers_from_query(query)
     snap = await ctx.catalogs.require(session)
+    abouts = catalog_abouts(snap.catalog)
     candidates = [
         (a.kind, a.id, a.about)
-        for a in catalog_abouts(snap.catalog)
+        for a in abouts
         if (a.kind in _STARTING_POINTS if kind is None else a.kind is kind)
     ]
-    return recommend(answers, candidates, limit=limit, include_about=True)
+    # no starting point made for the goal: rank the building blocks that are
+    fallback = (
+        [(a.kind, a.id, a.about) for a in abouts if a.kind in _BUILDING_BLOCKS]
+        if kind is None
+        else None
+    )
+    return recommend(answers, candidates, limit=limit, include_about=True, fallback=fallback)

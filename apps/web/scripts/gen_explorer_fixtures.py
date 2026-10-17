@@ -140,6 +140,10 @@ CHOOSER_CASES: Final[list[tuple[str | None, int, dict[str, list[str]]]]] = [
     (None, 5, {"goal": ["plan_budget"], "speed": ["seconds"], "history": ["short"]}),
     ("check", 12, {"goal": ["validate_model"], "experience": ["intermediate"]}),
     ("step", 10, {"goal": ["check_data"], "frequency": ["daily"]}),
+    # no starting point is made for these goals with these answers: none "not made for" them
+    (None, 6, {"goal": ["check_data"], "experience": ["beginner"]}),
+    (None, 6, {"goal": ["validate_model"], "data_shape": ["one_series"]}),
+    ("model", 10, {"goal": ["check_data"]}),
     ("model", 50, {"goal": ["predict_values"], "data_shape": ["table"], "uncertainty": ["nice"]}),
 ]
 
@@ -238,6 +242,7 @@ def _abouts_and_chooser() -> dict[str, Any]:
 
     items = catalog_abouts(default_registry().catalog())
     starting = {AboutKind.MODEL, AboutKind.TEMPLATE, AboutKind.WORKFLOW_TEMPLATE}
+    blocks = {AboutKind.STEP, AboutKind.NODE, AboutKind.CHECK}  # as the server's fallback
     cases = []
     for kind, limit, query in CHOOSER_CASES:
         answers = chooser_answers_from_query(query)
@@ -246,7 +251,10 @@ def _abouts_and_chooser() -> dict[str, Any]:
             for a in items
             if (a.kind in starting if kind is None else a.kind.value == kind)
         ]
-        result = recommend(answers, candidates, limit=limit)
+        fallback = [(a.kind, a.id, a.about) for a in items if a.kind in blocks]
+        result = recommend(
+            answers, candidates, limit=limit, fallback=fallback if kind is None else None
+        )
         cases.append(
             {
                 "kind": kind,

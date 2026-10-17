@@ -262,6 +262,31 @@ def test_forecast_weekly_sales_with_drivers_recommends_arimax() -> None:
     assert "drivers" not in MODEL_ABOUTS["ts.hsgp_trend"].fits  # silent on drivers: below
 
 
+def test_items_not_made_for_the_goal_are_never_recommended() -> None:
+    """Regression: with no candidate made for the goal ("Check or prepare my data"), every
+    candidate came back, the first labelled best match at 0% with "Not made for"."""
+    answers = chooser_answers_from_query({"goal": ["check_data"], "experience": ["beginner"]})
+    result = recommend(answers, _models(), limit=10)
+    assert result.items == []
+    steps = [(AboutKind.STEP, k, v) for k, v in STEP_ABOUTS.items()]
+    broadened = recommend(answers, _models(), fallback=steps, limit=5)
+    assert broadened.items and all(r.kind is AboutKind.STEP for r in broadened.items)
+    assert all("Suits: check or prepare my data" in r.reasons_plain for r in broadened.items)
+    assert not any("Not made for" in c for r in broadened.items for c in r.cautions_plain)
+    # when a starting point fits, the fallback is not used
+    fc = chooser_answers_from_query({"goal": ["forecast"]})
+    assert {r.kind for r in recommend(fc, _models(), fallback=steps).items} == {AboutKind.MODEL}
+
+
+def test_every_goal_has_a_starting_point() -> None:
+    starting = {AboutKind.MODEL, AboutKind.TEMPLATE, AboutKind.WORKFLOW_TEMPLATE}
+    goals: set[str] = set()
+    for item_id, about in builtin_abouts().items():
+        if builtin_about_kind(item_id) in starting:
+            goals.update(about.fits.get("goal", []))
+    assert {c.value for c in CHOOSER_QUESTIONS[0].choices} <= goals
+
+
 def test_recommendation_query_errors() -> None:
     with pytest.raises(MapiError) as exc:
         chooser_answers_from_query({"goal": ["forecast,teleport"]})
