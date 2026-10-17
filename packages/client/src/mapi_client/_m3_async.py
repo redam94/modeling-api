@@ -70,10 +70,12 @@ from mapi_client import _calls_m3 as m3
 from mapi_client._common import ScoreResult, run_error, tree_output
 from mapi_client._m3_common import (
     Deadline,
+    Table,
     UrlSink,
     as_model,
     conform,
     export_done,
+    forecast_call,
     promote_body,
     render_body,
     render_link,
@@ -426,6 +428,34 @@ class AsyncEndpoints(_Resource):
             tree = datatree_from_bytes(await self._c.download(link))
         return ScoreResult.from_call(res, tree)
 
+    async def forecast(
+        self,
+        alias: str,
+        rows: Table | None = None,
+        *,
+        actuals: Table | None = None,
+        future: Table | Sequence[Any] | int | None = None,
+        periods: int | None = None,
+        future_covariates: str = "carry_last",
+        output: Mapping[str, Any] | None = None,
+        schema: EndpointSchema | None = None,
+        **options: Any,
+    ) -> ScoreResult:
+        """Forecast with your latest actuals and the dates to forecast (see
+        :meth:`mapi_client.Endpoints.forecast`); ``result.conditioning`` says what the
+        forecast was conditioned on."""
+        sch = schema or await self.schema(alias)
+        call = forecast_call(
+            sch,
+            rows,
+            actuals=actuals,
+            future=future,
+            periods=periods,
+            future_covariates=future_covariates,
+            output=output,
+        )
+        return await self.score(alias, call, **options)
+
     async def snippets(
         self,
         alias: str,
@@ -488,6 +518,11 @@ class AsyncRemoteEndpoint:
     async def score_result(self, data: Payload | None = None, **options: Any) -> ScoreResult:
         """:meth:`AsyncEndpoints.score` for this endpoint (the run, links and tree)."""
         return await self._c.endpoints.score(self.alias, None, data=data, **options)
+
+    async def forecast(self, rows: Table | None = None, **options: Any) -> ScoreResult:
+        """:meth:`AsyncEndpoints.forecast` for this endpoint (the schema is fetched once)."""
+        schema = self._schema or await self.schema()
+        return await self._c.endpoints.forecast(self.alias, rows, schema=schema, **options)
 
     async def score(
         self,

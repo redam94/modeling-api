@@ -70,10 +70,12 @@ from mapi_client import _calls_m3 as m3
 from mapi_client._common import ScoreResult, run_error, tree_output
 from mapi_client._m3_common import (
     Deadline,
+    Table,
     UrlSink,
     as_model,
     conform,
     export_done,
+    forecast_call,
     promote_body,
     render_body,
     render_link,
@@ -424,6 +426,45 @@ class Endpoints(_Resource):
             tree = datatree_from_bytes(self._c.download(link))
         return ScoreResult.from_call(res, tree)
 
+    def forecast(
+        self,
+        alias: str,
+        rows: Table | None = None,
+        *,
+        actuals: Table | None = None,
+        future: Table | Sequence[Any] | int | None = None,
+        periods: int | None = None,
+        future_covariates: str = "carry_last",
+        output: Mapping[str, Any] | None = None,
+        schema: EndpointSchema | None = None,
+        **options: Any,
+    ) -> ScoreResult:
+        """Forecast with your latest actuals and the dates to forecast (the model is not
+        refitted: it updates its state with the actuals and forecasts from the last one).
+
+        ``rows`` is a long table in the endpoint's input layout (``schema.input_table``: the
+        time column, the target, the drivers) - a DataFrame or a list of row mappings: rows
+        whose target holds a value are actuals, rows after them with it empty are forecast.
+        Or split it: ``actuals=`` (rows with the target) and ``future=`` (the dates, rows
+        with driver values, or a number of periods to append). Empty driver values on the
+        future rows follow ``future_covariates`` (carried forward by default). Models that
+        cannot use actuals refuse them (``ActualsNotSupported``) rather than ignore them.
+
+        The result's :attr:`ScoreResult.conditioning` says what the forecast was conditioned
+        on. ``options`` are those of :meth:`score` (``wait``, ``timeout``, ``download``...).
+        """
+        sch = schema or self.schema(alias)
+        call = forecast_call(
+            sch,
+            rows,
+            actuals=actuals,
+            future=future,
+            periods=periods,
+            future_covariates=future_covariates,
+            output=output,
+        )
+        return self.score(alias, call, **options)
+
     def snippets(
         self,
         alias: str,
@@ -484,6 +525,13 @@ class RemoteEndpoint:
     def score_result(self, data: Payload | None = None, **options: Any) -> ScoreResult:
         """:meth:`Endpoints.score` for this endpoint (the run, links and tree)."""
         return self._c.endpoints.score(self.alias, None, data=data, **options)
+
+    def forecast(self, rows: Table | None = None, **options: Any) -> ScoreResult:
+        """:meth:`Endpoints.forecast` for this endpoint: actuals and the dates to forecast
+        as a long table (``actuals=``, ``future=``, ``periods=``...); the schema is fetched
+        once. ``result.conditioning.message`` says what the forecast used."""
+        schema = self._schema or self.schema()
+        return self._c.endpoints.forecast(self.alias, rows, schema=schema, **options)
 
     def score(
         self,

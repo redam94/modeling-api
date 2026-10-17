@@ -26,12 +26,20 @@ from mapi_spec.api import (
     WebhookUpdate,
 )
 from mapi_spec.calibration import BusinessPriors, LiftTest
-from mapi_spec.endpoints import EvaluationPolicy
+from mapi_spec.capabilities import OutputSelector
+from mapi_spec.endpoints import (
+    EndpointSchema,
+    EvaluationPolicy,
+    input_table,
+    table_forecast_call,
+)
 from mapi_spec.errors import IntegrityFailure
 from mapi_spec.resources import ResourceClass
 from mapi_spec.schema import DataSchema
 from mapi_spec.sharing import ModelPlotRef
+from mapi_spec.spec import FutureCovariates, Horizon
 from mapi_spec.webhooks import WebhookEventType
+from mapi_spec.xrjson import table_cell
 from pydantic import BaseModel, JsonValue
 
 from mapi_client.xrjson import as_inline
@@ -46,12 +54,14 @@ __all__ = [
     "as_model",
     "conform",
     "export_done",
+    "forecast_call",
     "promote_body",
     "render_body",
     "render_link",
     "result_dataset",
     "saved_plot_body",
     "score_call",
+    "table_records",
     "translation_body",
     "webhook_create_body",
     "webhook_update_body",
@@ -85,6 +95,104 @@ def score_call(
         if name in base:
             base[name] = as_inline(base[name])
     return EndpointScoreCall.model_validate(base)
+
+
+Table = Any
+"""A long table: a pandas ``DataFrame``, a sequence of row mappings (column -> cell) or a
+mapping of columns (column -> list of cells)."""
+
+
+def table_records(table: Table | None) -> list[dict[str, Any]]:
+    """The rows of a long table as mappings (no pandas needed: duck-typed ``to_dict``)."""
+    if table is None:
+        return []
+    to_dict = getattr(table, "to_dict", None)
+    if callable(to_dict) and not isinstance(table, Mapping):
+        records = to_dict("records")  # a DataFrame
+        return [{str(k): v for k, v in r.items()} for r in records]
+    if isinstance(table, Mapping):  # columns
+        columns = {str(k): list(v) for k, v in table.items()}
+        lengths = {len(v) for v in columns.values()}
+        if len(lengths) > 1:
+            raise ValueError("the table's columns have different lengths")
+        n = lengths.pop() if lengths else 0
+        return [{k: v[i] for k, v in columns.items()} for i in range(n)]
+    if isinstance(table, str | bytes):
+        raise TypeError("a table is a DataFrame, a list of row mappings or a mapping of columns")
+    rows = []
+    for row in table:
+        if not isinstance(row, Mapping):
+            raise TypeError("a table's rows must be mappings (column -> value)")
+        rows.append({str(k): v for k, v in row.items()})
+    return rows
+
+
+def forecast_call(
+    schema: EndpointSchema,
+    rows: Table | None = None,
+    *,
+    actuals: Table | None = None,
+    future: Table | Sequence[Any] | int | None = None,
+    periods: int | None = None,
+    future_covariates: FutureCovariates | str = FutureCovariates.CARRY_LAST,
+    output: OutputSelector | Mapping[str, Any] | None = None,
+) -> EndpointScoreCall:
+    """A forecast call for an endpoint from long tables (:mod:`mapi_spec.actuals`).
+
+    ``rows`` is the whole table (as a spreadsheet's Input sheet: actual rows with the target
+    filled, rows to forecast with it empty). Or give ``actuals`` (rows with the target
+    filled: the periods after the fit, or revising its last ones) and ``future``: the dates
+    to forecast (a list), rows with their driver values (target empty), or a number of
+    periods to append after the last actual. Without any row it is a plain forecast of
+    ``periods`` (default 8) from the end of the fitted history.
+
+    The columns are the endpoint's input table (``EndpointSchema.input_table``: the dims,
+    then the target and the drivers). Raises ``ValueError`` for an endpoint that does not
+    forecast, future rows that hold a target value, or a table that does not fit.
+    """
+    table = schema.input_table or input_table(schema.snapshot)
+    if table is None or table.horizon_dim is None:
+        raise ValueError(f"endpoint {schema.alias!r} does not forecast (no dim to extend)")
+    hdim = table.horizon_dim
+    targets = [c.name for c in table.columns if c.role == "target"]
+    if output is None:
+        example = schema.example.get("output")
+        output = example if isinstance(example, Mapping) else None
+    if isinstance(future, bool):
+        raise TypeError("future is a table, a list of dates or a number of periods")
+    if isinstance(future, int):
+        if periods is not None and periods != future:
+            raise ValueError("give the number of periods once (future= or periods=)")
+        periods, future = future, None
+    future_rows: list[dict[str, Any]] = []
+    if future is not None:
+        items = table_records(future) if _is_table(future) else [{hdim: d} for d in future]
+        for row in items:
+            if any(table_cell(row.get(t)) is not None for t in targets):
+                raise ValueError(
+                    f"future rows must leave the target {targets} empty: rows with a value "
+                    "are actuals (pass them as actuals=)"
+                )
+            future_rows.append({**{t: None for t in targets}, **row})
+    every = [*table_records(rows), *table_records(actuals), *future_rows]
+    selector = OutputSelector.model_validate(dict(output)) if output is not None else None
+    if not every:
+        return EndpointScoreCall(
+            mode="forecast",
+            horizon=Horizon(dim=hdim, periods=periods or 8),
+            future_covariates=FutureCovariates(future_covariates),
+            output=selector or OutputSelector(),
+        )
+    return table_forecast_call(
+        table, every, periods=periods, future_covariates=future_covariates, output=selector
+    )
+
+
+def _is_table(value: Any) -> bool:
+    if isinstance(value, Mapping) or callable(getattr(value, "to_dict", None)):
+        return True
+    items = list(value) if isinstance(value, Sequence) else []
+    return bool(items) and all(isinstance(r, Mapping) for r in items)
 
 
 def promote_body(
