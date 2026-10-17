@@ -270,6 +270,9 @@ class WorkflowOrchestrator:
                         continue
                     if not actions:
                         break
+                # a node that failed while starting stops the siblings started before it
+                for nid in sorted(engine.to_cancel):
+                    await self._cancel_child(env, nid)
             if engine.finished:
                 engine.finish_events()
             await self._persist(env)
@@ -878,7 +881,11 @@ class WorkflowOrchestrator:
                 engine.started_node(nid, run_id=child.id)
             return
         if state is not RunState.SUCCEEDED:
-            if engine.cancel_requested or (state is RunState.CANCELLED and env.wr.cancel_requested):
+            if (
+                engine.cancel_requested
+                or (state is RunState.CANCELLED and env.wr.cancel_requested)
+                or (state is RunState.CANCELLED and engine.error is not None)
+            ):
                 engine.cancelled(nid)
                 return
             problem = Problem.model_validate(child.problem) if child.problem else None
@@ -1278,7 +1285,9 @@ class WorkflowOrchestrator:
     # -------------------------------------------------------------------------- cancel
     async def _cancel_child(self, env: _Env, nid: str) -> None:
         row = env.rows[nid]
-        child_id = row.child_run_id
+        # the engine's run id: a child started (or a search's refit) in this very pass is
+        # not on the row yet
+        child_id = env.engine.node_run(nid).run_id or row.child_run_id
         if child_id is None:
             env.engine.cancelled(nid)
             return
@@ -1294,7 +1303,8 @@ class WorkflowOrchestrator:
             env.engine.cancelled(nid)
             return
         state = RunState(child.state)
+        if state not in (RunState.CANCELLING, RunState.FINALIZING) and not state.terminal:
+            await apply_transition(env.session, child, RunTrigger.CANCEL, Actor.API)
+            state = RunState(child.state)
         if state.terminal:
             env.engine.cancelled(nid)
-        elif state not in (RunState.CANCELLING, RunState.FINALIZING):
-            await apply_transition(env.session, child, RunTrigger.CANCEL, Actor.API)

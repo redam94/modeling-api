@@ -405,6 +405,11 @@ milestone releases are tagged on `main`.
   is submitted by the run's creator (the schedule's or trigger's creator for automated runs)
   and the second-person rule applies to them; a validation no person submitted cannot be
   approved (reject and resubmit it).
+- **server, workflows**: when a node failed while starting (invalid settings, a missing
+  input), the run's fail-fast did not stop the siblings already started: the list of nodes
+  to stop lived in memory only and was dropped before the next pass, so a long fit ran to
+  the end before the run reported `failed`. Running siblings are now stopped in the same
+  pass, and a restored failed or cancelled run lists them again.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
