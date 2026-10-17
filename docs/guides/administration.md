@@ -68,9 +68,9 @@ can still do actions on the tenant.
 ### Trust tiers
 
 The tier controls **where the code of a tenant can run**. The dispatcher enforces this in
-code. Tenant configuration never controls it. The dispatcher never submits a run if the
-executor cannot do what the tenant needs. It fails the run with `INFRA_ERROR`
-and a detail that tells what is necessary. An example is *verified tenants require an executor with
+code. Tenant configuration never controls it. The dispatcher never submits a run to an
+executor that does not have the isolation that the tier needs. It fails the run with
+`INFRA_ERROR` and a detail that tells what is necessary. An example is *verified tenants require an executor with
 isolation >= gvisor and enforced egress/DNS*. The tier also sets the default quotas of the
 tenant, until an operator overrides them.
 
