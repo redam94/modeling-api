@@ -428,6 +428,11 @@ milestone releases are tagged on `main`.
   64 levels), number parameters (and defaults) are limited to 1e15 in magnitude, and a run
   the orchestrator cannot advance is failed (`INTERNAL_ERROR`) with its children stopped
   instead of being retried at the head of the queue.
+- **server** (security): sub-workflow runs were exempt from `MAPI_WORKFLOW_MAX_ACTIVE_RUNS`, so
+  one start of a workflow with 32 `subworkflow.run` nodes (and nesting up to 8 deep) created
+  far more active runs than the limit. Sub-workflow runs now count against it, and a
+  `subworkflow.run` node over the limit fails with `QUOTA_EXCEEDED`. (The children's
+  executions were and are held by the dispatcher's per-tenant concurrency and vCPU limits.)
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

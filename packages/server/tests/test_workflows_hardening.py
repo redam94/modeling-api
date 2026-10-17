@@ -18,7 +18,7 @@ from mapi_server_testkit.workflows import catalog_file, drive, execute_children,
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.workflow import WorkflowRunStatus
 from mapi_workflows.testing import weekly_series
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 pytestmark = [pytest.mark.integration, pytest.mark.filterwarnings("ignore")]
 
@@ -254,3 +254,39 @@ async def test_a_run_that_keeps_raising_is_stopped_with_its_children(
     assert child["state"] in ("cancelling", "cancelled")
     events = (await client.get(f"/v1/workflow-runs/{rid}/events")).json()["items"]
     assert events[-1]["type"] == "workflow.run.failed"
+
+
+# ================================================================================ fan-out
+
+
+async def test_sub_workflows_count_against_the_active_run_limit(
+    client: httpx.AsyncClient, ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ctx.settings, "workflow_max_active_runs", 5)
+    await put_dataset(ctx, "sales", weekly_series(100))
+    await _create(client, _doc([ADF], name="inner", outputs={"adf": "adf.result"}))
+    nodes = [
+        {
+            "id": f"s{i}",
+            "use": "subworkflow.run",
+            "inputs": {"data": "inputs.data"},
+            "with": {"workflow": "workflow://default/inner@latest"},
+        }
+        for i in range(8)
+    ]
+    outer = await _create(client, _doc(nodes, name="outer", execution={"max_parallel": 8}))
+    rid = await _start(client, outer)
+    await WorkflowOrchestrator(ctx).tick(rid)
+    async with ctx.db.session() as s:
+        active = (
+            await s.execute(
+                select(func.count())
+                .select_from(m.WorkflowRunRow)
+                .where(m.WorkflowRunRow.status.in_(["queued", "running", "cancelling"]))
+            )
+        ).scalar_one()
+    assert active <= 5
+    view = (await client.get(f"/v1/workflow-runs/{rid}")).json()
+    failed = [n for n in view["nodes"] if n["status"] == "failed"]
+    assert failed and failed[0]["error"]["code"] == "QUOTA_EXCEEDED"
+    assert view["error"]["code"] == "QUOTA_EXCEEDED"

@@ -5,7 +5,7 @@ executor, the dispatcher and the reconciler skip it) plus its orchestration stat
 ``workflow_runs`` and one ``workflow_node_runs`` row per node. Starting a run checks the
 revision is runnable, the parameters and the inputs (dataset and model references are
 pinned to versions now, so a re-run sees the same data), and the project's limit of active
-workflow runs; the orchestrator's workflow loop does the rest
+workflow runs (sub-workflow runs included); the orchestrator's workflow loop does the rest
 (:mod:`mapi_server.services.workflows.orchestrate`).
 """
 
@@ -179,10 +179,13 @@ async def start_workflow_run(
         )
     ).scalar_one()
     limit = ctx.settings.workflow_max_active_runs
-    if active >= limit and parent_run_id is None:
+    if active >= limit:
+        # sub-workflow runs count too: otherwise one start fans out to max_parallel ** depth
+        # active runs (the subworkflow.run node then fails with QUOTA_EXCEEDED)
+        what = "a sub-workflow cannot start: " if parent_run_id is not None else ""
         raise ProblemWithHeaders(
-            f"the project already has {active} workflow runs going (the limit is {limit}); "
-            "wait for one to finish",
+            f"{what}the project already has {active} workflow runs going (the limit is "
+            f"{limit}, sub-workflows included); wait for one to finish",
             code=ErrorCode.QUOTA_EXCEEDED,
             headers={"Retry-After": "60"},
         )

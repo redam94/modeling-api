@@ -518,7 +518,7 @@ some.
 | Setting | Default | Meaning |
 |---|---|---|
 | `MAPI_WORKFLOW_TICK_S` | 1.0 | How often the orchestrator advances active runs |
-| `MAPI_WORKFLOW_MAX_ACTIVE_RUNS` | 20 | Runs a project may have going at once (`429` beyond) |
+| `MAPI_WORKFLOW_MAX_ACTIVE_RUNS` | 20 | Runs a project may have going at once, sub-workflow runs included (`429` beyond; a `subworkflow.run` node over it fails with `QUOTA_EXCEEDED`) |
 | `MAPI_WORKFLOW_MAX_SCHEDULES` | 20 | Active schedules per project |
 | `MAPI_WORKFLOW_MAX_TRIGGERS` | 20 | Active triggers per project |
 | `MAPI_WORKFLOW_NODE_TIMEOUT_S` | 1800 | Timeout of a node without its own `timeout` |
