@@ -38,6 +38,7 @@ from mapi_sdk.harness import FitHooks, fit_spec, score_bundle
 from mapi_sdk.metrics import point_estimate
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.summarise import interp_quantile
+from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
 from mapi_spec.capabilities import Representation
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.schema import DataSchema, Role
@@ -109,7 +110,8 @@ def _root(dv: DatasetValue) -> tuple[DatasetValue, list[dict[str, JsonValue]], l
             [],
             [
                 "the model is fitted on data changed by a transform that has no preprocessing-step "
-                "equivalent (" + "; ".join(dv.notes[-3:]) + "): its forecasts are in that space"
+                "equivalent (" + "; ".join(dv.notes[-3:]) + "): its forecasts are in that space "
+                "and it cannot update a forecast with actuals"
             ],
         )
     return dv, [], []
@@ -128,6 +130,9 @@ def build_spec(
 ) -> tuple[ModelSpec, DatasetValue, list[str]]:
     """The ``ModelSpec`` a model node fits, the dataset to fit it on and warnings."""
     base, carried, warns = _root(data)
+    labels = {MODEL_LABEL: _slug(name)}
+    if warns:  # fitted in the space of a transform the endpoint cannot replay
+        labels[DATA_SPACE_LABEL] = TRANSFORMED_SPACE
     ref = (
         base.ref
         if base.ref and base.ref.startswith("dataset://")
@@ -143,7 +148,7 @@ def build_spec(
             split=split,
             settings=settings,
             mode=mode,
-            labels={MODEL_LABEL: _slug(name)},
+            labels=labels,
         )
     except ValueError as exc:
         raise MapiError(str(exc), code=ErrorCode.WORKFLOW_INVALID) from None

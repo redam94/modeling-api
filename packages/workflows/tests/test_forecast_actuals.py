@@ -177,3 +177,33 @@ def test_a_transform_step_in_the_workflow_is_replayed_on_the_actuals() -> None:
     median = np.asarray(fc.sel(quantile=0.5).values, dtype=float)[3:]
     np.testing.assert_allclose(median, np.expm1(np.asarray(ref.predicted_mean)), rtol=RTOL)
     assert 50 < float(median.mean()) < 200  # original units, not log units
+
+
+def test_a_model_fitted_on_a_non_replayable_transform_refuses_actuals() -> None:
+    """transform.log / box_cox / difference have no preprocessing-step equivalent: the model
+    is fitted in that space, so actuals in the data's units cannot be used. The spec says so
+    (a label), actuals are refused and every forecast warns."""
+    import pytest
+    from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
+    from mapi_spec.errors import ErrorCode, MapiError
+
+    data = weekly_series(110, seed=5)
+    train, new = data.isel(time=slice(0, 100)), data.isel(time=slice(100, 103))
+    for use in ("transform.log", "transform.box_cox", "transform.difference"):
+        changed = run_node(use, {}, data=DatasetValue(data=train), registry=registry())
+        fitted = run_node(
+            "model.fit",
+            {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
+            data=changed.outputs["data"],
+            registry=registry(),
+        ).outputs["model"]
+        assert isinstance(fitted, ModelValue)
+        bundle = fitted.bundle
+        assert bundle.spec.metadata.labels[DATA_SPACE_LABEL] == TRANSFORMED_SPACE
+        req = load_score_request(HEADER + "mode: forecast\nhorizon: {dim: t, periods: 3}\n")
+        with pytest.raises(MapiError) as err:
+            score_bundle(bundle, req, new[["sales"]], registry=registry())
+        assert err.value.code is ErrorCode.ACTUALS_NOT_SUPPORTED, use
+        tree = score_bundle(bundle, req, None, registry=registry())
+        issues = json.loads(str(tree.attrs["issues"]))
+        assert any("transformed space" in i["message"] for i in issues), use
