@@ -337,6 +337,12 @@ milestone releases are tagged on `main`.
 
 ### Fixed
 
+- **web** (M3.5 review): the budget plan showed Guided users the planning library's own
+  wording ("Goal: expected KPI (posterior mean)", "the greedy allocator's exactness
+  precondition fails", "posterior interval", "Marginal ROI"), and its result tiles read
+  "90% likely 1.3M – 1.3M". In Guided mode the goal and the known notes are now plain
+  sentences, the original wording is under *For experts*, and the tiles use as many digits as
+  their ranges need ("1.305M – 1.312M").
 - **web** (M3.5 review): *Help me choose* scrolled sideways on a 375 px phone: its five
   suggestion tabs were wider than the screen and "Where to start" wrapped onto three lines.
   A switch with more options than fit now scrolls inside its own strip, on every page.

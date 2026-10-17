@@ -90,6 +90,25 @@ export function amount(v: number | null | undefined, units?: string | null): str
   return units ? `${units} ${s}` : s;
 }
 
+const compactAt = [1, 2, 3].map((d) => new Intl.NumberFormat("en", { notation: "compact", minimumFractionDigits: d === 1 ? 0 : d, maximumFractionDigits: d }));
+
+function amountAt(v: number | null | undefined, units: string | null | undefined, level: number): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const s = Math.abs(v) >= 10_000 ? compactAt[level]!.format(v) : plain2.format(v);
+  return units ? `${units} ${s}` : s;
+}
+
+/**
+ * {@link amount} with the fewest extra digits (up to three in "1.305M") at which each pair of
+ * different values reads differently, so a range never shows as "1.3M – 1.3M". Use one
+ * formatter for numbers shown side by side.
+ */
+export function distinctAmounts(pairs: readonly (readonly [number, number])[]): (v: number | null | undefined, units?: string | null) => string {
+  const apart = pairs.filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b) && a !== b);
+  const level = [0, 1, 2].find((l) => apart.every(([a, b]) => amountAt(a, null, l) !== amountAt(b, null, l))) ?? 0;
+  return (v, units) => amountAt(v, units, level);
+}
+
 export function signedAmount(v: number, units?: string | null): string {
   const s = amount(Math.abs(v), units);
   return v > 0 ? `+${s}` : v < 0 ? `−${s}` : s;

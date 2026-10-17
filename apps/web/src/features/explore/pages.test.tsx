@@ -176,6 +176,24 @@ describe("budget optimisation", () => {
     expect(plan).toHaveTextContent("Move money from tv");
   });
 
+  it("speaks plainly to a Guided user and keeps the solver's words for experts", async () => {
+    useUi.setState({ persona: "guided", personas: {} });
+    renderApp(`/models/${MODEL_ID}/versions/1/optimize`);
+    await userEvent.click(await screen.findByRole("button", { name: "Optimise the budget" }, T));
+    const plan = await screen.findByTestId("plan-result", undefined, { timeout: 8000 });
+    expect(plan).toHaveTextContent("Goal: the most likely revenue.");
+    const expertNotes = within(plan).getByText("For experts: how the plan was found").closest("details")!;
+    expect(expertNotes.open).toBe(false);
+    expect(expertNotes).toHaveTextContent("expected KPI (posterior mean)");
+    expect(expertNotes).toHaveTextContent("greedy allocator");
+    // Outside the expert notes, no solver or statistics words.
+    const plainText = [...plan.querySelectorAll<HTMLElement>(":scope > *")].filter((el) => !el.contains(expertNotes)).map((el) => el.textContent ?? "").join(" ");
+    expect(plainText).not.toMatch(/posterior|greedy|allocator|Marginal ROI|concave/i);
+    // Ranges whose two ends differ.
+    for (const m of plan.textContent.matchAll(/90% likely (\S+) – (\S+?)(?=Expected|Chance|$)/g)) expect(m[1]).not.toBe(m[2]);
+    expect(plan).toHaveTextContent("90% likely 1.305M – 1.312M");
+  });
+
   it("refuses models that do not optimise budgets", async () => {
     renderApp(`/models/${EXTRA_MODEL_IDS.arimax}/versions/1/optimize`);
     expect(await screen.findByText("This model does not optimise budgets", undefined, T)).toBeInTheDocument();
