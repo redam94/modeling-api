@@ -419,6 +419,18 @@ milestone releases are tagged on `main`.
   Stationary series now get a VAR on their levels (a new `stationary` branch), and the
   VECM's rank is kept between 1 and one less than the number of series. The cookbook
   example and the workflows guide show the same three paths.
+- **spec, workflows** (statistics): the canonical *Time-series readiness to ARIMAX* template
+  over-differenced seasonal series: its unit-root tests ran on the raw levels, so a seasonal
+  random walk (no first difference needed) got a first difference on top of the seasonal
+  one in 93% of simulated draws. The seasonal decision now comes first and the unit-root
+  tests run on the seasonally differenced series, with an over-differencing guard (no
+  first difference when it would leave a lag-1 autocorrelation below -0.5); in simulation
+  the seasonal random walk is first-differenced in 1 of 30 draws and plain random walks
+  are still differenced. Its AR/MA order search also scored models without the seasonal
+  difference the final ARIMAX uses and searched every period, including the backtest's
+  test windows: `search.arma_order` now takes `D` and `period` (it fits
+  ARIMA(p,d,q)(0,D,0)s, the model that is fitted) and an optional `split` plan (it searches
+  only before the plan's first test window), and the template uses both.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

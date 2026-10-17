@@ -862,7 +862,7 @@ Tries a grid of past-value (AR) and past-error (MA) orders for a forecasting mod
 
 **Example:** Out of p = 0..4 and q = 0..4, ARMA(2,1) has the lowest AIC.
 
-**Inputs:** `data` (dataset).
+**Inputs:** `data` (dataset), `split` (split_plan, optional).
 
 **Outputs:** `table` (table).
 
@@ -872,6 +872,8 @@ Tries a grid of past-value (AR) and past-error (MA) orders for a forecasting mod
 | `max_p` | integer | `4` | Largest AR order |
 | `max_q` | integer | `4` | Largest MA order |
 | `d` | integer | `0` | Differences inside the model |
+| `D` | integer | `0` | Seasonal differences inside the model |
+| `period` | integer |  | Season length (with D = 1) |
 | `exog` | array |  | Drivers included in every fit |
 | `criterion` | `aic` \\| `bic` \\| `hqic` \\| `aicc` | `"aic"` | Information criterion |
 | `trend` | `n` \\| `c` \\| `t` \\| `ct` | `"c"` | Trend term |
@@ -879,7 +881,7 @@ Tries a grid of past-value (AR) and past-error (MA) orders for a forecasting mod
 Result fields (`nodes.<id>.<field>` in conditions): `best_p` (integer), `best_q` (integer), `best_order` (array), `best_score` (number), `n_failed` (integer).
 
 ??? note "Expert detail"
-    Grid search of SARIMAX(p,d,q) fits by AIC/BIC/HQIC/AICc (statsmodels arma_order_select_ic style); failed fits are skipped and reported.
+    Grid search of SARIMAX(p,d,q)(0,D,0)s fits by AIC/BIC/HQIC/AICc (statsmodels arma_order_select_ic style), with the differencing of the model that will be fitted; failed fits are skipped and reported. With a split plan, only the periods before its first test window are searched, so a backtest on the plan stays out of sample.
 
 ### `search.coint_rank` — How many long-run ties
 

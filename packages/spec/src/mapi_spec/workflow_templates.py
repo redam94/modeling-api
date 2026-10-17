@@ -98,6 +98,8 @@ def _x(text: str) -> dict[str, str]:
 _DATA = {"data": {"type": "dataset", "description": "The weekly (or daily) series to model"}}
 _D = "if(nodes.wanders.value, 1, 0)"
 _SD = "if(nodes.seasonal.value, 1, 0)"
+_SERIES = ["sdiff.data", "inputs.data"]
+"""The series the unit-root tests see: seasonally differenced when the season says so."""
 _ARIMAX_SETTINGS = {
     "order": _x(f"[nodes.order.best_p, {_D}, nodes.order.best_q]"),
     "seasonal_order": _x(f"[0, {_SD}, 0, params.season]"),
@@ -152,31 +154,44 @@ TS_READINESS_ARIMAX = WorkflowTemplate(
         },
         inputs=_DATA,
         nodes=[
-            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"},
-             "with": {"alpha": _p("alpha")}, "label": "Does it wander? (ADF)"},
-            {"id": "kpss", "use": "test.kpss", "inputs": {"data": "inputs.data"},
-             "with": {"alpha": _p("alpha")}, "label": "Is it stable? (KPSS)"},
-            {"id": "pp", "use": "test.pp", "inputs": {"data": "inputs.data"},
-             "with": {"alpha": _p("alpha")}},
-            {"id": "za", "use": "test.zivot_andrews", "inputs": {"data": "inputs.data"},
-             "with": {"alpha": _p("alpha")}},
+            # 1. The seasonal difference first (as nsdiffs before ndiffs) ...
             {"id": "seas", "use": "test.seasonal_strength", "inputs": {"data": "inputs.data"},
              "with": {"period": _p("season")}},
-            {"id": "wanders", "use": "branch.if", "label": "Difference?",
-             "with": {"condition": "(not nodes.adf.reject or nodes.kpss.reject) and not "
-                                   "(nodes.pp.reject and nodes.za.reject)"}},
             {"id": "seasonal", "use": "branch.if", "label": "Seasonal difference?",
              "with": {"condition": "nodes.seas.seasonal"}},
             {"id": "sdiff", "use": "transform.seasonal_difference",
              "inputs": {"data": "inputs.data"}, "when": "seasonal.then",
              "with": {"period": _p("season")}},
+            # 2. ... then the unit-root tests on the seasonally differenced series
+            {"id": "adf", "use": "test.adf", "inputs": {"data": _SERIES},
+             "with": {"alpha": _p("alpha")}, "label": "Does it wander? (ADF)"},
+            {"id": "kpss", "use": "test.kpss", "inputs": {"data": _SERIES},
+             "with": {"alpha": _p("alpha")}, "label": "Is it stable? (KPSS)"},
+            {"id": "pp", "use": "test.pp", "inputs": {"data": _SERIES},
+             "with": {"alpha": _p("alpha")}},
+            {"id": "za", "use": "test.zivot_andrews", "inputs": {"data": _SERIES},
+             "with": {"alpha": _p("alpha")}},
+            # over-differencing guard: a first difference whose lag-1 autocorrelation is
+            # below -0.5 removed a unit root that was not there (a non-invertible MA)
+            {"id": "cand", "use": "transform.difference", "inputs": {"data": _SERIES},
+             "label": "Trial difference"},
+            {"id": "overdiff", "use": "test.acf_pacf", "inputs": {"data": "cand.data"},
+             "with": {"nlags": 4, "max_order": 1}, "label": "Too much differencing?"},
+            {"id": "wanders", "use": "branch.if", "label": "Difference?",
+             "with": {"condition": "(not nodes.adf.reject or nodes.kpss.reject) and not "
+                                   "(nodes.pp.reject and nodes.za.reject) and "
+                                   "nodes.overdiff.acf[1] > -0.5"}},
             {"id": "diff", "use": "transform.difference",
-             "inputs": {"data": ["sdiff.data", "inputs.data"]}, "when": "wanders.then"},
+             "inputs": {"data": _SERIES}, "when": "wanders.then"},
             {"id": "acf", "use": "test.acf_pacf",
              "inputs": {"data": ["diff.data", "sdiff.data", "inputs.data"]},
              "with": {"max_order": _p("max_p")}},
-            {"id": "order", "use": "search.arma_order", "inputs": {"data": "inputs.data"},
-             "with": {"d": _x(_D), "max_p": _p("max_p"), "max_q": _p("max_q"),
+            # the orders of the model that is fitted (same d and seasonal D), searched only
+            # before the backtest's first test window
+            {"id": "order", "use": "search.arma_order",
+             "inputs": {"data": "inputs.data", "split": "folds.plan"},
+             "with": {"d": _x(_D), "D": _x(_SD), "period": _p("season"),
+                      "max_p": _p("max_p"), "max_q": _p("max_q"),
                       "exog": _p("drivers"), "criterion": "aic"},
              "label": "AR and MA orders"},
             {"id": "folds", "use": "split.expanding_window", "inputs": {"data": "inputs.data"},

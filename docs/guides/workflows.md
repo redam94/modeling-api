@@ -166,32 +166,44 @@ Reading it from the top:
 :   Everything a user may change per run, each with a type, a default and bounds. A run that
     passes `{"alpha": "x"}` is refused with `422` and the pointer `/params/alpha`.
 
+`seas`, `seasonal` and `sdiff`
+:   The seasonal decision comes first (as in `nsdiffs` before `ndiffs`): the seasonal
+    strength of the raw series decides whether to take a seasonal difference, which only
+    runs on the `then` arm of `seasonal`. When the arm is not taken the node is
+    **skipped**, not failed.
+
 `adf`, `kpss`, `pp`, `za`
-:   Four unit-root tests on the raw series. ADF and Phillips-Perron's null hypothesis is
-    "the series wanders"; KPSS's is "the series is stable", so its decision labels run the
-    other way; Zivot-Andrews allows one structural break. Each returns a
-    `StatTestResult` with a `verdict_plain` sentence.
+:   Four unit-root tests on the seasonally differenced series (or the raw series when
+    there is no seasonal difference): `data: [sdiff.data, inputs.data]` is a list of
+    **alternatives**, the first node that ran. Testing the raw levels of a seasonal series
+    would find the seasonal unit root and add a first difference on top of the seasonal
+    one, over-differencing it. ADF and Phillips-Perron's null hypothesis is "the series
+    wanders"; KPSS's is "the series is stable", so its decision labels run the other way;
+    Zivot-Andrews allows one structural break. Each returns a `StatTestResult` with a
+    `verdict_plain` sentence.
+
+`cand` and `overdiff`
+:   An over-differencing guard: a trial first difference and its autocorrelations. A
+    lag-1 autocorrelation below -0.5 after differencing is the signature of a unit root
+    that is not there.
 
 `wanders` (`branch.if`)
-:   `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)`
-    reads: difference unless the evidence for stationarity is clear. The condition is parsed
-    by the safe expression language (never `eval`), and the run records which values it
-    read, so the decision can be audited later.
-
-`seasonal` and `sdiff`
-:   The seasonal difference only runs on the `then` arm of `seasonal`. When the arm is not
-    taken the node is **skipped**, not failed.
+:   `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)
+    and nodes.overdiff.acf[1] > -0.5` reads: difference unless the evidence for stationarity
+    is clear, and never when differencing would over-difference. The condition is parsed by
+    the safe expression language (never `eval`), and the run records which values it read,
+    so the decision can be audited later.
 
 `diff`
-:   `data: [sdiff.data, inputs.data]` is a list of **alternatives**: the seasonally
-    differenced series if that node ran, else the raw series. `acf` uses the same trick
-    with three alternatives, so it always looks at the most-processed series.
+:   The first difference of the same alternatives, on the `then` arm of `wanders`. `acf`
+    uses three alternatives, so it always looks at the most-processed series.
 
 `order` (`search.arma_order`)
 :   An information-criterion grid over AR orders `0..max_p` and MA orders `0..max_q`.
-    `d: {$expr: 'if(nodes.wanders.value, 1, 0)'}` passes the differencing decision in, so
-    the search fits ARIMA(p, d, q) models on the raw series instead of searching on the
-    differenced one.
+    `d` and `D` pass the differencing decisions in, so the search scores exactly the
+    model that is fitted, ARIMA(p, d, q)(0, D, 0) with the season length, on the raw
+    series. With the backtest's plan on its `split` port it only searches the periods
+    before the first test window, so the backtest stays out of sample.
 
 `folds` (`split.expanding_window`)
 :   An expanding-window plan: `n_folds` origins, `step: 4` periods apart, a `gap` between

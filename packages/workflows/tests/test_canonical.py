@@ -100,7 +100,9 @@ def test_readiness_to_arimax_end_to_end() -> None:
     # no yearly season in the data: no seasonal differencing
     assert runs["seasonal"].result == {"value": False, "arm": "else"}
     assert runs["sdiff"].status is NodeRunStatus.SKIPPED
-    assert runs["diff"].status is NodeRunStatus.SUCCEEDED
+    # the same difference as the over-differencing guard's trial: reused from it
+    assert runs["diff"].status in (NodeRunStatus.SUCCEEDED, NodeRunStatus.CACHED)
+    assert runs["overdiff"].result is not None and runs["overdiff"].result["acf"][1] > -0.5
     assert runs["diff"].result is not None and runs["diff"].result["lost_periods"] == 1
     # the ACF/PACF ran on the differenced series (the first available alternative)
     acf = runs["acf"].result
@@ -170,3 +172,50 @@ def test_stationary_series_goes_straight_to_the_search() -> None:
     assert runs["diff"].status is NodeRunStatus.SKIPPED
     assert runs["backtest"].params["settings"]["order"][1] == 0
     assert np.isfinite(runs["backtest"].result["metrics"]["mae"])  # type: ignore[index]
+
+
+def _decisions() -> Any:
+    """The template's differencing decisions only (its own nodes and rules)."""
+    import copy
+
+    from mapi_spec.workflow import WorkflowSpec
+
+    keep = {"seas", "seasonal", "sdiff", "adf", "kpss", "pp", "za", "cand", "overdiff",
+            "wanders", "diff"}  # fmt: skip
+    doc = copy.deepcopy(TS_READINESS_ARIMAX.document)
+    doc["metadata"] = {"name": "decide", "project": "growth"}
+    doc["nodes"] = [n for n in doc["nodes"] if n["id"] in keep]  # type: ignore[index,union-attr]
+    doc["outputs"] = {}
+    return WorkflowSpec.model_validate(doc)
+
+
+def _monthly(y: np.ndarray) -> Any:
+    from wf_ctx import series_ds
+
+    return series_ds(100 + y, name="sales", freq="ME")
+
+
+def test_seasonal_random_walks_are_not_over_differenced() -> None:
+    """Regression (simulation): the unit-root tests ran on the levels, so a seasonal random
+    walk (true d = 0, D = 1) was also first-differenced in 93% of draws. They now run on
+    the seasonally differenced series, with an over-differencing guard; plain random walks
+    are still differenced."""
+    spec, runner = _decisions(), LocalRunner()
+    n, s, reps = 144, 12, 20
+    over = rw_diff = 0
+    for seed in range(reps):
+        rng = np.random.default_rng(seed)
+        y = np.zeros(n)
+        for t in range(n):
+            y[t] = (y[t - s] if t >= s else 10 * np.sin(2 * np.pi * t / s)) + rng.normal()
+        res = runner.run(spec, inputs={"data": _monthly(y)}, params={"season": s})
+        assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
+        runs = {r.node_id: r for r in res.nodes}
+        assert runs["seasonal"].result == {"value": True, "arm": "then"}
+        over += bool(runs["wanders"].result["value"])  # type: ignore[index]
+        walk = runner.run(
+            spec, inputs={"data": _monthly(np.cumsum(rng.normal(size=n)))}, params={"season": s}
+        )
+        rw_diff += bool(next(r for r in walk.nodes if r.node_id == "wanders").result["value"])  # type: ignore[index]
+    assert over <= 3, f"seasonal random walk first-differenced in {over}/{reps} draws"
+    assert rw_diff >= reps - 3, f"random walk differenced in only {rw_diff}/{reps} draws"

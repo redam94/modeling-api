@@ -167,6 +167,55 @@ def test_arma_search_recovers_an_ar2_like_statsmodels() -> None:
     assert sarimax_trend("c", 1) is None and sarimax_trend("ct", 1) == "t"
 
 
+def test_arma_search_uses_the_seasonal_difference_and_stays_before_the_tests() -> None:
+    """Regression: the order search fitted ARIMA(p,d,q) without the seasonal difference
+    the final model uses (AR terms absorbed the season) and searched every period,
+    including the backtest's test windows."""
+    from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+    rng = np.random.default_rng(0)
+    n, s = 156, 12
+    y = np.zeros(n)
+    for t in range(n):  # a seasonal random walk: (1 - L^12) y = e
+        y[t] = (y[t - s] if t >= s else 5 * np.sin(2 * np.pi * t / s)) + rng.normal()
+    ds = series_ds(100 + y)
+    out = run_node("search.arma_order", {"max_p": 2, "max_q": 1, "D": 1, "period": s}, data=ds)
+    best = out.result
+    assert best["best_order"] == [0, 0, 0]  # white noise once seasonally differenced
+    meta = out.outputs["table"]["meta"]  # type: ignore[index]
+    assert meta["D"] == 1 and meta["period"] == s
+    row = out.outputs["table"]["rows"][0]  # type: ignore[index]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ref = SARIMAX(100 + y, order=(0, 0, 0), seasonal_order=(0, 1, 0, s), trend=None).fit(
+            disp=False
+        )
+    assert row["aic"] == pytest.approx(ref.aic, rel=1e-6)  # the model that will be fitted
+    # without the seasonal difference, AR terms soak up the season
+    plain = run_node("search.arma_order", {"max_p": 2, "max_q": 1}, data=ds)
+    assert plain.result["best_p"] > 0
+
+    # with a split plan, only the periods before the first test window are searched
+    plan = run_node(
+        "split.expanding_window",
+        {"horizons": [1, 4], "n_folds": 3, "step": 4, "gap": 1},
+        data=ds,
+    ).outputs["plan"]
+    first = min(f["test_start"] for f in plan["folds"])  # type: ignore[index]
+    held = run_node(
+        "search.arma_order",
+        {"max_p": 1, "max_q": 1, "D": 1, "period": s},
+        data=ds,
+        split=plan,
+    )
+    assert held.outputs["table"]["meta"]["n_obs"] == first - 1  # type: ignore[index]
+    kfold = run_node("split.blocked_kfold", {"k": 4}, data=ds).outputs["plan"]
+    with pytest.raises(MapiError, match="before its first test window"):
+        run_node("search.arma_order", {"max_p": 1}, data=ds, split=kfold)
+    with pytest.raises(MapiError, match="season length"):
+        run_node("search.arma_order", {"max_p": 1, "D": 1}, data=ds)
+
+
 def test_var_lag_and_coint_rank_match_statsmodels() -> None:
     from statsmodels.tsa.api import VAR
     from statsmodels.tsa.vector_ar.vecm import select_coint_rank
