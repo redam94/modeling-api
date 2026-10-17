@@ -256,7 +256,8 @@ class FanSettings(RecipeSettings):
     title="Fit and forecast",
     settings=FanSettings,
     persona="both",
-    summary="Model estimate with uncertainty bands over time, actual values and the split line.",
+    summary="The model estimate over time with uncertainty bands, the actual values and the "
+    "split line.",
 )
 def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
     """Fan chart of predictions over time with observations and the train/forecast split."""
@@ -325,17 +326,15 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
     bands_txt = (
         ""
         if not pairs
-        else f"; the shaded band is the {lv_txt} interval"
+        else f" The shaded band is the {lv_txt} interval."
         if len(pairs) == 1
-        else f"; the shaded bands are the {lv_txt} intervals"
+        else f" The shaded bands are the {lv_txt} intervals."
     )
-    caption = (
-        f"The line is the model's {s.point} estimate of {b.label}{bands_txt}"
-        + ("; dots are the actual values" if "observed" in frame else "")
-        + "."
+    caption = f"The line is the {s.point} estimate of {b.label} from the model.{bands_txt}" + (
+        " The dots are the actual values." if "observed" in frame else ""
     )
     if b.summed:
-        caption += f" Values are summed over {', '.join(b.summed)}."
+        caption += f" The values show the sum over {', '.join(b.summed)}."
     if split is not None:
         caption += " The dashed line marks where the training data ends."
         if "observed" in frame:
@@ -346,7 +345,7 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
                     ((after["observed"] >= after[lo_c]) & (after["observed"] <= after[hi_c])).mean()
                 )
                 caption += (
-                    f" After it, {pct(inside)} of actual values fall inside the "
+                    f" After it, {pct(inside)} of the actual values are in the "
                     f"{pct(pairs[0][0])} band."
                 )
     return Figure(chart=chart, datasets={"fan": frame}, caption=caption)
@@ -398,6 +397,8 @@ def _point_and_obs(inp: RecipeInput, s: FitVsActualSettings) -> Bands:
     title="Predicted vs actual",
     settings=FitVsActualSettings,
     persona="both",
+    summary="The predicted values against the actual values in a scatter plot, with the "
+    "identity line.",
 )
 def fit_vs_actual(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
     """Scatter of predicted against actual values with the identity line."""
@@ -430,8 +431,9 @@ def fit_vs_actual(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
         float((resid[nz].abs() / f.loc[nz, "observed"].abs()).mean()) if nz.any() else float("nan")
     )
     caption = (
-        f"Each dot compares an actual value of {b.label} with the model's prediction; dots on the "
-        f"dashed line are perfect predictions. The model explains {pct(r2)} of the variation "
+        f"Each dot compares an actual value of {b.label} with the prediction of the model. "
+        f"Dots on the dashed line are perfect predictions. The model explains {pct(r2)} of the "
+        f"variation "
         f"(R² = {r2:.2f})"
         + (f" with a typical error of {pct(mape)} (MAPE)." if np.isfinite(mape) else ".")
     )
@@ -444,6 +446,8 @@ def fit_vs_actual(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
     title="Residuals over time",
     settings=FitVsActualSettings,
     persona="expert",
+    summary="Actual minus predicted values over time. A pattern shows that the model does not "
+    "capture some structure.",
 )
 def residuals_over_time(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
     """Actual minus predicted over time; patterns mean the model misses structure."""
@@ -464,12 +468,12 @@ def residuals_over_time(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
     ).properties(width=s.width, height=s.height)
     bias = float(f["residual"].mean())
     scale = float(f["observed"].abs().mean()) or 1.0
-    caption = f"Residuals are actual minus predicted {b.label}; they should hover around zero."
+    caption = f"Residuals are actual minus predicted {b.label}. They should stay near zero."
     if abs(bias) > 0.05 * scale:
         direction = "under" if bias > 0 else "over"
-        caption += f" On average the model {direction}-predicts by {fmt(abs(bias))}."
+        caption += f" On average, the model {direction}-predicts by {fmt(abs(bias))}."
     else:
-        caption += " There is no notable average bias."
+        caption += " There is no important average bias."
     if b.cells:
         caption += f" Each line is one {' × '.join(b.cells)} cell."
     data = {"residuals": f[["x", "group", *_cell_col(b), "residual"]]}
@@ -593,15 +597,15 @@ def _decomposition(
     chart = alt.vconcat(area, bars)
     ranked = tot.sort_values("mean", ascending=False)
     shares = ", ".join(f"{r.component} {pct(r.share)}" for r in ranked.head(4).itertuples())
-    caption = f"Over the whole period the outcome splits into: {shares}."
+    caption = f"For the full period, the outcome divides into: {shares}."
     unsure = [r.component for r in tot.itertuples() if r.lo < 0 < r.hi]
     if unsure:
         caption += (
-            f" The contribution of {', '.join(map(str, unsure[:3]))} is uncertain "
+            f" The contribution of {', '.join(map(str, unsure[:3]))} is not certain "
             f"(its {pct(s.hdi_prob)} interval includes zero)."
         )
     if summed:
-        caption += f" Summed over {', '.join(sorted(summed))}."
+        caption += f" The values show the sum over {', '.join(sorted(summed))}."
     return Figure(chart=chart, datasets={"decomposition": series, "totals": tot}, caption=caption)
 
 
@@ -611,6 +615,7 @@ def _decomposition(
     settings=DecompositionSettings,
     persona="both",
     requires_groups=["contributions"],
+    summary="Stacked contributions over time, and the total and the share of each component.",
 )
 def decomposition(inp: RecipeInput, s: DecompositionSettings) -> Figure:
     """Stacked contributions over time plus each component's total and share."""
@@ -675,7 +680,8 @@ def _with_samples(ds: xr.Dataset | None, var: str | None) -> bool:
     title="Scenario vs baseline",
     settings=CounterfactualSettings,
     persona="both",
-    summary="Scenario and baseline over time, and the distribution of the total difference.",
+    summary="The scenario and the baseline over time, and the distribution of the total "
+    "difference.",
 )
 def counterfactual(inp: RecipeInput, s: CounterfactualSettings) -> Figure:
     """Scenario vs baseline bands and the distribution of the total change."""
@@ -777,8 +783,8 @@ def counterfactual(inp: RecipeInput, s: CounterfactualSettings) -> Figure:
             - lines.loc[lines.series == "baseline", "point"].sum()
         )
         caption = (
-            f"The scenario changes total {var} by about {fmt(diff)} compared with the baseline "
-            "(no draws are available, so the uncertainty of the change is not shown)."
+            f"The scenario changes total {var} by about {fmt(diff)} compared with the baseline. "
+            "There are no draws, so the plot does not show the uncertainty of the change."
         )
     return Figure(chart=alt.vconcat(*charts), datasets=datasets, caption=caption)
 
@@ -800,7 +806,8 @@ class DecisionSettings(RecipeSettings):
     settings=DecisionSettings,
     persona="both",
     requires_representation=[Representation.DRAWS],
-    summary="Distribution of a scalar decision objective, per option when there are several.",
+    summary="The distribution of a scalar decision objective, for each option when there is "
+    "more than one.",
 )
 def decision_distribution(inp: RecipeInput, s: DecisionSettings) -> Figure:
     """Densities of the objective per option, intervals and the probability each is best."""
@@ -886,7 +893,7 @@ def decision_distribution(inp: RecipeInput, s: DecisionSettings) -> Figure:
         )
         top = summary.sort_values("p_best", ascending=False).iloc[0]
         caption = (
-            f"{top.option} is the best option with probability {pct(top.p_best)}; its expected "
+            f"{top.option} is the best option with probability {pct(top.p_best)}. Its expected "
             f"{var} is {fmt(top['mean'])} ({pct(s.hdi_prob)} interval {fmt(top.lo)} to "
             f"{fmt(top.hi)})."
         )
@@ -894,7 +901,7 @@ def decision_distribution(inp: RecipeInput, s: DecisionSettings) -> Figure:
         r = summary.iloc[0]
         caption = (
             f"The expected {var} is {fmt(r['mean'])} ({pct(s.hdi_prob)} interval {fmt(r.lo)} to "
-            f"{fmt(r.hi)}); the chance it is below zero is {pct(1 - r.p_positive)}."
+            f"{fmt(r.hi)}). The probability that it is below zero is {pct(1 - r.p_positive)}."
         )
     datasets = {"density": pd.concat(dens_parts, ignore_index=True), "summary": summary}
     return Figure(chart=alt.vconcat(*charts), datasets=datasets, caption=caption)

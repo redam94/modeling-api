@@ -83,7 +83,7 @@ def _from_log_lik(models: dict[str, xr.Dataset], var: str | None) -> pd.DataFram
     title="Model comparison",
     settings=ComparisonSettings,
     persona="expert",
-    summary="Expected predictive accuracy (elpd) per model with standard errors.",
+    summary="The expected predictive accuracy (elpd) of each model, with standard errors.",
 )
 def model_comparison(inp: RecipeInput, s: ComparisonSettings) -> Figure:
     """elpd ± SE per model and the difference to the best model ± its SE."""
@@ -147,7 +147,7 @@ def model_comparison(inp: RecipeInput, s: ComparisonSettings) -> Figure:
         runner = frame.iloc[1]
         d, dse = abs(float(runner["d_elpd"])), float(runner["dse"])
         if d < 4:
-            verdict = "a negligible difference"
+            verdict = "a very small difference"
         elif np.isfinite(dse) and d > 2 * dse:
             verdict = "a clear difference"
         else:
@@ -158,9 +158,6 @@ def model_comparison(inp: RecipeInput, s: ComparisonSettings) -> Figure:
             + f" elpd worse: {verdict}."
         )
     if ic == "waic":
-        caption += (
-            " WAIC was computed from the stored log-likelihood; PSIS-LOO is preferred when "
-            "available."
-        )
+        caption += " WAIC comes from the stored log-likelihood. Use PSIS-LOO when it is available."
     keep = ["model", "elpd", "se", "lo", "hi", "d_elpd", "dse", "d_lo", "d_hi", "rank", "ic"]
     return Figure(chart=chart, datasets={"comparison": frame[keep]}, caption=caption)

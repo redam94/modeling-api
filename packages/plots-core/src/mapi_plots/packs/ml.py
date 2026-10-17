@@ -73,7 +73,7 @@ def _per_feature(
     title="Feature importance",
     settings=FeatureImportanceSettings,
     persona="expert",
-    summary="Which features the tabular model relies on most (importances or coefficients).",
+    summary="The features that the tabular model uses most (importances or coefficients).",
     tags=["ml"],
 )
 def feature_importance(inp: RecipeInput, s: FeatureImportanceSettings) -> Figure:
@@ -132,16 +132,17 @@ def feature_importance(inp: RecipeInput, s: FeatureImportanceSettings) -> Figure
         total = float(np.nansum(val[keep]))
         share = float(top["value"]) / total if total > 0 else float("nan")
         caption = (
-            f"Showing {shown} features. The model relies most on {top['feature']}"
-            + (f", which accounts for {pct(share)} of the total importance." if total > 0 else ".")
-            + " Importances show what the model uses, not cause and effect."
+            f"The plot shows {shown} features. The model uses {top['feature']} most"
+            + (f". It has {pct(share)} of the total importance." if total > 0 else ".")
+            + " Importances show what the model uses. They do not show cause and effect."
         )
     else:
         direction = "raises" if float(top["value"]) >= 0 else "lowers"
         caption = (
-            f"Showing {shown} features by the size of their coefficient. A one-unit increase "
-            f"in {top['feature']} {direction} the prediction by {fmt(abs(float(top['value'])))} "
-            "in model space, holding the other features fixed."
+            f"The plot shows {shown} features, in order of the size of their coefficient. "
+            f"A one-unit increase in {top['feature']} {direction} the prediction by "
+            f"{fmt(abs(float(top['value'])))} in model space, when the other features do not "
+            "change."
         )
     return Figure(chart=chart, datasets={"features": frame}, caption=caption)
 

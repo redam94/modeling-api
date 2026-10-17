@@ -3,16 +3,16 @@
     {
       "about": {
         "assumptions": [
-          "The recent past looks like the near future"
+          "The recent past is similar to the near future"
         ],
         "avoid_when": [
-          "Your data is not ordered in time"
+          "Your data does not have a time order"
         ],
         "data_needs": [
           "An ordered dimension such as date"
         ],
         "difficulty": "beginner",
-        "example": "With 104 weeks, the model learns on the first 96 and is tested on the last 8.",
+        "example": "With 104 weeks, the model learns on the first 96 weeks and the test uses the last 8 weeks.",
         "expert_notes": null,
         "fits": {
           "goal": [
@@ -21,18 +21,18 @@
           ]
         },
         "outputs": [
-          "A training part and a test part; holdout error metrics"
+          "A training part and a test part, and holdout error metrics"
         ],
         "references": [],
         "related": [
           "core.as_of",
           "split.rolling_origin"
         ],
-        "summary_plain": "Holds back the most recent periods, fits the model on the rest, and checks how well it predicts what it has not seen.",
+        "summary_plain": "Keeps back the most recent periods and fits the model on the rest. Then it measures how well the model predicts the periods that it did not see.",
         "title": "Test on the latest periods",
         "typical_runtime": "instant",
         "use_when": [
-          "You forecast or want an honest error for recent periods"
+          "You forecast, or you want an honest error for recent periods"
         ]
       },
       "id": "core.time_holdout",
@@ -129,16 +129,16 @@
     {
       "about": {
         "assumptions": [
-          "The cut-off leaves enough history to fit"
+          "The cut-off leaves sufficient history for the fit"
         ],
         "avoid_when": [
-          "Your data is not ordered in time"
+          "Your data does not have a time order"
         ],
         "data_needs": [
           "An ordered dimension and a cut-off date"
         ],
         "difficulty": "beginner",
-        "example": "As of 2024-06-30 with a 2-week gap, test on July from week 3 onwards.",
+        "example": "As of 2024-06-30 with a 2-week gap, the test uses July from week 3.",
         "expert_notes": null,
         "fits": {
           "goal": [
@@ -154,12 +154,12 @@
           "core.time_holdout",
           "split.expanding_window"
         ],
-        "summary_plain": "Fits the model as if today were a past date and checks what it would have predicted for the periods after it.",
-        "title": "Pretend it is a past date",
+        "summary_plain": "Fits the model as if today is a past date. Then it measures the predictions for the periods after that date.",
+        "title": "Fit as of a past date",
         "typical_runtime": "instant",
         "use_when": [
-          "You want to replay a past decision point",
-          "Data arrives with a delay (use a gap)"
+          "You want to do a past decision point again",
+          "Data comes with a delay (use a gap)"
         ]
       },
       "id": "core.as_of",
@@ -232,16 +232,16 @@
     {
       "about": {
         "assumptions": [
-          "Left-out groups resemble the others"
+          "The removed groups are similar to the other groups"
         ],
         "avoid_when": [
-          "You only predict for markets the model has seen"
+          "You only predict for markets that the model saw"
         ],
         "data_needs": [
           "A group dimension with several levels"
         ],
         "difficulty": "intermediate",
-        "example": "Fit on 8 markets, test on the other 2.",
+        "example": "Fit on 8 markets and test on the other 2.",
         "expert_notes": null,
         "fits": {
           "data_shape": [
@@ -259,7 +259,7 @@
         "related": [
           "split.geo_holdout"
         ],
-        "summary_plain": "Leaves whole markets or stores out of fitting and checks how well the model does on them.",
+        "summary_plain": "Removes full markets or stores from the fit and measures how well the model predicts them.",
         "title": "Test on unseen markets",
         "typical_runtime": "instant",
         "use_when": [
@@ -369,16 +369,16 @@
     {
       "about": {
         "assumptions": [
-          "Each group has enough earlier rows to learn from"
+          "Each group has sufficient earlier rows to learn from"
         ],
         "avoid_when": [
           "Your data is one series"
         ],
         "data_needs": [
-          "A group dimension and an order within each group"
+          "A group dimension and an order in each group"
         ],
         "difficulty": "intermediate",
-        "example": "Every household's last trip is used for testing, if it has at least 3 trips.",
+        "example": "The test uses the last trip of each household that has a minimum of 3 trips.",
         "expert_notes": null,
         "fits": {
           "data_shape": [
@@ -390,17 +390,17 @@
           ]
         },
         "outputs": [
-          "Training rows and the held-out last rows per group"
+          "Training rows and the held-out last rows of each group"
         ],
         "references": [],
         "related": [
           "core.time_holdout"
         ],
-        "summary_plain": "Holds back the last few observations of every customer or store and tests the model on them.",
+        "summary_plain": "Keeps back the last observations of each customer or store and tests the model on them.",
         "title": "Test each group on its latest rows",
         "typical_runtime": "instant",
         "use_when": [
-          "Groups have different lengths of history, such as shopping trips per household"
+          "Groups have different lengths of history, such as shopping trips for each household"
         ]
       },
       "id": "core.last_per_group",
@@ -481,7 +481,7 @@
           "One or more dimensions to cut blocks from"
         ],
         "difficulty": "expert",
-        "example": "Hide 10% of market-week cells in blocks of 4 weeks.",
+        "example": "Hide 10% of the market-week cells in blocks of 4 weeks.",
         "expert_notes": null,
         "fits": {
           "goal": [
@@ -489,17 +489,17 @@
           ]
         },
         "outputs": [
-          "The data with hidden cells and their positions"
+          "The data with hidden cells, and the positions of these cells"
         ],
         "references": [],
         "related": [
           "core.time_holdout"
         ],
-        "summary_plain": "Hides random blocks of the data from fitting and checks how well the model fills them in.",
+        "summary_plain": "Hides random blocks of the data from the fit and measures how well the model fills them in.",
         "title": "Hide random patches",
         "typical_runtime": "instant",
         "use_when": [
-          "You want to test filling in gaps rather than forecasting"
+          "You want to test how the model fills gaps, not how it forecasts"
         ]
       },
       "id": "core.mask_block",
@@ -585,17 +585,17 @@
     {
       "about": {
         "assumptions": [
-          "The carry-over rate is fixed by you, not learned from the data"
+          "You set the carry-over rate. The model does not learn it from the data"
         ],
         "avoid_when": [
-          "The model already handles carry-over itself (the Bayesian MMM does)"
+          "The model already calculates carry-over itself (the Bayesian MMM does this)"
         ],
         "data_needs": [
           "Media spend or exposure over time"
         ],
         "difficulty": "intermediate",
         "example": "With a 50% weekly carry-over, 100 spent this week counts as 100, then 50, then 25.",
-        "expert_notes": "Geometric (alpha), delayed (theta) or Weibull kernels up to l_max lags, optionally normalised to sum to 1; applied per group along time.",
+        "expert_notes": "Geometric (alpha), delayed (theta) or Weibull kernels up to l_max lags, with optional normalisation to a sum of 1. The step applies them to each group along time.",
         "fits": {
           "goal": [
             "explain_marketing",
@@ -603,17 +603,17 @@
           ]
         },
         "outputs": [
-          "Media columns that include the lingering effect of past periods"
+          "Media columns that include the remaining effect of past periods"
         ],
         "related": [
           "core.saturation",
           "mmm.bayesian"
         ],
-        "summary_plain": "Spreads each period's advertising effect over the following periods, because people remember an ad for a while after they see it.",
+        "summary_plain": "Spreads the advertising effect of each period over the next periods. People remember an ad for some time after they see it.",
         "title": "Carry-over of advertising",
         "typical_runtime": "instant",
         "use_when": [
-          "You model media with a simple (non-Bayesian) model and need carry-over",
+          "You model media with a simple (non-Bayesian) model and you need carry-over",
           "You want to see how a fixed carry-over rate changes spend series"
         ]
       },
@@ -818,7 +818,7 @@
     {
       "about": {
         "assumptions": [
-          "The same calendar effect applies every year"
+          "The same calendar effect occurs every year"
         ],
         "avoid_when": [
           "Your data is not over time"
@@ -834,17 +834,17 @@
           ]
         },
         "outputs": [
-          "One column per calendar feature"
+          "One column for each calendar feature"
         ],
         "related": [
           "core.holidays",
           "core.fourier"
         ],
-        "summary_plain": "Adds calendar facts such as the month, the week of the year or whether a day falls on a weekend.",
+        "summary_plain": "Adds calendar facts, such as the month, the week of the year, or if a day is on a weekend.",
         "title": "Calendar facts",
         "typical_runtime": "instant",
         "use_when": [
-          "Behaviour depends on the day of week or month"
+          "Behaviour changes with the day of the week or the month"
         ]
       },
       "dim_params": [
@@ -924,13 +924,13 @@
     {
       "about": {
         "assumptions": [
-          "Values beyond the limits carry no extra information"
+          "Values beyond the limits do not have more information"
         ],
         "avoid_when": [
-          "Extreme values are real and important"
+          "The extreme values are real and important"
         ],
         "data_needs": [
-          "Numeric columns and a lower and/or upper limit"
+          "Numeric columns and a lower limit, an upper limit or both"
         ],
         "difficulty": "beginner",
         "example": "With an upper limit of 100, a value of 250 becomes 100.",
@@ -940,16 +940,16 @@
           ]
         },
         "outputs": [
-          "The same columns within the limits"
+          "The same columns in the limits"
         ],
         "related": [
           "core.max_abs_scale"
         ],
-        "summary_plain": "Caps values that are smaller or larger than limits you choose, which tames outliers.",
+        "summary_plain": "Changes values below or above the limits that you select to the nearest limit. This controls outliers.",
         "title": "Cap extreme values",
         "typical_runtime": "instant",
         "use_when": [
-          "A few extreme values would dominate the model",
+          "Some extreme values have too much effect on the model",
           "Values outside a range are errors"
         ]
       },
@@ -1021,32 +1021,32 @@
     {
       "about": {
         "assumptions": [
-          "Each row is one event; events outside the chosen dates are ignored"
+          "Each row is one event. The step ignores events outside the dates that you select"
         ],
         "avoid_when": [
-          "Your data is already a series of totals per period"
+          "Your data is already a series of totals for each period"
         ],
         "data_needs": [
           "A column with the time of each event"
         ],
         "difficulty": "beginner",
-        "example": "Three orders on Monday and one on Tuesday become 3 and 1.",
+        "example": "Three orders on Monday and one order on Tuesday become 3 and 1.",
         "fits": {
           "goal": [
             "check_data"
           ]
         },
         "outputs": [
-          "A count per period (and per group if you choose one), plus optional sums"
+          "A count for each period (and for each group if you select one), and optional sums"
         ],
         "related": [
           "core.resample"
         ],
-        "summary_plain": "Turns a list of individual events, such as orders or sign-ups, into counts per day, week or month.",
+        "summary_plain": "Changes a list of individual events, such as orders or sign-ups, into counts for each day, week or month.",
         "title": "Count events per period",
         "typical_runtime": "instant",
         "use_when": [
-          "Your file has one row per event and you need a time series"
+          "Your dataset has one row for each event and you need a time series"
         ]
       },
       "dim_params": [
@@ -1218,7 +1218,7 @@
     {
       "about": {
         "assumptions": [
-          "Numbers are assigned on the training data; new values follow a rule"
+          "The step gives the numbers on the training data. New values follow a rule"
         ],
         "avoid_when": [
           "The model reads category labels itself"
@@ -1234,16 +1234,16 @@
           ]
         },
         "outputs": [
-          "An integer code per category value"
+          "An integer code for each category value"
         ],
         "related": [
           "core.one_hot"
         ],
-        "summary_plain": "Gives every category value a number, which many models use to look up a separate effect for each group.",
+        "summary_plain": "Gives each category value a number. Many models use this number to find a separate effect for each group.",
         "title": "Number each category",
         "typical_runtime": "instant",
         "use_when": [
-          "A model needs group numbers (one effect per store or market)"
+          "A model needs group numbers (one effect for each store or market)"
         ]
       },
       "dim_params": [
@@ -1351,17 +1351,17 @@
     {
       "about": {
         "assumptions": [
-          "The dropped data is not needed by the model or later steps"
+          "The model and the steps after this step do not need the removed data"
         ],
         "avoid_when": [
-          "You want the model to learn from everything",
-          "You want to test on unseen markets (use a split instead)"
+          "You want the model to learn from all the data",
+          "You want to test on markets that the model did not see (use a split instead)"
         ],
         "data_needs": [
           "A dimension such as market, product or date"
         ],
         "difficulty": "beginner",
-        "example": "Keep only the markets DE and FR, or only weeks from 2023 onwards.",
+        "example": "Keep only the markets DE and FR, or only the weeks from 2023 and after.",
         "fits": {
           "goal": [
             "check_data"
@@ -1373,12 +1373,12 @@
         "related": [
           "core.leave_group_out"
         ],
-        "summary_plain": "Keeps only the markets, products or date range you pick, and drops the rest before modelling.",
+        "summary_plain": "Keeps only the markets, products or date range that you select. It removes the rest before you fit the model.",
         "title": "Keep some markets, products or dates",
         "typical_runtime": "instant",
         "use_when": [
-          "Some markets or products should not be modelled",
-          "Early history is unreliable and should be left out"
+          "You do not want to model some markets or products",
+          "The early history is not reliable and you want to remove it"
         ]
       },
       "dim_params": [
@@ -1511,17 +1511,17 @@
     {
       "about": {
         "assumptions": [
-          "Only the allowed operations are used (arithmetic and a few functions); no code runs"
+          "The formula uses only the permitted operations (arithmetic and some functions). No code runs"
         ],
         "avoid_when": [
-          "A built-in step already does it (scaling, logs, lags)"
+          "A built-in step already does it (for example scale, log or lag)"
         ],
         "data_needs": [
-          "The columns the formula uses"
+          "The columns that the formula uses"
         ],
         "difficulty": "intermediate",
         "example": "revenue = price * units adds a revenue column.",
-        "expert_notes": "Lark grammar compiled to an allow-listed AST of xarray operations, evaluated in the sandbox; a usability feature, not a security boundary.",
+        "expert_notes": "The step compiles a Lark grammar to an allow-listed AST of xarray operations and evaluates it in the sandbox. This is a usability feature, not a security boundary.",
         "fits": {
           "goal": [
             "check_data"
@@ -1530,12 +1530,12 @@
         "outputs": [
           "One new column"
         ],
-        "summary_plain": "Creates a new column from a simple formula over existing columns, such as price times units.",
+        "summary_plain": "Makes a new column from a simple formula of existing columns, such as price times units.",
         "title": "New column from a formula",
         "typical_runtime": "instant",
         "use_when": [
-          "You need a derived number like revenue = price x units",
-          "A ratio or difference of two columns explains the result better"
+          "You need a derived number, for example revenue = price x units",
+          "A ratio or a difference of two columns explains the result better"
         ]
       },
       "dim_params": [
@@ -1631,7 +1631,7 @@
     {
       "about": {
         "assumptions": [
-          "The pattern repeats with the same length each cycle"
+          "The pattern repeats with the same length in each cycle"
         ],
         "avoid_when": [
           "You have less than one full season of history"
@@ -1640,8 +1640,8 @@
           "A regular date column"
         ],
         "difficulty": "intermediate",
-        "example": "Three yearly wave pairs on weekly data capture a summer peak and a winter dip.",
-        "expert_notes": "sin/cos(2 pi k t / period), k = 1..order; the origin and period are stored state so forecasts continue the same phase.",
+        "example": "Three yearly wave pairs on weekly data show a summer peak and a winter dip.",
+        "expert_notes": "sin/cos(2 pi k t / period), k = 1..order. The origin and the period are stored state, so forecasts continue the same phase.",
         "fits": {
           "goal": [
             "check_data"
@@ -1654,12 +1654,12 @@
           "core.calendar",
           "core.holidays"
         ],
-        "summary_plain": "Adds smooth wave-shaped columns that let a model learn a repeating pattern, such as every year or every week.",
+        "summary_plain": "Adds smooth wave-shaped columns. With these columns, a model can learn a repeating pattern, such as a pattern for each year or each week.",
         "title": "Repeating seasonal patterns",
         "typical_runtime": "instant",
         "use_when": [
-          "Your result rises and falls with the season",
-          "You want seasonality without one column per month"
+          "Your result increases and decreases with the season",
+          "You want seasonality without one column for each month"
         ]
       },
       "dim_params": [
@@ -1741,10 +1741,10 @@
     {
       "about": {
         "assumptions": [
-          "The exchange-rate table covers every date in the data"
+          "The exchange-rate table covers all dates in the data"
         ],
         "avoid_when": [
-          "Everything is already in one currency"
+          "All values are already in one currency"
         ],
         "data_needs": [
           "Money columns and a table of exchange rates over time"
@@ -1757,12 +1757,12 @@
           ]
         },
         "outputs": [
-          "Money columns in the chosen currency"
+          "Money columns in the currency that you select"
         ],
         "related": [
           "core.resample"
         ],
-        "summary_plain": "Converts money columns from local currencies into one currency, using exchange rates for each day or week.",
+        "summary_plain": "Converts money columns from local currencies into one currency. It uses exchange rates for each day or week.",
         "title": "Convert currencies",
         "typical_runtime": "instant",
         "use_when": [
@@ -1910,32 +1910,32 @@
     {
       "about": {
         "assumptions": [
-          "The holiday table covers the whole period, including any forecast"
+          "The holiday table covers the full period, and also the forecast"
         ],
         "avoid_when": [
-          "Holidays make no difference to your result"
+          "Holidays do not change your result"
         ],
         "data_needs": [
-          "A date column and a holiday table (per country or market)"
+          "A date column and a holiday table (for each country or market)"
         ],
         "difficulty": "beginner",
-        "example": "The week containing 25 December is flagged in every market that celebrates it.",
+        "example": "The step flags the week that contains 25 December in each market that has this holiday.",
         "fits": {
           "goal": [
             "check_data"
           ]
         },
         "outputs": [
-          "A holiday indicator or count per period"
+          "A holiday flag or a count for each period"
         ],
         "related": [
           "core.calendar"
         ],
-        "summary_plain": "Marks the periods that contain public holidays, from a holiday table you provide.",
+        "summary_plain": "Marks the periods that contain public holidays. It uses a holiday table that you supply.",
         "title": "Holiday flags",
         "typical_runtime": "instant",
         "use_when": [
-          "Holidays move your sales"
+          "Holidays change your sales"
         ]
       },
       "dim_params": [
@@ -2066,17 +2066,17 @@
     {
       "about": {
         "assumptions": [
-          "Fill values are learned on the training data only"
+          "The step learns the fill values from the training data only"
         ],
         "avoid_when": [
-          "Many values are missing (fix the source instead)",
-          "Missing means something (add a missing-value flag)"
+          "Many values are missing (correct the source instead)",
+          "A missing value has a meaning (add a missing-value flag)"
         ],
         "data_needs": [
           "The columns with gaps"
         ],
         "difficulty": "beginner",
-        "example": "A missing week of spend in a market is filled with that market's average.",
+        "example": "The step fills a missing week of spend in a market with the average of that market.",
         "fits": {
           "goal": [
             "check_data"
@@ -2089,11 +2089,11 @@
           "core.missing_indicator",
           "core.replace_sentinel"
         ],
-        "summary_plain": "Fills missing values with a sensible stand-in, such as the average, zero or the previous value.",
+        "summary_plain": "Fills missing values with a sensible substitute, such as the average, zero or the previous value.",
         "title": "Fill gaps",
         "typical_runtime": "instant",
         "use_when": [
-          "A few values are missing and the model cannot handle gaps"
+          "Some values are missing and the model cannot use data with gaps"
         ]
       },
       "dim_params": [
@@ -2222,32 +2222,32 @@
     {
       "about": {
         "assumptions": [
-          "Earlier rows exist; the first rows get a fill value"
+          "Earlier rows exist. The first rows get a fill value"
         ],
         "avoid_when": [
-          "You forecast many periods ahead and the lagged value would not be known"
+          "You forecast many periods ahead and the lagged value is not known"
         ],
         "data_needs": [
           "A time dimension and the columns to lag"
         ],
         "difficulty": "intermediate",
-        "example": "A one-week lag of sales puts last week's 120 next to this week's 130.",
+        "example": "A one-week lag of sales puts the 120 of last week next to the 130 of this week.",
         "fits": {
           "goal": [
             "check_data"
           ]
         },
         "outputs": [
-          "One new column per lag"
+          "One new column for each lag"
         ],
         "related": [
           "core.lag_tensor"
         ],
-        "summary_plain": "Adds the values from one or more earlier periods as extra columns, such as last week's sales.",
+        "summary_plain": "Adds the values from one or more earlier periods as extra columns, such as the sales of last week.",
         "title": "Earlier values as columns",
         "typical_runtime": "instant",
         "use_when": [
-          "Last period's value helps predict this period"
+          "The value of the last period helps to predict this period"
         ]
       },
       "context": {
@@ -2380,33 +2380,33 @@
     {
       "about": {
         "assumptions": [
-          "The window is long enough for the effect to fade"
+          "The window is sufficiently long for the effect to decrease to zero"
         ],
         "avoid_when": [
-          "The model takes plain series and handles history internally"
+          "The model takes plain series and uses the history internally"
         ],
         "data_needs": [
-          "A time dimension and the columns to keep history for"
+          "A time dimension and the columns that need history"
         ],
         "difficulty": "expert",
-        "example": "With a 6-week window, every week carries the spend of the 6 weeks before it.",
+        "example": "With a 6-week window, each week has the spend of the 6 weeks before it.",
         "fits": {
           "goal": [
             "check_data"
           ]
         },
         "outputs": [
-          "A new dimension with the last few periods of every series"
+          "A new dimension with the last periods of each series"
         ],
         "related": [
           "core.lag",
           "core.adstock"
         ],
-        "summary_plain": "Keeps the last few periods of each series side by side, which models use to compute carry-over effects themselves.",
+        "summary_plain": "Keeps the last periods of each series side by side. Models use them to calculate carry-over effects themselves.",
         "title": "Recent history per series",
         "typical_runtime": "instant",
         "use_when": [
-          "A model computes its own carry-over from a window of past spend"
+          "A model calculates its carry-over from a window of past spend"
         ]
       },
       "context": {
@@ -2536,13 +2536,13 @@
     {
       "about": {
         "assumptions": [
-          "Results are converted back; averages on the original scale are approximate"
+          "The server converts the results back. Averages on the original scale are approximate"
         ],
         "avoid_when": [
           "Values can be negative"
         ],
         "data_needs": [
-          "Numeric columns of zero or more"
+          "Numeric columns with values of zero or more"
         ],
         "difficulty": "beginner",
         "example": "Sales of 9, 99 and 999 become about 2.3, 4.6 and 6.9.",
@@ -2557,11 +2557,11 @@
         "related": [
           "core.logit"
         ],
-        "summary_plain": "Takes the logarithm of one plus each value, which shrinks very large numbers and turns growth rates into steady steps.",
+        "summary_plain": "Takes the logarithm of one plus each value. This makes very large numbers smaller and changes growth rates into steady steps.",
         "title": "Compress large values",
         "typical_runtime": "instant",
         "use_when": [
-          "Values span several orders of magnitude",
+          "Values cover several orders of magnitude",
           "Effects work in percentages"
         ]
       },
@@ -2610,16 +2610,16 @@
     {
       "about": {
         "assumptions": [
-          "Exact 0 and 1 are nudged slightly inwards"
+          "The step moves exact values of 0 and 1 a small distance inwards"
         ],
         "avoid_when": [
           "Values are not between 0 and 1"
         ],
         "data_needs": [
-          "Columns with shares strictly between 0 and 1"
+          "Columns with shares that are strictly between 0 and 1"
         ],
         "difficulty": "intermediate",
-        "example": "A 50% share becomes 0; 90% becomes about 2.2.",
+        "example": "A 50% share becomes 0. A 90% share becomes about 2.2.",
         "fits": {
           "goal": [
             "check_data"
@@ -2631,7 +2631,7 @@
         "related": [
           "core.log1p"
         ],
-        "summary_plain": "Turns shares between 0 and 1, such as conversion rates, into numbers without limits so a model cannot predict impossible values.",
+        "summary_plain": "Changes shares between 0 and 1, such as conversion rates, into numbers without limits. Then a model cannot predict impossible values.",
         "title": "Unbounded scale for shares",
         "typical_runtime": "instant",
         "use_when": [
@@ -2691,7 +2691,7 @@
     {
       "about": {
         "assumptions": [
-          "The largest value is learned on the training data only"
+          "The step learns the largest value from the training data only"
         ],
         "avoid_when": [
           "Your data has extreme outliers (they set the scale)"
@@ -2713,7 +2713,7 @@
           "core.mean_scale",
           "core.clip"
         ],
-        "summary_plain": "Divides each series by its largest absolute value, so every value falls between -1 and 1.",
+        "summary_plain": "Divides each series by its largest absolute value, so all values are between -1 and 1.",
         "title": "Scale to between -1 and 1",
         "typical_runtime": "instant",
         "use_when": [
@@ -2803,7 +2803,7 @@
     {
       "about": {
         "assumptions": [
-          "The average is learned on the training data only and reused for new data"
+          "The step learns the average from the training data only and uses it again for new data"
         ],
         "avoid_when": [
           "The model scales the data itself"
@@ -2812,25 +2812,25 @@
           "Numeric columns"
         ],
         "difficulty": "beginner",
-        "example": "A market selling 5000 a week on average becomes 1.0; a week with 6000 becomes 1.2.",
+        "example": "A market that sells 5000 a week on average becomes 1.0. A week with 6000 becomes 1.2.",
         "fits": {
           "goal": [
             "check_data"
           ]
         },
         "outputs": [
-          "The same columns with an average of 1 (results are converted back automatically)"
+          "The same columns with an average of 1 (the server converts the results back automatically)"
         ],
         "related": [
           "core.standardize",
           "core.max_abs_scale"
         ],
-        "summary_plain": "Divides each series by its own average, so that big and small markets can be compared on the same footing.",
+        "summary_plain": "Divides each series by its average, so that you can compare big and small markets on the same scale.",
         "title": "Put series on a common scale",
         "typical_runtime": "instant",
         "use_when": [
-          "Markets or channels differ a lot in size",
-          "A model works better when every series has an average of 1"
+          "Markets or channels are very different in size",
+          "A model works better when each series has an average of 1"
         ]
       },
       "dim_params": [
@@ -2916,32 +2916,32 @@
     {
       "about": {
         "assumptions": [
-          "Run it before filling gaps"
+          "Use this step before you fill the gaps"
         ],
         "avoid_when": [
           "There are no gaps"
         ],
         "data_needs": [
-          "Columns that may have gaps"
+          "Columns that can have gaps"
         ],
         "difficulty": "beginner",
-        "example": "A missing price gets a flag of 1 next to the filled-in price.",
+        "example": "A missing price gets a flag of 1 next to the filled price.",
         "fits": {
           "goal": [
             "check_data"
           ]
         },
         "outputs": [
-          "One 0/1 column per input column"
+          "One 0/1 column for each input column"
         ],
         "related": [
           "core.impute"
         ],
-        "summary_plain": "Adds a yes/no column that marks where a value was missing, so a model can tell real values from filled-in ones.",
+        "summary_plain": "Adds a yes/no column that marks where a value was missing. Then a model can tell real values from filled values.",
         "title": "Flag missing values",
         "typical_runtime": "instant",
         "use_when": [
-          "Whether a value is missing tells you something"
+          "The fact that a value is missing gives you information"
         ]
       },
       "effect": {
@@ -2992,10 +2992,10 @@
     {
       "about": {
         "assumptions": [
-          "The categories seen in training are the ones that matter; new ones follow a rule"
+          "The categories in the training data are the important categories. New categories follow a rule"
         ],
         "avoid_when": [
-          "A category has hundreds of values (number them instead)"
+          "A category has hundreds of values (give them numbers instead)"
         ],
         "data_needs": [
           "Category columns"
@@ -3008,12 +3008,12 @@
           ]
         },
         "outputs": [
-          "One 0/1 column per category value"
+          "One 0/1 column for each category value"
         ],
         "related": [
           "core.encode_levels"
         ],
-        "summary_plain": "Turns a category such as region into one yes/no column per value, so models that need numbers can use it.",
+        "summary_plain": "Changes a category, such as region, into one yes/no column for each value. Then models that need numbers can use it.",
         "title": "Categories to yes/no columns",
         "typical_runtime": "instant",
         "use_when": [
@@ -3101,10 +3101,10 @@
     {
       "about": {
         "assumptions": [
-          "The codes never occur as real values"
+          "The codes are never real values"
         ],
         "avoid_when": [
-          "Every number is a real measurement"
+          "All numbers are real measurements"
         ],
         "data_needs": [
           "Columns with placeholder codes"
@@ -3117,16 +3117,16 @@
           ]
         },
         "outputs": [
-          "The same columns with the codes turned into gaps"
+          "The same columns with gaps in place of the codes"
         ],
         "related": [
           "core.impute"
         ],
-        "summary_plain": "Marks placeholder numbers such as -99 or 9999, which some systems use for 'unknown', as missing.",
+        "summary_plain": "Marks placeholder numbers, such as -99 or 9999, as missing. Some systems use these numbers for 'unknown'.",
         "title": "Placeholder numbers to missing",
         "typical_runtime": "instant",
         "use_when": [
-          "Your source uses codes like -99 for missing values"
+          "Your source uses codes such as -99 for missing values"
         ]
       },
       "effect": {
@@ -3210,37 +3210,37 @@
     {
       "about": {
         "assumptions": [
-          "Spend and sales can be summed; prices and rates are averaged (choose per column)",
-          "Incomplete first and last periods are dropped when full periods are required"
+          "You can add spend and sales together. Prices and rates get an average (select this for each column)",
+          "When the step needs full periods, it removes an incomplete first or last period"
         ],
         "avoid_when": [
-          "Your data already has one row per week or month",
-          "The numbers cannot be added up and averaging would hide what matters"
+          "Your data already has one row for each week or month",
+          "You cannot add the numbers together, and an average hides the important information"
         ],
         "data_needs": [
-          "A date column with a regular rhythm"
+          "A date column with a regular interval"
         ],
         "difficulty": "beginner",
-        "example": "Daily TV spend of 100 every day becomes 700 for the week ending Sunday.",
-        "expert_notes": "Group-by on the time coordinate at the target frequency (pandas offset alias); `how` per variable (sum, mean, last); `full_periods_only` drops partial bins.",
+        "example": "If the daily TV spend is 100 every day, the week that ends on Sunday gets 700.",
+        "expert_notes": "Group-by on the time coordinate at the target frequency (pandas offset alias). `how` for each variable (sum, mean, last). `full_periods_only` removes partial bins.",
         "fits": {
           "goal": [
             "check_data"
           ]
         },
         "outputs": [
-          "The same columns with one row per week or month"
+          "The same columns with one row for each week or month"
         ],
         "related": [
           "core.count_events",
           "core.calendar"
         ],
-        "summary_plain": "Adds up daily (or hourly) numbers into one number per week or month, so every row covers the same length of time.",
+        "summary_plain": "Adds the daily (or hourly) numbers together into one number for each week or month. Each row then covers the same length of time.",
         "title": "Weekly or monthly totals",
         "typical_runtime": "instant",
         "use_when": [
-          "Your data is daily but you plan and report by week or month",
-          "A model expects weekly data"
+          "Your data is daily, but you plan and report by week or month",
+          "A model needs weekly data"
         ]
       },
       "dim_params": [
@@ -3334,17 +3334,17 @@
     {
       "about": {
         "assumptions": [
-          "The shape and its settings are fixed by you, not learned from the data"
+          "You set the shape and its settings. The model does not learn them from the data"
         ],
         "avoid_when": [
-          "The model learns saturation itself (the Bayesian MMM does)"
+          "The model learns saturation itself (the Bayesian MMM does this)"
         ],
         "data_needs": [
           "Media spend or exposure"
         ],
         "difficulty": "intermediate",
-        "example": "With half-saturation at 1000, spending 1000 gives half the possible effect.",
-        "expert_notes": "Logistic (lam), Hill (slope, half) or Michaelis-Menten curves applied element-wise.",
+        "example": "With half-saturation at 1000, a spend of 1000 gives half of the maximum effect.",
+        "expert_notes": "Logistic (lam), Hill (slope, half) or Michaelis-Menten curves, applied element by element.",
         "fits": {
           "goal": [
             "explain_marketing",
@@ -3358,11 +3358,11 @@
           "core.adstock",
           "mmm.bayesian"
         ],
-        "summary_plain": "Bends spend so that each extra unit of money adds a little less than the one before, as happens when a channel gets saturated.",
+        "summary_plain": "Bends spend so that each extra unit of money adds a little less than the unit before. This is what occurs when a channel is saturated.",
         "title": "Diminishing returns",
         "typical_runtime": "instant",
         "use_when": [
-          "You model media with a simple model and need diminishing returns"
+          "You model media with a simple model and you need diminishing returns"
         ]
       },
       "dim_params": [
@@ -3533,7 +3533,7 @@
     {
       "about": {
         "assumptions": [
-          "Empty combinations can be dropped and are remembered so they can be restored"
+          "The step can remove empty combinations. It keeps a record of them, so you can put them back"
         ],
         "avoid_when": [
           "The model can use the grid directly"
@@ -3554,11 +3554,11 @@
         "related": [
           "core.unstack"
         ],
-        "summary_plain": "Combines several dimensions, such as market and product, into one list of cells.",
+        "summary_plain": "Combines two or more dimensions, such as market and product, into one list of cells.",
         "title": "Combine dimensions",
         "typical_runtime": "instant",
         "use_when": [
-          "A model works on a flat list of cells instead of a grid"
+          "A model works on a flat list of cells, not on a grid"
         ]
       },
       "dim_params": [
@@ -3610,16 +3610,16 @@
     {
       "about": {
         "assumptions": [
-          "Average and spread are learned on the training data only"
+          "The step learns the average and the spread from the training data only"
         ],
         "avoid_when": [
-          "Zero must keep its meaning (spend of zero should stay zero)"
+          "Zero must keep its meaning (a spend of zero must stay zero)"
         ],
         "data_needs": [
           "Numeric columns"
         ],
         "difficulty": "beginner",
-        "example": "Temperatures averaging 15 with spread 5 make 20 degrees become 1.0.",
+        "example": "If temperatures have an average of 15 and a spread of 5, 20 degrees becomes 1.0.",
         "fits": {
           "goal": [
             "check_data"
@@ -3631,11 +3631,11 @@
         "related": [
           "core.mean_scale"
         ],
-        "summary_plain": "Shifts each series so its average is zero and stretches it so its typical spread is one.",
+        "summary_plain": "Moves each series so that its average is zero, and stretches it so that its typical spread is one.",
         "title": "Centre and scale",
         "typical_runtime": "instant",
         "use_when": [
-          "You compare the size of effects across inputs measured in different units"
+          "You compare the size of effects across inputs that have different units"
         ]
       },
       "dim_params": [
@@ -3743,28 +3743,28 @@
     {
       "about": {
         "assumptions": [
-          "Padding cells are marked as missing or by a mask"
+          "Missing values or a mask mark the padding cells"
         ],
         "avoid_when": [
-          "Every group has the same number of rows and the model expects a grid"
+          "All groups have the same number of rows and the model needs a grid"
         ],
         "data_needs": [
           "A group dimension (customer) and a position dimension (trip number)"
         ],
         "difficulty": "intermediate",
-        "example": "Household 1 with 3 trips and household 2 with 1 trip becomes 4 rows.",
+        "example": "Household 1 with 3 trips and household 2 with 1 trip become 4 rows.",
         "fits": {
           "goal": [
             "check_data"
           ]
         },
         "outputs": [
-          "The same values with one row per observation and a group index"
+          "The same values with one row for each observation and a group index"
         ],
         "related": [
           "core.to_padded"
         ],
-        "summary_plain": "Rearranges a table where each group's rows sit side by side into one row per observation, dropping the empty padding.",
+        "summary_plain": "Changes a table where the rows of each group are side by side into one row for each observation. It removes the empty padding.",
         "title": "One row per observation",
         "typical_runtime": "instant",
         "use_when": [
@@ -3902,32 +3902,32 @@
     {
       "about": {
         "assumptions": [
-          "Gaps are marked so the model can skip them"
+          "The gaps have a mark, so the model can ignore them"
         ],
         "avoid_when": [
           "Your data is already a grid"
         ],
         "data_needs": [
-          "A group column and an order within each group"
+          "A group column and an order in each group"
         ],
         "difficulty": "intermediate",
-        "example": "Households with 3 and 1 trips become a 2 by 3 grid with two empty cells.",
+        "example": "Households with 3 trips and 1 trip become a 2 by 3 grid with two empty cells.",
         "fits": {
           "goal": [
             "check_data"
           ]
         },
         "outputs": [
-          "A grid of groups by position plus a mask of the real cells"
+          "A grid of groups by position, and a mask of the real cells"
         ],
         "related": [
           "core.to_long"
         ],
-        "summary_plain": "Lines up each group's rows side by side in a grid, filling short groups with gaps that are marked as missing.",
-        "title": "Line groups up side by side",
+        "summary_plain": "Puts the rows of each group side by side in a grid. It fills short groups with gaps and marks the gaps as missing.",
+        "title": "Put groups side by side",
         "typical_runtime": "instant",
         "use_when": [
-          "A model expects a grid of groups by position, such as households by trip"
+          "A model needs a grid of groups by position, such as households by trip"
         ]
       },
       "dim_params": [
@@ -4068,7 +4068,7 @@
           "The drift continues at the same rate into the future"
         ],
         "avoid_when": [
-          "The trend changes direction often (use a flexible trend model)"
+          "The trend changes direction frequently (use a flexible trend model)"
         ],
         "data_needs": [
           "A regular date column"
@@ -4087,11 +4087,11 @@
           "core.fourier",
           "ts.hsgp_trend"
         ],
-        "summary_plain": "Adds a column that counts up over time, so a model can capture a steady rise or fall.",
+        "summary_plain": "Adds a column that counts up over time, so a model can show a steady increase or decrease.",
         "title": "Steady drift over time",
         "typical_runtime": "instant",
         "use_when": [
-          "Your result grows or shrinks steadily"
+          "Your result increases or decreases steadily"
         ]
       },
       "dim_params": [
@@ -4164,13 +4164,13 @@
     {
       "about": {
         "assumptions": [
-          "The parts of every combined label are known"
+          "The parts of each combined label are known"
         ],
         "avoid_when": [
-          "Nothing was stacked"
+          "No step stacked the dimensions"
         ],
         "data_needs": [
-          "A dimension created by stacking"
+          "A dimension that a stack step made"
         ],
         "difficulty": "intermediate",
         "example": "12 market-product cells become 3 markets by 4 products.",
@@ -4185,11 +4185,11 @@
         "related": [
           "core.stack"
         ],
-        "summary_plain": "Splits a combined dimension back into its parts, for example market-product cells back into markets and products.",
+        "summary_plain": "Divides a combined dimension back into its parts. For example, market-product cells become markets and products again.",
         "title": "Split a combined dimension",
         "typical_runtime": "instant",
         "use_when": [
-          "You stacked dimensions earlier and need the grid back"
+          "You stacked dimensions in an earlier step and you need the grid again"
         ]
       },
       "dim_params": [

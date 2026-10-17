@@ -50,7 +50,8 @@ def _dataset(inp: RecipeInput, s: DataOverviewSettings) -> xr.Dataset:
     title="Data overview",
     settings=DataOverviewSettings,
     persona="both",
-    summary="Every variable over time per group, where values are missing, and group sizes.",
+    summary="Each variable over time for each group, the missing values and the size of each "
+    "group.",
 )
 def data_overview(inp: RecipeInput, s: DataOverviewSettings) -> Figure:
     """Series per variable, a missingness heatmap and observations per group."""
@@ -166,8 +167,8 @@ def data_overview(inp: RecipeInput, s: DataOverviewSettings) -> Figure:
                 .properties(width=s.width // 2, height=18 * len(groups), title="Group sizes")
             )
             sizes_txt = (
-                f" Groups ({facet}) range from {int(groups.n.min())} to {int(groups.n.max())} "
-                f"observed values of {names[0]}."
+                f" The groups ({facet}) have from {int(groups.n.min())} to "
+                f"{int(groups.n.max())} observed values of {names[0]}."
             )
     worst = miss_frame.groupby("variable")["missing"].mean().sort_values(ascending=False)
     if worst.iloc[0] > 0:
@@ -176,10 +177,10 @@ def data_overview(inp: RecipeInput, s: DataOverviewSettings) -> Figure:
         )
     else:
         miss_txt = " No values are missing."
-    agg_txt = f" Values are summed over {', '.join(sorted(summed))}." if summed else ""
+    agg_txt = f" The values show the sum over {', '.join(sorted(summed))}." if summed else ""
     caption = (
         f"Each panel shows one variable over {x_dim}"
-        + (f", one line per {facet}" if facet else "")
+        + (f", with one line for each {facet}" if facet else "")
         + "."
         + agg_txt
         + miss_txt
