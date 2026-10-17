@@ -5,6 +5,66 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.5.0] — M3.5: Workflows, governance, explorers, mmm-framework — 2026-10-16
+
+Analyses can now be automated and models held to written rules before anyone relies on
+them. A workflow chains statistical tests, data processing, train/test plans, searches and
+model fits into a versioned, scheduled pipeline; a governance policy says which checks a
+model must pass (including null tests that show it beats noise) and whether a second person
+must approve it; and the Data and Model Explorers show what is in the data and in the fit.
+mmm-framework is now the only marketing-mix engine, with budget optimisation built on its
+planning module, and twelve statsmodels time-series models join the catalog. Everything was
+verified on a laptop against a live local stack (the GCS shim, embedded Postgres, the
+`local-process` executor); real Google Cloud, Docker and human testers are still to come
+(see Known gaps). In summary:
+
+- **workflows** (`mapi-workflows`, migration `0011`): a declarative `WorkflowSpec` (a DAG of
+  51 typed nodes: statistical tests, transforms, splitters, searches, model fit, backtest,
+  evaluate, compare, select, governance, report, `branch.if` with a safe expression language
+  and plain-language explanations, sub-workflows) run by the server's orchestrator with
+  per-node child runs in the sandbox, server-sent events, caching of unchanged nodes, cost
+  roll-up, cron schedules and new-dataset-version triggers. A gallery of templates: time-series
+  readiness to ARIMAX (seasonal and ordinary differencing decided by ADF, KPSS, Phillips-Perron
+  and Zivot-Andrews with an over-differencing guard, an AIC search of the AR and MA orders,
+  an expanding-window backtest against naive benchmarks, selection and governance), VAR or VECM
+  by the Johansen rank, the governed marketing mix and a forecast bake-off. The web app has a
+  visual workflow builder (React Flow), a live run monitor and Guided recipes.
+- **governance** (migration `0012`): tenant- and project-scoped, versioned policies over 12
+  checks (shuffled-driver permutation test, noise-placebo drivers, time-shifted drivers,
+  beats naive, holdout accuracy, residual whiteness, rolling parameter stability, sign
+  constraints, prior sensitivity, parameter recovery, convergence, data quality); a
+  validation state machine; second-person approval by a member with the `reviewer`
+  capability (never the submitter); a promotion gate (`NOT_VALIDATED`) that checks the
+  validation covered every gating policy as it stands now; HTML and JSON evidence packs;
+  policy editor and review queue in the web app.
+- **explorers**: the Data Explorer (13 sections: profile, distributions, time plots,
+  missingness, outliers, correlations, prewhitened cross-correlation with the KPI by lag,
+  ACF/PACF, stationarity, STL and seasonal strength, VIF, group comparisons, data-quality
+  warnings) and the Model Explorer (parameters, diagnostics, fit, residual tests,
+  contributions, response curves, IRF/FEVD, forecasts, backtests, side-by-side comparison,
+  governance evidence, lineage), computed in the sandbox (`explore` run kind).
+- **models**: `mmm.bayesian` and `mmm.frequentist` on `mmm-framework==1.5.0` (national and
+  geo/product panels, MFF ingest with mmm-framework's semantics, business priors, lift-test
+  calibration, response grids, counterfactuals, scorecard) and budget plans through
+  `POST …:optimize` (the `optimize` run kind: allocation, efficient frontier, chance of beating
+  the current plan) in Expert and Guided mode. `mapi-plugin-statsmodels`: `ts.sarimax`,
+  `arima`, `var`, `vecm`, `varmax`, `ecm`, `ardl`, `ets`, `unobserved_components`,
+  `dynamic_factor`, `markov_switching` and `theta`, with future exogenous drivers, quantile
+  intervals, IRF/FEVD and cointegration rank selection.
+- **About cards and Help me choose**: every model, step, split, template, workflow node,
+  governance check and dataset carries a plain-language About card (the catalog refuses
+  items without one); a chooser asks a few questions and ranks what fits.
+- **client, CLI and docs**: client calls and `mapi workflows`, `mapi governance`,
+  `mapi validations`, `mapi explore`, `mapi optimize`, `mapi choose` and `mapi about`; the v0.5
+  documentation site (workflows, governance, null tests, explorers, mmm-framework, the
+  workflow cookbook, generated node and check references); a generated
+  `THIRD-PARTY-NOTICES.md` shipped in every image.
+- **removed** (breaking): Atlas (`mapi_client.atlas`), BayesInsight (importer, plugin, ingest
+  preset, route), `mmm.hierarchical_geo` and the pymc-marketing adapter; see Removed below.
+
+The M3.5 review found 46 defects (conformance and UX, security, statistics, reliability);
+all were fixed before the release, each with a regression test (the Fixed sections below).
+
 ### Added
 - **spec**: the M3.5 contracts for workflows, governance, explorers, budget optimisation and
   About cards, shared by the server, runner, plugin, web and client components. The contract
@@ -695,6 +755,47 @@ milestone releases are tagged on `main`.
   guide were captured again on the integrated stack: the shuffled-driver test now passes on
   the cookbook's ARIMAX (p = 0.048) instead of failing it, and the note about the old null's
   weakness on random walks is gone.
+
+### Known gaps
+- **No human testers yet.** No non-technical user has tried the Guided recipes, Help me
+  choose or the About cards, and no reviewer has used the approval screens on real models.
+  The M3 tester protocol applies, with the readiness recipe as an extra task.
+- **Real Google Cloud and Docker are unverified.** Every workflow node, validation,
+  exploration and optimisation ran on the `local-process` executor against the GCS shim. The
+  images (in particular `base-bayes` with mmm-framework, JAX and nutpie, and `base-forecast`
+  with statsmodels and the workflow runtime), the `docker` and `docker-gvisor` executors and
+  Cloud Run were never run. Routing a workflow node to the image of its model's plugin is
+  tested with fakes only, and a node whose models live in different images is not refused.
+  The licence files and notices the images copy are checked statically.
+- **mmm-framework's extensions are not exposed**: `mmm.nested` (nested and mediated effects)
+  and `mmm.multivariate` (several outcomes, cross-product effects) are not in the catalog.
+  Partial spend-cut lift tests are skipped with the reason, because mmm-framework's marginal
+  ROAS estimand only takes spend increases.
+- **Plotly static rendering** still needs kaleido and a system Chrome and has not run in an
+  image (`MAPI_RENDER_PLOTLY_ENABLED`); Vega-Lite renders out of the box.
+- The null tests' size and power were simulated on statsmodels, regression and a small PyMC
+  channel model, not on `mmm.bayesian` or `mmm.frequentist` (minutes per refit); they share the
+  same code paths. The noise-regressor share is now measured against the real drivers'
+  effect, so existing 2%/5% limits are stricter for models with a small media share; tuned
+  policies may want a review.
+- The Data Explorer's prewhitened cross-correlation (the new default) hides a driver whose
+  spend follows a fixed periodic flighting pattern; the raw view is one switch away.
+- Child runs a workflow's orchestrator starts are bounded by the active-run limit and the
+  dispatcher's per-tenant concurrency and vCPU budgets, but not by the per-token admission
+  quotas, which need a request. Schedules and triggers re-check their creator only when they
+  fire (they pause themselves then); the reason is in the audit log, not in their API
+  representation.
+- `mapi workflows run --watch` and the engine's skip reasons still say "took the then arm";
+  the web monitor and reports use the plain explanations.
+- Help me choose ranks `ts.hsgp_trend` first for a beginner forecasting one series with
+  drivers, although it does not use them (`ts.sarimax` comes first for other experience
+  levels).
+- The licences of a few Python packages with ambiguous metadata come from a hand-kept table in
+  `scripts/third_party_notices.py`; re-check it when the lock bumps one of them.
+- The documentation's captured terminal outputs are kept in step by hand, and the Model
+  Explorer comparison screenshot still shows a Diebold-Mariano verdict for forecasters.
+- Timing-sensitive tests can fail once on a fully loaded laptop (the canvas drag test of the
+  workflow editor, the runner's checkpointed-chain test) and pass when run again.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

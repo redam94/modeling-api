@@ -159,9 +159,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),
     http.get(`${API}/readyz`, () =>
-      HttpResponse.json({ status: "ok", version: "0.4.0-mock", contract_version: "0.1", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
+      HttpResponse.json({ status: "ok", version: "0.5.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
-    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.4.0-mock", contract_version: "0.1" })),
+    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.5.0-mock", contract_version: "0.2" })),
     http.get(`${API}/v1/catalog`, () => HttpResponse.json(fx.catalog)),
     http.get(`${API}/v1/schemas/:name`, ({ params }) =>
       params.name === "modelspec.json"
