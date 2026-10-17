@@ -13431,7 +13431,8 @@ export interface components {
          *     zarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the
          *     ``score.zarr.zip`` output for everything). ``conditioning`` (forecasts): what the
          *     forecast was conditioned on - the end of the fitted history and the actuals the request
-         *     supplied (:mod:`mapi_spec.actuals`).
+         *     supplied (:mod:`mapi_spec.actuals`); ``actuals`` holds those values next to the
+         *     predictions they compare with.
          * @example {
          *       "tables": [
          *         {
@@ -13515,6 +13516,11 @@ export interface components {
          *     }
          */
         ScoreSummary: {
+            /**
+             * Actuals
+             * @description Forecasts with actuals: the actuals the request supplied, as tables named after the prediction variable they compare with (its coordinate columns, then `actual`), in the output's names and original units. Predictions on those periods are one-step-ahead: what the model expected before seeing each actual
+             */
+            actuals?: components["schemas"]["ScoreSummaryTable"][];
             conditioning?: components["schemas"]["ForecastConditioning"] | null;
             /** Tables */
             tables?: components["schemas"]["ScoreSummaryTable"][];
