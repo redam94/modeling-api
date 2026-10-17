@@ -24,13 +24,13 @@ export const TONE_NODE: Record<Tone, string> = {
 
 export const NODE_STATUS_META: Record<NodeRunStatus, { label: string; tone: Tone; plain: string }> = {
   pending: { label: "Waiting", tone: "neutral", plain: "Has not started yet" },
-  queued: { label: "Queued", tone: "active", plain: "Waiting for a worker" },
+  queued: { label: "Queued", tone: "active", plain: "Waits for a worker" },
   running: { label: "Running", tone: "active", plain: "Running now" },
   succeeded: { label: "Done", tone: "success", plain: "Finished" },
-  cached: { label: "Reused", tone: "success", plain: "Nothing changed, so the earlier result was reused" },
+  cached: { label: "Reused", tone: "success", plain: "Nothing changed. The server used the earlier result again" },
   skipped: { label: "Skipped", tone: "muted", plain: "Not needed on this path" },
   failed: { label: "Failed", tone: "danger", plain: "Stopped with an error" },
-  cancelled: { label: "Cancelled", tone: "muted", plain: "Stopped by a cancel" },
+  cancelled: { label: "Cancelled", tone: "muted", plain: "Stopped because the run was cancelled" },
 };
 
 export const RUN_STATUS_META: Record<WorkflowRunStatus, { label: string; tone: Tone }> = {
@@ -43,7 +43,7 @@ export const RUN_STATUS_META: Record<WorkflowRunStatus, { label: string; tone: T
 };
 
 export const TRIGGER_LABEL: Record<WorkflowTriggerEvent, string> = {
-  manual: "Started by hand",
+  manual: "Started manually",
   schedule: "On a schedule",
   "dataset.version.created": "New data arrived",
   parent: "From a parent workflow",

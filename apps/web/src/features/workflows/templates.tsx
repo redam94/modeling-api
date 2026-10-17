@@ -62,7 +62,7 @@ export function TemplateGallery({ guided }: { guided: boolean }) {
                           </Link>
                         </Button>
                       ) : (
-                        <Button size="sm" disabled title="Running a workflow needs the runner role">
+                        <Button size="sm" disabled title="You need the runner role to run a workflow.">
                           <Play /> Run on my data
                         </Button>
                       )}
@@ -79,7 +79,7 @@ export function TemplateGallery({ guided }: { guided: boolean }) {
               ))}
           </div>
         ) : (
-          <EmptyState title="No templates">The server lists no workflow templates.</EmptyState>
+          <EmptyState title="No templates">The server has no workflow templates to show.</EmptyState>
         )
       }
     </QueryView>
@@ -135,7 +135,7 @@ export function TemplateWizard({ templateId, initialData }: { templateId: string
   const defaultName = doc?.metadata.name ?? "";
   const effectiveName = name ?? defaultName;
   const taken = workflows.data?.items.some((w) => w.name === effectiveName) ?? false;
-  const nameError = !NAME_RE.test(effectiveName) ? "Lowercase letters, digits and -, starting and ending with a letter or digit." : taken ? "The project already has a workflow with this name." : null;
+  const nameError = !NAME_RE.test(effectiveName) ? "The name is not correct. Use lowercase letters, digits and -. Start and end with a letter or a digit." : taken ? "The project already has a workflow with this name. Type a different name." : null;
   const missing = doc ? missingParams(doc.params ?? {}, params) : [];
   const project = ws.current?.project.project_id ?? "default";
 
@@ -181,25 +181,25 @@ export function TemplateWizard({ templateId, initialData }: { templateId: string
       {step === 0 ? (
         <div className="grid gap-4">
           <AboutCard framed about={t.about} headingLevel={2} />
-          <Field label="Workflow name" htmlFor="wf-name" error={nameError} hint="Used in references: workflow://<project>/<name>. It cannot be changed later.">
+          <Field label="Workflow name" htmlFor="wf-name" error={nameError} hint="References use this name: workflow://<project>/<name>. You cannot change it later.">
             <Input id="wf-name" className="font-mono" value={effectiveName} onChange={(e) => setName(e.target.value.toLowerCase())} />
           </Field>
         </div>
       ) : step === 1 ? (
         <Card>
           <CardContent className="grid gap-3 pt-4">
-            <p className="text-[13px] text-muted-foreground">These become the workflow's defaults; every run can still change them.</p>
+            <p className="text-[13px] text-muted-foreground">These values become the defaults of the workflow. Each run can change them.</p>
             <ParamsForm doc={doc} value={params} onChange={setParams} />
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardContent className="grid gap-4 pt-4">
-            <p className="text-[13px] text-muted-foreground">Bind the data the workflow runs on by default (schedules and runs started without data use it).</p>
+            <p className="text-[13px] text-muted-foreground">Select the default data for the workflow. Schedules use this data. Runs that start with no data also use it.</p>
             <InputsForm inputs={doc.inputs ?? {}} value={inputs} onChange={setInputs} />
             <label className="flex items-center gap-2 text-[13px]">
               <Checkbox checked={runNow} onCheckedChange={(c) => setRunNow(c === true)} />
-              Open the runs tab to start a run straight away
+              Open the Runs tab to start a run immediately
             </label>
           </CardContent>
         </Card>
@@ -299,7 +299,7 @@ export function RecipeRunner({ templateId, initialData }: { templateId: string; 
           ) : null}
           {Object.keys(optionalParams).length ? (
             <details className="rounded-md border p-3">
-              <summary className="cursor-pointer text-sm font-semibold">Fine-tune (optional: the defaults suit most data)</summary>
+              <summary className="cursor-pointer text-sm font-semibold">Fine-tune (optional: the defaults are correct for most data)</summary>
               <div className="mt-3">
                 <ParamsForm
                   doc={{ params: optionalParams }}
@@ -311,12 +311,12 @@ export function RecipeRunner({ templateId, initialData }: { templateId: string; 
           ) : null}
           {existing ? (
             <p className="text-xs text-muted-foreground">
-              Runs as your project's workflow <span className="font-mono">{existing.name}</span>.
+              This recipe runs as the workflow <span className="font-mono">{existing.name}</span> of your project.
             </p>
           ) : null}
           {submitted && missing.length ? (
             <p role="alert" className="text-[13px] text-destructive">
-              Still needed: {missing.join(", ")}.
+              Still needed: {missing.join(", ")}. Give a value for each item.
             </p>
           ) : null}
           {error ? <ErrorNotice error={error} title="The recipe did not start" /> : null}

@@ -76,7 +76,7 @@ export function ExplorerNav({ entries, current, onSelect, label }: { entries: re
 
 /** The state of the explore run behind the page (queued, running, done, failed). */
 export function RunBanner({ exploration, error, title }: { exploration: { done: boolean; run: Run } | undefined; error?: unknown; title: string }) {
-  if (error) return <ErrorNotice error={error} title="The explore run could not be loaded" />;
+  if (error) return <ErrorNotice error={error} title="The app could not load the explore run" />;
   if (!exploration) return null;
   const run = exploration.run;
   if (exploration.done && run.state === "succeeded") return null;
@@ -126,11 +126,11 @@ export function SectionGate({ state, isPending, error, notComputed, children }: 
     return (
       <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-5 text-[13px]">
         <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
-        <p>{state.message ?? "This view could not be computed."} The run&apos;s warnings have the technical detail.</p>
+        <p>{state.message ?? "The sandbox could not compute this view."} For the technical details, look at the warnings of the run.</p>
       </div>
     );
   }
-  if (error) return <ErrorNotice error={error} title="The view could not be loaded" />;
+  if (error) return <ErrorNotice error={error} title="The app could not load the view" />;
   if (isPending) {
     return (
       <div className="grid gap-3" aria-busy="true" aria-label="Loading the view">
@@ -156,7 +156,7 @@ export function RecipePlots({ target, state, runId, expert }: { target: Explorer
       <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium select-none hover:bg-accent/40">All series (platform plots, export-ready)</summary>
       {open ? (
         <div className="grid gap-4 border-t p-4">
-          {plots.isError ? <ErrorNotice error={plots.error} title="The plots could not be loaded" /> : null}
+          {plots.isError ? <ErrorNotice error={plots.error} title="The app could not load the plots" /> : null}
           {plots.isPending ? <Skeleton className="h-60" /> : null}
           {(plots.data ?? []).map((p) => (
             <div key={p.id} className="grid gap-1">

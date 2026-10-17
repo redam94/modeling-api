@@ -68,7 +68,7 @@ export function DatasetRefPicker({ value, onChange, label = "Dataset", required 
     <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <Field label={`${label}${required ? "" : " (optional)"}`} htmlFor={id} {...(hint ? { hint } : {})}>
         <NativeSelect id={id} value={parsed?.base ?? ""} onChange={(e) => onChange(e.target.value ? datasetRef(e.target.value, "latest") : "")}>
-          <option value="">{datasets.isPending ? "Loading datasets…" : datasets.data?.items.length ? "Choose a dataset" : "No datasets yet: upload one first"}</option>
+          <option value="">{datasets.isPending ? "Loading datasets…" : datasets.data?.items.length ? "Choose a dataset" : "No datasets. Upload a dataset first."}</option>
           {(datasets.data?.items ?? []).map((d) => (
             <option key={d.id} value={d.ref}>
               {d.name}
@@ -79,7 +79,7 @@ export function DatasetRefPicker({ value, onChange, label = "Dataset", required 
       </Field>
       <Field label="Version" htmlFor={`${id}-v`}>
         <NativeSelect id={`${id}-v`} value={String(parsed?.version ?? "latest")} disabled={!parsed} onChange={(e) => parsed && onChange(datasetRef(parsed.base, e.target.value === "latest" ? "latest" : Number(e.target.value)))}>
-          <option value="latest">The latest when it runs</option>
+          <option value="latest">The latest version at run time</option>
           {(versions.data?.items ?? [])
             .filter((v) => v.status === "ready")
             .map((v) => (
@@ -103,7 +103,7 @@ export function InputsForm({ inputs, value, onChange }: { inputs: Record<string,
     else delete next[name];
     onChange(next);
   };
-  if (!Object.keys(inputs).length) return <p className="text-[13px] text-muted-foreground">This workflow takes no inputs.</p>;
+  if (!Object.keys(inputs).length) return <p className="text-[13px] text-muted-foreground">This workflow has no inputs.</p>;
   return (
     <div className="grid gap-4">
       {Object.entries(inputs).map(([name, decl]) =>
@@ -117,7 +117,7 @@ export function InputsForm({ inputs, value, onChange }: { inputs: Record<string,
             hint={decl.description ?? (decl.default ? `Default: ${decl.default}` : undefined) ?? undefined}
           />
         ) : (
-          <Field key={name} label={`${name} (${PORT_TYPE_META[decl.type].plain})`} htmlFor={`${idBase}-${name}`} hint={decl.description ?? "A reference such as model://project/name@v3"}>
+          <Field key={name} label={`${name} (${PORT_TYPE_META[decl.type].plain})`} htmlFor={`${idBase}-${name}`} hint={decl.description ?? "Type a reference, for example model://project/name@v3."}>
             <Input id={`${idBase}-${name}`} className="font-mono" value={value[name] ?? ""} placeholder={decl.default ?? ""} onChange={(e) => set(name, e.target.value)} />
           </Field>
         ),

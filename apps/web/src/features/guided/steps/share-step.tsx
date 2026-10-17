@@ -92,7 +92,7 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
               <Rocket aria-hidden className="size-4 text-muted-foreground" /> Put the model live
             </span>
           </CardTitle>
-          <CardDescription>An endpoint gives other tools - a planning spreadsheet, a dashboard, a script - a stable address to ask this model questions. You can replace the model behind it later without breaking them.</CardDescription>
+          <CardDescription>An endpoint gives other tools a stable address to send questions to this model. For example, a planning spreadsheet, a dashboard or a script can use it. Later, you can replace the model behind the endpoint. The tools continue to work.</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -102,7 +102,7 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
               <CheckCircle2 aria-hidden className="size-4 text-success" /> Live at <Mono>{live.ref}</Mono>
             </p>
             <p className="text-[13px] text-muted-foreground">
-              Serving {live.model_ref} (revision {live.revision}){live.overridden ? ", approved by an admin despite the checks to look at" : ""}. The Integrations hub has ready-made code for spreadsheets, notebooks and scripts.
+              The endpoint serves {live.model_ref} (revision {live.revision}).{live.overridden ? " An admin approved it, but some checks need examination." : ""} The Integrations hub has ready-made code for spreadsheets, notebooks and scripts.
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
               <Button asChild size="sm" variant="outline">
@@ -133,17 +133,17 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
                 ) : null}
               </div>
             </div>
-            <Field label="Endpoint name" htmlFor={`${id}-alias`} hint={existing ? `This name is in use: it serves ${existing.model_ref}. Promoting replaces that model.` : "Lower-case letters, digits and dashes. Tools use it to find the model."} error={aliasOk ? undefined : "Use lower-case letters, digits and dashes."}>
+            <Field label="Endpoint name" htmlFor={`${id}-alias`} hint={existing ? `This name is in use. It serves ${existing.model_ref}. If you promote this model, it replaces that model.` : "Use lower-case letters, digits and dashes. Tools use this name to find the model."} error={aliasOk ? undefined : "Use lower-case letters, digits and dashes."}>
               <Input id={`${id}-alias`} value={alias} onChange={(e) => setAlias(e.target.value)} className="max-w-sm font-mono" />
             </Field>
             {gate.outcome === "needs_override" && isAdmin ? (
-              <Field label="Why is it fine to go live anyway?" htmlFor={`${id}-reason`} hint="Kept in the audit log with your name.">
+              <Field label="Why is it fine to go live anyway?" htmlFor={`${id}-reason`} hint="The audit log keeps this reason with your name.">
                 <Textarea id={`${id}-reason`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Holdout error is high because of a one-off promotion in the last weeks." maxLength={1000} />
               </Field>
             ) : null}
             {error ? (
               <div role="alert" className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4 text-[13px]">
-                <p className="font-medium">{error instanceof ApiError && error.code === "OVERRIDE_REQUIRED" ? "A project admin has to approve this model" : error instanceof ApiError && error.code === "PROMOTION_BLOCKED" ? "This model cannot go live" : "That did not work"}</p>
+                <p className="font-medium">{error instanceof ApiError && error.code === "OVERRIDE_REQUIRED" ? "A project admin must approve this model" : error instanceof ApiError && error.code === "PROMOTION_BLOCKED" ? "This model cannot go live" : "The model did not go live"}</p>
                 {problemReasons.length ? <GateReasons reasons={problemReasons} /> : <p className="text-muted-foreground">{errorMessage(error)}</p>}
               </div>
             ) : null}
@@ -154,14 +154,14 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
                     {promote.isPending ? <Spinner /> : <Rocket />} Approve and go live
                   </Button>
                 ) : (
-                  <p className="text-[13px] text-muted-foreground">Send this page to a project admin: they can approve it here.</p>
+                  <p className="text-[13px] text-muted-foreground">Send this page to a project admin. A project admin can approve the model here.</p>
                 )
               ) : (
                 <Button onClick={() => void submit(false)} disabled={!aliasOk || gate.outcome === "blocked" || promote.isPending || !mayPromote}>
                   {promote.isPending ? <Spinner /> : <Rocket />} Go live
                 </Button>
               )}
-              {!mayPromote ? <span className="text-xs text-muted-foreground">Putting a model live needs the admin role.</span> : null}
+              {!mayPromote ? <span className="text-xs text-muted-foreground">You need the admin role to put a model live.</span> : null}
             </div>
           </>
         )}
@@ -200,19 +200,19 @@ function Embed({ mv }: { mv: ModelVersion }) {
               <Link2 aria-hidden className="size-4 text-muted-foreground" /> Share a chart
             </span>
           </CardTitle>
-          <CardDescription>A read-only link to one chart, for a slide, Notion page or dashboard. Anyone with the link can see the chart until it expires; nothing else is shared.</CardDescription>
+          <CardDescription>Make a read-only link to one chart for a slide, a Notion page or a dashboard. All persons with the link can see the chart until the link expires. The link shares nothing else.</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
         {made ? (
           <div className="grid gap-2 rounded-lg border bg-muted/30 p-4" data-testid="embed-link">
-            <p className="text-[13px] font-medium">Your link (shown only now; copy it)</p>
+            <p className="text-[13px] font-medium">Your link. Copy it now. The app shows it only one time.</p>
             <div className="flex min-w-0 items-center gap-2">
               <Mono className="min-w-0 flex-1 truncate rounded border bg-card px-2 py-1.5">{made.url}</Mono>
               <CopyButton value={made.url} label="Copy the link" />
             </div>
             <p className="text-xs text-muted-foreground">
-              Expires {new Date(made.embed.expires_at).toLocaleDateString("en", { dateStyle: "medium" })}. You can revoke it under{" "}
+              The link expires on {new Date(made.embed.expires_at).toLocaleDateString("en", { dateStyle: "medium" })}. You can cancel it under{" "}
               <Link to="/integrations" search={{ tab: "sharing" }} className="underline underline-offset-2">
                 Plots and links
               </Link>{" "}
@@ -253,7 +253,7 @@ function Embed({ mv }: { mv: ModelVersion }) {
             </Button>
           </div>
         ) : (
-          <p className="text-[13px] text-muted-foreground">This model has no charts that can be shared as a link.</p>
+          <p className="text-[13px] text-muted-foreground">This model has no charts that you can share as a link.</p>
         )}
         {create.isError ? (
           <p role="alert" className="text-[13px] text-destructive">
@@ -267,7 +267,7 @@ function Embed({ mv }: { mv: ModelVersion }) {
 
 export function ShareStep({ session }: { session: GuidedSession }) {
   const mv = session.modelVersion;
-  if (!mv) return <p className="text-[13px] text-muted-foreground">Fit the model first; sharing uses the fitted model.</p>;
+  if (!mv) return <p className="text-[13px] text-muted-foreground">This analysis has no fitted model. Fit the model to share it.</p>;
   return (
     <div className="grid gap-6">
       <Promote session={session} mv={mv} />
@@ -280,7 +280,7 @@ export function ShareStep({ session }: { session: GuidedSession }) {
                 <SheetIcon aria-hidden className="size-4 text-muted-foreground" /> Connect other tools
               </span>
             </CardTitle>
-            <CardDescription>Google Sheets, BI dashboards, scheduled exports and notifications when a fit finishes.</CardDescription>
+            <CardDescription>Connect Google Sheets and BI dashboards. Set up scheduled exports and notifications when a fit is complete.</CardDescription>
           </div>
           <Badge variant="secondary">Integrations</Badge>
         </CardHeader>

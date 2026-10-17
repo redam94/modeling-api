@@ -200,7 +200,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
             <StreamBadge status={stream.status} terminal={terminal} />
           </span>
         }
-        description={plain ? "Each step of the recipe, in order, with what it found." : `Run ${shortId(run.run_id)} of revision ${run.revision}.`}
+        description={plain ? "The steps of the recipe, in sequence, with the result of each step." : `Run ${shortId(run.run_id)} of revision ${run.revision}.`}
         meta={
           <>
             <span>{TRIGGER_LABEL[run.trigger ?? "manual"]}</span>
@@ -223,7 +223,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
                 variant="outline"
                 onClick={() =>
                   cancel.mutate(run.run_id, {
-                    onSuccess: () => toast.info("Cancelling", "Running steps are stopped; nothing else starts."),
+                    onSuccess: () => toast.info("The run stops", "The server stops the steps that run now. No other step starts."),
                   })
                 }
                 disabled={cancel.isPending}
@@ -279,7 +279,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
             <KeyValues
               items={[
                 ["Data", Object.entries(run.inputs ?? {}).map(([k, v]) => <Mono key={k}>{v}</Mono>)],
-                ["Cost", cost ? <span title={cost.detail}>{cost.text}</span> : terminal ? "Not metered" : "Counted when it finishes"],
+                ["Cost", cost ? <span title={cost.detail}>{cost.text}</span> : terminal ? "Not metered" : "Known when the run finishes"],
                 ["Finished", run.finished_at ? absoluteTime(run.finished_at) : null],
               ]}
             />
@@ -334,7 +334,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
               ))}
             </div>
           ) : (
-            <p className="text-[13px] text-muted-foreground">No decision has been taken yet.</p>
+            <p className="text-[13px] text-muted-foreground">There is no decision yet.</p>
           )}
         </TabsContent>
         <TabsContent value="outputs">
@@ -353,7 +353,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
               )}
             </div>
           ) : (
-            <p className="text-[13px] text-muted-foreground">{terminal ? "This run handed back no outputs." : "Outputs appear when the run finishes."}</p>
+            <p className="text-[13px] text-muted-foreground">{terminal ? "This run gave no outputs." : "The outputs show when the run finishes."}</p>
           )}
         </TabsContent>
         <TabsContent value="events">

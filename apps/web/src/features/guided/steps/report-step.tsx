@@ -33,16 +33,16 @@ import type { GuidedSession } from "../use-session";
 import { baselineShare, channelHeadlines, type ChannelHeadline, type ResponseGrid } from "../whatif";
 
 const CATEGORIES: { id: string; title: string; question: string }[] = [
-  { id: "convergence", title: "Did the model settle?", question: "Whether the estimates are stable enough to read." },
-  { id: "holdout", title: "Does it forecast well?", question: "How it did on weeks it was not shown." },
-  { id: "plausibility", title: "Are the numbers believable?", question: "Returns and shares that would be surprising." },
-  { id: "data", title: "Is the data good enough?", question: "Gaps, history and variation in your data." },
+  { id: "convergence", title: "Did the model settle?", question: "These checks show if the estimates are sufficiently stable to use." },
+  { id: "holdout", title: "Does it forecast well?", question: "These checks show how well the model did on the weeks that it did not see." },
+  { id: "plausibility", title: "Are the numbers believable?", question: "These checks find returns and shares that are not usual." },
+  { id: "data", title: "Is the data good enough?", question: "These checks examine the gaps, the history and the variation in your data." },
 ];
 
 const OVERALL: Record<CheckStatus, { title: string; body: string }> = {
-  pass: { title: "All checks passed", body: "You can rely on these numbers and share them." },
-  warn: { title: "Mostly fine, with something to look at", body: "Read the checks marked 'Check' before you act on the numbers." },
-  fail: { title: "Some checks failed", body: "Fix what the failed checks point to before you use these numbers." },
+  pass: { title: "All checks passed", body: "You can trust these numbers and share them." },
+  warn: { title: "Most checks passed. Examine the other checks.", body: "Read the checks with the status 'Check' before you use the numbers." },
+  fail: { title: "Some checks failed", body: "Correct the problems that the failed checks show before you use these numbers." },
 };
 
 /**
@@ -82,9 +82,9 @@ function FitMoreCarefully({ session, failed }: { session: GuidedSession; failed:
   };
   return (
     <div className="grid gap-2 rounded-lg border p-4" data-testid="fit-more-carefully">
-      <p className="font-medium">{failed ? "The model has not settled yet" : "The model could settle further"}</p>
+      <p className="font-medium">{failed ? "The model is not stable yet" : "The model can become more stable"}</p>
       <p className="text-[13px] text-muted-foreground">
-        Fitting again with longer, more careful sampling usually fixes the checks under &ldquo;Did the model settle?&rdquo;. Your data and beliefs stay as they are; the fit takes about twice as long.
+        A new fit with longer, more careful sampling usually corrects the checks under &ldquo;Did the model settle?&rdquo;. Your data and beliefs do not change. The fit takes about two times as long.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={() => void refit()} disabled={!allowed || busy}>
@@ -243,7 +243,7 @@ function ChannelTable({ rows, grid }: { rows: ChannelHeadline[]; grid: ResponseG
 function ModelPlotFigure({ mv, plot }: { mv: ModelVersion; plot: ModelPlot }) {
   const spec = usePlot(mv.model_id, mv.version, plot.id);
   const data = useModelPlotData(mv.model_id, mv.version, spec.data);
-  if (spec.isError || data.isError) return <ErrorNotice error={spec.error ?? data.error} title={`"${plot.title}" could not be loaded`} />;
+  if (spec.isError || data.isError) return <ErrorNotice error={spec.error ?? data.error} title={`The app could not load "${plot.title}"`} />;
   if (!data.data) return <Skeleton className="h-64" />;
   return (
     <figure className="grid gap-1.5">
@@ -262,7 +262,7 @@ export function ReportStep({ session }: { session: GuidedSession }) {
   if (!session.lastGoodFit) {
     return (
       <EmptyState title="No results yet" action={<Button onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "run" } })}>Fit the model</Button>}>
-        Results appear here once the model has been fitted.
+        This analysis has no results. Fit the model to see the results here.
       </EmptyState>
     );
   }
@@ -276,7 +276,7 @@ export function ReportStep({ session }: { session: GuidedSession }) {
   const stale = session.lastGoodFit.spec_revision !== session.latest.revision;
   return (
     <div className="grid gap-8">
-      {stale ? <p className="rounded-lg border border-info/35 bg-info/8 px-4 py-2 text-[13px]">These results are from before your latest changes. Fit again to update them.</p> : null}
+      {stale ? <p className="rounded-lg border border-info/35 bg-info/8 px-4 py-2 text-[13px]">These results are older than your latest changes. Fit the model again to update them.</p> : null}
       <section aria-labelledby="headline-h" className="grid gap-4">
         <h2 id="headline-h" className="sr-only">
           Headline numbers
@@ -285,10 +285,10 @@ export function ReportStep({ session }: { session: GuidedSession }) {
           {base ? <Figure label="Results driven by media" value={share(1 - base.mean)} detail={`between ${share(1 - base.quantiles[2]!)} and ${share(1 - base.quantiles[0]!)}`} /> : null}
           {best?.roi ? <Figure label="Best return on spend" value={best.channel} detail={`${ratio(best.roi.mean)} back per 1 spent`} /> : null}
           {mape != null ? <Figure label="Forecast error on held-back weeks" value={share(mape)} detail="on average, lower is better" /> : null}
-          {coverage != null ? <Figure label="Weeks inside the 90% range" value={share(coverage)} detail="close to 90% means the ranges are honest" /> : null}
+          {coverage != null ? <Figure label="Weeks inside the 90% range" value={share(coverage)} detail="a value near 90% shows that the ranges are correct" /> : null}
         </div>
         {grid.isPending ? <Skeleton className="h-40" /> : rows.length ? <ChannelTable rows={rows} grid={grid.data!} /> : null}
-        {rows.length ? <p className="text-xs text-muted-foreground">Each number is the model's best estimate; the range in brackets is where the true value lies with 90% probability.</p> : null}
+        {rows.length ? <p className="text-xs text-muted-foreground">Each number is the best estimate of the model. The range in brackets contains the true value with 90% probability.</p> : null}
       </section>
       {shown.length ? (
         <section aria-label="Charts" className="grid gap-6 xl:grid-cols-2">

@@ -198,9 +198,9 @@ export function freshNodeId(doc: WorkflowDoc, impl: string): string {
 }
 
 export function nodeIdProblem(doc: WorkflowDoc, id: string, current?: string): string | null {
-  if (!NODE_ID_RE.test(id)) return "Use lowercase letters, digits and _, starting with a letter (up to 63).";
-  if (RESERVED_IDS.has(id)) return `"${id}" is reserved.`;
-  if (id !== current && doc.nodes.some((n) => n.id === id)) return `Another node is called "${id}".`;
+  if (!NODE_ID_RE.test(id)) return "The id is not correct. Use lowercase letters, digits and _. Start with a letter. The maximum is 63 characters.";
+  if (RESERVED_IDS.has(id)) return `"${id}" is a reserved id. Type a different id.`;
+  if (id !== current && doc.nodes.some((n) => n.id === id)) return `Another node has the id "${id}". Type a different id.`;
   return null;
 }
 
@@ -422,7 +422,7 @@ export function asWorkflowDoc(value: unknown): ParsedDoc {
     const node = n as Record<string, unknown>;
     if (typeof node.id !== "string" || !node.id) return { ok: false, error: `nodes[${i}] needs an id.` };
     if (typeof node.use !== "string" || !node.use) return { ok: false, error: `node ${node.id} needs use.` };
-    if (seen.has(node.id)) return { ok: false, error: `Two nodes are called ${node.id}.` };
+    if (seen.has(node.id)) return { ok: false, error: `Two nodes have the id ${node.id}. Give each node a different id.` };
     seen.add(node.id);
     if (node.inputs !== undefined && (typeof node.inputs !== "object" || node.inputs === null || Array.isArray(node.inputs))) {
       return { ok: false, error: `node ${node.id}: inputs must be a mapping.` };

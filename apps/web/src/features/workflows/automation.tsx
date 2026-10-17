@@ -54,8 +54,8 @@ function fmtIn(ms: number, tz: string): string {
 export function CronEditor({ cron, timezone, onCron, onTimezone }: { cron: string; timezone: string; onCron: (v: string) => void; onTimezone: (v: string) => void }) {
   const id = useId();
   const zones = useMemo(timeZones, []);
-  const problem = cron.trim() ? cronProblem(cron) : "Write a schedule or pick one above.";
-  const tzProblem = isTimeZone(timezone) ? null : "Unknown time zone.";
+  const problem = cron.trim() ? cronProblem(cron) : "There is no schedule. Type a schedule, or select one above.";
+  const tzProblem = isTimeZone(timezone) ? null : "The time zone is not known. Select a time zone from the list.";
   const preview = useMemo(() => {
     if (problem || tzProblem) return [];
     try {
@@ -74,10 +74,10 @@ export function CronEditor({ cron, timezone, onCron, onTimezone }: { cron: strin
         ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Cron expression" htmlFor={`${id}-cron`} error={cron.trim() ? problem : null} hint="minute hour day month weekday, e.g. 0 6 * * 1; or @daily. At most every 15 minutes.">
+        <Field label="Cron expression" htmlFor={`${id}-cron`} error={cron.trim() ? problem : null} hint="Type minute hour day month weekday, for example 0 6 * * 1. You can also type @daily. The minimum interval is 15 minutes.">
           <Input id={`${id}-cron`} className="font-mono" value={cron} onChange={(e) => onCron(e.target.value)} spellCheck={false} />
         </Field>
-        <Field label="Time zone" htmlFor={`${id}-tz`} error={tzProblem} hint="Daylight-saving changes are handled: a skipped time does not fire, a repeated one fires once.">
+        <Field label="Time zone" htmlFor={`${id}-tz`} error={tzProblem} hint="The schedule includes daylight-saving changes. A time that the clock skips does not start a run. A time that occurs two times starts one run.">
           <Input id={`${id}-tz`} list={`${id}-zones`} value={timezone} onChange={(e) => onTimezone(e.target.value)} spellCheck={false} />
           <datalist id={`${id}-zones`}>
             {zones.map((z) => (
@@ -107,7 +107,7 @@ function NewSchedule({ workflowId, doc, onDone }: { workflowId: string; doc: Wor
   const [description, setDescription] = useState("");
   const dataInput = Object.entries(doc.inputs ?? {}).find(([, d]) => d.type === "dataset")?.[0];
   const [data, setData] = useState(dataInput ? (doc.inputs?.[dataInput]?.default ?? "") : "");
-  const bad = cronProblem(cron) ?? (isTimeZone(timezone) ? null : "Unknown time zone.");
+  const bad = cronProblem(cron) ?? (isTimeZone(timezone) ? null : "The time zone is not known. Select a time zone from the list.");
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (bad) return;
@@ -124,7 +124,7 @@ function NewSchedule({ workflowId, doc, onDone }: { workflowId: string; doc: Wor
   return (
     <form className="grid gap-4 rounded-lg border p-4" onSubmit={submit} aria-label="New schedule">
       <CronEditor cron={cron} timezone={timezone} onCron={setCron} onTimezone={setTimezone} />
-      {dataInput ? <DatasetRefPicker value={data} onChange={setData} label="Data for each run" required={!doc.inputs?.[dataInput]?.default} hint="Pick “The latest when it runs” to always use the newest version." /> : null}
+      {dataInput ? <DatasetRefPicker value={data} onChange={setData} label="Data for each run" required={!doc.inputs?.[dataInput]?.default} hint="To always use the newest version, select “The latest version at run time”." /> : null}
       <Field label="Description (optional)" htmlFor="sched-desc">
         <Input id="sched-desc" value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} placeholder="Weekly refresh" />
       </Field>
@@ -158,7 +158,7 @@ function NewTrigger({ workflowId, doc, onDone }: { workflowId: string; doc: Work
         },
       });
   };
-  if (!dataInputs.length) return <p className="text-[13px] text-muted-foreground">This workflow has no dataset input, so a new dataset version cannot start it.</p>;
+  if (!dataInputs.length) return <p className="text-[13px] text-muted-foreground">This workflow has no dataset input. Thus a new dataset version cannot start it.</p>;
   return (
     <form className="grid gap-4 rounded-lg border p-4" onSubmit={submit} aria-label="New trigger">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -172,7 +172,7 @@ function NewTrigger({ workflowId, doc, onDone }: { workflowId: string; doc: Work
             ))}
           </NativeSelect>
         </Field>
-        <Field label="Run with it as" htmlFor="trg-input">
+        <Field label="Use the dataset as" htmlFor="trg-input">
           <NativeSelect id="trg-input" value={input} onChange={(e) => setInput(e.target.value)}>
             {dataInputs.map((k) => (
               <option key={k} value={k}>
@@ -182,7 +182,7 @@ function NewTrigger({ workflowId, doc, onDone }: { workflowId: string; doc: Work
           </NativeSelect>
         </Field>
       </div>
-      <Field label="Wait for more uploads (seconds)" htmlFor="trg-debounce" hint="Versions that arrive within this time start one run, on the newest.">
+      <Field label="Wait for more uploads (seconds)" htmlFor="trg-debounce" hint="All versions that arrive in this time start only one run. The run uses the newest version.">
         <Input id="trg-debounce" type="number" min={0} max={86400} value={debounce} onChange={(e) => setDebounce(Math.max(0, Number(e.target.value) || 0))} />
       </Field>
       {create.isError ? <ErrorNotice error={create.error} title="The trigger was not added" /> : null}
@@ -212,7 +212,7 @@ export function AutomationPanel({ workflowId, doc }: { workflowId: string; doc: 
         <CardHeader>
           <div>
             <CardTitle>Schedules</CardTitle>
-            <CardDescription>Run on a timetable, in a time zone. Runs count against the project's quotas like any other.</CardDescription>
+            <CardDescription>Run this workflow on a timetable, in a time zone. These runs count against the quotas of the project, as other runs do.</CardDescription>
           </div>
           {mayEdit && adding !== "schedule" ? (
             <Button size="sm" variant="outline" onClick={() => setAdding("schedule")}>
@@ -260,7 +260,7 @@ export function AutomationPanel({ workflowId, doc }: { workflowId: string; doc: 
                 </ul>
               ) : adding ? null : (
                 <EmptyState icon={<CalendarClock />} title="No schedule">
-                  Add one to run this workflow every week, day or month.
+                  Add a schedule to run this workflow each day, week or month.
                 </EmptyState>
               )
             }
@@ -272,7 +272,7 @@ export function AutomationPanel({ workflowId, doc }: { workflowId: string; doc: 
         <CardHeader>
           <div>
             <CardTitle>Triggers</CardTitle>
-            <CardDescription>Run whenever a dataset gets a new version. Datasets written by workflows never trigger one, so a workflow cannot trigger itself.</CardDescription>
+            <CardDescription>Run this workflow when a dataset gets a new version. A dataset that a workflow writes does not start a trigger. Thus a workflow cannot start itself.</CardDescription>
           </div>
           {mayEdit && adding !== "trigger" ? (
             <Button size="sm" variant="outline" onClick={() => setAdding("trigger")}>
@@ -307,7 +307,7 @@ export function AutomationPanel({ workflowId, doc }: { workflowId: string; doc: 
                 </ul>
               ) : adding ? null : (
                 <EmptyState icon={<Database />} title="No trigger">
-                  Add one to run this workflow on every new upload.
+                  Add a trigger to run this workflow after each new upload.
                 </EmptyState>
               )
             }

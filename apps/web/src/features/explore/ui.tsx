@@ -141,7 +141,7 @@ export interface Column<T> {
 }
 
 /** A compact, scrollable statistic table (plain HTML table; text only). */
-export function StatTable<T>({ rows, columns, label, rowKey, maxHeight = "28rem", empty = "Nothing to show." }: { rows: readonly T[]; columns: readonly Column<T>[]; label: string; rowKey: (row: T, i: number) => string; maxHeight?: string; empty?: string }) {
+export function StatTable<T>({ rows, columns, label, rowKey, maxHeight = "28rem", empty = "There is no data to show." }: { rows: readonly T[]; columns: readonly Column<T>[]; label: string; rowKey: (row: T, i: number) => string; maxHeight?: string; empty?: string }) {
   if (!rows.length) return <p className="text-[13px] text-muted-foreground">{empty}</p>;
   return (
     <div className="relative overflow-auto rounded-lg border [contain:inline-size]" style={{ maxHeight }}>

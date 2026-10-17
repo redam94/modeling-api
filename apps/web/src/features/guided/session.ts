@@ -38,15 +38,15 @@ export function exploreTitle(template: Pick<GuidedTemplate, "tasks" | "family">)
 
 /** The steps of a template's flow (business priors only where the template takes them). */
 export function stepsFor(template: Pick<GuidedTemplate, "tasks" | "family">): StepDef[] {
-  const steps: StepDef[] = [{ id: "data", title: "Your data", question: "Which columns hold what?" }];
+  const steps: StepDef[] = [{ id: "data", title: "Your data", question: "What does each column contain?" }];
   if (hasTask(template, "business_priors") || hasTask(template, "lift_tests")) {
     steps.push({ id: "priors", title: "What you believe", question: "What do you already know about your channels?" });
   }
   steps.push(
     { id: "run", title: "Fit the model", question: "Let the model learn from your data" },
-    { id: "report", title: "Results", question: "What did the model find, and can you trust it?" },
+    { id: "report", title: "Results", question: "What did the model find? Can you trust it?" },
     { id: "explore", title: exploreTitle(template), question: hasTask(template, "whatif") ? "What happens if you change the budget?" : "What comes next?" },
-    { id: "share", title: "Share", question: "Put the result to work" },
+    { id: "share", title: "Share", question: "Use the result" },
   );
   return steps;
 }
@@ -126,10 +126,10 @@ export function advancedChanges(template: Pick<GuidedTemplate, "ui_levels">, doc
 }
 
 const DATA_SHAPES: Partial<Record<GuidedTemplate["family"], string>> = {
-  mmm: "A CSV file with one row per week (or day) and market, holding the results and a spend column per channel, or a Parquet file. MFF long tables and Google Meridian tables are recognised automatically.",
-  forecast: "A CSV file with one row per week (or day), holding the series to forecast, or a Parquet file.",
-  tabular: "A CSV file with one row per store and week, holding the sales and what drives them (prices, promotions, the calendar), or a Parquet file.",
-  choice: "A CSV file with one row per shopping trip, holding the customer, the product chosen and a price (and promotion) column per product, or a Parquet file.",
+  mmm: "A CSV file or a Parquet file with one row for each week (or day) and market. Each row has the results and a spend column for each channel. The app finds MFF long tables and Google Meridian tables automatically.",
+  forecast: "A CSV file or a Parquet file with one row for each week (or day). Each row has a value of the series to forecast.",
+  tabular: "A CSV file or a Parquet file with one row for each store and week. Each row has the sales and the drivers of the sales: prices, promotions and the calendar.",
+  choice: "A CSV file or a Parquet file with one row for each shopping trip. Each row has the customer, the selected product and a price column for each product. It can also have a promotion column for each product.",
 };
 
 /** What the upload should look like for this template, in plain words. */

@@ -275,13 +275,13 @@ export function detectMff(table: LocalTable): PresetMatch | null {
 /** Plain-language checks of a local table before anything is uploaded. */
 export function tableProblems(table: LocalTable): string[] {
   const out: string[] = [];
-  if (!table.header.length || table.header.every((h) => !h)) out.push("The file has no header row. The first line should name the columns.");
-  if (!table.rows.length) out.push("The file has a header but no rows of data.");
+  if (!table.header.length || table.header.every((h) => !h)) out.push("The file has no header row. Type the column names in the first line.");
+  if (!table.rows.length) out.push("The file has a header but no rows of data. Add the data to the file.");
   const seen = new Set<string>();
   for (const h of table.header) {
     if (seen.has(h)) out.push(`Two columns are both called "${h}". Rename one of them in your spreadsheet.`);
     seen.add(h);
   }
-  if (table.header.some((h) => !h.trim())) out.push("A column has no name. Give every column a name in the first row.");
+  if (table.header.some((h) => !h.trim())) out.push("A column has no name. Give each column a name in the first row.");
   return [...new Set(out)];
 }

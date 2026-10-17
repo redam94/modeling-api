@@ -73,7 +73,7 @@ function ModelOptionsDialog({ open, onOpenChange, initial, onRun, pending }: { o
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide>
         <DialogTitle>Explore with options</DialogTitle>
-        <DialogDescription>An explore run computes these views in the sandbox. Backtests refit the model on each fold (at most 10).</DialogDescription>
+        <DialogDescription>An explore run computes these views in the sandbox. A backtest fits the model again on each fold (maximum 10 folds).</DialogDescription>
         <form
           className="grid gap-5"
           onSubmit={(e) => {
@@ -119,7 +119,7 @@ function ModelOptionsDialog({ open, onOpenChange, initial, onRun, pending }: { o
                     <option value="rolling_origin">Rolling origin (fixed window)</option>
                   </NativeSelect>
                 </Field>
-                <Field label="Horizons" htmlFor="mx-hs" hint="Periods ahead, e.g. 1, 4, 8" error={hs.length ? undefined : "Give at least one horizon."}>
+                <Field label="Horizons" htmlFor="mx-hs" hint="Type the periods ahead, for example 1, 4, 8." error={hs.length ? undefined : "There is no horizon. Type one or more horizons."}>
                   <Input id="mx-hs" value={horizons} onChange={(e) => setHorizons(e.target.value)} />
                 </Field>
                 <Field label="Folds" htmlFor="mx-folds">
@@ -128,7 +128,7 @@ function ModelOptionsDialog({ open, onOpenChange, initial, onRun, pending }: { o
                 <Field label="Fewest training periods" htmlFor="mx-min">
                   <Input id="mx-min" type="number" min={1} value={minTrain} onChange={(e) => setMinTrain(Number(e.target.value))} />
                 </Field>
-                <Field label="Gap (periods not scored)" htmlFor="mx-gap" hint="For data that arrives late.">
+                <Field label="Gap (periods not scored)" htmlFor="mx-gap" hint="Use a gap for data that arrives late.">
                   <Input id="mx-gap" type="number" min={0} value={gap} onChange={(e) => setGap(Number(e.target.value))} />
                 </Field>
                 {kind === "rolling_origin" ? (
@@ -194,7 +194,7 @@ function SectionPanel({ target, section, state, runId, expert, onCompute, canRun
         notComputed={
           <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5 text-[13px]" data-testid="section-missing">
             <p className="text-muted-foreground">
-              {section === "backtest" ? "A backtest refits the model on earlier parts of the history and scores each refit on what came next. It runs in the sandbox and can take a few minutes." : "This view is computed on demand, in the sandbox."}
+              {section === "backtest" ? "A backtest fits the model again on earlier parts of the history. Then it scores each fit on the periods that came next. It runs in the sandbox and can take some minutes." : "The sandbox computes this view when you ask for it."}
             </p>
             <Button size="sm" onClick={onCompute} disabled={!canRun || running}>
               {running ? <Spinner /> : <FlaskConical />} Compute it now
@@ -224,7 +224,7 @@ function SummaryPanel({ mv, target, states, runId, expert, onSection }: { mv: Mo
     <div className="grid gap-5">
       <SectionCard title="At a glance" description="The short answer: did the fit work, and how close is the model to what happened?">
         <PlainSummary tone={worst}>
-          {readings.length ? readings.map((r) => <p key={r.text}>{r.text}</p>) : <p>The fit-time views are not available for this version.</p>}
+          {readings.length ? readings.map((r) => <p key={r.text}>{r.text}</p>) : <p>This version has no fit-time views.</p>}
         </PlainSummary>
         {Object.keys(mv.metrics ?? {}).length ? (
           <KeyValues items={Object.entries(mv.metrics ?? {}).map(([k, v]) => [<span key={k} className="font-mono text-xs">{k}</span>, <span key="v" className="tabular">{num(v)}</span>])} />
@@ -278,7 +278,7 @@ export function ModelExplorer({ mv, modelId, version, tab, onTab, runId, onRun, 
       onSuccess: (r) => {
         setOptionsOpen(false);
         onRun(r.exploration.run.id);
-        if (r.cached) toast.success("Already computed", "These views were computed earlier with the same options.");
+        if (r.cached) toast.success("Already computed", "The sandbox computed these views before with the same options.");
       },
       onError: (e) => toast.error("The explore run did not start", errorMessage(e)),
     });
@@ -299,13 +299,13 @@ export function ModelExplorer({ mv, modelId, version, tab, onTab, runId, onRun, 
   if (tab === "summary") body = <SummaryPanel mv={mv} target={target} states={states} runId={runId} expert={expert} onSection={onTab} />;
   else if (tab === "governance")
     body = (
-      <SectionCard title="Governance" description="Has this version passed the checks your policies require?">
+      <SectionCard title="Governance" description="Did this version pass the checks that your policies need?">
         <GovernancePanel modelId={modelId} version={version} expert={expert} />
       </SectionCard>
     );
   else if (tab === "lineage")
     body = (
-      <SectionCard title="Lineage" description="The data, spec and runs this version comes from.">
+      <SectionCard title="Lineage" description="The data, the spec and the runs that made this version.">
         <LineagePanel mv={mv} expert={expert} />
       </SectionCard>
     );
@@ -328,7 +328,7 @@ export function ModelExplorer({ mv, modelId, version, tab, onTab, runId, onRun, 
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">
         <p className="text-[13px] text-muted-foreground">
-          {base.isPending ? "Loading the views…" : missing.length ? `Forecasts and backtests are computed on demand (${missing.map((s) => MODEL_SECTION_META[s].title.toLowerCase()).join(", ")}).` : "Every view is ready."}
+          {base.isPending ? "Loading the views…" : missing.length ? `The sandbox computes forecasts and backtests when you ask for them (${missing.map((s) => MODEL_SECTION_META[s].title.toLowerCase()).join(", ")}).` : "Every view is ready."}
         </p>
         <div className="flex flex-wrap gap-2">
           {missing.length ? (

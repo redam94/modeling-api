@@ -42,7 +42,7 @@ test("guided tutorial screenshots", async ({ page }) => {
   await page.getByRole("link", { name: /^Geo marketing mix/ }).click();
   await page.getByLabel("Name this analysis").fill("EU media mix");
   await page.getByLabel("Choose a data file").setInputFiles(SAMPLE);
-  await expect(page.getByRole("complementary", { name: "Preview" })).toContainText("Everything the model needs is answered.");
+  await expect(page.getByRole("complementary", { name: "Preview" })).toContainText("You answered all the questions that the model needs.");
   await shot(page, "data");
   await page.getByRole("button", { name: "Upload and continue" }).click();
 
@@ -62,7 +62,7 @@ test("guided tutorial screenshots", async ({ page }) => {
   await exp.getByLabel("Measured change in results").fill("-90000");
   await exp.getByLabel("± uncertainty (standard error)").fill("25000");
   await page.getByRole("button", { name: "Preview what this means" }).click();
-  await expect(page.getByRole("heading", { name: "What your beliefs mean, before seeing the data" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "What your beliefs mean before the model sees the data" })).toBeVisible({ timeout: 10_000 });
   // plot frames load as they scroll into view: bring the KPI fan in before the full-page shot
   await page.locator('iframe[title="Results the model expects before fitting"]').scrollIntoViewIfNeeded();
   await frames(page);

@@ -65,7 +65,7 @@ describe("workflow documents", () => {
     expect(text).toContain("condition: (not nodes.adf.reject or nodes.kpss.reject)");
     expect(parseDocText("kind: Spec\n")).toEqual({ ok: false, error: "kind must be Workflow." });
     expect(parseDocText("a: [")).toMatchObject({ ok: false });
-    expect(asWorkflowDoc({ kind: "Workflow", metadata: {}, nodes: [{ id: "a", use: "test.adf" }, { id: "a", use: "test.kpss" }] })).toEqual({ ok: false, error: "Two nodes are called a." });
+    expect(asWorkflowDoc({ kind: "Workflow", metadata: {}, nodes: [{ id: "a", use: "test.adf" }, { id: "a", use: "test.kpss" }] })).toEqual({ ok: false, error: "Two nodes have the id a. Give each node a different id." });
   });
 
   it("pins issue pointers to nodes", () => {
@@ -89,11 +89,11 @@ describe("typed ports", () => {
       ok: false,
       reason: "acf.data takes dataset, but adf.result gives test result.",
     });
-    expect(checkConnection(d, catalog, { node: "acf", port: "result" }, { node: "acf", port: "data" })).toEqual({ ok: false, reason: "A node cannot feed its own input." });
+    expect(checkConnection(d, catalog, { node: "acf", port: "result" }, { node: "acf", port: "data" })).toEqual({ ok: false, reason: "A node cannot send data to its own input." });
     const cycle = checkConnection(d, catalog, { node: "diff", port: "data" }, { node: "sdiff", port: "data" });
     expect(cycle.ok).toBe(false);
-    expect(!cycle.ok && cycle.reason).toMatch(/^This would create a cycle: .*sdiff.*diff/);
-    expect(checkConnection(d, catalog, { node: "inputs", port: "data" }, { node: "adf", port: "data" })).toEqual({ ok: false, reason: "inputs.data already feeds adf.data." });
+    expect(!cycle.ok && cycle.reason).toMatch(/^The connection makes a cycle: .*sdiff.*diff/);
+    expect(checkConnection(d, catalog, { node: "inputs", port: "data" }, { node: "adf", port: "data" })).toEqual({ ok: false, reason: "inputs.data is already connected to adf.data." });
     expect(checkConnection(d, catalog, { node: "diff", port: "data" }, { node: "adf", port: "nope" })).toEqual({ ok: false, reason: 'adf has no input "nope".' });
   });
 

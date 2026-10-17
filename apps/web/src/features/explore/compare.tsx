@@ -90,7 +90,7 @@ function VersionAdder({ models, onAdd, exclude }: { models: Model[]; onAdd: (ref
 export function ComparePicker({ refs, onChange }: { refs: string[]; onChange: (refs: string[]) => void }) {
   const models = useModels();
   if (models.isPending) return <LoadingRows rows={2} />;
-  if (models.isError) return <ErrorNotice error={models.error} title="The models could not be loaded" />;
+  if (models.isError) return <ErrorNotice error={models.error} title="The app could not load the models" />;
   return (
     <div className="grid gap-3">
       <ol className="flex flex-wrap gap-2" aria-label="Versions to compare">
@@ -106,7 +106,7 @@ export function ComparePicker({ refs, onChange }: { refs: string[]; onChange: (r
         {!refs.length ? <li className="text-[13px] text-muted-foreground">Add two or more versions.</li> : null}
       </ol>
       {refs.length < 11 ? <VersionAdder models={models.data.items} exclude={refs} onAdd={(r) => onChange([...refs, r])} /> : null}
-      <p className="text-xs text-muted-foreground">The tests compare forecasts on the first version&apos;s held-out periods, so put the version you care about first.</p>
+      <p className="text-xs text-muted-foreground">The tests compare forecasts on the held-out periods of the first version. Put the most important version first.</p>
     </div>
   );
 }
@@ -155,10 +155,10 @@ export function ComparisonResult({ exploration, refs, expert }: { exploration: E
   const view = useComparisonView(exploration);
   const diags = useDiagnostics(refs);
   if (!exploration.done) return null;
-  if (view.isError) return <ErrorNotice error={view.error} title="The comparison could not be loaded" />;
+  if (view.isError) return <ErrorNotice error={view.error} title="The app could not load the comparison" />;
   if (!view.data) {
     const skipped = exploration.index?.sections?.find((s) => s.section === "comparison");
-    return skipped && skipped.status !== "ok" ? <ErrorNotice error={new Error(skipped.message_plain ?? "The comparison could not be computed.")} /> : <LoadingRows rows={4} />;
+    return skipped && skipped.status !== "ok" ? <ErrorNotice error={new Error(skipped.message_plain ?? "The sandbox could not compute the comparison.")} /> : <LoadingRows rows={4} />;
   }
   const v = view.data;
   const reading = comparisonReading(v);
@@ -177,7 +177,7 @@ export function ComparisonResult({ exploration, refs, expert }: { exploration: E
             { key: "model", header: "Version", cell: (r) => <Mono className={cn(Object.values(best).includes(r) && "font-semibold")}>{r}</Mono> },
             ...metrics.map((m) => ({
               key: m,
-              header: <span title={LOWER_IS_BETTER.has(m) ? "lower is better" : undefined}>{m.toUpperCase()}</span>,
+              header: <span title={LOWER_IS_BETTER.has(m) ? "A lower value is better." : undefined}>{m.toUpperCase()}</span>,
               numeric: true,
               cell: (r: string) => (
                 <span className={cn("inline-flex items-center gap-1", best[m] === r && "font-semibold text-success")}>
@@ -198,7 +198,7 @@ export function ComparisonResult({ exploration, refs, expert }: { exploration: E
           empty={
             // forecasters scored from one origin get no test (one dependent error path)
             (v.warnings_plain ?? []).find((w) => w.startsWith("No significance test")) ??
-            "No shared held-out periods: the versions need a time holdout for these tests."
+            "The versions have no shared held-out periods. For these tests, each version needs a time holdout."
           }
           columns={[
             { key: "pair", header: "Pair", cell: (t) => <span className="font-mono text-xs">{dmPair(t).join(" vs ") || t.var}</span> },
@@ -214,7 +214,7 @@ export function ComparisonResult({ exploration, refs, expert }: { exploration: E
           ]}
         />
       </SectionCard>
-      <SectionCard title="Fit diagnostics side by side" description="Each version's own fit statistics (compare information criteria only between models fitted on the same data).">
+      <SectionCard title="Fit diagnostics side by side" description="The fit statistics of each version. Compare information criteria only for models that you fitted on the same data.">
         <Statistics expert={expert} label="Show the diagnostics">
           <StatTable
             label="Diagnostics by version"

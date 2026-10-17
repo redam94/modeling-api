@@ -231,7 +231,7 @@ export type ScoreViewKind = "forecast" | "counterfactual";
 export async function fetchScoreView(outputs: ArtifactLink[], kind: ScoreViewKind, signal?: AbortSignal) {
   const name = kind === "forecast" ? FORECAST_VIEW : COUNTERFACTUAL_VIEW;
   const link = outputs.find((o) => o.name === name || o.name.endsWith(`/${name}`));
-  if (!link) throw new Error("The run finished but did not write the result view this screen reads.");
+  if (!link) throw new Error("The run is complete, but it did not write the result view that this screen reads.");
   const raw = await fetchArtifactJson(link, signal ? { signal } : {});
   return kind === "forecast" ? { kind, view: parseForecastView(raw) } : { kind, view: parseCounterfactualView(raw) };
 }

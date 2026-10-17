@@ -96,22 +96,22 @@ export function YamlDrawer({ yaml, specId, path }: { yaml: string | null; specId
       </SheetTrigger>
       <SheetContent
         title="Your model, as YAML"
-        description="Every answer on these screens fills in this specification. It is the same document Expert mode edits."
+        description="Each answer on these screens goes into this spec. Expert mode edits the same spec."
       >
         {yaml ? (
           <Suspense fallback={<Spinner />}>
             <YamlView value={yaml} path={path} />
           </Suspense>
         ) : (
-          <p className="text-muted-foreground">Answer the questions first: the specification appears as soon as the required ones are answered.</p>
+          <p className="text-muted-foreground">The spec is not available yet. Answer all the necessary questions to make the spec.</p>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           <p className="max-w-[46ch] text-xs text-muted-foreground">
             {lock.locked
-              ? "This project is locked to Guided mode, so only a project admin can edit the YAML."
+              ? "This project is locked to Guided mode. Only a project admin can edit the YAML."
               : specId
-                ? "Expert mode lets you change any setting. Guided mode keeps your changes and marks them as advanced settings."
-                : "Save your answers (upload the data) to open the specification in Expert mode."}
+                ? "In Expert mode, you can change all the settings. Guided mode keeps your changes and shows them as advanced settings."
+                : "To open the spec in Expert mode, upload the data. This saves your answers."}
           </p>
           {!lock.locked ? (
             <Button
@@ -162,7 +162,7 @@ export function GuidedFrame({
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             {advanced.length ? (
-              <Tooltip content={`Changed in Expert mode: ${advanced.join(", ")}. Guided mode keeps these as they are.`}>
+              <Tooltip content={`Guided mode keeps these changes from Expert mode: ${advanced.join(", ")}.`}>
                 <Badge variant="info" tabIndex={0} data-testid="advanced-settings">
                   Advanced settings applied
                 </Badge>

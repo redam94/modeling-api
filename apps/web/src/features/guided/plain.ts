@@ -11,22 +11,22 @@ export interface PhaseText {
 }
 
 const PHASES: Record<RunnerPhase, PhaseText> = {
-  bootstrap: { title: "Getting a secure workspace ready", body: "Your data is processed in an isolated sandbox that can't reach the internet." },
-  load_inputs: { title: "Loading your data", body: "Reading the dataset you uploaded and checking it is intact." },
-  validate: { title: "Checking your data", body: "Making sure every column has what the model needs." },
-  preprocess: { title: "Preparing the numbers", body: "Putting spend and results on comparable scales and adding seasonality." },
-  fit: { title: "Learning from your data", body: "The model looks for the patterns that explain your results." },
-  sample: { title: "Learning from your data", body: "The model tries thousands of plausible explanations to measure how sure it can be." },
-  score: { title: "Working out the answer", body: "Applying the model to your question." },
-  evaluate: { title: "Testing on held-back weeks", body: "Checking how well the model predicts periods it did not see." },
-  derive: { title: "Calculating the results", body: "Working out returns, contributions and response curves." },
-  plots: { title: "Drawing the charts", body: "Preparing the charts for your report." },
-  upload: { title: "Saving the results", body: "Storing the fitted model safely so you can come back to it." },
-  done: { title: "Finishing up", body: "Almost there." },
+  bootstrap: { title: "The app prepares a secure workspace", body: "The app processes your data in an isolated sandbox. The sandbox cannot connect to the internet." },
+  load_inputs: { title: "The app loads your data", body: "The app reads the dataset that you uploaded. It makes sure that the dataset is complete." },
+  validate: { title: "The app does a check of your data", body: "The app makes sure that each column has the data that the model needs." },
+  preprocess: { title: "The app prepares the numbers", body: "The app puts the spend and the results on scales that you can compare. It also adds seasonality." },
+  fit: { title: "The model learns from your data", body: "The model finds the patterns that explain your results." },
+  sample: { title: "The model learns from your data", body: "The model tries thousands of possible explanations. This shows how sure the model can be." },
+  score: { title: "The model calculates the answer", body: "The app applies the model to your question." },
+  evaluate: { title: "The app tests the model on held-back weeks", body: "The app measures how well the model predicts the periods that it did not see." },
+  derive: { title: "The app calculates the results", body: "The app calculates the returns, the contributions and the response curves." },
+  plots: { title: "The app makes the charts", body: "The app prepares the charts for your report." },
+  upload: { title: "The app saves the results", body: "The app keeps the fitted model in a safe location. You can come back to it later." },
+  done: { title: "The app completes the run", body: "The run is almost complete." },
 };
 
 export function phaseText(phase: string | null | undefined): PhaseText {
-  return (phase && PHASES[phase as RunnerPhase]) || { title: "Waiting for a worker", body: "Your run is in the queue and starts as soon as a worker is free." };
+  return (phase && PHASES[phase as RunnerPhase]) || { title: "The run waits for a worker", body: "Your run is in the queue. It starts when a worker is available." };
 }
 
 /** The order phases normally happen in (for the checklist on the run step). */
@@ -54,13 +54,13 @@ export function stateText(state: RunState, reporting = false): string {
     case "created":
     case "queued":
     case "dispatching":
-      return reporting ? "Running" : "Waiting to start";
+      return reporting ? "Running" : "In the queue";
     case "provisioning":
-      return "Starting up";
+      return "Start in progress";
     case "running":
       return "Running";
     case "stalled":
-      return "Taking longer than usual";
+      return "Slower than usual";
     case "finalizing":
       return "Saving the results";
     case "succeeded":

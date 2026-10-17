@@ -81,7 +81,7 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
       <CardHeader>
         <div className="grid gap-1">
           <CardTitle>Change the budget</CardTitle>
-          <CardDescription>Move a slider to spend more or less on a channel over the same period. The answer updates as you move, with the range of likely outcomes.</CardDescription>
+          <CardDescription>Move a slider to spend more or less on a channel in the same period. The answer and the range of likely results change when you move the slider.</CardDescription>
         </div>
         <Button variant="ghost" size="sm" disabled={!changed} onClick={() => setMult(Object.fromEntries(grid.channels.map((c) => [c, 1])))}>
           <RotateCcw /> Reset
@@ -152,8 +152,8 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
                 <Button variant="outline" size="sm" className="justify-self-start" onClick={runExact} disabled={!changed || exact.job.status === "running" || !can(grants, "run", "model")}>
                   {exact.job.status === "running" ? <Spinner /> : <Calculator />} Run exact
                 </Button>
-                <p className="text-xs text-muted-foreground">The instant estimate reads precomputed curves. "Run exact" asks the full model, which takes a moment.</p>
-                {exact.job.status === "running" ? <RunningNote text="Running the full model on this scenario…" /> : null}
+                <p className="text-xs text-muted-foreground">The instant estimate uses precomputed curves. "Run exact" uses the full model. This takes more time.</p>
+                {exact.job.status === "running" ? <RunningNote text="The full model calculates this scenario…" /> : null}
                 {exact.job.status === "error" ? <ErrorNotice error={exact.job.error} title="The exact run did not work" /> : null}
                 {exactView ? (
                   <div className="grid gap-0.5" data-testid="exact-result">
@@ -165,7 +165,7 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
                     </p>
                   </div>
                 ) : staleExact ? (
-                  <p className="text-xs text-warning">The sliders moved since the exact run. Run it again for the new scenario.</p>
+                  <p className="text-xs text-warning">You moved the sliders after the exact run. Click Run exact again for the new scenario.</p>
                 ) : null}
               </div>
             </>
@@ -195,7 +195,7 @@ function Presets({ mv, session, channels }: { mv: ModelVersion; session: GuidedS
       <CardHeader>
         <div className="grid gap-1">
           <CardTitle>{choice ? "Price scenarios" : "Quick scenarios"}</CardTitle>
-          <CardDescription>{choice ? "What happens to choices if a product's price changes." : "One-click questions, answered by the full model."}</CardDescription>
+          <CardDescription>{choice ? "See how the choices of the customers change when the price of a product changes." : "Click a question. The full model gives the answer."}</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -217,7 +217,7 @@ function Presets({ mv, session, channels }: { mv: ModelVersion; session: GuidedS
                 className="justify-self-start"
                 disabled={disabled || !channel}
                 onClick={() => {
-                  setAsked(`Turning off ${channel}`);
+                  setAsked(`${channel} turned off`);
                   void job.run({ kind: "counterfactual", ...base, preset: { kind: "channel_off", channel } }, { [GUIDED_LABEL]: "scenario" });
                 }}
               >
@@ -256,11 +256,11 @@ function Presets({ mv, session, channels }: { mv: ModelVersion; session: GuidedS
                 void job.run({ kind: "counterfactual", ...base, preset: { kind: "budget_scale", k, ...(choice ? { channels: [channel] } : {}) } }, { [GUIDED_LABEL]: "scenario" });
               }}
             >
-              <Zap /> Work it out
+              <Zap /> Calculate
             </Button>
           </div>
         </div>
-        {job.job.status === "running" ? <RunningNote text="Running the full model on this scenario…" /> : null}
+        {job.job.status === "running" ? <RunningNote text="The full model calculates this scenario…" /> : null}
         {job.job.status === "error" ? <ErrorNotice error={job.job.error} title="The scenario did not run" /> : null}
         {view ? (
           <div className="grid gap-1 rounded-lg border bg-muted/30 p-4" aria-live="polite" data-testid="scenario-result">
@@ -293,7 +293,7 @@ function Forecast({ mv, session }: { mv: ModelVersion; session: GuidedSession })
   const plot = useMemo(() => (view ? fanPlot(view.fan, { title: "Results", splitAt: view.split_at }) : null), [view]);
   const total = view?.total ? band(view.total.quantiles) : null;
   const valid = Number.isInteger(periods) && periods >= 1 && periods <= maxH;
-  const limitText = `Choose between 1 and ${periodWords(unit, maxH)}.${fitted ? " The model was fitted to forecast that far; a longer horizon needs a new fit with a longer horizon." : ""}`;
+  const limitText = `Type a value from 1 to ${periodWords(unit, maxH)}.${fitted ? " The model was fitted to forecast this far. For a longer horizon, fit the model again with a longer horizon." : ""}`;
   return (
     <Card>
       <CardHeader>
@@ -303,7 +303,7 @@ function Forecast({ mv, session }: { mv: ModelVersion; session: GuidedSession })
               <LineChart aria-hidden className="size-4 text-muted-foreground" /> Forecast
             </span>
           </CardTitle>
-          <CardDescription>How results may develop if you carry on as in the latest {unit === "period" ? "periods" : `${unit}s`}.</CardDescription>
+          <CardDescription>How your results can change if you continue as in the latest {unit === "period" ? "periods" : `${unit}s`}.</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -312,7 +312,7 @@ function Forecast({ mv, session }: { mv: ModelVersion; session: GuidedSession })
             label={`How many ${unit}s ahead?`}
             htmlFor="horizon"
             error={valid ? undefined : limitText}
-            hint={valid && fitted ? `Up to ${periodWords(unit, maxH)}, the horizon the model was fitted for.` : undefined}
+            hint={valid && fitted ? `The maximum is ${periodWords(unit, maxH)}. This is the horizon of the fit.` : undefined}
           >
             <Input id="horizon" type="number" min={1} max={maxH} value={periods} onChange={(e) => setPeriods(Number(e.target.value))} className="w-28" />
           </Field>
@@ -327,7 +327,7 @@ function Forecast({ mv, session }: { mv: ModelVersion; session: GuidedSession })
             {job.job.status === "running" ? <Spinner /> : <LineChart />} Make a forecast
           </Button>
         </div>
-        {job.job.status === "running" ? <RunningNote text="Forecasting…" /> : null}
+        {job.job.status === "running" ? <RunningNote text="The model makes the forecast…" /> : null}
         {job.job.status === "error" ? <ErrorNotice error={job.job.error} title="The forecast did not run" /> : null}
         {view && plot ? (
           <div className="grid gap-2" data-testid="forecast-result">
@@ -338,7 +338,7 @@ function Forecast({ mv, session }: { mv: ModelVersion; session: GuidedSession })
               </p>
             ) : null}
             <PlotFrame kind="vega-lite" spec={plot.spec} datasets={plot.datasets} title="Forecast with its likely range" height={300} exportName="forecast" />
-            <p className="text-xs text-muted-foreground">Dots are your actual results. After the dashed line, the darker band holds half of the likely outcomes and the lighter band 90%.</p>
+            <p className="text-xs text-muted-foreground">The dots are your actual results. After the dashed line, the darker band contains half of the likely results. The lighter band contains 90%.</p>
           </div>
         ) : null}
       </CardContent>
@@ -351,7 +351,7 @@ export function ExploreStep({ session }: { session: GuidedSession }) {
   const mv = session.modelVersion;
   const grid = useResponseGrid(mv);
   if (!session.lastGoodFit) {
-    return <p className="text-[13px] text-muted-foreground">Fit the model first; scenarios use the fitted model.</p>;
+    return <p className="text-[13px] text-muted-foreground">This analysis has no fitted model. Fit the model to use scenarios.</p>;
   }
   if (!mv || grid.isPending) return <Skeleton className="h-72" />;
   const whatif = hasTask(session.template, "whatif");
@@ -362,12 +362,12 @@ export function ExploreStep({ session }: { session: GuidedSession }) {
       {whatif && grid.data ? <WhatIf grid={grid.data} mv={mv} session={session} /> : null}
       {/* M3.5: what-if -> optimise my budget (mmm-framework planning). */}
       {whatif ? <OptimiseBudgetCard mv={mv} specId={session.spec.id} /> : null}
-      {whatif && grid.isSuccess && !grid.data ? <p className="text-[13px] text-muted-foreground">This model did not save response curves, so the instant sliders are not available. The scenarios below still work.</p> : null}
+      {whatif && grid.isSuccess && !grid.data ? <p className="text-[13px] text-muted-foreground">The instant sliders are not available because this model did not save response curves. You can still use the scenarios below.</p> : null}
       {hasTask(session.template, "counterfactual") && channels.length ? <Presets mv={mv} session={session} channels={channels} /> : null}
       {hasTask(session.template, "forecast") ? <Forecast mv={mv} session={session} /> : null}
       <p className="text-xs text-muted-foreground">
-        Results are in {grid.data?.kpi_units ?? "the units of your data"} and cover the {grid.data ? `${grid.data.periods} periods` : "period"} of your data; ranges are 90% likely.
-        {grid.data ? ` The sliders reach from ${share(sliderRange(grid.data).min)} to ${share(sliderRange(grid.data).max)} of what you actually spent.` : ""}
+        The results are in {grid.data?.kpi_units ?? "the units of your data"} and cover the {grid.data ? `${grid.data.periods} periods` : "period"} of your data. The ranges are 90% likely.
+        {grid.data ? ` The sliders go from ${share(sliderRange(grid.data).min)} to ${share(sliderRange(grid.data).max)} of your actual spend.` : ""}
       </p>
       <StepActions>
         <Button variant="ghost" onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "report" } })}>

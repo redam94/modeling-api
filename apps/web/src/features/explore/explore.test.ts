@@ -99,14 +99,14 @@ describe("plain readings (data)", () => {
     // things to know are not "no problems found" (regression: the page said so above a list of them)
     const infoOnly = qualityReading({ items: [{ code: "MISSING", severity: "info", message_plain: "0.3% missing" }, { code: "OUTLIERS", severity: "info", message_plain: "16.5% extreme" }] } as never);
     expect(infoOnly).toMatchObject({ tone: "good" });
-    expect(infoOnly.text).toBe("No problems to fix; 2 things to know.");
-    expect(qualityReading({ items: [] }).text).toBe("No data problems found.");
-    expect(missingnessReading(view("missingness", ds.ingest.views.missingness)).text).toMatch(/^spend \(0\.\d%\) has missing values; spend the most\. The longest gap is 4 periods in spend\./);
+    expect(infoOnly.text).toBe("The data has no problems to correct. 2 items give information.");
+    expect(qualityReading({ items: [] }).text).toBe("The checks found no problems in the data.");
+    expect(missingnessReading(view("missingness", ds.ingest.views.missingness)).text).toMatch(/^spend \(0\.\d%\) has missing values\. The longest gap is 4 periods in spend\./);
   });
 
   it("reads distributions, correlations, leads, stationarity, seasons and overlap", () => {
     const dist = view("distributions", ds.ingest.views.distributions);
-    expect(distributionReading(dist.items![0]!).text).toMatch(/^Half of the values of revenue lie between/);
+    expect(distributionReading(dist.items![0]!).text).toMatch(/^Half of the values of revenue are between/);
     const corr = view("correlation", ds.ingest.views.correlation);
     expect(correlationPairs(corr)[0]).toMatchObject({ a: "spend[social]", b: "price" });
     expect(correlationReading(corr)).toMatchObject({ tone: "warn" });
@@ -116,7 +116,7 @@ describe("plain readings (data)", () => {
     expect(ccf.prewhitened).toBe(true);
     expect(leadReading(ccf.items![0]!, "revenue", "week")).toMatch(/^spend\[tv\]: no clear link with revenue/);
     expect(stationarityReading(view("stationarity", ds.explore.views.stationarity)).text).toMatch(/series return to a stable level/);
-    expect(stlReading(view("stl", ds.explore.views.stl).items![0]!).text).toContain("is strong (0.82): model the season explicitly");
+    expect(stlReading(view("stl", ds.explore.views.stl).items![0]!).text).toContain("is strong (0.82). Include the season in the model.");
     expect(vifReading(view("vif", ds.explore.views.vif)).tone).toMatch(/good|warn/);
   });
 });

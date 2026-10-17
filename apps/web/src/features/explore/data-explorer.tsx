@@ -93,7 +93,7 @@ function OptionsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide>
         <DialogTitle>Explore with options</DialogTitle>
-        <DialogDescription>An explore run computes the chosen views in the sandbox. Asking again with the same options answers at once.</DialogDescription>
+        <DialogDescription>An explore run computes the views that you select. It runs in the sandbox. If you ask again with the same options, you get the result immediately.</DialogDescription>
         <form
           className="grid gap-5"
           onSubmit={(e) => {
@@ -123,7 +123,7 @@ function OptionsDialog({
                 ))}
               </NativeSelect>
             </Field>
-            <Field label="Split series by" htmlFor="ex-facet" hint="Up to two dimensions (markets, products); other dimensions are summed or averaged.">
+            <Field label="Split series by" htmlFor="ex-facet" hint="Select a maximum of two dimensions, for example markets and products. The server adds or averages the other dimensions.">
               <NativeSelect
                 id="ex-facet"
                 value={(req.facet_by ?? [])[0] ?? ""}
@@ -147,10 +147,10 @@ function OptionsDialog({
                 ))}
               </NativeSelect>
             </Field>
-            <Field label="Lags to look at" htmlFor="ex-lag" hint="For ACF/PACF and leads and lags (1–200).">
+            <Field label="Lags to look at" htmlFor="ex-lag" hint="Type the number of lags for ACF/PACF and for leads and lags. The range is 1 to 200.">
               <Input id="ex-lag" type="number" min={1} max={200} value={req.max_lag ?? 26} onChange={(e) => set({ max_lag: Number(e.target.value) })} />
             </Field>
-            <Field label="Season length (periods)" htmlFor="ex-period" hint="Empty: from the frequency (52 weekly, 12 monthly, 7 daily).">
+            <Field label="Season length (periods)" htmlFor="ex-period" hint="Type the number of periods in one season. If empty, the server uses the frequency: 52 for weekly, 12 for monthly, 7 for daily data.">
               <Input id="ex-period" type="number" min={2} max={400} value={req.period ?? ""} onChange={(e) => set({ period: e.target.value ? Number(e.target.value) : null })} />
             </Field>
             <Field label="Significance level" htmlFor="ex-alpha">
@@ -162,7 +162,7 @@ function OptionsDialog({
                 <option value="spearman">Spearman (ranks)</option>
               </NativeSelect>
             </Field>
-            <Field label="Unusual values" htmlFor="ex-out" hint="Robust score and its threshold (on a standard-normal scale).">
+            <Field label="Unusual values" htmlFor="ex-out" hint="Select a robust score. Then type its threshold (on a standard-normal scale).">
               <div className="flex gap-2">
                 <NativeSelect id="ex-out" value={req.outliers ?? "mad"} onChange={(e) => set({ outliers: e.target.value as "mad" | "iqr" | "zscore" })} className="w-32">
                   <option value="mad">MAD</option>
@@ -177,7 +177,7 @@ function OptionsDialog({
             </Field>
             <label className="flex items-center gap-3 self-end pb-2 text-[13px]">
               <Switch checked={req.prewhiten ?? true} onCheckedChange={(c) => set({ prewhiten: c })} aria-label="Prewhiten before cross-correlating" />
-              Prewhiten before cross-correlating (avoids spurious peaks)
+              Prewhiten before the cross-correlation (this prevents false peaks)
             </label>
           </div>
           <DialogFooter>
@@ -258,7 +258,7 @@ function SectionPanel({
         error={view.error}
         notComputed={
           <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5 text-[13px]" data-testid="section-missing">
-            <p className="text-muted-foreground">This view is computed on demand, in the sandbox. It usually takes under a minute.</p>
+            <p className="text-muted-foreground">The sandbox computes this view when you ask for it. Usually, this takes less than one minute.</p>
             <Button size="sm" onClick={onCompute} disabled={!canRun || running}>
               {running ? <Spinner /> : <FlaskConical />} Compute it now
             </Button>
@@ -294,7 +294,7 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
       onSuccess: (r) => {
         setOptionsOpen(false);
         onRun(r.exploration.run.id);
-        if (r.cached) toast.success("Already computed", "These views were computed earlier with the same options.");
+        if (r.cached) toast.success("Already computed", "The sandbox computed these views before with the same options.");
       },
       onError: (e) => toast.error("The explore run did not start", errorMessage(e)),
     });
@@ -308,7 +308,7 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
           {base.isPending
             ? "Loading the views…"
             : missing.length
-              ? `${states.length - missing.length} of ${states.length} views are ready. The others (${missing.map((s) => DATA_SECTION_META[s].title.toLowerCase()).join(", ")}) are computed on demand.`
+              ? `${states.length - missing.length} of ${states.length} views are ready. The sandbox computes the others (${missing.map((s) => DATA_SECTION_META[s].title.toLowerCase()).join(", ")}) when you ask for them.`
               : "Every view is ready."}
         </p>
         <div className="flex flex-wrap gap-2">

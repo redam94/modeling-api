@@ -133,7 +133,7 @@ test.describe("@e2e M3: an unaided tester in Guided mode, then the Integrations 
       const spend = page.getByRole("group", { name: /media spend/ });
       for (const ch of ["TV Spend", "Search Spend", "Social Spend"]) await expect(spend.getByRole("checkbox", { name: new RegExp(ch) })).toBeChecked();
       const preview = page.getByRole("complementary", { name: "Preview" });
-      await expect(preview).toContainText("Everything the model needs is answered.");
+      await expect(preview).toContainText("You answered all the questions that the model needs.");
       await shot(page, "m3-02-data-questions");
       await page.getByRole("button", { name: "Upload and continue" }).click();
       await expect(page).toHaveURL(/\/guided\/spc_[0-9a-z]+\/priors$/, { timeout: SCORE_TIMEOUT });
@@ -145,13 +145,13 @@ test.describe("@e2e M3: an unaided tester in Guided mode, then the Integrations 
       await expect(page.getByRole("heading", { name: "What you believe" })).toBeVisible();
       await shot(page, "m3-03-beliefs");
       const tv = page.locator('[data-channel="tv"]');
-      await expect(page.locator('[data-channel="search"]')).toContainText("No view on this channel", { timeout: SCORE_TIMEOUT });
+      await expect(page.locator('[data-channel="search"]')).toContainText("no view on this channel", { timeout: SCORE_TIMEOUT });
       await tv.getByRole("checkbox").click();
       await tv.getByLabel("From").fill("1.5");
       await tv.getByLabel("To").fill("4");
       await expect(tv).toContainText("Every 1 spent brings back between 1.5 and 4.");
       await page.getByRole("button", { name: "Preview what this means" }).click();
-      await expect(page.getByRole("heading", { name: "What your beliefs mean, before seeing the data" })).toBeVisible({ timeout: SCORE_TIMEOUT });
+      await expect(page.getByRole("heading", { name: "What your beliefs mean before the model sees the data" })).toBeVisible({ timeout: SCORE_TIMEOUT });
       await expect(page.locator('iframe[title="Prior return on spend per channel"]')).toBeVisible();
       await expect(page.getByText(/Results without any media: /)).not.toContainText(/-\d+%/);
       // plot frames load as they scroll into view

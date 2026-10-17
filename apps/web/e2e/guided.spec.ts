@@ -64,7 +64,7 @@ async function startGeoMmm(page: Page) {
   const preview = page.getByRole("complementary", { name: "Preview" });
   await expect(preview.getByRole("table")).toContainText("2025-01-05");
   await expect(preview.getByRole("img", { name: /Spend: tv_spend/ })).toBeVisible();
-  await expect(preview).toContainText("Everything the model needs is answered.");
+  await expect(preview).toContainText("You answered all the questions that the model needs.");
   await page.getByRole("button", { name: "Upload and continue" }).click();
   await expect(page).toHaveURL(/\/guided\/spc_[0-9a-z]+\/priors$/);
 }
@@ -102,12 +102,12 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   await exp.getByLabel("± uncertainty (standard error)").fill("25000");
   await expect(page.getByTestId("beliefs-blocking")).toHaveCount(0);
   await page.getByRole("button", { name: "Preview what this means" }).click();
-  await expect(page.getByRole("heading", { name: "What your beliefs mean, before seeing the data" })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText(/of what the model believes falls inside your range/).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What your beliefs mean before the model sees the data" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/of the model's belief is in your range/).first()).toBeVisible();
   await expect(page.locator('iframe[title="Prior return on spend per channel"]')).toBeVisible();
   await expect(page.locator('iframe[title="Results the model expects before fitting"]')).toBeVisible();
   // social has no stated belief: it is named, not charted beside the beliefs
-  await expect(page.getByTestId("unstated-channels")).toContainText("No view on social");
+  await expect(page.getByTestId("unstated-channels")).toContainText("no view on social");
 
   // View as YAML shows the real spec with the calibration block, read-only
   await page.getByRole("button", { name: "View as YAML" }).click();
@@ -122,7 +122,7 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   // 4. run: plain-language phases, progress and ETA over SSE
   await page.getByRole("button", { name: "Fit the model" }).click();
   await expect(page.getByRole("progressbar", { name: "Fit progress" })).toBeVisible();
-  await expect(page.getByRole("list", { name: "What happens during the fit" })).toContainText("Learning from your data");
+  await expect(page.getByRole("list", { name: "What happens during the fit" })).toContainText("The model learns from your data");
   await expect(page.getByRole("heading", { name: "Your model is ready" })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "See the results" }).click();
 
@@ -132,7 +132,7 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   const table = page.getByRole("table", { name: /Return on spend and share of results per channel/ });
   await expect(table.getByRole("rowheader", { name: "tv" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sanity scorecard" })).toBeVisible();
-  await expect(page.getByText("Mostly fine, with something to look at")).toBeVisible();
+  await expect(page.getByText("Most checks passed. Examine the other checks.")).toBeVisible();
   const mape = page.locator('[data-check="holdout.mape"]');
   await expect(mape.locator('[data-status="warn"]')).toBeVisible();
   await expect(mape).toContainText("What to do:");
