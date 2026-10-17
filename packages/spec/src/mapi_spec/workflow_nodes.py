@@ -949,7 +949,8 @@ _split("split.geo_holdout", GeoHoldoutPlan, _a(
 _split("split.nested", NestedPlan, _a(
     "Tuning inside a backtest",
     "Runs a second, inner backtest inside each training window, so settings are tuned "
-    "without peeking at the outer test periods.",
+    "without peeking at the outer test periods (search.grid tunes on the inner folds and "
+    "scores on the outer ones).",
     ["You tune settings (orders, penalties) and want an honest final error"],
     ["You do not tune anything"],
     ["A dataset with a time dimension and enough history for both levels"],
@@ -1068,6 +1069,13 @@ _node("search.grid", NodeKind.SEARCH, _a(
     ["The best settings and a table of scores"],
     _X, _LONG, "Try 3 saturation shapes x 2 carry-over lengths, keep the lowest MAPE.",
     related=["split.nested", "model.backtest"], fits={"goal": ["forecast", "validate_model"]},
+    expert="Every grid point is backtested on the plan and the best score wins. With a "
+    "split.nested plan this is nested cross-validation: each outer fold picks its point on "
+    "its own inner folds (inside its training window), refits it on the outer training "
+    "window and scores it on the outer test window; best_score pools those outer "
+    "forecasts (the honest estimate of the tuned model, free of the selection bias of "
+    "scoring the winner on the folds that chose it) and best_settings is the point the "
+    "outer folds chose most often.",
 ), params={"model": {"type": "string", "description": "Catalog model ref (id@range)"},
            "settings": {"type": "object", "description": "Base settings"},
            "grid": {"type": "object", "description": "JSON pointer into settings -> values",
@@ -1080,7 +1088,12 @@ _node("search.grid", NodeKind.SEARCH, _a(
            "split": PortSpec(type=PortType.SPLIT_PLAN)},
    outputs={"table": PortType.TABLE, "best": PortType.MODEL_VERSION},
    fields={"best_settings": _f("object", "The winning settings"),
-           "best_score": _f("number", "Its score"), "n_points": _f("integer", "Points tried")},
+           "best_score": _f("number", "Its score (nested plans: the outer folds' score of "
+                            "the points their inner folds chose)"),
+           "n_points": _f("integer", "Points tried"),
+           "nested": _f("boolean", "Tuned on inner folds and scored on outer folds"),
+           "outer_scores": _f("array", "Nested plans: each outer fold's score"),
+           "selected_per_fold": _f("array", "Nested plans: each outer fold's chosen point")},
    runs_in="child_run")  # fmt: skip
 
 # ==================================================================================== model

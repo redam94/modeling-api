@@ -297,7 +297,13 @@ lag length and `search.coint_rank` a VECM's cointegration rank.
 
 `split.blocked_kfold` and `split.purged_kfold` cut contiguous blocks (with a purge gap) for
 models that are not forecasters. A plan is a `split_plan` value: feed the same plan to every
-`model.backtest`, `evaluate.baseline` and `search.grid` node you want to compare.
+`model.backtest`, `evaluate.baseline` and `search.grid` node you want to compare. Given a
+`split.nested` plan, `search.grid` runs nested cross-validation: each outer fold picks its
+grid point on its own inner folds, and that point is refitted on the outer training window
+and scored on the outer test window. `best_score` is the score of those outer forecasts (the
+honest error of the tuned model), `outer_scores` and `selected_per_fold` show each fold, and
+`best_settings` is the point the outer folds chose most often. `model.backtest` on a nested
+plan scores its outer folds.
 
 ### Beat the benchmarks, or stop
 

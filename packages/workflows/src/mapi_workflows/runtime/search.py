@@ -377,7 +377,7 @@ def _coint_rank(ctx: NodeContext) -> NodeOutcome:
 def _js(v: Any) -> JsonValue:
     if isinstance(v, float):
         return clean_number(v)
-    return v  # type: ignore[no-any-return]
+    return v
 
 
 SEARCH_NODES: Final[dict[str, Callable[[NodeContext], NodeOutcome]]] = {

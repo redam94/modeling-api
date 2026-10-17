@@ -769,7 +769,7 @@ Result fields (`nodes.<id>.<field>` in conditions): `n_folds` (integer), `folds`
 
 ### `split.nested` — Tuning inside a backtest
 
-Runs a second, inner backtest inside each training window, so settings are tuned without peeking at the outer test periods.
+Runs a second, inner backtest inside each training window, so settings are tuned without peeking at the outer test periods (search.grid tunes on the inner folds and scores on the outer ones).
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
@@ -935,7 +935,10 @@ Fits a model with each combination of settings you list, scores each on a backte
 | `direction` | `min` \\| `max` | `"min"` | Better when |
 | `max_points` | integer | `50` | Grid points allowed |
 
-Result fields (`nodes.<id>.<field>` in conditions): `best_settings` (object), `best_score` (number), `n_points` (integer).
+Result fields (`nodes.<id>.<field>` in conditions): `best_settings` (object), `best_score` (number), `n_points` (integer), `nested` (boolean), `outer_scores` (array), `selected_per_fold` (array).
+
+??? note "Expert detail"
+    Every grid point is backtested on the plan and the best score wins. With a split.nested plan this is nested cross-validation: each outer fold picks its point on its own inner folds (inside its training window), refits it on the outer training window and scores it on the outer test window; best_score pools those outer forecasts (the honest estimate of the tuned model, free of the selection bias of scoring the winner on the folds that chose it) and best_settings is the point the outer folds chose most often.
 
 ### `search.sarima_order` — Find seasonal orders
 

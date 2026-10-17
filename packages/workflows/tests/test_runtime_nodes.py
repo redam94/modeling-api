@@ -305,6 +305,79 @@ def test_kfold_backtest_masks_and_predicts_the_block() -> None:
     assert bt.result["metrics"]["mae"] < 3  # type: ignore[index,operator]
 
 
+def _nested_plan(ds: Any, outer: dict[str, Any]) -> dict[str, Any]:
+    plan = run_node(
+        "split.nested",
+        {
+            "outer": outer,
+            "inner": {"kind": "expanding_window", "horizons": [1, 2], "n_folds": 2, "step": 4},
+        },
+        data=ds,
+    )
+    out = plan.outputs["plan"]
+    assert isinstance(out, dict)
+    return out
+
+
+def test_grid_search_on_a_nested_plan_tunes_inside_and_scores_outside() -> None:
+    """Regression: search.grid ignored the inner folds of a nested plan and picked its
+    winner by the outer folds' score (the optimistic selection bias nested CV removes),
+    and a k-fold outer plan crashed (``horizon.periods ... -90``). Now each outer fold
+    tunes on its own inner folds and scores the inner winner on its outer test window."""
+    from mapi_workflows.runtime.models import backtest_model, fold_metrics, grid_node
+    from wf_ctx import node_ctx
+
+    ds = weekly_series(120, beta=3.0)
+    params = {
+        "model": "ts.sarimax@^1",
+        "settings": {"order": [1, 0, 0], "exog": ["price"]},
+        "grid": {"/order": [[0, 0, 0], [1, 0, 0], [2, 0, 0]]},
+        "metric": "rmse",
+    }
+    for outer in (
+        {"kind": "expanding_window", "horizons": [1, 2], "n_folds": 3, "step": 8},
+        {"kind": "blocked_kfold", "k": 3},
+    ):
+        plan = _nested_plan(ds, outer)
+        assert all(f["inner"] for f in plan["folds"])
+        ctx = node_ctx("search.grid", params, data=ds, split=plan, registry=registry())
+        ctx.services["sandbox"] = True  # no final refit needed for the test
+        res = grid_node(ctx).result
+        assert res["nested"] is True
+        n_outer = len(plan["folds"])
+        assert len(res["outer_scores"]) == n_outer  # type: ignore[arg-type]
+        assert len(res["selected_per_fold"]) == n_outer  # type: ignore[arg-type]
+        # every outer fold's winner is the best point on that fold's inner folds
+        for f, chosen in zip(plan["folds"], res["selected_per_fold"], strict=True):  # type: ignore[arg-type]
+            inner = {**plan, "plan": plan["plan"]["inner"], "folds": f["inner"]}
+            scores = []
+            for order in params["grid"]["/order"]:  # type: ignore[index]
+                fcs, _, _ = backtest_model(
+                    node_ctx("model.backtest", params, data=ds, registry=registry()),
+                    DatasetValue(data=ds),
+                    inner,
+                    settings={**params["settings"], "order": order},  # type: ignore[dict-item]
+                )
+                scores.append(fold_metrics(fcs)["rmse"])
+            assert chosen["/order"] == params["grid"]["/order"][int(np.argmin(scores))]  # type: ignore[index]
+        # the honest estimate pools the outer test errors of the per-fold winners
+        lo, hi = min(res["outer_scores"]), max(res["outer_scores"])  # type: ignore[type-var]
+        assert lo - 1e-9 <= res["best_score"] <= hi + 1e-9  # type: ignore[operator]
+
+
+def test_backtest_on_a_kfold_nested_plan_scores_its_outer_blocks() -> None:
+    ds = weekly_series(120, beta=3.0)
+    plan = _nested_plan(ds, {"kind": "blocked_kfold", "k": 3})
+    bt = run_node(
+        "model.backtest",
+        {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0], "exog": ["price"]}},
+        data=ds,
+        split=plan,
+        registry=registry(),
+    )
+    assert bt.result["n_folds"] == 3
+
+
 def test_metrics_node_reads_a_backtest_or_a_model() -> None:
     payload = MetricsPayload.model_validate(
         {

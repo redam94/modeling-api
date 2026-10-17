@@ -517,6 +517,15 @@ milestone releases are tagged on `main`.
   for values its engine fills in (`mmm.bayesian`: `priors.roi_default`, LogNormal(0, 1))
   and business priors translated at fit time - and no longer multiplies Beta/Gamma `beta`
   or `b` parameters, which moved the prior instead of widening it.
+- **workflows** (statistics): nested split plans were not nested. `search.grid` ignored the
+  inner folds of a `split.nested` plan and picked its winner by the outer folds' score -
+  the optimistic selection bias nested cross-validation exists to remove - and reported that
+  score as `best_score`; with a k-fold outer plan, `search.grid` and `model.backtest` sent
+  the plan to the time-window scorer and failed ("horizon.periods ... -90"). Each outer fold
+  now tunes on its own inner folds, refits the inner winner on its outer training window
+  and scores it on the outer test window: `best_score` is that honest estimate (new results
+  `nested`, `outer_scores`, `selected_per_fold`), and the outer plan's kind decides how
+  folds are scored.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
