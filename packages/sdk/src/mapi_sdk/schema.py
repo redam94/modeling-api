@@ -628,5 +628,30 @@ def summarize_coords(ds: xr.Dataset, schema: DataSchema | None = None) -> dict[s
 
 
 def data_summary(ds: xr.Dataset, schema: DataSchema | None = None) -> DataSummary:
-    """:class:`~mapi_spec.coords.DataSummary` of ``ds`` (variables plus coord summaries)."""
-    return DataSummary(vars=[str(v) for v in ds.data_vars], coords=summarize_coords(ds, schema))
+    """:class:`~mapi_spec.coords.DataSummary` of ``ds`` (variables plus coord summaries).
+
+    With a ``schema``, ``observed`` says where each target holds values along every ordered
+    dim (time, ``extend`` or ``ordered``): the actuals of a forecast payload.
+    """
+    coords = summarize_coords(ds, schema)
+    observed: dict[str, dict[str, CoordSummary]] = {}
+    for name in schema.targets if schema is not None else ():
+        if name not in ds.data_vars:
+            continue
+        da = ds[name]
+        for d in da.dims:
+            dim = str(d)
+            spec = schema.dims.get(dim) if schema is not None else None
+            ordered = spec is not None and (
+                spec.kind == "time" or spec.ordered or spec.policy is DimPolicy.EXTEND
+            )
+            if not ordered or dim not in ds.coords or ds[dim].ndim != 1:
+                continue
+            others = [o for o in da.dims if o != d]
+            has = da.notnull().any(others) if others else da.notnull()
+            labels = np.asarray(ds[dim].values)[np.asarray(has.values, dtype=bool)]
+            assert spec is not None
+            if spec.freq is None and coords[dim].freq is not None:
+                spec = spec.model_copy(update={"freq": coords[dim].freq})
+            observed.setdefault(name, {})[dim] = _summary(dim, labels, spec)
+    return DataSummary(vars=[str(v) for v in ds.data_vars], coords=coords, observed=observed)
