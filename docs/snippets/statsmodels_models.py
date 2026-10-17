@@ -48,6 +48,23 @@ print(forecast["summary"].to_dataset()["y_hat"].sel(geo="north").round(1).values
 # rows median, q5, q95 - the 90% prediction interval around the median
 # --8<-- [end:forecast]
 
+# --8<-- [start:actuals]
+import json
+
+# Weeks 105-108 arrived for north, 105-106 for south: send them with the weeks to forecast
+# (sales left empty) and the planned drivers. Nothing is refitted.
+latest = sales_dataset(periods=112, geos=["north", "south"], seed=0).isel(date=slice(104, None))
+weeks = latest["date"].values
+latest["sales"].loc[{"geo": "north", "date": weeks[4:]}] = float("nan")
+latest["sales"].loc[{"geo": "south", "date": weeks[2:]}] = float("nan")
+updated = score_bundle(bundle, request, latest)
+print(json.loads(updated.attrs["conditioning"])["message"])
+# Forecast updated with 6 actuals (2024-12-29 to 2025-01-19) across 2 of 2 series after the
+# fitted history, which ends 2024-12-22; the model's parameters were not re-estimated. ...
+north = updated["summary"].to_dataset()["y_hat"].sel(geo="north")
+print(north.sel(date=weeks[4:]).round(1).values)  # the forecast from north's last actual
+# --8<-- [end:actuals]
+
 # --8<-- [start:vecm]
 from mapi_plugin_statsmodels.datasets import MACRO_SCHEMA, macro_dataset
 from mapi_plugin_statsmodels.views import explorer_views

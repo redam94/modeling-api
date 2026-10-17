@@ -39,12 +39,13 @@ from mapi_spec.capabilities import (
     ScoreMode,
 )
 from mapi_spec.catalog import ModelCatalogEntry
-from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.errors import ActualsNotSupported, ErrorCode, MapiError
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.schema import DataSchema, DataSchemaTemplate, DimPolicy
 from mapi_spec.spec import FitConfig, Horizon, ScoreRequest
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 
+from mapi_sdk.actuals import ForecastActuals
 from mapi_sdk.errors import BundleError
 from mapi_sdk.steps import CancelToken
 
@@ -321,7 +322,8 @@ class CustomModel[SettingsT: BaseModel]:
     """Base class for hand-written plugins: declare metadata, implement ``fit``/``score``.
 
     Optional hooks: :meth:`diagnostics`, :meth:`postprocess`, :meth:`derive`,
-    :meth:`objective`, :meth:`recommend`, :meth:`translate_priors`, :meth:`optimize`. Set
+    :meth:`objective`, :meth:`recommend`, :meth:`translate_priors`, :meth:`optimize`,
+    :meth:`forecast_with_actuals` (with ``capabilities.conditions_on_actuals``). Set
     ``pad_extend = False`` if the model does not index time positionally (scoring then skips
     padding ``extend`` dims to the fit range).
     """
@@ -410,6 +412,33 @@ class CustomModel[SettingsT: BaseModel]:
         self, fitted: Fitted, candidates: xr.Dataset, q: int, ctx: ScoreContext
     ) -> xr.Dataset:
         raise NotImplementedError(f"model {self.id!r} does not recommend")
+
+    def forecast_with_actuals(
+        self,
+        fitted: Fitted,
+        ds: xr.Dataset,
+        actuals: ForecastActuals,
+        req: ScoreRequest,
+        ctx: ScoreContext,
+    ) -> xr.DataTree:
+        """A forecast conditioned on actuals (:mod:`mapi_spec.actuals`): plugins that declare
+        ``capabilities.conditions_on_actuals`` override it; the harness calls it instead of
+        :meth:`score` whenever a ``forecast`` payload carries actuals.
+
+        ``ds`` is the canonicalised model-stage payload (actuals, periods to forecast and
+        their drivers); ``actuals`` says which periods are which per series
+        (:class:`~mapi_sdk.actuals.ForecastActuals`). Update the model's state with the
+        actuals using the *fitted* parameters - never re-estimate - and return the
+        ``predictions`` group over every period of ``ds``, as :meth:`score` does: the
+        conditioned multi-step forecast on ``actuals.future``, one-step-ahead predictions
+        elsewhere. Supplied actuals inside the fitted range replace the fitted values.
+
+        The default refuses (``ACTUALS_NOT_SUPPORTED``), so a model never ignores actuals.
+        """
+        raise ActualsNotSupported(
+            f"model {self.id!r} cannot update a forecast with actuals",
+            pointer="/data",
+        )
 
     def optimize(self, fitted: Fitted, request: OptimizeRequest, ctx: ScoreContext) -> BudgetPlan:
         """Budget optimisation (M3.5, ``POST …:optimize``; plugins that declare

@@ -33,6 +33,7 @@ def test_contract_kit(model_id: str, registry: Registry) -> None:
         "fit",
         "bundle_roundtrip_no_pickle",
         "extend_typed_errors",
+        "forecast_actuals",
         "context_window_equivalence",
         "evaluate_path_equals_score_path",
         "outputs_match_manifest",
@@ -42,3 +43,5 @@ def test_contract_kit(model_id: str, registry: Registry) -> None:
     } <= ran, report.summary()
     if "exog" in case.spec:
         assert "missing_future_covariate" in ran, report.summary()
+    actuals = next(r for r in report.results if r.name == "forecast_actuals")
+    assert "reproduce the plain forecast" in actuals.detail, report.summary()

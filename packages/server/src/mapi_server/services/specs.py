@@ -15,6 +15,7 @@ import copy
 from dataclasses import dataclass, field
 from typing import Any
 
+from mapi_spec.capabilities import Capabilities
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import (
     ErrorCode,
@@ -47,6 +48,7 @@ __all__ = [
     "class_for_size",
     "data_cap_issue",
     "first_error",
+    "live_capabilities",
     "pin_document",
     "resolve_dataset",
     "resolve_model_version",
@@ -231,7 +233,7 @@ async def validate_document(
         )
     elif isinstance(typed, ScoreRequest):
         out.typed = typed
-        await _validate_score(session, scope, typed, out)
+        await _validate_score(session, scope, typed, out, catalogs)
     else:
         out.issues.append(
             _issue(
@@ -307,14 +309,36 @@ async def _validate_model_spec(
 
 
 async def _validate_score(
-    session: AsyncSession, scope: Scope, req: ScoreRequest, out: Validation
+    session: AsyncSession,
+    scope: Scope,
+    req: ScoreRequest,
+    out: Validation,
+    catalogs: CatalogService | None = None,
 ) -> None:
     mv, why = await resolve_model_version(session, scope, req.model)
     if mv is None:
         out.issues.append(_issue(ErrorCode.REF_UNRESOLVED, "/model", why or "model not found"))
         return
     out.model_version = mv
-    await check_score_request(session, scope, req, mv, out.issues)
+    await check_score_request(session, scope, req, mv, out.issues, catalogs=catalogs)
+
+
+async def live_capabilities(
+    session: AsyncSession, catalogs: CatalogService | None, meta: ScoreMetadata
+) -> Capabilities | None:
+    """The capabilities of the plugin build that scores a fitted model now: the catalog
+    entry of exactly the plugin version the bundle was fitted with (``id@version``), which
+    may have gained score-time features since the fit (``conditions_on_actuals``). ``None``
+    when no catalog is cached or it does not list that version: the fitted capabilities
+    apply."""
+    if catalogs is None:
+        return None
+    snap = await catalogs.get(session)
+    if snap is None:
+        return None
+    ref = meta.resolved.model.resolved
+    entry = next((e for e in snap.catalog.models if e.ref == ref), None)
+    return entry.manifest.capabilities if entry is not None else None
 
 
 async def score_draw_cap(session: AsyncSession, scope: Scope) -> int:
@@ -333,11 +357,14 @@ async def check_score_request(
     issues: list[Issue],
     *,
     inline: DataSummary | None = None,
+    catalogs: CatalogService | None = None,
 ) -> dict[str, m.DatasetVersion]:
     """CoordPlan checks from metadata + resolution of the request's dataset refs.
 
     ``inline`` summarises a payload sent inline (endpoint score calls with XrJSON data):
-    it is used when the request names no dataset for ``data``/``scenario``."""
+    it is used when the request names no dataset for ``data``/``scenario``. With
+    ``catalogs`` the checks use the capabilities of the plugin build that will score
+    (:func:`live_capabilities`), e.g. whether a forecast may carry actuals."""
     datasets: dict[str, m.DatasetVersion] = {}
     for name, ref in (("data", req.data), ("scenario", req.scenario)):
         if ref is None:
@@ -368,7 +395,8 @@ async def check_score_request(
     if payload is not None and payload.summary is not None:
         summary = DataSummary.model_validate(payload.summary)
     cap = await score_draw_cap(session, scope)
-    issues.extend(validate_score_request(req, meta, summary, max_draws=cap))
+    live = await live_capabilities(session, catalogs, meta)
+    issues.extend(validate_score_request(req, meta, summary, max_draws=cap, live_capabilities=live))
     if req.data is None and req.scenario is None and req.horizon is None and inline is None:
         # the sandbox would fail the run with the same message; say it before a run starts
         issues.append(

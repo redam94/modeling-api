@@ -20,16 +20,27 @@ a multi-step forecast from the end of the fit, with the drivers taken from the p
 representation: ``y_hat(quantile, <series...>, [variable], t)`` - prediction intervals, which
 include the noise, for both output kinds (statsmodels has no separate interval for the
 expected value). Panels loop over the series cells; unrequested (padding) cells are skipped.
+
+**Forecasts with actuals** (:mod:`mapi_spec.actuals`, ``capabilities.conditions_on_actuals``):
+a ``forecast`` payload with target values is scored by ``forecast_with_actuals``. Per series
+the stored history is extended with the actuals (:mod:`mapi_plugin_statsmodels.conditioning`;
+revisions replace fitted values) and the fitted parameters are applied to it without
+re-estimation (``predict_conditioned``): the filter or smoother again for the state-space,
+ETS and Markov-switching models; the fitted equations on the supplied lags for VAR, VECM,
+ARDL and the ECM; the fitted SES weight, drift and season for Theta. The noise variance stays
+the fitted one, so the bands depend on the new data only through the forecast origin.
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from functools import partial
 from typing import Any, ClassVar, cast
 
 import numpy as np
 import xarray as xr
+from mapi_sdk.actuals import ForecastActuals
 from mapi_sdk.models import (
     PREDICTIONS,
     CustomModel,
@@ -61,6 +72,7 @@ from mapi_plugin_statsmodels._common import (
     residual_tests,
     stack_cells,
 )
+from mapi_plugin_statsmodels.conditioning import extend_cell
 
 __all__ = ["GROUPS", "LOO_REASON", "StatsmodelsModel", "statsmodels_version"]
 
@@ -89,7 +101,8 @@ def statsmodels_version() -> str:
 
 
 def quantile_capabilities(inference: str, *, modes: Sequence[str] | None = None) -> Capabilities:
-    """Capabilities shared by the statsmodels plugins."""
+    """Capabilities shared by the statsmodels plugins (every one conditions forecasts on
+    actuals with its fitted parameters)."""
     return Capabilities.model_validate(
         {
             "inference": inference,
@@ -98,6 +111,7 @@ def quantile_capabilities(inference: str, *, modes: Sequence[str] | None = None)
             "loo_valid": False,
             "loo_invalid_reason": LOO_REASON,
             "deterministic_given_seed": True,
+            "conditions_on_actuals": True,
         }
     )
 
@@ -116,6 +130,9 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
     uses_exog: ClassVar[bool] = False
     requires_exog: ClassVar[bool] = False
     min_obs: ClassVar[int] = 8
+    rebuild_estimates: ClassVar[bool] = False
+    """Whether :meth:`rebuild` re-estimates on its data (least squares, closed form): such
+    models implement :meth:`predict_conditioned` themselves."""
     pad_extend = False
     plots: ClassVar[tuple[str, ...]] = (
         "core.ppc_fan",
@@ -381,9 +398,67 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
                 )
         return out
 
+    # =================================================================== conditioning
+    def predict_conditioned(
+        self,
+        fit_res: Callable[[], Any],
+        cell: Cell,
+        ext: Cell,
+        s: S,
+        params: Mapping[str, float],
+        learned: Mapping[str, Any],
+        insample: np.ndarray,
+        x_future: np.ndarray | None,
+        horizon: int,
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Quantiles over the history ``ext`` (the fitted cell ``cell`` extended with the
+        actuals, :mod:`~mapi_plugin_statsmodels.conditioning`) with the **fitted**
+        parameters: ``(Q, len(insample)[, k])`` one-step-ahead and ``(Q, horizon[, k])``
+        forecast from the end of ``ext``.
+
+        The default runs :meth:`rebuild` on ``ext`` - a filter or smoother with the stored
+        parameters, right for every model whose rebuild applies them. Models whose rebuild
+        re-estimates (``rebuild_estimates``) override it; ``fit_res`` returns the results
+        rebuilt on the stored data (computed once, on first call).
+        """
+        if self.rebuild_estimates:
+            raise NotImplementedError(
+                f"{self.id!r} re-estimates in rebuild: it must override predict_conditioned"
+            )
+        res = self.rebuild(ext, s, params, learned)
+        return self.predict_cell(res, ext, s, learned, insample, x_future, horizon, seed)
+
     # =================================================================== score
     def score(
         self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+    ) -> xr.DataTree:
+        return self._predictions(fitted, ds, ctx, None)
+
+    def forecast_with_actuals(
+        self,
+        fitted: Fitted,
+        ds: xr.Dataset,
+        actuals: ForecastActuals,
+        req: ScoreRequest,
+        ctx: ScoreContext,
+    ) -> xr.DataTree:
+        """A forecast conditioned on the actuals in ``ds`` (:mod:`mapi_spec.actuals`).
+
+        Per series cell the stored history is extended with the actuals (revisions replace
+        fitted values) and the model is run over it with its fitted parameters - a Kalman,
+        exponential-smoothing or Hamilton filter, or the least-squares equations on the
+        supplied lags - never re-estimated. Payload periods up to each cell's last actual get
+        one-step-ahead predictions; the later ones the multi-step forecast from it.
+        """
+        return self._predictions(fitted, ds, ctx, actuals)
+
+    def _predictions(
+        self,
+        fitted: Fitted,
+        ds: xr.Dataset,
+        ctx: ScoreContext,
+        actuals: ForecastActuals | None,
     ) -> xr.DataTree:
         s = self.parse_settings(fitted.settings)
         obs = fitted.group("observed_data")
@@ -442,10 +517,37 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
             row = params.sel(key) if key else params
             pnames = [str(p) for p in learned["params"]]
             est = row["estimate"].sel({PARAM: pnames}).values.astype(float)
-            res = self.rebuild(cell, s, dict(zip(pnames, est.tolist(), strict=True)), learned)
-            x_future = self._future_exog(ds, key, labels[~inside], names) if horizon else None
+            pmap = dict(zip(pnames, est.tolist(), strict=True))
             seed = int(ctx.seed) * 1_000_003 + sum(idx) * 7919 + len(idx)
-            q_in, q_out = self.predict_cell(res, cell, s, learned, pos_in, x_future, horizon, seed)
+            if actuals is None:
+                res = self.rebuild(cell, s, pmap, learned)
+                x_future = self._future_exog(ds, key, labels[~inside], names) if horizon else None
+                q_in, q_out = self.predict_cell(
+                    res, cell, s, learned, pos_in, x_future, horizon, seed
+                )
+            else:
+                ext = extend_cell(
+                    cell,
+                    labels=labels,
+                    y_rows=self._payload_target(ds, key, labels, variables),
+                    observed=self._payload_observed(actuals, key, labels, variables),
+                    x_rows=self._payload_exog(ds, key, labels, names) if names else None,
+                    allow_missing=self.capabilities_allow_missing(),
+                )
+                fit_res = _once(partial(self.rebuild, cell, s, pmap, learned))
+                q_in, q_out = self.predict_conditioned(
+                    fit_res,
+                    cell,
+                    ext.cell,
+                    s,
+                    pmap,
+                    learned,
+                    ext.insample,
+                    ext.x_future,
+                    ext.horizon,
+                    seed,
+                )
+                q_out = q_out[:, ext.steps - 1]
             block = np.concatenate([q_in, q_out], axis=1)  # (Q, T[, k])
             if variables is not None:
                 block = np.moveaxis(block, 2, 1)  # (Q, k, T)
@@ -471,6 +573,41 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
         if "constant_data" in fitted.groups:
             ds = xr.merge([obs, fitted.group("constant_data")], compat="override", join="exact")
         return self._cell(ds, key, s, check=False)
+
+    def _payload_target(
+        self,
+        ds: xr.Dataset,
+        key: Mapping[str, Any],
+        labels: np.ndarray,
+        variables: np.ndarray | None,
+    ) -> np.ndarray:
+        """The payload's target over ``labels`` (``(L,)`` or ``(L, k)``, NaN where absent)."""
+        shape = (labels.size,) if variables is None else (labels.size, variables.size)
+        if TARGET not in ds:
+            return np.full(shape, np.nan)
+        return _rows(ds[TARGET], key, labels, variables).astype(float)
+
+    def _payload_observed(
+        self,
+        actuals: ForecastActuals,
+        key: Mapping[str, Any],
+        labels: np.ndarray,
+        variables: np.ndarray | None,
+    ) -> np.ndarray:
+        """Where the payload's target holds an actual, like :meth:`_payload_target`."""
+        return _rows(actuals.observed, key, labels, variables).astype(bool)
+
+    def _payload_exog(
+        self, ds: xr.Dataset, key: Mapping[str, Any], labels: np.ndarray, names: Sequence[str]
+    ) -> np.ndarray:
+        """``(L, m)`` drivers of the payload over ``labels`` (NaN where the payload has none)."""
+        cols = []
+        for n in names:
+            if n not in ds:
+                cols.append(np.full(labels.size, np.nan))
+                continue
+            cols.append(_rows(ds[n], key, labels, None).astype(float).reshape(-1))
+        return np.column_stack(cols)
 
     def _future_exog(
         self, ds: xr.Dataset, key: Mapping[str, Any], future: np.ndarray, names: Sequence[str]
@@ -547,6 +684,32 @@ def _json_scalar(v: Any) -> Any:
 
 def _json_key(key: Mapping[str, Any]) -> dict[str, Any]:
     return {str(k): _json_scalar(v) for k, v in key.items()}
+
+
+def _rows(
+    da: xr.DataArray, key: Mapping[str, Any], labels: np.ndarray, variables: np.ndarray | None
+) -> np.ndarray:
+    """``da`` for one cell over ``labels`` as ``(L,)`` or ``(L, k)`` (fitted variable order)."""
+    sel = {d: v for d, v in key.items() if d in da.dims}
+    cell = da.sel(sel) if sel else da
+    cell = cell.sel({TIME: labels})
+    if variables is not None and VARIABLE in cell.dims:
+        cell = cell.sel({VARIABLE: variables}).transpose(TIME, VARIABLE)
+    else:
+        cell = cell.transpose(TIME, ...)
+    return np.asarray(cell.values)
+
+
+def _once(fn: Callable[[], Any]) -> Callable[[], Any]:
+    """``fn`` computed on first call and remembered."""
+    done: list[Any] = []
+
+    def call() -> Any:
+        if not done:
+            done.append(fn())
+        return done[0]
+
+    return call
 
 
 def _requested(ds: xr.Dataset, key: Mapping[str, Any]) -> bool:

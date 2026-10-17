@@ -194,6 +194,43 @@ names before scoring, and results come back under the dataset's names, as for an
 Bodies above 10.25 MB are refused with `413 PAYLOAD_TOO_LARGE`; upload larger data as a
 dataset and reference it.
 
+### Forecasts with your latest actuals
+
+A forecasting endpoint takes the actuals that arrived since the fit and the dates to
+forecast in one call, without a refit ([Forecasts with actuals](../concepts/forecasting-with-actuals.md)):
+inline data along the time dim, the target filled on the periods you have and empty (`null`)
+on the periods to forecast.
+
+```bash
+api -X POST "$API/v1/endpoints/ts-forecast/score" -H 'Prefer: wait=60' \
+  --data '{"mode": "forecast", "horizon": {"dim": "t", "periods": 8},
+           "future_covariates": "carry_last",
+           "data": {"coords": {"t": {"dims": ["t"], "data": ["1961-01-01", "1961-02-01",
+                                     "1961-03-01", "1961-04-01", "1961-05-01"]}},
+                    "data_vars": {"y": {"dims": ["t"], "data": [417, 391, 419, null, null]}}}}'
+```
+
+This updates the model with January to March and forecasts April and May (the two empty rows;
+a warning says `horizon.periods` was not used). Send only the three actuals and the 8 periods
+after March are forecast. The answer's `summary.conditioning` says what happened, in fields
+(`conditioned`, `n_actuals`, `actuals_through`, `fit_end`, `horizon_source`, per-series
+details) and in words (`message`).
+
+`GET …/schema` describes the same table for spreadsheets and scripts: `input_table` lists the
+columns (the time column first, then the target, the drivers, other inputs) with the periods
+after the fit as empty rows, `snapshot.conditions_on_actuals` says whether the model can use
+actuals, and `actuals_example` is a ready call over those periods to fill in. A model that
+cannot use actuals refuses target values in a forecast with `422 ACTUALS_NOT_SUPPORTED` (before
+a run starts, for inline data) instead of ignoring them; actuals with a gap the model cannot
+filter, or without the drivers observed with them, are `422 ACTUALS_INVALID`.
+
+From Python, `api.endpoints.forecast("ts-forecast", rows)` takes the same table as a
+DataFrame or a list of rows (or `actuals=` and `future=` apart) and
+`result.conditioning.message` says what the forecast used; from a terminal,
+`mapi endpoints forecast ts-forecast input.csv` reads it from a CSV
+([The command line](cli.md#endpoints-webhooks-and-sharing)). In Google Sheets it is the
+**Input** sheet ([Connect Google Sheets](../tutorials/google-sheets.md#5-add-your-latest-actuals-and-future-dates)).
+
 ### Snippets
 
 ```bash
@@ -201,7 +238,9 @@ api "$API/v1/endpoints/geo-mmm-prod/snippets?language=python&language=curl"
 ```
 
 returns ready-to-run code for Python, TypeScript, curl, R, Google Sheets (Apps Script) and a
-notebook cell, with this server's address and the endpoint's example payload. `base_url=` puts
+notebook cell, with this server's address and the endpoint's example payload (for a
+forecasting endpoint, also a call over the periods after the fit to fill with actuals, and an
+Apps Script that reads them from an **Input** sheet). `base_url=` puts
 another address in (a public one, behind a proxy). Snippets read the token from `MAPI_TOKEN`
 and never contain a secret. From Python, `Client().endpoint("geo-mmm-prod").score(ds)`
 sends an `xr.Dataset` and returns one

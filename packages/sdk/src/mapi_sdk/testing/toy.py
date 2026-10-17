@@ -12,7 +12,10 @@ Steps
 Models (panel models over ``group_dim × time_dim``)
     ``toy.linear`` (point; ridge least squares with group intercepts and contributions),
     ``toy.bayes_linear`` (draws; conjugate normal-inverse-gamma posterior, log likelihood),
-    ``toy.quantile`` (quantiles; least squares plus empirical residual quantiles).
+    ``toy.quantile`` (quantiles; least squares plus empirical residual quantiles),
+    ``toy.ar1`` (point; an AR(1) with drivers per group that conditions forecasts on
+    actuals - the reference for ``forecast_with_actuals``; ``toy.ar1_missing`` filters gaps,
+    ``toy.ar1_plain`` lacks the capability).
 
 :func:`toy_registry` returns a registry with all of them and :func:`panel_dataset` makes a
 daily E33-like dataset (markets × channels × days) with a known linear signal.
@@ -33,6 +36,7 @@ from mapi_spec.spec import FitConfig, ScoreRequest
 from pydantic import Field, JsonValue
 
 from mapi_sdk._util import py_scalar
+from mapi_sdk.actuals import ForecastActuals
 from mapi_sdk.models import (
     PREDICTIONS,
     CustomModel,
@@ -47,6 +51,9 @@ from mapi_sdk.registry import Registry
 from mapi_sdk.steps import Step, StepContext, StepSettings, StepState, UnseenPolicy
 
 __all__ = [
+    "AR1MissingModel",
+    "AR1Model",
+    "AR1NoActualsModel",
     "BayesLinearModel",
     "FourierStep",
     "FxStep",
@@ -730,6 +737,175 @@ class QuantileModel(_PanelModel):
         return xr.DataTree.from_dict({PREDICTIONS: xr.Dataset({"y_hat": y_hat})})
 
 
+# ============================================================================ AR(1)
+
+
+class AR1Settings(ModelSettings):
+    target: str = "y"
+    group_dim: str = "geo"
+    time_dim: str = "time"
+    exog: list[str] = Field(default_factory=list)
+
+
+def _ar1_template(missing: str) -> dict[str, Any]:
+    return {
+        "params": {
+            "target": {"type": "string", "default": "y"},
+            "group_dim": {"type": "string", "default": "geo"},
+            "time_dim": {"type": "string", "default": "time"},
+            "exog": {"type": "string_list", "default": []},
+        },
+        "template": {
+            "dims": {
+                "{group_dim}": {"kind": "categorical", "policy": "fixed"},
+                "{time_dim}": {"kind": "time", "policy": "extend"},
+            },
+            "vars": {
+                "{target}": {
+                    "dims": ["{group_dim}", "{time_dim}"],
+                    "dtype": "float64",
+                    "role": "target",
+                    "missing": missing,
+                },
+                "{*exog as x}": {
+                    "dims": ["{group_dim}", "{time_dim}"],
+                    "dtype": "float64",
+                    "role": "covariate",
+                    "future_required": True,
+                },
+            },
+        },
+    }
+
+
+class AR1Model(CustomModel[AR1Settings]):
+    """``y_t = c + phi * y_{t-1} + beta . x_t + e`` per group, by least squares (point).
+
+    The reference for forecasts conditioned on actuals (:mod:`mapi_spec.actuals`):
+    :meth:`forecast_with_actuals` runs the fitted recursion over the fitted history with the
+    supplied actuals in place (revisions inside the fit replace values; new actuals extend
+    it) and forecasts from the last actual - the parameters are never re-estimated.
+    Conditioning on the fit data's own last values gives the plain forecast exactly.
+    """
+
+    id = "toy.ar1"
+    version = "1.0.0"
+    Settings = AR1Settings
+    schema_template = _ar1_template("forbid")
+    capabilities = Capabilities(
+        inference="point",
+        representation=Representation.POINT,
+        score_modes=frozenset({"predict", "forecast", "evaluate"}),
+        loo_valid=False,
+        loo_invalid_reason="least-squares point estimates",
+        conditions_on_actuals=True,
+    )
+    outputs: ClassVar[dict[str, Any]] = {"y_hat": {"dims": ["geo", "time"], "units_of": "y"}}
+    pad_extend = False
+
+    def fit(self, ds: xr.Dataset, s: AR1Settings, cfg: FitConfig, ctx: FitContext) -> FitOutput:
+        g, t = s.group_dim, s.time_dim
+        y = ds[s.target].transpose(g, t).values.astype(float)
+        xs = [ds[n].transpose(g, t).values.astype(float) for n in s.exog]
+        rows = []
+        for i in range(y.shape[0]):
+            design = np.column_stack([np.ones(y.shape[1] - 1), y[i, :-1], *[x[i, 1:] for x in xs]])
+            target = y[i, 1:]
+            ok = np.isfinite(target) & np.isfinite(design).all(axis=1)
+            coef, *_ = np.linalg.lstsq(design[ok], target[ok], rcond=None)
+            rows.append(coef)
+        coef_all = np.asarray(rows)
+        params = xr.Dataset(
+            {
+                "c": ((g,), coef_all[:, 0]),
+                "phi": ((g,), coef_all[:, 1]),
+                "beta": ((g, "exog"), coef_all[:, 2:]),
+            },
+            coords={g: ds[g].values, "exog": list(s.exog)},
+        )
+        history = xr.Dataset(
+            {s.target: ds[s.target].transpose(g, t), **{n: ds[n].transpose(g, t) for n in s.exog}}
+        )
+        return FitOutput(groups={"params": params, "observed_data": history})
+
+    def _run(
+        self,
+        fitted: Fitted,
+        ds: xr.Dataset,
+        s: AR1Settings,
+        actual: xr.DataArray | None,
+    ) -> xr.DataTree:
+        g, t = s.group_dim, s.time_dim
+        params = fitted.group("params")
+        hist = fitted.group("observed_data")
+        fit_labels = np.asarray(hist[t].values)
+        labels = np.asarray(ds[t].values)
+        full = np.union1d(fit_labels, labels)
+        out = np.full((ds.sizes[g], labels.size), np.nan)
+        for i, level in enumerate(np.asarray(ds[g].values)):
+            if f"{g}__requested" in ds.coords and not bool(ds[f"{g}__requested"].values[i]):
+                continue
+            h = hist.sel({g: level}).reindex({t: full})
+            y = np.asarray(h[s.target].values, dtype=float)
+            xs = [np.asarray(h[n].values, dtype=float) for n in s.exog]
+            if actual is not None:  # the supplied actuals replace or extend the history
+                cell = ds.sel({g: level})
+                seen = np.asarray(actual.sel({g: level}).values, dtype=bool)
+                pos = np.searchsorted(full, labels[seen])
+                y[pos] = np.asarray(cell[s.target].values, dtype=float)[seen]
+            for k, n in enumerate(s.exog):  # drivers the payload carries
+                if n in ds:
+                    vals = np.asarray(ds[n].sel({g: level}).values, dtype=float)
+                    finite = np.isfinite(vals)
+                    xs[k][np.searchsorted(full, labels[finite])] = vals[finite]
+            c = float(params["c"].sel({g: level}))
+            phi = float(params["phi"].sel({g: level}))
+            beta = np.asarray(params["beta"].sel({g: level}).values, dtype=float)
+            state = np.full(full.size, np.nan)
+            pred = np.full(full.size, np.nan)
+            for j in range(full.size):
+                if j > 0:
+                    drive = sum(beta[k] * xs[k][j] for k in range(len(xs)))
+                    pred[j] = c + phi * state[j - 1] + drive
+                state[j] = y[j] if np.isfinite(y[j]) else pred[j]
+            out[i] = pred[np.searchsorted(full, labels)]
+        y_hat = xr.DataArray(
+            out, dims=[g, t], coords={g: ds[g].values, t: labels}, attrs={"kind": "expected"}
+        )
+        return xr.DataTree.from_dict({PREDICTIONS: xr.Dataset({"y_hat": y_hat})})
+
+    def score(
+        self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+    ) -> xr.DataTree:
+        return self._run(fitted, ds, self.parse_settings(fitted.settings), None)
+
+    def forecast_with_actuals(
+        self,
+        fitted: Fitted,
+        ds: xr.Dataset,
+        actuals: ForecastActuals,
+        req: ScoreRequest,
+        ctx: ScoreContext,
+    ) -> xr.DataTree:
+        s = self.parse_settings(fitted.settings)
+        observed = actuals.observed.transpose(s.group_dim, s.time_dim)
+        return self._run(fitted, ds, s, observed)
+
+
+class AR1MissingModel(AR1Model):
+    """:class:`AR1Model` that filters missing targets (gaps among the actuals)."""
+
+    id = "toy.ar1_missing"
+    schema_template = _ar1_template("allow")
+
+
+class AR1NoActualsModel(AR1Model):
+    """:class:`AR1Model` without the capability: actuals are refused, never ignored."""
+
+    id = "toy.ar1_plain"
+    capabilities = AR1Model.capabilities.model_copy(update={"conditions_on_actuals": False})
+
+
 # ============================================================================ helpers
 
 
@@ -747,6 +923,9 @@ def toy_registry() -> Registry:
             LinearModel,
             BayesLinearModel,
             QuantileModel,
+            AR1Model,
+            AR1MissingModel,
+            AR1NoActualsModel,
         ]
     )
     return reg

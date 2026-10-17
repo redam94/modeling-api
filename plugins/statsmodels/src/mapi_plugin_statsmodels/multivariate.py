@@ -21,7 +21,8 @@ VAR representation, the Kalman filter for the state-space models).
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import copy
+from collections.abc import Callable, Mapping
 from typing import Any, Literal
 
 import numpy as np
@@ -172,6 +173,87 @@ def _check_vars(cell: Cell, s: Any) -> None:
         raise settings_error("multivariate models take at most 20 series along 'variable'")
 
 
+def _one_step(
+    res: Any,
+    cell: Cell,
+    ext: Cell,
+    insample: np.ndarray,
+    forecast: Callable[[Any, np.ndarray, int, np.ndarray | None], np.ndarray],
+    exog_coefs: np.ndarray | None,
+) -> np.ndarray:
+    """``(len(insample), k)`` one-step-ahead means of a VAR or VECM at the positions
+    ``insample`` of the extended history ``ext`` (NaN in the first ``k_ar`` periods, which
+    have no full set of lags).
+
+    Inside the fitted range the model is linear in the lags and drivers with the
+    deterministic terms of the same period, so the prediction is the fitted value plus the
+    coefficients times the revisions (``ext - cell``) - exact, and no new evaluation of the
+    model. After the fit it is the one-step ``forecast`` from the history before the period.
+    """
+    lags = int(res.k_ar)
+    k = len(ext.variables)
+    coefs = _var_coefs(res)  # (lags, k, k)
+    n = cell.n
+    fitted = np.full((n, k), np.nan)
+    fv = np.asarray(res.fittedvalues, dtype=float).reshape(-1, k)
+    fitted[n - fv.shape[0] :] = fv
+    dy = np.asarray(ext.y[:n], dtype=float) - np.asarray(cell.y, dtype=float)
+    dx = None
+    if exog_coefs is not None and ext.x is not None and cell.x is not None:
+        dx = np.asarray(ext.x[:n], dtype=float) - np.asarray(cell.x, dtype=float)
+    out = np.full((insample.size, k), np.nan)
+    for i, pos in enumerate(insample.tolist()):
+        if pos < lags:
+            continue
+        if pos < n:
+            val = fitted[pos].copy()
+            for lag in range(1, lags + 1):
+                val += coefs[lag - 1] @ dy[pos - lag]
+            if dx is not None and exog_coefs is not None:
+                val += exog_coefs @ dx[pos]
+            out[i] = val
+            continue
+        x = None if ext.x is None else ext.x[pos : pos + 1]
+        out[i] = np.asarray(forecast(res, ext.y[:pos], 1, x), dtype=float).reshape(-1)
+    return out
+
+
+def _var_at(res: Any, periods: int) -> Any:
+    """A shallow copy of the ``VARResults`` ``res`` whose deterministic trend continues after
+    ``periods`` observations (``forecast`` takes the lags explicitly; only the trend index
+    depends on the sample length)."""
+    at = copy.copy(getattr(res, "_results", res))
+    at.n_totobs = periods
+    return at
+
+
+def var_forecast(
+    res: Any, history: np.ndarray, steps: int, x_future: np.ndarray | None
+) -> np.ndarray:
+    """``(steps, k)`` VAR forecast after ``history`` (``(t, k)``) with the fitted coefficients."""
+    lags = int(res.k_ar)
+    with quiet():
+        return np.asarray(
+            _var_at(res, history.shape[0]).forecast(
+                history[-lags:], steps=steps, exog_future=x_future
+            ),
+            dtype=float,
+        )
+
+
+def vecm_forecast(
+    res: Any, history: np.ndarray, steps: int, x_future: np.ndarray | None
+) -> np.ndarray:
+    """``(steps, k)`` VECM forecast after ``history`` (``(t, k)``, levels) with the fitted
+    coefficients: statsmodels' ``predict`` on a shallow copy whose sample ends there (the
+    last ``k_ar`` levels and the deterministic terms' time index)."""
+    at = copy.copy(res)
+    at.y_all = np.asarray(history, dtype=float).T
+    at.nobs = history.shape[0] - int(res.k_ar)
+    with quiet():
+        return np.asarray(at.predict(steps=steps, exog_fc=x_future), dtype=float)
+
+
 # ==================================================================================== VAR
 
 
@@ -204,6 +286,7 @@ class VarModel(StatsmodelsModel[VarSettings]):
     )
     capabilities = quantile_capabilities("point")
     schema_template = schema_template(multivariate=True, exog=True)
+    rebuild_estimates = True
 
     def _fit(self, cell: Cell, s: VarSettings, lags: int | None) -> Any:
         from statsmodels.tsa.api import VAR
@@ -294,6 +377,65 @@ class VarModel(StatsmodelsModel[VarSettings]):
         var = np.diagonal(np.asarray(mse), axis1=1, axis2=2)
         return q_in, normal_quantiles(np.asarray(mean, dtype=float), var, q)
 
+    def predict_conditioned(
+        self,
+        fit_res: Callable[[], Any],
+        cell: Cell,
+        ext: Cell,
+        s: VarSettings,
+        params: Mapping[str, float],
+        learned: Mapping[str, Any],
+        insample: np.ndarray,
+        x_future: np.ndarray | None,
+        horizon: int,
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The fitted VAR on the supplied lags: one-step predictions and the forecast from
+        the last actual, the trend continuing; the band is the fitted ``mse``."""
+        res = fit_res()
+        m = len(cell.exog_names)
+        coefs = np.asarray(res.coefs_exog, dtype=float)[:, coefs_cols(res, m)] if m else None
+        return _lagged_predict(
+            res, cell, ext, s.quantiles, insample, x_future, horizon, var_forecast, coefs
+        )
+
+
+def _lagged_predict(
+    res: Any,
+    cell: Cell,
+    ext: Cell,
+    q: list[float],
+    insample: np.ndarray,
+    x_future: np.ndarray | None,
+    horizon: int,
+    forecast: Callable[[Any, np.ndarray, int, np.ndarray | None], np.ndarray],
+    exog_coefs: np.ndarray | None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Quantiles of a VAR or VECM (``forecast``) over the extended history ``ext`` of the
+    fitted cell ``cell``; ``exog_coefs`` ``(k, m)`` are the drivers' coefficients."""
+    sigma_u = np.asarray(res.sigma_u, dtype=float)
+    one = _one_step(res, cell, ext, insample, forecast, exog_coefs)
+    q_in = normal_quantiles(one, np.broadcast_to(np.diag(sigma_u), one.shape), q)
+    k = len(ext.variables)
+    if not horizon:
+        return q_in, np.empty((len(q), 0, k))
+    mean = forecast(res, np.asarray(ext.y, dtype=float), horizon, x_future)
+    mse = _ma_mse(_var_coefs(res), sigma_u, horizon)
+    return q_in, normal_quantiles(mean, np.diagonal(mse, axis1=1, axis2=2), q)
+
+
+def coefs_cols(res: Any, m: int) -> slice:
+    """The columns of a VAR's ``coefs_exog`` that belong to its ``m`` drivers (after the
+    deterministic terms)."""
+    total = np.asarray(res.coefs_exog).shape[1]
+    return slice(total - m, total)
+
+
+def _var_coefs(res: Any) -> np.ndarray:
+    """The levels-VAR coefficients ``[lag-1](k, k)`` of a VAR or VECM."""
+    rep = getattr(res, "var_rep", None)
+    return np.asarray(res.coefs if rep is None else rep, dtype=float)
+
 
 def _flat(frame: Any) -> np.ndarray:
     return np.asarray(frame, dtype=float).T.reshape(-1)
@@ -382,6 +524,7 @@ class VecmModel(StatsmodelsModel[VecmSettings]):
     )
     capabilities = quantile_capabilities("point")
     schema_template = schema_template(multivariate=True, exog=True)
+    rebuild_estimates = True
 
     def _rank_test(self, cell: Cell, s: VecmSettings) -> Any:
         from statsmodels.tsa.vector_ar.vecm import select_coint_rank
@@ -493,6 +636,28 @@ class VecmModel(StatsmodelsModel[VecmSettings]):
         mse = _ma_mse(np.asarray(res.var_rep, dtype=float), sigma_u, horizon)
         var = np.diagonal(mse, axis1=1, axis2=2)
         return q_in, normal_quantiles(np.asarray(mean, dtype=float), var, q)
+
+    def predict_conditioned(
+        self,
+        fit_res: Callable[[], Any],
+        cell: Cell,
+        ext: Cell,
+        s: VecmSettings,
+        params: Mapping[str, float],
+        learned: Mapping[str, Any],
+        insample: np.ndarray,
+        x_future: np.ndarray | None,
+        horizon: int,
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The fitted VECM on the supplied levels (its deterministic terms continuing):
+        one-step predictions and the forecast from the last actual."""
+        res = fit_res()
+        k, m = len(cell.variables), len(cell.exog_names)
+        coefs = np.asarray(res.exog_coefs, dtype=float).reshape(k, -1)[:, :m] if m else None
+        return _lagged_predict(
+            res, cell, ext, s.quantiles, insample, x_future, horizon, vecm_forecast, coefs
+        )
 
 
 def _vecm_params(

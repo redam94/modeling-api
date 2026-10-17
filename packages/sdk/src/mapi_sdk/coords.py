@@ -20,6 +20,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xarray as xr
+from mapi_spec.actuals import DataSpace
+from mapi_spec.capabilities import Capabilities
 from mapi_spec.coords import CoordSummary
 from mapi_spec.errors import CoordPlanError, ErrorCode, Issue, Severity
 from mapi_spec.schema import DataSchema, DimPolicy, Role
@@ -66,24 +68,34 @@ class CoordPlan:
         fit_coords: Mapping[str, xr.Dataset],
         *,
         max_draws: int | None = None,
+        live_capabilities: Capabilities | None = None,
+        data_space: DataSpace | None = None,
     ) -> None:
         self.request = request
         self.resolved = resolved
         self.fit_coords = dict(fit_coords)
         self.max_draws = max_draws
+        self.live_capabilities = live_capabilities
+        self.data_space: DataSpace | None = data_space
 
     def metadata(self) -> ScoreMetadata:
         summaries: dict[str, dict[str, CoordSummary]] = {}
         for stage, coords in self.fit_coords.items():
             summaries[stage] = summarize_coords(coords, self.resolved.stages.get(stage))
-        return ScoreMetadata(resolved=self.resolved, fit_coords=summaries)
+        return ScoreMetadata(
+            resolved=self.resolved, fit_coords=summaries, data_space=self.data_space
+        )
 
     def check(self, inputs: xr.Dataset | None = None) -> list[Issue]:
         """Run the checks; ``inputs`` is the payload at ``inputs_stage`` (canonical names)."""
         schema = self.resolved.stages.get(self.request.inputs_stage)
         summary = data_summary(inputs, schema) if inputs is not None else None
         issues = validate_score_request(
-            self.request, self.metadata(), summary, max_draws=self.max_draws
+            self.request,
+            self.metadata(),
+            summary,
+            max_draws=self.max_draws,
+            live_capabilities=self.live_capabilities,
         )
         raise_for_issues(issues)
         return issues

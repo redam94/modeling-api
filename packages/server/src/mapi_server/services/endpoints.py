@@ -25,7 +25,7 @@ import hashlib
 import itertools
 import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final
 
 from mapi_spec._types import RESERVED_STAGE
 from mapi_spec.api import new_id
@@ -40,6 +40,7 @@ from mapi_spec.endpoints import (
     EndpointSchemaSnapshot,
     EndpointScoreCall,
     EvaluationPolicy,
+    capability_breaks,
     endpoint_ref,
     policy_relaxations,
     schema_breaks,
@@ -58,7 +59,7 @@ from mapi_spec.storage import check_segment
 from mapi_spec.tenancy import Action, ResourceKind
 from mapi_spec.validate import ScoreMetadata
 from mapi_spec.webhooks import WebhookEventType
-from mapi_spec.xrjson import XrJsonDataset, XrJsonVariable, check_xrjson_size
+from mapi_spec.xrjson import XrJsonDataset, XrJsonVariable, check_xrjson_size, observed_labels
 from pydantic import JsonValue
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,9 +69,11 @@ from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.observability import metrics as obs_metrics
 from mapi_server.services.audit import write_audit
+from mapi_server.services.catalog import CatalogService
 from mapi_server.services.runs import Scope
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.scorecards import promotion_decision
+from mapi_server.services.specs import live_capabilities
 from mapi_server.services.webhooks.outbox import emit_event
 
 __all__ = [
@@ -79,6 +82,7 @@ __all__ = [
     "endpoint_schema_issues",
     "evaluate_gate",
     "inline_summary",
+    "live_snapshot",
     "load_endpoint",
     "model_ref_of",
     "promote",
@@ -206,7 +210,33 @@ def snapshot_for(mv: m.ModelVersion) -> EndpointSchemaSnapshot:
         horizon_dim=horizon,
         future_required=sorted(n for n, v in raw.vars.items() if v.future_required),
         fit_coords=dict(meta.fit_coords.get(RESERVED_STAGE, {})),
+        conditions_on_actuals=_conditions(caps, meta),
     )
+
+
+def _conditions(caps: Capabilities, meta: ScoreMetadata) -> bool:
+    """Whether the version conditions forecasts on actuals: its plugin build can, and it was
+    not fitted in a transformed space (``ScoreMetadata.data_space``)."""
+    return caps.conditions_on_actuals and meta.data_space is None
+
+
+async def live_snapshot(
+    session: AsyncSession, catalogs: CatalogService | None, row: m.Endpoint
+) -> EndpointSchemaSnapshot:
+    """The endpoint's frozen input contract with ``conditions_on_actuals`` as the plugin
+    build that scores the current version has it now (a plugin may learn to condition on
+    actuals after the fit; stored snapshots predate the field)."""
+    snapshot = EndpointSchemaSnapshot.model_validate(row.schema_snapshot)
+    mv = await session.get(m.ModelVersion, row.model_version_id)
+    if mv is None or mv.score_meta is None:
+        return snapshot
+    meta = ScoreMetadata.model_validate(mv.score_meta)
+    live = await live_capabilities(session, catalogs, meta)
+    caps = live if live is not None else meta.resolved.model.capabilities
+    conditions = _conditions(caps, meta)
+    if conditions == snapshot.conditions_on_actuals:
+        return snapshot
+    return snapshot.model_copy(update={"conditions_on_actuals": conditions})
 
 
 async def evaluate_gate(
@@ -221,9 +251,20 @@ async def evaluate_gate(
 
     The decision comes from :func:`~mapi_server.services.scorecards.promotion_decision`: the
     scorecard the runner measured at fit (stored by the finalizer), the fit mode of the
-    version's fit run (Q13) and its status, plus the schema breaks against ``current``."""
+    version's fit run (Q13) and its status, plus the schema breaks against ``current`` -
+    including a forecast feature the callers may rely on (actuals) that ``mv``'s plugin build
+    lacks (:func:`~mapi_spec.endpoints.capability_breaks`)."""
     snapshot = snapshot_for(mv)
+    if ctx is not None and mv.score_meta is not None:
+        meta = ScoreMetadata.model_validate(mv.score_meta)
+        live = await live_capabilities(session, ctx.catalogs, meta)
+        if live is not None and _conditions(live, meta) != snapshot.conditions_on_actuals:
+            snapshot = snapshot.model_copy(
+                update={"conditions_on_actuals": _conditions(live, meta)}
+            )
     breaks = schema_breaks(current.input_schema, snapshot.input_schema) if current else []
+    if current is not None:
+        breaks += capability_breaks(current, snapshot)
     required, status = False, None
     if ctx is not None:  # M3.5: governance policies may require a validated version
         from mapi_server.services.governance import promotion_requirement
@@ -390,7 +431,7 @@ async def promote(
             row.updated_at = _now()
             return row, True
         return row, False
-    current = EndpointSchemaSnapshot.model_validate(row.schema_snapshot) if row else None
+    current = await live_snapshot(session, ctx.catalogs, row) if row else None
     if row is not None and row.model_version_id == mv.id:
         current = None  # same version: its contract is the one callers already use
     decision, snapshot = await evaluate_gate(session, mv, policy, current=current, ctx=ctx)
@@ -739,14 +780,22 @@ def _coord_summary(
 def inline_summary(
     payload: XrJsonDataset, schema: DataSchema | None, pointer: str, issues: list[Issue]
 ) -> DataSummary:
-    """The :class:`DataSummary` of an inline payload, from its coordinates only (JSON
-    scalars - never the data values), for the static CoordPlan checks."""
+    """The :class:`DataSummary` of an inline payload, from its coordinates (JSON scalars),
+    for the static CoordPlan checks.
+
+    Data values are never decoded; the targets of ``schema`` and the drivers a forecast needs
+    (``future_required``) are null-checked (:func:`~mapi_spec.xrjson.observed_labels`) so
+    ``observed`` says, per dim, the labels at which they hold a value - the actuals of a
+    forecast and the drivers on its rows (:mod:`mapi_spec.actuals`), which the checks then
+    refuse or validate before a run starts. Text where the schema wants numbers (a number
+    stored as text in a spreadsheet, ``#N/A``) is refused (``SCHEMA_INVALID``)."""
     coords: dict[str, CoordSummary] = {}
     sizes: dict[str, int] = dict(payload.dims)
     for var in [*payload.coords.values(), *payload.data_vars.values()]:
         shape = _shape(var)
         for d, size in zip(var.dims, shape, strict=False):
             sizes.setdefault(d, size)
+    unreadable: set[str] = set()
     for name, var in payload.coords.items():
         if list(var.dims) != [name]:
             continue  # non-index coordinates are checked in the sandbox
@@ -754,12 +803,82 @@ def inline_summary(
         cs = _coord_summary(name, var, dim, f"{pointer}/coords/{name}", issues)
         if cs is not None:
             coords[name] = cs
+        else:
+            unreadable.add(name)  # reported; a stand-in summary would add false issues
     for d, size in sizes.items():
-        if d not in coords:
+        if d not in coords and d not in unreadable:
             coords[d] = CoordSummary(
                 kind="index", size=size, start=0 if size else None, end=size - 1 if size else None
             )
-    return DataSummary(vars=list(payload.data_vars), coords=coords)
+    if schema is not None:
+        for name, var in payload.data_vars.items():
+            vs = schema.vars.get(name)
+            if vs is not None and vs.dtype in _NUMERIC:
+                _refuse_text(name, var, payload, f"{pointer}/data_vars/{name}", issues)
+    observed: dict[str, dict[str, CoordSummary]] = {}
+    checked = list(schema.targets) if schema is not None else []
+    if schema is not None:
+        checked += [
+            n
+            for n, v in schema.vars.items()
+            if v.future_required and v.role is not Role.TARGET and n not in checked
+        ]
+    for target in checked:
+        spec = payload.data_vars.get(target)
+        if spec is None:
+            continue
+        per_dim: dict[str, CoordSummary] = {}
+        for d in spec.dims:
+            labels = observed_labels(payload, target, d)
+            if labels is None or d not in coords:
+                continue
+            dim = schema.dims.get(d) if schema is not None else None
+            seen = XrJsonVariable(dims=[d], data=list(labels))
+            cs = _coord_summary(d, seen, dim, "", [])  # coord issues are reported above
+            if cs is not None:
+                per_dim[d] = cs
+        if per_dim:
+            observed[target] = per_dim
+    return DataSummary(vars=list(payload.data_vars), coords=coords, observed=observed)
+
+
+_NUMERIC: Final = frozenset({"float64", "float32", "int64", "int32", "bool"})
+
+
+def _refuse_text(
+    name: str, var: XrJsonVariable, payload: XrJsonDataset, pointer: str, issues: list[Issue]
+) -> None:
+    """A ``SCHEMA_INVALID`` issue naming the first text cell of a numeric variable."""
+
+    def first(node: Any, at: tuple[int, ...]) -> tuple[tuple[int, ...], str] | None:
+        if isinstance(node, list):
+            for k, child in enumerate(node):
+                hit = first(child, (*at, k))
+                if hit is not None:
+                    return hit
+            return None
+        return (at, node) if isinstance(node, str) else None
+
+    hit = first(var.data, ())
+    if hit is None:
+        return
+    at, text = hit
+    where: list[str] = []
+    for dim, k in zip(var.dims, at, strict=False):
+        coord = payload.coords.get(dim)
+        labels = coord.data if coord is not None and isinstance(coord.data, list) else None
+        label = labels[k] if labels is not None and k < len(labels) else k
+        where.append(f"{dim}={label}")
+    issues.append(
+        _issue(
+            ErrorCode.SCHEMA_INVALID,
+            pointer,
+            f"{name!r} holds text where it needs numbers (at {', '.join(where) or 'its cell'})",
+            suggested_action="Send numbers (not text) for this variable, and leave a cell empty "
+            "(null) where there is no value.",
+            untrusted_text=repr(text)[:200],
+        )
+    )
 
 
 def _shape(var: XrJsonVariable) -> list[int]:

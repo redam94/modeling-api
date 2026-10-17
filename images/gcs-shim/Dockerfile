@@ -4,7 +4,7 @@
 # docker-compose in place of real GCS. Objects live under /data (mount a volume there).
 # Build from the repository root:
 #
-#   docker build -f images/gcs-shim/Dockerfile -t mapi/gcs-shim:0.5.0 .
+#   docker build -f images/gcs-shim/Dockerfile -t mapi/gcs-shim:0.5.1 .
 #
 # Local/test use only: it is a development stand-in, never a production object store.
 

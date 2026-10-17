@@ -59,8 +59,9 @@ says *Still running*; run the function again to collect it.
 
 To send your own data instead of the example's, add a sheet called **Input** in long format:
 a header row naming the endpoint's dims and input variables, then one row per coordinate.
-The script reads it into the call when the example sends inline data; an endpoint whose
-example call sends none (a plain forecast) refuses an **Input** sheet.
+The script reads it into the call - for a forecasting endpoint too, although its example call
+sends no data: that is how you add your latest actuals and the dates to forecast
+([step 5](#5-add-your-latest-actuals-and-future-dates)).
 
 The summary is per coordinate, per market and week here. The next step writes a different
 table: the history the model was fitted on next to the forecast's range, summed over markets.
@@ -114,6 +115,88 @@ function `refreshForecast`, event source **Time-driven**, **Day timer**, a time 
 morning the sheet is cleared and refilled with a fresh forecast from whatever version the
 endpoint serves that day, so promoting a better model updates the sheet without touching it.
 
+## 5. Add your latest actuals and future dates
+
+The model was fitted once, but every month brings another actual. Type it into the sheet and
+the next forecast starts from it: the model updates its state with the actuals using the
+parameters it was fitted with - nothing is refitted - and forecasts the dates you list
+([Forecasts with actuals](../concepts/forecasting-with-actuals.md)). This works with the
+script from step 2, for any endpoint whose model can condition on actuals (the Sheets card and
+`mapi endpoints schema` say so; the statsmodels time-series models can).
+
+Add a sheet named **Input** with one row per period: the date column, the target filled where
+you have an actual and **left blank on the dates to forecast**. For the monthly airline
+endpoint `ts-forecast` (fitted on 1949-01 to 1960-12, target `y`, no drivers):
+
+| t | y |
+|---|---|
+| 1961-01-01 | 417 |
+| 1961-02-01 | 391 |
+| 1961-03-01 | 419 |
+| 1961-04-01 | |
+| 1961-05-01 | |
+
+Run the function: the model is updated with January to March 1961 and April and May are
+forecast. **Result** starts with a note on what the forecast was conditioned on (cell A1),
+a blank row, then the table:
+
+```text
+Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which
+ends 1960-12-01; the model's parameters were not re-estimated. 2 periods forecast from
+1961-04-01 to 1961-05-01.
+
+variable   t            median   q5    q95
+y          1961-01-01   …        …     …
+…
+y          1961-05-01   …        …     …
+```
+
+The rows of the actual months hold one-step-ahead predictions (what the model would have said
+the month before), the blank months hold the forecast.
+
+A model with drivers has a column for each of them, which it needs on every row, the dates
+to forecast included. For a monthly `sales` forecast with a `price` driver:
+
+| month | sales | price |
+|---|---|---|
+| 2026-10-01 | 1520.5 | 9.99 |
+| 2026-11-01 | 1610.0 | 9.99 |
+| 2026-12-01 | | 10.49 |
+| 2027-01-01 | | |
+
+The price of the last month is blank, so the script's `future_covariates: "carry_last"`
+repeats the latest one you gave (10.49). The column names are the endpoint's: the **Google
+Sheets** card shows the layout of the selected endpoint, `mapi endpoints schema ALIAS` lists
+the columns, and the generated script has a second function, `score<Alias>InputSheet`, that
+creates the **Input** sheet with the right header and the periods after the fit, all blank:
+
+??? example "The generated script for the `sales-forecast` endpoint"
+
+    ```javascript
+    --8<-- "sheets_actuals.gs"
+    ```
+
+The rules, so the sheet does what you expect:
+
+- **Dates** are cells formatted as dates or text in `yyyy-MM-dd`; they are sent as
+  `yyyy-MM-dd` in the spreadsheet's time zone. Rows may come in any order.
+- **Headers** are matched without surrounding spaces and ignoring case. A sheet whose target
+  column the script cannot find, next to columns it does not know, is an error that lists the
+  expected columns - never a forecast that silently drops your actuals.
+- **Numbers stored as text** (a pasted CSV, a Plain-text column) are sent as numbers, and a
+  cell holding only spaces is blank. Other text in a number column (`#N/A`) is refused with
+  `SCHEMA_INVALID` naming the column and the date.
+- **No rows** (only the header): the 8 periods after the fit are forecast, as without a sheet.
+- **Blank target after the last actual** = a date to forecast. If the sheet ends with an
+  actual, the 8 periods after it are forecast (the call's `horizon.periods`).
+- **A blank target between actuals** is a gap: the refusal `ACTUALS_INVALID` says so, unless
+  the model accepts missing observations (the state-space models do and filter it as missing).
+- **Actuals inside the fitted range** replace the fitted values (a revised figure); the
+  parameters still stay as fitted. Refit from time to time so they learn from the new data.
+- **A model that cannot use actuals** refuses the sheet with `ACTUALS_NOT_SUPPORTED` rather
+  than ignore the numbers; leave the target blank to forecast from the end of its fit, or refit.
+  The refusal and what to do are written into **Result**.
+
 ## When something goes wrong
 
 | What the sheet or the editor shows | Why | What to do |
@@ -123,6 +206,12 @@ endpoint serves that day, so promoting a better model updates the sheet without 
 | `404: …` | The endpoint was deleted or renamed | Pick the endpoint again in the Sheets card |
 | `409: …` with `IDEMPOTENCY_CONFLICT` | `CALL` changed since the day's first run, under the same key | Wait for tomorrow, or change the key's prefix |
 | `422: …` with `MISSING_FUTURE_COVARIATE`, or `409: …` with `HORIZON_EXCEEDS_FIT` | The call asks for something the model cannot answer: future values it does not have, or more periods than it may forecast | Copy the payload from the endpoint's snippet again; shorten the horizon |
+| `422: …` with `ACTUALS_NOT_SUPPORTED` (also in **Result**) | The **Input** sheet has target values, and the endpoint's model cannot update a forecast with them | Leave the target blank to forecast from the end of the fit, or refit the model with the new data |
+| `422: …` with `ACTUALS_INVALID` | A blank target between two actuals, actuals that do not continue the fitted history, or a missing driver value on a row with an actual | Fill the gap (or drop the rows after it), start right after the fit, fill the driver |
+| `422: …` with `SCHEMA_INVALID` naming a column | A target or driver cell holds text that is not a number (`#N/A`, `n/a`) | Clear the cell or put the number in it |
+| `failed: no summary in the answer` in **Result**, followed by the problem | The API accepted the call but the run failed. For inline data that is a check only the run can make, e.g. one series of a panel without its driver on an actual month (the API's own check sees all series together) | Read the problem line under it and fix the rows it names |
+| `the Input sheet has no column for y (the actuals) but has "sales"` | The target column's header is not the endpoint's | Rename the column to the name listed (copy the header from the Sheets card) |
+| `the Input sheet needs a column named "t"` | The **Input** sheet's header does not name the endpoint's columns | Copy the header from the Sheets card, or run `score<Alias>InputSheet` on a sheet without **Input** |
 | `429: …` with `RATE_LIMITED` or `QUOTA_EXCEEDED` | The token's rate limit, its budget or a project quota | Raise the limit or budget on the Tokens page, or refresh less often |
 | *This endpoint's model wrote no forecast table.* | The call is not a forecast, or the model's outputs have no KPI to tabulate | Use a forecast call; for other outputs, read the result with the Python client |
 

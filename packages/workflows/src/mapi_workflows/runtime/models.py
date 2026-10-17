@@ -32,11 +32,13 @@ from typing import Any, Final
 
 import numpy as np
 import xarray as xr
+from mapi_sdk.actuals import entry_fit_end
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import FitHooks, fit_spec, score_bundle
 from mapi_sdk.metrics import point_estimate
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.summarise import interp_quantile
+from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
 from mapi_spec.capabilities import Representation
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.schema import DataSchema, Role
@@ -108,7 +110,8 @@ def _root(dv: DatasetValue) -> tuple[DatasetValue, list[dict[str, JsonValue]], l
             [],
             [
                 "the model is fitted on data changed by a transform that has no preprocessing-step "
-                "equivalent (" + "; ".join(dv.notes[-3:]) + "): its forecasts are in that space"
+                "equivalent (" + "; ".join(dv.notes[-3:]) + "): its forecasts are in that space "
+                "and it cannot update a forecast with actuals"
             ],
         )
     return dv, [], []
@@ -127,6 +130,9 @@ def build_spec(
 ) -> tuple[ModelSpec, DatasetValue, list[str]]:
     """The ``ModelSpec`` a model node fits, the dataset to fit it on and warnings."""
     base, carried, warns = _root(data)
+    labels = {MODEL_LABEL: _slug(name)}
+    if warns:  # fitted in the space of a transform the endpoint cannot replay
+        labels[DATA_SPACE_LABEL] = TRANSFORMED_SPACE
     ref = (
         base.ref
         if base.ref and base.ref.startswith("dataset://")
@@ -142,7 +148,7 @@ def build_spec(
             split=split,
             settings=settings,
             mode=mode,
-            labels={MODEL_LABEL: _slug(name)},
+            labels=labels,
         )
     except ValueError as exc:
         raise MapiError(str(exc), code=ErrorCode.WORKFLOW_INVALID) from None
@@ -723,6 +729,27 @@ def backtest_node(ctx: NodeContext) -> NodeOutcome:
 # ================================================================================ forecast
 
 
+def _future_rows(bundle: Bundle, data: xr.Dataset, tdim_canon: str) -> xr.Dataset | None:
+    """The rows of a ``model.forecast`` node's ``data`` (its future drivers) after the fitted
+    history. Rows inside it are the model's own history - a workflow often wires the fit's
+    dataset in - and the forecast starts from the end of the fit; a target value after it is
+    an actual, which the score harness uses or refuses (``mapi_spec.actuals``), never
+    ignores. ``None`` when nothing is left."""
+    tdim = bundle.binding.to_dataset(tdim_canon)
+    fit_end = entry_fit_end(bundle.fit_coords, bundle.resolved.model_stage, tdim_canon)
+    if fit_end is None:
+        fit_end = entry_fit_end(bundle.fit_coords, "raw", tdim_canon)
+    if tdim not in data.dims or tdim not in data.coords or fit_end is None:
+        return data
+    labels = np.asarray(data[tdim].values)
+    try:
+        after = labels > np.asarray(fit_end).astype(labels.dtype)
+    except (TypeError, ValueError):
+        return data
+    rest = data.isel({tdim: np.flatnonzero(after)})
+    return rest if rest.sizes.get(tdim, 0) and rest.data_vars else None
+
+
 def forecast_node(ctx: NodeContext) -> NodeOutcome:
     mv = ctx.model("model")
     assert mv is not None
@@ -744,12 +771,13 @@ def forecast_node(ctx: NodeContext) -> NodeOutcome:
     if policy != "error":
         extra["future_covariates"] = policy
     reg = _registry(ctx)
+    payload = _future_rows(bundle, future.data, tdim_canon) if future is not None else None
     try:
         req = _request(spec, "forecast", **extra)
         tree = score_bundle(
             bundle,
             req,
-            data=future.data if future is not None else None,
+            data=payload,
             registry=reg,
             history=mv.data,
             return_full=True,

@@ -17,6 +17,7 @@ import { EmptyState, ErrorNotice, LoadingRows, Mono, PageHeader, ProblemNotice, 
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/overlays";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, NativeSelect } from "@/components/ui/primitives";
+import { ConditioningNote } from "@/features/integrations/actuals-editor";
 import { ProgressPanel } from "@/features/runs/progress-panel";
 import {
   buildScoreRequest,
@@ -475,7 +476,14 @@ function ScoreWorkspace({ mv }: { mv: ModelVersion }) {
             </CardHeader>
             <CardContent>
               {done ? (
-                done.run.problem ? <ProblemNotice problem={done.run.problem} /> : <ScoreResults outputs={done.outputs ?? []} runId={done.run.id} />
+                done.run.problem ? (
+                  <ProblemNotice problem={done.run.problem} />
+                ) : (
+                  <div className="grid gap-3">
+                    {done.summary?.conditioning ? <ConditioningNote conditioning={done.summary.conditioning} /> : null}
+                    <ScoreResults outputs={done.outputs ?? []} runId={done.run.id} />
+                  </div>
+                )
               ) : pending ? (
                 <PendingScore
                   mv={mv}

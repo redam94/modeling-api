@@ -25,6 +25,7 @@ from mapi_spec.about import (
     recommend,
 )
 from mapi_spec.abouts import builtin_about, builtin_abouts
+from mapi_spec.actuals import ForecastConditioning
 from mapi_spec.admin import ExecutorHealth, KillSwitches, kill_switch_decision
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome
 from mapi_spec.calibration import (
@@ -257,7 +258,7 @@ from mapi_spec.xrjson import XrJsonDataset
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.5.0"
+    __version__ = "0.5.1"
 
 __all__ = [
     "API_VERSION",
@@ -325,6 +326,7 @@ __all__ = [
     "Expression",
     "FitConfig",
     "Fold",
+    "ForecastConditioning",
     "FutureCovariates",
     "GateOutcome",
     "GovernancePolicy",

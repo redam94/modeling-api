@@ -68,6 +68,11 @@ together is in the [Architecture overview](architecture.md), and what keeps it s
     Score requests are checked against the fitted coordinates before any compute: unseen
     levels, horizons, gaps, missing future covariates, impossible summaries.
 
+-   **[Forecasts with actuals](forecasting-with-actuals.md)**
+
+    Send the actuals that arrived since the fit and the dates to forecast: the model updates
+    with fixed parameters and forecasts from the last actual, or refuses - never ignores them.
+
 -   **[Capabilities and manifests](capabilities.md)**
 
     What a model declares about itself, statically: representation, score modes, outputs,

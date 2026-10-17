@@ -32,7 +32,7 @@ from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
 from mapi_spec.schema import DataSchema, Role
 from mapi_spec.spec import FutureCovariates
 
-__all__ = ["PERIODS_PER_YEAR", "fill_future_covariates", "season_length"]
+__all__ = ["PERIODS_PER_YEAR", "fill_future_covariates", "fill_future_rows", "season_length"]
 
 PERIODS_PER_YEAR: Final[dict[str, float]] = {
     "s": 365 * 86400,
@@ -228,3 +228,124 @@ def fill_future_covariates(
         ),
     )
     return payload.assign(filled), issues
+
+
+def _ffill(values: np.ndarray) -> np.ndarray:
+    """Forward fill along axis 0 (NaN stays where nothing came before)."""
+    out = np.array(values, dtype=np.float64, copy=True)
+    for i in range(1, out.shape[0]):
+        prev, cur = out[i - 1], out[i]
+        out[i] = np.where(np.isnan(cur), prev, cur)
+    return out
+
+
+def fill_future_rows(
+    payload: xr.Dataset,
+    policy: FutureCovariates | None,
+    *,
+    dim: str,
+    future: xr.DataArray,
+    names: Sequence[str],
+    history: xr.Dataset | None = None,
+    schema: DataSchema | None = None,
+) -> tuple[xr.Dataset, list[Issue]]:
+    """Fill the empty values of the drivers ``names`` on the periods to forecast (forecasts
+    with actuals, :mod:`mapi_spec.actuals`).
+
+    ``future`` is a bool array over ``dim`` (and any of the targets' other dims): the periods
+    to forecast; it is reduced to each driver's dims (a driver period is future when it is
+    for any target cell it feeds). Values the payload supplies are never changed, and nothing
+    is filled outside the future periods. Policies: ``carry_last`` - the last value before
+    the period in the fitted ``history`` and the payload together (so the actuals' drivers
+    count); ``seasonal_naive`` - the value whole seasons earlier by date (else the last one,
+    with a warning); ``zero``; ``supplied``/``None`` - nothing is filled. A driver the payload
+    lacks entirely is added, empty outside the future periods.
+    """
+    if policy is None or policy is FutureCovariates.SUPPLIED or dim not in payload.dims:
+        return payload, []
+    issues: list[Issue] = []
+    freq = schema.dims[dim].freq if schema is not None and dim in schema.dims else None
+    season = season_length(freq)
+    done: list[str] = []
+    out = payload
+    for name in names:
+        hist = history[name] if history is not None and name in history else None
+        if name in out:
+            current = out[name].astype(np.float64)
+        elif hist is not None:
+            other = [str(d) for d in hist.dims if d != dim]
+            coords = {d: (out[d].values if d in out.coords else hist[d].values) for d in other}
+            shape = [len(coords[d]) for d in other] + [out.sizes[dim]]
+            current = xr.DataArray(
+                np.full(shape, np.nan), dims=[*other, dim], coords={**coords, dim: out[dim]}
+            )
+        elif policy is FutureCovariates.ZERO and schema is not None and name in schema.vars:
+            vdims = [d for d in schema.vars[name].dims if d != dim]
+            if any(d not in out.coords for d in vdims):
+                continue
+            shape = [out.sizes[d] for d in vdims] + [out.sizes[dim]]
+            current = xr.DataArray(
+                np.full(shape, np.nan),
+                dims=[*vdims, dim],
+                coords={**{d: out[d].values for d in vdims}, dim: out[dim]},
+            )
+        else:
+            continue  # nothing to extend from: the plugin or the checks report it
+        drop = [d for d in future.dims if d not in current.dims]
+        fut = future.any(drop) if drop else future
+        fut = fut.broadcast_like(current).transpose(*current.dims)
+        need = fut & current.isnull()
+        if not bool(need.any()):
+            continue
+        other = [str(d) for d in current.dims if d != dim]
+        if policy is FutureCovariates.ZERO:
+            fill = xr.zeros_like(current)
+        else:
+            combined = current
+            if hist is not None and dim in hist.dims:
+                h = hist.astype(np.float64)
+                h = h.reindex(
+                    {d: current[d].values for d in other if d in h.dims and d in current.coords}
+                )
+                combined = current.combine_first(h)
+            combined = combined.sortby(dim).transpose(dim, *other)
+            values = np.asarray(combined.values, dtype=np.float64)
+            labels = np.asarray(combined[dim].values)
+            carried = _ffill(values)
+            if policy is FutureCovariates.SEASONAL_NAIVE:
+                dated = (
+                    _seasonal_by_date(values, labels, labels, season, freq)
+                    if season and freq is not None
+                    else None
+                )
+                if dated is None or bool(np.isnan(dated[np.isnan(values)]).any()):
+                    issues.append(
+                        Issue(
+                            code=ErrorCode.MISSING_FUTURE_COVARIATE,
+                            severity=Severity.WARNING,
+                            pointer="/future_covariates",
+                            message=f"{name!r} has no value a whole number of seasons before "
+                            "some periods to forecast; its last value was carried forward there",
+                        )
+                    )
+                    dated = carried if dated is None else np.where(np.isnan(dated), carried, dated)
+                carried = dated
+            fill = xr.DataArray(carried, dims=combined.dims, coords=combined.coords)
+            fill = fill.sel({dim: current[dim].values}).transpose(*current.dims)
+        new = current.where(~need, fill)
+        new.attrs = (
+            dict(out[name].attrs) if name in out else (dict(hist.attrs) if hist is not None else {})
+        )
+        out = out.assign({name: new})
+        done.append(name)
+    if done:
+        issues.insert(
+            0,
+            Issue(
+                code=ErrorCode.MISSING_FUTURE_COVARIATE,
+                severity=Severity.INFO,
+                pointer="/future_covariates",
+                message=f"empty future values of {sorted(done)} were filled with {policy.value!r}",
+            ),
+        )
+    return out, issues

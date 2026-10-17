@@ -17,7 +17,7 @@ from __future__ import annotations
 import importlib
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 _LAZY: dict[str, str] = {
     # sanitizer (core)

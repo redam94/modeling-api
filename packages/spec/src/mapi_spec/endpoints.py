@@ -19,7 +19,9 @@ alias, so a new model version can be promoted - or rolled back - without touchin
 
 from __future__ import annotations
 
-from typing import Final, Literal
+import contextlib
+from collections.abc import Iterable, Mapping
+from typing import Any, Final, Literal
 
 from pydantic import AwareDatetime, Field, JsonValue, field_serializer, model_validator
 
@@ -27,7 +29,7 @@ from mapi_spec._dto import EXAMPLE_TS, Id, RequestModel, ResponseModel, Sha256, 
 from mapi_spec._dto import dto_examples as _examples
 from mapi_spec._types import Duration, LabelKey, LabelValue, Name, Scalar, Slug
 from mapi_spec.capabilities import OutputSelector, Representation, ScoreMode, default_summary
-from mapi_spec.coords import CoordSummary
+from mapi_spec.coords import CoordSummary, parse_freq
 from mapi_spec.errors import Issue
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
@@ -41,7 +43,7 @@ from mapi_spec.spec import (
     Intervention,
     ScoreRequest,
 )
-from mapi_spec.xrjson import XrJsonDataset
+from mapi_spec.xrjson import XrJsonDataset, observed_labels, xrjson_from_rows
 
 __all__ = [
     "INPUT_INLINE_DATA",
@@ -55,10 +57,17 @@ __all__ = [
     "EndpointScoreCall",
     "EndpointValidation",
     "EvaluationPolicy",
+    "InputColumnRole",
+    "InputTable",
+    "InputTableColumn",
+    "capability_breaks",
     "endpoint_ref",
+    "example_actuals_call",
     "example_score_call",
+    "input_table",
     "policy_relaxations",
     "schema_breaks",
+    "table_forecast_call",
 ]
 
 INPUT_INLINE_DATA: Final = "inline.data"
@@ -97,7 +106,10 @@ class EndpointSchemaSnapshot(ResponseModel):
     ``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names
     (``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames
     them to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of
-    the dim a forecast extends.
+    the dim a forecast extends. ``conditions_on_actuals``: forecasts can carry actuals
+    (target values for periods after the fit) that the model updates its state with
+    (:mod:`mapi_spec.actuals`); the server sets it from the capabilities of the plugin
+    build that serves the endpoint now, not only from those at fit.
     """
 
     inputs_stage: str = "raw"
@@ -108,6 +120,7 @@ class EndpointSchemaSnapshot(ResponseModel):
     horizon_dim: Name | None = None
     future_required: list[str] = Field(default_factory=list)
     fit_coords: dict[str, CoordSummary] = Field(default_factory=dict)
+    conditions_on_actuals: bool = False
 
     model_config = _examples(
         {
@@ -359,6 +372,65 @@ class EndpointScoreCall(RequestModel):
         return out
 
 
+InputColumnRole = Literal["coord", "target", "driver", "input"]
+"""What an input-table column holds: ``coord`` - the labels of a dim (a date, a market);
+``target`` - the KPI (in a forecast: an actual, or empty for a period to forecast);
+``driver`` - an input the model needs on the periods it forecasts; ``input`` - any other."""
+
+
+class InputTableColumn(ResponseModel):
+    """One column of an :class:`InputTable`."""
+
+    name: Name
+    role: InputColumnRole
+    dims: list[Name] = Field(
+        default_factory=list, description="The dims a value column varies along"
+    )
+    freq: str | None = Field(None, description="The frequency of a time coordinate")
+    description: str = Field("", max_length=500)
+
+
+class InputTable(ResponseModel):
+    """An endpoint's inline input as one long table: a header row (:attr:`columns`, the
+    coordinate columns first), then one row per coordinate - the layout of a spreadsheet's
+    Input sheet and of :func:`mapi_spec.xrjson.xrjson_from_rows`.
+
+    For a forecasting endpoint :attr:`rows` lists the periods after the fitted history (the
+    other dims' first levels), every value empty: fill the target where you have actuals and
+    leave it empty for the periods to forecast (:mod:`mapi_spec.actuals`). Dates are ISO
+    ``yyyy-MM-dd``."""
+
+    horizon_dim: Name | None = None
+    conditions_on_actuals: bool = False
+    columns: list[InputTableColumn] = Field(default_factory=list, max_length=300)
+    rows: list[list[Scalar | None]] = Field(default_factory=list, max_length=200)
+
+    model_config = _examples(
+        {
+            "horizon_dim": "t",
+            "conditions_on_actuals": True,
+            "columns": [
+                {"name": "t", "role": "coord", "freq": "MS",
+                 "description": "The period (yyyy-MM-dd)"},
+                {"name": "y", "role": "target", "dims": ["t"],
+                 "description": "The actual; leave empty for the periods to forecast"},
+                {"name": "price", "role": "driver", "dims": ["t"],
+                 "description": "Needed on every period, the periods to forecast included"},
+            ],
+            "rows": [["1961-01-01", None, None], ["1961-02-01", None, None]],
+        }
+    )  # fmt: skip
+
+    @property
+    def header(self) -> list[str]:
+        return [c.name for c in self.columns]
+
+    @property
+    def variables(self) -> dict[str, list[str]]:
+        """Value columns and their dims (the input of ``xrjson_from_rows``)."""
+        return {c.name: list(c.dims) for c in self.columns if c.role != "coord"}
+
+
 class EndpointSchema(ResponseModel):
     """``GET /v1/endpoints/{alias}/schema``: what to send, with a ready example payload."""
 
@@ -369,6 +441,18 @@ class EndpointSchema(ResponseModel):
     snapshot: EndpointSchemaSnapshot
     example: dict[str, JsonValue] = Field(
         ..., description="An EndpointScoreCall body that validates against this endpoint"
+    )
+    actuals_example: dict[str, JsonValue] | None = Field(
+        None,
+        description="For endpoints whose model conditions forecasts on actuals: a forecast "
+        "call with inline data over the periods after the fit, the target empty (null). Fill "
+        "the target with the actuals you have and leave it empty for the periods to forecast "
+        "(example_actuals_call)",
+    )
+    input_table: InputTable | None = Field(
+        None,
+        description="The inline input as a long table (a spreadsheet's Input sheet): the "
+        "columns and, for forecasts, the periods after the fit to fill in (input_table)",
     )
     max_inline_bytes: int = 5 * 1024 * 1024
 
@@ -465,6 +549,26 @@ def schema_breaks(old: DataSchema, new: DataSchema) -> list[str]:
     return out
 
 
+def capability_breaks(old: EndpointSchemaSnapshot, new: EndpointSchemaSnapshot) -> list[str]:
+    """Why callers of ``old`` would break against ``new`` beyond the input schema (plain
+    text): a version that forecasts but cannot update the forecast with actuals refuses calls
+    that send them (``ACTUALS_NOT_SUPPORTED``, :mod:`mapi_spec.actuals`), which the version
+    served now accepts. Counted with :func:`schema_breaks` by the endpoint's
+    ``schema_change`` policy."""
+    out: list[str] = []
+    if (
+        old.conditions_on_actuals
+        and "forecast" in old.score_modes
+        and not new.conditions_on_actuals
+        and "forecast" in new.score_modes
+    ):
+        out.append(
+            "forecasts with actuals: the version served now updates a forecast with the "
+            "actuals a call sends; this version refuses them (ACTUALS_NOT_SUPPORTED)"
+        )
+    return out
+
+
 def example_score_call(snapshot: EndpointSchemaSnapshot, *, periods: int = 8) -> EndpointScoreCall:
     """An example payload for an endpoint (shown by ``GET …/schema`` and the snippets).
 
@@ -510,6 +614,227 @@ def example_score_call(snapshot: EndpointSchemaSnapshot, *, periods: int = 8) ->
         return EndpointScoreCall(mode="predict", output=output)
     payload = XrJsonDataset.model_validate({"coords": coords, "data_vars": data_vars})
     return EndpointScoreCall(mode="predict", data=payload, output=output)
+
+
+def example_actuals_call(
+    snapshot: EndpointSchemaSnapshot, *, periods: int = 8
+) -> EndpointScoreCall | None:
+    """A forecast call that shows how to send actuals (``EndpointSchema.actuals_example``):
+    inline data over the ``periods`` periods after the fit with every input variable empty
+    (``null``) - the target and the drivers - and ``future_covariates: carry_last``.
+
+    As it stands it forecasts those periods from the end of the fit (no actuals). A caller
+    (a spreadsheet's Input sheet, a script) fills the target for the periods it has actuals
+    for and leaves it empty for the periods to forecast; driver values it leaves empty on the
+    future periods are carried forward (:mod:`mapi_spec.actuals`). ``None`` unless the
+    endpoint forecasts with a model that conditions on actuals.
+    """
+    hdim = snapshot.horizon_dim
+    schema = snapshot.input_schema
+    if (
+        not snapshot.conditions_on_actuals
+        or "forecast" not in snapshot.score_modes
+        or hdim is None
+        or hdim not in schema.dims
+        or not schema.targets
+    ):
+        return None
+    fit = snapshot.fit_coords.get(hdim)
+    labels = _future_labels(fit, periods) if fit is not None else None
+    if labels is None:
+        return None
+    coords: dict[str, dict[str, object]] = {hdim: {"dims": [hdim], "data": labels}}
+    sizes: dict[str, int] = {hdim: len(labels)}
+    data_vars: dict[str, dict[str, object]] = {}
+    for name, var in schema.vars.items():
+        if var.role in (Role.INDEX, Role.CONSTANT) or hdim not in var.dims:
+            continue
+        for d in var.dims:
+            if d in sizes:
+                continue
+            cs = snapshot.fit_coords.get(d)
+            values: list[Scalar] = list(cs.values[:2]) if cs is not None and cs.values else []
+            if not values:
+                return None  # a dim whose levels are unknown: no honest example
+            coords[d] = {"dims": [d], "data": values}
+            sizes[d] = len(values)
+        data_vars[name] = {"dims": list(var.dims), "data": _nulls([sizes[d] for d in var.dims])}
+    rep = snapshot.representation
+    output = OutputSelector(
+        kind="expected",
+        summary=default_summary(rep) if rep is not None else ["mean", "hdi_90"],
+    )
+    payload = XrJsonDataset.model_validate({"coords": coords, "data_vars": data_vars})
+    return EndpointScoreCall(
+        mode="forecast",
+        horizon=Horizon(dim=hdim, periods=periods),
+        data=payload,
+        future_covariates=FutureCovariates.CARRY_LAST,
+        output=output,
+    )
+
+
+def _future_labels(fit: CoordSummary, periods: int) -> list[Scalar] | None:
+    """The ``periods`` labels after the end of ``fit`` (ISO dates or integers)."""
+    if fit.end is None:
+        return None
+    if fit.kind == "time":
+        if fit.freq is None:
+            return None
+        freq = parse_freq(fit.freq)
+        last = fit.ordinal(fit.end)
+        if last is None:
+            return None
+        out: list[Scalar] = []
+        for k in range(1, periods + 1):
+            dt = freq.label(last + k)
+            midnight = dt.hour == dt.minute == dt.second == 0
+            out.append(dt.date().isoformat() if midnight else dt.isoformat())
+        return out
+    if fit.kind in ("integer", "index") and isinstance(fit.end, int):
+        step = int(fit.step or 1)
+        return [fit.end + k * step for k in range(1, periods + 1)]
+    return None
+
+
+def _nulls(shape: list[int]) -> object:
+    if not shape:
+        return None
+    return [_nulls(shape[1:]) for _ in range(shape[0])]
+
+
+_SKIP_ROLES: Final = (Role.INDEX, Role.CONSTANT)
+_MAX_TABLE_ROWS: Final = 200
+
+
+def input_table(snapshot: EndpointSchemaSnapshot, *, periods: int = 8) -> InputTable | None:
+    """The endpoint's inline input as a long table (``EndpointSchema.input_table``).
+
+    Columns: the dims the input variables use (the forecast dim first), then the targets,
+    the drivers needed on future periods and the other inputs. For a forecasting endpoint the
+    example rows are the ``periods`` periods after the fit (crossed with the first two levels
+    of every other dim), every value empty - the rows a caller fills with actuals or leaves
+    empty to forecast. ``None`` when the input has no variable a table could hold.
+    """
+    schema = snapshot.input_schema
+    hdim = snapshot.horizon_dim if snapshot.horizon_dim in schema.dims else None
+    names = [n for n, v in schema.vars.items() if v.role not in _SKIP_ROLES]
+    if not names:
+        return None
+    future = set(snapshot.future_required) | {
+        n for n, v in schema.vars.items() if v.future_required
+    }
+    targets = [n for n in names if schema.vars[n].role is Role.TARGET]
+    drivers = [n for n in names if n in future and n not in targets]
+    others = [n for n in names if n not in targets and n not in drivers]
+    used = [d for d in schema.dims if any(d in schema.vars[n].dims for n in names)]
+    if hdim is not None and hdim in used:
+        used.remove(hdim)
+        used.insert(0, hdim)
+    forecasting = hdim is not None and "forecast" in snapshot.score_modes
+    columns: list[InputTableColumn] = []
+    for d in used:
+        dim = schema.dims[d]
+        if dim.kind == "time":
+            text = "The period (yyyy-MM-dd)" if d == hdim else "A date (yyyy-MM-dd)"
+        else:
+            text = f"A level of {d}"
+        columns.append(InputTableColumn(name=d, role="coord", freq=dim.freq, description=text))
+    for n in targets:
+        text = "The value of the target"
+        if forecasting:
+            text = (
+                "The actual; leave empty for the periods to forecast"
+                if snapshot.conditions_on_actuals
+                else "Leave empty: this model forecasts from the end of its fitted history"
+            )
+        columns.append(
+            InputTableColumn(
+                name=n, role="target", dims=list(schema.vars[n].dims), description=text
+            )
+        )
+    for n in drivers:
+        columns.append(
+            InputTableColumn(
+                name=n,
+                role="driver",
+                dims=list(schema.vars[n].dims),
+                description="Needed on every period, the periods to forecast included",
+            )
+        )
+    for n in others:
+        columns.append(
+            InputTableColumn(
+                name=n, role="input", dims=list(schema.vars[n].dims), description="An input"
+            )
+        )
+    rows: list[list[Scalar | None]] = []
+    fit = snapshot.fit_coords.get(hdim) if forecasting and hdim is not None else None
+    labels = _future_labels(fit, periods) if fit is not None else None
+    if labels and hdim in used:
+        levels: list[list[Scalar]] = [labels]
+        for d in used[1:]:
+            cs = snapshot.fit_coords.get(d)
+            if cs is None or not cs.values:
+                levels = []
+                break
+            levels.append(list(cs.values[:2]))
+        combos: list[list[Scalar]] = [[]]
+        for values in levels:
+            combos = [[*c, v] for c in combos for v in values][:_MAX_TABLE_ROWS]
+        if levels:
+            empty: list[Scalar | None] = [None] * (len(columns) - len(used))
+            rows = [[*c, *empty] for c in combos]
+    return InputTable(
+        horizon_dim=hdim,
+        conditions_on_actuals=snapshot.conditions_on_actuals,
+        columns=columns,
+        rows=rows,
+    )
+
+
+def table_forecast_call(
+    table: InputTable,
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    periods: int | None = None,
+    future_covariates: FutureCovariates | str = FutureCovariates.CARRY_LAST,
+    output: OutputSelector | Mapping[str, Any] | None = None,
+) -> EndpointScoreCall:
+    """A forecast call over a long table in the layout of ``table`` (a spreadsheet's Input
+    sheet, a DataFrame's records): rows whose target holds a value are actuals, rows after
+    the last actual with the target empty are the periods to forecast
+    (:mod:`mapi_spec.actuals`).
+
+    ``horizon.periods`` is the number of those periods; when the table ends with an actual
+    it is ``periods`` (default 8) periods appended after it. Raises ``ValueError`` when the
+    endpoint does not forecast or the table does not fit the layout.
+    """
+    hdim = table.horizon_dim
+    if hdim is None:
+        raise ValueError("this endpoint has no dim a forecast extends")
+    data = xrjson_from_rows(rows, table.variables)
+    coord = data.coords.get(hdim)
+    if coord is None:
+        raise ValueError(f"the table needs a column named {hdim!r} (the periods)")
+    labels = list(coord.data) if isinstance(coord.data, list) else []
+    order = list(range(len(labels)))
+    with contextlib.suppress(TypeError):
+        order.sort(key=lambda i: labels[i])  # type: ignore[arg-type,return-value]
+    observed: set[Any] = set()
+    for target in (c.name for c in table.columns if c.role == "target"):
+        found = observed_labels(data, target, hdim)
+        observed.update(found or [])
+    seen = [k for k, i in enumerate(order) if labels[i] in observed]
+    after = len(labels) - 1 - seen[-1] if seen else len(labels)
+    n = after if after > 0 else (periods or 8)
+    return EndpointScoreCall(
+        mode="forecast",
+        horizon=Horizon(dim=hdim, periods=n),
+        data=data,
+        future_covariates=FutureCovariates(future_covariates),
+        output=OutputSelector.model_validate(output) if output is not None else OutputSelector(),
+    )
 
 
 def _zeros(shape: list[int]) -> object:

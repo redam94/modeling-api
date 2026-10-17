@@ -11,7 +11,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any, Literal
 
 import numpy as np
@@ -146,13 +146,13 @@ class EtsModel(StatsmodelsModel[EtsSettings]):
         q = s.quantiles
         with quiet():
             fitted = np.asarray(res.fittedvalues, dtype=float)
-            resid = np.asarray(res.resid, dtype=float)
+            scale = float(res.scale)  # mean squared (relative, for mul) one-step error
             if s.error == "mul":
                 # relative errors: the one-step spread scales with the level
-                sd = np.sqrt(float(np.nanmean(resid**2))) * np.abs(fitted)
+                sd = np.sqrt(scale) * np.abs(fitted)
                 var_in = sd**2
             else:
-                var_in = np.full(cell.n, float(np.nanmean(resid**2)))
+                var_in = np.full(cell.n, scale)
             q_in = normal_quantiles(fitted[insample], var_in[insample], q)
             if not horizon:
                 return q_in, np.empty((len(q), 0))
@@ -164,6 +164,35 @@ class EtsModel(StatsmodelsModel[EtsSettings]):
             )
             q_out = np.stack([_ets_quantile(pred, level) for level in q])
         return q_in, q_out
+
+    def predict_conditioned(
+        self,
+        fit_res: Callable[[], Any],
+        cell: Cell,
+        ext: Cell,
+        s: EtsSettings,
+        params: Mapping[str, float],
+        learned: Mapping[str, Any],
+        insample: np.ndarray,
+        x_future: np.ndarray | None,
+        horizon: int,
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The smoother with the fitted smoothing weights and initial states over the
+        extended history; the noise variance stays the fitted one (statsmodels would
+        re-estimate it from the extended residuals)."""
+        res = self.rebuild(ext, s, params, learned)
+        fixed_noise(res, fit_res())
+        return self.predict_cell(res, ext, s, learned, insample, x_future, horizon, seed)
+
+
+def fixed_noise(res: Any, fitted: Any) -> None:
+    """Give the ETS results ``res`` the noise variance of ``fitted`` (``scale`` drives the
+    in-sample bands and simulations, ``mse`` the closed-form forecast variance)."""
+    inner = getattr(res, "_results", res)
+    base = getattr(fitted, "_results", fitted)
+    inner.scale = float(base.scale)
+    inner._cache["mse"] = float(base.mse)
 
 
 def _ets_quantile(pred: Any, level: float) -> np.ndarray:
@@ -223,6 +252,7 @@ class ThetaModel(StatsmodelsModel[ThetaSettings]):
     )
     capabilities = quantile_capabilities("custom")
     schema_template = schema_template(multivariate=False, exog=False)
+    rebuild_estimates = True
 
     def _estimate(self, cell: Cell, s: ThetaSettings) -> Any:
         from statsmodels.tsa.forecasting.theta import ThetaModel as SmTheta
@@ -311,6 +341,75 @@ class ThetaModel(StatsmodelsModel[ThetaSettings]):
         fvar = (1 + np.arange(horizon) * (1 + (alpha - 1) ** 2)) * float(res.sigma2)
         return q_in, normal_quantiles(fmean, fvar, q)
 
+    def predict_conditioned(
+        self,
+        fit_res: Callable[[], Any],
+        cell: Cell,
+        ext: Cell,
+        s: ThetaSettings,
+        params: Mapping[str, float],
+        learned: Mapping[str, Any],
+        insample: np.ndarray,
+        x_future: np.ndarray | None,
+        horizon: int,
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The fitted drift ``b0``, SES weight ``alpha``, variance and seasonal indices
+        applied to the extended history (nothing re-estimated, the season included)."""
+        res = theta_conditioned(fit_res(), ext, use_mle=s.use_mle)
+        return self.predict_cell(res, ext, s, learned, insample, x_future, horizon, seed)
+
+
+def _deseasonalized(res: Any, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, bool]:
+    """``y`` without the fitted season of a theta fit, the season over ``y``'s positions
+    and whether it is multiplicative."""
+    model = res.model
+    n = y.size
+    seasonal = np.asarray(getattr(res, "_seasonal", np.array([])), dtype=float)
+    period = int(model.period)
+    mult = not str(model.method).startswith("add")
+    if model.deseasonalize and seasonal.size:
+        season = seasonal[np.arange(n) % period]
+        return (y / season if mult else y - season), season, mult
+    return y, (np.ones(n) if mult else np.zeros(n)), mult
+
+
+def theta_conditioned(fitted: Any, ext: Cell, *, use_mle: bool) -> Any:
+    """A statsmodels ``ThetaModelResults`` over the extended history ``ext`` with the
+    parameters, variance and seasonal indices of ``fitted`` (the theta fit on the stored
+    data): only the SES state moves - the one-step forecast after the last actual (by the
+    fitted SES weight, or by the fitted IMA(1,1) filter when the fit used maximum
+    likelihood)."""
+    from statsmodels.tsa.forecasting.theta import ThetaModel as SmTheta
+    from statsmodels.tsa.forecasting.theta import ThetaModelResults
+
+    b0, alpha = float(fitted.params.iloc[0]), float(fitted.params.iloc[1])
+    sigma2 = float(fitted.sigma2)
+    model = fitted.model
+    yd, _, _ = _deseasonalized(fitted, np.asarray(ext.y, dtype=float))
+    with quiet():
+        if use_mle:
+            from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+            ima = SARIMAX(yd, order=(0, 1, 1), trend="c").filter(
+                np.array([b0, alpha - 1.0, sigma2])
+            )
+            one_step = float(np.asarray(ima.forecast(1))[0]) - b0
+        else:
+            level = float(yd[0])
+            for value in yd[:-1]:
+                level = alpha * float(value) + (1 - alpha) * level
+            one_step = alpha * float(yd[-1]) + (1 - alpha) * level
+        ext_model = SmTheta(
+            ext.endog(),
+            period=model.period,
+            deseasonalize=model.deseasonalize,
+            use_test=False,
+            method=model.method,
+        )
+    seasonal = np.asarray(getattr(fitted, "_seasonal", np.array([])), dtype=float)
+    return ThetaModelResults(b0, alpha, sigma2, one_step, seasonal, use_mle, ext_model)
+
 
 def _theta_insample(res: Any, cell: Cell, theta: float) -> tuple[np.ndarray, np.ndarray]:
     """One-step-ahead theta forecasts over the fitted periods with the final parameters.
@@ -320,18 +419,9 @@ def _theta_insample(res: Any, cell: Cell, theta: float) -> tuple[np.ndarray, np.
     ``ThetaModelResults.forecast(1)`` does for the whole sample.
     """
     b0, alpha = float(res.params.iloc[0]), float(res.params.iloc[1])
-    model = res.model
     y = cell.y.astype(float)
     n = y.size
-    seasonal = np.asarray(getattr(res, "_seasonal", np.array([])), dtype=float)
-    period = int(model.period)
-    mult = not str(model.method).startswith("add")
-    if model.deseasonalize and seasonal.size:
-        season = seasonal[np.arange(n) % period]
-        yd = y / season if mult else y - season
-    else:
-        season = np.ones(n) if mult else np.zeros(n)
-        yd = y
+    yd, season, mult = _deseasonalized(res, y)
     level = np.empty(n)
     level[0] = yd[0]
     for t in range(1, n):

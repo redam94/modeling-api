@@ -73,7 +73,8 @@ statistic, p-value and 95% interval for every parameter of every series.
 What a score returns, for every model:
 
 * **inside the fitted range**: the model's one-step-ahead predictions from the fitted
-  history (the payload's targets and drivers are not used there);
+  history (the payload's targets and drivers are not used there - except in a forecast with
+  actuals, below);
 * **after it**: a multi-step forecast from the end of the fit, using the drivers in the
   payload. A missing driver - or a missing value of one - fails with
   `MISSING_FUTURE_COVARIATE` (422). With `future_covariates: carry_last`,
@@ -91,7 +92,45 @@ for both output kinds, because statsmodels has no separate interval for the expe
 value. Quantiles describe one cell each, so totals across geos or series are refused
 (`CAPABILITY_UNSUPPORTED`); sum the series in the pipeline and model the total instead.
 
-`counterfactual`, `simulate` and `filter` score modes are not offered (`MODE_NOT_SUPPORTED`).
+`counterfactual`, `simulate` and `filter` score modes are not offered (`MODE_NOT_SUPPORTED`);
+updating a forecast with new data is a `forecast` with actuals.
+
+## Forecasting from new actuals
+
+Every statsmodels model can move its forecast origin forward without a refit
+(`capabilities.conditions_on_actuals`; the rules are on
+[Forecasts with actuals](../concepts/forecasting-with-actuals.md)). Send the periods that
+arrived since the fit with their target values (and drivers), then the periods to forecast with
+the target empty:
+
+```python
+--8<-- "statsmodels_models.py:actuals"
+```
+
+Each series of a univariate model is updated with its own actuals, so panel series may end
+at different dates. The answer covers every period you sent: one-step-ahead predictions on the actuals, the forecast
+after each series' last actual. Actuals for periods inside the fitted range replace the fitted
+values (revised data). The fitted parameters - and the fitted noise variance, so the band
+widths - never change; how each model takes the new data in:
+
+| Model | Updated with the actuals by |
+|---|---|
+| `ts.sarimax`, `ts.arima`, `ts.unobserved_components`, `ts.varmax`, `ts.dynamic_factor` | the Kalman filter with the fitted parameters over the history plus the actuals - statsmodels' `results.append(new, refit=False)`; differencing and seasonal differencing are part of the model, so actuals and forecasts are in the data's units. Empty periods among the actuals are filtered as missing (the univariate state-space models accept missing targets). |
+| `ts.ets` | the exponential-smoothing recursions with the fitted smoothing weights and initial states |
+| `ts.theta` | the fitted SES weight (or IMA(1,1) filter with `use_mle`), drift and seasonal indices |
+| `ts.ardl`, `ts.ecm` | the fitted equation on the supplied lags of the result and the drivers (`apply(refit=False)`; the ECM through its levels ARDL) |
+| `ts.var`, `ts.vecm` | the fitted equations on the supplied lags (levels for the VECM), the deterministic trend continuing |
+| `ts.markov_switching` | the Hamilton filter with the fitted parameters: the regime probabilities after the last actual start the forecast |
+
+Jointly modelled series (`ts.var`, `ts.vecm`, `ts.varmax`, `ts.dynamic_factor`) need a value
+of every series on each period with actuals after the fit (`ACTUALS_INVALID` otherwise).
+Preprocessing steps of the spec (a `core.log1p`, a standardisation) are replayed on the actuals
+before the update and undone on the forecast, as for any payload. A workflow's
+`transform.log`, `transform.box_cox` or `transform.difference` is not such a step: a model
+fitted on its output refuses actuals (see
+[Forecasts with actuals](../concepts/forecasting-with-actuals.md#which-models-can)); difference
+inside the model (`order` `d`, seasonal `D`) instead. Refit from time to time so the
+parameters learn from the new data.
 
 ## The models
 
@@ -372,6 +411,12 @@ added into one fan.
   VECM, VARMAX, DynamicFactor, Markov switching); the UECM is also checked on Johansen and
   Juselius' Danish money-demand data, and the VAR(2) on US macro growth reproduces the
   coefficient table of the statsmodels documentation.
+* Forecasts with actuals equal statsmodels with the fitted parameters on the extended data
+  (`results.append(new, refit=False)` for the state-space models and ARDL, the VAR/VECM
+  forecast on the supplied lags, the fixed-parameter ETS smoother, theta and Hamilton
+  filter); for every model the fit's own last values as actuals reproduce the plain forecast
+  and a jump in them moves it; a model from the `ts_readiness_arimax` workflow forecasts
+  from new monthly actuals in the original units.
 * Conformance fixtures `sm_arimax` (an ARIMAX panel with drivers) and `sm_vecm_macro`
   (a VECM on statsmodels' public-domain `macrodata`) run the whole fit, score and evaluate
   path; see [Conformance corpus](../guides/conformance.md).

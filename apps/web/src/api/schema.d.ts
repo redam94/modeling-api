@@ -1014,6 +1014,10 @@ export interface paths {
          * Python, TypeScript, curl, R, Apps Script and notebook code for the endpoint
          * @description Ready-to-run code that scores the endpoint with its example payload. The API token is
          *     read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.
+         *
+         *     With the endpoint's input table the Apps Script reads an "Input" sheet of actuals and
+         *     dates to forecast, and the other snippets add a forecast over the periods after the fit
+         *     to fill with actuals.
          */
         get: operations["list_endpoint_snippets"];
         put?: never;
@@ -3944,6 +3948,12 @@ export interface components {
              */
             checkpointable?: boolean;
             /**
+             * Conditions On Actuals
+             * @description A forecast can be conditioned on actuals sent with the request (target values for periods after, or at the end of, the fitted history): the model updates its state with them without re-estimating its parameters and forecasts from the last actual (mapi_spec.actuals). Models without it refuse such requests with ACTUALS_NOT_SUPPORTED instead of ignoring the actuals
+             * @default false
+             */
+            conditions_on_actuals?: boolean;
+            /**
              * Contribution Scale
              * @default none
              * @enum {string}
@@ -4892,11 +4902,23 @@ export interface components {
         /**
          * DataSummary
          * @description Summary of a dataset (or score payload): variable names and coordinate summaries.
+         *
+         *     ``observed`` (forecasts conditioned on actuals, :mod:`mapi_spec.actuals`) maps a target
+         *     variable - and a driver the forecast needs (``future_required``) - to, per ordered dim,
+         *     the summary of the labels at which it holds at least one value. Only summarisers that
+         *     read the values set it (the sandbox, and the control plane for inline JSON payloads,
+         *     where it is a null check); a variable left out is unknown.
          */
         DataSummary: {
             /** Coords */
             coords?: {
                 [key: string]: components["schemas"]["CoordSummary"];
+            };
+            /** Observed */
+            observed?: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["CoordSummary"];
+                };
             };
             /** Vars */
             vars?: string[];
@@ -5868,6 +5890,13 @@ export interface components {
          *     }
          */
         EndpointSchema: {
+            /**
+             * Actuals Example
+             * @description For endpoints whose model conditions forecasts on actuals: a forecast call with inline data over the periods after the fit, the target empty (null). Fill the target with the actuals you have and leave it empty for the periods to forecast (example_actuals_call)
+             */
+            actuals_example?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
             /** Alias */
             alias: string;
             /**
@@ -5877,6 +5906,8 @@ export interface components {
             example: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+            /** @description The inline input as a long table (a spreadsheet's Input sheet): the columns and, for forecasts, the periods after the fit to fill in (input_table) */
+            input_table?: components["schemas"]["InputTable"] | null;
             /**
              * Max Inline Bytes
              * @default 5242880
@@ -5897,7 +5928,10 @@ export interface components {
          *     ``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names
          *     (``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames
          *     them to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of
-         *     the dim a forecast extends.
+         *     the dim a forecast extends. ``conditions_on_actuals``: forecasts can carry actuals
+         *     (target values for periods after the fit) that the model updates its state with
+         *     (:mod:`mapi_spec.actuals`); the server sets it from the capabilities of the plugin
+         *     build that serves the endpoint now, not only from those at fit.
          * @example {
          *       "fit_coords": {
          *         "channel": {
@@ -5977,6 +6011,11 @@ export interface components {
          *     }
          */
         EndpointSchemaSnapshot: {
+            /**
+             * Conditions On Actuals
+             * @default false
+             */
+            conditions_on_actuals?: boolean;
             /** Fit Coords */
             fit_coords?: {
                 [key: string]: components["schemas"]["CoordSummary"];
@@ -6141,7 +6180,7 @@ export interface components {
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -7072,6 +7111,125 @@ export interface components {
              * @default spend
              */
             spend_var?: string;
+        };
+        /**
+         * ForecastConditioning
+         * @description What a forecast was conditioned on: the fitted history, the supplied actuals and where
+         *     the forecast periods came from. ``parameters`` is always ``fitted``: conditioning never
+         *     re-estimates the model. ``message`` says the same in plain language.
+         * @example {
+         *       "actuals_through": "1961-03-01",
+         *       "conditioned": true,
+         *       "dim": "t",
+         *       "fit_end": "1960-12-01",
+         *       "horizon_source": "horizon",
+         *       "message": "Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which ends 1960-12-01; the model's parameters were not re-estimated. 8 periods forecast from 1961-04-01 to 1961-11-01.",
+         *       "n_actuals": 3,
+         *       "n_series": 1,
+         *       "parameters": "fitted",
+         *       "periods": 8,
+         *       "revised": 0,
+         *       "series": [
+         *         {
+         *           "actuals_through": "1961-03-01",
+         *           "first_actual": "1961-01-01",
+         *           "forecast_from": "1961-04-01",
+         *           "forecast_to": "1961-11-01",
+         *           "missing": 0,
+         *           "n_actuals": 3,
+         *           "n_forecast": 8,
+         *           "origin": "1961-03-01",
+         *           "revised": 0,
+         *           "series": {}
+         *         }
+         *       ],
+         *       "series_conditioned": 1,
+         *       "truncated": false
+         *     }
+         * @example {
+         *       "conditioned": false,
+         *       "dim": "t",
+         *       "fit_end": "1960-12-01",
+         *       "horizon_source": "horizon",
+         *       "message": "Forecast from the end of the fitted history (1960-12-01); no actuals were supplied. 8 periods forecast from 1961-01-01 to 1961-08-01.",
+         *       "n_actuals": 0,
+         *       "periods": 8,
+         *       "series": [
+         *         {
+         *           "forecast_from": "1961-01-01",
+         *           "forecast_to": "1961-08-01",
+         *           "n_actuals": 0,
+         *           "n_forecast": 8,
+         *           "origin": "1960-12-01"
+         *         }
+         *       ]
+         *     }
+         */
+        ForecastConditioning: {
+            /**
+             * Actuals Through
+             * @description The latest actual over every series
+             */
+            actuals_through?: string | number | boolean | null;
+            /**
+             * Conditioned
+             * @description Whether any supplied actual was used
+             */
+            conditioned: boolean;
+            /** Dim */
+            dim: string;
+            /**
+             * Fit End
+             * @description The last period of the fitted history
+             */
+            fit_end: string | number | boolean;
+            /**
+             * Horizon Source
+             * @enum {string}
+             */
+            horizon_source: "rows" | "horizon";
+            /** Message */
+            message: string;
+            /**
+             * N Actuals
+             * @description Actuals used, over every series
+             */
+            n_actuals: number;
+            /**
+             * N Series
+             * @default 1
+             */
+            n_series?: number;
+            /**
+             * Parameters
+             * @default fitted
+             * @constant
+             */
+            parameters?: "fitted";
+            /**
+             * Periods
+             * @description Forecast periods (the most over series)
+             */
+            periods: number;
+            /**
+             * Revised
+             * @default 0
+             */
+            revised?: number;
+            /** Series */
+            series?: components["schemas"]["SeriesConditioning"][];
+            /**
+             * Series Conditioned
+             * @description Series with at least one actual
+             * @default 0
+             */
+            series_conditioned?: number;
+            /**
+             * Truncated
+             * @description More series than MAX_CONDITIONING_SERIES
+             * @default false
+             */
+            truncated?: boolean;
         };
         /**
          * FrontierPoint
@@ -8223,6 +8381,98 @@ export interface components {
             kind: "inline_arrow";
             /** Rows */
             rows?: number | null;
+        };
+        /**
+         * InputTable
+         * @description An endpoint's inline input as one long table: a header row (:attr:`columns`, the
+         *     coordinate columns first), then one row per coordinate - the layout of a spreadsheet's
+         *     Input sheet and of :func:`mapi_spec.xrjson.xrjson_from_rows`.
+         *
+         *     For a forecasting endpoint :attr:`rows` lists the periods after the fitted history (the
+         *     other dims' first levels), every value empty: fill the target where you have actuals and
+         *     leave it empty for the periods to forecast (:mod:`mapi_spec.actuals`). Dates are ISO
+         *     ``yyyy-MM-dd``.
+         * @example {
+         *       "columns": [
+         *         {
+         *           "description": "The period (yyyy-MM-dd)",
+         *           "freq": "MS",
+         *           "name": "t",
+         *           "role": "coord"
+         *         },
+         *         {
+         *           "description": "The actual; leave empty for the periods to forecast",
+         *           "dims": [
+         *             "t"
+         *           ],
+         *           "name": "y",
+         *           "role": "target"
+         *         },
+         *         {
+         *           "description": "Needed on every period, the periods to forecast included",
+         *           "dims": [
+         *             "t"
+         *           ],
+         *           "name": "price",
+         *           "role": "driver"
+         *         }
+         *       ],
+         *       "conditions_on_actuals": true,
+         *       "horizon_dim": "t",
+         *       "rows": [
+         *         [
+         *           "1961-01-01",
+         *           null,
+         *           null
+         *         ],
+         *         [
+         *           "1961-02-01",
+         *           null,
+         *           null
+         *         ]
+         *       ]
+         *     }
+         */
+        InputTable: {
+            /** Columns */
+            columns?: components["schemas"]["InputTableColumn"][];
+            /**
+             * Conditions On Actuals
+             * @default false
+             */
+            conditions_on_actuals?: boolean;
+            /** Horizon Dim */
+            horizon_dim?: string | null;
+            /** Rows */
+            rows?: (string | number | boolean | null)[][];
+        };
+        /**
+         * InputTableColumn
+         * @description One column of an :class:`InputTable`.
+         */
+        InputTableColumn: {
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Dims
+             * @description The dims a value column varies along
+             */
+            dims?: string[];
+            /**
+             * Freq
+             * @description The frequency of a time coordinate
+             */
+            freq?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "coord" | "target" | "driver" | "input";
         };
         /**
          * InternalService
@@ -12962,7 +13212,9 @@ export interface components {
          * @description The requested summary of a score run as plain tables (``summary.json``), inlined in
          *     :class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without
          *     zarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the
-         *     ``score.zarr.zip`` output for everything).
+         *     ``score.zarr.zip`` output for everything). ``conditioning`` (forecasts): what the
+         *     forecast was conditioned on - the end of the fitted history and the actuals the request
+         *     supplied (:mod:`mapi_spec.actuals`).
          * @example {
          *       "tables": [
          *         {
@@ -12987,8 +13239,66 @@ export interface components {
          *       ],
          *       "truncated": false
          *     }
+         * @example {
+         *       "conditioning": {
+         *         "actuals_through": "1961-03-01",
+         *         "conditioned": true,
+         *         "dim": "t",
+         *         "fit_end": "1960-12-01",
+         *         "horizon_source": "horizon",
+         *         "message": "Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which ends 1960-12-01; the model's parameters were not re-estimated. 8 periods forecast from 1961-04-01 to 1961-11-01.",
+         *         "n_actuals": 3,
+         *         "n_series": 1,
+         *         "parameters": "fitted",
+         *         "periods": 8,
+         *         "revised": 0,
+         *         "series": [
+         *           {
+         *             "actuals_through": "1961-03-01",
+         *             "first_actual": "1961-01-01",
+         *             "forecast_from": "1961-04-01",
+         *             "forecast_to": "1961-11-01",
+         *             "missing": 0,
+         *             "n_actuals": 3,
+         *             "n_forecast": 8,
+         *             "origin": "1961-03-01",
+         *             "revised": 0,
+         *             "series": {}
+         *           }
+         *         ],
+         *         "series_conditioned": 1,
+         *         "truncated": false
+         *       },
+         *       "tables": [
+         *         {
+         *           "columns": [
+         *             "t",
+         *             "median",
+         *             "q5",
+         *             "q95"
+         *           ],
+         *           "rows": [
+         *             [
+         *               "1961-01-01",
+         *               447.2,
+         *               424.9,
+         *               469.5
+         *             ],
+         *             [
+         *               "1961-04-01",
+         *               461.8,
+         *               431,
+         *               492.6
+         *             ]
+         *           ],
+         *           "variable": "y_hat"
+         *         }
+         *       ],
+         *       "truncated": false
+         *     }
          */
         ScoreSummary: {
+            conditioning?: components["schemas"]["ForecastConditioning"] | null;
             /** Tables */
             tables?: components["schemas"]["ScoreSummaryTable"][];
             /**
@@ -13209,6 +13519,67 @@ export interface components {
             started_at?: string | null;
             /** Unexpected */
             unexpected?: string[];
+        };
+        /**
+         * SeriesConditioning
+         * @description What one series' forecast was conditioned on.
+         *
+         *     ``series`` holds the series' labels on the target's other dims (empty for a single
+         *     series). ``origin`` is the last period the forecast starts from: the last actual, or the
+         *     end of the fitted history when the series has none.
+         * @example {
+         *       "actuals_through": "1961-03-01",
+         *       "first_actual": "1961-01-01",
+         *       "forecast_from": "1961-04-01",
+         *       "forecast_to": "1961-11-01",
+         *       "missing": 0,
+         *       "n_actuals": 3,
+         *       "n_forecast": 8,
+         *       "origin": "1961-03-01",
+         *       "revised": 0,
+         *       "series": {}
+         *     }
+         */
+        SeriesConditioning: {
+            /**
+             * Actuals Through
+             * @description The last supplied actual
+             */
+            actuals_through?: string | number | boolean | null;
+            /** First Actual */
+            first_actual?: string | number | boolean | null;
+            /** Forecast From */
+            forecast_from?: string | number | boolean | null;
+            /** Forecast To */
+            forecast_to?: string | number | boolean | null;
+            /**
+             * Missing
+             * @description Empty periods between the fitted history and the last actual, filtered as missing observations (only models that accept missing targets)
+             * @default 0
+             */
+            missing?: number;
+            /**
+             * N Actuals
+             * @description Periods with a supplied actual
+             */
+            n_actuals: number;
+            /**
+             * N Forecast
+             * @default 0
+             */
+            n_forecast?: number;
+            /** Origin */
+            origin: string | number | boolean;
+            /**
+             * Revised
+             * @description Actuals inside the fitted range: they replaced the fitted values
+             * @default 0
+             */
+            revised?: number;
+            /** Series */
+            series?: {
+                [key: string]: string | number | boolean;
+            };
         };
         /**
          * ServicePrincipal
@@ -18776,7 +19147,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: SCHEMA_INVALID, MODE_NOT_SUPPORTED, UNSEEN_LEVELS, COORD_NOT_ALLOWED, MISSING_FUTURE_COVARIATE, NON_CONTIGUOUS_EXTENSION, CAPABILITY_UNSUPPORTED, RECURSIVE_UNSUPPORTED */
+            /** @description Problem: SCHEMA_INVALID, MODE_NOT_SUPPORTED, UNSEEN_LEVELS, COORD_NOT_ALLOWED, MISSING_FUTURE_COVARIATE, NON_CONTIGUOUS_EXTENSION, CAPABILITY_UNSUPPORTED, RECURSIVE_UNSUPPORTED, ACTUALS_NOT_SUPPORTED, ACTUALS_INVALID */
             422: {
                 headers: {
                     [name: string]: unknown;

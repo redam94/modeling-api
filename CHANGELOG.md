@@ -5,6 +5,181 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.5.1] — Forecasts with actuals — 2026-10-17
+
+A forecast endpoint can now be given the actual results that arrived since the model was
+fitted, together with the dates to forecast. The model updates its state with the actuals
+using its fitted parameters (nothing is re-estimated) and forecasts the requested dates from
+the last actual. Rows with a target value are actuals; rows with the target blank are the
+dates to forecast. All twelve statsmodels models can do this, including models fitted before
+this release, without a refit. Models that cannot (the PyMC time-series models, mmm-framework
+and the tabular models) refuse with `422 ACTUALS_NOT_SUPPORTED`; before, the values were
+silently ignored. Google Sheets (an **Input** sheet), the Python client, the CLI, the web app's
+Try it panel and every snippet support it. Verified on a laptop against a live local stack,
+like 0.5.0.
+
+### Known gaps
+- Models fitted on `transform.log`, `transform.box_cox` or `transform.difference` output
+  before 0.5.1 carry no data-space label, so they still accept actuals until they are refitted.
+  New fits are labelled and refuse. There is no replayable log, Box-Cox or difference step with
+  an inverse yet, so such models refuse actuals instead of transforming them.
+- The pre-run checks see the union of a panel's series. A problem in only one series (for
+  example a missing driver) is caught in the run: the call returns 200 with `run.problem`
+  instead of a 422. The same applies to `dataset://` payloads whose stored summary predates
+  `DataSummary.observed`.
+- When a split after the entry stage ends the model stage earlier (mmm `train_only`), a
+  forecast payload that only covers fitted periods predicts those rows instead of appending the
+  horizon.
+- VARMAX and DynamicFactor refuse series that end on different dates instead of filtering
+  them. The jointly modelled models' own refusal text is reported as untrusted detail only.
+- The "horizon.periods is not used" warning reuses the code `SCHEMA_INVALID` at warning level.
+- The Guided forecast view and fan chart (`ui/guided/forecast.json`, `sheets_forecast.gs`) do
+  not draw the actuals or the new forecast origin yet.
+- The Apps Script sends date cells as `yyyy-MM-dd`, so time steps shorter than a day lose their
+  hours.
+- The `integrations-try-it.png` screenshot does not show the actuals editor yet.
+
+### Added
+- **Forecasts with actuals** (contract and score harness): a forecast request can carry the
+  actuals that arrived since the fit (target values for periods after the fitted history, or
+  revising its last periods) and the dates to forecast (target empty). The model updates its
+  state with the actuals using its fitted parameters - nothing is re-estimated - and forecasts
+  from the last actual; when the payload ends with an actual, `horizon.periods` periods are
+  appended after it. See the new "Forecasts with actuals" concept page.
+  - **spec**: `mapi_spec.actuals` (the rules, `ForecastConditioning` and
+    `SeriesConditioning`); `Capabilities.conditions_on_actuals`; problem codes
+    `ACTUALS_NOT_SUPPORTED` and `ACTUALS_INVALID` (both 422) with `ActualsNotSupported` and
+    `ActualsInvalid`; `ScoreSummary.conditioning`; `DataSummary.observed` (where targets hold
+    values) and the static checks in `validate_score_request` (with `live_capabilities`, the
+    plugin build that scores); `xrjson.observed_labels` (the JSON null check of inline
+    payloads); `EndpointSchemaSnapshot.conditions_on_actuals`,
+    `EndpointSchema.actuals_example` and `example_actuals_call`; `Freq.label`.
+  - **sdk**: `score_bundle` refuses actuals for models that cannot use them, appends the
+    horizon, fills empty future drivers by `future_covariates` from the fitted history and the
+    actual periods (`mapi_sdk.future.fill_future_rows`), checks every series (gaps, drivers)
+    and calls the new `CustomModel.forecast_with_actuals` hook with a typed
+    `mapi_sdk.actuals.ForecastActuals` (its default refuses). Every forecast result carries
+    the conditioning record (root attribute `conditioning`). `toy.ar1` is the reference
+    plugin and the contract kit checks `forecast_actuals`.
+  - **runner**: the record is in a score run's `summary.json` (so the API answer carries it
+    inline) and `result.json`.
+  - **statsmodels**: all twelve models condition forecasts on actuals with their fitted
+    parameters - `ts.sarimax`, `ts.arima`, `ts.unobserved_components`, `ts.varmax` and
+    `ts.dynamic_factor` by the Kalman filter (as `results.append(new, refit=False)`; gaps
+    among the actuals are filtered as missing by the univariate ones), `ts.ets` by its
+    smoother, `ts.markov_switching` by the Hamilton filter, `ts.ardl`/`ts.ecm` and
+    `ts.var`/`ts.vecm` on the supplied lags, `ts.theta` with its fitted SES weight, drift and
+    season. Revisions replace fitted values, panels update each series from its own actuals,
+    the fitted noise variance is kept and models already fitted (by a spec or the
+    `ts_readiness_arimax` workflow) condition without a refit; the plugin version stays
+    1.0.0. See "Forecasting from new actuals" on the statsmodels page.
+  - **server**: endpoint calls with inline data are null-checked for target values
+    (`DataSummary.observed`; the values themselves are never decoded), so actuals a model
+    cannot use are refused with `422 ACTUALS_NOT_SUPPORTED`, and actuals with a gap or without
+    their drivers with `422 ACTUALS_INVALID`, before a run starts. Score checks on every path
+    (endpoints, model score, runs, Guided) use the capabilities of the plugin build that will
+    score - the catalog entry of exactly the fitted plugin version - so a model fitted before its
+    plugin learned to condition can do so without a refit. `GET /v1/endpoints/{alias}/schema`
+    reports `snapshot.conditions_on_actuals` from that build and returns `actuals_example` and
+    the new `input_table`. Promoting a version that cannot use actuals onto an endpoint whose
+    version can is a breaking change for the endpoint's `schema_change` policy
+    (`mapi_spec.endpoints.capability_breaks`; blocked by default).
+- **Input tables** (spec): `EndpointSchema.input_table` describes an endpoint's inline input as
+  one long table - the coordinate columns (the forecast dim first), the target, the drivers and
+  other inputs, each with what it holds - with the periods after the fit as empty example rows.
+  `mapi_spec.xrjson.xrjson_from_rows` turns such a table (records, a DataFrame's rows) into
+  XrJSON and `mapi_spec.endpoints.table_forecast_call` builds the forecast over actual rows and
+  blank-target future rows.
+- **Google Sheets with actuals**: the generated Apps Script reads an **Input** sheet in the
+  endpoint's input-table layout even when the example call sends no data (a forecast) - actual
+  rows with the target filled, rows to forecast with it blank, dates as `yyyy-MM-dd` - sets the
+  horizon to the blank rows, writes the conditioning note above the tables in **Result**, writes
+  a refusal's message and suggested action there too, and has a second function that creates
+  the **Input** sheet. The Python, TypeScript, curl and R snippets of a forecasting endpoint add
+  the call over the periods after the fit, to fill with actuals. New tutorial step "Add your
+  latest actuals and future dates" (`docs/snippets/sheets_actuals.gs`).
+- **Python client**: `Endpoints.forecast(alias, rows, *, actuals=, future=, periods=)` and
+  `RemoteEndpoint.forecast` (sync and async) send actuals and dates to forecast from a DataFrame,
+  row mappings or columns; `ScoreResult.conditioning`; `mapi_client.forecast_call`.
+- **CLI**: `mapi endpoints forecast ALIAS input.csv` (or `--actuals`, `--future`, `--periods`,
+  `--dry-run`); `endpoints score` prints the conditioning note and the inline summary;
+  `endpoints schema` shows the input table.
+- **Web**: the endpoint's Try it has an editor for actuals and dates to forecast (add a period,
+  paste from a sheet, **Use in the call**) and shows what the forecast was conditioned on with
+  the first summary tables; the Google Sheets card previews the Input sheet layout of a
+  forecasting endpoint; the model Score page shows the conditioning note.
+- **Live-stack journey** `tests/e2e/test_forecast_actuals_stack.py` (`make e2e`): the airline
+  series through the `ts_readiness_arimax` workflow onto an endpoint, then actuals and dates to
+  forecast through the Python client and through the server's generated Apps Script (run in
+  Node, calling the live API with an Input sheet), and the refusal of a model that cannot use
+  actuals (`ts.hsgp_trend`).
+
+### Changed
+- A `forecast` request whose payload holds target values is refused with
+  `ACTUALS_NOT_SUPPORTED` by models that cannot condition on them; such values used to be
+  silently ignored (the forecast came from the end of the fit and the horizon was dropped).
+- Empty values of supplied drivers on the periods to forecast are now filled by a
+  `future_covariates` policy other than `supplied`; before, only drivers missing from the
+  payload altogether were.
+- The workflow node `model.forecast` sends only the rows of its `data` (future drivers) after
+  the fitted history: workflows that wire the fit's own dataset in forecast from the end of the
+  fit again instead of being refused for "actuals" that are the fitted values.
+- Actuals that only revise periods inside the fitted history are forecast from the end of the
+  fit: the horizon follows the later of the fit's end and the last actual (the fitted periods
+  in between keep their values), and the conditioning message says the actuals were inside
+  (or overlapped the end of) the fitted history.
+- Empty periods among the actuals of a model that filters them as missing need their drivers
+  too; the refusal (`ACTUALS_INVALID`) now names them in its message.
+- The Apps Script snippet's **Input** sheet: a variable column the sheet does not have is left
+  out of the call instead of failing the script (the server reports missing required inputs),
+  dates are formatted in the spreadsheet's time zone, two rows with different values for one
+  cell are an error, and a refused call is written into **Result** before the script throws.
+
+### Fixed
+- Forecasts with actuals never score values a pipeline step filled as actuals: with a
+  target-imputing step (`core.impute` with `ffill` or `mean`) the blank rows of a payload used
+  to be filled and scored as actuals, so nothing was forecast (or blank future dates were
+  reported as "updated with N actuals").
+- A model a workflow fitted on `transform.log`, `transform.box_cox` or `transform.difference`
+  output (no preprocessing-step equivalent; e.g. the VAR-on-differences branch of
+  `var_vecm_cointegration`) is labelled `mapi.io/data-space: transformed`
+  (`mapi_spec.actuals.DATA_SPACE_LABEL`, `ScoreMetadata.data_space`): it refuses actuals with
+  `ACTUALS_NOT_SUPPORTED` instead of reading original-unit values as transformed ones, its
+  endpoints do not offer actuals, and every score warns that its predictions are in the
+  transformed space.
+- Empty targets inside the fitted range are no longer counted as gaps between actuals, so
+  separate revisions of fitted periods are accepted for models that need a complete history
+  (`ts.ets`, `ts.theta`, `ts.ardl`, `ts.ecm`, the multivariate models).
+- A forecast payload with no period after the fit and no actual (no rows - a header-only
+  Input sheet - or only fitted periods) forecasts `horizon.periods` after the fit instead of
+  answering with zero forecast periods; the Apps Script and the web editor send `data: null`
+  when no row is left.
+- One actual on an integer time axis with a step above 1 appends the horizon with the fitted
+  step (it was refused with a misleading gap).
+- `predict` calls warn that target values after the fitted history are not used (they were
+  ignored silently).
+- A payload that lists the dates to forecast is checked for drivers on exactly those dates
+  (with `future_covariates: supplied` it was refused against `horizon.periods`); inline
+  payloads are null-checked for the drivers a forecast needs, so an empty driver on an actual
+  row (`ACTUALS_INVALID`) or on a supplied future row (`MISSING_FUTURE_COVARIATE`) is a `422`
+  before any run.
+- Text where a number is needed (`"#N/A"`, a number stored as text, a cell of spaces) is
+  refused with `SCHEMA_INVALID` naming the variable and the period before a run, instead of
+  failing inside it. `xrjson_from_rows`/`table_forecast_call` (the Python client's
+  `forecast`) and the Apps Script turn numbers stored as text into numbers and blank text into
+  empty cells.
+- The Apps Script matches the Input sheet's headers trimmed and ignoring case, and refuses a
+  sheet whose target column it cannot find but which has unknown columns instead of sending a
+  plain forecast without the actuals.
+- Timezone-aware dates from a DataFrame are sent as dates (local midnight) or naive UTC, not
+  with an offset; an off-grid time coordinate no longer also reports "start before the fitted
+  range".
+- The workflow orchestrator read a dataset node's lineage from the persisted row, which a
+  model node started in the same tick did not see yet.
+- Docs: jointly modelled series (VAR, VECM, VARMAX, DynamicFactor) need every series on each
+  actual period; the Sheets troubleshooting table says which problems are a `422` and which a
+  failed run.
+
 ## [0.5.0] — M3.5: Workflows, governance, explorers, mmm-framework — 2026-10-16
 
 Analyses can now be automated and models held to written rules before anyone relies on
