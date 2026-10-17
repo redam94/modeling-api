@@ -452,6 +452,14 @@ milestone releases are tagged on `main`.
   other `ts` forecasters) the comparison now shows the metrics and rankings without a
   significance test and says to compare backtests instead; for models that predict from
   each period's observed drivers the test uses a Newey-West number of autocovariances.
+- **spec, runner, web** (statistics): the Data Explorer's cross-correlations were raw by
+  default and judged against the white-noise band `1.96 / sqrt(n)`, valid only when one
+  series is white: for two independent persistent series (AR(1), phi = 0.9) 53% of the
+  lags were flagged significant and every run had a spurious peak. Prewhitening is now on
+  by default (`prewhiten: true`, also in the web's explore dialog), and the band follows
+  Bartlett's formula for two autocorrelated series (it is the white-noise band when either
+  series is white), so the raw view no longer flags such lags either (under 10% in
+  simulation).
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

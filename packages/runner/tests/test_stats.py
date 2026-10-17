@@ -113,6 +113,40 @@ def test_ccf_sign_convention_finds_a_driver_that_leads_by_two() -> None:
     assert p >= 1 and xs.shape == ys.shape
 
 
+def _ar1_from(rng: np.random.Generator, n: int, phi: float) -> np.ndarray:
+    e = rng.normal(size=n)
+    out = np.zeros(n)
+    for t in range(1, n):
+        out[t] = phi * out[t - 1] + e[t]
+    return out
+
+
+def test_ccf_of_independent_persistent_series_flags_few_lags() -> None:
+    """Regression (simulation): the CCF band was the white-noise 1.96/sqrt(n), valid only
+    when one series is white; for two independent AR(1) series (phi = 0.9) 53% of the
+    lags were flagged significant. The band now follows Bartlett's formula for two
+    autocorrelated series, and the Data Explorer prewhitens by default."""
+    from mapi_spec.explore import DataExploreRequest
+
+    assert DataExploreRequest().prewhiten is True
+    reps, n, max_lag = 120, 104, 26
+    raw_flags = pw_flags = total = 0
+    for seed in range(reps):
+        rng = np.random.default_rng(seed)
+        x, y = _ar1_from(rng, n, 0.9), _ar1_from(rng, n, 0.9)
+        prof = stats.ccf_profile(x, y, max_lag)
+        raw_flags += len(prof.significant)
+        xs, ys, _p = stats.prewhiten(x, y)
+        pw_flags += len(stats.ccf_profile(xs, ys, max_lag).significant)
+        total += 2 * max_lag
+    assert raw_flags / total <= 0.10, raw_flags / total
+    assert pw_flags / total <= 0.10, pw_flags / total
+    # a white driver keeps the classic band
+    rng = np.random.default_rng(1)
+    white = stats.ccf_profile(rng.normal(size=400), rng.normal(size=400), 5)
+    assert white.bound == pytest.approx(1.96 / math.sqrt(400), rel=0.15)
+
+
 def test_stl_strengths_separate_a_seasonal_series_from_noise() -> None:
     rng = np.random.default_rng(10)
     t = np.arange(208)
