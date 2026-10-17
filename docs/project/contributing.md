@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping. All contributions are made under the Contributor Licence Agreement
+Thank you for your help. All contributions are under the Contributor Licence Agreement
 (`CONTRIBUTOR-LICENSE.md` in the repository root).
 
 ## Set up
@@ -12,22 +12,22 @@ make help             # every developer entry point
 
 | Command | What it does |
 |---|---|
-| `make test` | The default test suite (everything except Docker, cloud and end-to-end tests) |
-| `make test-fast` | Unit tests only, skipping slow MCMC tests |
-| `make lint` | ruff, ruff format check and the import-linter contracts |
-| `make typecheck` | mypy over every type-checked package |
-| `make conformance` | The conformance corpus at size `tiny` (`FIXTURE=e33` for one) |
-| `make docs-serve` | This site with live reload |
-| `make docs-build` | Regenerate the generated reference pages and build the site strictly |
-| `make docs-test` | Run every documentation snippet and the docs checks |
-| `make dev` | The whole stack locally without Docker ([Local, without Docker](../operations/local-development.md)) |
-| `make docker-build` / `make compose-up` | Build the images / run the compose stack ([Docker Compose](../operations/docker.md)) |
-| `make release-check` | Version consistency, changelog entry, no plan files, pinned images, current third-party notices |
-| `make notices` | Regenerate `THIRD-PARTY-NOTICES.md` after a change to `uv.lock` or `pnpm-lock.yaml` ([Licensing](licensing.md#third-party-libraries)) |
+| `make test` | Runs the default test suite (all tests, but not the Docker, cloud and end-to-end tests) |
+| `make test-fast` | Runs only the unit tests. It does not run the slow MCMC tests |
+| `make lint` | Runs ruff, the ruff format check and the import-linter contracts |
+| `make typecheck` | Runs mypy on each package that has type checks |
+| `make conformance` | Runs the conformance corpus at size `tiny` (`FIXTURE=e33` for one fixture) |
+| `make docs-serve` | Shows this site and loads it again when a page changes |
+| `make docs-build` | Makes the generated reference pages again and builds the site in strict mode |
+| `make docs-test` | Runs all the documentation snippets and the checks of the docs |
+| `make dev` | Runs the whole stack locally without Docker ([Local, without Docker](../operations/local-development.md)) |
+| `make docker-build` / `make compose-up` | Builds the images / runs the compose stack ([Docker Compose](../operations/docker.md)) |
+| `make release-check` | Does a check of version consistency, the changelog entry, plan files (there must be none), pinned images and current third-party notices |
+| `make notices` | Makes `THIRD-PARTY-NOTICES.md` again after a change to `uv.lock` or `pnpm-lock.yaml` ([Licensing](licensing.md#third-party-libraries)) |
 
 ## Branching model
 
-We use git flow with two long-lived branches, `main` and `develop`.
+We use git flow with two permanent branches, `main` and `develop`.
 
 ```mermaid
 gitGraph
@@ -52,9 +52,9 @@ gitGraph
 
 | Branch | Purpose |
 |---|---|
-| `main` | Releases only. Each milestone is merged from `develop` and tagged `vX.Y.Z`. Nobody commits to `main` directly. |
-| `develop` | Integration. Feature branches are merged here with `--no-ff`. |
-| `feat/<milestone>-<topic>` | One unit of work, branched from the latest `develop`. |
+| `main` | Releases only. We merge each milestone from `develop` and tag it `vX.Y.Z`. Nobody commits to `main` directly. |
+| `develop` | Integration. We merge feature branches here with `--no-ff`. |
+| `feat/<milestone>-<topic>` | One unit of work. Make the branch from the latest `develop`. |
 
 ```bash
 git checkout -B feat/m1-my-change develop
@@ -62,19 +62,20 @@ git checkout -B feat/m1-my-change develop
 make fmt lint typecheck test
 ```
 
-Never rebase or rewrite `develop` or `main`. Keep changes to shared files (the root
-`pyproject.toml`, the `Makefile`, `uv.lock`, CI) minimal and additive, and mention them in
-your pull request.
+Do not rebase or rewrite `develop` or `main`. Keep changes to shared files small, and only add
+to them. The shared files are the root `pyproject.toml`, the `Makefile`, `uv.lock` and CI.
+Tell about these changes in your pull request.
 
 ## Writing style
 
-Write all text for users in ASD-STE100 Simplified Technical English: documentation, text in
-the web app, and the messages that the server sends for the app to show. The rules are in
-[Writing style](writing-style.md).
+Write all text for users in ASD-STE100 Simplified Technical English. This includes the
+documentation, the text in the web app, and the messages that the server sends for the app
+to show. The rules are in [Writing style](writing-style.md).
 
 ## Commit messages
 
-[Conventional commits](https://www.conventionalcommits.org/), scoped by package:
+Use [Conventional commits](https://www.conventionalcommits.org/), with the package as the
+scope:
 
 ```text
 feat(sdk): replay context tails at each step's input stage
@@ -86,34 +87,37 @@ chore: bump ruff
 
 ## Code style
 
-- Python 3.12, ruff (line length 100), type hints everywhere; mypy strict for the core
-  packages.
-- Tests live next to each package in `tests/`. PyMC fits in tests use tiny settings
-  (`tune: 50–150`, `draws: 50–150`, `chains: 2`) and are marked `slow` when they take more than
-  about ten seconds.
-- Docstrings are concise (Google style). The contract tests are the executable documentation.
-- `mapi_spec` must not import numpy, xarray or pandas; the server must not import plugin or
-  array code. `make lint` enforces both.
+- Use Python 3.12 and ruff (line length 100). Use type hints in all code. Use mypy strict for
+  the core packages.
+- Tests are in `tests/` in each package. PyMC fits in tests use very small settings
+  (`tune: 50–150`, `draws: 50–150`, `chains: 2`). If a test takes more than about ten
+  seconds, mark it `slow`.
+- Write short docstrings (Google style). The contract tests are the executable documentation.
+- `mapi_spec` must not import numpy, xarray or pandas. The server must not import plugin code
+  or array code. `make lint` makes sure of the two rules.
 
 ## Documentation
 
-The site is MkDocs Material (`mkdocs.yml` at the repository root, pages in `docs/`).
+The site uses MkDocs Material. `mkdocs.yml` is at the repository root, and the pages are in
+`docs/`.
 
-- **Every Python example is executed.** Examples live in `docs/snippets/*.py`, are included in
-  pages with `--8<-- "file.py:section"`, and `conformance/tests/test_docs_snippets.py` runs each
-  file. Add a section with `# --8<-- [start:name]` / `# --8<-- [end:name]`.
-- **Platform examples run against a live stack.** The client, HTTP and remote-CLI walkthroughs
-  (`docs/snippets/client_tour.py`, `http_tour.sh`, `cli_remote.sh`) run under `make e2e`; the
-  local CLI walkthrough (`cli_local.sh`) runs in the default suite
-  (`conformance/tests/test_docs_platform.py`). Shell snippets use the same section markers.
-- **Reference pages are generated.** `scripts/gen_docs_catalog.py` writes the steps, models,
-  plot recipes, spec schema and error-code pages, and `scripts/gen_docs_reference.py` the CLI
-  reference, the server settings and a copy of `apps/web/openapi.json`, into
-  `docs/reference/generated/` (git-ignored); an MkDocs hook runs both before every build.
+- **The tests run all Python examples.** The examples are in `docs/snippets/*.py`. Pages
+  include them with `--8<-- "file.py:section"`. `conformance/tests/test_docs_snippets.py`
+  runs each file. To add a section, use `# --8<-- [start:name]` / `# --8<-- [end:name]`.
+- **Platform examples run against a live stack.** `make e2e` runs the client, HTTP and
+  remote-CLI walkthroughs (`docs/snippets/client_tour.py`, `http_tour.sh`, `cli_remote.sh`).
+  The default suite runs the local CLI walkthrough (`cli_local.sh`) in
+  `conformance/tests/test_docs_platform.py`. Shell snippets use the same section markers.
+- **Scripts make the reference pages.** `scripts/gen_docs_catalog.py` writes the pages for the
+  steps, models, plot recipes, spec schema and error codes. `scripts/gen_docs_reference.py`
+  writes the CLI reference, the server settings and a copy of `apps/web/openapi.json`. The
+  two scripts write into `docs/reference/generated/`, which git ignores. An MkDocs hook runs
+  the two scripts before each build.
 - **New `MAPI_*` variables go into the configuration reference**
-  (`docs/operations/configuration.md`); a test scans the source tree for them.
-- **Screenshots** live in `docs/assets/screenshots/` (at most 300 KB each, each used by a page).
-  `make docs-screenshots` recaptures them from a running, seeded stack.
+  (`docs/operations/configuration.md`). A test looks for these variables in the source tree.
+- **Screenshots** are in `docs/assets/screenshots/`. Each screenshot must be 300 KB or less,
+  and a page must use it. `make docs-screenshots` captures them again from a stack that runs and has
+  seed data.
 - `make docs-build` must pass (`mkdocs build --strict`, with anchor validation).
-- Write for two readers: an analyst who wants to know what a feature does for them, and a data
-  scientist who wants to know exactly how it works.
+- Write for two types of readers. An analyst wants to know what a feature does for them. A
+  data scientist wants to know exactly how it works.
