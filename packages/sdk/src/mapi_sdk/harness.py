@@ -1005,7 +1005,7 @@ def _forecast_payload(
         step: Any = 1
         if labels.dtype.kind in "iu" and labels.size > 1:
             step = int(np.diff(np.sort(labels)).min())
-        data = append_horizon(data, hdim, req.horizon.periods, freq=sfreq, step=step)
+        data = append_horizon(data, hdim, req.horizon.periods, freq=sfreq, step=step, after=fit_end)
         appended = observed_mask(data, entry_targets, hdim)
         assert appended is not None
         mask = appended

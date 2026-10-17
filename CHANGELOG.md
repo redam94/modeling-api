@@ -74,6 +74,11 @@ milestone releases are tagged on `main`.
   paste from a sheet, **Use in the call**) and shows what the forecast was conditioned on with
   the first summary tables; the Google Sheets card previews the Input sheet layout of a
   forecasting endpoint; the model Score page shows the conditioning note.
+- **Live-stack journey** `tests/e2e/test_forecast_actuals_stack.py` (`make e2e`): the airline
+  series through the `ts_readiness_arimax` workflow onto an endpoint, then actuals and dates to
+  forecast through the Python client and through the server's generated Apps Script (run in
+  Node, calling the live API with an Input sheet), and the refusal of a model that cannot use
+  actuals (`ts.hsgp_trend`).
 
 ### Changed
 - A `forecast` request whose payload holds target values is refused with
@@ -85,6 +90,12 @@ milestone releases are tagged on `main`.
 - The workflow node `model.forecast` sends only the rows of its `data` (future drivers) after
   the fitted history: workflows that wire the fit's own dataset in forecast from the end of the
   fit again instead of being refused for "actuals" that are the fitted values.
+- Actuals that only revise periods inside the fitted history are forecast from the end of the
+  fit: the horizon follows the later of the fit's end and the last actual (the fitted periods
+  in between keep their values), and the conditioning message says the actuals were inside
+  (or overlapped the end of) the fitted history.
+- Empty periods among the actuals of a model that filters them as missing need their drivers
+  too; the refusal (`ACTUALS_INVALID`) now names them in its message.
 - The Apps Script snippet's **Input** sheet: a variable column the sheet does not have is left
   out of the call instead of failing the script (the server reports missing required inputs),
   dates are formatted in the spreadsheet's time zone, two rows with different values for one

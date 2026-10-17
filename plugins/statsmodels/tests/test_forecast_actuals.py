@@ -241,6 +241,41 @@ def test_sarimax_payload_ending_with_an_actual_appends_the_horizon(
     assert record["periods"] == 5
 
 
+def test_revisions_only_inside_the_fit_forecast_after_the_fit(
+    registry: Registry, sales: xr.Dataset
+) -> None:
+    """A payload that only revises mid-history periods and ends with an actual: the horizon
+    follows the end of the fit (not the payload), and the forecast equals statsmodels filtered
+    with the fitted parameters over the revised history."""
+    from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+    data, schema = only(sales, "price")
+    train = data.isel(date=slice(0, 80))
+    b = fit(registry, "ts.sarimax", "{order: [1, 0, 0], exog: [price]}", train, schema)
+    revised = train.isel(date=slice(50, 53)).copy(deep=True)
+    revised["sales"].values[:] += np.array([40.0, -25.0, 30.0])
+    fc, record = forecast(
+        registry, b, revised, periods=4, future_covariates="carry_last", history=train
+    )
+
+    _, est = params_of(b)
+    y = train["sales"].values.copy()
+    y[50:53] = revised["sales"].values
+    x = frame(train, ["price"], 0)
+    res = SARIMAX(series(y, 0), exog=x, order=(1, 0, 0), trend="c").filter(est)
+    last_x = np.repeat(x.to_numpy()[-1:], 4, axis=0)
+    ref = res.get_forecast(4, exog=last_x)
+    dates = fc["date"].values
+    np.testing.assert_array_equal(dates[:30], train["date"].values[50:])
+    assert dates.size == 30 + 4 and dates[30] > train["date"].values[-1]
+    np.testing.assert_allclose(q(fc, 0.5)[30:], np.asarray(ref.predicted_mean), rtol=RTOL)
+    one = res.get_prediction(start=50, end=79)
+    np.testing.assert_allclose(q(fc, 0.5)[:30], np.asarray(one.predicted_mean), rtol=RTOL)
+    assert record["conditioned"] is True and record["revised"] == 3
+    assert record["periods"] == 4 and record["series"][0]["n_forecast"] == 4
+    assert "inside the fitted history" in record["message"]
+
+
 def monthly_counts(n: int = 156, seed: int = 3) -> xr.Dataset:
     """A monthly int64 count series with trend and a yearly season (airline-like)."""
     rng = np.random.default_rng(seed)
@@ -368,7 +403,8 @@ def test_a_gap_needs_its_drivers(registry: Registry, sales: xr.Dataset) -> None:
     with pytest.raises(MapiError) as info:
         forecast(registry, b, new, periods=2, future_covariates="carry_last")
     assert info.value.code is ErrorCode.ACTUALS_INVALID
-    assert "price" in str(info.value.untrusted_text)
+    # the platform's own check, so the message (not only untrusted text) names the driver
+    assert "empty periods among them need the drivers ['price']" in info.value.detail
 
 
 # ======================================================================================= ETS

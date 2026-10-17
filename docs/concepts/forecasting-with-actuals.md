@@ -64,7 +64,8 @@ forecasting endpoint, the periods after the fit as empty rows. Every client read
 **Where the forecast periods come from.** When the payload has periods after the last actual,
 exactly those are forecast; `horizon.periods` is not used (a warning in `issues` says so when
 it differs). When the payload ends with an actual, `horizon.periods` periods after it are
-forecast. `horizon.dim` always names the time dim.
+forecast - or after the end of the fit when the actuals only revise fitted periods (the
+fitted periods in between keep their values and get one-step-ahead predictions). `horizon.dim` always names the time dim.
 
 **Actuals continue the fitted history.** The first actual may be the period right after the
 fit, or earlier: actuals inside the fitted range **replace** the fitted values for those

@@ -263,6 +263,39 @@ def test_conditioning_record_without_actuals_and_for_panels() -> None:
     assert many.truncated and len(many.series) == MAX_CONDITIONING_SERIES and many.n_series == 1005
 
 
+def test_the_message_says_where_the_actuals_fall_against_the_fit() -> None:
+    inside = build_conditioning(
+        dim="t",
+        fit_end="1960-12-01",
+        series=[
+            SeriesConditioning(
+                n_actuals=3,
+                first_actual="1958-01-01",
+                actuals_through="1958-03-01",
+                revised=3,
+                origin="1960-12-01",
+                forecast_from="1961-01-01",
+                forecast_to="1961-04-01",
+                n_forecast=4,
+            )
+        ],
+        horizon_source="horizon",
+    )
+    assert inside.message == (
+        "Forecast updated with 3 actuals (1958-01-01 to 1958-03-01) inside the fitted history, "
+        "which ends 1960-12-01; 3 of them replaced fitted values; the model's parameters were "
+        "not re-estimated. 4 periods forecast from 1961-01-01 to 1961-04-01."
+    )
+    overlap = build_conditioning(
+        dim="t",
+        fit_end="1960-12-01",
+        series=[_series(4, through="1961-02-01", revised=2)],
+        horizon_source="horizon",
+    )
+    assert "overlapping the end of the fitted history, which ends 1960-12-01" in overlap.message
+    assert "2 of them replaced fitted values" in overlap.message
+
+
 def test_the_summary_carries_the_record_and_old_summaries_still_parse() -> None:
     assert ScoreSummary.model_validate({"tables": []}).conditioning is None
     example = ScoreSummary.model_json_schema()["examples"][1]

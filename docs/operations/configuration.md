@@ -454,7 +454,7 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 | `MAPI_E2E_BURST_RUNS` | Opt-in: how many concurrent real fits `tests/e2e/test_m2_burst_stack.py` submits ([M2 verification](m2-verification.md)) |
 | `MAPI_E2E_SIGNUP_ACCOUNT` | The address the M3 trust-lifecycle suite (`tests/e2e/test_m3_trust_stack.py`) signs up with; it must be a development-IdP account so it can sign in (default `viewer@dev.local`) |
 | `MAPI_E2E_GUIDED_ACCOUNT` | The address the M3 journey (`tests/e2e/test_m3_guided_stack.py`) signs up with; a development-IdP account (default `viewer@dev.local`) |
-| `MAPI_E2E_KEEP` | `1` keeps the project the M3.5 journeys create (`tests/e2e/test_m35_stack.py`, `apps/web/e2e/m35-live.e2e.spec.ts`) instead of deleting it afterwards, to look at it in the app ([M3.5 verification](m35-verification.md)) |
+| `MAPI_E2E_KEEP` | `1` keeps the project the M3.5 journeys create (`tests/e2e/test_m35_stack.py`, `apps/web/e2e/m35-live.e2e.spec.ts`) or the forecasts-with-actuals journey creates (`tests/e2e/test_forecast_actuals_stack.py`) instead of deleting it afterwards, to look at it in the app ([M3.5 verification](m35-verification.md)) |
 | `MAPI_E2E_WEBHOOK_TLS_DIR` | Where the M3 journey's webhook receiver finds `cert.pem` and `key.pem` (default `$MAPI_DATA_DIR/dev/webhook-tls`) |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests (`make snapshots`) |
 | `MAPI_HYPOTHESIS_EXAMPLES` | Examples per property in the wire-format round-trip tests (default 60) |

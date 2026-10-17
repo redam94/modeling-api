@@ -247,6 +247,28 @@ def test_empty_future_drivers_follow_the_policy_from_the_actuals(
     assert err.value.code is ErrorCode.MISSING_FUTURE_COVARIATE
 
 
+def test_revisions_inside_the_fit_forecast_after_the_fit(bundle: Bundle, data: xr.Dataset) -> None:
+    """A payload that only revises mid-history periods still forecasts after the fit."""
+    mid = data.isel(month=slice(10, 13)).copy(deep=True)
+    tree = _score(bundle, _req(4), mid, data)
+    point = _point(tree)
+    after = list(_months("2023-01-01", 4))
+    # the fitted periods between the revisions and the end of the fit keep their values
+    assert list(point["month"].values) == [*data["month"].values[10:], *after]
+    # the fitted values themselves as revisions: the plain forecast, unchanged
+    plain = _point(_score(bundle, _req(4), None, data))
+    np.testing.assert_allclose(point.sel(month=after).values, plain.values, rtol=1e-12)
+    rec = _record(tree)
+    assert rec.conditioned and rec.revised == rec.n_actuals == 6 and rec.periods == 4
+    north = rec.series[0]
+    assert (north.origin, north.forecast_from, north.forecast_to) == (
+        "2022-12-01",
+        "2023-01-01",
+        "2023-04-01",
+    )
+    assert "inside the fitted history" in rec.message and "after the fitted" not in rec.message
+
+
 def test_ragged_panels_forecast_each_series_after_its_own_last_actual(
     bundle: Bundle, data: xr.Dataset
 ) -> None:

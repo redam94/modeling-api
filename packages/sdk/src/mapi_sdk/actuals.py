@@ -107,8 +107,7 @@ class ForecastActuals:
 def label_text(value: Any) -> str | int | float | bool:
     """A coordinate label as JSON (ISO text for dates)."""
     if isinstance(value, np.datetime64 | pd.Timestamp):
-        ts = pd.Timestamp(value)
-        return ts.isoformat()
+        return str(pd.Timestamp(value).isoformat())
     out = py_scalar(value)
     return out if isinstance(out, str | int | float | bool) else str(out)
 
@@ -137,13 +136,30 @@ def future_mask(observed: xr.DataArray, dim: str, fit_end: Any) -> xr.DataArray:
 
 
 def append_horizon(
-    ds: xr.Dataset, dim: str, periods: int, *, freq: str | None, step: Any = 1
+    ds: xr.Dataset,
+    dim: str,
+    periods: int,
+    *,
+    freq: str | None,
+    step: Any = 1,
+    after: Any | None = None,
 ) -> xr.Dataset:
-    """``ds`` with ``periods`` more periods after its last label along ``dim`` (every
-    variable empty there)."""
+    """``ds`` with ``periods`` more periods along ``dim`` (every variable empty there).
+
+    The periods follow its last label, or ``after`` (the end of the fit) when that is later: a
+    payload that only revises fitted periods is forecast from the end of the fit, never inside
+    it. The fitted periods between the payload and ``after`` are added too (empty, so they keep
+    their fitted values), which keeps the coordinates contiguous.
+    """
     labels = np.asarray(ds[dim].values)
     last = labels.max()
-    new = [next_label(last, freq=freq, step=step, k=k) for k in range(1, periods + 1)]
+    new: list[Any] = []
+    if after is not None:
+        end = np.asarray(after, dtype=labels.dtype)[()]
+        while (new[-1] if new else last) < end:
+            new.append(next_label(last, freq=freq, step=step, k=len(new) + 1))
+    start = len(new)
+    new += [next_label(last, freq=freq, step=step, k=start + k) for k in range(1, periods + 1)]
     extended = np.concatenate([labels, np.asarray(new, dtype=labels.dtype)])
     return ds.reindex({dim: extended})
 
@@ -248,19 +264,25 @@ def model_actuals(
                     )
                 ],
             )
-    lacking = _empty_on(canon, drivers, observed & after_fit)
+    # the filter runs over every period up to the last actual, empty ones (filtered as
+    # missing) included, so each of them needs its drivers
+    lacking = _empty_on(canon, drivers, (observed | gap) & after_fit)
     if lacking:
+        among = " and the empty periods among them" if bool(gap.any()) else ""
+        text = (
+            f"the actuals after the fitted history{among} need the drivers {sorted(lacking)} "
+            "observed with them"
+        )
         raise ActualsInvalid(
-            f"the actuals after the fitted history need the drivers {sorted(lacking)} observed "
-            "with them",
+            text,
             pointer="/data",
             issues=[
                 Issue(
                     code=ErrorCode.ACTUALS_INVALID,
                     pointer="/data",
-                    message=f"the actuals after the fitted history need the drivers "
-                    f"{sorted(lacking)} observed with them",
-                    suggested_action="Send the drivers for the periods with actuals.",
+                    message=text,
+                    suggested_action="Send the drivers for the periods with actuals and for "
+                    "any empty period between them.",
                 )
             ],
         )
