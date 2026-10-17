@@ -290,3 +290,111 @@ async def test_sub_workflows_count_against_the_active_run_limit(
     failed = [n for n in view["nodes"] if n["status"] == "failed"]
     assert failed and failed[0]["error"]["code"] == "QUOTA_EXCEEDED"
     assert view["error"]["code"] == "QUOTA_EXCEEDED"
+
+
+# ============================================================================= automation
+
+
+async def _member(ctx: ServerContext, client: httpx.AsyncClient, role: str) -> tuple[Any, Any]:
+    from mapi_server_testkit.identity import grant_role, make_user, session_caller
+
+    bob = await make_user(ctx, "bob@default.test")
+    await grant_role(ctx, bob, "default", "default", role)
+    return bob, await session_caller(ctx, client, bob, tenant_id="default", project_id="default")
+
+
+async def _remove(ctx: ServerContext, user_id: str) -> None:
+    from sqlalchemy import delete
+
+    async with ctx.db.session() as s:
+        await s.execute(delete(m.Membership).where(m.Membership.principal_id == user_id))
+
+
+async def _schedule(ctx: ServerContext) -> m.WorkflowScheduleRow:
+    async with ctx.db.session() as s:
+        return (await s.execute(select(m.WorkflowScheduleRow))).scalar_one()
+
+
+async def test_a_removed_members_schedule_stops_firing(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    from datetime import datetime, timedelta
+
+    from mapi_server.services.workflows import fire_due_schedules
+
+    await put_dataset(ctx, "sales", weekly_series(80))
+    bob, me = await _member(ctx, client, "runner")
+    wf = await _create(me, _doc([ADF], name="nightly"))
+    url = f"/v1/workflows/{wf}/schedules"
+    r = await me.post(url, json={"cron": "0 6 * * *", "inputs": {"data": DATA}})
+    assert r.status_code == 201, r.text
+    due = datetime.fromisoformat(r.json()["next_run_at"])
+    assert await fire_due_schedules(ctx, at=due + timedelta(minutes=1)) == 1
+    runs = (await client.get(f"/v1/workflows/{wf}/runs")).json()["items"]
+    assert runs[0]["created_by"] == bob.id
+    await _remove(ctx, bob.id)
+    assert await fire_due_schedules(ctx, at=due + timedelta(days=1, minutes=1)) == 0
+    sch = await _schedule(ctx)
+    assert sch.active is False and "no longer" in (sch.last_error or "")
+    assert len((await client.get(f"/v1/workflows/{wf}/runs")).json()["items"]) == 1
+
+
+async def test_a_schedule_made_with_a_revoked_token_stops_firing(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    from datetime import datetime, timedelta
+
+    from mapi_server.services.workflows import fire_due_schedules
+    from mapi_server_testkit.identity import make_token, token_caller
+
+    await put_dataset(ctx, "sales", weekly_series(80))
+    bob, _me = await _member(ctx, client, "runner")
+    secret = await make_token(
+        ctx, bob, "default", "default", ["workflows:write", "workflows:run", "models:read"]
+    )
+    tok = token_caller(client, secret)
+    wf = await _create(client, _doc([ADF], name="tokened"))
+    url = f"/v1/workflows/{wf}/schedules"
+    r = await tok.post(url, json={"cron": "0 6 * * *", "inputs": {"data": DATA}})
+    assert r.status_code == 201, r.text
+    due = datetime.fromisoformat(r.json()["next_run_at"])
+    assert await fire_due_schedules(ctx, at=due + timedelta(minutes=1)) == 1
+    run = (await client.get(f"/v1/workflows/{wf}/runs")).json()["items"][0]
+    assert run["created_by"] == bob.id  # the token's owner, not the token
+    async with ctx.db.session() as s:
+        row = (await s.execute(select(m.ApiToken))).scalars().first()
+        assert row is not None
+        row.revoked_at = datetime.now(tz=row.expires_at.tzinfo)
+    assert await fire_due_schedules(ctx, at=due + timedelta(days=1, minutes=1)) == 0
+    sch = await _schedule(ctx)
+    assert sch.active is False and "token" in (sch.last_error or "")
+
+
+async def test_a_removed_members_trigger_stops_firing(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    from datetime import timedelta
+
+    from mapi_server.services.runs import now
+    from mapi_server.services.workflows import dataset_version_ready, fire_due_triggers
+
+    await put_dataset(ctx, "sales", weekly_series(80))
+    bob, me = await _member(ctx, client, "runner")
+    wf = await _create(me, _doc([ADF], name="ontrigger"))
+    r = await me.post(
+        f"/v1/workflows/{wf}/triggers",
+        json={"dataset": "dataset://default/sales", "input": "data", "debounce_seconds": 60},
+    )
+    assert r.status_code == 201, r.text
+    await _remove(ctx, bob.id)
+    ds, dv = await put_dataset(ctx, "sales", weekly_series(90))
+    async with ctx.db.session() as s:
+        d, v = await s.get(m.Dataset, ds.id), await s.get(m.DatasetVersion, (ds.id, dv.version))
+        assert d is not None and v is not None
+        await dataset_version_ready(s, d, v)
+    assert await fire_due_triggers(ctx, at=now() + timedelta(seconds=61)) == 0
+    async with ctx.db.session() as s:
+        trg = (await s.execute(select(m.WorkflowTriggerRow))).scalar_one()
+    assert trg.active is False and "no longer" in (trg.last_error or "")
+    assert (await client.get(f"/v1/workflows/{wf}/triggers")).json()["items"][0]["active"] is False
+    assert (await client.get(f"/v1/workflows/{wf}/runs")).json()["items"] == []

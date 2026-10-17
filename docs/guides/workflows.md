@@ -485,7 +485,10 @@ api POST "/v1/workflows/$WF/triggers" -d '{
 - Runs started by schedules and triggers carry `trigger: schedule` or
   `trigger: dataset.version.created` and the schedule or trigger id, are audited as the
   platform acting for the person who created the schedule, and count against the project's
-  quotas like any other run.
+  quotas like any other run. They run as that person (an API token's owner when a token
+  created the schedule): a schedule or trigger whose creator is no longer allowed to run
+  workflows in the project - removed, demoted below `runner`, or whose token was revoked or
+  expired - pauses itself (`active: false`, audited) instead of firing.
 
 ## Run it locally
 

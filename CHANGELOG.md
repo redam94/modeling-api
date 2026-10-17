@@ -433,6 +433,12 @@ milestone releases are tagged on `main`.
   far more active runs than the limit. Sub-workflow runs now count against it, and a
   `subworkflow.run` node over the limit fails with `QUOTA_EXCEEDED`. (The children's
   executions were and are held by the dispatcher's per-tenant concurrency and vCPU limits.)
+- **server** (security): schedules and dataset triggers kept firing - and spending quota -
+  for a member who had been removed from the project, demoted, or whose API token had been
+  revoked: nothing re-checked the creator at fire time. They now pause themselves
+  (`active: false`, audited as `workflow.schedule_update`/`workflow.update`) when the creator
+  may no longer run workflows there, and their runs are created by the person (a token's
+  owner, with the token recorded) rather than by the token id.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
