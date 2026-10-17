@@ -337,6 +337,9 @@ milestone releases are tagged on `main`.
 
 ### Fixed
 
+- **web** (M3.5 review): *Help me choose* scrolled sideways on a 375 px phone: its five
+  suggestion tabs were wider than the screen and "Where to start" wrapped onto three lines.
+  A switch with more options than fit now scrolls inside its own strip, on every page.
 - **web** (M3.5 review): *Start with this* on a model in *Help me choose* or the catalog
   dropped a Guided user into the Expert YAML spec editor, with placeholder data and an
   error badge. In Guided mode a model now starts the guided template built on it

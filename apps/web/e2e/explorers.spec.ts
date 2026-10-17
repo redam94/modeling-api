@@ -193,6 +193,29 @@ test("the explorers and the chooser fit a phone without sideways scrolling", asy
   }
 });
 
+test("Help me choose fits a 375 px phone: the suggestion tabs scroll inside their strip", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  for (const url of ["/choose", "/choose?goal=forecast", "/choose?goal=forecast&kind=node"]) {
+    await page.goto(url);
+    await expect(page.getByRole("heading", { name: "Help me choose" })).toBeVisible();
+    await page.waitForTimeout(300);
+    const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+    expect(scroll, `${url} is ${scroll}px wide in a ${client}px viewport`).toBeLessThanOrEqual(client);
+    const tabs = page.getByRole("radiogroup", { name: "What to suggest" });
+    const box = await tabs.boundingBox();
+    expect(box!.x + box!.width, url).toBeLessThanOrEqual(client);
+    // every tab label stays on one line (no three-line "Where to start")
+    for (const name of ["Where to start", "Workflow nodes"]) {
+      const tab = tabs.getByRole("radio", { name });
+      const h = (await tab.boundingBox())!.height;
+      expect(h, `${name} in ${url}`).toBeLessThanOrEqual(32);
+    }
+  }
+  // the last tab is reachable by scrolling the strip
+  await page.getByRole("radio", { name: "Workflow nodes" }).click();
+  await expect(page).toHaveURL(/kind=node/);
+});
+
 test("budget optimisation: bounds explained before the run, then the plan and its frontier", async ({ page }) => {
   await page.goto(`/models/${MMM}/versions/1/optimize`);
   await expect(page.getByRole("heading", { name: "Optimise a budget" })).toBeVisible();
