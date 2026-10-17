@@ -22,6 +22,12 @@ git checkout develop && git merge --no-ff feat/m1-my-change
 make fmt lint typecheck test
 ```
 
+## Writing style
+
+Write all text for users in ASD-STE100 Simplified Technical English: documentation, text in
+the web app, and the messages that the server sends for the app to show. The rules are in
+[Writing style](docs/project/writing-style.md).
+
 ## Commit messages
 
 Conventional commits: `feat(sdk): …`, `fix(server): …`, `docs: …`, `test: …`, `chore: …`, `refactor: …`.
