@@ -8,6 +8,8 @@ its current version. Concurrent validation requests for one version create one v
 
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 import pytest
 from mapi_server.context import ServerContext
@@ -15,6 +17,7 @@ from mapi_server.db import models as m
 from mapi_server_testkit.governance import finish_governance as _finish_governance
 from mapi_server_testkit.identity import grant_role, make_user, session_caller
 from mapi_server_testkit.integrations import fitted_version
+from sqlalchemy import select
 
 pytestmark = pytest.mark.integration
 
@@ -153,3 +156,22 @@ async def test_naming_extra_policies_adds_their_checks(
     assert r.status_code == 202, r.text
     checks = {c["check"] for c in r.json()["required_checks"]}
     assert "null.noise_regressors" in checks and "convergence" in checks
+
+
+async def test_concurrent_validation_requests_make_one_validation(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    mv = await fitted_version(ctx)
+    assert (await client.post(POL, json=NOAPPROVAL)).status_code == 201
+    a, b = await asyncio.gather(client.post(_vurl(mv), json={}), client.post(_vurl(mv), json={}))
+    assert sorted([a.status_code, b.status_code]) == [202, 409], (a.text, b.text)
+    async with ctx.db.session() as s:
+        rows = list(
+            (
+                await s.execute(
+                    select(m.ModelValidation).where(m.ModelValidation.model_version_id == mv.id)
+                )
+            ).scalars()
+        )
+        runs = list((await s.execute(select(m.Run).where(m.Run.kind == "governance"))).scalars())
+    assert len(rows) == 1 and len(runs) == 1

@@ -124,7 +124,10 @@ api -X POST "$API/v1/models/$MODEL_ID/versions/7/validations" -d '{"note": "Q4 r
 The answer (`202`) is a validation in `checks_running` with the checks it is held to and the
 governance run (`workflow_run_id`) that measures them in the sandbox. A validation is always
 held to **every** policy in force for the model (the tenant-wide floor and the project's own);
-`policy_ids` can only add more active policies on top of them, never leave one out. Follow the run like any
+`policy_ids` can only add more active policies on top of them, never leave one out. The
+version is locked while a request is checked, so two simultaneous requests (or a request and
+a workflow's submission) make one validation; the other gets `409
+VALIDATION_TRANSITION_INVALID`. Follow the run like any
 other (`GET /v1/runs/{run_id}`, or its event stream). When it finishes the validation moves
 on by itself:
 

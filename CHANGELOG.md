@@ -395,6 +395,9 @@ milestone releases are tagged on `main`.
   checks, limits, settings and reviewers at least as strict); a version validated before a
   policy was added or made stricter reads "validated under other or older policies" and may
   be validated again.
+- **server**: two simultaneous validation requests for one model version (or a request and
+  a workflow's `submit: true`) both passed the "no open validation" check and created two
+  validations and two governance runs. The version row is now locked while the check runs.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

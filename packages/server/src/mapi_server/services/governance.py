@@ -957,6 +957,7 @@ async def request_validation(
     the version row, so only one of them creates a validation."""
     if mv.status != "ready":
         raise Conflict(f"model version {mv.id} is {mv.status}; only ready versions are validated")
+    await _lock_version(session, mv)
     latest = await _latest_validation(session, mv.id)
     if latest is not None and await _blocks_new_validation(session, ctx, mv, latest):
         raise MapiError(
@@ -1262,6 +1263,7 @@ async def workflow_validation_submitter(
     workflow's sandboxed node, so the validation goes straight from ``checks_running`` to
     ``validated``, or to ``awaiting_approval`` when a policy wants a reviewer. ``None``
     when the version already has an open or validated validation."""
+    await _lock_version(session, mv)
     latest = await _latest_validation(session, mv.id)
     if latest is not None and ValidationStatus(latest.status) in _OPEN:
         return None
