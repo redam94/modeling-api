@@ -21,6 +21,7 @@ import type {
   PlotRender,
   PlotRenderRequest,
   Problem,
+  ScoreSummary,
   PromotionGateDecision,
   SavedPlot,
   SavedPlotCreate,
@@ -113,6 +114,65 @@ const WARN_GATE: PromotionGateDecision = {
 const SNAPSHOT = generated.snapshot as unknown as Endpoint["schema_snapshot"];
 
 export const EXAMPLE_CALL = generated.example as unknown as EndpointScoreCall;
+
+/** The monthly sales forecast whose model conditions forecasts on actuals (`mapi_spec.actuals`). */
+export const FORECAST_ALIAS = generated.forecast.alias;
+const FORECAST_SNAPSHOT = generated.forecast.snapshot as unknown as Endpoint["schema_snapshot"];
+
+/** `GET …/schema` of an endpoint: the example call, the actuals example and the input table. */
+function schemaOf(ep: Endpoint): EndpointSchema {
+  const block = ep.schema_snapshot.schema_hash === FORECAST_SNAPSHOT.schema_hash ? generated.forecast : generated;
+  return {
+    alias: ep.alias,
+    ref: ep.ref,
+    model_ref: ep.model_ref,
+    revision: ep.revision,
+    snapshot: ep.schema_snapshot,
+    example: block.example,
+    actuals_example: (block.actuals_example ?? null),
+    input_table: (block.input_table ?? null) as unknown as EndpointSchema["input_table"],
+    max_inline_bytes: 5 * 1024 * 1024,
+  };
+}
+
+/**
+ * What a forecast of the sales endpoint was conditioned on, from the call's inline data
+ * (`ForecastConditioning`, as the sandbox reports it), with a made-up summary table.
+ */
+function forecastAnswer(body: EndpointScoreCall): { summary: ScoreSummary } {
+  const fitEnd = "2026-09-01";
+  const data = body.data && typeof body.data === "object" ? (body.data as { coords: Record<string, { data: string[] }>; data_vars: Record<string, { data: (number | null)[] }> }) : null;
+  const months = data?.coords.month?.data ?? [];
+  const sales = data?.data_vars.sales?.data ?? [];
+  const actual = months.filter((_, i) => sales[i] !== null && sales[i] !== undefined);
+  const lastActual = actual.length ? actual[actual.length - 1]! : null;
+  const after = lastActual ? months.filter((m) => m > lastActual) : months;
+  const periods = after.length || body.horizon?.periods || 8;
+  const from = after[0] ?? "2026-10-01";
+  const to = after[after.length - 1] ?? from;
+  const message = actual.length
+    ? `Forecast updated with ${actual.length} actual${actual.length === 1 ? "" : "s"} (${actual[0]} to ${lastActual}) after the fitted history, which ends ${fitEnd}; the model's parameters were not re-estimated. ${periods} periods forecast from ${from} to ${to}.`
+    : `Forecast from the end of the fitted history (${fitEnd}); no actuals were supplied. ${periods} periods forecast from ${from} to ${to}.`;
+  const rows = (after.length ? after : [from]).map((m, i) => [m, 1580 + 12 * i, 1490 + 9 * i, 1675 + 15 * i]);
+  return {
+    summary: {
+      tables: [{ variable: "sales", columns: ["month", "median", "q5", "q95"], rows }],
+      truncated: false,
+      conditioning: {
+        dim: "month",
+        fit_end: fitEnd,
+        conditioned: actual.length > 0,
+        n_actuals: actual.length,
+        actuals_through: lastActual,
+        series_conditioned: actual.length ? 1 : 0,
+        n_series: 1,
+        horizon_source: after.length ? "rows" : "horizon",
+        periods,
+        message,
+      },
+    },
+  };
+}
 
 function endpointOf(alias: string, revision: number, patch: Partial<Endpoint> = {}): Endpoint {
   return {
@@ -223,9 +283,24 @@ export function createIntegrationsState(): IntegrationsState {
     disabled_reason: "Disabled after 20 consecutive failed events (the last answer was HTTP 502).",
     last_success_at: "2026-10-02T09:00:00Z",
   };
+  const sales = endpointOf(FORECAST_ALIAS, 1, {
+    schema_snapshot: FORECAST_SNAPSHOT,
+    gate: { outcome: "allowed", scorecard_overall: "pass", failing_checks: [], reasons: [] },
+    overridden: false,
+    description: "Monthly sales forecast (actuals added each month, no refit)",
+  });
+  const salesHistory: EndpointRevision[] = [
+    { alias: FORECAST_ALIAS, revision: 1, action: "promote", model_version_id: MV_ID, model_ref: modelVersion.ref, previous_model_version_id: null, gate: sales.gate, overridden: false, reason: null, actor_id: ana, created_at: "2026-10-12T09:00:00Z" },
+  ];
   return {
-    endpoints: new Map([[ENDPOINT_ALIAS, ep]]),
-    history: new Map([[ENDPOINT_ALIAS, history]]),
+    endpoints: new Map([
+      [ENDPOINT_ALIAS, ep],
+      [FORECAST_ALIAS, sales],
+    ]),
+    history: new Map([
+      [ENDPOINT_ALIAS, history],
+      [FORECAST_ALIAS, salesHistory],
+    ]),
     webhooks: new Map([
       [hook.id, hook],
       [disabled.id, disabled],
@@ -305,6 +380,9 @@ const camel = (alias: string) =>
  * slugs and the base a plain URL, so neither needs quoting in any language.
  */
 export function snippetsFor(alias: string): Snippet[] {
+  if (alias === FORECAST_ALIAS) {
+    return (generated.forecast.snippets.items as Snippet[]).map((s) => ({ ...s, code: s.code.replaceAll(generated.base_url, API) }));
+  }
   const swap = (code: string) =>
     code
       .replaceAll(generated.base_url, API)
@@ -399,8 +477,7 @@ export function createIntegrationHandlers(state: IntegrationsState, deps: Integr
     http.get(`${API}/v1/endpoints/:alias/schema`, ({ params }) => {
       const ep = endpointOr404(String(params.alias));
       if (!ep) return notFound("endpoint");
-      const out: EndpointSchema = { alias: ep.alias, ref: ep.ref, model_ref: ep.model_ref, revision: ep.revision, snapshot: ep.schema_snapshot, example: EXAMPLE_CALL, max_inline_bytes: 5 * 1024 * 1024 };
-      return HttpResponse.json(out);
+      return HttpResponse.json(schemaOf(ep));
     }),
     http.post(`${API}/v1/endpoints/:alias/validate`, async ({ params, request }) => {
       const ep = endpointOr404(String(params.alias));
@@ -423,8 +500,9 @@ export function createIntegrationHandlers(state: IntegrationsState, deps: Integr
       if (!(ep.schema_snapshot.score_modes ?? []).includes(body.mode ?? "predict")) {
         return problem(422, "MODE_NOT_SUPPORTED", "Score mode not supported", `the model does not support mode '${body.mode}'`);
       }
+      const extra = ep.schema_snapshot.conditions_on_actuals && body.mode === "forecast" ? forecastAnswer(body) : {};
       return HttpResponse.json(
-        { done: true, run: { ...runDone, id: "run_01jaf3q2x8m9v7k5h4g3f2e1s5", kind: "score", model_version_id: ep.model_version_id, spec_id: null, spec_revision: null, labels: { endpoint: ep.alias } }, outputs: [scoreLink()] },
+        { done: true, run: { ...runDone, id: "run_01jaf3q2x8m9v7k5h4g3f2e1s5", kind: "score", model_version_id: ep.model_version_id, spec_id: null, spec_revision: null, labels: { endpoint: ep.alias } }, outputs: [scoreLink()], ...extra },
         { headers: { "Preference-Applied": "wait=30", Location: "/v1/runs/run_01jaf3q2x8m9v7k5h4g3f2e1s5" } },
       );
     }),

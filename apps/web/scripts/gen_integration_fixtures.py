@@ -23,7 +23,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from mapi_spec.endpoints import EndpointSchemaSnapshot, example_score_call
+from mapi_spec.endpoints import (
+    EndpointSchemaSnapshot,
+    example_actuals_call,
+    example_score_call,
+    input_table,
+)
 from mapi_spec.snippets import SnippetContext, render_snippets
 
 WEB = Path(__file__).resolve().parent.parent
@@ -58,22 +63,70 @@ SNAPSHOT: dict[str, Any] = {
 }
 
 
-def render() -> str:
-    snapshot = EndpointSchemaSnapshot.model_validate(SNAPSHOT)
-    # As the server's `_example` in mapi_server.api.endpoints.
+#: A second endpoint: a monthly sales forecast whose model conditions forecasts on actuals
+#: (``mapi_spec.actuals``), with a ``price`` driver, fitted through September 2026.
+FORECAST_ALIAS = "sales-forecast"
+FORECAST_SNAPSHOT: dict[str, Any] = {
+    "input_schema": {
+        "dims": {"month": {"kind": "time", "policy": "extend", "freq": "MS"}},
+        "vars": {
+            "sales": {"dims": ["month"], "dtype": "float64", "role": "target", "units": "kEUR"},
+            "price": {"dims": ["month"], "dtype": "float64", "future_required": True},
+        },
+    },
+    "schema_hash": "sha256:" + "cd" * 32,
+    "inputs_stage": "raw",
+    "horizon_dim": "month",
+    "score_modes": ["evaluate", "forecast", "predict"],
+    "representation": "quantiles",
+    "future_required": ["price"],
+    "fit_coords": {
+        "month": {
+            "kind": "time",
+            "size": 69,
+            "start": "2021-01-01",
+            "end": "2026-09-01",
+            "freq": "MS",
+            "contiguous": True,
+        }
+    },
+    "conditions_on_actuals": True,
+}
+
+
+def _endpoint(alias: str, raw: dict[str, Any]) -> dict[str, Any]:
+    snapshot = EndpointSchemaSnapshot.model_validate(raw)
+    # As the server's `_example`, `get_endpoint_schema` and `list_endpoint_snippets`.
     example = example_score_call(snapshot).model_dump(
         mode="json", by_alias=True, exclude_defaults=True
     )
+    actuals = example_actuals_call(snapshot)
+    table = input_table(snapshot)
     snippets = render_snippets(
-        SnippetContext(base_url=BASE_URL, project=PROJECT, alias=ALIAS, payload=example)
+        SnippetContext(
+            base_url=BASE_URL, project=PROJECT, alias=alias, payload=example, input_table=table
+        )
     )
-    doc = {
-        "alias": ALIAS,
-        "base_url": BASE_URL,
-        "project": PROJECT,
+    return {
+        "alias": alias,
         "snapshot": snapshot.model_dump(mode="json", by_alias=True, exclude_none=True),
         "example": example,
+        "actuals_example": (
+            actuals.model_dump(mode="json", by_alias=True, exclude_defaults=True)
+            if actuals is not None
+            else None
+        ),
+        "input_table": table.model_dump(mode="json") if table is not None else None,
         "snippets": snippets.model_dump(mode="json", by_alias=True),
+    }
+
+
+def render() -> str:
+    doc = {
+        **_endpoint(ALIAS, SNAPSHOT),
+        "base_url": BASE_URL,
+        "project": PROJECT,
+        "forecast": _endpoint(FORECAST_ALIAS, FORECAST_SNAPSHOT),
     }
     return json.dumps(doc, indent=1, ensure_ascii=False) + "\n"
 
