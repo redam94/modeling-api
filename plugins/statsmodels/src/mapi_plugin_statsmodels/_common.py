@@ -16,8 +16,9 @@ multivariate models fit one joint model per cell over the ``variable`` dim.
 from __future__ import annotations
 
 import math
+import re
 import warnings
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Final, Literal
@@ -326,11 +327,26 @@ def sample_quantiles(samples: np.ndarray, quantiles: Sequence[float] | np.ndarra
 # ================================================================================ residual tests
 
 
-def residual_tests(resid: np.ndarray, *, n_params: int = 0) -> dict[str, tuple[float, float, int]]:
+_ARMA_NAME: Final = re.compile(r"^(?:(?:ar|ma)\.(?:S\.)?L\d+|(?:D\.)?y\.L\d+)")
+
+
+def arma_df(param_names: Iterable[str]) -> int:
+    """The Ljung-Box degrees-of-freedom correction of a fit: the number of ARMA
+    coefficients only (``ar.L*``, ``ma.L*``, seasonal ``ar.S.L*``/``ma.S.L*``, ARDL lags of
+    the target ``y.L*`` and an error-correction model's lagged differences ``D.y.L*``;
+    regime-specific copies ``ar.L1[0]``/``ar.L1[1]`` count once). Constants, drivers,
+    variances and smoothing or initial-state parameters do not shrink the test's degrees of
+    freedom (Ljung & Box 1978)."""
+    seen = {m.group(0) for n in param_names if (m := _ARMA_NAME.match(str(n)))}
+    return len(seen)
+
+
+def residual_tests(resid: np.ndarray, *, model_df: int = 0) -> dict[str, tuple[float, float, int]]:
     """``test id -> (statistic, p_value, lags)`` for one residual series.
 
-    Ljung-Box (lags ``min(10, n // 5)``, degrees of freedom reduced by ``n_params`` where
-    statsmodels allows), Jarque-Bera and Engle's ARCH-LM (``min(4, n // 10)`` lags).
+    Ljung-Box (lags ``min(10, n // 5)``, at least ``model_df + 3``; degrees of freedom
+    reduced by ``model_df``, the number of ARMA terms, :func:`arma_df`), Jarque-Bera and
+    Engle's ARCH-LM (``min(4, n // 10)`` lags).
     """
     from statsmodels.stats.diagnostic import acorr_ljungbox, het_arch
     from statsmodels.stats.stattools import jarque_bera
@@ -343,7 +359,9 @@ def residual_tests(resid: np.ndarray, *, n_params: int = 0) -> dict[str, tuple[f
         return out
     with quiet():
         lags = max(1, min(10, r.size // 5))
-        dof = n_params if 0 < n_params < lags else 0
+        if model_df > 0 and lags <= model_df and model_df + 3 <= r.size // 2:
+            lags = model_df + 3  # keep positive degrees of freedom
+        dof = model_df if 0 < model_df < lags else 0
         lb = acorr_ljungbox(r, lags=[lags], model_df=dof)
         out["test.ljung_box"] = (float(lb["lb_stat"].iloc[0]), float(lb["lb_pvalue"].iloc[0]), lags)
         jb, jb_p, _, _ = jarque_bera(r)

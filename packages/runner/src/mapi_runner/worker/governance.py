@@ -930,15 +930,35 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     )
 
 
-def _arma_df(settings: Mapping[str, Any]) -> int:
+def _arma_df(settings: Mapping[str, Any], bundle: Bundle | None = None) -> int:
+    """The Ljung-Box degrees-of-freedom correction: the ARMA terms the plugin stored per
+    series (``learned.cells[].model_df``, the statsmodels plugin), else ``p + q (+ P + Q)``
+    of an ``order``/``seasonal_order`` setting."""
+    if bundle is not None:
+        cells = (bundle.model.learned or {}).get("cells")
+        stored = [
+            int(c["model_df"])
+            for c in (cells if isinstance(cells, list) else [])
+            if isinstance(c, dict) and isinstance(c.get("model_df"), int)
+        ]
+        if stored:
+            return max(stored)
+    df = 0
     order = settings.get("order")
     if (
         isinstance(order, list | tuple)
         and len(order) == 3
         and all(isinstance(x, int) for x in order)
     ):
-        return int(order[0]) + int(order[2])
-    return 0
+        df += int(order[0]) + int(order[2])
+    seasonal = settings.get("seasonal_order")
+    if (
+        isinstance(seasonal, list | tuple)
+        and len(seasonal) == 4
+        and all(isinstance(x, int) for x in seasonal)
+    ):
+        df += int(seasonal[0]) + int(seasonal[2])
+    return df
 
 
 def _burn_in(settings: Mapping[str, Any]) -> int:
@@ -966,7 +986,7 @@ def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     assert env.time_dim is not None
     lags = _pint(check.params, "lags", 10)
     settings = env.bundle.spec.model.plugin_settings
-    model_df = _arma_df(settings)
+    model_df = _arma_df(settings, env.bundle)
     # the start-up residuals of a diffuse-initialised fit (the first is the level itself
     # for an integrated or unobserved-components model): one such outlier swamps every
     # autocorrelation and lets patterned errors pass

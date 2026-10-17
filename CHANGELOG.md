@@ -471,6 +471,14 @@ milestone releases are tagged on `main`.
   diffuse-initialised statsmodels models: it only dropped the start-up periods of an
   (S)ARIMA `order`, so the first residual - the level itself - stayed in and swamped every
   autocorrelation. The fit's own burn-in (stored per series) is now dropped as well.
+- **statsmodels plugin, runner** (statistics): the Ljung-Box test stored with every
+  statsmodels fit (the `RESIDUAL_AUTOCORRELATION` diagnostic and the Model Explorer's
+  residual view) reduced its degrees of freedom by every parameter - constant, drivers and
+  the variance - so a correctly specified regression with AR(1) errors was flagged
+  autocorrelated 23% of the time (and the rule silently switched to no correction when
+  a model had many parameters, e.g. ETS). It now counts ARMA terms only (`ar.L*`, `ma.L*`,
+  seasonal terms, ARDL/ECM lags of the target), stored per series as `model_df`, which
+  `residuals.whiteness` also uses (it previously ignored seasonal AR/MA terms).
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

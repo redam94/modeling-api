@@ -123,3 +123,37 @@ def test_forecast_fans_per_series_from_a_score_run() -> None:
     assert fan.fan.quantiles[0] == 0.025 and fan.fan.observed is not None
     assert fan.model_dump()["facet"] == {"geo": "north"}
     ModelForecastView.model_validate_json(view.model_dump_json())
+
+
+def test_ljung_box_counts_only_arma_terms() -> None:
+    """Regression: the stored Ljung-Box test reduced its degrees of freedom by every
+    parameter (constant, drivers, sigma2), so a correctly specified regression with AR(1)
+    errors was flagged autocorrelated 23% of the time. Only ARMA terms count."""
+    from mapi_plugin_statsmodels._common import arma_df, residual_tests
+
+    assert arma_df(["intercept", "x1", "x2", "ar.L1", "sigma2"]) == 1
+    assert arma_df(["ar.L1", "ma.L1", "ar.S.L4", "ma.S.L4", "sigma2"]) == 4
+    assert arma_df(["const[0]", "ar.L1[0]", "ar.L1[1]", "ar.L2[0]", "ar.L2[1]"]) == 2
+    assert arma_df(["const", "y.L1", "y.L2", "x.L0", "x.L1"]) == 2  # ARDL
+    assert arma_df(["const", "y.L1", "x.L1", "D.y.L1", "D.x.L0"]) == 2  # UECM
+    assert arma_df(["smoothing_level", "initial_level"]) == 0  # ETS
+    import warnings
+
+    from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+    reps, n, rejected = 120, 96, 0
+    for seed in range(reps):
+        rng = np.random.default_rng(seed)
+        x = rng.normal(size=(n, 2))
+        u = np.zeros(n)
+        e = rng.normal(size=n)
+        for t in range(1, n):
+            u[t] = 0.5 * u[t - 1] + e[t]
+        y = 1.0 + x @ np.array([0.5, -0.3]) + u
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            res = SARIMAX(y, exog=x, order=(1, 0, 0), trend="c").fit(disp=False)
+        names = [str(v) for v in res.model.param_names]
+        _stat, p, _lags = residual_tests(res.resid, model_df=arma_df(names))["test.ljung_box"]
+        rejected += p < 0.05
+    assert rejected / reps <= 0.09, rejected / reps
