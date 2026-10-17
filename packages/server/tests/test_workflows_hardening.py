@@ -15,6 +15,7 @@ from mapi_server.services.workflows import WorkflowOrchestrator
 from mapi_server.settings import Settings
 from mapi_server_testkit.workflows import catalog_file, drive, execute_children, put_dataset
 from mapi_spec.run import Actor, RunState, RunTrigger
+from mapi_spec.workflow import WorkflowRunStatus
 from mapi_workflows.testing import weekly_series
 from sqlalchemy import select
 
@@ -139,3 +140,28 @@ async def test_cancelling_between_a_search_and_its_refit_starts_no_fit(
     assert [(f.id, f.state) for f in fits] == []
     assert view["status"] == "cancelled", view["status"]
     assert {n["node_id"]: n["status"] for n in view["nodes"]}["grid"] == "cancelled"
+
+
+async def test_a_grid_search_over_a_backtest_plan_refits_the_winner(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await put_dataset(ctx, "sales", weekly_series(120))
+    folds = {
+        "id": "folds",
+        "use": "split.expanding_window",
+        "inputs": {"data": "inputs.data"},
+        "with": {"horizons": [4], "n_folds": 2, "step": 4},
+    }
+    grid = {**GRID, "inputs": {"data": "inputs.data", "split": "folds.plan"}}
+    rid = await _start(client, await _create(client, _doc([folds, grid], name="gridbt")))
+    status = await drive(ctx, rid)
+    view = (await client.get(f"/v1/workflow-runs/{rid}")).json()
+    g = next(n for n in view["nodes"] if n["node_id"] == "grid")
+    assert status is WorkflowRunStatus.SUCCEEDED, g.get("error")
+    assert g["result"]["model_version"].startswith("model://default/wf-gridbt-grid@v")
+    assert g["outputs"]["best"]["ref"] == g["result"]["model_version"]
+    async with ctx.db.session() as s:
+        fit = (await s.execute(select(m.Run).where(m.Run.kind == "fit"))).scalar_one()
+    # the winner is fitted on all the data (a backtest plan is not a holdout)
+    assert "split" not in fit.payload["data"]
+    assert fit.payload["model"]["settings"]["order"] in ([1, 0, 0], [2, 0, 0])

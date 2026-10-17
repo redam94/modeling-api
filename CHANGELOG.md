@@ -414,6 +414,11 @@ milestone releases are tagged on `main`.
   backtests and the winner's refit started the refit anyway - a `fit` run nothing cancelled,
   billed and registered after the run was cancelled. The refit is no longer started once the
   run is stopping, and a child started in the same pass is stopped by its current run id.
+- **server**: `search.grid` (and the other searches with a winner refit) always failed with
+  `SPLIT_INVALID` "model.fit takes a holdout plan" when its split was a backtest plan -
+  rolling origin, expanding window - which is what a search needs: the refit of the winner
+  reused the backtest plan as a fit split. The winner is now fitted on all the data for a
+  backtest plan (a holdout plan is still kept).
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

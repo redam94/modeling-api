@@ -638,8 +638,13 @@ class WorkflowOrchestrator:
         *,
         settings: Mapping[str, Any] | None = None,
         data_ref_text: str | None = None,
+        refit: bool = False,
     ) -> str:
-        """A ``fit`` child run of the spec ``wf-<workflow>-<node>`` (a new revision)."""
+        """A ``fit`` child run of the spec ``wf-<workflow>-<node>`` (a new revision).
+
+        ``refit`` is a search's winner: a holdout plan is kept, any other plan (a backtest
+        the search scored the candidates on) is not a fit split, so the winner is fitted on
+        all the data."""
         s = env.session
         values = action.inputs.get("data") or []
         dataset = data_ref_text or (values[0].ref if values else None)
@@ -654,6 +659,8 @@ class WorkflowOrchestrator:
         for ref in action.inputs.get("split") or []:
             plan = ref.inline if isinstance(ref.inline, dict) else {}
             inner = plan.get("plan") if isinstance(plan, dict) else None
+            if refit and isinstance(inner, dict) and inner.get("kind") != "holdout":
+                continue
             if not isinstance(inner, dict) or inner.get("kind") != "holdout":
                 raise _NodeFailure(
                     ErrorCode.SPLIT_INVALID, "model.fit takes a holdout plan (split.holdout)"
@@ -1013,7 +1020,7 @@ class WorkflowOrchestrator:
             if isinstance(best, dict):
                 action = self._action_for(env, row)
                 try:
-                    fit_id = await self._submit_fit(env, action, settings=best)
+                    fit_id = await self._submit_fit(env, action, settings=best, refit=True)
                 except (ValidationFailed, MapiError) as exc:
                     raise _NodeFailure(
                         exc.code, f"refitting the winner failed: {exc.detail}"
