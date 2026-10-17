@@ -17,6 +17,8 @@ sandbox (``mapi_sdk`` wire format), which also checks dtypes and the schema.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Mapping, Sequence
+from datetime import date, datetime, timedelta
 from typing import Any, Final
 
 from pydantic import Field, JsonValue, field_validator, model_validator
@@ -33,6 +35,8 @@ __all__ = [
     "XrJsonVariable",
     "check_xrjson_size",
     "observed_labels",
+    "table_cell",
+    "xrjson_from_rows",
 ]
 
 MAX_XRJSON_BYTES: Final = 5 * 1024 * 1024
@@ -185,3 +189,111 @@ def observed_labels(payload: XrJsonDataset, var: str, dim: str) -> list[Leaf] | 
             if isinstance(label, str | int | float | bool) or label is None:
                 out.append(label)
     return out
+
+
+_EPOCH_NS_THRESHOLD: Final = 10**15
+"""numpy ``datetime64[ns]`` scalars unbox to integers (nanoseconds) above this."""
+
+
+def table_cell(value: Any) -> Leaf:
+    """A table cell as an XrJSON leaf: empty (``None``, blank text, NaN, NaT) is ``null``;
+    dates are ISO text (the date alone at midnight); numpy and pandas scalars are unboxed.
+    Raises ``TypeError`` for anything else."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value if value.strip() else None
+    if isinstance(value, bool | int):
+        return value
+    if isinstance(value, float):
+        return None if value != value or value in (float("inf"), float("-inf")) else value
+    try:
+        if value != value:  # NaN-like: numpy NaN, pandas NaT (a datetime)
+            return None
+    except (TypeError, ValueError):  # pragma: no cover - exotic comparisons
+        pass
+    if isinstance(value, datetime):
+        if value.tzinfo is None and value.time() == datetime.min.time():
+            return value.date().isoformat()
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    to_py = getattr(value, "to_pydatetime", None)  # pandas Timestamp
+    if callable(to_py):
+        return table_cell(to_py())
+    item = getattr(value, "item", None)  # numpy scalars
+    if callable(item):
+        unboxed = item()
+        kind = getattr(getattr(value, "dtype", None), "kind", "")
+        if kind == "M" and isinstance(unboxed, int) and unboxed > _EPOCH_NS_THRESHOLD:
+            seconds, ns = divmod(unboxed, 10**9)
+            unboxed = datetime(1970, 1, 1) + timedelta(seconds=seconds, microseconds=ns // 1000)
+        return table_cell(unboxed)
+    raise TypeError(
+        f"a table cell must be a number, text, a date or empty, not {type(value).__name__}"
+    )
+
+
+def xrjson_from_rows(
+    rows: Iterable[Mapping[str, Any]], variables: Mapping[str, Sequence[str]]
+) -> XrJsonDataset:
+    """A long table (one mapping per row: column -> cell) as an inline dataset.
+
+    ``variables`` maps each value column to its dims; the dims' columns hold the
+    coordinates, in the order they first appear. A variable no row has a column for is left
+    out; empty cells (``None``, blank, NaN) are ``null`` - in a forecast an empty target
+    marks a period to forecast (:mod:`mapi_spec.actuals`). Two rows that give one cell
+    different values are an error. It is the layout of the Apps Script snippet's Input sheet
+    (:mod:`mapi_spec.snippets`) and of ``EndpointSchema.input_table``.
+
+    Raises ``ValueError`` for a missing or empty coordinate, conflicting duplicates or a
+    table without any variable column.
+    """
+    table = [dict(r) for r in rows]
+    present = {k for r in table for k in r}
+    chosen = {n: list(dims) for n, dims in variables.items() if n in present}
+    if not chosen:
+        raise ValueError(
+            f"the table needs a column for at least one of {sorted(variables)} "
+            f"(it has {sorted(present)})"
+        )
+    index: dict[str, dict[Leaf, int]] = {}
+    for dims in chosen.values():
+        for dim in dims:
+            if dim in index:
+                continue
+            if dim not in present:
+                raise ValueError(f"the table needs a column named {dim!r} (a dim)")
+            seen: dict[Leaf, int] = {}
+            for k, row in enumerate(table):
+                label = table_cell(row.get(dim))
+                if label is None:
+                    raise ValueError(f"row {k + 1} has no value in the column {dim!r}")
+                seen.setdefault(label, len(seen))
+            index[dim] = seen
+    coords = {d: {"dims": [d], "data": list(labels)} for d, labels in index.items()}
+    data_vars: dict[str, dict[str, Any]] = {}
+    for name, dims in chosen.items():
+        cells: dict[tuple[int, ...], Leaf] = {}
+        for row in table:
+            if name not in row:
+                continue
+            value = table_cell(row[name])
+            if value is None:
+                continue
+            at = tuple(index[d][table_cell(row.get(d))] for d in dims)
+            if at in cells and cells[at] != value:
+                where = ", ".join(f"{d}={table_cell(row.get(d))}" for d in dims)
+                raise ValueError(f"{name!r} has two different values at {where or 'its cell'}")
+            cells[at] = value
+        data_vars[name] = {"dims": dims, "data": _nest(cells, [len(index[d]) for d in dims])}
+    return XrJsonDataset.model_validate({"coords": coords, "data_vars": data_vars})
+
+
+def _nest(cells: Mapping[tuple[int, ...], Leaf], shape: Sequence[int]) -> Any:
+    def fill(prefix: tuple[int, ...]) -> Any:
+        if len(prefix) == len(shape):
+            return cells.get(prefix)
+        return [fill((*prefix, i)) for i in range(shape[len(prefix)])]
+
+    return fill(())

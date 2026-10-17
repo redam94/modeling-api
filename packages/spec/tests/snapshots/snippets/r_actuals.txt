@@ -1,0 +1,107 @@
+library(httr2)
+
+resp <- request('https://api.mapi.example/v1/endpoints/sales-forecast/score') |>
+  req_auth_bearer_token(Sys.getenv('MAPI_TOKEN')) |>
+  req_headers(`X-Mapi-Project` = 'acme/growth', Prefer = 'wait=60') |>
+  req_body_raw('{
+  "mode": "forecast",
+  "horizon": {
+    "dim": "t",
+    "periods": 8
+  },
+  "data": null,
+  "scenario": null,
+  "output": {
+    "summary": [
+      "median",
+      "q5",
+      "q95"
+    ]
+  },
+  "future_covariates": "carry_last"
+}', type = "application/json") |>
+  req_perform()
+result <- resp_body_json(resp)
+str(result$run$state)
+# the numbers: one table per output (coordinates, then mean and HDI)
+str(result$summary$tables)
+
+# Forecast with your latest actuals and the dates to forecast: in 'y' put the actuals you
+# have for the periods after the fitted history and leave null on the periods to forecast
+# (driver values left empty there are carried forward). The model updates its state with the
+# actuals - it is not refitted - and summary.conditioning in the answer says what the
+# forecast was conditioned on.
+forecast <- request('https://api.mapi.example/v1/endpoints/sales-forecast/score') |>
+  req_auth_bearer_token(Sys.getenv('MAPI_TOKEN')) |>
+  req_headers(`X-Mapi-Project` = 'acme/growth', Prefer = 'wait=60') |>
+  req_body_raw('{
+  "mode": "forecast",
+  "horizon": {
+    "dim": "t",
+    "periods": 8
+  },
+  "data": {
+    "coords": {
+      "t": {
+        "dims": [
+          "t"
+        ],
+        "data": [
+          "1961-01-01",
+          "1961-02-01",
+          "1961-03-01",
+          "1961-04-01",
+          "1961-05-01",
+          "1961-06-01",
+          "1961-07-01",
+          "1961-08-01"
+        ]
+      }
+    },
+    "data_vars": {
+      "y": {
+        "dims": [
+          "t"
+        ],
+        "data": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "price": {
+        "dims": [
+          "t"
+        ],
+        "data": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  "scenario": null,
+  "output": {
+    "summary": [
+      "median",
+      "q5",
+      "q95"
+    ]
+  },
+  "future_covariates": "carry_last"
+}', type = "application/json") |>
+  req_perform() |>
+  resp_body_json()
+cat(forecast$summary$conditioning$message, "\n")
+str(forecast$summary$tables)

@@ -1,0 +1,109 @@
+const payload = {
+  "mode": "forecast",
+  "horizon": {
+    "dim": "t",
+    "periods": 8
+  },
+  "data": null,
+  "scenario": null,
+  "output": {
+    "summary": [
+      "median",
+      "q5",
+      "q95"
+    ]
+  },
+  "future_covariates": "carry_last"
+};
+
+const response = await fetch("https://api.mapi.example/v1/endpoints/sales-forecast/score", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env["MAPI_TOKEN"]}`,
+    "Content-Type": "application/json",
+    "X-Mapi-Project": "acme/growth",
+    "Prefer": "wait=60",
+  },
+  body: JSON.stringify(payload),
+});
+if (!response.ok) {
+  throw new Error(`${response.status}: ${await response.text()}`);
+}
+const result = await response.json(); // 200: done with outputs; 202: still running
+// the numbers: one table per output (coordinates, then mean and HDI)
+console.log(result.done ? result.summary?.tables : result.run.id);
+
+// Forecast with your latest actuals and the dates to forecast: in 'y' put the actuals you
+// have for the periods after the fitted history and leave null on the periods to forecast
+// (driver values left empty there are carried forward). The model updates its state with
+// the actuals - it is not refitted - and summary.conditioning in the answer says what the
+// forecast was conditioned on.
+// Send it as the body instead of `payload`.
+const actualsPayload = {
+  "mode": "forecast",
+  "horizon": {
+    "dim": "t",
+    "periods": 8
+  },
+  "data": {
+    "coords": {
+      "t": {
+        "dims": [
+          "t"
+        ],
+        "data": [
+          "1961-01-01",
+          "1961-02-01",
+          "1961-03-01",
+          "1961-04-01",
+          "1961-05-01",
+          "1961-06-01",
+          "1961-07-01",
+          "1961-08-01"
+        ]
+      }
+    },
+    "data_vars": {
+      "y": {
+        "dims": [
+          "t"
+        ],
+        "data": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "price": {
+        "dims": [
+          "t"
+        ],
+        "data": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  "scenario": null,
+  "output": {
+    "summary": [
+      "median",
+      "q5",
+      "q95"
+    ]
+  },
+  "future_covariates": "carry_last"
+};
+// result.summary?.conditioning?.message, e.g. "Forecast updated with 3 actuals (...)"
