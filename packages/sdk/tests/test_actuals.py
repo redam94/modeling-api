@@ -428,3 +428,17 @@ def test_contract_kit_checks_forecast_actuals(data: xr.Dataset) -> None:
         )
         result = report.get("forecast_actuals")
         assert result.passed and not result.skipped and verdict in result.detail
+
+
+def test_a_template_with_every_value_empty_forecasts_from_the_fit(
+    bundle: Bundle, data: xr.Dataset
+) -> None:
+    """The endpoint's ``actuals_example`` as sent: the target and the drivers empty on the
+    periods after the fit, ``carry_last`` - a plain forecast of exactly those periods."""
+    empty = [[np.nan] * 3, [np.nan] * 3]
+    tree = _score(bundle, _req(3), _payload("2023-01-01", empty, empty), data)
+    rec = _record(tree)
+    assert not rec.conditioned and rec.horizon_source == "rows" and rec.periods == 3
+    last_x = float(data["price"].sel(region="north").values[-1])
+    expected = _recursion(bundle, "north", float(data["sales"].values[0, -1]), [last_x] * 3)
+    np.testing.assert_allclose(_point(tree).sel(region="north").values, expected)

@@ -1627,7 +1627,8 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         request="RunCreate",
         errors=(*_BODY, *_NF, _E.IDEMPOTENCY_CONFLICT, _E.QUOTA_EXCEEDED, _E.MODE_NOT_SUPPORTED,
                 _E.LEAKAGE_RISK, _E.UNSEEN_LEVELS, _E.COORD_NOT_ALLOWED, _E.HORIZON_EXCEEDS_FIT,
-                _E.MISSING_FUTURE_COVARIATE, _E.RECURSIVE_UNSUPPORTED),
+                _E.MISSING_FUTURE_COVARIATE, _E.RECURSIVE_UNSUPPORTED, _E.ACTUALS_NOT_SUPPORTED,
+                _E.ACTUALS_INVALID),
         headers=("Idempotency-Key",),
     ),
     EndpointDecl(
@@ -1692,7 +1693,8 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         errors=(*_BODY, *_NF, _E.MODE_NOT_SUPPORTED, _E.UNSEEN_LEVELS, _E.COORD_NOT_ALLOWED,
                 _E.HORIZON_EXCEEDS_FIT, _E.MISSING_FUTURE_COVARIATE,
                 _E.NON_CONTIGUOUS_EXTENSION, _E.CAPABILITY_UNSUPPORTED,
-                _E.RECURSIVE_UNSUPPORTED, _E.QUOTA_EXCEEDED),
+                _E.RECURSIVE_UNSUPPORTED, _E.QUOTA_EXCEEDED, _E.ACTUALS_NOT_SUPPORTED,
+                _E.ACTUALS_INVALID),
         headers=("Prefer", "Idempotency-Key"),
     ),
     # plots
@@ -2406,7 +2408,8 @@ _TEN = "/v1/tenants/{tenant_id}"
 _SCORE_ERRORS = (*_BODY, *_NF, _E.MODE_NOT_SUPPORTED, _E.UNSEEN_LEVELS, _E.COORD_NOT_ALLOWED,
                  _E.HORIZON_EXCEEDS_FIT, _E.MISSING_FUTURE_COVARIATE,
                  _E.NON_CONTIGUOUS_EXTENSION, _E.CAPABILITY_UNSUPPORTED,
-                 _E.RECURSIVE_UNSUPPORTED, _E.QUOTA_EXCEEDED, _E.PAYLOAD_TOO_LARGE)  # fmt: skip
+                 _E.RECURSIVE_UNSUPPORTED, _E.QUOTA_EXCEEDED, _E.PAYLOAD_TOO_LARGE,
+                 _E.ACTUALS_NOT_SUPPORTED, _E.ACTUALS_INVALID)  # fmt: skip
 
 M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     # guided mode

@@ -471,3 +471,16 @@ def test_freq_label_inverts_ordinal(alias: str, step: int) -> None:
         if (o := freq.ordinal(d)) is not None
     )  # fmt: skip
     assert freq.ordinal(freq.label(base + step)) == base + step
+
+
+def test_an_unused_horizon_is_never_silent() -> None:
+    meta = _meta(actuals=False)
+    rows = _inputs(("1961-01-01", "1961-06-01", 6), ("1961-01-01", "1961-01-01", 0))
+    warn = [
+        i for i in validate_score_request(_req(8), meta, rows) if i.pointer == "/horizon/periods"
+    ]
+    assert warn and "lists 6 period(s) after the fit" in warn[0].message
+    exact = _inputs(("1961-01-01", "1961-08-01", 8), None)
+    assert not any(
+        i.pointer == "/horizon/periods" for i in validate_score_request(_req(8), meta, exact)
+    )

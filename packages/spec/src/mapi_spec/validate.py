@@ -1217,6 +1217,23 @@ def validate_score_request(
             pointer=inputs_ptr,
             issues=issues,
         )
+    if (
+        actuals is None
+        and req.mode == "forecast"
+        and req.horizon is not None
+        and extension.get(req.horizon.dim, 0) not in (0, req.horizon.periods)
+        and _same_freq(stage_schema, model_schema, req.horizon.dim)
+    ):
+        listed = extension[req.horizon.dim]
+        issues.append(
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                severity=Severity.WARNING,
+                pointer="/horizon/periods",
+                message=f"horizon.periods ({req.horizon.periods}) is not used: the payload "
+                f"lists {listed} period(s) after the fit, and exactly those are forecast",
+            )
+        )
 
     # future covariates ----------------------------------------------------------------
     extends = req.horizon is not None or any(v > 0 for v in extension.values())
@@ -1453,6 +1470,13 @@ def validate_score_request(
     return issues
 
 
+def _same_freq(a: DataSchema | None, b: DataSchema | None, dim: str) -> bool:
+    """Whether ``dim`` has the same frequency in both schemas (periods compare)."""
+    da = a.dims.get(dim) if a is not None else None
+    db = b.dims.get(dim) if b is not None else None
+    return da is not None and db is not None and da.freq == db.freq
+
+
 @dataclass(frozen=True, slots=True)
 class _Actuals:
     """What the static check learned about a forecast's actuals."""
@@ -1560,8 +1584,14 @@ def _check_actuals(
     future = periods if pe is None or pe <= e else pe - e
     appended = pe is None or pe <= e
     total = max(e - fe, 0) + future
+    same = _same_freq(stage_schema, model_schema, hdim)  # else periods do not compare
     dspec = model_schema.dims.get(hdim) if model_schema is not None else None
-    if dspec is not None and dspec.max_extension is not None and total > dspec.max_extension:
+    if (
+        same
+        and dspec is not None
+        and dspec.max_extension is not None
+        and total > dspec.max_extension
+    ):
         issues.append(
             _issue(
                 ErrorCode.HORIZON_EXCEEDS_FIT,
@@ -1572,7 +1602,7 @@ def _check_actuals(
                 suggested_action="Refit with the new data.",
             )
         )
-    if not appended and future != periods:
+    if not appended and future != periods and same:
         issues.append(
             Issue(
                 code=ErrorCode.SCHEMA_INVALID,
