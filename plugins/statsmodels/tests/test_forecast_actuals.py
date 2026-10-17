@@ -168,6 +168,19 @@ def test_every_statsmodels_plugin_declares_the_capability(plugin: Any) -> None:
     assert "forecast" in caps.score_modes
 
 
+def test_models_that_re_estimate_on_rebuild_never_refit_on_the_actuals() -> None:
+    """The default conditioning re-runs ``rebuild`` on the extended history, which is only a
+    filter for parameter-driven models; least-squares models re-estimate there and so must
+    apply their fitted coefficients themselves."""
+    from mapi_plugin_statsmodels import StatsmodelsModel
+
+    estimating = {p.id for p in PLUGINS if p.rebuild_estimates}
+    assert estimating == {"ts.theta", "ts.ardl", "ts.ecm", "ts.var", "ts.vecm"}
+    for plugin in PLUGINS:
+        if plugin.rebuild_estimates:
+            assert plugin.predict_conditioned is not StatsmodelsModel.predict_conditioned
+
+
 # ============================================================================ state space
 
 
