@@ -596,7 +596,10 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     as_good = sum(1 for s in scores if s >= real)
     pval = (1 + as_good) / (len(scores) + 1)
     timed = held is not None
-    shown = (lambda v: f"skill {v:.3f}") if timed else (lambda v: f"{metric} {-v:.3g}")
+
+    def shown(v: float) -> str:
+        return f"skill {v:.3f}" if timed else f"{metric} {-v:.3g}"
+
     ev = [
         _metric(
             "holdout_skill_vs_naive" if timed else f"holdout_{metric}",
@@ -648,7 +651,7 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         msg,
         expert=f"Permutation test, null: {how}; statistic: "
         + (
-            f"holdout skill 1 - {metric}(model)/{metric}(naive) on each dataset"
+            f"holdout skill 1 - {metric}(model)/{metric}(null forecast) on each dataset"
             if timed
             else f"holdout {metric}"
         )
