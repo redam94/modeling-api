@@ -649,3 +649,46 @@ def test_one_check_and_the_evidence_pack() -> None:
 
 def test_random_walk_data_helpers() -> None:
     assert len(random_walk(10)) == 10 and len(ar1(10)) == 10
+
+
+# ================================================================================ forecast
+
+
+def test_forecast_reads_only_the_rows_after_the_fit_as_future_data() -> None:
+    """``model.forecast``'s ``data`` is the future drivers: a workflow that wires the fit's own
+    dataset in forecasts from the end of the fit (its targets there are no actuals), and a
+    target value after the fit is an actual - used or refused, never ignored."""
+    import xarray as xr
+
+    reg = registry()
+    ds = weekly_series(100)
+    fit = ds.isel(time=slice(0, 96))
+    out = run_node(
+        "model.fit",
+        {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
+        data=DatasetValue(data=fit),
+        registry=reg,
+    )
+    mv = out.outputs["model"]
+    assert isinstance(mv, ModelValue)
+    # the fit's weeks (with their sales: history, not actuals) and 4 weeks of future prices
+    future = ds.copy()
+    future["sales"] = future["sales"].where(future["time"] <= fit["time"][-1])
+    res = run_node("model.forecast", {"horizon": 4}, model=mv, data=DatasetValue(data=future),
+                   registry=reg)  # fmt: skip
+    fc = res.outputs["forecast"]
+    assert isinstance(fc, DatasetValue)
+    np.testing.assert_array_equal(fc.data["time"].values, ds["time"].values[96:])
+    # a new actual after the fit: the model uses it, or refuses it if it cannot
+    actual = ds.isel(time=slice(96, 100)).copy()
+    actual["sales"] = xr.where(actual["time"] == actual["time"][0], actual["sales"], np.nan)
+    capable = reg.model("ts.sarimax@^1").manifest().capabilities.conditions_on_actuals
+    if capable:
+        res = run_node("model.forecast", {"horizon": 4}, model=mv,
+                       data=DatasetValue(data=actual), registry=reg)  # fmt: skip
+        assert isinstance(res.outputs["forecast"], DatasetValue)
+    else:
+        with pytest.raises(MapiError) as err:
+            run_node("model.forecast", {"horizon": 4}, model=mv,
+                     data=DatasetValue(data=actual), registry=reg)  # fmt: skip
+        assert err.value.code is ErrorCode.ACTUALS_NOT_SUPPORTED
