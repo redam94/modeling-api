@@ -398,6 +398,13 @@ milestone releases are tagged on `main`.
 - **server**: two simultaneous validation requests for one model version (or a request and
   a workflow's `submit: true`) both passed the "no open validation" check and created two
   validations and two governance runs. The version row is now locked while the check runs.
+- **server** (security): a workflow's `governance.policy` node with `submit: true` recorded its
+  validation under the one policy the node named, dropping the tenant floor, and as submitted
+  by `system`, so the person who started the workflow could approve their own model. The
+  submission is now held to every policy in force (evidence missing a required check fails),
+  is submitted by the run's creator (the schedule's or trigger's creator for automated runs)
+  and the second-person rule applies to them; a validation no person submitted cannot be
+  approved (reject and resubmit it).
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

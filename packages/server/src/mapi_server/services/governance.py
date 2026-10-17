@@ -1106,6 +1106,13 @@ async def decide(
             f"a validation in status {status.value!r} cannot be approved or rejected",
             code=ErrorCode.VALIDATION_TRANSITION_INVALID,
         )
+    if body.decision == "approve" and v.submitted_by in (None, "", SYSTEM_ACTOR):
+        # a second-person approval needs a first person: reject it and resubmit instead
+        raise MapiError(
+            "no person submitted this validation, so it cannot get a second person's "
+            "approval; reject it and resubmit",
+            code=ErrorCode.FORBIDDEN,
+        )
     previous = await _approvals(session, v)
     check_approver(
         submitter_id=v.submitted_by or "",
@@ -1241,8 +1248,9 @@ async def workflow_policy_resolver(
     session: AsyncSession, ctx: ServerContext, mv: m.ModelVersion, policy_id: str | None
 ) -> list[GovernancePolicy]:
     """The policies a workflow's ``governance.policy`` node holds ``mv`` to: the policies in
-    force for its family, or the named one (empty when it is not an active policy of the
-    project or tenant: the node then fails with ``POLICY_INVALID``)."""
+    force for its family, plus the named one (empty when it is not an active policy of the
+    project or tenant: the node then fails with ``POLICY_INVALID``). Naming a policy never
+    drops the tenant floor or the project's policies."""
     if policy_id is None:
         return await policies_in_force(session, ctx, mv)
     try:
@@ -1262,10 +1270,16 @@ async def workflow_validation_submitter(
     on a ``governance.policy`` node whose checks passed): the checks already ran in the
     workflow's sandboxed node, so the validation goes straight from ``checks_running`` to
     ``validated``, or to ``awaiting_approval`` when a policy wants a reviewer. ``None``
-    when the version already has an open or validated validation."""
+    when the version already has an open or validated validation.
+
+    The validation is held to every policy in force (the policies the evidence names only
+    add to them), so evidence without a result for a required blocking check fails. It is
+    submitted by the person who started the workflow run (for a schedule or a trigger,
+    their creator), so that person cannot approve it; :data:`SYSTEM_ACTOR` only when the
+    run has no creator, and such a validation cannot be approved at all."""
     await _lock_version(session, mv)
     latest = await _latest_validation(session, mv.id)
-    if latest is not None and ValidationStatus(latest.status) in _OPEN:
+    if latest is not None and await _blocks_new_validation(session, ctx, mv, latest):
         return None
     raw_results = evidence.get("results")
     results = [
@@ -1273,13 +1287,24 @@ async def workflow_validation_submitter(
         for r in (raw_results if isinstance(raw_results, list) else [])
         if isinstance(r, dict)
     ]
-    pols = await policies_in_force(session, ctx, mv)
+    # every policy in force, whatever the node named (the evidence's policies can only add
+    # active ones); a required check the evidence has no result for fails the rollup
     named = evidence.get("policies")
-    if isinstance(named, list) and named:
-        keep = {str(x).split("@", 1)[0] for x in named}
-        pols = [p for p in pols if p.id in keep] or pols
+    extra = [str(x).split("@", 1)[0] for x in (named if isinstance(named, list) else [])[:8] if x]
+    pols = await policies_in_force(session, ctx, mv)
+    active = {
+        r.id: r
+        for r in await latest_policy_rows(session, mv.tenant_id, project_id=mv.project_id)
+        if r.active
+    }
+    for pid in extra:
+        if pid in active and pid not in {p.id for p in pols}:
+            pols.append(policy_dto(active[pid]))
     required = effective_checks(pols)
-    actor = _Actor(None, SYSTEM_ACTOR)
+    require_approval, approvals_required = _approval_of(pols)
+    wr = await session.get(m.WorkflowRunRow, workflow_run_id)
+    submitter = (wr.created_by if wr is not None else None) or SYSTEM_ACTOR
+    actor = _Actor(None, submitter)
     ts = now()
     passed, failing = rollup_results(results, required)
     v = m.ModelValidation(
@@ -1295,14 +1320,12 @@ async def workflow_validation_submitter(
         required_checks=[c.model_dump(mode="json", exclude_none=True) for c in required],
         results=[r.model_dump(mode="json", exclude_none=True) for r in results],
         failing_checks=failing,
-        require_approval=any(p.require_approval for p in pols),
-        approvals_required=max(
-            (p.approvals_required for p in pols if p.require_approval), default=1
-        ),
+        require_approval=require_approval,
+        approvals_required=approvals_required,
         history=[],
         run_id=workflow_run_id,
         note="Checks run by a workflow's governance node.",
-        submitted_by=SYSTEM_ACTOR,
+        submitted_by=submitter,
         submitted_at=ts,
         created_at=ts,
         updated_at=ts,
@@ -1323,13 +1346,15 @@ async def workflow_validation_submitter(
                     "policies": list(v.policies),
                     "checks": [c.check for c in required],
                     "workflow_run_id": workflow_run_id,
+                    "submitted_by": submitter,
                 },
             )
         ],
     )
     await _apply(session, v, ValidationEvent.SUBMIT, actor, note="submitted by a workflow")
+    platform = _Actor(None, SYSTEM_ACTOR)
     for event in after_checks(passed, require_approval=v.require_approval):
-        await _apply(session, v, event, actor)
+        await _apply(session, v, event, platform)
     return v.id
 
 

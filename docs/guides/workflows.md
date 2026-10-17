@@ -365,8 +365,11 @@ validation request's), measured in the node's sandbox on the model and its data;
 in force is the one the project or tenant set up for the model's family (the platform's
 default policies apply until you add your own). With `submit: true` a passing model is
 recorded as a validation of that model version: `validated`, or `awaiting_approval` when the
-policy asks for a reviewer (see [governance](governance.md)). Governance nodes are never
-cached: the checks run again on every run.
+policy asks for a reviewer (see [governance](governance.md)). A node's `policy` only adds to
+the policies in force (the tenant floor and the project's policies always apply), and the
+validation counts as submitted by the person who started the run - or who created its
+schedule or trigger - so that person cannot approve it. Governance nodes are never cached:
+the checks run again on every run.
 
 ### Reuse a workflow as a node
 
