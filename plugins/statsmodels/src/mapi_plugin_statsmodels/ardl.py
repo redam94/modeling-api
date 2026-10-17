@@ -12,7 +12,7 @@ exists. Both forms have identical fitted values, so forecasts use the ARDL form.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any, Literal
 
 import numpy as np
@@ -84,6 +84,7 @@ class ArdlModel(StatsmodelsModel[ArdlSettings]):
     )
     capabilities = quantile_capabilities("point")
     schema_template = schema_template(multivariate=False, exog=True)
+    rebuild_estimates = True
 
     # ------------------------------------------------------------------ specification
     def _spec(self, cell: Cell, s: ArdlSettings) -> tuple[list[int], dict[str, list[int]]]:
@@ -197,6 +198,41 @@ class ArdlModel(StatsmodelsModel[ArdlSettings]):
     ) -> tuple[np.ndarray, np.ndarray]:
         return ardl_predict(res, cell, insample, x_future, horizon, s.quantiles)
 
+    def predict_conditioned(
+        self,
+        fit_res: Callable[[], Any],
+        cell: Cell,
+        ext: Cell,
+        s: ArdlSettings,
+        params: Mapping[str, float],
+        learned: Mapping[str, Any],
+        insample: np.ndarray,
+        x_future: np.ndarray | None,
+        horizon: int,
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The fitted ARDL equation applied to the extended history
+        (``apply(refit=False)``): the supplied lags drive the forecast, nothing is
+        re-estimated."""
+        res = ardl_conditioned(fit_res(), ext)
+        return ardl_predict(res, ext, insample, x_future, horizon, s.quantiles)
+
+
+def ardl_conditioned(fitted: Any, ext: Cell) -> Any:
+    """The ``ARDLResults`` ``fitted`` (estimated on the stored data) applied to the extended
+    history ``ext`` with the same lags, coefficients and residual variance (statsmodels'
+    ``apply(refit=False)`` would re-estimate the variance from the new residuals)."""
+    orig = fitted.model.data.orig_exog
+    names = [str(c) for c in orig.columns] if orig is not None else []
+    exog = ext.exog()
+    with quiet():
+        res = fitted.apply(
+            ext.endog(), exog[names] if names and exog is not None else None, refit=False
+        )
+    inner = getattr(res, "_results", res)
+    inner.sigma2 = float(fitted.sigma2)
+    return res
+
 
 def ardl_predict(
     res: Any,
@@ -300,6 +336,7 @@ class EcmModel(StatsmodelsModel[EcmSettings]):
     )
     capabilities = quantile_capabilities("point")
     schema_template = schema_template(multivariate=False, exog=True)
+    rebuild_estimates = True
 
     def _models(self, cell: Cell, s: EcmSettings) -> tuple[Any, Any, Any, Any]:
         from statsmodels.tsa.ardl import ARDL, UECM
@@ -384,6 +421,25 @@ class EcmModel(StatsmodelsModel[EcmSettings]):
         seed: int,
     ) -> tuple[np.ndarray, np.ndarray]:
         return ardl_predict(res, cell, insample, x_future, horizon, s.quantiles)
+
+    def predict_conditioned(
+        self,
+        fit_res: Callable[[], Any],
+        cell: Cell,
+        ext: Cell,
+        s: EcmSettings,
+        params: Mapping[str, float],
+        learned: Mapping[str, Any],
+        insample: np.ndarray,
+        x_future: np.ndarray | None,
+        horizon: int,
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The fitted levels ARDL (the ECM's equivalent form) applied to the extended
+        history (``apply(refit=False)``): the supplied lags drive the forecast, nothing is
+        re-estimated."""
+        res = ardl_conditioned(fit_res(), ext)
+        return ardl_predict(res, ext, insample, x_future, horizon, s.quantiles)
 
 
 def _bounds_verdict(p_lower: float, p_upper: float, alpha: float) -> str:
