@@ -180,6 +180,13 @@ The rules, so the sheet does what you expect:
 
 - **Dates** are cells formatted as dates or text in `yyyy-MM-dd`; they are sent as
   `yyyy-MM-dd` in the spreadsheet's time zone. Rows may come in any order.
+- **Headers** are matched without surrounding spaces and ignoring case. A sheet whose target
+  column the script cannot find, next to columns it does not know, is an error that lists the
+  expected columns - never a forecast that silently drops your actuals.
+- **Numbers stored as text** (a pasted CSV, a Plain-text column) are sent as numbers, and a
+  cell holding only spaces is blank. Other text in a number column (`#N/A`) is refused with
+  `SCHEMA_INVALID` naming the column and the date.
+- **No rows** (only the header): the 8 periods after the fit are forecast, as without a sheet.
 - **Blank target after the last actual** = a date to forecast. If the sheet ends with an
   actual, the 8 periods after it are forecast (the call's `horizon.periods`).
 - **A blank target between actuals** is a gap: the refusal `ACTUALS_INVALID` says so, unless
@@ -201,6 +208,9 @@ The rules, so the sheet does what you expect:
 | `422: …` with `MISSING_FUTURE_COVARIATE`, or `409: …` with `HORIZON_EXCEEDS_FIT` | The call asks for something the model cannot answer: future values it does not have, or more periods than it may forecast | Copy the payload from the endpoint's snippet again; shorten the horizon |
 | `422: …` with `ACTUALS_NOT_SUPPORTED` (also in **Result**) | The **Input** sheet has target values, and the endpoint's model cannot update a forecast with them | Leave the target blank to forecast from the end of the fit, or refit the model with the new data |
 | `422: …` with `ACTUALS_INVALID` | A blank target between two actuals, actuals that do not continue the fitted history, or a missing driver value on a row with an actual | Fill the gap (or drop the rows after it), start right after the fit, fill the driver |
+| `422: …` with `SCHEMA_INVALID` naming a column | A target or driver cell holds text that is not a number (`#N/A`, `n/a`) | Clear the cell or put the number in it |
+| `failed: no summary in the answer` in **Result**, followed by the problem | The API accepted the call but the run failed. For inline data that is a check only the run can make, e.g. one series of a panel without its driver on an actual month (the API's own check sees all series together) | Read the problem line under it and fix the rows it names |
+| `the Input sheet has no column for y (the actuals) but has "sales"` | The target column's header is not the endpoint's | Rename the column to the name listed (copy the header from the Sheets card) |
 | `the Input sheet needs a column named "t"` | The **Input** sheet's header does not name the endpoint's columns | Copy the header from the Sheets card, or run `score<Alias>InputSheet` on a sheet without **Input** |
 | `429: …` with `RATE_LIMITED` or `QUOTA_EXCEEDED` | The token's rate limit, its budget or a project quota | Raise the limit or budget on the Tokens page, or refresh less often |
 | *This endpoint's model wrote no forecast table.* | The call is not a forecast, or the model's outputs have no KPI to tabulate | Use a forecast call; for other outputs, read the result with the Python client |

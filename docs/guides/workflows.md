@@ -370,7 +370,10 @@ the rows of a comparison table within limits (`max`, `min`) when there is no sin
 A Johansen rank equal to the number of series means every series is already stable (growth
 rates, changes): there is nothing to error-correct, and `ts.vecm` refuses that rank, so the
 VAR is fitted on the levels; rank 0 means separate random walks, and the VAR is fitted on
-the changes.
+the changes. A VAR fitted on `transform.difference` output forecasts the changes, not the
+levels, and cannot update its forecast with actuals (the endpoint does not difference what
+you send): the model is labelled `mapi.io/data-space: transformed`, actuals are refused and
+every answer warns ([Forecasts with actuals](../concepts/forecasting-with-actuals.md#which-models-can)).
 
 The data holds the series along one dimension, one value per series and period
 (`value(series, quarter)`: the layout of the statsmodels multivariate models; ingest a wide
