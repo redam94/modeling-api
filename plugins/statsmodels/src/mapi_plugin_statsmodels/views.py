@@ -124,8 +124,8 @@ def param_view(fitted: Fitted) -> ParamTableView:
         interval="ci_95",
         rows=rows,
         omitted=max(0, total - len(rows)),
-        caption_plain="Estimated effects with their 95% confidence intervals; a small p-value "
-        "means the effect is unlikely to be zero.",
+        caption_plain="Shows the estimated effects with their 95% confidence intervals. A small "
+        "p-value shows that the effect is probably not zero.",
     )
 
 
@@ -307,8 +307,8 @@ def diagnostics_view(fitted: Fitted) -> ModelDiagnosticsView:
         inference=fitted.manifest.capabilities.inference,
         stats=stats_,
         items=items[:200],
-        caption_plain="How well the model fits (lower AIC/BIC is better when comparing models "
-        "on the same data) and the model's own tests.",
+        caption_plain="Shows how well the model fits, and the tests of the model. When you "
+        "compare models on the same data, a lower AIC/BIC is better.",
     )
 
 
@@ -380,8 +380,8 @@ def residuals_view(fitted: Fitted) -> ResidualDiagnosticsView:
         tests=residual_test_results(fitted),
         histogram=hist,
         qq=qq,
-        caption_plain="The errors the model makes one period ahead. Good models leave errors "
-        "without patterns over time and with a steady spread.",
+        caption_plain="Shows the errors of the model one period ahead. The errors of a good "
+        "model have no pattern over time and a steady spread.",
     )
 
 
@@ -416,9 +416,9 @@ def irf_view(fitted: Fitted) -> IrfView | None:
         values=values,
         lower=arr("irf_lower"),
         upper=arr("irf_upper"),
-        caption_plain="How a one-off shock to one series (one standard deviation) moves each "
-        "series over the following periods.",
-        warnings_plain=[f"Showing {_facet(key)} of {n} series groups."] if n > 1 else [],
+        caption_plain="Shows how one shock to one series (one standard deviation) changes each "
+        "series in the next periods.",
+        warnings_plain=[f"The view shows {_facet(key)} of {n} series groups."] if n > 1 else [],
     )
 
 
@@ -432,9 +432,9 @@ def fevd_view(fitted: Fitted) -> FevdView | None:
         variables=[str(v) for v in cell[VARIABLE].values],
         horizons=int(cell.sizes["horizon"]),
         shares=shares.tolist(),
-        caption_plain="Which series' surprises explain the uncertainty of each forecast, by "
-        "horizon.",
-        warnings_plain=[f"Showing {_facet(key)} of {n} series groups."] if n > 1 else [],
+        caption_plain="Shows which unexpected changes in the series explain the uncertainty of "
+        "each forecast, by horizon.",
+        warnings_plain=[f"The view shows {_facet(key)} of {n} series groups."] if n > 1 else [],
     )
 
 
@@ -455,8 +455,8 @@ def decomposition_view(fitted: Fitted) -> DecompositionView | None:
         coords=_coords(cell[TIME].values),
         components=comps,
         shares={k: v / total for k, v in absmean.items()},
-        caption_plain="The series split into its smoothed level/trend, season and other parts.",
-        warnings_plain=[f"Showing {_facet(key)} of {n} series."] if n > 1 else [],
+        caption_plain="Shows the series as its smoothed level/trend, season and other parts.",
+        warnings_plain=[f"The view shows {_facet(key)} of {n} series."] if n > 1 else [],
     )
 
 
@@ -518,11 +518,11 @@ def forecast_view(
                 }
             )
         )
-    warnings = [f"{omitted} more series are not shown."] if omitted else []
+    warnings = [f"The view does not show {omitted} more series."] if omitted else []
     return ModelForecastView(
         forecasts=fans,
-        caption_plain="Forecast ranges per series: the darker the band, the more likely; "
-        "ranges are per series and cannot be added up.",
+        caption_plain="Shows the forecast ranges for each series. A darker band is more "
+        "probable. You cannot add the ranges of different series.",
         warnings_plain=warnings,
     )
 

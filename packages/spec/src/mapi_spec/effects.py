@@ -436,10 +436,10 @@ def propagate(
                     severity=Severity.WARNING,
                     pointer=ptr,
                     message=(
-                        f"step {step_id!r} has a dynamic schema effect; later stages cannot be "
-                        "checked statically"
+                        f"step {step_id!r} has a dynamic schema effect. The static check "
+                        "cannot examine the later stages"
                     ),
-                    suggested_action="Run an explicit dry-run to resolve the schema.",
+                    suggested_action="Do a dry-run to resolve the schema.",
                 )
             )
             current = None

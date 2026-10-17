@@ -78,7 +78,7 @@ async def test_actuals_a_model_cannot_use_are_refused_before_a_run(
     [issue] = [i for i in v["issues"] if i["code"] == "ACTUALS_NOT_SUPPORTED"]
     assert issue["pointer"] == "/data"
     assert "3 periods (2024-01-01 to 2024-03-01)" in issue["message"]
-    assert "2023-12-01" in issue["message"] and "Refit" in issue["suggested_action"]
+    assert "2023-12-01" in issue["message"] and "Fit the model again" in issue["suggested_action"]
     before = await _runs(ctx)
     r = await client.post(f"{ALIAS}/score", json=body, headers={"Prefer": "wait=1"})
     assert r.status_code == 422 and r.json()["code"] == "ACTUALS_NOT_SUPPORTED", r.text
@@ -100,7 +100,7 @@ async def test_dates_to_forecast_with_an_empty_target_are_fine(
     v = (await client.post(f"{ALIAS}/validate", json=_call([None] * 3))).json()
     assert v["valid"]
     [warn] = [i for i in v["issues"] if i["pointer"] == "/horizon/periods"]
-    assert warn["severity"] == "warning" and "not used" in warn["message"]
+    assert warn["severity"] == "warning" and "does not use" in warn["message"]
 
 
 async def test_a_capable_plugin_build_accepts_and_checks_actuals(

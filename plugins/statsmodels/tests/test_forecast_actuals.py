@@ -404,7 +404,10 @@ def test_a_gap_needs_its_drivers(registry: Registry, sales: xr.Dataset) -> None:
         forecast(registry, b, new, periods=2, future_covariates="carry_last")
     assert info.value.code is ErrorCode.ACTUALS_INVALID
     # the platform's own check, so the message (not only untrusted text) names the driver
-    assert "empty periods among them need the drivers ['price']" in info.value.detail
+    assert (
+        "empty periods among them need the observed values of the drivers ['price']"
+        in info.value.detail
+    )
 
 
 # ======================================================================================= ETS
@@ -1140,7 +1143,7 @@ def test_predict_says_target_values_after_the_fit_are_not_used(
         [data.isel(date=slice(80, 83)), blank(data.isel(date=slice(83, 86)), "sales")], dim="date"
     )
     tree = _score_tree(registry, b, payload, "mode: predict\n")
-    warn = [i for i in _issues(tree) if "not used in predict mode" in i["message"]]
+    warn = [i for i in _issues(tree) if "predict mode does not use" in i["message"]]
     assert warn and "mode: forecast" in warn[0]["suggested_action"]
     inside = _score_tree(registry, b, train.isel(date=slice(60, 70)), "mode: predict\n")
     assert not any("not used" in i["message"] for i in _issues(inside))

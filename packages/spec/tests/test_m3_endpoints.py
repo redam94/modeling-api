@@ -150,11 +150,11 @@ def test_identical_and_loosened_schemas_are_compatible() -> None:
     ("patch", "needle"),
     [
         ({"dims__market": None, "vars__revenue_local__dims": ["date"],
-          "vars__spend_local__dims": ["channel", "date"]}, "'market' is gone"),
+          "vars__spend_local__dims": ["channel", "date"]}, "'market' does not exist now"),
         ({"dims__date": {"kind": "integer", "policy": "extend"}}, "changed from time"),
         ({"dims__date": {"kind": "time", "policy": "fixed"}}, "policy changed"),
         ({"dims__market": {"kind": "categorical"}}, "policy changed"),
-        ({"vars__price": {"dims": ["date"], "dtype": "float64"}}, "new required input"),
+        ({"vars__price": {"dims": ["date"], "dtype": "float64"}}, "new necessary input"),
         ({"vars__spend_local__dims": ["channel", "market", "date"]}, "now has dims"),
         ({"vars__spend_local__dtype": "str"}, "changed type"),
     ],

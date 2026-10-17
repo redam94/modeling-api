@@ -156,8 +156,8 @@ class FxConvertStep(Step[FxConvertSettings, StepState]):
         if s.currency_dim is None:
             if has_cur:
                 raise MapiError(
-                    f"step {ctx.step_id!r}: the rate table has a {s.table_currency_dim!r} dim; "
-                    "set currency_dim and currencies to say which currency each level uses",
+                    f"step {ctx.step_id!r}: the rate table has a {s.table_currency_dim!r} dim. "
+                    "Set currency_dim and currencies to tell which currency each level uses",
                     code=ErrorCode.SETTINGS_INVALID,
                 )
             values = float_values(rate.transpose(tdim))
@@ -166,7 +166,7 @@ class FxConvertStep(Step[FxConvertSettings, StepState]):
             out = self._per_level(ds, s, ctx, rate, tdim, want, has_cur)
         if not bool(np.isfinite(out.values).all()) or bool((out.values <= 0).any()):
             raise MapiError(
-                f"side table {s.table!r} has missing or non-positive rates in the needed range",
+                f"side table {s.table!r} has missing or non-positive rates in the necessary range",
                 code=ErrorCode.SIDE_TABLE_COVERAGE,
             )
         return out
@@ -195,8 +195,8 @@ class FxConvertStep(Step[FxConvertSettings, StepState]):
             codes.append(code or "")
         if unmapped:
             raise CoordPlanError(
-                f"step {ctx.step_id!r}: {len(unmapped)} level(s) of {dim!r} have no currency; "
-                "add them to currencies or set default_currency",
+                f"step {ctx.step_id!r}: {len(unmapped)} level(s) of {dim!r} have no currency. "
+                "Add them to currencies, or set default_currency",
                 code=ErrorCode.UNSEEN_LEVELS,
                 untrusted_text=", ".join(unmapped[:10]),
             )

@@ -329,7 +329,7 @@ def test_non_contiguous_extension(e33_meta: ScoreMetadata) -> None:
     )
     misaligned = _plan_inputs(coords={"time": _time("2026-07-06", "2026-12-28", 26)})
     errs = _errors(validate_score_request(_req(), e33_meta, misaligned))
-    assert "not aligned" in errs["NON_CONTIGUOUS_EXTENSION@/scenario"].message
+    assert "do not align" in errs["NON_CONTIGUOUS_EXTENSION@/scenario"].message
 
 
 def test_coords_before_fit_start(e33_meta: ScoreMetadata) -> None:
@@ -348,7 +348,7 @@ def test_forecast_not_past_fit_warns(e33_meta: ScoreMetadata) -> None:
 def test_unseen_levels_on_fixed_dim(e33_meta: ScoreMetadata) -> None:
     new_geo = _plan_inputs(coords={"geo": _cat([*GEOS, "ES"])})
     err = _errors(validate_score_request(_req(), e33_meta, new_geo))["UNSEEN_LEVELS@/scenario"]
-    assert "policy is 'fixed'" in err.message
+    assert "policy of the dim is 'fixed'" in err.message
     assert err.untrusted_text == "ES"  # user values live in untrusted_text only
     assert "ES" not in err.message
 

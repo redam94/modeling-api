@@ -117,8 +117,8 @@ def run_validate(ctx: WorkerContext, spec: ModelSpec) -> ValidateResponse:
                         Issue(
                             code=ErrorCode.SCHEMA_INVALID,
                             pointer="/model",
-                            message="the pipeline output does not match the model's input "
-                            "schema: " + exc.detail[:1500],
+                            message="the output of the pipeline does not match the input schema "
+                            "of the model: " + exc.detail[:1500],
                         )
                     )
         except MapiError as exc:

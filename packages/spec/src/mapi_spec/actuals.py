@@ -330,16 +330,16 @@ def actuals_not_supported_issue(
     )
     if data_space == "transformed":
         message = (
-            f"model {model!r} cannot update a forecast with actuals: it was fitted on data "
-            "changed by a workflow transform without a preprocessing-step equivalent (log, "
-            "Box-Cox or differencing), so it would read the actuals as transformed values, "
-            f"and {sent}."
+            f"model {model!r} cannot update a forecast with actuals. The fit used data that "
+            "a workflow transform changed (log, Box-Cox or differencing), and no preprocessing "
+            "step does the same change. Thus the model would read the actuals as transformed "
+            f"values, and {sent}."
         )
         action = (
-            "Refit with the transform inside the model or its pipeline (an ARIMA order d, "
-            "or a step such as core.log1p) so actuals are transformed and forecasts come back "
-            f"in the data's units, or leave the target empty (null) to forecast from the end "
-            f"of the fitted history{end}."
+            "Fit the model again with the transform inside the model or its pipeline (an "
+            "ARIMA order d, or a step such as core.log1p). Then the model transforms the "
+            "actuals and gives forecasts in the units of the data. Or leave the target empty "
+            f"(null) to forecast from the end of the fitted history{end}."
         )
     else:
         message = (
@@ -347,8 +347,8 @@ def actuals_not_supported_issue(
             f"forecast from the end of its fitted history{end} without them."
         )
         action = (
-            "Refit the model with the new data to forecast from it, or leave the target "
-            f"empty (null) to forecast from the end of the fitted history{end}."
+            "Fit the model again with the new data to forecast from it. Or leave the "
+            f"target empty (null) to forecast from the end of the fitted history{end}."
         )
     return Issue(
         code=ErrorCode.ACTUALS_NOT_SUPPORTED,
@@ -365,11 +365,12 @@ def transformed_space_issue(pointer: str = "/model") -> Issue:
         code=ErrorCode.CAPABILITY_UNSUPPORTED,
         severity=Severity.WARNING,
         pointer=pointer,
-        message="the model was fitted on data changed by a workflow transform without a "
-        "preprocessing-step equivalent (log, Box-Cox or differencing): its predictions are "
-        "in that transformed space, not in the data's units",
-        suggested_action="Transform the predictions back yourself, or refit with the transform "
-        "inside the model or its pipeline (an ARIMA order d, or a step such as core.log1p).",
+        message="the fit used data that a workflow transform changed (log, Box-Cox or "
+        "differencing), and no preprocessing step does the same change. The predictions are "
+        "in that transformed space, not in the units of the data",
+        suggested_action="Transform the predictions back yourself. Or fit the model again with "
+        "the transform inside the model or its pipeline (an ARIMA order d, or a step such as "
+        "core.log1p).",
     )
 
 

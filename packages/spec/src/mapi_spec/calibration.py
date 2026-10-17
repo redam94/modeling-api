@@ -194,7 +194,7 @@ def check_business_priors(priors: BusinessPriors, pointer: str = "") -> list[Iss
                 code=ErrorCode.BUSINESS_PRIORS_INVALID,
                 pointer=pointer + json_pointer("channels"),
                 message=f"the smallest shares you gave already add up to {low:.0%} of the KPI",
-                suggested_action="Lower some share ranges or the baseline share.",
+                suggested_action="Decrease some share ranges or the baseline share.",
             )
         )
     elif (
@@ -208,8 +208,8 @@ def check_business_priors(priors: BusinessPriors, pointer: str = "") -> list[Iss
                 code=ErrorCode.BUSINESS_PRIORS_INVALID,
                 severity=Severity.WARNING,
                 pointer=pointer + json_pointer("baseline_share"),
-                message=f"even the largest shares you gave explain only {high:.0%} of the KPI",
-                suggested_action="Widen the share ranges or the baseline share.",
+                message=f"the largest shares that you gave explain only {high:.0%} of the KPI",
+                suggested_action="Make the share ranges or the baseline share wider.",
             )
         )
     return issues
