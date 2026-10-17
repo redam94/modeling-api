@@ -292,6 +292,68 @@ def test_our_mff_ingest_agrees_with_mmm_frameworks_mff_loader() -> None:
     assert mine.coords.geographies == theirs.coords.geographies
 
 
+def test_national_media_and_campaign_rows_ingest_like_mmm_frameworks_mff_loader() -> None:
+    """Regression: national rows (blank Geography) became a phantom '' geo (TV only there,
+    sales NaN there) and rows that differ only by Campaign became a campaign dim, while
+    mmm-framework's ``MFFLoader`` spreads a national variable across the geos (equal
+    weights by default) and sums Campaign/Outlet/Creative up to the modelled dims."""
+    ingest = pytest.importorskip("mapi_runner.worker.ingest")
+    from mapi_spec.ingest import MffOptions
+    from mmm_framework.config import (
+        DimensionType,
+        KPIConfig,
+        MediaChannelConfig,
+        MFFConfig,
+    )
+    from mmm_framework.data_loader import load_mff
+
+    rng = np.random.default_rng(7)
+    periods = pd.date_range("2024-01-01", periods=12, freq="W-MON")
+    geos = ["East", "West"]
+    rows: list[dict[str, object]] = []
+
+    def row(p: pd.Timestamp, geo: str, var: str, value: float, campaign: str = "") -> None:
+        rows.append({"Period": p.strftime("%Y-%m-%d"), "Geography": geo, "Product": "",
+                     "Outlet": "", "Campaign": campaign, "Creative": "",
+                     "VariableName": var, "VariableValue": value})  # fmt: skip
+
+    for p in periods:
+        for g in geos:
+            row(p, g, "Sales", float(rng.gamma(4.0, 50.0)))
+            for camp in ("brand", "promo"):
+                row(p, g, "Search", float(rng.gamma(2.0, 10.0)), campaign=camp)
+        row(p, "", "TV", float(rng.gamma(3.0, 40.0)))  # national
+    df = pd.DataFrame(rows)
+
+    ours, _ = ingest.dataset_from_mff(df, MffOptions(roles={"Sales": "target"}))
+    assert [str(g) for g in ours["geo"].values] == geos  # no phantom '' geo
+    assert "campaign" not in ours.dims
+    assert not np.isnan(ours["TV"].values).any() and not np.isnan(ours["Sales"].values).any()
+
+    by_geo = [DimensionType.PERIOD, DimensionType.GEOGRAPHY]
+    cfg = MFFConfig(
+        kpi=KPIConfig(name="Sales", dimensions=by_geo),
+        media_channels=[
+            MediaChannelConfig(name="TV", dimensions=[DimensionType.PERIOD]),
+            MediaChannelConfig(name="Search", dimensions=by_geo),
+        ],
+    )
+    theirs = load_mff(df, cfg)
+    stage = xr.Dataset(
+        {
+            "y": ours["Sales"].transpose("geo", "date"),
+            "spend": xr.concat([ours["TV"], ours["Search"]], dim="channel")
+            .assign_coords(channel=["TV", "Search"])
+            .transpose("geo", "channel", "date"),
+        }
+    ).rename({"date": "time"})
+    mine = PanelData.from_dataset(stage, ["geo"], [], with_target=True).to_panel(cfg, "W")
+    np.testing.assert_allclose(mine.y.values, theirs.y.values)
+    np.testing.assert_allclose(
+        mine.X_media[["TV", "Search"]].values, theirs.X_media[["TV", "Search"]].values
+    )
+
+
 def test_a_built_model_sees_our_layout(geo_stage: xr.Dataset) -> None:
     data = _panel(geo_stage, ["geo"])
     s = BayesianSettings.model_validate({"hierarchy": {"pool_over": ["geo"]}})

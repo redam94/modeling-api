@@ -161,7 +161,7 @@ test("the Model Explorer: parameters, diagnostics, forecasts, governance and lin
   await expect(page.getByText("mmm.bayesian@1.0.0")).toBeVisible();
 });
 
-test("impulse responses of a VECM and a side-by-side comparison with Diebold-Mariano tests", async ({ page }) => {
+test("impulse responses of a VECM and a side-by-side comparison of forecasters", async ({ page }) => {
   await page.goto(`/models/${VECM}/versions/1/explore?section=irf`);
   await expect(page.getByLabel("A shock to")).toBeVisible();
   await plotsRendered(page);
@@ -178,7 +178,8 @@ test("impulse responses of a VECM and a side-by-side comparison with Diebold-Mar
   await page.getByRole("button", { name: "Add" }).click();
   await page.getByRole("button", { name: /^Compare 3 versions/ }).click();
   await expect(page.getByRole("table", { name: "Holdout metrics" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("table", { name: "Diebold-Mariano tests" })).toContainText("about equally accurate");
+  // forecasters score the held-out periods from one origin: no significance test on that path
+  await expect(page.getByText(/^No significance test: .* one forecast origin/).first()).toBeVisible();
   await expect(page.getByTestId("plain-summary").first()).toContainText("sales-arimax@v2 has the lowest");
 });
 

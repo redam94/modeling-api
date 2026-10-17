@@ -83,8 +83,13 @@ def unit_root_series() -> xr.Dataset:
 
 
 def signal_and_noise() -> tuple[xr.Dataset, xr.Dataset]:
-    """The same weekly table with a real ``price`` effect, and with ``sales`` pure noise."""
+    """The same weekly table with a real ``price`` effect, and with ``sales`` pure noise.
+    The price moves from week to week (promotions): the permutation null test shuffles the
+    price, not the sales, so its effect must show on the held-out weeks."""
     signal = weekly_series(160, phi=0.5, beta=6.0, seed=3)
+    price = 10 + np.random.default_rng(4).normal(0, 1.0, signal.sizes["time"])
+    signal["sales"] = signal["sales"] - 6.0 * (price - signal["price"])
+    signal["price"] = ("time", price)
     noise = signal.copy()
     rng = np.random.default_rng(5)
     noise["sales"] = ("time", rng.normal(100, 1, signal.sizes["time"]))

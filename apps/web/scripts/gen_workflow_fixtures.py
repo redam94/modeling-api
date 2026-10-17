@@ -228,6 +228,14 @@ def validation(*, random_walk: bool, seed: int = 7) -> list[dict[str, Any]]:
         "outputs": {"evidence": "governance.evidence"},
     }  # fmt: skip
     data = weekly_series(156, random_walk=random_walk, beta=6.0, phi=0.3, seed=seed)
+    if random_walk:
+        # a price that moves from week to week (promotions), so its effect shows on the
+        # held-out weeks: the permutation test shuffles the price, not the sales
+        import numpy as np
+
+        price = 10 + np.random.default_rng(seed + 100).normal(0, 1.0, data.sizes["time"])
+        data["sales"] = data["sales"] - 6.0 * (price - data["price"])
+        data["price"] = ("time", price)
     gov = GovernanceServices(resolver=lambda model, policy_id: [VALIDATION_POLICY])
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

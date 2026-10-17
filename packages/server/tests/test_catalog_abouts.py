@@ -74,6 +74,16 @@ async def test_every_selectable_item_has_a_complete_about(client: httpx.AsyncCli
         assert about["summary_plain"] and about["use_when"] and about["example"]
         assert about["difficulty"] in ("beginner", "intermediate", "expert")
 
+    # related items are items a user can open: never a model that is not installed
+    # (regression: mmm.bayesian listed mmm.nested and mmm.multivariate as bare ids)
+    served = {it["id"] for it in items}
+    dangling = {
+        f"{it['kind']}:{it['id']}": sorted(set(it["about"].get("related", [])) - served)
+        for it in items
+        if set(it["about"].get("related", [])) - served
+    }
+    assert not dangling, dangling
+
     only_models = await _all(client, kind="model")
     assert {i["kind"] for i in only_models} == {"model"}
 
@@ -108,6 +118,14 @@ async def test_recommendations_for_a_non_technical_user(client: httpx.AsyncClien
     ranked = [i["id"] for i in r.json()["items"]]
     assert ranked and all(i.startswith("ts.") for i in ranked[:3])
     assert {"ts.var", "ts.vecm"} & set(ranked[:5])
+
+    # every item is made for the goal; none is "Not made for" it (regression: 0% best match)
+    for goal in ("check_data", "validate_model", "find_regimes", "explain_drivers"):
+        r = await client.get("/v1/catalog/recommendations", params={"goal": goal})
+        items = r.json()["items"]
+        assert items, goal
+        assert all(not any("Not made for" in c for c in i["cautions_plain"]) for i in items)
+        assert all(i["score"] > 0.5 for i in items), goal
 
     r = await client.get("/v1/catalog/recommendations", params={"goal": "astrology"})
     assert r.status_code == 422

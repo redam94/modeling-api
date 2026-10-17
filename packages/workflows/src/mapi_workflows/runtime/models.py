@@ -67,6 +67,7 @@ __all__ = [
     "Residuals",
     "backtest_model",
     "build_spec",
+    "fit_burn_in",
     "fold_metrics",
     "forecast_errors",
     "model_residuals",
@@ -572,7 +573,7 @@ def backtest_model(
         season = season_length(ds, schema, tdim, None)
     except MapiError:
         season = 1
-    kind = str((plan.get("plan") or {}).get("kind") or "")
+    kind = _scored_kind(plan)
     folds = plan_fold_list(plan)
     out: list[FoldForecast] = []
     for i, f in enumerate(folds):
@@ -593,6 +594,15 @@ def backtest_model(
         "dim": tdim,
     }
     return out, info, warns
+
+
+def _scored_kind(plan: Mapping[str, Any]) -> str:
+    """The kind of plan whose folds are scored: a nested plan's folds are its outer ones."""
+    inner = plan.get("plan") or {}
+    kind = str(inner.get("kind") or "")
+    if kind == "nested":
+        return str((inner.get("outer") or {}).get("kind") or "")
+    return kind
 
 
 def plan_dim(plan: Mapping[str, Any]) -> str | None:
@@ -647,6 +657,11 @@ def candidate(
         by_fold=[fold_metrics([fc]) for fc in fcs],
         n_folds=len(fcs),
         errors=[[clean_number(x) for x in forecast_errors(fc)] for fc in fcs],
+        origins=[
+            f.get("test_start") if isinstance(f.get("test_start"), int) else None
+            for f in (plan.get("folds") or [])
+            if isinstance(f, dict)
+        ][: len(fcs)],
     )
 
 
@@ -773,6 +788,24 @@ class Residuals:
     exog_names: list[str]
 
 
+def fit_burn_in(bundle: Bundle) -> int:
+    """Leading periods whose one-step residuals are start-up values of the fit: the
+    statsmodels ``loglikelihood_burn`` a plugin stores per series (``learned.cells[].burn``,
+    the diffuse start of an integrated or unobserved-components model), else a top-level
+    ``learned.burn``; ``0`` when the model stores none."""
+    learned = bundle.model.learned or {}
+    burns: list[int] = []
+    cells = learned.get("cells")
+    for c in cells if isinstance(cells, list) else []:
+        v = c.get("burn") if isinstance(c, dict) else None
+        if isinstance(v, int):
+            burns.append(v)
+    top = learned.get("burn")
+    if isinstance(top, int):
+        burns.append(top)
+    return max([0, *burns])
+
+
 def model_residuals(mv: ModelValue, registry: Registry | None = None) -> Residuals:
     """``actual - fitted`` over the fit data, through the score path (``predict``)."""
     if mv.data is None:
@@ -802,8 +835,11 @@ def model_residuals(mv: ModelValue, registry: Registry | None = None) -> Residua
     labels = np.asarray(mv.data[tdim].values)[-n:] if tdim in mv.data.coords else np.arange(n)
     resid = a - p
     ok = np.isfinite(resid)
-    # one-step-ahead predictions of state-space models start cold: drop a short burn-in
-    burn = min(int(np.argmax(ok)) if ok.any() else 0, n)
+    # one-step-ahead predictions of state-space models start cold: drop the fit's own
+    # burn-in (the score path predicts a finite 0 for the first period of an integrated
+    # model, so leading non-finite values alone do not find it)
+    lead = int(np.argmax(ok)) if ok.any() else 0
+    burn = min(max(lead, fit_burn_in(bundle)), n)
     exog_names = [
         str(v)
         for v, s in schema.vars.items()
@@ -889,43 +925,56 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
         {k: v for k, v in grid.items() if isinstance(v, list)},
         cap,
     )
-    rows: list[dict[str, JsonValue]] = []
-    best: tuple[float, dict[str, Any]] | None = None
-    failed = 0
-    for i, (settings, point) in enumerate(points):
-        ctx.check()
-        try:
-            fcs, _, _ = backtest_model(ctx, dv, plan, settings=settings, name=f"{ctx.node_id}-{i}")
-        except MapiError as exc:
-            failed += 1
-            rows.append(
-                {"point": i, **{k: _js(v) for k, v in point.items()}, "error": exc.detail[:200]}
-            )
-            continue
-        ms = fold_metrics(fcs)
-        score = ms.get(metric)
-        rows.append({"point": i, **{k: _js(v) for k, v in point.items()}, **ms})
-        if score is None or not math.isfinite(score):
-            continue
-        key = score if direction == "min" else -score
-        if best is None or key < best[0]:
-            best = (key, settings)
-    if best is None:
-        raise data_error(f"no grid point could be scored on {metric!r}")
-    best_settings = best[1]
-    best_score = best[0] if direction == "min" else -best[0]
+    nested = str((plan.get("plan") or {}).get("kind") or "") == "nested"
+    if nested:
+        best_settings, best_score, result, rows, failed = _nested_grid(
+            ctx, dv, plan, points, metric, direction
+        )
+        title = "Grid search (nested: tuned on inner folds, scored on outer folds)"
+    else:
+        rows = []
+        best: tuple[float, dict[str, Any]] | None = None
+        failed = 0
+        for i, (settings, point) in enumerate(points):
+            ctx.check()
+            try:
+                fcs, _, _ = backtest_model(
+                    ctx, dv, plan, settings=settings, name=f"{ctx.node_id}-{i}"
+                )
+            except MapiError as exc:
+                failed += 1
+                rows.append(
+                    {"point": i, **{k: _js(v) for k, v in point.items()}, "error": exc.detail[:200]}
+                )
+                continue
+            ms = fold_metrics(fcs)
+            score = ms.get(metric)
+            rows.append({"point": i, **{k: _js(v) for k, v in point.items()}, **ms})
+            if score is None or not math.isfinite(score):
+                continue
+            key = score if direction == "min" else -score
+            if best is None or key < best[0]:
+                best = (key, settings)
+        if best is None:
+            raise data_error(f"no grid point could be scored on {metric!r}")
+        best_settings = best[1]
+        best_score = best[0] if direction == "min" else -best[0]
+        result = {}
+        title = "Grid search"
     table = TablePayload(
-        title="Grid search",
+        title=title,
         kind="grid",
         columns=["point", *grid.keys(), *METRIC_NAMES],
         rows=rows,
-        meta={"metric": metric, "direction": direction},
+        meta={"metric": metric, "direction": direction, "nested": nested},
     )
-    result: dict[str, JsonValue] = {
+    result = {
         "best_settings": best_settings,
         "best_score": best_score,
         "n_points": len(points),
         "n_failed": failed,
+        "nested": nested,
+        **result,
     }
     if ctx.services.get("sandbox"):
         # model versions come out of fit runs: the control plane refits the winner
@@ -943,6 +992,88 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
         settings=dict(best_settings),
     )
     return NodeOutcome(result=result, outputs={"table": table.model_dump(mode="json"), "best": mv})
+
+
+def _nested_grid(
+    ctx: NodeContext,
+    dv: DatasetValue,
+    plan: Mapping[str, Any],
+    points: Sequence[tuple[dict[str, Any], dict[str, Any]]],
+    metric: str,
+    direction: str,
+) -> tuple[dict[str, Any], float, dict[str, JsonValue], list[dict[str, JsonValue]], int]:
+    """Nested cross-validation: every outer fold picks its grid point on its own inner
+    folds (inside its training window), refits it on the outer training window and scores
+    it on the outer test window. ``best_score`` pools those outer forecasts - the honest
+    estimate of the tuned model - and ``best_settings`` is the point chosen most often
+    (ties: the better mean inner score)."""
+    doc = plan.get("plan") or {}
+    outer_doc, inner_doc = doc.get("outer") or {}, doc.get("inner") or {}
+    sign = 1.0 if direction == "min" else -1.0
+    outer_fcs: list[FoldForecast] = []
+    outer_scores: list[float] = []
+    picks: list[int] = []
+    inner_sum: dict[int, list[float]] = {}
+    failed = 0
+    for j, fold in enumerate(plan_fold_list(plan)):
+        inner_folds = [dict(f) for f in fold.get("inner") or [] if isinstance(f, dict)]
+        if not inner_folds:
+            raise data_error(f"outer fold {j} of the nested plan has no inner folds")
+        inner_plan = {**plan, "plan": inner_doc, "folds": inner_folds}
+        best_i: tuple[float, int] | None = None
+        for i, (settings, _point) in enumerate(points):
+            ctx.check()
+            try:
+                fcs, _, _ = backtest_model(
+                    ctx, dv, inner_plan, settings=settings, name=f"{ctx.node_id}-{j}-{i}"
+                )
+            except MapiError:
+                failed += 1
+                continue
+            score = fold_metrics(fcs).get(metric)
+            if score is None or not math.isfinite(score):
+                continue
+            inner_sum.setdefault(i, []).append(score)
+            if best_i is None or sign * score < best_i[0]:
+                best_i = (sign * score, i)
+        if best_i is None:
+            raise data_error(f"no grid point could be scored on the inner folds of outer fold {j}")
+        pick = best_i[1]
+        picks.append(pick)
+        one = {k: v for k, v in fold.items() if k != "inner"}
+        outer_plan = {**plan, "plan": outer_doc, "folds": [one]}
+        fcs, _, _ = backtest_model(
+            ctx, dv, outer_plan, settings=points[pick][0], name=f"{ctx.node_id}-outer-{j}"
+        )
+        outer_fcs += fcs
+        s = fold_metrics(fcs).get(metric)
+        outer_scores.append(float(s) if s is not None else math.nan)
+    honest = fold_metrics(outer_fcs).get(metric)
+    if honest is None or not math.isfinite(honest):
+        raise data_error(f"the outer folds could not be scored on {metric!r}")
+    counts = {i: picks.count(i) for i in set(picks)}
+    final = min(
+        counts,
+        key=lambda i: (-counts[i], sign * float(np.mean(inner_sum.get(i) or [math.inf]))),
+    )
+    rows: list[dict[str, JsonValue]] = [
+        {
+            "point": i,
+            **{k: _js(v) for k, v in point.items()},
+            f"inner_{metric}": clean_number(float(np.mean(inner_sum[i])))
+            if inner_sum.get(i)
+            else None,
+            "chosen_by_folds": counts.get(i, 0),
+        }
+        for i, (_s, point) in enumerate(points)
+    ]
+    extra: dict[str, JsonValue] = {
+        "outer_scores": [clean_number(x) for x in outer_scores],
+        "selected_per_fold": [dict(points[i][1]) for i in picks],
+        "selected_points": list(picks),
+        "selection": "most often chosen by the outer folds' inner searches",
+    }
+    return points[final][0], float(honest), extra, rows, failed
 
 
 def _js(v: Any) -> JsonValue:

@@ -201,6 +201,35 @@ def _fitted_model() -> ModelValue:
     return mv
 
 
+def test_model_residuals_drop_the_diffuse_start_of_differenced_models() -> None:
+    """Regression: the score path predicts 0 for the first period of an integrated model,
+    so the first residual was the level itself (about 500) and Jarque-Bera, Ljung-Box,
+    ARCH and CUSUM on the residuals saw a huge outlier (JB p = 0.0 instead of ~0.5)."""
+    from mapi_workflows.runtime.models import fit_node, model_residuals
+    from scipy import stats as sps
+    from wf_ctx import node_ctx
+    from wf_models import registry
+
+    rng = np.random.default_rng(3)
+    y = 500 + np.cumsum(rng.normal(size=200))
+    reg = registry()
+    for model, settings in (
+        ("ts.arima@^1", {"order": [0, 1, 0]}),
+        ("ts.unobserved_components@^1", {"level": "random walk"}),
+    ):
+        ctx = node_ctx(
+            "model.fit", {"model": model, "settings": settings}, data=series_ds(y),
+            registry=reg,
+        )  # fmt: skip
+        mv = fit_node(ctx).outputs["model"]
+        assert isinstance(mv, ModelValue)
+        res = model_residuals(mv, reg)
+        assert np.max(np.abs(res.resid)) < 10, (model, res.resid[:3])
+        assert sps.jarque_bera(res.resid).pvalue > 0.01
+        jb = _result(run_node("test.jarque_bera", model=mv, registry=reg))
+        assert jb.decision == "normal", model
+
+
 def test_regression_residual_tests_match_statsmodels_on_model_residuals() -> None:
     from mapi_workflows.runtime.models import model_residuals
     from statsmodels.stats.diagnostic import (
@@ -248,6 +277,36 @@ def test_granger_matches_statsmodels() -> None:
         assert out.result["p_values"][str(lag)] == pytest.approx(ref[lag][0]["ssr_ftest"][1])
     assert out.result["best_lag"] in (2, 3)
     assert out.result["decision"] == "predictive"
+    # the verdict's p-value is the smallest one corrected for the lags tried (Holm)
+    assert out.result["p_value"] == pytest.approx(min(1.0, 3 * out.result["min_p_value"]))
+    assert out.result["correction"] == "holm"
+    one = run_node(
+        "test.granger",
+        {"y": "y", "x": "x", "maxlag": 3, "lag": 2},
+        data=series_ds(y, extra={"x": x}),
+    )
+    assert one.result["p_value"] == pytest.approx(ref[2][0]["ssr_ftest"][1])
+    assert one.result["lags"] == 2 and one.result["correction"] == "none"
+
+
+def test_granger_keeps_its_size_over_several_lags() -> None:
+    """Regression (simulation): the verdict used the smallest p-value over lags 1..maxlag
+    with no correction, so an unrelated driver "helped predict" about twice as often as
+    alpha. With 120 draws of an AR(1) result and an independent driver the rejection rate
+    stays near 5% (it was about 10%)."""
+    reps, n, rejected = 120, 100, 0
+    for seed in range(reps):
+        rng = np.random.default_rng(1000 + seed)
+        e = rng.normal(size=n)
+        y = np.zeros(n)
+        for t in range(1, n):
+            y[t] = 0.6 * y[t - 1] + e[t]
+        x = rng.normal(size=n)
+        out = run_node(
+            "test.granger", {"y": "y", "x": "x", "maxlag": 4}, data=series_ds(y, extra={"x": x})
+        )
+        rejected += out.result["reject"] is True
+    assert rejected / reps <= 0.08, rejected / reps
 
 
 # ============================================================================== ACF/PACF

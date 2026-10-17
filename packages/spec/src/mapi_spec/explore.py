@@ -66,7 +66,11 @@ class DataExploreRequest(RequestModel):
     correlation: Literal["pearson", "spearman"] = "pearson"
     outliers: Literal["iqr", "mad", "zscore"] = "mad"
     outlier_threshold: float = Field(3.5, gt=0, le=20)
-    prewhiten: bool = Field(False, description="Prewhiten before cross-correlations")
+    prewhiten: bool = Field(
+        True,
+        description="Prewhiten before cross-correlations (filter both series with the "
+        "driver's AR model, so a peak is not just two smooth series moving together)",
+    )
     max_series: int = Field(50, ge=1, le=200)
 
     model_config = dto_examples(

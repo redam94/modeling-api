@@ -11,6 +11,7 @@ import { answersFromQuery, ChooserAnswerError, recommend } from "./chooser";
 import { FIXTURE } from "./explore";
 
 const STARTING = new Set(["model", "template", "workflow_template"]);
+const BLOCKS = new Set(["step", "node", "check"]);
 
 describe("recommend (TypeScript port)", () => {
   it.each(FIXTURE.chooser_cases.map((c, i) => [i, c] as const))("replays case %i like the Python ranking", (_i, c) => {
@@ -19,7 +20,8 @@ describe("recommend (TypeScript port)", () => {
     for (const q of FIXTURE.chooser.questions) if (c.query[q.id]) params.set(q.id, c.query[q.id]!.join(","));
     const answers = answersFromQuery(params, FIXTURE.chooser.questions);
     const candidates = FIXTURE.abouts.filter((a) => (c.kind ? a.kind === c.kind : STARTING.has(a.kind)));
-    const got = recommend(FIXTURE.chooser.questions, answers, candidates, { limit: c.limit });
+    const fallback = c.kind ? undefined : FIXTURE.abouts.filter((a) => BLOCKS.has(a.kind));
+    const got = recommend(FIXTURE.chooser.questions, answers, candidates, { limit: c.limit, fallback });
     const want = c.result as { items: Recommendation[]; answered: string[]; unanswered: string[] };
     expect(got.answered).toEqual(want.answered);
     expect(got.unanswered).toEqual(want.unanswered);

@@ -381,10 +381,36 @@ def suggest_arma_orders(acf_: Lagged, pacf_: Lagged, *, max_order: int = 5) -> d
     return {"p": cutoff(pacf_), "q": cutoff(acf_)}
 
 
+def _bartlett_ccf_bound(x: np.ndarray, y: np.ndarray) -> float | None:
+    """The 95% bound of a cross-correlation of two *independent* series under Bartlett's
+    formula, ``Var(r_k) ~ (1 / n) * sum_j rho_xx(j) rho_yy(j)``: ``1.96 / sqrt(n)`` when
+    either series is white, much wider when both are persistent (a raw CCF of two
+    smooth series is otherwise "significant" at half of its lags)."""
+    ok = np.isfinite(x) & np.isfinite(y)
+    a, b = x[ok], y[ok]
+    n = int(a.size)
+    if n < 3:
+        return None
+    m = int(min(n // 4, max(1, round(10 * math.log10(n)))))
+
+    def acf(s: np.ndarray) -> np.ndarray:
+        s = s - s.mean()
+        den = float(np.dot(s, s))
+        if den <= 0:
+            return np.zeros(m + 1)
+        return np.array([1.0] + [float(np.dot(s[j:], s[:-j])) / den for j in range(1, m + 1)])
+
+    ra, rb = acf(a), acf(b)
+    factor = 1.0 + 2.0 * float(np.dot(ra[1:], rb[1:]))
+    return 1.96 * math.sqrt(max(factor, 1.0) / n)
+
+
 def ccf_profile(driver: Any, kpi: Any, max_lag: int) -> Lagged:
     """Correlation of ``driver`` at time ``t`` with ``kpi`` at ``t + k`` for
     ``k = -max_lag..max_lag`` (positive ``k``: the driver leads the KPI), on the
-    overlapping complete pairs; the bound is ``1.96 / sqrt(n)``."""
+    overlapping complete pairs; the bound follows Bartlett's formula for two independent
+    autocorrelated series (``1.96 / sqrt(n)`` when either one is white, e.g. after
+    :func:`prewhiten`)."""
     x = np.asarray(driver, dtype=float).reshape(-1)
     y = np.asarray(kpi, dtype=float).reshape(-1)
     n = min(x.size, y.size)
@@ -400,8 +426,7 @@ def ccf_profile(driver: Any, kpi: Any, max_lag: int) -> Lagged:
             values.append(None)
         else:
             values.append(_f(np.corrcoef(a, b)[0, 1]))
-    ok_all = np.isfinite(x) & np.isfinite(y)
-    bound = _bound(int(ok_all.sum()))
+    bound = _bartlett_ccf_bound(x, y)
     return Lagged(lags, values, bound, _significant(lags, values, bound))
 
 

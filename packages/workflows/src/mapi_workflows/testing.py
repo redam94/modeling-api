@@ -80,9 +80,12 @@ def weekly_series(
     return ds
 
 
-def multi_series(n: int = 200, *, seed: int = 3, tied: bool = True) -> xr.Dataset:
+def multi_series(
+    n: int = 200, *, seed: int = 3, tied: bool = True, stationary: bool = False
+) -> xr.Dataset:
     """Three weekly series ``value(series, time)`` (series ``a``, ``b``, ``c``: the layout of
-    the multivariate models); with ``tied`` the first two share a stochastic trend."""
+    the multivariate models); with ``tied`` the first two share a stochastic trend; with
+    ``stationary`` all three are independent stationary AR(1) series (growth rates)."""
     rng = np.random.default_rng(seed)
     t = pd.date_range("2021-01-03", periods=n, freq="W-SUN")
     common = np.cumsum(rng.normal(size=n))
@@ -93,6 +96,12 @@ def multi_series(n: int = 200, *, seed: int = 3, tied: bool = True) -> xr.Datase
         else (5 + np.cumsum(rng.normal(size=n)))
     )
     c = np.cumsum(rng.normal(size=n))
+    if stationary:
+        e = rng.normal(size=(3, n))
+        ar = np.zeros((3, n))
+        for i in range(1, n):
+            ar[:, i] = 0.5 * ar[:, i - 1] + e[:, i]
+        a, b, c = 1.0 + ar[0], 2.0 + ar[1], ar[2]
     ds = xr.Dataset(
         {"value": (("series", _TIME), np.vstack([a, b, c]))},
         coords={"series": ["a", "b", "c"], _TIME: t},

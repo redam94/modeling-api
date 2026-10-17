@@ -87,6 +87,9 @@ class MetricsCandidate(_Payload):
     errors: list[list[float | None]] | None = Field(
         None, description="Per fold, the forecast errors of each test period (for tests)"
     )
+    origins: list[int | None] | None = Field(
+        None, description="Per fold, the position of its first test period (fold spacing)"
+    )
 
     @property
     def key(self) -> str:

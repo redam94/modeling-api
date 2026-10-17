@@ -222,11 +222,12 @@ Checks whether past values of a driver help predict a result beyond what the res
 | `y` | string | **required** | The result |
 | `x` | string | **required** | The candidate driver |
 | `maxlag` | integer | `4` | Largest lag tested |
+| `lag` | integer |  | Test only this lag (no correction needed) |
 
-Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `min_p_value` (number), `best_lag` (integer), `p_values` (object).
+Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `min_p_value` (number), `best_lag` (integer), `p_values` (object), `correction` (string).
 
 ??? note "Expert detail"
-    Granger causality F-tests for lags 1..maxlag (statsmodels grangercausalitytests, ssr F test); H0: the driver's lags have zero coefficients.
+    Granger causality F-tests for lags 1..maxlag (statsmodels grangercausalitytests, ssr F test); H0: the driver's lags have zero coefficients. The verdict uses the smallest p-value Holm-corrected for the maxlag lags tried (an uncorrected minimum about doubles the false-positive rate), or the F test at one prespecified `lag`; the per-lag p-values are descriptive.
 
 ### `test.jarque_bera` — Bell-shaped errors? (Jarque-Bera)
 
@@ -768,7 +769,7 @@ Result fields (`nodes.<id>.<field>` in conditions): `n_folds` (integer), `folds`
 
 ### `split.nested` — Tuning inside a backtest
 
-Runs a second, inner backtest inside each training window, so settings are tuned without peeking at the outer test periods.
+Runs a second, inner backtest inside each training window, so settings are tuned without peeking at the outer test periods (search.grid tunes on the inner folds and scores on the outer ones).
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
@@ -862,7 +863,7 @@ Tries a grid of past-value (AR) and past-error (MA) orders for a forecasting mod
 
 **Example:** Out of p = 0..4 and q = 0..4, ARMA(2,1) has the lowest AIC.
 
-**Inputs:** `data` (dataset).
+**Inputs:** `data` (dataset), `split` (split_plan, optional).
 
 **Outputs:** `table` (table).
 
@@ -872,6 +873,8 @@ Tries a grid of past-value (AR) and past-error (MA) orders for a forecasting mod
 | `max_p` | integer | `4` | Largest AR order |
 | `max_q` | integer | `4` | Largest MA order |
 | `d` | integer | `0` | Differences inside the model |
+| `D` | integer | `0` | Seasonal differences inside the model |
+| `period` | integer |  | Season length (with D = 1) |
 | `exog` | array |  | Drivers included in every fit |
 | `criterion` | `aic` \\| `bic` \\| `hqic` \\| `aicc` | `"aic"` | Information criterion |
 | `trend` | `n` \\| `c` \\| `t` \\| `ct` | `"c"` | Trend term |
@@ -879,7 +882,7 @@ Tries a grid of past-value (AR) and past-error (MA) orders for a forecasting mod
 Result fields (`nodes.<id>.<field>` in conditions): `best_p` (integer), `best_q` (integer), `best_order` (array), `best_score` (number), `n_failed` (integer).
 
 ??? note "Expert detail"
-    Grid search of SARIMAX(p,d,q) fits by AIC/BIC/HQIC/AICc (statsmodels arma_order_select_ic style); failed fits are skipped and reported.
+    Grid search of SARIMAX(p,d,q)(0,D,0)s fits by AIC/BIC/HQIC/AICc (statsmodels arma_order_select_ic style), with the differencing of the model that will be fitted; failed fits are skipped and reported. With a split plan, only the periods before its first test window are searched, so a backtest on the plan stays out of sample.
 
 ### `search.coint_rank` — How many long-run ties
 
@@ -932,7 +935,10 @@ Fits a model with each combination of settings you list, scores each on a backte
 | `direction` | `min` \\| `max` | `"min"` | Better when |
 | `max_points` | integer | `50` | Grid points allowed |
 
-Result fields (`nodes.<id>.<field>` in conditions): `best_settings` (object), `best_score` (number), `n_points` (integer).
+Result fields (`nodes.<id>.<field>` in conditions): `best_settings` (object), `best_score` (number), `n_points` (integer), `nested` (boolean), `outer_scores` (array), `selected_per_fold` (array).
+
+??? note "Expert detail"
+    Every grid point is backtested on the plan and the best score wins. With a split.nested plan this is nested cross-validation: each outer fold picks its point on its own inner folds (inside its training window), refits it on the outer training window and scores it on the outer test window; best_score pools those outer forecasts (the honest estimate of the tuned model, free of the selection bias of scoring the winner on the folds that chose it) and best_settings is the point the outer folds chose most often.
 
 ### `search.sarima_order` — Find seasonal orders
 
@@ -1173,12 +1179,13 @@ Tests whether one model's forecasts are truly more accurate than another's or wh
 |---|---|---|---|
 | `loss` | `squared` \\| `absolute` | `"squared"` | Loss |
 | `horizon` | integer | `1` | h |
+| `step` | integer |  | Periods between fold origins (default: from the folds) |
 | `alpha` | number | `0.05` | Significance level |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number).
 
 ??? note "Expert detail"
-    Diebold-Mariano test with the Harvey-Leybourne-Newbold small-sample correction on squared or absolute loss.
+    Diebold-Mariano test with the Harvey-Leybourne-Newbold small-sample correction on squared or absolute loss, on one h-step error per backtest fold. Folds `step` periods apart share test periods only up to ceil(h / step) - 1 folds, which is the number of autocovariances in the long-run variance (h - 1 for consecutive origins); the step is read from the folds.
 
 ### `compare.models` — Compare models side by side
 

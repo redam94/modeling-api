@@ -176,7 +176,7 @@ function OptionsDialog({
               <Input id="ex-max" type="number" min={1} max={200} value={req.max_series ?? 50} onChange={(e) => set({ max_series: Number(e.target.value) })} />
             </Field>
             <label className="flex items-center gap-3 self-end pb-2 text-[13px]">
-              <Switch checked={Boolean(req.prewhiten)} onCheckedChange={(c) => set({ prewhiten: c })} aria-label="Prewhiten before cross-correlating" />
+              <Switch checked={req.prewhiten ?? true} onCheckedChange={(c) => set({ prewhiten: c })} aria-label="Prewhiten before cross-correlating" />
               Prewhiten before cross-correlating (avoids spurious peaks)
             </label>
           </div>

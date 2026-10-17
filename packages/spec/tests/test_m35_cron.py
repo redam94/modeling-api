@@ -3,7 +3,7 @@ the minimum interval."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from mapi_spec.cron import check_cron, check_timezone, next_fire, parse_cron
@@ -82,3 +82,34 @@ def test_minimum_interval_and_unknown_zones() -> None:
             check_timezone(bad)
     with pytest.raises(ValueError, match="timezone-aware"):
         next_fire("@daily", datetime(2026, 1, 1))
+
+
+@pytest.mark.parametrize("expr", ["*/30 * * * *", "15 1 * * *", "0 * * * *", "45 1 * * *"])
+def test_next_fire_never_returns_the_past_in_the_repeated_hour(expr: str) -> None:
+    """Regression: after the fall-back jump the first occurrence of the repeated hour is in
+    the past; returning it made a schedule fire on every loop tick."""
+    zone = "America/New_York"
+    # 2026-11-01 01:00-02:00 EDT (05:00-06:00Z) repeats as 01:00-02:00 EST (06:00-07:00Z)
+    for minute in range(0, 125, 5):
+        after = _utc(2026, 11, 1, 5) + timedelta(minutes=minute)
+        nxt = next_fire(expr, after, zone)
+        assert nxt > after, (expr, after, nxt)
+
+
+def test_a_repeated_local_time_still_fires_once() -> None:
+    zone = "America/New_York"
+    first = next_fire("15 1 * * *", _utc(2026, 11, 1, 4), zone)
+    assert first == _utc(2026, 11, 1, 5, 15)  # 01:15 EDT
+    # the second 01:15 (EST, 06:15Z) does not fire again: the next one is the next day
+    assert next_fire("15 1 * * *", first, zone) == _utc(2026, 11, 2, 6, 15)
+    # a loop that was down through the first 01:15 fires the missed run once, not per tick
+    assert next_fire("15 1 * * *", _utc(2026, 11, 1, 6, 5), zone) == _utc(2026, 11, 2, 6, 15)
+    # a simulated 5 s loop through the repeated hour fires once per local half hour at most
+    t, fires = _utc(2026, 11, 1, 5), 0
+    nxt = next_fire("*/30 * * * *", t, zone)
+    while t < _utc(2026, 11, 1, 7):
+        if nxt <= t:
+            fires += 1
+            nxt = next_fire("*/30 * * * *", t, zone)
+        t += timedelta(seconds=5)
+    assert fires <= 4

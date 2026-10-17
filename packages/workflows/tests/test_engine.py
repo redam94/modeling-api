@@ -46,7 +46,9 @@ def _spec(nodes: list[dict[str, Any]], **extra: Any) -> WorkflowSpec:
     return WorkflowSpec.model_validate(doc)
 
 
-def _canonical_fakes(*, adf_p: float, kpss_p: float, seasonal: bool) -> dict[str, Any]:
+def _canonical_fakes(
+    *, adf_p: float, kpss_p: float, seasonal: bool, overdiff_acf1: float = -0.1
+) -> dict[str, Any]:
     return {
         "adf": stat_result("test.adf", adf_p),
         "kpss": stat_result("test.kpss", kpss_p),
@@ -57,6 +59,11 @@ def _canonical_fakes(*, adf_p: float, kpss_p: float, seasonal: bool) -> dict[str
             stat_result("test.seasonal_strength", 0.5)(a)[1],
         ),
         "sdiff": dataset("run://sdiff"),
+        "cand": dataset("run://cand"),
+        "overdiff": lambda a: (
+            {"acf": [1.0, overdiff_acf1]},
+            stat_result("test.acf_pacf", 0.5)(a)[1],
+        ),
         "diff": dataset("run://diff"),
         "acf": stat_result("test.acf_pacf", 0.01, suggested_p=1),
         "order": order(2, 1),
@@ -86,6 +93,7 @@ def test_canonical_template_runs_through_the_engine() -> None:
     # diff's input fell back to inputs.data; acf read the differenced data
     # $expr resolved the differencing order and the AR/MA orders into the model settings
     assert runs["order"].params["d"] == 1
+    assert runs["order"].params["D"] == 0 and runs["order"].params["period"] == 52
     settings = runs["backtest"].params["settings"]
     assert settings["order"] == [2, 1, 1]
     assert settings["seasonal_order"] == [0, 0, 0, 52]
@@ -128,6 +136,22 @@ def test_stationary_series_skips_differencing() -> None:
     assert runs["backtest"].params["settings"]["order"] == [2, 0, 1]
     assert runs["backtest"].params["settings"]["seasonal_order"] == [0, 1, 0, 52]
     assert eng.status is WorkflowRunStatus.SUCCEEDED
+
+
+def test_the_over_differencing_guard_keeps_d_at_zero() -> None:
+    """The unit-root tests say "wanders", but one more difference would leave a lag-1
+    autocorrelation below -0.5 (a unit root that is not there): no difference."""
+    spec = TS_READINESS_ARIMAX.spec
+    eng = WorkflowEngine(
+        spec, params={k: p.default for k, p in spec.params.items()}, inputs={"data": DATA}
+    )
+    drive(eng, _canonical_fakes(adf_p=0.6, kpss_p=0.01, seasonal=True, overdiff_acf1=-0.62))
+    assert eng.status is WorkflowRunStatus.SUCCEEDED
+    runs = {n.node_id: n for n in eng.node_runs()}
+    assert runs["wanders"].result == {"value": False, "arm": "else"}
+    assert runs["diff"].status is NodeRunStatus.SKIPPED
+    assert runs["backtest"].params["settings"]["order"] == [2, 0, 1]
+    assert runs["order"].params["D"] == 1
 
 
 def test_select_refuses_a_model_that_loses_to_the_benchmarks() -> None:

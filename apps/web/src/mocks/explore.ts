@@ -332,8 +332,10 @@ export function createExploreHandlers(shared: ExploreMockShared, state: ExploreM
       try {
         const answers = answersFromQuery(url.searchParams, FIXTURE.chooser.questions);
         const starting = new Set(["model", "template", "workflow_template"]);
+        const blocks = new Set(["step", "node", "check"]);
         const candidates = FIXTURE.abouts.filter((a) => (kind ? a.kind === kind : starting.has(a.kind)));
-        return HttpResponse.json(recommend(FIXTURE.chooser.questions, answers, candidates, { limit, includeAbout: true }));
+        const fallback = kind ? undefined : FIXTURE.abouts.filter((a) => blocks.has(a.kind));
+        return HttpResponse.json(recommend(FIXTURE.chooser.questions, answers, candidates, { limit, includeAbout: true, fallback }));
       } catch (e) {
         if (e instanceof ChooserAnswerError) return problem(422, "CHOOSER_ANSWER_INVALID", "Invalid chooser answer", e.message, e.pointer);
         throw e;

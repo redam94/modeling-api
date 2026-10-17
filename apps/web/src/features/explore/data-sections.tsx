@@ -28,7 +28,7 @@ import {
   suggestionKey,
   vifReading,
 } from "./plain";
-import { barsPlot, heatmapPlot, histogramPlot, lagPlot, linesPlot, stlPlot, xType } from "./plots";
+import { barsPlot, heatmapPlot, histogramPlot, lagPlot, linesPlot, missingSharePlot, stlPlot, xType } from "./plots";
 import { ExplorerPlot, num, pct, Picker, PlainSummary, pValue, Statistics, StatTable, TestDecision, useOptions, ViewNotes } from "./ui";
 import type {
   AcfPacfView,
@@ -57,10 +57,7 @@ interface P<V> {
 export function OverviewSection({ view, expert }: P<DataOverviewView>) {
   const score = qualityScoreReading(view.quality_score);
   const vars = view.vars ?? [];
-  const plot = useMemo(() => {
-    const all = view.vars ?? [];
-    return all.some((v) => (v.missing_share ?? 0) > 0) ? barsPlot(all.map((v) => ({ label: v.name, value: v.missing_share ?? 0, group: v.role ?? "other" })), { title: "Share missing", format: ".1~%" }) : null;
-  }, [view.vars]);
+  const plot = useMemo(() => missingSharePlot(view.vars ?? []), [view.vars]);
   return (
     <>
       <PlainSummary tone={score?.tone ?? "neutral"}>

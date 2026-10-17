@@ -53,7 +53,12 @@ log = logging.getLogger(__name__)
 
 def schedule_next(cron: str, tz: str, after: datetime) -> datetime:
     """The next fire time strictly after ``after``."""
-    return next_fire(cron, after, tz)
+    nxt = next_fire(cron, after, tz)
+    probe = after
+    while nxt <= after:  # backstop: a past next_run_at would fire on every loop tick
+        probe += timedelta(minutes=30)
+        nxt = next_fire(cron, probe, tz)
+    return nxt
 
 
 async def fire_due_schedules(ctx: ServerContext, *, at: datetime | None = None) -> int:

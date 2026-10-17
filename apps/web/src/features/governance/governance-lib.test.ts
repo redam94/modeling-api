@@ -32,6 +32,9 @@ describe("governance helpers", () => {
     expect(plot.datasets.shuffled).toHaveLength(19);
     expect(plot.datasets.real).toEqual([{ score: (item.inline as { real: number }).real }]);
     expect(JSON.stringify(plot.spec)).toContain('"text":{"value":"Your model"}');
+    const skill = nullDistributionPlot({ real: 0.4, shuffled: [0.1, 0.2], metric: "mae", axis: "Skill on held-out data (higher is better)" })!;
+    expect(JSON.stringify(skill.spec)).toContain("Skill on held-out data (higher is better)");
+    expect(JSON.stringify(nullDistributionPlot({ real: 1, shuffled: [2, 3], metric: "rmse" })!.spec)).toContain("RMSE on held-out data");
     expect(nullDistributionPlot({ real: 1, shuffled: [2] })).toBeNull();
     expect(nullDistributionPlot("nope")).toBeNull();
   });

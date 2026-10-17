@@ -1,5 +1,6 @@
 # Workflow cookbook: do these series move together for good? VECM if they are tied in the
-# long run, else a VAR on the changes; Granger tests either way; a forecast of the winner.
+# long run, a VAR on the levels if they are already stable, else a VAR on the changes;
+# Granger tests either way; a forecast of the winner.
 # (validated by conformance/tests/test_docs_v05.py)
 apiVersion: mapi/v1
 kind: Workflow
@@ -15,7 +16,10 @@ inputs:
 nodes:
 # 1. Is there a long-run relationship? (Johansen trace test, every series of the dimension)
 - {id: johansen, use: test.johansen, inputs: {data: inputs.data}, with: {alpha: "0.05"}}
-- {id: tied, use: branch.if, with: {condition: "nodes.johansen.rank > 0"}}
+# rank 0: no tie; rank = number of series: every series is stable (no unit root)
+- id: tied
+  use: branch.if
+  with: {condition: "nodes.johansen.rank > 0 and nodes.johansen.rank < len(nodes.johansen.trace_stats)"}
 # 2a. Tied: choose the cointegration rank and fit an error-correction model on the levels.
 - {id: rank, use: search.coint_rank, inputs: {data: inputs.data}, when: tied.then}
 - id: vecm
@@ -24,14 +28,21 @@ nodes:
   when: tied.then
   with:
     model: ts.vecm@^1
-    settings: {coint_rank: {$expr: nodes.rank.rank}, k_ar_diff: 1}
-# 2b. Not tied: difference the series, choose the VAR's lag length, fit a VAR on the changes.
-- {id: diff, use: transform.difference, inputs: {data: inputs.data}, when: tied.else}
-- {id: lags, use: search.var_lag_order, inputs: {data: diff.data},
-   with: {maxlags: {$param: maxlags}, criterion: aic}}
+    settings:
+      coint_rank: {$expr: "min(max(nodes.rank.rank, 1), len(nodes.johansen.trace_stats) - 1)"}
+      k_ar_diff: 1
+# 2b. Not tied: a VAR on the levels when every series is stable, else on the changes.
+- id: stationary
+  use: branch.if
+  when: tied.else
+  with: {condition: "nodes.johansen.rank >= len(nodes.johansen.trace_stats)"}
+- {id: diff, use: transform.difference, inputs: {data: inputs.data}, when: stationary.else}
+- {id: lags, use: search.var_lag_order, inputs: {data: [diff.data, inputs.data]},
+   when: tied.else, with: {maxlags: {$param: maxlags}, criterion: aic}}
 - id: var
   use: model.fit
-  inputs: {data: diff.data}
+  inputs: {data: [diff.data, inputs.data]}
+  when: tied.else
   with:
     model: ts.var@^1
     settings: {lags: {$expr: nodes.lags.best_lag}}

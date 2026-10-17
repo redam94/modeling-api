@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 import { AboutDialog, DifficultyBadge, RuntimeBadge } from "./about-card";
 import { normaliseAnswers, useChooser, useRecommendations } from "./api";
-import { KIND_META } from "./labels";
+import { isGoodMatch, KIND_META } from "./labels";
 import { startTarget, type StartTarget } from "./start";
 import type { ChooserAnswers, ChooserKind, ChooserQuestion, Recommendation } from "./types";
 
@@ -122,7 +122,7 @@ export function RecommendationCard({ rec, rank, compact = false }: { rec: Recomm
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
           <p className="text-[11px] font-medium text-muted-foreground">
-            {rank === 1 ? "Best match · " : `#${rank} · `}
+            {rank === 1 && isGoodMatch(rec) ? "Best match · " : `#${rank} · `}
             {KIND_META[rec.kind].label}
           </p>
           <p className="font-semibold tracking-tight">{rec.title}</p>

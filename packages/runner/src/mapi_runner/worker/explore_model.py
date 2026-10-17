@@ -761,7 +761,18 @@ def comparison(c: ModelContext) -> ComparisonView:
     tests: list[StatTestResult] = []
     warn: list[str] = []
     mask = holdout_mask(c.bundle, c.data, c.evaluation)
-    if mask is not None:
+    path = [r for r, b in models if forecasts_from_one_origin(b)]
+    if mask is not None and path:
+        # 1..H-step errors from one origin are a single, strongly dependent path (their
+        # loss difference wanders with the series): no test of equal accuracy is valid
+        # on it, and an h = 1 Diebold-Mariano test rejects most of the time
+        warn.append(
+            f"No significance test: {', '.join(path[:3])} forecast the held-out periods from "
+            "one forecast origin, so their errors form a single path. Compare the models' "
+            "backtests (rolling-origin errors at a fixed horizon), e.g. with a "
+            "compare.diebold_mariano workflow node."
+        )
+    elif mask is not None:
         errs: dict[str, np.ndarray] = {}
         dim = str(mask.dims[0])
         for ref, b in models:
@@ -778,12 +789,15 @@ def comparison(c: ModelContext) -> ComparisonView:
                 errs[ref] = _tot(e, dim)
         refs = list(errs)
         for ra, rb in itertools.combinations(refs, 2):
-            dm = stats.diebold_mariano(errs[ra], errs[rb])
+            n_pairs = int(min(errs[ra].size, errs[rb].size))
+            # errors of models that predict from the observed drivers are still serially
+            # correlated: a Newey-West bandwidth of autocovariances (h = lags + 1)
+            lags = int(4 * (max(n_pairs, 1) / 100) ** (2 / 9))
+            dm = stats.diebold_mariano(errs[ra], errs[rb], h=lags + 1)
             if dm is None:
                 continue
             stat, pval = dm
-            n_pairs = int(min(errs[ra].size, errs[rb].size))
-            tests.append(_dm_result(ra, rb, stat, pval, n=n_pairs))
+            tests.append(_dm_result(ra, rb, stat, pval, n=n_pairs, lags=lags))
     else:
         warn.append("No shared held-out period: Diebold-Mariano tests need a time holdout.")
     return ComparisonView(
@@ -798,8 +812,19 @@ def comparison(c: ModelContext) -> ComparisonView:
     )
 
 
+_FORECAST_FAMILIES: Final = frozenset({"forecast", "ts_multivariate", "regime", "ts"})
+
+
+def forecasts_from_one_origin(b: Bundle) -> bool:
+    """Whether the model's held-out predictions are a multi-step forecast from the end of
+    training (statsmodels and other time-series forecasters), not predictions from the
+    observed drivers of each period (regressions, marketing mix, tabular models)."""
+    m = b.model.manifest
+    return m.capabilities.inference == "kalman" or m.model_family in _FORECAST_FAMILIES
+
+
 def _dm_result(
-    a: str, b: str, stat: float, p: float, *, n: int, alpha: float = 0.05
+    a: str, b: str, stat: float, p: float, *, n: int, lags: int = 0, alpha: float = 0.05
 ) -> StatTestResult:
     better = a if stat < 0 else b
     reject = p < alpha
@@ -819,7 +844,13 @@ def _dm_result(
         verdict_plain=verdict[:500],
         null_plain="Both models forecast the held-out periods equally well.",
         n_obs=n,
-        details={"model_a": a, "model_b": b, "loss": "squared error", "hln_corrected": True},
+        details={
+            "model_a": a,
+            "model_b": b,
+            "loss": "squared error",
+            "hln_corrected": True,
+            "variance_lags": lags,
+        },
     )
 
 

@@ -38,7 +38,13 @@ an endpoint can refuse to serve a model that is not validated.
 - **Scope.** A policy belongs to a project, or to the whole tenant
   (`/v1/tenants/{tenant_id}/governance/policies`). Tenant-wide policies are a floor: every
   project inherits them, and a project's own policy can add checks or tighten thresholds but
-  never loosen them (`effective_checks` keeps the stricter severity and thresholds).
+  never loosen them (`effective_checks` keeps the stricter severity and thresholds). Check
+  parameters merge the same way: the stricter number wins (`max_missing` the lower,
+  `min_history_periods`, `n_permutations`, `n_noise`, `n_sims` and `lags` the higher), lists
+  are combined (`methods`, `shifts`, `params`, `scales`), expected signs are combined with the
+  tenant's sign winning a conflict, and any other parameter set by the tenant (a metric, a
+  block length) keeps the tenant's value; a project can only add parameters the tenant left
+  unset.
 - **Matching.** `applies_to` narrows a policy to model families (`mmm`, `ts`, `tabular`,
   `choice`, ...), model ids or guided templates; empty lists match everything. A family
   matches the family a model declares (the statsmodels forecasters declare `forecast`,
@@ -54,7 +60,7 @@ an endpoint can refuse to serve a model that is not validated.
 | Check | What it asks | Measured as (pass / warn / fail) |
 |---|---|---|
 | `null.permutation_target` | Does the model beat refits on the same data with the result **shuffled**? | p-value: share of shuffled fits at least as good (≤ 0.05 / ≤ 0.10 / more) |
-| `null.noise_regressors` | Do **fake drivers made of noise** get (almost) no effect? | largest share given to a fake driver (≤ 2% / ≤ 5% / more) |
+| `null.noise_regressors` | Do **fake drivers made of noise** get (almost) no effect? | largest share of the real drivers' effect given to a fake driver (≤ 2% / ≤ 5% / more) |
 | `null.placebo_time_shift` | Do effects **vanish when the drivers are moved** months away? | placebo effect / real effect (≤ 0.25 / ≤ 0.5 / more) |
 | `baseline.beats_naive` | Is the forecast better than "same as last week/year"? | relative skill vs the strongest benchmark (≥ 5% / ≥ 0 / below) |
 | `residuals.whiteness` | Do the errors look like random noise over time? | Ljung-Box p-value (≥ 0.05 / ≥ 0.01 / below) |

@@ -8,7 +8,7 @@ platform contract as two built-in models:
 | Model | In plain words | Engine |
 |---|---|---|
 | `mmm.bayesian` | Measures how much each marketing channel adds to your sales, in total or per market, and what would happen if you moved budget between channels. | mmm-framework `BayesianMMM`: NUTS (nutpie, PyMC or NumPyro), or fast approximations (MAP, ADVI, Pathfinder) |
-| `mmm.frequentist` | A first estimate in seconds, without the ranges a full Bayesian model gives. | mmm-framework's ridge estimator with bootstrap intervals |
+| `mmm.frequentist` | A first estimate in seconds, with simpler ranges from resampling the data instead of a full Bayesian model's uncertainty. | mmm-framework's ridge estimator with bootstrap intervals |
 
 Both carry a plain-language **About card** (what the model is for, when not to use it,
 what data it needs, what you get out); the web app's *Help me choose* recommends them
@@ -79,12 +79,19 @@ national example.
 
 mmm-framework's native format is the **Master Flat File** (MFF): one row per `Period`,
 `Geography`, `Product`, `Campaign`, `Outlet`, `Creative` and `VariableName`, the value in
-`VariableValue`. Upload it with the `mff` ingest preset (or as a Guided upload): the key
-columns that vary become dims and every variable its own data variable, and the Guided geo
-template stacks the media variables you pick into `spend(channel)`. The plugin hands the
-panel to mmm-framework in exactly the layout its own `MFFLoader` builds - observations
-period-major, then geography, then product - and a test checks that an MFF file ingested by
-the platform and the same file loaded with `mmm_framework.load_mff` give the same panel.
+`VariableValue`. Upload it with the `mff` ingest preset (or as a Guided upload): every
+variable becomes its own data variable, and the key columns follow mmm-framework's MFF
+semantics. `Geography` and `Product` become dims when they have more than one level; a
+variable given only in total (a blank, `National` or `Total` label - national TV next to
+regional sales) is spread across the levels like `MFFLoader` disaggregates it (geographies
+equally, products by the KPI's share; `MffOptions.allocation` changes it), and a variable
+may not mix per-level and total rows. `Campaign`, `Outlet` and `Creative` are summed up to
+the modelled dims unless `MffOptions.split` keeps them. The Guided geo template stacks the
+media variables you pick into `spend(channel)`. The plugin hands the panel to mmm-framework
+in exactly the layout its own `MFFLoader` builds - observations period-major, then
+geography, then product - and tests check that an MFF file ingested by the platform and the
+same file loaded with `mmm_framework.load_mff` give the same panel, national media and
+campaign rows included.
 
 ## How the spec maps onto mmm-framework
 
@@ -177,8 +184,7 @@ jointly.
 |---|---|
 | extra spend (`spend_delta > 0`) | `MROAS`, `spend_lift_pct = 100 x spend_delta / window spend`, value `kpi_delta / spend_delta` |
 | a holdout removing (nearly) all the channel's spend (`-spend_delta >= 95%` of it) | `CONTRIBUTION` of `-kpi_delta` |
-| a partial cut of at most 25% | `MROAS` of that size (the symmetric finite difference) |
-| a larger partial cut | skipped, with the reason in `learned.calibration.lift_tests.skipped` |
+| a partial cut (less than 95% of the spend) | skipped, with the reason in `learned.calibration.lift_tests.skipped`: it measures the slope below today's spend, `(f(S) - f((1-c)S)) / cS`, while `MROAS` is the slope above it (`spend_lift_pct > 0` only); under diminishing returns they differ (by `e^(c lam)` for `1 - exp(-lam x)`), so the mapping would bias the curve |
 
 `geo` restricts the measurement to that geo. A test after the data, or cut by the fit
 window (a holdout fit that ends inside the test), is skipped and listed.

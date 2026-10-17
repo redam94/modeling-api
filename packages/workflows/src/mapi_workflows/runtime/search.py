@@ -51,6 +51,34 @@ def sarimax_trend(trend: str | None, d: int) -> str | None:
     return None
 
 
+def _before_tests(ctx: NodeContext, ds: Any, tdim: str) -> Any:
+    """The data before the first test window of the optional ``split`` plan, so that a
+    backtest on the same plan stays out of sample (the orders never saw its test periods)."""
+    vals = ctx.json("split")
+    if not vals:
+        return ds
+    plan = vals[0]
+    folds = [f for f in plan.get("folds") or [] if isinstance(f, dict)]
+    starts = [int(f["test_start"]) for f in folds if isinstance(f.get("test_start"), int)]
+    if plan.get("dim") != tdim or not starts:
+        raise data_error(
+            "the order search takes a split plan along time (rolling origin, expanding "
+            "window or holdout) to search before its first test window"
+        )
+    gaps = [
+        int(f["test_start"]) - int(f["train_stop"])
+        for f in folds
+        if isinstance(f.get("test_start"), int) and isinstance(f.get("train_stop"), int)
+    ]
+    stop = min(starts) - max([0, *gaps])
+    if stop < 20:
+        raise data_error(
+            f"the split plan leaves {max(stop, 0)} periods before its first test window; "
+            "the order search needs at least 20"
+        )
+    return ds.isel({tdim: slice(0, stop)})
+
+
 def _series(ctx: NodeContext) -> tuple[np.ndarray, np.ndarray | None, list[str]]:
     dv = ctx.dataset("data")
     assert dv is not None
@@ -59,6 +87,7 @@ def _series(ctx: NodeContext) -> tuple[np.ndarray, np.ndarray | None, list[str]]
     var = ctx.params.get("var")
     name = target_var(ds, schema, var if isinstance(var, str) else None)
     tdim = time_dim(ds, schema)
+    ds = _before_tests(ctx, ds, tdim)
     (s,) = list(iter_series(ds, name, tdim, per_series=False))
     y = np.asarray(s.values, float)
     raw = ctx.params.get("exog") or []
@@ -152,6 +181,14 @@ def _arma(ctx: NodeContext) -> NodeOutcome:
     max_p = int(clean_number(ctx.params.get("max_p")) or 0)
     max_q = int(clean_number(ctx.params.get("max_q")) or 0)
     d = int(clean_number(ctx.params.get("d")) or 0)
+    big_d = int(clean_number(ctx.params.get("D")) or 0)
+    period = int(clean_number(ctx.params.get("period")) or 0)
+    if big_d and period < 2:
+        raise data_error("search.arma_order with D = 1 needs the season length (period)")
+    if big_d and len(y) < period + 20:
+        raise data_error(f"a seasonal difference needs at least {period + 20} observations")
+    # the seasonal difference of the model that will be fitted (no seasonal AR/MA terms)
+    seasonal = ((0, big_d, 0, period),) if big_d else ((0, 0, 0, 0),)
     criterion = str(ctx.params.get("criterion") or "aic")
     trend = ctx.params.get("trend")
     rows, failed = arma_grid(
@@ -160,6 +197,7 @@ def _arma(ctx: NodeContext) -> NodeOutcome:
         ps=range(max_p + 1),
         qs=range(max_q + 1),
         d=d,
+        seasonal=seasonal,
         trend=str(trend) if isinstance(trend, str) else "c",
         criterion=criterion,
         check=ctx.check,
@@ -167,7 +205,8 @@ def _arma(ctx: NodeContext) -> NodeOutcome:
     best = next((r for r in rows if r.get("status") == "ok"), None)
     if best is None:
         raise data_error("every order on the grid failed to fit")
-    dy = np.diff(y, n=d) if d else y
+    dy = y[period:] - y[:-period] if big_d else y
+    dy = np.diff(dy, n=d) if d else dy
     hints = acf_significance(dy, nlags=min(24, len(dy) // 2 - 1), max_order=max(max_p, max_q))
     p, q = int(best["p"]), int(best["q"])
     table = TablePayload(
@@ -178,6 +217,9 @@ def _arma(ctx: NodeContext) -> NodeOutcome:
         meta={
             "criterion": criterion,
             "d": d,
+            "D": big_d,
+            "period": period or None,
+            "n_obs": len(y),
             "exog": list(names),
             "summary_plain": f"ARMA({p},{q}) has the best {criterion.upper()} "
             f"({best[criterion]:.1f}) of {len(rows) - failed} fits.",

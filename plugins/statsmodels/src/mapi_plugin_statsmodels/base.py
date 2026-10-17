@@ -55,6 +55,7 @@ from mapi_plugin_statsmodels._common import (
     Cell,
     CellFit,
     StatsmodelsSettings,
+    arma_df,
     data_error,
     iter_cells,
     residual_tests,
@@ -314,7 +315,8 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
                 )
             )
             resids.append(_resid_ds(fit.resid, t, k_vars))
-            tests.append(_tests_ds(fit.resid, k_vars, n_params=len(fit.params)))
+            fit.learned.setdefault("model_df", arma_df(fit.params))
+            tests.append(_tests_ds(fit.resid, k_vars, model_df=int(fit.learned["model_df"])))
         groups["params"] = _clean(stack_cells(keys, tables, order))
         groups["fit_stats"] = _clean(stack_cells(keys, stats_, order))
         groups["residuals"] = _clean(stack_cells(keys, resids, order))
@@ -565,10 +567,10 @@ def _resid_ds(resid: np.ndarray, t: np.ndarray, variables: list[str]) -> xr.Data
     return xr.Dataset({"resid": ((TIME,), r.reshape(-1))}, coords={TIME: t})
 
 
-def _tests_ds(resid: np.ndarray, variables: list[str], *, n_params: int) -> xr.Dataset:
+def _tests_ds(resid: np.ndarray, variables: list[str], *, model_df: int) -> xr.Dataset:
     r = np.asarray(resid, dtype=float)
     cols = [r.reshape(r.shape[0], -1)[:, j] for j in range(len(variables))] if variables else [r]
-    rows = [residual_tests(c, n_params=0 if variables else n_params) for c in cols]
+    rows = [residual_tests(c, model_df=0 if variables else model_df) for c in cols]
     stat = np.array([[row[t][0] for t in RESIDUAL_TESTS] for row in rows])
     pval = np.array([[row[t][1] for t in RESIDUAL_TESTS] for row in rows])
     lags = np.array([[row[t][2] for t in RESIDUAL_TESTS] for row in rows], dtype=np.int64)

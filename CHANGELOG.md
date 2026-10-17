@@ -384,6 +384,177 @@ milestone releases are tagged on `main`.
   Before, the API's CORS allow-list and `SameSite=strict` session cookie only matched `127.0.0.1`, so
   every call failed and the home page said the API was not reachable.
 
+### Fixed (M3.5 review: modeling and statistics)
+
+- **spec, server**: a schedule whose run was missed during the repeated hour of a
+  daylight-saving fall-back (or that was created or edited in that hour) fired on every
+  workflow-loop tick: `next_fire` compared local times and returned the first occurrence of
+  the hour, which was already in the past. It now returns only times strictly after the
+  given instant (a repeated local time still fires once), and the schedule loop refuses a
+  `next_run_at` that is not in the future.
+- **spec** (security): a project policy could weaken a tenant policy's check parameters
+  (for example `data.quality` `max_missing: 1.0`, or an empty `plausibility.signs`
+  `expected`): parameters of a check named by both were overwritten by the project's.
+  Parameters now merge by strictness (the stricter number, the union of lists and of
+  expected signs, the tenant's value otherwise), so tenant policies are a floor for
+  parameters too.
+- **spec, server, web**: *Help me choose* with a goal no starting point was made for
+  ("Check or prepare my data") listed every model and template anyway, the first as "Best
+  match" at 0% with "Not made for: check or prepare my data". An item made for other goals
+  is now never recommended; when no model or template fits the goal, the building blocks
+  that do (preparation steps, workflow nodes, governance checks) are ranked instead; the
+  time-series readiness workflow template is now offered for "Check or prepare my data";
+  and the web app only calls an item the best match when it fits more answers than it
+  misses.
+- **spec, server**: the About card of `mmm.frequentist` said it gives estimates "without
+  the ranges a full Bayesian model provides" and "bootstrap ranges optional", although its
+  bootstrap (at least 20 replicates) always produces ranges; it now says it gives simpler
+  bootstrap ranges instead of full Bayesian uncertainty. The main MMM card listed the
+  models `mmm.nested` and `mmm.multivariate`, which are not installed, as related items
+  (shown as bare ids); `GET /v1/catalog/abouts` now leaves out related items that are not
+  in the catalog.
+- **spec**: the gallery template *Series that move together (VAR or VECM)* failed on
+  stationary series (growth rates, changes): Johansen rejects every null, the rank equals
+  the number of series, and the template sent that rank to `ts.vecm`, which refuses it.
+  Stationary series now get a VAR on their levels (a new `stationary` branch), and the
+  VECM's rank is kept between 1 and one less than the number of series. The cookbook
+  example and the workflows guide show the same three paths.
+- **spec, workflows** (statistics): the canonical *Time-series readiness to ARIMAX* template
+  over-differenced seasonal series: its unit-root tests ran on the raw levels, so a seasonal
+  random walk (no first difference needed) got a first difference on top of the seasonal
+  one in 93% of simulated draws. The seasonal decision now comes first and the unit-root
+  tests run on the seasonally differenced series, with an over-differencing guard (no
+  first difference when it would leave a lag-1 autocorrelation below -0.5); in simulation
+  the seasonal random walk is first-differenced in 1 of 30 draws and plain random walks
+  are still differenced. Its AR/MA order search also scored models without the seasonal
+  difference the final ARIMAX uses and searched every period, including the backtest's
+  test windows: `search.arma_order` now takes `D` and `period` (it fits
+  ARIMA(p,d,q)(0,D,0)s, the model that is fitted) and an optional `split` plan (it searches
+  only before the plan's first test window), and the template uses both.
+- **workflows** (statistics): `test.granger` decided on the smallest p-value over lags
+  1..`maxlag` without correction, so an unrelated driver "helped predict" the result about
+  twice as often as the stated alpha (0.11 at 0.05 in simulation). The verdict's p-value is
+  now Holm-corrected for the lags tried (size 0.05 in simulation; `correction: holm`), or
+  the exact F test at one prespecified `lag` (new parameter); the per-lag p-values and the
+  uncorrected `min_p_value` stay as descriptive results.
+- **workflows** (statistics): `compare.diebold_mariano` treated one h-step error per
+  backtest fold as errors from consecutive forecast origins: its long-run variance used
+  h - 1 autocovariances in fold units and the small-sample factor of horizon h, which for
+  folds 4 periods apart at horizon 4 shrank the statistic by 0.41 (or left no variance at
+  all), and refused horizon 8 on 6 folds. Folds `step` periods apart only overlap up to
+  ceil(h / step) - 1 folds; the node now reads the spacing from the folds (backtest and
+  benchmark metrics carry each fold's origin, `origins`) or a `step` parameter, and uses
+  that many autocovariances with the matching correction (`details.variance_lags`).
+- **runner** (statistics): the Model Explorer's comparison ran Diebold-Mariano tests with
+  horizon 1 on the held-out errors of time-series forecasters, which are 1..H-step errors
+  from one forecast origin (a single, strongly dependent path): equally accurate forecasts
+  were called different in 74% of simulated cases. For such models (statsmodels and the
+  other `ts` forecasters) the comparison now shows the metrics and rankings without a
+  significance test and says to compare backtests instead; for models that predict from
+  each period's observed drivers the test uses a Newey-West number of autocovariances.
+- **spec, runner, web** (statistics): the Data Explorer's cross-correlations were raw by
+  default and judged against the white-noise band `1.96 / sqrt(n)`, valid only when one
+  series is white: for two independent persistent series (AR(1), phi = 0.9) 53% of the
+  lags were flagged significant and every run had a spurious peak. Prewhitening is now on
+  by default (`prewhiten: true`, also in the web's explore dialog), and the band follows
+  Bartlett's formula for two autocorrelated series (it is the white-noise band when either
+  series is white), so the raw view no longer flags such lags either (under 10% in
+  simulation).
+- **workflows** (statistics): the residual tests of a workflow (`test.ljung_box`,
+  `test.jarque_bera`, `test.arch_lm`, `test.breusch_pagan`, `test.white`, `test.cusum`,
+  `evaluate.residuals`) on an integrated or unobserved-components model included its
+  diffuse first residual - the level itself, since the first prediction is 0 - so for
+  ARIMA(0,1,0) on a series around 500 Jarque-Bera gave p = 0.0 instead of 0.47. The fit's
+  own burn-in (statsmodels' `loglikelihood_burn`, stored per series) is now dropped.
+- **runner** (statistics): the governance check `residuals.whiteness` passed (Ljung-Box
+  p = 1.00) on strongly autocorrelated errors of unobserved-components and other
+  diffuse-initialised statsmodels models: it only dropped the start-up periods of an
+  (S)ARIMA `order`, so the first residual - the level itself - stayed in and swamped every
+  autocorrelation. The fit's own burn-in (stored per series) is now dropped as well.
+- **statsmodels plugin, runner** (statistics): the Ljung-Box test stored with every
+  statsmodels fit (the `RESIDUAL_AUTOCORRELATION` diagnostic and the Model Explorer's
+  residual view) reduced its degrees of freedom by every parameter - constant, drivers and
+  the variance - so a correctly specified regression with AR(1) errors was flagged
+  autocorrelated 23% of the time (and the rule silently switched to no correction when
+  a model had many parameters, e.g. ETS). It now counts ARMA terms only (`ar.L*`, `ma.L*`,
+  seasonal terms, ARDL/ECM lags of the target), stored per series as `model_df`, which
+  `residuals.whiteness` also uses (it previously ignored seasonal AR/MA terms).
+- **runner, spec, web** (statistics, critical): the governance null test
+  `null.permutation_target` had the wrong size and no power on time series. It shuffled
+  blocks of the result's levels (which keeps the series' own persistence and adds a level
+  jump at every block edge, including the train/test boundary) and compared raw holdout
+  errors, whose spread came from which levels landed in the test periods: in simulation it
+  rejected 35% of random walks and 33% of real AR alternatives, and a marketing mix model
+  with no media signal passed. It now compares a scale-free statistic - the held-out skill
+  against the null forecast (the last value of an integrated series, else its mean) on
+  each dataset - under a null that matches what is tested: a model with drivers keeps its
+  result and gets its drivers shuffled in time (so trend, season and controls cannot pass
+  on their own; a model that ignores its drivers is tested as one without); a model without
+  drivers gets the d-th differences of its result shuffled and re-integrated from the same
+  start (d from its ARIMA order or ADF/KPSS). In simulation the test keeps its 5% size on
+  random walks and rejects real dynamics far more often; data without a time order keep the
+  classic row permutation of the result. The evidence names the null and the statistic, and
+  the web's null-distribution chart labels its axis from it.
+- **runner, spec** (statistics): the governance check `null.noise_regressors` could never
+  pass for a Bayesian marketing mix model: mmm-framework's channel effects are positive, so
+  every posterior draw of a placebo channel's effect is above 0, its 90% interval never
+  covers 0, and the check reported "clearly not zero" and WARN or FAIL even at a 0.5%
+  share. A Bayesian model is now flagged when a placebo's share is above the warn limit
+  with at least 90% posterior probability (practical equivalence); the share is taken of
+  the real drivers' total effect (of the result only when that cannot be measured), so the
+  limit does not depend on the size of the baseline. Placebo channels also inherited the
+  source channel's per-channel priors and calibration (a tight business-prior or lift-test
+  ROI), so a calibrated model failed because of the prior: they now get the model's
+  default prior (carry-over and saturation shapes are still copied). Frequentist
+  placebo p-values are judged with Holm's correction for the number of placebos (the
+  uncorrected 5% rule flagged a good model 14% of the time with three placebos).
+- **runner, mmm plugin** (statistics): the governance check `sensitivity.prior` was always
+  skipped for a default `mmm.bayesian` model ("the model's priors are not set in its
+  settings"), although the default MMM policy lists it: mmm-framework's default priors
+  are not in the spec's settings. The check now writes out every prior the model uses
+  before scaling - the plugin's settings defaults (`seasonality.prior_sigma`,
+  `trend.growth_prior_sigma`, `hierarchy.media_geo_sigma`), the defaults a plugin declares
+  for values its engine fills in (`mmm.bayesian`: `priors.roi_default`, LogNormal(0, 1))
+  and business priors translated at fit time - and no longer multiplies Beta/Gamma `beta`
+  or `b` parameters, which moved the prior instead of widening it.
+- **workflows** (statistics): nested split plans were not nested. `search.grid` ignored the
+  inner folds of a `split.nested` plan and picked its winner by the outer folds' score -
+  the optimistic selection bias nested cross-validation exists to remove - and reported that
+  score as `best_score`; with a k-fold outer plan, `search.grid` and `model.backtest` sent
+  the plan to the time-window scorer and failed ("horizon.periods ... -90"). Each outer fold
+  now tunes on its own inner folds, refits the inner winner on its outer training window
+  and scores it on the outer test window: `best_score` is that honest estimate (new results
+  `nested`, `outer_scores`, `selected_per_fold`), and the outer plan's kind decides how
+  folds are scored.
+- **mmm plugin** (statistics): a lift test that cut a channel's spend by up to 25% was
+  mapped to mmm-framework's marginal-ROAS estimand for a spend *increase* of the same
+  size: the experiment measured the slope below today's spend, the model was fitted to
+  the slope above it, and under diminishing returns the backward slope is larger (1.49
+  times for `1 - exp(-2x)` at a 20% cut), so the calibration pushed the saturation curve
+  (and the budget optimiser) away from what the experiment measured. mmm-framework's
+  `MROAS` takes only increases and its off-panel route has no marginal estimand, so
+  partial cuts are now skipped with the reason (listed in
+  `learned.calibration.lift_tests.skipped`); increases and full holdouts calibrate as
+  before.
+- **web, runner**: the Data Explorer overview's missingness chart printed duplicate rounded
+  ticks ("0% 0% 0% 0.1% 0.1% ...") on small ranges - its axis had a fixed precision; Vega
+  now picks the precision from the tick step (the tooltip keeps two decimals). The overview
+  and the quality section also said "No data problems found." above a list of good-to-know
+  items (a little missing spend, extreme values); they now say "No problems to fix; 2
+  things to know."
+- **runner, spec** (conformance): MFF ingest disagreed with mmm-framework's MFF semantics,
+  although the two are documented to give the same model. National rows (a blank
+  `Geography`) became a phantom `''` geo - national TV only there, sales missing there -
+  where mmm-framework's `MFFLoader` spreads a national variable across the geos; and rows
+  that differ only by `Campaign`, `Outlet` or `Creative` became their own dims where
+  mmm-framework sums them. The `mff` preset now follows mmm-framework: a blank (or
+  `National`, `Total`, `All`) label is the coarser level, and a variable given only there
+  is spread across the levels (geographies equally, products by the KPI's share, as
+  mmm-framework's defaults; new `MffOptions.allocation` and `kpi`), a variable may not mix
+  the two levels, and the breakdown columns are summed unless `MffOptions.split` keeps them
+  as dims. Ingest notes say what was spread. A parity test compares the panel with
+  `mmm_framework.load_mff` on national media and campaign rows.
+
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
 Analysts who do not write code can now build a model from a spreadsheet, read it and try

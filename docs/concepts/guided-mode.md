@@ -138,7 +138,8 @@ variable - the MFF convention mmm-framework uses too (`mapi_spec.ingest.MFF_COLU
 | Column | Meaning |
 |---|---|
 | `Period` | The date; weekly data must fall on the same weekday |
-| `Geography`, `Product`, `Outlet`, `Campaign`, `Creative` | Key columns; each becomes a dim when it has more than one value |
+| `Geography`, `Product` | Panel levels; each becomes a dim when it has more than one level. A blank label (or `National`, `Total`, `All`) is the total: a variable given only there (national TV) is spread across the levels - geographies equally, products by the KPI's share (`MffOptions.allocation`), as mmm-framework does |
+| `Outlet`, `Campaign`, `Creative` | Breakdowns: rows that differ only there are summed, unless `MffOptions.split` keeps the column as a dim |
 | `VariableName` | The variable (`Sales`, `TV_Spend`, ...) |
 | `VariableValue` | The value |
 

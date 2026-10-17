@@ -147,7 +147,7 @@ test.describe("phone layout (375 px)", () => {
   const pages: [string, string][] = [
     ["/workflows?tab=templates", "Time-series readiness to ARIMAX"],
     ["/workflows/wf_01jaf3e1f2g3h4j5k6m7n8p9q0?tab=editor", "Workflow settings"],
-    ["/workflow-runs/run_01jaf3w1x2y3z4a5b6c7d8e9f0", "19 of 19 steps finished"],
+    ["/workflow-runs/run_01jaf3w1x2y3z4a5b6c7d8e9f0", "21 of 21 steps finished"],
     ["/governance", "Forecasts we publish"],
     ["/governance/policies/pol_01jaf3h1j2k3m4n5p6q7r8s9t1", "Required checks"],
     [`/validations/${AWAITING}`, "Beats a shuffled result"],

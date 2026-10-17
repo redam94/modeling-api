@@ -212,10 +212,21 @@ def test_partial_cuts_and_skips(setup: Any) -> None:
         ],
         data, UnitScales(),
     )  # fmt: skip
-    assert plan.used == ["small"]
-    assert set(plan.skipped) == {"half", "later", "cut"}
+    # Regression: a partial cut measures the slope *below* today's spend (a backward
+    # difference), but mmm-framework's marginal-ROAS estimand is the slope *above* it
+    # (spend_lift_pct > 0 only); under a concave curve the backward slope is larger
+    # (e^{0.2 lam} times for 1 - exp(-lam x) and a 20% cut), so mapping one onto the other
+    # biased the saturation curve. Partial cuts are skipped with the reason instead.
+    assert plan.used == []
+    assert set(plan.skipped) == {"small", "half", "later", "cut"}
     assert "partial cut" in plan.skipped["half"]
-    assert plan.record()["used"] == ["small"]
+    assert "below" in plan.skipped["small"] and "above" in plan.skipped["small"]
+    assert plan.record()["used"] == []
+    lam, c = 2.0, 0.2
+    curve = lambda x: 1 - np.exp(-lam * x)  # noqa: E731
+    backward = (curve(1.0) - curve(1 - c)) / c
+    forward = (curve(1 + c) - curve(1.0)) / c
+    assert backward / forward == pytest.approx(np.exp(c * lam))
 
 
 @pytest.mark.parametrize(

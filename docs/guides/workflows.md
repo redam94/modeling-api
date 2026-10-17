@@ -166,32 +166,44 @@ Reading it from the top:
 :   Everything a user may change per run, each with a type, a default and bounds. A run that
     passes `{"alpha": "x"}` is refused with `422` and the pointer `/params/alpha`.
 
+`seas`, `seasonal` and `sdiff`
+:   The seasonal decision comes first (as in `nsdiffs` before `ndiffs`): the seasonal
+    strength of the raw series decides whether to take a seasonal difference, which only
+    runs on the `then` arm of `seasonal`. When the arm is not taken the node is
+    **skipped**, not failed.
+
 `adf`, `kpss`, `pp`, `za`
-:   Four unit-root tests on the raw series. ADF and Phillips-Perron's null hypothesis is
-    "the series wanders"; KPSS's is "the series is stable", so its decision labels run the
-    other way; Zivot-Andrews allows one structural break. Each returns a
-    `StatTestResult` with a `verdict_plain` sentence.
+:   Four unit-root tests on the seasonally differenced series (or the raw series when
+    there is no seasonal difference): `data: [sdiff.data, inputs.data]` is a list of
+    **alternatives**, the first node that ran. Testing the raw levels of a seasonal series
+    would find the seasonal unit root and add a first difference on top of the seasonal
+    one, over-differencing it. ADF and Phillips-Perron's null hypothesis is "the series
+    wanders"; KPSS's is "the series is stable", so its decision labels run the other way;
+    Zivot-Andrews allows one structural break. Each returns a `StatTestResult` with a
+    `verdict_plain` sentence.
+
+`cand` and `overdiff`
+:   An over-differencing guard: a trial first difference and its autocorrelations. A
+    lag-1 autocorrelation below -0.5 after differencing is the signature of a unit root
+    that is not there.
 
 `wanders` (`branch.if`)
-:   `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)`
-    reads: difference unless the evidence for stationarity is clear. The condition is parsed
-    by the safe expression language (never `eval`), and the run records which values it
-    read, so the decision can be audited later.
-
-`seasonal` and `sdiff`
-:   The seasonal difference only runs on the `then` arm of `seasonal`. When the arm is not
-    taken the node is **skipped**, not failed.
+:   `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)
+    and nodes.overdiff.acf[1] > -0.5` reads: difference unless the evidence for stationarity
+    is clear, and never when differencing would over-difference. The condition is parsed by
+    the safe expression language (never `eval`), and the run records which values it read,
+    so the decision can be audited later.
 
 `diff`
-:   `data: [sdiff.data, inputs.data]` is a list of **alternatives**: the seasonally
-    differenced series if that node ran, else the raw series. `acf` uses the same trick
-    with three alternatives, so it always looks at the most-processed series.
+:   The first difference of the same alternatives, on the `then` arm of `wanders`. `acf`
+    uses three alternatives, so it always looks at the most-processed series.
 
 `order` (`search.arma_order`)
 :   An information-criterion grid over AR orders `0..max_p` and MA orders `0..max_q`.
-    `d: {$expr: 'if(nodes.wanders.value, 1, 0)'}` passes the differencing decision in, so
-    the search fits ARIMA(p, d, q) models on the raw series instead of searching on the
-    differenced one.
+    `d` and `D` pass the differencing decisions in, so the search scores exactly the
+    model that is fitted, ARIMA(p, d, q)(0, D, 0) with the season length, on the raw
+    series. With the backtest's plan on its `split` port it only searches the periods
+    before the first test window, so the backtest stays out of sample.
 
 `folds` (`split.expanding_window`)
 :   An expanding-window plan: `n_folds` origins, `step: 4` periods apart, a `gap` between
@@ -285,7 +297,13 @@ lag length and `search.coint_rank` a VECM's cointegration rank.
 
 `split.blocked_kfold` and `split.purged_kfold` cut contiguous blocks (with a purge gap) for
 models that are not forecasters. A plan is a `split_plan` value: feed the same plan to every
-`model.backtest`, `evaluate.baseline` and `search.grid` node you want to compare.
+`model.backtest`, `evaluate.baseline` and `search.grid` node you want to compare. Given a
+`split.nested` plan, `search.grid` runs nested cross-validation: each outer fold picks its
+grid point on its own inner folds, and that point is refitted on the outer training window
+and scored on the outer test window. `best_score` is the score of those outer forecasts (the
+honest error of the tuned model), `outer_scores` and `selected_per_fold` show each fold, and
+`best_settings` is the point the outer folds chose most often. `model.backtest` on a nested
+plan scores its outer folds.
 
 ### Beat the benchmarks, or stop
 
@@ -312,14 +330,22 @@ the rows of a comparison table within limits (`max`, `min`) when there is no sin
 
 ```yaml
 - {id: joh, use: test.johansen, inputs: {data: inputs.data}}
-- {id: tied, use: branch.if, with: {condition: "nodes.joh.rank > 0"}}
+- {id: tied, use: branch.if,
+   with: {condition: "nodes.joh.rank > 0 and nodes.joh.rank < len(nodes.joh.trace_stats)"}}
 - {id: vecm, use: model.fit, inputs: {data: inputs.data}, when: tied.then,
    with: {model: ts.vecm@^1, settings: {coint_rank: {$expr: "nodes.joh.rank"}}}}
-- {id: d, use: transform.difference, inputs: {data: inputs.data}, when: tied.else}
-- {id: lags, use: search.var_lag_order, inputs: {data: d.data}}
-- {id: var, use: model.fit, inputs: {data: d.data},
+- {id: stable, use: branch.if, when: tied.else,
+   with: {condition: "nodes.joh.rank >= len(nodes.joh.trace_stats)"}}
+- {id: d, use: transform.difference, inputs: {data: inputs.data}, when: stable.else}
+- {id: lags, use: search.var_lag_order, inputs: {data: [d.data, inputs.data]}, when: tied.else}
+- {id: var, use: model.fit, inputs: {data: [d.data, inputs.data]}, when: tied.else,
    with: {model: ts.var@^1, settings: {lags: {$expr: "nodes.lags.best_lag"}}}}
 ```
+
+A Johansen rank equal to the number of series means every series is already stable (growth
+rates, changes): there is nothing to error-correct, and `ts.vecm` refuses that rank, so the
+VAR is fitted on the levels; rank 0 means separate random walks, and the VAR is fitted on
+the changes.
 
 The data holds the series along one dimension, one value per series and period
 (`value(series, quarter)`: the layout of the statsmodels multivariate models; ingest a wide

@@ -195,7 +195,11 @@ export function ComparisonResult({ exploration, refs, expert }: { exploration: E
           label="Diebold-Mariano tests"
           rows={v.tests ?? []}
           rowKey={(t, i) => `${t.var ?? ""}-${i}`}
-          empty="No shared held-out periods: the versions need a time holdout for these tests."
+          empty={
+            // forecasters scored from one origin get no test (one dependent error path)
+            (v.warnings_plain ?? []).find((w) => w.startsWith("No significance test")) ??
+            "No shared held-out periods: the versions need a time holdout for these tests."
+          }
           columns={[
             { key: "pair", header: "Pair", cell: (t) => <span className="font-mono text-xs">{dmPair(t).join(" vs ") || t.var}</span> },
             { key: "verdict", header: "In plain words", cell: (t) => t.verdict_plain },

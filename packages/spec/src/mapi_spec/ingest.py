@@ -39,6 +39,8 @@ __all__ = [
     "COMBINE_SEPARATOR",
     "MFF_COLUMNS",
     "MFF_KEY_COLUMNS",
+    "MFF_PANEL_KEY_COLUMNS",
+    "MFF_TOTAL_LABELS",
     "ColumnRef",
     "DimMapping",
     "IngestFormat",
@@ -86,13 +88,29 @@ MFF_KEY_COLUMNS: Final[tuple[str, ...]] = ("Geography", "Product", "Outlet", "Ca
 """The MFF key columns besides ``Period`` (each becomes a dim when it has >1 value)."""
 
 
+Allocation = Literal["equal", "kpi"]
+
+
+def _default_allocation() -> dict[str, Allocation]:
+    """mmm-framework's defaults: geographies equally, products by the KPI (sales)."""
+    return {"Geography": "equal", "Product": "kpi"}
+
+
 class MffOptions(StrictModel):
     """The MFF ("model feature format") long-table preset.
 
     One row per ``(period, geography, product, campaign, outlet, creative, variable)`` with
-    the value in ``value_column``. ``Period`` becomes the time dim; the other key columns
-    become dims only when they hold more than one distinct value; ``VariableName`` values
-    become data variables.
+    the value in ``value_column``. ``Period`` becomes the time dim; ``VariableName`` values
+    become data variables. The rest follows mmm-framework's MFF semantics (its
+    ``MFFLoader``), so both read a file the same way:
+
+    * ``Geography`` and ``Product`` become dims when they hold more than one level. A blank
+      label (or ``National``, ``Total``, ``All``) is the coarser level: a variable given
+      only there (national TV) is spread across the levels - equal weights, or the KPI's
+      share of each level (``allocation``; mmm-framework's defaults: geographies equally,
+      products by sales). A variable may not mix the two levels.
+    * ``Campaign``, ``Outlet`` and ``Creative`` are breakdowns: rows that differ only there
+      are summed, unless the column is listed in ``split`` (then it becomes a dim).
 
     ``combine`` joins several key columns into one dim (``{"geo": ["Geography", "Product"]}``
     gives labels such as ``US|Watches``) - a model with one panel dim can then fit a
@@ -124,6 +142,26 @@ class MffOptions(StrictModel):
         description="M3: dim -> key columns whose labels are joined ('|') into that one dim",
         exclude_if=lambda v: not v,
     )
+    split: list[str] = Field(
+        default_factory=list,
+        max_length=3,
+        description="v0.5: breakdown key columns (Campaign, Outlet, Creative) kept as dims "
+        "instead of summed",
+        exclude_if=lambda v: not v,
+    )
+    allocation: dict[str, Allocation] = Field(
+        default_factory=_default_allocation,
+        description="v0.5: how a variable given only at the coarser level (a blank or "
+        "'National' label) is spread across the levels of a key column: equally, or by the "
+        "KPI's share of each level (the variable with role 'target', or 'kpi')",
+        exclude_if=lambda v: v == _default_allocation(),
+    )
+    kpi: str | None = Field(
+        None,
+        max_length=256,
+        description="v0.5: the KPI variable of 'kpi' allocation",
+        exclude_if=lambda v: v is None,
+    )
 
     @field_validator("combine")
     @classmethod
@@ -137,6 +175,12 @@ class MffOptions(StrictModel):
             seen |= set(cols)
         return v
 
+
+MFF_PANEL_KEY_COLUMNS: Final[tuple[str, ...]] = ("Geography", "Product")
+"""Key columns that are panel levels (spread across when a variable is given in total);
+the other key columns are breakdowns that are summed unless :attr:`MffOptions.split`."""
+MFF_TOTAL_LABELS: Final[frozenset[str]] = frozenset({"", "national", "total", "all", "*"})
+"""Key labels (case-insensitive) that mean "the coarser level", as a blank cell does."""
 
 COMBINE_SEPARATOR: Final = "|"
 """Separator of the labels of key columns joined by :attr:`MffOptions.combine`."""

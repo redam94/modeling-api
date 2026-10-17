@@ -129,6 +129,51 @@ def test_mff_preset_pivots_variables_and_keeps_varying_keys() -> None:
     assert not [i for i in validate_dataset(schema, ds) if i.severity.value == "error"]
 
 
+def _mff_rows(spec: list[tuple[str, str, str, str, float]]) -> pd.DataFrame:
+    """Rows ``(geo, product, campaign, variable, value)`` repeated over three weeks."""
+    rows = []
+    for period in pd.date_range("2026-01-04", periods=3, freq="W-SUN"):
+        for geo, product, campaign, var, value in spec:
+            rows.append({"Period": period.strftime("%Y-%m-%d"), "Geography": geo,
+                         "Product": product, "Campaign": campaign, "Outlet": "", "Creative": "",
+                         "VariableName": var, "VariableValue": value})  # fmt: skip
+    return pd.DataFrame(rows)
+
+
+def test_mff_national_rows_are_spread_and_breakdowns_summed() -> None:
+    """mmm-framework's MFF semantics: a variable given only in total (blank or 'National'
+    Geography) is spread across the geos; Campaign rows are summed unless split."""
+    df = _mff_rows(
+        [
+            ("north", "", "", "sales", 30.0),
+            ("south", "", "", "sales", 10.0),
+            ("National", "", "", "tv", 40.0),
+            ("north", "", "brand", "search", 2.0),
+            ("north", "", "promo", "search", 3.0),
+            ("south", "", "brand", "search", 1.0),
+        ]
+    )
+    ds, schema = dataset_from_mff(df, MffOptions(roles={"sales": "target"}))
+    assert dict(ds.sizes) == {"date": 3, "geo": 2}
+    assert ds["tv"].sel(geo="north").values.tolist() == [20.0] * 3  # equal split
+    assert ds["search"].sel(geo="north").values.tolist() == [5.0] * 3  # campaigns summed
+    assert ds["search"].sel(geo="south").values.tolist() == [1.0] * 3
+    assert not [i for i in validate_dataset(schema, ds) if i.severity.value == "error"]
+    # by the KPI's share of each geo, as mmm-framework's 'sales' allocation
+    kpi, _ = dataset_from_mff(
+        df, MffOptions(roles={"sales": "target"}, allocation={"Geography": "kpi"})
+    )
+    assert kpi["tv"].sel(geo="north").values.tolist() == [30.0] * 3
+    assert kpi["tv"].sel(geo="south").values.tolist() == [10.0] * 3
+    # a breakdown kept as a dim on request
+    split, _ = dataset_from_mff(df, MffOptions(split=["Campaign"]))
+    assert "campaign" in split.dims and "brand" in [str(c) for c in split["campaign"].values]
+    # a variable may not mix per-geo rows and national rows
+    mixed = pd.concat([df, _mff_rows([("", "", "", "sales", 40.0)])], ignore_index=True)
+    with pytest.raises(MapiError, match="rows for single Geography labels"):
+        dataset_from_mff(mixed, MffOptions())
+
+
 def test_mff_preset_errors() -> None:
     with pytest.raises(MapiError, match="no 'VariableValue'"):
         dataset_from_mff(_mff().drop(columns="VariableValue"), MffOptions())

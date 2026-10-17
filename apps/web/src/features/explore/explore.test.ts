@@ -28,7 +28,7 @@ import {
   suggestionKey,
   vifReading,
 } from "./plain";
-import { barsPlot, fevdPlot, fitPlot, histogramPlot, irfPlot, lagPlot, linesPlot, stlPlot, xType } from "./plots";
+import { barsPlot, fevdPlot, fitPlot, histogramPlot, irfPlot, lagPlot, linesPlot, missingSharePlot, stlPlot, xType } from "./plots";
 import { periodUnit } from "./sections-meta";
 import { DATA_SECTIONS, facetLabel, parseIndex, parseView, seriesLabel, ViewFormatError, type SectionViews } from "./views";
 
@@ -96,6 +96,11 @@ describe("plain readings (data)", () => {
   it("reads quality, missingness and outliers", () => {
     expect(qualityReading(view("quality", ds.ingest.views.quality)).tone).toBe("good");
     expect(qualityReading({ items: [{ code: "NEGATIVE_SPEND", severity: "error", message_plain: "x" }] } as never)).toMatchObject({ tone: "bad" });
+    // things to know are not "no problems found" (regression: the page said so above a list of them)
+    const infoOnly = qualityReading({ items: [{ code: "MISSING", severity: "info", message_plain: "0.3% missing" }, { code: "OUTLIERS", severity: "info", message_plain: "16.5% extreme" }] } as never);
+    expect(infoOnly).toMatchObject({ tone: "good" });
+    expect(infoOnly.text).toBe("No problems to fix; 2 things to know.");
+    expect(qualityReading({ items: [] }).text).toBe("No data problems found.");
     expect(missingnessReading(view("missingness", ds.ingest.views.missingness)).text).toMatch(/^spend \(0\.\d%\) has missing values; spend the most\. The longest gap is 4 periods in spend\./);
   });
 
@@ -107,7 +112,9 @@ describe("plain readings (data)", () => {
     expect(correlationReading(corr)).toMatchObject({ tone: "warn" });
     const ccf = view("ccf", ds.explore.views.ccf);
     expect(ccfReading(ccf).text).toContain("lead");
-    expect(leadReading(ccf.items![0]!, "revenue", "week")).toMatch(/^spend\[tv\] leads: revenue falls 7 weeks after it moves/);
+    // prewhitened by default (M3.5 review): the raw view's spurious "falls 7 weeks after" peak is gone
+    expect(ccf.prewhitened).toBe(true);
+    expect(leadReading(ccf.items![0]!, "revenue", "week")).toMatch(/^spend\[tv\]: no clear link with revenue/);
     expect(stationarityReading(view("stationarity", ds.explore.views.stationarity)).text).toMatch(/series return to a stable level/);
     expect(stlReading(view("stl", ds.explore.views.stl).items![0]!).text).toContain("is strong (0.82): model the season explicitly");
     expect(vifReading(view("vif", ds.explore.views.vif)).tone).toMatch(/good|warn/);
@@ -129,8 +136,11 @@ describe("plain readings (models)", () => {
     const forecast = view("forecast", mmm.explore.views.forecast);
     expect(endOfHorizon(forecast.forecasts![0]!)).toMatch(/^By .+, revenue is most likely about .+ \(90% likely between/);
     const comparison = view("comparison", arimax2.explore.views.comparison);
-    expect(comparisonReading(comparison).text).toBe("model://default/sales-arimax@v2 has the lowest MAPE. But the differences in accuracy could be chance (Diebold-Mariano).");
-    expect(dmPair(comparison.tests![0]!)).toEqual(["model://default/sales-arimax@v2", "model://default/sales-arimax@v1"]);
+    // forecasters scored from one origin get no Diebold-Mariano verdict (M3.5 review)
+    expect(comparisonReading(comparison).text).toBe("model://default/sales-arimax@v2 has the lowest MAPE.");
+    expect(comparison.tests ?? []).toEqual([]);
+    expect((comparison.warnings_plain ?? []).join(" ")).toContain("one forecast origin");
+    expect(dmPair({ test: "test.diebold_mariano", statistic: -2, p_value: 0.01, alpha: 0.05, reject: true, decision: "different", verdict_plain: "x", details: { model_a: "a", model_b: "b" } } as never)).toEqual(["a", "b"]);
     expect(bestByMetric(comparison)).toMatchObject({ mape: "model://default/sales-arimax@v2", n_params: null });
     expect(parseModelRef("model://default/sales-arimax@v2")).toEqual({ project: "default", name: "sales-arimax", version: 2 });
     expect(paramLabel({ name: "beta", coords: { channel: "tv" } })).toBe("beta[tv]");
@@ -159,5 +169,13 @@ describe("plot builders", () => {
     expect(xType([1, 2])).toBe("quantitative");
     expect(xType(["a"])).toBe("ordinal");
     expect(plots[1]!.datasets.bins).toHaveLength(30);
+  });
+
+  it("let Vega choose the precision of percent axes (no duplicate rounded ticks)", () => {
+    // Regression: a fixed ".1~%" on a 0-0.3% range rendered "0% 0% 0% 0.1% 0.1% ..."
+    const spec = JSON.stringify(missingSharePlot([{ name: "spend", missing_share: 0.003 }, { name: "price", missing_share: 0.0004 }])!.spec);
+    expect(spec).toContain('"axis":{"format":"~%"}');
+    expect(spec).toContain('"format":".2~%"'); // the tooltip keeps a readable precision
+    expect(missingSharePlot([{ name: "spend", missing_share: 0 }])).toBeNull();
   });
 });

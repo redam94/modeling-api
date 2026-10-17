@@ -218,24 +218,35 @@ _CHECKS: list[GovernanceCheckDef] = [
             "metric": {"type": "string", "default": "rmse",
                        "enum": ["rmse", "mae", "mape", "smape", "crps"]},
             "block": {"type": "integer", "minimum": 1, "maximum": 520,
-                      "description": "Periods shuffled together (default: about one season)"},
+                      "description": "Periods of the drivers shuffled together (default: a "
+                      "twentieth of the series)"},
         }),
         about=_a(
             "Beats a shuffled result",
-            "Refits the model on a copy of the data where the result column is shuffled at "
-            "random; a real model must do clearly better on the true data than on noise.",
+            "Refits the model on copies of the data where the drivers are shuffled in time "
+            "(for a model without drivers, the result's ups and downs); a real model must do "
+            "clearly better on the true data than on the shuffled copies.",
             ["Every model whose accuracy is used to make decisions"],
             ["Models without a test period (there is nothing to compare)"],
             ["The model's data, its settings and a test period"],
-            ["Shuffling breaks any real link between drivers and result"],
+            ["Shuffling the drivers breaks any real link between them and the result, while "
+             "trend, season and the result itself stay as they are"],
             ["The share of shuffled fits that did as well as the real one (a p-value)",
              "The distribution of shuffled scores"],
             _I, _LONG,
-            "The real model's error is lower than all 20 shuffled fits: p = 0.0, pass.",
+            "The real model forecasts better than all 19 shuffled fits: p = 0.05, pass.",
             related=["null.noise_regressors", "baseline.beats_naive"],
-            expert="Permutation (randomisation) test: the holdout metric of the real fit is "
-            "compared with K refits on permuted targets (block permutation along time keeps "
-            "the marginal distribution); p = (1 + #{perm <= real}) / (K + 1).",
+            expert="Permutation (randomisation) test on a scale-free statistic: holdout skill "
+            "1 - L(model) / L(null forecast) on each dataset (the null forecast is the last "
+            "training value of an integrated series, else its mean). Null: models with drivers "
+            "keep the result and get their drivers block-permuted jointly (so trend, season "
+            "and controls cannot pass on their own; a model that ignores its drivers is "
+            "tested as one without); models without drivers get the d-th differences of the "
+            "result permuted i.i.d. and re-integrated from the original start (d from the "
+            "ARIMA order or ADF/KPSS), which keeps the integration order and the increments' "
+            "distribution but destroys predictable dynamics. Without a time order the result "
+            "is permuted across rows and the statistic is the holdout error. "
+            "p = (1 + #{perm >= real}) / (K + 1).",
             refs=[("Ojala & Garriga (2010), Permutation tests for studying classifier "
                    "performance", None)],
         ),
@@ -257,14 +268,18 @@ _CHECKS: list[GovernanceCheckDef] = [
             ["Pure forecasting models without drivers"],
             ["The model's data and settings"],
             ["The fake drivers look like real ones but carry no signal"],
-            ["The largest share of the result given to a fake driver",
-             "Whether any fake driver came out clearly non-zero"],
+            ["The largest share of the real drivers' effect given to a fake driver",
+             "Whether any fake driver came out clearly above the limit"],
             _I, _LONG,
-            "Three fake channels get 0.4%, 0.1% and 0.9% of sales: pass.",
+            "Three fake channels get 0.4%, 0.1% and 0.9% of the media effect: pass.",
             related=["null.permutation_target", "plausibility.signs"],
             expert="Placebo regressors drawn as Gaussian noise or as a driver shuffled in "
-            "blocks; the statistic is the largest absolute contribution share (or the "
-            "posterior probability that the effect exceeds a practical threshold).",
+            "blocks, with the model's default prior (never a real channel's prior or "
+            "calibration); the statistic is the largest placebo share of the real drivers' "
+            "total effect (by ablation through the score path). Bayesian: flagged when "
+            "P(share > warn limit) >= 0.9 over the posterior (practical equivalence, valid "
+            "for sign-constrained effects); frequentist: placebo p-values with Holm's "
+            "correction.",
         ),
     ),
     GovernanceCheckDef(
@@ -678,11 +693,52 @@ def policies_for(
     return sorted(out, key=lambda p: (p.project_id is not None, p.id))
 
 
+_ParamRule = Literal["max", "min", "union", "union_map"]
+_PARAM_RULES: Final[dict[str, dict[str, _ParamRule]]] = {
+    "null.permutation_target": {"n_permutations": "max"},
+    "null.noise_regressors": {"n_noise": "max"},
+    "null.placebo_time_shift": {"shifts": "union"},
+    "baseline.beats_naive": {"methods": "union"},
+    "residuals.whiteness": {"lags": "max"},
+    "stability.rolling_params": {"params": "union"},
+    "plausibility.signs": {"expected": "union_map"},
+    "sensitivity.prior": {"scales": "union"},
+    "recovery.simulated": {"n_sims": "max", "params": "union"},
+    "data.quality": {"max_missing": "min", "min_history_periods": "max"},
+}
+"""How a check parameter set by two policies merges: ``max``/``min`` keep the stricter
+number, ``union`` keeps every list item (more benchmarks, shifts, watched parameters) and
+``union_map`` keeps every key with the earlier policy winning a conflict. A parameter
+without a rule (a metric, a block length, a seed) keeps the earlier policy's value; a
+later policy may only add parameters the earlier ones left unset."""
+
+
+def _merge_params(check: str, first: Mapping[str, Any], later: Mapping[str, Any]) -> dict[str, Any]:
+    rules = _PARAM_RULES.get(check, {})
+    out = dict(first)
+    for key, value in later.items():
+        if key not in out:
+            out[key] = value
+            continue
+        rule, prev = rules.get(key), out[key]
+        if rule == "max":
+            out[key] = max(prev, value)
+        elif rule == "min":
+            out[key] = min(prev, value)
+        elif rule == "union" and isinstance(prev, list) and isinstance(value, list):
+            out[key] = [*prev, *(v for v in value if v not in prev)]
+        elif rule == "union_map" and isinstance(prev, dict) and isinstance(value, dict):
+            out[key] = {**value, **prev}
+    return out
+
+
 def effective_checks(policies: Sequence[GovernancePolicy]) -> list[PolicyCheck]:
-    """The union of the policies' checks: for a check named twice, the stricter severity
-    and the stricter thresholds win (tenant policies are a floor projects cannot lower)."""
+    """The union of the policies' checks: for a check named twice, the stricter severity,
+    the stricter thresholds and the stricter parameters win (tenant policies are a floor
+    projects cannot lower; see :data:`_PARAM_RULES`). Tenant policies are merged first
+    whatever order ``policies`` comes in."""
     merged: dict[str, PolicyCheck] = {}
-    for p in policies:
+    for p in sorted(policies, key=lambda p: p.project_id is not None):
         for c in p.checks:
             prev = merged.get(c.check)
             if prev is None:
@@ -693,7 +749,7 @@ def effective_checks(policies: Sequence[GovernancePolicy]) -> list[PolicyCheck]:
                 update={
                     "severity": sev,
                     "thresholds": _stricter(c.check, prev.thresholds, c.thresholds),
-                    "params": {**prev.params, **c.params},
+                    "params": _merge_params(c.check, prev.params, c.params),
                 }
             )
     return list(merged.values())

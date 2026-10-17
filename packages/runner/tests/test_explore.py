@@ -313,3 +313,48 @@ def test_ingest_style_explorer_on_the_linear_schema(tmp_path: Path) -> None:
     status = {s.section: s.status for s in index.sections}
     assert status["groups"] == "skipped" and status["stl"] == "ok"
     assert not ctx.warnings
+
+
+def test_the_overview_does_not_say_no_problems_above_things_to_know() -> None:
+    """Regression: the overview said "No data problems found." while the quality section
+    listed "0.3% of spend is missing" (good-to-know items)."""
+    from mapi_runner.worker.explore_data import quality_warnings
+
+    data = linear_data()
+    spend = data["spend"].values.copy()
+    spend[5] = np.nan
+    data = data.assign(spend=("time", spend))
+    c = data_context(data, SCHEMA)
+    issues = quality_warnings(c)
+    summary = DATA_SECTION_FUNCS["overview"](c).summary_plain  # type: ignore[attr-defined]
+    infos = [w for w in issues if w.severity == "info"]
+    assert infos and all(w.severity == "info" for w in issues), issues
+    assert "No data problems found" not in summary
+    assert f"{len(infos)} thing(s) to know" in summary
+
+
+def test_comparison_runs_no_significance_test_on_one_forecast_path() -> None:
+    """Regression: two forecasters scored on one holdout are compared on 1..H-step errors
+    from a single forecast origin; Diebold-Mariano with h = 1 on that path called equally
+    accurate forecasts different 74% of the time. The comparison keeps the metrics and
+    rankings but runs no significance test on such a path, and says why."""
+    from mapi_conformance.runner import load_fixture
+    from mapi_sdk.harness import fit_spec
+
+    fx = load_fixture("sm_arimax")
+    data, tables = fx.generate(0, "tiny")
+    spec = fx.spec("tiny")
+    reg = default_registry()
+    a = fit_spec(spec, data, registry=reg, raw_schema=fx.raw_schema(data), side_tables=tables)
+    settings = {**dict(spec.model.settings), "order": [0, 1, 1]}
+    other = spec.model_copy(update={"model": spec.model.model_copy(update={"settings": settings})})
+    b = fit_spec(other, data, registry=reg, raw_schema=fx.raw_schema(data), side_tables=tables)
+    req = ModelExploreRequest.model_validate({"sections": ["comparison"]})
+    ctx = ModelContext(
+        a, data, reg, req, ref="model://p/a@v1", side_tables=tables,
+        compare=[("model://p/b@v1", b)],
+    )  # fmt: skip
+    cmp = MODEL_SECTION_FUNCS["comparison"](ctx).model_dump()
+    assert cmp["models"] == ["model://p/a@v1", "model://p/b@v1"]
+    assert cmp["tests"] == []
+    assert any("one forecast origin" in w for w in cmp["warnings_plain"])

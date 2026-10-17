@@ -1,5 +1,5 @@
 /** Plain-language labels of About-card fields (difficulty, runtime, kinds). */
-import type { AboutKind, Difficulty, TypicalRuntime } from "./types";
+import type { AboutKind, Difficulty, Recommendation, TypicalRuntime } from "./types";
 
 export const DIFFICULTY_META: Record<Difficulty, { label: string; description: string; variant: "success" | "info" | "warning" }> = {
   beginner: { label: "Beginner friendly", description: "No statistics background needed.", variant: "success" },
@@ -52,4 +52,10 @@ export function parseAboutKey(key: string | null | undefined): { kind: AboutKind
   const kind = key.slice(0, i) as AboutKind;
   const id = key.slice(i + 1);
   return kind in KIND_META && /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(id) ? { kind, id } : null;
+}
+
+/** Whether a recommendation may be called the best match: it fits more answers than it misses
+ * (a 0% match is never the "best match", even when it is the first item). */
+export function isGoodMatch(rec: Pick<Recommendation, "score" | "reasons_plain">): boolean {
+  return rec.score > 0.5 && (rec.reasons_plain?.length ?? 0) > 0;
 }

@@ -595,19 +595,25 @@ _test("test.granger", _a(
     ["Proving cause and effect (it only shows predictive help)"],
     ["Two numeric series over time"],
     ["Both series are stable (difference them first if not)"],
-    ["p-value per lag and the smallest p-value"],
+    ["A p-value corrected for the number of lags tried", "p-value per lag"],
     _I, _SEC,
     "Search interest helps predict sales two weeks later (p = 0.004).",
     related=["ts.var", "test.adf"],
     expert="Granger causality F-tests for lags 1..maxlag (statsmodels "
-    "grangercausalitytests, ssr F test); H0: the driver's lags have zero coefficients.",
-    refs=[_SM, ("Granger (1969)", None)],
+    "grangercausalitytests, ssr F test); H0: the driver's lags have zero coefficients. "
+    "The verdict uses the smallest p-value Holm-corrected for the maxlag lags tried (an "
+    "uncorrected minimum about doubles the false-positive rate), or the F test at one "
+    "prespecified `lag`; the per-lag p-values are descriptive.",
+    refs=[_SM, ("Granger (1969)", None),
+          ("Holm (1979), A simple sequentially rejective multiple test procedure", None)],
     fits={"goal": ["compare_series", "explain_drivers"], "data_shape": ["several_series"]},
 ), {"y": _var("The result"), "x": _var("The candidate driver"),
-    "maxlag": _int("Largest lag tested", 4, 1, 52)},
-    {"min_p_value": _f("number", "Smallest p-value over the lags"),
+    "maxlag": _int("Largest lag tested", 4, 1, 52),
+    "lag": _int("Test only this lag (no correction needed)", None, 1, 52)},
+    {"min_p_value": _f("number", "Smallest uncorrected p-value over the lags"),
      "best_lag": _f("integer", "Lag with the smallest p-value"),
-     "p_values": _f("object", "p-value by lag")},
+     "p_values": _f("object", "Uncorrected p-value by lag (descriptive)"),
+     "correction": _f("string", "holm (lags 1..maxlag) or none (one lag)")},
     required=["y", "x"])  # fmt: skip
 
 _test("test.acf_pacf", _a(
@@ -943,7 +949,8 @@ _split("split.geo_holdout", GeoHoldoutPlan, _a(
 _split("split.nested", NestedPlan, _a(
     "Tuning inside a backtest",
     "Runs a second, inner backtest inside each training window, so settings are tuned "
-    "without peeking at the outer test periods.",
+    "without peeking at the outer test periods (search.grid tunes on the inner folds and "
+    "scores on the outer ones).",
     ["You tune settings (orders, penalties) and want an honest final error"],
     ["You do not tune anything"],
     ["A dataset with a time dimension and enough history for both levels"],
@@ -970,14 +977,21 @@ _node("search.arma_order", NodeKind.SEARCH, _a(
     _I, _SEC,
     "Out of p = 0..4 and q = 0..4, ARMA(2,1) has the lowest AIC.",
     related=["test.acf_pacf", "ts.sarimax", "search.sarima_order"],
-    expert="Grid search of SARIMAX(p,d,q) fits by AIC/BIC/HQIC/AICc (statsmodels "
-    "arma_order_select_ic style); failed fits are skipped and reported.",
+    expert="Grid search of SARIMAX(p,d,q)(0,D,0)s fits by AIC/BIC/HQIC/AICc (statsmodels "
+    "arma_order_select_ic style), with the differencing of the model that will be fitted; "
+    "failed fits are skipped and reported. With a split plan, only the periods before its "
+    "first test window are searched, so a backtest on the plan stays out of sample.",
     refs=[_SM], fits=_SEARCH_FIT,
 ), params={"var": _var("The series (default: the target)"),
            "max_p": _int("Largest AR order", 4, 0, 12), "max_q": _int("Largest MA order", 4, 0, 12),
            "d": _int("Differences inside the model", 0, 0, 2),
+           "D": _int("Seasonal differences inside the model", 0, 0, 1),
+           "period": _int("Season length (with D = 1)", None, 2, 400),
            "exog": _vars("Drivers included in every fit", 0), "criterion": _IC,
            "trend": _enum("Trend term", ["n", "c", "t", "ct"], "c")},
+   inputs={"data": PortSpec(type=PortType.DATASET, description="The data to work on"),
+           "split": PortSpec(type=PortType.SPLIT_PLAN, required=False,
+                             description="Search only before the plan's first test window")},
    outputs={"table": PortType.TABLE},
    fields={"best_p": _f("integer", "Best AR order"), "best_q": _f("integer", "Best MA order"),
            "best_order": _f("array", "[p, d, q]"), "best_score": _f("number", "Its criterion"),
@@ -1055,6 +1069,13 @@ _node("search.grid", NodeKind.SEARCH, _a(
     ["The best settings and a table of scores"],
     _X, _LONG, "Try 3 saturation shapes x 2 carry-over lengths, keep the lowest MAPE.",
     related=["split.nested", "model.backtest"], fits={"goal": ["forecast", "validate_model"]},
+    expert="Every grid point is backtested on the plan and the best score wins. With a "
+    "split.nested plan this is nested cross-validation: each outer fold picks its point on "
+    "its own inner folds (inside its training window), refits it on the outer training "
+    "window and scores it on the outer test window; best_score pools those outer "
+    "forecasts (the honest estimate of the tuned model, free of the selection bias of "
+    "scoring the winner on the folds that chose it) and best_settings is the point the "
+    "outer folds chose most often.",
 ), params={"model": {"type": "string", "description": "Catalog model ref (id@range)"},
            "settings": {"type": "object", "description": "Base settings"},
            "grid": {"type": "object", "description": "JSON pointer into settings -> values",
@@ -1067,7 +1088,12 @@ _node("search.grid", NodeKind.SEARCH, _a(
            "split": PortSpec(type=PortType.SPLIT_PLAN)},
    outputs={"table": PortType.TABLE, "best": PortType.MODEL_VERSION},
    fields={"best_settings": _f("object", "The winning settings"),
-           "best_score": _f("number", "Its score"), "n_points": _f("integer", "Points tried")},
+           "best_score": _f("number", "Its score (nested plans: the outer folds' score of "
+                            "the points their inner folds chose)"),
+           "n_points": _f("integer", "Points tried"),
+           "nested": _f("boolean", "Tuned on inner folds and scored on outer folds"),
+           "outer_scores": _f("array", "Nested plans: each outer fold's score"),
+           "selected_per_fold": _f("array", "Nested plans: each outer fold's chosen point")},
    runs_in="child_run")  # fmt: skip
 
 # ==================================================================================== model
@@ -1258,9 +1284,14 @@ _node("compare.diebold_mariano", NodeKind.COMPARE, _a(
     _X, _NOW, "ARIMAX beats ETS but p = 0.31: the difference may be luck.",
     related=["compare.models"],
     expert="Diebold-Mariano test with the Harvey-Leybourne-Newbold small-sample correction "
-    "on squared or absolute loss.",
-    refs=[("Diebold & Mariano (1995)", None)], fits={"goal": ["validate_model"]},
+    "on squared or absolute loss, on one h-step error per backtest fold. Folds `step` "
+    "periods apart share test periods only up to ceil(h / step) - 1 folds, which is the "
+    "number of autocovariances in the long-run variance (h - 1 for consecutive origins); "
+    "the step is read from the folds.",
+    refs=[("Diebold & Mariano (1995)", None),
+          ("Harvey, Leybourne & Newbold (1997)", None)], fits={"goal": ["validate_model"]},
 ), params={"loss": _enum("Loss", ["squared", "absolute"], "squared"), "horizon": _int("h", 1, 1),
+           "step": _int("Periods between fold origins (default: from the folds)", None, 1),
            "alpha": _ALPHA},
    inputs={"a": PortSpec(type=PortType.METRICS), "b": PortSpec(type=PortType.METRICS)},
    outputs={"result": PortType.TEST_RESULT}, fields=_TEST_FIELDS)  # fmt: skip

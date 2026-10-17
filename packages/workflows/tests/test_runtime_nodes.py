@@ -167,6 +167,55 @@ def test_arma_search_recovers_an_ar2_like_statsmodels() -> None:
     assert sarimax_trend("c", 1) is None and sarimax_trend("ct", 1) == "t"
 
 
+def test_arma_search_uses_the_seasonal_difference_and_stays_before_the_tests() -> None:
+    """Regression: the order search fitted ARIMA(p,d,q) without the seasonal difference
+    the final model uses (AR terms absorbed the season) and searched every period,
+    including the backtest's test windows."""
+    from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+    rng = np.random.default_rng(0)
+    n, s = 156, 12
+    y = np.zeros(n)
+    for t in range(n):  # a seasonal random walk: (1 - L^12) y = e
+        y[t] = (y[t - s] if t >= s else 5 * np.sin(2 * np.pi * t / s)) + rng.normal()
+    ds = series_ds(100 + y)
+    out = run_node("search.arma_order", {"max_p": 2, "max_q": 1, "D": 1, "period": s}, data=ds)
+    best = out.result
+    assert best["best_order"] == [0, 0, 0]  # white noise once seasonally differenced
+    meta = out.outputs["table"]["meta"]  # type: ignore[index]
+    assert meta["D"] == 1 and meta["period"] == s
+    row = out.outputs["table"]["rows"][0]  # type: ignore[index]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ref = SARIMAX(100 + y, order=(0, 0, 0), seasonal_order=(0, 1, 0, s), trend=None).fit(
+            disp=False
+        )
+    assert row["aic"] == pytest.approx(ref.aic, rel=1e-6)  # the model that will be fitted
+    # without the seasonal difference, AR terms soak up the season
+    plain = run_node("search.arma_order", {"max_p": 2, "max_q": 1}, data=ds)
+    assert plain.result["best_p"] > 0
+
+    # with a split plan, only the periods before the first test window are searched
+    plan = run_node(
+        "split.expanding_window",
+        {"horizons": [1, 4], "n_folds": 3, "step": 4, "gap": 1},
+        data=ds,
+    ).outputs["plan"]
+    first = min(f["test_start"] for f in plan["folds"])  # type: ignore[index]
+    held = run_node(
+        "search.arma_order",
+        {"max_p": 1, "max_q": 1, "D": 1, "period": s},
+        data=ds,
+        split=plan,
+    )
+    assert held.outputs["table"]["meta"]["n_obs"] == first - 1  # type: ignore[index]
+    kfold = run_node("split.blocked_kfold", {"k": 4}, data=ds).outputs["plan"]
+    with pytest.raises(MapiError, match="before its first test window"):
+        run_node("search.arma_order", {"max_p": 1}, data=ds, split=kfold)
+    with pytest.raises(MapiError, match="season length"):
+        run_node("search.arma_order", {"max_p": 1, "D": 1}, data=ds)
+
+
 def test_var_lag_and_coint_rank_match_statsmodels() -> None:
     from statsmodels.tsa.api import VAR
     from statsmodels.tsa.vector_ar.vecm import select_coint_rank
@@ -254,6 +303,79 @@ def test_kfold_backtest_masks_and_predicts_the_block() -> None:
     )
     assert bt.result["n_folds"] == 4
     assert bt.result["metrics"]["mae"] < 3  # type: ignore[index,operator]
+
+
+def _nested_plan(ds: Any, outer: dict[str, Any]) -> dict[str, Any]:
+    plan = run_node(
+        "split.nested",
+        {
+            "outer": outer,
+            "inner": {"kind": "expanding_window", "horizons": [1, 2], "n_folds": 2, "step": 4},
+        },
+        data=ds,
+    )
+    out = plan.outputs["plan"]
+    assert isinstance(out, dict)
+    return out
+
+
+def test_grid_search_on_a_nested_plan_tunes_inside_and_scores_outside() -> None:
+    """Regression: search.grid ignored the inner folds of a nested plan and picked its
+    winner by the outer folds' score (the optimistic selection bias nested CV removes),
+    and a k-fold outer plan crashed (``horizon.periods ... -90``). Now each outer fold
+    tunes on its own inner folds and scores the inner winner on its outer test window."""
+    from mapi_workflows.runtime.models import backtest_model, fold_metrics, grid_node
+    from wf_ctx import node_ctx
+
+    ds = weekly_series(120, beta=3.0)
+    params = {
+        "model": "ts.sarimax@^1",
+        "settings": {"order": [1, 0, 0], "exog": ["price"]},
+        "grid": {"/order": [[0, 0, 0], [1, 0, 0], [2, 0, 0]]},
+        "metric": "rmse",
+    }
+    for outer in (
+        {"kind": "expanding_window", "horizons": [1, 2], "n_folds": 3, "step": 8},
+        {"kind": "blocked_kfold", "k": 3},
+    ):
+        plan = _nested_plan(ds, outer)
+        assert all(f["inner"] for f in plan["folds"])
+        ctx = node_ctx("search.grid", params, data=ds, split=plan, registry=registry())
+        ctx.services["sandbox"] = True  # no final refit needed for the test
+        res = grid_node(ctx).result
+        assert res["nested"] is True
+        n_outer = len(plan["folds"])
+        assert len(res["outer_scores"]) == n_outer  # type: ignore[arg-type]
+        assert len(res["selected_per_fold"]) == n_outer  # type: ignore[arg-type]
+        # every outer fold's winner is the best point on that fold's inner folds
+        for f, chosen in zip(plan["folds"], res["selected_per_fold"], strict=True):  # type: ignore[arg-type]
+            inner = {**plan, "plan": plan["plan"]["inner"], "folds": f["inner"]}
+            scores = []
+            for order in params["grid"]["/order"]:  # type: ignore[index]
+                fcs, _, _ = backtest_model(
+                    node_ctx("model.backtest", params, data=ds, registry=registry()),
+                    DatasetValue(data=ds),
+                    inner,
+                    settings={**params["settings"], "order": order},  # type: ignore[dict-item]
+                )
+                scores.append(fold_metrics(fcs)["rmse"])
+            assert chosen["/order"] == params["grid"]["/order"][int(np.argmin(scores))]  # type: ignore[index]
+        # the honest estimate pools the outer test errors of the per-fold winners
+        lo, hi = min(res["outer_scores"]), max(res["outer_scores"])  # type: ignore[type-var]
+        assert lo - 1e-9 <= res["best_score"] <= hi + 1e-9  # type: ignore[operator]
+
+
+def test_backtest_on_a_kfold_nested_plan_scores_its_outer_blocks() -> None:
+    ds = weekly_series(120, beta=3.0)
+    plan = _nested_plan(ds, {"kind": "blocked_kfold", "k": 3})
+    bt = run_node(
+        "model.backtest",
+        {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0], "exog": ["price"]}},
+        data=ds,
+        split=plan,
+        registry=registry(),
+    )
+    assert bt.result["n_folds"] == 3
 
 
 def test_metrics_node_reads_a_backtest_or_a_model() -> None:
@@ -363,6 +485,80 @@ def test_diebold_mariano_refuses_horizons_its_folds_cannot_support() -> None:
 
     with pytest.raises(MapiError, match="add folds"):
         run_node("compare.diebold_mariano", {"horizon": 4}, a=payload(e1), b=payload(e2))
+
+
+def _fold_payload(errs: np.ndarray, h: int, step: int) -> dict[str, Any]:
+    """One h-step error per fold, folds ``step`` periods apart (as model.backtest)."""
+    return MetricsPayload.model_validate(
+        {
+            "candidates": [
+                {
+                    "name": "m",
+                    "group": "m",
+                    "metrics": {"mae": float(np.mean(np.abs(errs)))},
+                    "errors": [[0.0] * (h - 1) + [float(x)] for x in errs],
+                    "origins": [100 + step * i for i in range(len(errs))],
+                }
+            ]
+        }
+    ).model_dump(mode="json")
+
+
+def test_diebold_mariano_on_folds_uses_the_fold_spacing() -> None:
+    """Regression: per-fold h-step errors were treated as consecutive-origin errors (h - 1
+    autocovariances in fold units and the HLN factor of h), which for folds 4 periods
+    apart at h = 4 shrank the statistic by 0.41 and refused h = 8 on 6 folds. Folds `step`
+    apart overlap only up to ceil(h / step) - 1 folds."""
+    rng = np.random.default_rng(3)
+    e1, e2 = rng.normal(size=6), rng.normal(scale=3.0, size=6)
+    out = run_node(
+        "compare.diebold_mariano",
+        {"horizon": 4},
+        a=_fold_payload(e1, 4, 4),
+        b=_fold_payload(e2, 4, 4),
+    )
+    ref, p_ref, _ = diebold_mariano(e1, e2, h=1)  # no overlap: the h = 1 formula
+    assert out.result["statistic"] == pytest.approx(ref)
+    assert out.result["p_value"] == pytest.approx(p_ref)
+    assert out.result["details"]["variance_lags"] == 0
+    assert out.result["details"]["fold_step"] == 4
+    eight = run_node(
+        "compare.diebold_mariano",
+        {"horizon": 8},
+        a=_fold_payload(e1, 8, 4),
+        b=_fold_payload(e2, 8, 4),
+    )
+    assert eight.result["details"]["variance_lags"] == 1  # neighbouring folds overlap
+    assert math.isfinite(eight.result["statistic"])
+
+
+def test_diebold_mariano_on_spaced_folds_keeps_size_and_gains_power() -> None:
+    """Simulation: a random walk scored by expanding-window folds 4 periods apart at h = 4
+    (non-overlapping test windows). Two equally good forecasts: rejection near alpha. A
+    forecast with a bias of 2: rejected far more often than with the old h - 1 lags."""
+
+    reps, n_folds, h, step = 300, 12, 4, 4
+    size = power = old_power = 0
+    for seed in range(reps):
+        rng = np.random.default_rng(seed)
+        y = np.cumsum(rng.normal(size=200))
+        origins = [120 + step * i for i in range(n_folds)]
+        actual = np.array([y[o + h - 1] for o in origins])
+        last = np.array([y[o - 1] for o in origins])
+        ea = actual - (last + 0.5)
+        eb = actual - (last - 0.5)
+        ec = actual - (last + 2.0)
+        _, p, _ = diebold_mariano(ea, eb, h=h, lags=0)
+        size += p < 0.05
+        _, p, _ = diebold_mariano(actual - last, ec, h=h, lags=0)
+        power += p < 0.05
+        try:  # the old rule (h - 1 lags in fold units) often has no variance at all
+            _, p, _ = diebold_mariano(actual - last, ec, h=h)
+            old_power += p < 0.05
+        except ValueError:
+            pass
+    assert size / reps <= 0.10, size / reps
+    assert power > old_power, (power, old_power)
 
 
 # ============================================================================ governance

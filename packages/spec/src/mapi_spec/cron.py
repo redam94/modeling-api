@@ -172,12 +172,18 @@ def next_fire(spec: CronSpec | str, after: datetime, tz: str = "UTC") -> datetim
                     cand = day.replace(hour=hour, minute=minute, tzinfo=None)
                     if cand < local.replace(tzinfo=None):
                         continue
-                    aware = cand.replace(tzinfo=zone)
+                    aware = cand.replace(tzinfo=zone)  # fold=0: a repeated time fires once
                     # skip local times that do not exist (spring-forward gaps)
                     roundtrip = aware.astimezone(UTC).astimezone(zone).replace(tzinfo=None)
                     if roundtrip != cand:
                         continue
-                    return aware.astimezone(UTC)
+                    fire = aware.astimezone(UTC)
+                    # Compare in UTC: when ``after`` is in the second pass of a repeated
+                    # (fall-back) hour, the first occurrence of a local time in that hour is
+                    # already in the past; it fired then, or was missed, never again.
+                    if fire <= after:
+                        continue
+                    return fire
         day = (day.replace(tzinfo=None) + timedelta(days=1)).replace(tzinfo=zone)
     raise _bad("the schedule never fires")
 

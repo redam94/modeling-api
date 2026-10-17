@@ -44,6 +44,8 @@ export function nullDistributionPlot(inline: unknown): BuiltPlot | null {
   const shuffled = Array.isArray(v.shuffled) ? v.shuffled.filter((x): x is number => typeof x === "number" && Number.isFinite(x)) : [];
   if (typeof v.real !== "number" || shuffled.length < 2) return null;
   const metric = typeof v.metric === "string" ? v.metric.toUpperCase() : "Error";
+  // v0.5 (M3.5 review): time-series scores are a skill (higher is better), named by `axis`
+  const axis = typeof v.axis === "string" ? v.axis : `${metric} on held-out data`;
   const rows: Row[] = shuffled.map((score) => ({ score }));
   const spec: JsonObject = {
     height: 180,
@@ -52,7 +54,7 @@ export function nullDistributionPlot(inline: unknown): BuiltPlot | null {
         data: { name: "shuffled" },
         mark: { type: "bar", opacity: 0.75, cornerRadiusTopLeft: 2, cornerRadiusTopRight: 2 },
         encoding: {
-          x: { field: "score", type: "quantitative", bin: { maxbins: 15 }, title: `${metric} on held-out data` },
+          x: { field: "score", type: "quantitative", bin: { maxbins: 15 }, title: axis },
           y: { aggregate: "count", type: "quantitative", title: "Shuffled fits" },
           tooltip: [{ aggregate: "count", type: "quantitative", title: "Fits" }],
         },
@@ -148,7 +150,7 @@ export function EvidenceItemView({ item, check }: { item: EvidenceItem; check: s
     return (
       <figure className="grid gap-2">
         {plot ? <PlotFrame kind="vega-lite" spec={plot.spec} datasets={plot.datasets} title={`Shuffled-result scores (${check})`} height={220} exportName={`${check}-null-distribution`} /> : null}
-        <figcaption className="text-xs text-muted-foreground">{caption ?? "Scores of the fits on shuffled results"}. The real model should sit clearly to the better side of the bars.</figcaption>
+        <figcaption className="text-xs text-muted-foreground">{caption ?? "Scores of the fits on shuffled data"}. The real model should sit clearly to the better side of the bars.</figcaption>
         <details>
           <summary className="cursor-pointer text-xs text-muted-foreground">The numbers</summary>
           <InlineTable value={item.inline} />

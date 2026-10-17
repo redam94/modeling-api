@@ -53,7 +53,11 @@ the workflow run's monitor.
 and version (the first is the one the tests use as reference), then **Compare**. The page
 shows the holdout metrics with the best value of each metric marked, the Diebold-Mariano
 tests in plain words ("about equally accurate", or an edge that is more than chance), the
-ranking per metric and every version's own fit statistics.
+ranking per metric and every version's own fit statistics. Time-series forecasters
+(statsmodels and the other `ts` models) forecast the whole held-out period from one origin,
+so their errors form a single path on which no test of equal accuracy is valid: for them
+the page shows the metrics and rankings and says to compare their backtests instead (or run
+a `compare.diebold_mariano` workflow node on rolling-origin backtest errors).
 
 ![Three versions side by side with Diebold-Mariano tests](../assets/screenshots/explorer-model-compare.png){ .mapi-shot }
 
@@ -121,8 +125,10 @@ api -X POST "$API/v1/models:compare" -d '{
 This explores the first version with the others as `compare_with` and writes the `comparison`
 view: every version's holdout metrics side by side, a ranking per error metric (lower is
 better), and pairwise **Diebold-Mariano** tests (with the Harvey-Leybourne-Newbold small-
-sample correction) on the first version's held-out periods - "is the difference in accuracy
-more than chance?". Add `"sections": ["comparison", "params"]` for more.
+sample correction and a Newey-West number of autocovariances) on the first version's
+held-out periods - "is the difference in accuracy more than chance?". The tests are left out,
+with a warning, when a version forecasts the held-out periods from one origin (time-series
+forecasters). Add `"sections": ["comparison", "params"]` for more.
 
 ## The sections
 

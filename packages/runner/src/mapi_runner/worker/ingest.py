@@ -47,6 +47,8 @@ from mapi_spec.guided import ColumnProfile, safe_name
 from mapi_spec.ingest import (
     COMBINE_SEPARATOR,
     MFF_COLUMNS,
+    MFF_PANEL_KEY_COLUMNS,
+    MFF_TOTAL_LABELS,
     DimMapping,
     IngestMapping,
     IngestPreset,
@@ -521,20 +523,28 @@ def mff_table(
         table[dim] = label.astype(str)
         index[dim] = dim
         combined |= set(cols)
+    # every key column, for the duplicate check on the full key (as mmm-framework's)
+    full_key = [opts.period_column, *index.keys() - {opts.period_column}]
+    spread: list[tuple[str, list[str]]] = []
     for col, dim in opts.key_columns.items():
         if col in combined or col not in df.columns:
             continue
-        labels = df[col].astype("string").fillna("").str.strip()
-        if labels.nunique() > 1:
-            table[col] = labels.astype(str)
+        labels = df[col].astype("string").fillna("").str.strip().astype(str)
+        table[col] = labels
+        full_key.append(col)
+        if col not in MFF_PANEL_KEY_COLUMNS and col not in opts.split:
+            continue  # a breakdown (Campaign, Outlet, Creative): summed below
+        levels = sorted({v for v in labels.unique() if v.lower() not in MFF_TOTAL_LABELS})
+        if len(levels) > 1 or (col in opts.split and levels):
             index[col] = dim
+            spread.append((col, levels))
     clash = sorted(set(variables) & (set(index) | set(index.values())))
     if clash:
         raise _mff_error(
             f"the variable {clash[0][:64]!r} has the name of an MFF key column or dim",
             action="Rename the variable in VariableName.",
         )
-    keys = [*index, "__var__"]
+    keys = [*full_key, "__var__"]
     dup = table.duplicated(subset=keys)
     if dup.any():
         first = {k: str(v)[:40] for k, v in table.loc[dup, keys].iloc[0].to_dict().items()}
@@ -544,12 +554,81 @@ def mff_table(
             "aggregate duplicates first.",
             untrusted_text=str(first),
         )
+    for col, levels in spread:
+        table = _spread_totals(table, col, levels, opts, notes)
+    # breakdowns not kept as dims are summed up to the modelled dims (a cell given only
+    # as missing values stays missing)
+    table = table.groupby([*index, "__var__"], as_index=False, sort=False)["__value__"].sum(
+        min_count=1
+    )
     wide = table.pivot_table(
         index=list(index), columns="__var__", values="__value__", aggfunc="first", dropna=False
     )
     wide.columns = [str(c) for c in wide.columns]
     out = wide.reset_index()
     return out, index, variables
+
+
+def _spread_totals(
+    table: pd.DataFrame,
+    col: str,
+    levels: list[str],
+    opts: MffOptions,
+    notes: Notes | None,
+) -> pd.DataFrame:
+    """Rows of ``col``'s coarser level (a blank, ``National`` or ``Total`` label) spread
+    across ``levels``: a variable given only in total (national TV) gets each level's share
+    - equal, or the KPI's share of the level (``opts.allocation``), as mmm-framework's
+    ``MFFLoader`` disaggregates national media. A variable may not mix the two levels."""
+    total = table[col].str.lower().isin(MFF_TOTAL_LABELS)
+    if not total.any():
+        return table
+    mixed = sorted(set(table.loc[total, "__var__"]) & set(table.loc[~total, "__var__"]))
+    if mixed:
+        raise _mff_error(
+            f"the variable {mixed[0][:64]!r} has rows for single {col} labels and rows for "
+            f"all of them (a blank or 'National' {col})",
+            f"/mapping/mff/{col}",
+            action=f"Give each variable at one level: per {col}, or in total only.",
+        )
+    method = opts.allocation.get(col, "equal")
+    weights = pd.Series(1.0 / len(levels), index=levels)
+    kpi = opts.kpi or next((v for v, r in opts.roles.items() if r == "target"), None)
+    if method == "kpi":
+        rows = table[(table["__var__"] == kpi) & ~total] if kpi is not None else table[:0]
+        sums = rows.groupby(col)["__value__"].sum().reindex(levels)
+        if sums.notna().all() and float(sums.sum()) > 0 and (sums >= 0).all():
+            weights = sums / float(sums.sum())
+        elif notes is not None:
+            notes.append(
+                {
+                    "pointer": f"/mapping/mff/allocation/{col}",
+                    "message": f"variables given in total were spread equally across {col}: "
+                    + (
+                        f"the KPI {kpi!r} has no positive total per {col}"
+                        if kpi
+                        else "no KPI is known (give a variable the role 'target' or set 'kpi')"
+                    ),
+                }
+            )
+    parts = [table[~total]]
+    coarse = table[total]
+    for level in levels:
+        part = coarse.copy()
+        part[col] = level
+        part["__value__"] = part["__value__"] * float(weights[level])
+        parts.append(part)
+    if notes is not None:
+        names = sorted(set(coarse["__var__"]))
+        notes.append(
+            {
+                "pointer": f"/mapping/mff/{col}",
+                "message": f"{len(names)} variable(s) given in total ({', '.join(names[:5])}) "
+                f"were spread across the {len(levels)} {col} levels "
+                + ("equally" if method == "equal" or weights.nunique() == 1 else "by the KPI"),
+            }
+        )
+    return pd.concat(parts, ignore_index=True)
 
 
 def dataset_from_mff(

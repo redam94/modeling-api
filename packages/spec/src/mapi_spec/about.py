@@ -624,6 +624,7 @@ def recommend(
     *,
     limit: int = 10,
     include_about: bool = False,
+    fallback: Iterable[tuple[AboutKind | str, str, About]] | None = None,
 ) -> ChooserResult:
     """Rank ``candidates`` (``(kind, id, About)``) against ``answers`` (pure, deterministic).
 
@@ -632,15 +633,19 @@ def recommend(
     undeclared questions are neutral. ``experience`` below the item's difficulty and
     ``speed`` below its typical runtime cost one point per level. Scores are normalised to
     ``[0, 1]``; ties break by the number of answers an item matches explicitly (an item made
-    for every answer before one that is silent on some), then difficulty, then id. Items
-    whose ``goal`` does not match are dropped when at least one item matches it.
+    for every answer before one that is silent on some), then difficulty, then id.
+
+    When ``goal`` is answered, an item made for other goals is never recommended (items
+    whose ``goal`` does not match are dropped). When no candidate matches the goal,
+    ``fallback`` (other kinds: the building blocks behind the starting points) is ranked
+    instead.
     """
     given = {a.question_id: set(a.values) for a in answers}
     exp_rank = (
         min(Difficulty(v).rank for v in given["experience"]) if "experience" in given else None
     )
     speed_cap = min(_SPEED_MAX[v].rank for v in given["speed"]) if "speed" in given else None
-    scored: list[tuple[float, int, int, str, Recommendation, bool]] = []
+    scored: list[tuple[float, int, int, str, Recommendation, bool, bool]] = []
     for kind, cid, about in candidates:
         points, total = 0.0, 0.0
         reasons: list[str] = []
@@ -692,9 +697,12 @@ def recommend(
             typical_runtime=about.typical_runtime,
             about=about if include_about else None,
         )
-        scored.append((-score, -len(reasons), about.difficulty.rank, cid, rec, goal_match))
-    if "goal" in given and any(s[5] for s in scored):
-        scored = [s for s in scored if s[5]]
+        silent = "goal" not in about.fits  # made neither for the goal nor for another one
+        scored.append((-score, -len(reasons), about.difficulty.rank, cid, rec, goal_match, silent))
+    if "goal" in given:
+        if fallback is not None and not any(s[5] for s in scored):
+            return recommend(answers, fallback, limit=limit, include_about=include_about)
+        scored = [s for s in scored if s[5] or s[6]]
     scored.sort(key=lambda s: (s[0], s[1], s[2], s[3]))
     return ChooserResult(
         items=[s[4] for s in scored[: max(0, limit)]],

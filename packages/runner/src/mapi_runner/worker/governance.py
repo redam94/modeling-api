@@ -6,9 +6,15 @@ Every check of :data:`mapi_spec.governance.GOVERNANCE_CHECKS` is implemented her
 ========================== =================================================================
 check                      how it is measured
 ========================== =================================================================
-``null.permutation_target`` refit on block-shuffled targets ``n_permutations`` times (same
-                           budgeted settings as the real refit); ``p = (1 + #{shuffled <=
-                           real}) / (K + 1)`` on the holdout metric
+``null.permutation_target`` ``n_permutations`` refits on shuffled data (same budgeted
+                           settings as the real refit); statistic: holdout skill against
+                           naive on each dataset (scale-free); null: models with drivers keep
+                           the result and get the drivers block-shuffled (trend, season and
+                           controls alone cannot pass), models without drivers (or that ignore
+                           them) get the ``d``-th differences of the result shuffled and
+                           re-integrated (``d`` from the ARIMA order or ADF/KPSS);
+                           ``p = (1 + #{shuffled >= real}) / (K + 1)``; without a time order,
+                           the result shuffled across rows on the holdout metric
 ``null.noise_regressors``  add ``n_noise`` placebo drivers (a shuffled real driver or
                            Gaussian noise; new channels for channel-dim models, new
                            variables otherwise), refit, and measure each one's effect share
@@ -27,9 +33,10 @@ check                      how it is measured
 ``plausibility.signs``     media/spend effects must raise the KPI (ablation per draw) or the
                            listed ``expected`` signs hold (share of the posterior, or of the
                            sampling distribution, on the wrong side)
-``sensitivity.prior``      Bayesian only: refit with every prior scale in the settings
-                           multiplied by each of ``scales``; the largest relative move of a
-                           key posterior mean
+``sensitivity.prior``      Bayesian only: refit with every prior width the model uses (its
+                           settings with the plugin's defaults and translated business
+                           priors written out) multiplied by each of ``scales``; the largest
+                           relative move of a key posterior mean
 ``recovery.simulated``     simulate targets from the fit (expected value + block-bootstrapped
                            residuals), refit, and count how often the 90% intervals contain
                            the fitted values (SBC-lite; ``n_sims`` refits)
@@ -76,6 +83,7 @@ from mapi_spec.run import RunnerPhase
 from mapi_spec.schema import DataSchema, Role, VarSpec
 from mapi_spec.scorecard import CheckDirection
 from mapi_spec.spec import ModelSpec
+from mapi_workflows.runtime.models import fit_burn_in
 
 from mapi_runner.worker import stats
 from mapi_runner.worker.explore_data import data_context, explore_period, quality_warnings
@@ -101,7 +109,12 @@ _NOT_KEY: Final = re.compile(
     r"chol|corr|^z_|_z$|log_lik|^mu$)",
     re.IGNORECASE,
 )
-_PRIOR_SCALE_KEYS: Final = frozenset({"sigma", "scale", "sd", "tau", "beta", "b"})
+_PRIOR_SCALE_KEYS: Final = frozenset({"sigma", "scale", "sd", "tau"})
+"""Width parameters inside a prior subtree (``beta``/``b`` are Beta and Gamma rate or shape
+parameters: scaling them moves the prior instead of widening it)."""
+_PRIOR_WIDTH_KEY: Final = re.compile(r"(?:^|_)prior_(?:sigma|scale|sd)$|_sigma$")
+"""Prior widths named as such anywhere in the settings (``seasonality.prior_sigma``,
+``trend.growth_prior_sigma``, ``hierarchy.media_geo_sigma``)."""
 _DRIVER_ROLES: Final = (Role.MEDIA, Role.SPEND)
 _COVARIATE_ROLES: Final = (Role.COVARIATE, Role.CONTROL, Role.EXPOSURE)
 
@@ -401,6 +414,71 @@ def _shift_time(
 # ================================================================================= checks
 
 
+def _integration_order(env: GovernanceEnv, y: np.ndarray) -> int:
+    """How often the target is differenced under the null: the ``d`` of an ARIMA ``order``
+    setting, else 1 when ADF keeps a unit root or KPSS rejects stationarity on the training
+    periods (of the total series), else 0."""
+    order = env.bundle.spec.model.plugin_settings.get("order")
+    if isinstance(order, list | tuple) and len(order) == 3 and isinstance(order[1], int):
+        return max(0, min(2, int(order[1])))
+    total = np.nansum(y.reshape(y.shape[0], -1), axis=1)
+    if stats.finite(total).size < 20:
+        return 0
+    adf = stats.adf_test(total)
+    kpss = stats.kpss_test(total)
+    verdict, _ = stats.stationarity_verdict(adf, kpss)
+    return 1 if verdict == "difference" else 0
+
+
+def _permute_increments(
+    values: np.ndarray, axis: int, d: int, rng: np.random.Generator
+) -> np.ndarray:
+    """The ``d``-th differences of ``values`` along ``axis`` shuffled i.i.d. (the same
+    permutation for every series) and integrated again from the original first ``d``
+    values: the integration order and the distribution of the increments are kept, any
+    predictable dynamics are destroyed."""
+    x = np.moveaxis(np.asarray(values, dtype=float), axis, 0)
+    n = x.shape[0]
+    if d <= 0 or not np.isfinite(x).all() or n <= d + 1:
+        return np.moveaxis(x[rng.permutation(n)], 0, axis)
+    levels = [x]
+    for _ in range(d):
+        levels.append(np.diff(levels[-1], axis=0))
+    out = levels[-1][rng.permutation(n - d)]
+    # integrate back: the first value of each lower-order difference is kept
+    for lvl in reversed(levels[:-1]):
+        out = np.concatenate([lvl[:1], lvl[:1] + np.cumsum(out, axis=0)], axis=0)
+    return np.moveaxis(out, 0, axis)
+
+
+def _holdout_skill(
+    b: Bundle, data: xr.Dataset, target: str, dim: str, held: np.ndarray, metric: str, d: int
+) -> float | None:
+    """``1 - L(model) / L(null forecast)`` on the held-out periods of ``data``: the refit's
+    holdout metric against the forecast of the null model of each series - its last
+    training value when it is integrated (``d >= 1``: a random walk), its training mean
+    otherwise (white noise). Scale-free, so the shuffles are compared on skill rather than
+    on the level jumps a shuffle creates."""
+    model = _holdout_metric(b, metric)
+    if model is None:
+        return None
+    da = data[target].transpose(dim, ...)
+    y = np.asarray(da.values, dtype=float).reshape(da.sizes[dim], -1)
+    train = y[~held]
+    if train.shape[0] == 0 or not held.any():
+        return None
+    ref = []
+    for j in range(y.shape[1]):
+        hist = stats.finite(train[:, j])
+        ref.append(np.nan if hist.size == 0 else (hist[-1] if d >= 1 else float(hist.mean())))
+    bench = np.broadcast_to(np.asarray(ref), y[held].shape)
+    key = "mae" if metric == "crps" else metric
+    loss = error_metrics(y[held], bench).get(key)
+    if loss is None or loss <= 0:
+        return None
+    return 1.0 - model / loss
+
+
 def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     p = check.params
     k = _pint(p, "n_permutations", 20)
@@ -412,60 +490,150 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if dim is None or not env.targets:
         return _skip(check, "the model has no target to shuffle along its split")
     n = int(env.data.sizes[dim])
-    block = (_pint(p, "block", 0) or max(1, n // 20)) if env.time_dim else 1
     k = min(k, env.refitter.remaining - 1)
     if k < 5:
         return _error(check, "the refit budget allows fewer than 5 shuffled fits")
     spec = env.refitter.spec(metrics=[metric])
     real_b = env.refitter.fit(env.data, spec)
-    real = _holdout_metric(real_b, metric)
+    target = env.targets[0]
+    rng = env.rng(check.check)
+    held = None
+    if env.time_dim is not None:
+        hm = holdout_mask(real_b, env.data)
+        held = (
+            np.asarray(hm.values, dtype=bool) if hm is not None and str(hm.dims[0]) == dim else None
+        )
+
+    if held is not None:
+        # time series: a scale-free statistic (skill against naive on each dataset) and a
+        # null that matches what is tested (see the module docstring)
+        drivers = [v for v in env.drivers() if dim in env.data[v].dims]
+        block = _pint(p, "block", 0) or max(1, n // 20)
+        d = _integration_order(
+            env, np.asarray(env.data[target].transpose(dim, ...).values, dtype=float)[~held]
+        )
+
+        def statistic(b: Bundle, data: xr.Dataset) -> float | None:
+            assert held is not None
+            return _holdout_skill(b, data, target, dim, held, metric, d)
+
+        def shuffle_drivers() -> xr.Dataset:
+            perm = stats.block_permutation(n, block, rng)  # one permutation for all drivers
+            return env.data.assign(
+                {
+                    v: env.data[v].copy(
+                        data=np.take(env.data[v].values, perm, axis=env.data[v].get_axis_num(dim))
+                    )
+                    for v in drivers
+                }
+            )
+
+        def shuffle_target() -> xr.Dataset:
+            return env.data.assign(
+                {
+                    t: env.data[t].copy(
+                        data=_permute_increments(
+                            env.data[t].values, env.data[t].get_axis_num(dim), d, rng
+                        )
+                    )
+                    for t in env.targets
+                    if dim in env.data[t].dims
+                }
+            )
+
+        null = "drivers" if drivers else "target"
+        how = (
+            f"the drivers {', '.join(drivers[:5])} shuffled in blocks of {block} (the result "
+            "untouched)"
+            if drivers
+            else f"the result's {_ORDINAL.get(d, f'{d}th')} shuffled"
+        )
+    else:
+        # rows without a time order: the classic permutation test on the error itself
+        def statistic(b: Bundle, data: xr.Dataset) -> float | None:
+            s = _holdout_metric(b, metric)
+            return None if s is None else -s
+
+        null, how, block, d = "target", "the result shuffled across rows", 1, 0
+
+        def shuffle_target() -> xr.Dataset:
+            perm = rng.permutation(n)
+            return env.data.assign(
+                {
+                    t: env.data[t].copy(
+                        data=np.take(env.data[t].values, perm, axis=env.data[t].get_axis_num(dim))
+                    )
+                    for t in env.targets
+                    if dim in env.data[t].dims
+                }
+            )
+
+        def shuffle_drivers() -> xr.Dataset:  # pragma: no cover - never used without time
+            return shuffle_target()
+
+    real = statistic(real_b, env.data)
     if real is None:
         return _error(
             check, f"the refit has no holdout {metric}", real_b.metrics.skipped.get(metric)
         )
-    rng = env.rng(check.check)
     scores: list[float] = []
-    for _i in range(k):
-        perm = stats.block_permutation(n, block, rng)
-        shuffled = env.data.assign(
-            {
-                t: env.data[t].copy(
-                    data=np.take(env.data[t].values, perm, axis=env.data[t].get_axis_num(dim))
-                )
-                for t in env.targets
-                if dim in env.data[t].dims
-            }
-        )
+    for i in range(k):
+        shuffled = shuffle_drivers() if null == "drivers" else shuffle_target()
         try:
             b = env.refitter.fit(shuffled, spec)
         except BudgetExhausted:
             break
-        s = _holdout_metric(b, metric)
-        if s is not None:
-            scores.append(s)
+        s = statistic(b, shuffled)
+        if s is None:
+            continue
+        if i == 0 and null == "drivers" and abs(s - real) <= 1e-9 * (1.0 + abs(real)):
+            # the model does not use these drivers: test its dynamics instead
+            null, how = "target", f"the result's {_ORDINAL.get(d, f'{d}th')} shuffled"
+            continue
+        scores.append(s)
     if len(scores) < 5:
         return _error(check, "fewer than 5 shuffled fits produced a score")
-    as_good = sum(1 for s in scores if s <= real)
+    as_good = sum(1 for s in scores if s >= real)
     pval = (1 + as_good) / (len(scores) + 1)
+    timed = held is not None
+
+    def shown(v: float) -> str:
+        return f"skill {v:.3f}" if timed else f"{metric} {-v:.3g}"
+
     ev = [
-        _metric(f"holdout_{metric}", real, "The real model's error on held-out data"),
+        _metric(
+            "holdout_skill_vs_naive" if timed else f"holdout_{metric}",
+            real if timed else -real,
+            "The real model's skill on held-out data against the null forecast (the last "
+            "value of an integrated series, else its mean)"
+            if timed
+            else "The real model's error on held-out data",
+        ),
         _table(
             "permutation_scores",
             {
-                "real": real,
-                "shuffled": [round(s, 6) for s in scores],
-                "shuffled_min": min(scores),
-                "shuffled_median": float(np.median(scores)),
+                "real": real if timed else -real,
+                "shuffled": [round(s if timed else -s, 6) for s in scores],
+                "shuffled_median": float(np.median(scores)) * (1 if timed else -1),
+                "statistic": f"skill vs the null forecast ({metric})" if timed else metric,
+                "axis": (
+                    f"Skill on held-out data ({metric.upper()} against the null forecast; "
+                    "higher is better)"
+                    if timed
+                    else f"{metric.upper()} on held-out data (lower is better)"
+                ),
+                "null": how,
                 "block": block,
+                "d": d,
                 "metric": metric,
             },
-            "Errors of the fits on shuffled results",
+            "Scores of the fits on shuffled data",
         ),
     ]
     if as_good == 0:
         msg = (
-            f"The model's error on held-out data ({real:.3g}) was lower than all "
-            f"{len(scores)} fits on shuffled results (p = {pval:.3f})."
+            f"The model did better on held-out data ({shown(real)}) than all {len(scores)} "
+            f"fits with {how} (p = {pval:.3f})."
         )
         if len(scores) < 19:
             msg += (
@@ -474,19 +642,28 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             )
     else:
         msg = (
-            f"{as_good} of {len(scores)} fits on shuffled results did as well as the real "
-            f"model (p = {pval:.3f}): it may be fitting noise rather than signal."
+            f"{as_good} of {len(scores)} fits with {how} did as well as the real model "
+            f"(p = {pval:.3f}): it may be fitting noise rather than signal."
         )
     return result(
         check,
         pval,
         msg,
-        expert=f"Block permutation test (block {block}), {metric}: real {real:.4g}, shuffled "
-        f"median {np.median(scores):.4g}; p = (1 + {as_good}) / ({len(scores)} + 1).",
+        expert=f"Permutation test, null: {how}; statistic: "
+        + (
+            f"holdout skill 1 - {metric}(model)/{metric}(null forecast) on each dataset"
+            if timed
+            else f"holdout {metric}"
+        )
+        + f"; real {shown(real)}, shuffled median {shown(float(np.median(scores)))}; "
+        f"p = (1 + {as_good}) / ({len(scores)} + 1).",
         action="Check for leakage between training and test data, simplify the model, or add "
         "drivers that carry real signal.",
         evidence=ev,
     )
+
+
+_ORDINAL: Final = {0: "values", 1: "period-to-period changes", 2: "second differences"}
 
 
 @dataclass
@@ -498,11 +675,26 @@ class _Placebo:
     how: str
     ablate: Callable[[xr.Dataset, str], xr.Dataset]
     params_like: Callable[[str], bool]
+    ablate_real: Callable[[xr.Dataset], xr.Dataset] | None = None
+    """Every real driver switched off (the denominator of the placebo's share)."""
 
 
-def _walk_settings(settings: Any, existing: set[str], extra: Sequence[str], source: str) -> Any:
+_PRIOR_KEYS: Final = frozenset(
+    {"priors", "prior", "business_priors", "calibration", "lift_tests", "experiments"}
+)
+"""Settings subtrees that hold beliefs about the real channels (priors, calibration): never
+copied to a placebo, which gets the platform's default (weakly informative) prior."""
+
+
+def _walk_settings(
+    settings: Any, existing: set[str], extra: Sequence[str], source: str, *, beliefs: bool = False
+) -> Any:
     """Append ``extra`` names to lists that enumerate ``existing`` names, and copy the
-    ``source`` entry of mappings keyed by them (per-channel priors)."""
+    ``source`` entry of mappings keyed by them (per-channel carry-over and saturation
+    shapes) - except under :data:`_PRIOR_KEYS`: a placebo must not inherit a real channel's
+    informative prior or calibration."""
+    if beliefs:
+        return settings
     if isinstance(settings, list):
         if (
             settings
@@ -514,12 +706,31 @@ def _walk_settings(settings: Any, existing: set[str], extra: Sequence[str], sour
         return [_walk_settings(x, existing, extra, source) for x in settings]
     if isinstance(settings, dict):
         keys = set(settings)
-        out = {k: _walk_settings(v, existing, extra, source) for k, v in settings.items()}
+        out = {
+            k: _walk_settings(v, existing, extra, source, beliefs=str(k).lower() in _PRIOR_KEYS)
+            for k, v in settings.items()
+        }
         if keys and keys <= existing and source in settings:
             for e in extra:
                 out[e] = settings[source]
         return out
     return settings
+
+
+def _holm_significant(p_values: Mapping[str, float | None], alpha: float = 0.05) -> list[str]:
+    """The placebos whose p-value is significant at ``alpha`` after Holm's step-down
+    correction for the number of placebos (family-wise error rate ``alpha``)."""
+    ranked = sorted(
+        ((n, float(p)) for n, p in p_values.items() if p is not None and math.isfinite(p)),
+        key=lambda x: x[1],
+    )
+    m = len(ranked)
+    out: list[str] = []
+    for i, (name, p) in enumerate(ranked):
+        if p * (m - i) >= alpha:
+            break
+        out.append(name)
+    return out
 
 
 def _placebo_drivers(
@@ -575,6 +786,12 @@ def _placebo_drivers(
                 out = _ablate(env, out, var, {dim: name})
             return out
 
+        def ablate_channels(ds: xr.Dataset) -> xr.Dataset:
+            out = ds
+            for label in labels:
+                out = ablate(out, label)
+            return out
+
         return _Placebo(
             extended,
             schema,
@@ -583,6 +800,7 @@ def _placebo_drivers(
             f"channels on {dim!r}",
             ablate,
             lambda s: any(n in s for n in names),
+            ablate_channels,
         )
     drivers = env.drivers()
     if not drivers:
@@ -620,6 +838,12 @@ def _placebo_drivers(
     def ablate_var(ds: xr.Dataset, name: str) -> xr.Dataset:
         return _ablate(env, ds, name)
 
+    def ablate_real(ds: xr.Dataset) -> xr.Dataset:
+        out = ds
+        for v in drivers:
+            out = _ablate(env, out, v)
+        return out
+
     return _Placebo(
         data.assign(added),
         new_schema,
@@ -628,6 +852,7 @@ def _placebo_drivers(
         "variables",
         ablate_var,
         lambda s: any(s == n or s.startswith(n + "[") for n in names),
+        ablate_real,
     )
 
 
@@ -645,18 +870,42 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     full = _first(
         predict(b, placebo.data, env.registry, side_tables=env.side_tables), env.targets[0]
     )
+    warn_at = check.thresholds.warn if check.thresholds else GOVERNANCE_CHECKS[check.check].warn
+    # the share is taken of the real drivers' total effect (so the limit does not depend on
+    # how large the baseline is); of the whole result when the drivers' effect is unknown
+    real_num, real_draws = 0.0, None
+    if placebo.ablate_real is not None:
+        abl_real = _first(
+            predict(b, placebo.ablate_real(placebo.data), env.registry,
+                    side_tables=env.side_tables),
+            env.targets[0],
+        )  # fmt: skip
+        real_num, _d, real_draws = _total_effect(full, abl_real)
+    of_drivers = real_num > 0
     shares: dict[str, float] = {}
     intervals: dict[str, list[float | None]] = {}
+    material: dict[str, float] = {}
     for nm in placebo.names:
         abl = _first(
             predict(b, placebo.ablate(placebo.data, nm), env.registry, side_tables=env.side_tables),
             env.targets[0],
         )
         num, den, per_draw = _total_effect(full, abl)
-        shares[nm] = num / den if den > 0 else 0.0
+        ref = real_num if of_drivers else den
+        shares[nm] = num / ref if ref > 0 else 0.0
         if per_draw is not None and per_draw.size > 1:
             lo, hi = np.quantile(per_draw, [0.05, 0.95])
             intervals[nm] = [_fv(lo), _fv(hi)]
+            # practical equivalence, per posterior draw: an effect with a sign constraint
+            # (an MMM's positive channel effects) never has an interval covering 0, so the
+            # question is whether the placebo's share is above the limit, not above 0
+            if of_drivers and real_draws is not None and real_draws.size == per_draw.size:
+                ref_d = np.abs(real_draws)
+            else:
+                ref_d = np.full(per_draw.size, ref)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                share_d = np.where(ref_d > 0, np.abs(per_draw) / ref_d, 0.0)
+            material[nm] = float(np.mean(share_d > warn_at))
     ignored = all(v < 1e-12 for v in shares.values()) and all(
         (iv[0] or 0.0) == 0.0 and (iv[1] or 0.0) == 0.0 for iv in intervals.values()
     )
@@ -681,30 +930,53 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     }
     value = max(shares.values()) if shares else 0.0
     worst = max(shares, key=lambda n: shares[n]) if shares else ""
-    clear = [
-        n
-        for n, iv in intervals.items()
-        if iv[0] is not None and iv[1] is not None and (iv[0] > 0 or iv[1] < 0)
-    ]
-    sig = [n for n, pv in p_values.items() if pv is not None and pv < 0.05]
+    # Bayesian: the placebo's share is above the limit with 90% posterior probability
+    clear = [n for n, pr in material.items() if pr >= 0.9]
+    # frequentist: significant after Holm's correction for the number of placebos
+    sig = _holm_significant(p_values)
+    of_what = "the real drivers' effect" if of_drivers else "the result"
     ev = [
         _table(
             "noise_effect_share",
             {k_: round(v, 6) for k_, v in shares.items()},
-            "Share of the result each fake driver was credited with",
+            f"Share of {of_what} each fake driver was credited with",
         ),
-        _table("placebo", {"how": placebo.how, "kind": kind, "names": placebo.names}),
+        _table(
+            "placebo",
+            {
+                "how": placebo.how,
+                "kind": kind,
+                "names": placebo.names,
+                "share_of": "real drivers' effect" if of_drivers else "result",
+                "prior": "the model's default prior (real channels' priors and calibration "
+                "are not copied)",
+            },
+        ),
     ]
     if intervals:
         ev.append(
             _table(
                 "noise_effect_interval_90",
                 intervals,
-                "90% interval of each fake driver's total effect (should cover 0)",
+                "90% interval of each fake driver's total effect",
+            )
+        )
+    if material:
+        ev.append(
+            _table(
+                "noise_share_prob_material",
+                {k_: round(v, 4) for k_, v in material.items()},
+                f"Posterior probability that a fake driver's share is above {_pct(warn_at)}",
             )
         )
     if p_values:
-        ev.append(_table("noise_p_values", p_values, "p-values of the fake drivers' estimates"))
+        ev.append(
+            _table(
+                "noise_p_values",
+                p_values,
+                "p-values of the fake drivers' estimates (judged with Holm's correction)",
+            )
+        )
     status = None
     if clear or sig:
         status = (
@@ -712,21 +984,21 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             if check_status(check.check, value, check.thresholds) is CheckStatus.FAIL
             else CheckStatus.WARN
         )
-    if value <= (
-        check.thresholds.warn if check.thresholds else GOVERNANCE_CHECKS[check.check].warn
-    ) and not (clear or sig):
+    if value <= warn_at and not (clear or sig):
         msg = (
-            f"{len(shares)} fake drivers made of pure noise got at most {_pct(value)} of the "
-            "result: the model does not credit drivers that carry no signal."
+            f"{len(shares)} fake drivers made of pure noise got at most {_pct(value)} of "
+            f"{of_what}: the model does not credit drivers that carry no signal."
         )
     else:
         extra = ""
         if clear:
-            extra = f" The effect of {', '.join(clear)} is clearly not zero."
+            extra = (
+                f" {', '.join(clear)} got more than {_pct(warn_at)} with at least 90% probability."
+            )
         elif sig:
             extra = f" {', '.join(sig)} came out statistically significant."
         msg = (
-            f"A fake driver made of pure noise ({worst}) got {_pct(value)} of the result: the "
+            f"A fake driver made of pure noise ({worst}) got {_pct(value)} of {of_what}: the "
             f"model credits drivers too easily.{extra}"
         )
     return result(
@@ -734,8 +1006,12 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         value,
         msg,
         status=status,
-        expert=f"{len(shares)} placebo {placebo.how} ({kind}); effect share = sum|y(full) - "
-        "y(placebo off)| / sum|y(full)| through the score path; max over placebos.",
+        expert=f"{len(shares)} placebo {placebo.how} ({kind}) with the model's default prior; "
+        "effect share = sum|y(full) - y(placebo off)| / sum|y(full) - y(real drivers off)| "
+        "through the score path (of sum|y(full)| when the drivers' effect is unknown); max "
+        "over placebos. Bayesian: flagged when P(share > warn limit) >= 0.9 per posterior "
+        "draw (practical equivalence; sign-constrained effects never cover 0). "
+        "Frequentist: placebo p-values Holm-corrected.",
         action="Use stronger regularisation or priors, fewer drivers, or more data before "
         "trusting how the result is split between drivers.",
         evidence=ev,
@@ -929,15 +1205,35 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     )
 
 
-def _arma_df(settings: Mapping[str, Any]) -> int:
+def _arma_df(settings: Mapping[str, Any], bundle: Bundle | None = None) -> int:
+    """The Ljung-Box degrees-of-freedom correction: the ARMA terms the plugin stored per
+    series (``learned.cells[].model_df``, the statsmodels plugin), else ``p + q (+ P + Q)``
+    of an ``order``/``seasonal_order`` setting."""
+    if bundle is not None:
+        cells = (bundle.model.learned or {}).get("cells")
+        stored: list[int] = []
+        for c in cells if isinstance(cells, list) else []:
+            v = c.get("model_df") if isinstance(c, dict) else None
+            if isinstance(v, int):
+                stored.append(v)
+        if stored:
+            return max(stored)
+    df = 0
     order = settings.get("order")
     if (
         isinstance(order, list | tuple)
         and len(order) == 3
         and all(isinstance(x, int) for x in order)
     ):
-        return int(order[0]) + int(order[2])
-    return 0
+        df += int(order[0]) + int(order[2])
+    seasonal = settings.get("seasonal_order")
+    if (
+        isinstance(seasonal, list | tuple)
+        and len(seasonal) == 4
+        and all(isinstance(x, int) for x in seasonal)
+    ):
+        df += int(seasonal[0]) + int(seasonal[2])
+    return df
 
 
 def _burn_in(settings: Mapping[str, Any]) -> int:
@@ -965,8 +1261,11 @@ def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     assert env.time_dim is not None
     lags = _pint(check.params, "lags", 10)
     settings = env.bundle.spec.model.plugin_settings
-    model_df = _arma_df(settings)
-    burn = _burn_in(settings)
+    model_df = _arma_df(settings, env.bundle)
+    # the start-up residuals of a diffuse-initialised fit (the first is the level itself
+    # for an integrated or unobserved-components model): one such outlier swamps every
+    # autocorrelation and lets patterned errors pass
+    burn = max(_burn_in(settings), fit_burn_in(env.bundle))
     t = env.time_dim
     rows: list[tuple[str, float, float]] = []
     for p in env.predictions():
@@ -1197,20 +1496,18 @@ def _signs(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
 
 
 def _scale_priors(node: Any, factor: float, under_prior: bool = False) -> tuple[Any, int]:
-    """Multiply prior scale parameters (``sigma``, ``scale``, ``sd``, ``tau``, ``beta``,
-    ``b``) inside any settings subtree whose key mentions ``prior``."""
+    """Multiply prior widths: ``sigma``, ``scale``, ``sd`` and ``tau`` inside any settings
+    subtree whose key mentions ``prior``, and keys named as prior widths anywhere
+    (:data:`_PRIOR_WIDTH_KEY`)."""
     if isinstance(node, dict):
         out: dict[str, Any] = {}
         n = 0
         for k, v in node.items():
             inside = under_prior or "prior" in str(k).lower()
-            if (
-                inside
-                and str(k) in _PRIOR_SCALE_KEYS
-                and isinstance(v, int | float)
-                and not isinstance(v, bool)
-                and v > 0
-            ):
+            width = (inside and str(k) in _PRIOR_SCALE_KEYS) or bool(
+                _PRIOR_WIDTH_KEY.search(str(k))
+            )
+            if width and isinstance(v, int | float) and not isinstance(v, bool) and v > 0:
                 out[k] = float(v) * factor
                 n += 1
             else:
@@ -1223,6 +1520,48 @@ def _scale_priors(node: Any, factor: float, under_prior: bool = False) -> tuple[
     return node, 0
 
 
+def _deep_fill(base: dict[str, Any], defaults: Mapping[str, Any]) -> dict[str, Any]:
+    """``base`` with ``defaults`` filled in where ``base`` has no value."""
+    out = dict(base)
+    for k, v in defaults.items():
+        if out.get(k) is None:
+            out[k] = v
+        elif isinstance(out[k], dict) and isinstance(v, Mapping):
+            out[k] = _deep_fill(out[k], v)
+    return out
+
+
+def _prior_settings(
+    model_cls: Any, plugin_settings: Mapping[str, Any], learned: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The model's settings with every prior it uses written out: the plugin's ``Settings``
+    defaults (``seasonality.prior_sigma``, ``trend.growth_prior_sigma``, ...), the priors it
+    declares in ``prior_scale_defaults`` for values its engine fills in itself (mmm's
+    ``priors.roi_default``), and business priors the fit translated into ``priors``
+    (``learned.calibration.translated_priors``)."""
+    base: dict[str, Any] = dict(plugin_settings)
+    settings_cls = getattr(model_cls, "Settings", None)
+    if settings_cls is not None and hasattr(settings_cls, "model_validate"):
+        try:
+            base = settings_cls.model_validate(base).model_dump(mode="json", exclude_none=True)
+        except Exception:
+            base = dict(plugin_settings)
+    defaults = getattr(model_cls, "prior_scale_defaults", None)
+    if isinstance(defaults, Mapping):
+        base = _deep_fill(base, defaults)
+    cal = learned.get("calibration")
+    translated = cal.get("translated_priors") if isinstance(cal, Mapping) else None
+    if isinstance(translated, Mapping) and translated:
+        priors = dict(base.get("priors") or {})
+        for k, v in translated.items():
+            if k == "roi" and isinstance(v, Mapping) and isinstance(priors.get("roi"), Mapping):
+                priors["roi"] = {**priors["roi"], **v}
+            else:
+                priors[k] = v
+        base["priors"] = priors
+    return base
+
+
 def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     raw = check.params.get("scales", [0.5, 2.0])
     scales = (
@@ -1230,7 +1569,13 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         if isinstance(raw, list)
         else [0.5, 2.0]
     )
-    settings = dict(env.bundle.spec.model.plugin_settings)
+    man = env.bundle.model.manifest
+    try:
+        model_cls: Any = env.registry.model(f"{man.id}@{man.version}")
+    except Exception:
+        model_cls = None
+    learned = env.bundle.model.learned or {}
+    settings = _prior_settings(model_cls, env.bundle.spec.model.plugin_settings, learned)
     _probe, found = _scale_priors(settings, 1.0)
     if found == 0:
         return _skip(
@@ -1238,7 +1583,23 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             "the model's priors are not set in its settings, so they cannot "
             "be varied automatically",
         )
-    spec0 = env.refitter.spec(split=None)
+    # business priors translated at fit time are written out above: refit without
+    # translating them again, or the translation would overwrite the scaled priors
+    cal = env.bundle.spec.calibration
+    drop_beliefs = (
+        cal is not None
+        and cal.business_priors is not None
+        and isinstance(learned.get("calibration"), Mapping)
+    )
+
+    def refit_spec(s: Mapping[str, Any]) -> ModelSpec:
+        spec = env.refitter.spec(split=None, settings=s)
+        if drop_beliefs and spec.calibration is not None:
+            plain = spec.calibration.model_copy(update={"business_priors": None})
+            spec = spec.model_copy(update={"calibration": plain})
+        return spec
+
+    spec0 = refit_spec(settings)
     b0 = env.refitter.fit(env.data, spec0)
     base = {e.name: e for e in _key_params(_estimates(b0), None)}
     if not base:
@@ -1247,7 +1608,7 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     for s in scales:
         scaled, _n = _scale_priors(settings, s)
         try:
-            b = env.refitter.fit(env.data, env.refitter.spec(split=None, settings=scaled))
+            b = env.refitter.fit(env.data, refit_spec(scaled))
         except BudgetExhausted:
             break
         got = {e.name: e for _v, _c, e in _estimates(b)}

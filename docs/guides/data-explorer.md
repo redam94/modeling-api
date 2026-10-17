@@ -106,7 +106,7 @@ request answers `200` from the last run, so explorers are instant once computed.
 | `alpha` | 0.05 | Significance level of the tests |
 | `correlation` | `pearson` | Or `spearman` |
 | `outliers`, `outlier_threshold` | `mad`, 3.5 | Robust score (`mad`, `iqr` or `zscore`, all on a standard-normal scale) and its threshold |
-| `prewhiten` | false | Filter both series with the driver's own AR model before cross-correlating |
+| `prewhiten` | true | Filter both series with the driver's own AR model before cross-correlating (turn it off to see the raw correlations) |
 | `max_series` | 50 | Series per view (the rest are counted as omitted) |
 
 ## The sections
@@ -119,7 +119,7 @@ request answers `200` from the last run, so explorers are instant once computed.
 | `missingness` | A heatmap of the missing share by variable and period, the longest gap | Long gaps cannot be imputed reliably. |
 | `outliers` | Values far from the typical value, with their coordinates | Errors or real events? Real events deserve a control variable. |
 | `correlation` | The correlation matrix with p-values | Drivers that move almost together are hard to separate. |
-| `ccf` | Correlation of each driver with the KPI at each lag (positive lag: the driver leads) | A peak at lag 2 means the effect shows up two periods later; prewhiten to avoid spurious peaks. |
+| `ccf` | Correlation of each driver with the KPI at each lag (positive lag: the driver leads) | A peak at lag 2 means the effect shows up two periods later. Prewhitened by default; the significance band follows Bartlett's formula for two autocorrelated series, so two smooth but unrelated series are not flagged at half of their lags. |
 | `acf_pacf` | Autocorrelation and partial autocorrelation with the significance band, and suggested AR/MA orders | Bars beyond the dashed band are more than chance. |
 | `stationarity` | ADF and KPSS per series with one verdict | `stable`, `difference` (it wanders: model changes), `trend_stable` or `unclear` (the tests disagree: look at the plot). |
 | `stl` | Trend, season and remainder with their strengths (0 to 1) | Seasonal strength above about 0.6: model the season explicitly. |
