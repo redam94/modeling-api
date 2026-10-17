@@ -29,6 +29,16 @@ milestone releases are tagged on `main`.
     plugin and the contract kit checks `forecast_actuals`.
   - **runner**: the record is in a score run's `summary.json` (so the API answer carries it
     inline) and `result.json`.
+  - **statsmodels**: all twelve models condition forecasts on actuals with their fitted
+    parameters - `ts.sarimax`, `ts.arima`, `ts.unobserved_components`, `ts.varmax` and
+    `ts.dynamic_factor` by the Kalman filter (as `results.append(new, refit=False)`; gaps
+    among the actuals are filtered as missing by the univariate ones), `ts.ets` by its
+    smoother, `ts.markov_switching` by the Hamilton filter, `ts.ardl`/`ts.ecm` and
+    `ts.var`/`ts.vecm` on the supplied lags, `ts.theta` with its fitted SES weight, drift and
+    season. Revisions replace fitted values, panels update each series from its own actuals,
+    the fitted noise variance is kept and models already fitted (by a spec or the
+    `ts_readiness_arimax` workflow) condition without a refit; the plugin version stays
+    1.0.0. See "Forecasting from new actuals" on the statsmodels page.
 
 ### Changed
 - A `forecast` request whose payload holds target values is refused with

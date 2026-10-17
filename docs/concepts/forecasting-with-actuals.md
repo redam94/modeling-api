@@ -113,6 +113,13 @@ the fitted history it started from.
 
 ## Which models can
 
+Among the built-in models, every [statsmodels model](../models/statsmodels.md#forecasting-from-new-actuals)
+does (`ts.sarimax`, `ts.arima`, `ts.unobserved_components`, `ts.ets`, `ts.theta`, `ts.ardl`,
+`ts.ecm`, `ts.var`, `ts.vecm`, `ts.varmax`, `ts.dynamic_factor`, `ts.markov_switching`) -
+including those fitted by the `ts_readiness_arimax` workflow. The PyMC time-series models
+(`ts.hsgp_trend`, `ts.gaussian_hmm`), the marketing-mix models and the tabular models refuse;
+`ts.gaussian_hmm` runs its forward filter over new observations with `mode: filter` instead.
+
 A model declares it with `capabilities.conditions_on_actuals` (see
 [Capabilities](capabilities.md)); `GET …/schema` shows it as `snapshot.conditions_on_actuals`.
 The check uses the plugin build that scores, so a model fitted before its plugin learned to
