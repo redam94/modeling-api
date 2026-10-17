@@ -328,6 +328,37 @@ dataset and sent as `data="dataset://growth/plan@v2"`.
 XrJSON payload (the SDK wire format: dates as ISO strings, `NaN` as `null`, size-checked
 before anything is sent).
 
+### Forecast with your latest actuals
+
+`api.endpoints.forecast(alias, rows)` sends [actuals and the dates to
+forecast](../concepts/forecasting-with-actuals.md) in one call, without a refit. `rows` is a
+long table in the endpoint's input layout (`schema().input_table`: the time column, the
+target, the drivers) - a pandas `DataFrame`, a list of row mappings or a mapping of columns.
+Rows with the target filled are actuals; rows after them with it empty are forecast:
+
+```python
+import pandas as pd
+
+rows = pd.DataFrame({
+    "t": ["1961-01-01", "1961-02-01", "1961-03-01", "1961-04-01", "1961-05-01"],
+    "y": [417, 391, 419, None, None],
+})
+result = api.endpoints.forecast("ts-forecast", rows)
+print(result.conditioning.message)
+# Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which
+# ends 1960-12-01; the model's parameters were not re-estimated. 2 periods forecast from
+# 1961-04-01 to 1961-05-01.
+```
+
+Or give them apart: `actuals=` (rows with the target) and `future=` - the dates to forecast,
+rows with their driver values, or a number of periods to append after the last actual
+(`future=6`). Empty driver values on future rows are carried forward
+(`future_covariates="carry_last"`, the default here). A model that cannot use actuals refuses
+them with `ActualsNotSupported` (`422 ACTUALS_NOT_SUPPORTED`). `api.endpoint(alias).forecast(rows)`
+does the same and fetches the schema once; `mapi_client.forecast_call(schema, rows, ...)` only
+builds the call. `ScoreResult.conditioning` is the record for any forecast, with
+`conditioned=False` and the end of the fitted history when no actual was sent.
+
 ### Snippets
 
 ```python

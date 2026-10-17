@@ -1,0 +1,102 @@
+curl -sS -X POST 'https://api.mapi.example/v1/endpoints/sales-forecast/score' \
+  -H "Authorization: Bearer $MAPI_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'X-Mapi-Project: acme/growth' \
+  -H 'Prefer: wait=60' \
+  --data '{
+  "mode": "forecast",
+  "horizon": {
+    "dim": "t",
+    "periods": 8
+  },
+  "data": null,
+  "scenario": null,
+  "output": {
+    "summary": [
+      "median",
+      "q5",
+      "q95"
+    ]
+  },
+  "future_covariates": "carry_last"
+}'
+# The "summary" field of the answer holds the numbers (mean and HDI per coordinate).
+
+# Forecast with your latest actuals and the dates to forecast: in 'y' put the actuals you
+# have for the periods after the fitted history and leave null on the periods to forecast
+# (driver values left empty there are carried forward). The model updates its state with the
+# actuals - it is not refitted - and summary.conditioning in the answer says what the
+# forecast was conditioned on.
+curl -sS -X POST 'https://api.mapi.example/v1/endpoints/sales-forecast/score' \
+  -H "Authorization: Bearer $MAPI_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'X-Mapi-Project: acme/growth' \
+  -H 'Prefer: wait=60' \
+  --data '{
+  "mode": "forecast",
+  "horizon": {
+    "dim": "t",
+    "periods": 8
+  },
+  "data": {
+    "coords": {
+      "t": {
+        "dims": [
+          "t"
+        ],
+        "data": [
+          "1961-01-01",
+          "1961-02-01",
+          "1961-03-01",
+          "1961-04-01",
+          "1961-05-01",
+          "1961-06-01",
+          "1961-07-01",
+          "1961-08-01"
+        ]
+      }
+    },
+    "data_vars": {
+      "y": {
+        "dims": [
+          "t"
+        ],
+        "data": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "price": {
+        "dims": [
+          "t"
+        ],
+        "data": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  "scenario": null,
+  "output": {
+    "summary": [
+      "median",
+      "q5",
+      "q95"
+    ]
+  },
+  "future_covariates": "carry_last"
+}'
+# "summary.conditioning.message" says what the forecast was conditioned on.

@@ -32,6 +32,7 @@ from typing import Any, Final
 
 import numpy as np
 import xarray as xr
+from mapi_sdk.actuals import entry_fit_end
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import FitHooks, fit_spec, score_bundle
 from mapi_sdk.metrics import point_estimate
@@ -723,6 +724,27 @@ def backtest_node(ctx: NodeContext) -> NodeOutcome:
 # ================================================================================ forecast
 
 
+def _future_rows(bundle: Bundle, data: xr.Dataset, tdim_canon: str) -> xr.Dataset | None:
+    """The rows of a ``model.forecast`` node's ``data`` (its future drivers) after the fitted
+    history. Rows inside it are the model's own history - a workflow often wires the fit's
+    dataset in - and the forecast starts from the end of the fit; a target value after it is
+    an actual, which the score harness uses or refuses (``mapi_spec.actuals``), never
+    ignores. ``None`` when nothing is left."""
+    tdim = bundle.binding.to_dataset(tdim_canon)
+    fit_end = entry_fit_end(bundle.fit_coords, bundle.resolved.model_stage, tdim_canon)
+    if fit_end is None:
+        fit_end = entry_fit_end(bundle.fit_coords, "raw", tdim_canon)
+    if tdim not in data.dims or tdim not in data.coords or fit_end is None:
+        return data
+    labels = np.asarray(data[tdim].values)
+    try:
+        after = labels > np.asarray(fit_end).astype(labels.dtype)
+    except (TypeError, ValueError):
+        return data
+    rest = data.isel({tdim: np.flatnonzero(after)})
+    return rest if rest.sizes.get(tdim, 0) and rest.data_vars else None
+
+
 def forecast_node(ctx: NodeContext) -> NodeOutcome:
     mv = ctx.model("model")
     assert mv is not None
@@ -744,12 +766,13 @@ def forecast_node(ctx: NodeContext) -> NodeOutcome:
     if policy != "error":
         extra["future_covariates"] = policy
     reg = _registry(ctx)
+    payload = _future_rows(bundle, future.data, tdim_canon) if future is not None else None
     try:
         req = _request(spec, "forecast", **extra)
         tree = score_bundle(
             bundle,
             req,
-            data=future.data if future is not None else None,
+            data=payload,
             registry=reg,
             history=mv.data,
             return_full=True,

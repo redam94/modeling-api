@@ -39,6 +39,41 @@ milestone releases are tagged on `main`.
     the fitted noise variance is kept and models already fitted (by a spec or the
     `ts_readiness_arimax` workflow) condition without a refit; the plugin version stays
     1.0.0. See "Forecasting from new actuals" on the statsmodels page.
+  - **server**: endpoint calls with inline data are null-checked for target values
+    (`DataSummary.observed`; the values themselves are never decoded), so actuals a model
+    cannot use are refused with `422 ACTUALS_NOT_SUPPORTED`, and actuals with a gap or without
+    their drivers with `422 ACTUALS_INVALID`, before a run starts. Score checks on every path
+    (endpoints, model score, runs, Guided) use the capabilities of the plugin build that will
+    score - the catalog entry of exactly the fitted plugin version - so a model fitted before its
+    plugin learned to condition can do so without a refit. `GET /v1/endpoints/{alias}/schema`
+    reports `snapshot.conditions_on_actuals` from that build and returns `actuals_example` and
+    the new `input_table`. Promoting a version that cannot use actuals onto an endpoint whose
+    version can is a breaking change for the endpoint's `schema_change` policy
+    (`mapi_spec.endpoints.capability_breaks`; blocked by default).
+- **Input tables** (spec): `EndpointSchema.input_table` describes an endpoint's inline input as
+  one long table - the coordinate columns (the forecast dim first), the target, the drivers and
+  other inputs, each with what it holds - with the periods after the fit as empty example rows.
+  `mapi_spec.xrjson.xrjson_from_rows` turns such a table (records, a DataFrame's rows) into
+  XrJSON and `mapi_spec.endpoints.table_forecast_call` builds the forecast over actual rows and
+  blank-target future rows.
+- **Google Sheets with actuals**: the generated Apps Script reads an **Input** sheet in the
+  endpoint's input-table layout even when the example call sends no data (a forecast) - actual
+  rows with the target filled, rows to forecast with it blank, dates as `yyyy-MM-dd` - sets the
+  horizon to the blank rows, writes the conditioning note above the tables in **Result**, writes
+  a refusal's message and suggested action there too, and has a second function that creates
+  the **Input** sheet. The Python, TypeScript, curl and R snippets of a forecasting endpoint add
+  the call over the periods after the fit, to fill with actuals. New tutorial step "Add your
+  latest actuals and future dates" (`docs/snippets/sheets_actuals.gs`).
+- **Python client**: `Endpoints.forecast(alias, rows, *, actuals=, future=, periods=)` and
+  `RemoteEndpoint.forecast` (sync and async) send actuals and dates to forecast from a DataFrame,
+  row mappings or columns; `ScoreResult.conditioning`; `mapi_client.forecast_call`.
+- **CLI**: `mapi endpoints forecast ALIAS input.csv` (or `--actuals`, `--future`, `--periods`,
+  `--dry-run`); `endpoints score` prints the conditioning note and the inline summary;
+  `endpoints schema` shows the input table.
+- **Web**: the endpoint's Try it has an editor for actuals and dates to forecast (add a period,
+  paste from a sheet, **Use in the call**) and shows what the forecast was conditioned on with
+  the first summary tables; the Google Sheets card previews the Input sheet layout of a
+  forecasting endpoint; the model Score page shows the conditioning note.
 
 ### Changed
 - A `forecast` request whose payload holds target values is refused with
@@ -47,6 +82,13 @@ milestone releases are tagged on `main`.
 - Empty values of supplied drivers on the periods to forecast are now filled by a
   `future_covariates` policy other than `supplied`; before, only drivers missing from the
   payload altogether were.
+- The workflow node `model.forecast` sends only the rows of its `data` (future drivers) after
+  the fitted history: workflows that wire the fit's own dataset in forecast from the end of the
+  fit again instead of being refused for "actuals" that are the fitted values.
+- The Apps Script snippet's **Input** sheet: a variable column the sheet does not have is left
+  out of the call instead of failing the script (the server reports missing required inputs),
+  dates are formatted in the spreadsheet's time zone, two rows with different values for one
+  cell are an error, and a refused call is written into **Result** before the script throws.
 
 ## [0.5.0] — M3.5: Workflows, governance, explorers, mmm-framework — 2026-10-16
 

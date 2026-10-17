@@ -8,7 +8,7 @@ import { ArrowRight, BarChart3, BookOpen, FileSpreadsheet, KeyRound, Plug, Share
 import { useState, type ReactNode } from "react";
 
 import { can } from "@/api/access";
-import { useEndpoints, useEndpointSnippets, useSavedPlots } from "@/api/integrations";
+import { useEndpoints, useEndpointSchema, useEndpointSnippets, useSavedPlots } from "@/api/integrations";
 import type { Endpoint, PlotEmbedCreated, SavedPlot, WebhookCreated } from "@/api/types";
 import { LoadingRows, Mono } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Nativ
 import { useWorkspace } from "@/features/auth/workspace";
 import { env } from "@/env";
 
+import { actualsHint, forecastTable, InputTablePreview } from "./actuals-editor";
 import { CodeBlock } from "./endpoint-schema";
 import { CreateEmbedDialog, EmbedCreatedDialog } from "./sharing";
 import { CreateWebhookDialog, WebhookSecretDialog } from "./webhooks";
@@ -41,6 +42,27 @@ function GuidedCard({ icon, title, description, children }: { icon: ReactNode; t
   );
 }
 
+/** The Input sheet of a forecasting endpoint: its layout and how to fill it. */
+function InputSheetHelp({ endpoint }: { endpoint: Endpoint }) {
+  const schema = useEndpointSchema(endpoint.alias, endpoint.revision);
+  const table = schema.data ? forecastTable(schema.data) : null;
+  if (!table) return null;
+  const fn = `score${endpoint.alias
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((p) => p[0]!.toUpperCase() + p.slice(1))
+    .join("")}InputSheet`;
+  return (
+    <div role="group" className="grid gap-2 rounded-md border bg-muted/30 p-2.5" aria-label="Input sheet">
+      <p className="text-[13px] font-medium">The Input sheet: {table.conditions_on_actuals ? "your latest actuals and the dates to forecast" : "the dates to forecast"}</p>
+      <InputTablePreview table={table} maxRows={4} />
+      <p className="text-xs text-muted-foreground">
+        {actualsHint(table)} Dates as yyyy-MM-dd. Run <Mono>{fn}()</Mono> once to create the sheet with the periods after the fit.
+      </p>
+    </div>
+  );
+}
+
 function SheetsSteps({ endpoint }: { endpoint: Endpoint }) {
   const snippets = useEndpointSnippets(endpoint.alias, endpoint.revision);
   const script = snippets.data?.items?.find((s) => s.language === "apps_script");
@@ -61,9 +83,10 @@ function SheetsSteps({ endpoint }: { endpoint: Endpoint }) {
           Optional: put your own rows in a sheet named <Mono>Input</Mono> (a header row with the endpoint&apos;s dims and inputs, one row per coordinate); otherwise the example call is scored.
         </li>
         <li>
-          Run the function; the forecast (mean and 90% interval per coordinate) lands in a sheet named <Mono>Result</Mono>.
+          Run the function; the forecast (mean and 90% interval per coordinate) lands in a sheet named <Mono>Result</Mono>, under a note on what it was conditioned on (&ldquo;Forecast updated with 3 actuals …&rdquo;).
         </li>
       </ol>
+      <InputSheetHelp endpoint={endpoint} />
       {snippets.isPending ? <LoadingRows rows={2} /> : script ? <CodeBlock code={script.code} label="Apps Script" language="apps_script" /> : <p className="text-[13px] text-muted-foreground">No Apps Script snippet for this endpoint.</p>}
     </div>
   );

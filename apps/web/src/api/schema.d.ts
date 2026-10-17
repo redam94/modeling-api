@@ -1014,6 +1014,10 @@ export interface paths {
          * Python, TypeScript, curl, R, Apps Script and notebook code for the endpoint
          * @description Ready-to-run code that scores the endpoint with its example payload. The API token is
          *     read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.
+         *
+         *     With the endpoint's input table the Apps Script reads an "Input" sheet of actuals and
+         *     dates to forecast, and the other snippets add a forecast over the periods after the fit
+         *     to fill with actuals.
          */
         get: operations["list_endpoint_snippets"];
         put?: never;
@@ -5901,6 +5905,8 @@ export interface components {
             example: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+            /** @description The inline input as a long table (a spreadsheet's Input sheet): the columns and, for forecasts, the periods after the fit to fill in (input_table) */
+            input_table?: components["schemas"]["InputTable"] | null;
             /**
              * Max Inline Bytes
              * @default 5242880
@@ -8374,6 +8380,98 @@ export interface components {
             kind: "inline_arrow";
             /** Rows */
             rows?: number | null;
+        };
+        /**
+         * InputTable
+         * @description An endpoint's inline input as one long table: a header row (:attr:`columns`, the
+         *     coordinate columns first), then one row per coordinate - the layout of a spreadsheet's
+         *     Input sheet and of :func:`mapi_spec.xrjson.xrjson_from_rows`.
+         *
+         *     For a forecasting endpoint :attr:`rows` lists the periods after the fitted history (the
+         *     other dims' first levels), every value empty: fill the target where you have actuals and
+         *     leave it empty for the periods to forecast (:mod:`mapi_spec.actuals`). Dates are ISO
+         *     ``yyyy-MM-dd``.
+         * @example {
+         *       "columns": [
+         *         {
+         *           "description": "The period (yyyy-MM-dd)",
+         *           "freq": "MS",
+         *           "name": "t",
+         *           "role": "coord"
+         *         },
+         *         {
+         *           "description": "The actual; leave empty for the periods to forecast",
+         *           "dims": [
+         *             "t"
+         *           ],
+         *           "name": "y",
+         *           "role": "target"
+         *         },
+         *         {
+         *           "description": "Needed on every period, the periods to forecast included",
+         *           "dims": [
+         *             "t"
+         *           ],
+         *           "name": "price",
+         *           "role": "driver"
+         *         }
+         *       ],
+         *       "conditions_on_actuals": true,
+         *       "horizon_dim": "t",
+         *       "rows": [
+         *         [
+         *           "1961-01-01",
+         *           null,
+         *           null
+         *         ],
+         *         [
+         *           "1961-02-01",
+         *           null,
+         *           null
+         *         ]
+         *       ]
+         *     }
+         */
+        InputTable: {
+            /** Columns */
+            columns?: components["schemas"]["InputTableColumn"][];
+            /**
+             * Conditions On Actuals
+             * @default false
+             */
+            conditions_on_actuals?: boolean;
+            /** Horizon Dim */
+            horizon_dim?: string | null;
+            /** Rows */
+            rows?: (string | number | boolean | null)[][];
+        };
+        /**
+         * InputTableColumn
+         * @description One column of an :class:`InputTable`.
+         */
+        InputTableColumn: {
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Dims
+             * @description The dims a value column varies along
+             */
+            dims?: string[];
+            /**
+             * Freq
+             * @description The frequency of a time coordinate
+             */
+            freq?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "coord" | "target" | "driver" | "input";
         };
         /**
          * InternalService

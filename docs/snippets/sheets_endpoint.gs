@@ -3,8 +3,9 @@
 //
 // Input (optional): a sheet named "Input" in long format - a header row naming the
 // endpoint's dims and input variables, then one row per coordinate - replaces the
-// example's inline data. The answer's summary (mean and HDI per coordinate) is written
-// to a sheet named "Result".
+// example's inline data.
+// The answer's summary (per coordinate) is written to a sheet named "Result", under a note
+// on what a forecast was conditioned on.
 function scoreGeoMmmProd() {
   const token = PropertiesService.getScriptProperties().getProperty("MAPI_TOKEN");
   const payload = {
@@ -22,11 +23,18 @@ function scoreGeoMmmProd() {
       ]
     }
   };
+  const inputs = null;
   const book = SpreadsheetApp.getActiveSpreadsheet();
   const input = book.getSheetByName("Input");
   if (input) {
     const key = payload.scenario && payload.scenario.data_vars ? "scenario" : "data";
-    payload[key] = mapiSheetToXr_(input.getDataRange().getValues(), payload[key]);
+    const zone = book.getSpreadsheetTimeZone
+      ? book.getSpreadsheetTimeZone()
+      : Session.getScriptTimeZone();
+    payload[key] = mapiSheetToXr_(input.getDataRange().getValues(), payload[key], inputs, zone);
+    if (key === "data" && payload.mode === "forecast" && payload.horizon) {
+      payload.horizon.periods = mapiForecastPeriods_(payload, payload.horizon.periods);
+    }
   }
   const response = UrlFetchApp.fetch("https://api.mapi.example/v1/endpoints/geo-mmm-prod/score", {
     method: "post",
@@ -39,22 +47,31 @@ function scoreGeoMmmProd() {
     payload: JSON.stringify(payload),
     muteHttpExceptions: true,
   });
+  const out = book.getSheetByName("Result") || book.insertSheet("Result");
   if (response.getResponseCode() >= 300) {
+    const problem = mapiProblemRows_(response.getContentText());
+    if (problem.length) {
+      out.clear();
+      out.getRange(1, 1, problem.length, 1).setValues(problem);
+    }
     throw new Error(response.getResponseCode() + ": " + response.getContentText());
   }
   const result = JSON.parse(response.getContentText());
-  const out = book.getSheetByName("Result") || book.insertSheet("Result");
   out.clear();
   if (!result.done) {
     const note = "Still running (" + result.run.id + "): run the function again in a minute.";
     out.getRange(1, 1).setValue(note);
     return result;
   }
-  const rows = mapiSummaryRows_(result.summary);
-  if (!rows.length) {
-    out.getRange(1, 1).setValue(result.run.state + ": no summary in the answer");
+  const tables = mapiSummaryRows_(result.summary);
+  if (!tables.length) {
+    const why = result.run.problem ? mapiProblemRows_(JSON.stringify(result.run.problem)) : [];
+    const rows = [[result.run.state + ": no summary in the answer"]].concat(why);
+    out.getRange(1, 1, rows.length, 1).setValues(rows);
     return result;
   }
+  const conditioning = result.summary.conditioning;
+  const rows = conditioning ? [[conditioning.message], [""]].concat(tables) : tables;
   const width = Math.max(...rows.map((r) => r.length));
   const grid = rows.map((r) => r.concat(new Array(width - r.length).fill("")));
   out.getRange(1, 1, grid.length, width).setValues(grid);
@@ -78,58 +95,115 @@ function mapiSummaryRows_(summary) {
   return rows;
 }
 
-// A long table (a header row, then rows) as an inline dataset shaped like the example's:
-// columns named like its dims hold coordinates, columns named like its variables hold
-// values; empty cells become null.
-function mapiSheetToXr_(values, example) {
-  if (!example || !example.data_vars) {
-    throw new Error("this endpoint's example call sends no inline data to replace");
+// A problem answer (or a failed run's problem) as rows: what went wrong, what to do.
+function mapiProblemRows_(text) {
+  let problem;
+  try {
+    problem = JSON.parse(text);
+  } catch (e) {
+    return [];
   }
+  if (!problem || !problem.code) return [];
+  const first = (problem.errors && problem.errors[0]) || {};
+  const rows = [[problem.code + ": " + (first.message || problem.detail || problem.title)]];
+  if (first.suggested_action) rows.push(["What to do: " + first.suggested_action]);
+  return rows;
+}
+
+// A long table (a header row, then rows) as an inline dataset: columns named like a dim
+// hold coordinates, columns named like an input variable (`inputs`, else the example's
+// variables) hold values; empty cells become null - in a forecast an empty target is a
+// period to forecast. Dates are sent as yyyy-MM-dd.
+function mapiSheetToXr_(values, example, inputs, zone) {
+  let vars = inputs;
+  if (!vars && example && example.data_vars) {
+    vars = {};
+    for (const [name, spec] of Object.entries(example.data_vars)) vars[name] = spec.dims;
+  }
+  if (!vars) throw new Error("this endpoint's example call sends no inline data to replace");
   const header = values[0].map(String);
   const rows = values.slice(1).filter((r) => r.some((c) => c !== ""));
+  const used = Object.keys(vars).filter((name) => header.indexOf(name) >= 0);
+  if (!used.length) {
+    throw new Error("the Input sheet needs a column named one of: " + Object.keys(vars).join(", "));
+  }
   const column = (name) => {
     const i = header.indexOf(name);
     if (i < 0) throw new Error('the Input sheet needs a column named "' + name + '"');
     return i;
   };
-  const cell = (v) =>
-    v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd") : v;
+  const cell = (v) => (v instanceof Date ? Utilities.formatDate(v, zone, "yyyy-MM-dd") : v);
   const coords = {};
   const index = {};
-  for (const spec of Object.values(example.data_vars)) {
-    for (const dim of spec.dims) {
+  for (const name of used) {
+    for (const dim of vars[name]) {
       if (index[dim]) continue;
       const i = column(dim);
       index[dim] = new Map();
       const seen = [];
-      for (const r of rows) {
+      rows.forEach((r, k) => {
         const key = cell(r[i]);
+        if (key === "") {
+          throw new Error("row " + (k + 2) + ' of the Input sheet has no "' + dim + '"');
+        }
         if (!index[dim].has(key)) {
           index[dim].set(key, seen.length);
           seen.push(key);
         }
-      }
+      });
       coords[dim] = { dims: [dim], data: seen };
     }
   }
   const data_vars = {};
-  for (const [name, spec] of Object.entries(example.data_vars)) {
+  for (const name of used) {
+    const dims = vars[name];
     const i = column(name);
-    const value = (r) => (r[i] === "" ? null : r[i]);
-    if (!spec.dims.length) {
+    const value = (r) => (r[i] === "" ? null : cell(r[i]));
+    if (!dims.length) {
       data_vars[name] = { dims: [], data: rows.length ? value(rows[0]) : null };
       continue;
     }
-    const last = spec.dims.length - 1;
-    const empty = (k) => coords[spec.dims[k]].data.map(() => (k < last ? empty(k + 1) : null));
+    const last = dims.length - 1;
+    const empty = (k) => coords[dims[k]].data.map(() => (k < last ? empty(k + 1) : null));
     const data = empty(0);
     for (const r of rows) {
-      const at = spec.dims.map((dim) => index[dim].get(cell(r[column(dim)])));
+      const v = value(r);
+      if (v === null) continue;
+      const at = dims.map((dim) => index[dim].get(cell(r[column(dim)])));
       let node = data;
-      for (let k = 0; k < at.length - 1; k++) node = node[at[k]];
-      node[at[at.length - 1]] = value(r);
+      for (let k = 0; k < last; k++) node = node[at[k]];
+      if (node[at[last]] !== null && node[at[last]] !== v) {
+        throw new Error('"' + name + '" has two different values at one row of the Input sheet');
+      }
+      node[at[last]] = v;
     }
-    data_vars[name] = { dims: spec.dims, data: data };
+    data_vars[name] = { dims: dims, data: data };
   }
   return { coords: coords, data_vars: data_vars };
+}
+
+// The periods to forecast: the rows after the last one with a target value (every row
+// when none has one); the horizon's own periods when the sheet ends with an actual.
+function mapiForecastPeriods_(payload, fallback) {
+  const dim = payload.horizon.dim;
+  const labels = payload.data.coords[dim] ? payload.data.coords[dim].data : [];
+  const filled = new Set();
+  for (const name of []) {
+    const spec = payload.data.data_vars[name];
+    if (!spec) continue;
+    const axis = spec.dims.indexOf(dim);
+    const walk = (node, depth, at) => {
+      if (depth === spec.dims.length) {
+        if (node !== null) filled.add(at);
+        return;
+      }
+      node.forEach((child, k) => walk(child, depth + 1, depth === axis ? k : at));
+    };
+    if (axis >= 0) walk(spec.data, 0, -1);
+  }
+  const order = labels.map((_, k) => k).sort((a, b) => (labels[a] < labels[b] ? -1 : 1));
+  if (!filled.size) return labels.length || fallback;
+  let after = 0;
+  for (let k = order.length - 1; k >= 0 && !filled.has(order[k]); k--) after++;
+  return after || fallback;
 }

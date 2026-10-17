@@ -20,6 +20,8 @@ import { parseCallJson, SNIPPET_LANGUAGES } from "@/lib/integrations";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
+import { ActualsEditor, ConditioningNote } from "./actuals-editor";
+
 // ----------------------------------------------------------------------- code block
 
 export function CodeBlock({ code, label, language, wrap = false }: { code: string; label: string; language?: string; wrap?: boolean }) {
@@ -52,6 +54,9 @@ function SchemaTables({ schema }: { schema: EndpointSchema }) {
           ["Score modes", <span key="m" className="flex flex-wrap gap-1">{(snap.score_modes ?? []).map((m) => <Badge key={m} variant="outline">{m}</Badge>)}</span>],
           ["Forecasts extend", snap.horizon_dim ? <Mono key="h">{snap.horizon_dim}</Mono> : "—"],
           ["Needed in the future", snap.future_required?.length ? <Mono key="f">{snap.future_required.join(", ")}</Mono> : "Nothing beyond the horizon"],
+          ...(snap.horizon_dim && (snap.score_modes ?? []).includes("forecast")
+            ? ([["Actuals", snap.conditions_on_actuals ? "A forecast can carry your latest actuals: the model updates its state with them (no refit) and forecasts from the last one" : "Forecasts start at the end of the fitted history; target values in a forecast are refused"]] as [string, string][])
+            : []),
           ["Inputs at stage", <Mono key="s">{snap.inputs_stage ?? "raw"}</Mono>],
           ["Inline data", `up to ${formatBytes(schema.max_inline_bytes ?? 5 * 1024 * 1024)} of XrJSON per call`],
           ["Contract hash", <Mono key="x" title={snap.schema_hash}>{snap.schema_hash.slice(0, 19)}…</Mono>],
@@ -126,6 +131,14 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
   const busy = validate.isPending || score.isPending;
   return (
     <div className="grid gap-4">
+      <ActualsEditor
+        schema={schema}
+        onUse={(call) => {
+          validate.reset();
+          score.reset();
+          setText(JSON.stringify(call, null, 2));
+        }}
+      />
       <Field
         label="Call body"
         htmlFor="try-body"
@@ -202,6 +215,29 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
                 Open run <Mono>{score.data.result.run.id}</Mono>
               </Link>
             </div>
+            {score.data.result.summary?.conditioning ? <ConditioningNote conditioning={score.data.result.summary.conditioning} /> : null}
+            {(score.data.result.summary?.tables ?? []).slice(0, 2).map((t) => (
+              <Table key={t.variable} aria-label={`Summary of ${t.variable}`} className="text-xs">
+                <THead>
+                  <TR>
+                    {t.columns.map((c) => (
+                      <TH key={c}>{c}</TH>
+                    ))}
+                  </TR>
+                </THead>
+                <TBody>
+                  {t.rows.slice(0, 12).map((r, i) => (
+                    <TR key={i}>
+                      {r.map((c, j) => (
+                        <TD key={j} className="font-mono">
+                          {c === null ? "" : String(c)}
+                        </TD>
+                      ))}
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            ))}
             {score.data.result.outputs?.length ? (
               <ul className="grid gap-1 text-[13px]">
                 {score.data.result.outputs.map((o) => (

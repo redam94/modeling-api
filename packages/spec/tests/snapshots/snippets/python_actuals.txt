@@ -1,0 +1,51 @@
+import os
+
+from mapi_client import Client
+
+api = Client(
+    'https://api.mapi.example',
+    token=os.environ['MAPI_TOKEN'],
+    project='acme/growth',
+)
+result = api.endpoints.score(
+    'sales-forecast',
+    {
+        'mode': 'forecast',
+        'horizon': {
+            'dim': 't',
+            'periods': 8,
+        },
+        'data': None,
+        'scenario': None,
+        'output': {
+            'summary': ['median', 'q5', 'q95'],
+        },
+        'future_covariates': 'carry_last',
+    },
+    wait=60,
+)
+print(result.run.state, [link.name for link in result.outputs])
+# the numbers: one table per output (coordinates, then mean and HDI)
+for table in result.summary.tables if result.summary else []:
+    print(table.variable, table.columns, table.rows[:5])
+
+# Forecast with your latest actuals and the dates to forecast: in 'y' put the actuals you
+# have for the periods after the fitted history and leave None on the periods to forecast
+# (driver values left empty there are carried forward). The model updates its state with the
+# actuals - it is not refitted - and summary.conditioning in the answer says what the
+# forecast was conditioned on.
+# (A pandas DataFrame with these columns works too.)
+rows = [
+    {'t': '1961-01-01', 'y': None, 'price': None},
+    {'t': '1961-02-01', 'y': None, 'price': None},
+    {'t': '1961-03-01', 'y': None, 'price': None},
+    {'t': '1961-04-01', 'y': None, 'price': None},
+    {'t': '1961-05-01', 'y': None, 'price': None},
+    {'t': '1961-06-01', 'y': None, 'price': None},
+    {'t': '1961-07-01', 'y': None, 'price': None},
+    {'t': '1961-08-01', 'y': None, 'price': None},
+]
+forecast = api.endpoints.forecast('sales-forecast', rows, wait=60)
+print(forecast.conditioning.message if forecast.conditioning else forecast.run.state)
+for table in forecast.summary.tables if forecast.summary else []:
+    print(table.variable, table.columns, table.rows[:5])

@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from mapi_spec.actuals import ForecastConditioning
 from mapi_spec.api import (
     ArtifactLink,
     EndpointSchema,
@@ -29,6 +30,11 @@ from mapi_spec.api import (
     Run,
     ScoreCallResult,
     ScoreSummary,
+)
+from mapi_spec.endpoints import (
+    EndpointSchemaSnapshot,
+    example_score_call,
+    input_table,
 )
 from mapi_spec.snippets import SnippetContext, render_snippet
 from mapi_spec.views import FORECAST_VIEW, ForecastView
@@ -51,7 +57,7 @@ const fx = JSON.parse(fs.readFileSync(fixtures, "utf-8"));
 const fetched = [];
 const writes = [];
 const sheets = {};
-function sheet(name) {
+function sheet(name, values) {
   const range = (row, col) => ({
     setValues: (values) => writes.push({ sheet: name, row, col, values }),
     setValue: (value) => writes.push({ sheet: name, row, col, values: [[value]] }),
@@ -60,8 +66,11 @@ function sheet(name) {
     clear: () => writes.push({ sheet: name, cleared: true }),
     clearContents: () => writes.push({ sheet: name, cleared: true }),
     getRange: (a, b) => (typeof a === "string" ? range(1, 1) : range(a, b)),
+    getDataRange: () => ({ getValues: () => values || [] }),
+    setFrozenRows: (n) => writes.push({ sheet: name, frozen: n }),
   };
 }
+if (fx.__input__) sheets.Input = sheet("Input", fx.__input__);
 const services = {
   PropertiesService: {
     getScriptProperties: () => ({
@@ -254,3 +263,100 @@ def test_the_forecast_apps_script_explains_a_run_without_a_forecast(
     assert len(did["fetched"]) == 1
     (cell,) = [w for w in did["writes"] if not w.get("cleared")]
     assert cell["values"][0][0].startswith(message)
+
+
+# ------------------------------------------------------- actuals and future dates (v0.6)
+
+#: The tutorial's monthly sales forecast: ``sales`` fitted through September 2026, with a
+#: ``price`` driver, served by a model that conditions forecasts on actuals.
+SALES = EndpointSchemaSnapshot.model_validate(
+    {
+        "input_schema": {
+            "dims": {"month": {"kind": "time", "freq": "MS", "policy": "extend"}},
+            "vars": {
+                "sales": {"dims": ["month"], "dtype": "float64", "role": "target"},
+                "price": {"dims": ["month"], "dtype": "float64", "future_required": True},
+            },
+        },
+        "schema_hash": "sha256:" + "5a" * 32,
+        "score_modes": ["evaluate", "forecast", "predict"],
+        "representation": "quantiles",
+        "horizon_dim": "month",
+        "future_required": ["price"],
+        "fit_coords": {"month": {"kind": "time", "size": 69, "start": "2021-01-01",
+                                 "end": "2026-09-01", "freq": "MS"}},
+        "conditions_on_actuals": True,
+    }
+)  # fmt: skip
+SALES_URL = f"{BASE}/v1/endpoints/sales-forecast/score"
+
+
+def _sales_ctx() -> SnippetContext:
+    call = example_score_call(SALES)
+    payload = call.model_dump(mode="json", by_alias=True, exclude_defaults=True)
+    return SnippetContext(
+        base_url=BASE,
+        project="acme/growth",
+        alias="sales-forecast",
+        payload=payload,
+        input_table=input_table(SALES, periods=6),
+    )
+
+
+def test_the_actuals_apps_script_is_what_the_server_generates() -> None:
+    shown = (SNIPPETS / "sheets_actuals.gs").read_text("utf-8")
+    assert shown == render_snippet("apps_script", _sales_ctx()).code, (
+        "regenerate docs/snippets/sheets_actuals.gs from mapi_spec.snippets"
+    )
+
+
+@needs_node
+def test_the_actuals_apps_script_creates_the_input_sheet(tmp_path: Path) -> None:
+    did = _run(tmp_path, "sheets_actuals.gs", "scoreSalesForecastInputSheet", {})
+    header, rows, frozen = did["writes"]
+    assert header == {"sheet": "Input", "row": 1, "col": 1, "values": [["month", "sales", "price"]]}
+    assert rows["values"][0] == ["2026-10-01", "", ""] and len(rows["values"]) == 6
+    assert frozen == {"sheet": "Input", "frozen": 1}
+
+
+@needs_node
+def test_the_actuals_apps_script_sends_the_input_sheet(tmp_path: Path) -> None:
+    """The documented Input sheet: two months of actuals, then two months to forecast."""
+    sheet = [
+        ["month", "sales", "price"],
+        ["2026-10-01", 1520.5, 9.99],
+        ["2026-11-01", 1610.0, 9.99],
+        ["2026-12-01", "", 10.49],
+        ["2027-01-01", "", ""],
+    ]
+    conditioning = ForecastConditioning.model_validate(
+        {
+            "dim": "month",
+            "fit_end": "2026-09-01",
+            "conditioned": True,
+            "n_actuals": 2,
+            "actuals_through": "2026-11-01",
+            "horizon_source": "rows",
+            "periods": 2,
+            "series_conditioned": 1,
+            "message": "Forecast updated with 2 actuals (2026-10-01 to 2026-11-01) after the "
+            "fitted history, which ends 2026-09-01; the model's parameters were not "
+            "re-estimated. 2 periods forecast from 2026-12-01 to 2027-01-01.",
+        }
+    )
+    answer = _score_result()
+    answer["summary"]["conditioning"] = conditioning.model_dump(mode="json", exclude_none=True)
+    did = _run(tmp_path, "sheets_actuals.gs", "scoreSalesForecast",
+               {"__input__": sheet, SALES_URL: {"status": 200, "body": answer}})  # fmt: skip
+    (call,) = did["fetched"]
+    sent = json.loads(call["options"]["payload"])
+    EndpointScoreCall.model_validate(sent)
+    assert sent["mode"] == "forecast" and sent["horizon"] == {"dim": "month", "periods": 2}
+    assert sent["data"]["data_vars"] == {
+        "sales": {"dims": ["month"], "data": [1520.5, 1610.0, None, None]},
+        "price": {"dims": ["month"], "data": [9.99, 9.99, 10.49, None]},
+    }
+    (result,) = [w for w in did["writes"] if not w.get("cleared")]
+    assert result["values"][0][0] == conditioning.message
+    assert result["values"][1] == [""] * len(result["values"][2])  # a blank row, then the table
+    assert result["values"][2][0] == "variable"

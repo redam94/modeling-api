@@ -227,6 +227,7 @@ test.describe("phone layout (375 px)", () => {
     [`/integrations/endpoints/${ALIAS}`, "Serving now"],
     [`/integrations/endpoints/${ALIAS}?tab=schema`, "What to send"],
     [`/integrations/endpoints/${ALIAS}?tab=snippets`, "Snippets"],
+    ["/integrations/endpoints/sales-forecast?tab=schema", "Your latest actuals and the dates to forecast"],
     ["/integrations?tab=webhooks", "Planning pipeline"],
     [`/integrations/webhooks/${WEBHOOK}`, "Delivery log"],
     ["/integrations?tab=sharing", "Spend by market (3D)"],

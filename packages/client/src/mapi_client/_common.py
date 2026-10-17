@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final
 
 import httpx
+from mapi_spec.actuals import ForecastConditioning
 from mapi_spec.api import (
     SSE_HEARTBEAT_SECONDS,
     ArtifactLink,
@@ -176,6 +177,13 @@ class ScoreResult:
     @property
     def done(self) -> bool:
         return self.run.state.terminal
+
+    @property
+    def conditioning(self) -> ForecastConditioning | None:
+        """What a forecast was conditioned on (the end of the fitted history, the actuals
+        the call supplied, where the forecast periods came from; ``message`` says it in
+        plain words). ``None`` for other modes and before the run succeeded."""
+        return self.summary.conditioning if self.summary is not None else None
 
     @property
     def tree_link(self) -> ArtifactLink | None:

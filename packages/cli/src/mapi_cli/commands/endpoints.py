@@ -9,6 +9,8 @@ result DataTree to ``--out``.
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import sys
 from datetime import datetime
@@ -16,6 +18,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+from mapi_client import ScoreResult
 from mapi_spec.api import Endpoint
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.snippets import SnippetLanguage
@@ -248,6 +251,16 @@ def schema(
             ("score modes", ", ".join(snap.score_modes)),
             ("horizon dim", snap.horizon_dim),
             ("future inputs", ", ".join(snap.future_required)),
+            (
+                "actuals",
+                (
+                    "forecasts can carry actuals (mapi endpoints forecast)"
+                    if snap.conditions_on_actuals
+                    else "no: forecasts start at the end of the fitted history"
+                )
+                if snap.horizon_dim
+                else None,
+            ),
             ("inline payloads", f"up to {sch.max_inline_bytes // (1024 * 1024)} MB"),
         ]
     )
@@ -272,6 +285,12 @@ def schema(
         ],
         title="Variables",
     )
+    if sch.input_table is not None and sch.input_table.columns:
+        out.table(
+            ["column", "holds", "description"],
+            [(c.name, c.role, c.description) for c in sch.input_table.columns],
+            title="Input table (CSV columns for mapi endpoints forecast; one row per period)",
+        )
     out.info("example payload (mapi endpoints schema --example):")
     typer.echo(json.dumps(sch.example, indent=2, ensure_ascii=False))
 
@@ -391,6 +410,7 @@ def score(
         )
         return
     out.kv([("run", res.run.id), ("state", safe(res.run.state.value, "green"))])
+    _show_result(out, res)
     if tree is not None:
         out.table(
             ["group", "variable", "dims"],
@@ -401,6 +421,131 @@ def score(
         )
     if out_file is not None and link is not None:
         out.success(f"wrote {out_file}")
+
+
+def _show_result(out: Output, res: ScoreResult, *, max_rows: int = 40) -> None:
+    """What a forecast was conditioned on, then the inline summary tables."""
+    cond = res.conditioning
+    if cond is not None:
+        style = "green" if cond.conditioned else ""
+        out.out.print(safe(cond.message, style))
+    for table in res.summary.tables if res.summary is not None else []:
+        rows = [["" if c is None else c for c in r] for r in table.rows[:max_rows]]
+        title = table.variable
+        if len(table.rows) > max_rows:
+            title += f" (first {max_rows} of {len(table.rows)} rows)"
+        out.table(table.columns, rows, title=title)
+
+
+def _cell(text: str) -> Any:
+    """A CSV cell: empty is ``None``, numbers are numbers, the rest is text (dates)."""
+    value = text.strip()
+    if not value:
+        return None
+    for kind in (int, float):
+        try:
+            return kind(value)
+        except ValueError:
+            continue
+    return value
+
+
+def _read_table(path: Path) -> list[dict[str, Any]]:
+    """A long table from a CSV file (a header row) or a JSON list of row objects."""
+    text = sys.stdin.read() if str(path) == "-" else path.expanduser().read_text("utf-8-sig")
+    if path.suffix.lower() == ".json":
+        rows = json.loads(text)
+        if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
+            raise ValueError(f"{path.name} must hold a JSON list of row objects")
+        return rows
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise ValueError(f"{path.name} has no header row")
+    return [{k.strip(): _cell(v or "") for k, v in row.items() if k} for row in reader]
+
+
+@app.command("forecast")
+@cli_errors
+def forecast(
+    ctx: typer.Context,
+    alias: Annotated[str, typer.Argument(help="Endpoint alias")],
+    table: Annotated[
+        Path | None,
+        typer.Argument(
+            help="CSV (header row) or JSON rows in the endpoint's input layout: actuals with "
+            "the target filled, dates to forecast with it empty ('-' = stdin)",
+            dir_okay=False,
+        ),
+    ] = None,
+    actuals: Annotated[
+        Path | None, typer.Option("--actuals", help="Rows with the target filled (CSV/JSON)")
+    ] = None,
+    future: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--future",
+            help="A date to forecast (repeatable), or a CSV/JSON file of future rows with "
+            "their driver values",
+        ),
+    ] = None,
+    periods: Annotated[
+        int | None,
+        typer.Option("--periods", min=1, help="Periods to append after the last actual"),
+    ] = None,
+    future_covariates: Annotated[
+        str,
+        typer.Option(
+            "--future-covariates",
+            help="Empty future drivers: carry_last, seasonal_naive, zero or supplied",
+        ),
+    ] = "carry_last",
+    wait: Annotated[int, typer.Option("--wait", min=0, max=60, help="Prefer: wait=N")] = 60,
+    timeout: Annotated[
+        float | None, typer.Option("--timeout", help="Give up after N seconds")
+    ] = None,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Print the call body (JSON) and send nothing")
+    ] = False,
+) -> None:
+    """Forecast with your latest actuals and the dates to forecast (no refit).
+
+    The table has the columns of `mapi endpoints schema ALIAS` (Input table): the time
+    column, the target and any drivers. Rows with the target filled are actuals: the model
+    updates its state with them using its fitted parameters and forecasts from the last
+    one. Rows after them with the target empty are forecast; without such rows, --periods
+    (default 8) are appended. The answer says what the forecast was conditioned on.
+    """
+    from mapi_client import forecast_call
+
+    st = state(ctx)
+    out = st.output
+    future_arg: Any = None
+    if future:
+        files = [f for f in future if Path(f).suffix.lower() in (".csv", ".json")]
+        if files and len(future) > 1:
+            raise ValueError("give one --future file, or dates")
+        future_arg = _read_table(Path(files[0])) if files else list(future)
+    with st.client() as api:
+        schema = api.endpoints.schema(alias)
+        call = forecast_call(
+            schema,
+            _read_table(table) if table is not None else None,
+            actuals=_read_table(actuals) if actuals is not None else None,
+            future=future_arg,
+            periods=periods,
+            future_covariates=future_covariates,
+        )
+        if dry_run:
+            body = call.model_dump(mode="json", by_alias=True, exclude_defaults=True)
+            typer.echo(json.dumps(body, indent=2, ensure_ascii=False))
+            return
+        out.info(f"forecasting {alias}")
+        res = api.endpoints.score(alias, call, wait=wait, timeout=timeout, download=False)
+    if out.json_mode:
+        out.emit_json({"run": res.run, "summary": res.summary, "outputs": res.outputs})
+        return
+    out.kv([("run", res.run.id), ("state", safe(res.run.state.value, "green"))])
+    _show_result(out, res)
 
 
 @app.command("snippets")
