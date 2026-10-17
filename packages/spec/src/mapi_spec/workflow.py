@@ -184,7 +184,7 @@ class WorkflowParam(StrictModel):
             if problem:
                 raise ValueError(f"default: {problem}")
         if self.required and self.default is not None:
-            raise ValueError("a required parameter has no default")
+            raise ValueError("a required parameter cannot have a default")
         return self
 
 
@@ -195,18 +195,18 @@ PARAM_MAX_MAGNITUDE: Final = 1e15
 def param_value_problem(p: WorkflowParam, value: object) -> str | None:
     """Why ``value`` does not fit parameter ``p`` (``None`` if it does)."""
     if not _PARAM_JSON[p.type](value):
-        return f"expected a {p.type}"
+        return f"must be a {p.type}"
     if isinstance(value, int | float) and not isinstance(value, bool):
         if isinstance(value, float) and value != value:  # NaN
             return "must be a number"
         if not -PARAM_MAX_MAGNITUDE <= value <= PARAM_MAX_MAGNITUDE:
-            return f"is too large (at most {PARAM_MAX_MAGNITUDE:.0e} either way)"
+            return f"is too large (the maximum is {PARAM_MAX_MAGNITUDE:.0e}, positive or negative)"
         if p.minimum is not None and value < p.minimum:
             return f"must be at least {p.minimum}"
         if p.maximum is not None and value > p.maximum:
             return f"must be at most {p.maximum}"
     if p.enum is not None and value not in p.enum:
-        return "is not one of the allowed values"
+        return "is not one of the permitted values"
     return None
 
 
@@ -263,7 +263,7 @@ class WorkflowNode(StrictModel):
         for port, binding in v.items():
             alts = [binding] if isinstance(binding, str) else binding
             if not alts or len(alts) > 8:
-                raise ValueError(f"{port}: 1 to 8 alternatives")
+                raise ValueError(f"{port}: give 1 to 8 alternatives")
             for b in alts:
                 if not _BIND_RE.match(b):
                     raise ValueError(f"{port}: {b[:60]!r} is not inputs.<name> or <node>.<port>")
@@ -317,7 +317,7 @@ class WorkflowSpec(StrictModel):
             raise ValueError(f"node ids must be unique: {dups}")
         clash = sorted(set(ids) & {"inputs", "params", "nodes", "run"})
         if clash:
-            raise ValueError(f"reserved node ids: {clash}")
+            raise ValueError(f"these node ids are reserved: {clash}")
         return self
 
     def node(self, node_id: str) -> WorkflowNode | None:
@@ -580,7 +580,7 @@ def validate_workflow(
             issues.append(_issue(
                 ErrorCode.NODE_UNKNOWN, base + "/use",
                 f"node {n.id!r} uses {n.impl_id!r}, which is not in the node catalog",
-                action="Pick a node from GET /v1/catalog/workflow-nodes.",
+                action="Select a node from GET /v1/catalog/workflow-nodes.",
             ))  # fmt: skip
             continue
         impls[n.id] = impl
@@ -588,8 +588,9 @@ def validate_workflow(
         if n.kind is not None and n.kind is not impl.kind:
             issues.append(_issue(
                 ErrorCode.WORKFLOW_INVALID, base + "/kind",
-                f"node {n.id!r} says kind {n.kind.value!r} but {impl.id} is a "
+                f"node {n.id!r} has kind {n.kind.value!r}, but {impl.id} is a "
                 f"{impl.kind.value} node",
+                action=f"Change the kind to {impl.kind.value!r} or remove it.",
             ))  # fmt: skip
         issues.extend(_check_params(spec, n, impl, base))
         if impl.id == SUBWORKFLOW_NODE:
@@ -633,7 +634,7 @@ def validate_workflow(
                 if src_type is not pspec_.type:
                     issues.append(_issue(
                         ErrorCode.WORKFLOW_INVALID, bptr,
-                        f"node {n.id!r} input {port!r} expects {pspec_.type.value} but "
+                        f"node {n.id!r}: input {port!r} must be {pspec_.type.value}, but "
                         f"{b} is {src_type.value}",
                     ))  # fmt: skip
         if n.when is not None:
@@ -647,7 +648,7 @@ def validate_workflow(
             ):
                 issues.append(_issue(
                     ErrorCode.WORKFLOW_INVALID, base + "/when",
-                    f"node {n.id!r} is gated on {m.group(1)!r}, which is not a branch node",
+                    f"node {n.id!r} uses when: {n.when}, but {m.group(1)!r} is not a branch node",
                 ))  # fmt: skip
 
     # --- expressions -----------------------------------------------------------------------
@@ -726,11 +727,11 @@ def _binding_type(
         return f"binds unknown node {src!r}"
     impl = impls.get(src)
     if impl is None:
-        return f"binds {src!r}, whose implementation is unknown"
+        return f"binds {src!r}, but the implementation of {src!r} is unknown"
     if impl.id == SUBWORKFLOW_NODE:
         sub = subs.get(src)
         if sub is None:
-            return f"cannot check {binding!r}: the sub-workflow is not resolved"
+            return f"cannot do a check of {binding!r}: the sub-workflow is not resolved"
         target = sub.outputs.get(port)
         if target is None:
             return f"the sub-workflow of {src!r} has no output {port!r}"
@@ -769,7 +770,7 @@ def _check_params(
                 if p is None:
                     issues.append(_issue(
                         ErrorCode.WORKFLOW_INVALID, ptr,
-                        f"node {n.id!r} uses unknown workflow parameter {text!r}",
+                        f"node {n.id!r} uses the unknown workflow parameter {text!r}",
                     ))  # fmt: skip
             elif not text:
                 issues.append(_issue(ErrorCode.EXPRESSION_INVALID, ptr,
@@ -818,7 +819,7 @@ def _check_model_ref(n: WorkflowNode, base: str, catalog: Catalog | None) -> lis
         return [_issue(
             ErrorCode.REF_UNRESOLVED, base + "/with/model",
             f"node {n.id!r}: no catalog model matches {ref[:80]!r}",
-            action="Pick a model from GET /v1/catalog/models.",
+            action="Select a model from GET /v1/catalog/models.",
         )]  # fmt: skip
     return []
 
@@ -840,7 +841,7 @@ def _check_subworkflow(
     if sub is None:
         issues.append(_issue(
             ErrorCode.REF_UNRESOLVED, base + "/with/workflow",
-            f"node {n.id!r}: workflow {ref} was not found",
+            f"node {n.id!r}: the workflow {ref} does not exist",
         ))  # fmt: skip
     return sub
 
@@ -1001,9 +1002,9 @@ def _reachability(
         if impl is None or n.id in used or impl.kind in SINK_KINDS:
             continue
         if impl.kind is NodeKind.BRANCH:
-            msg = f"branch {n.id!r} gates no node (nothing uses when: {n.id}.then/else)"
+            msg = f"branch {n.id!r} controls no node (no node uses when: {n.id}.then/else)"
         else:
-            msg = f"the result of {n.id!r} is not used by any node or output"
+            msg = f"no node or output uses the result of {n.id!r}"
         issues.append(_issue(ErrorCode.WORKFLOW_INVALID, json_pointer("nodes", index[n.id]),
                              msg, severity=Severity.WARNING))  # fmt: skip
     return issues
@@ -1043,11 +1044,11 @@ def check_run_params(spec: WorkflowSpec, given: Mapping[str, JsonValue]) -> dict
                 _issue(
                     ErrorCode.WORKFLOW_INVALID,
                     json_pointer("params", name),
-                    f"parameter {name!r} is required",
+                    f"parameter {name!r} needs a value",
                 )
             )
     if issues:
-        raise MapiError("the run's parameters are invalid", code=ErrorCode.WORKFLOW_INVALID,
+        raise MapiError("the run parameters are not valid", code=ErrorCode.WORKFLOW_INVALID,
                         issues=issues)  # fmt: skip
     return out
 

@@ -124,10 +124,10 @@ describe("cron preview", () => {
   });
 
   it("refuses what the server refuses", () => {
-    expect(cronProblem("*/5 * * * *")).toBe("schedules may fire at most every 15 minutes");
-    expect(cronProblem("0 6 * *")).toBe("a cron expression has 5 fields: minute hour day month weekday");
-    expect(cronProblem("0 25 * * *")).toBe("25 is outside 0-23");
-    expect(cronProblem("0 0 30 2 *")).toBe("the schedule never fires");
+    expect(cronProblem("*/5 * * * *")).toBe("a schedule can run at most one time every 15 minutes");
+    expect(cronProblem("0 6 * *")).toBe("a cron expression must have 5 fields: minute hour day month weekday");
+    expect(cronProblem("0 25 * * *")).toBe("25 is not in the range 0-23");
+    expect(cronProblem("0 0 30 2 *")).toBe("the schedule never runs");
     expect(cronProblem("*/15 * * * *")).toBeNull();
     expect(parseCron("0 6 * * mon-fri").weekdays).toEqual(new Set([1, 2, 3, 4, 5]));
     expect(describeCron("0 6 * * 1")).toBe("Every Monday at 06:00");

@@ -4,20 +4,20 @@ apiVersion: mapi/v1
 kind: Workflow
 metadata: {name: ts-readiness-arimax, project: templates}
 params:
-  alpha: {type: number, default: 0.05, minimum: 0.001, maximum: 0.2, description: Significance level of the tests}
-  season: {type: integer, default: 52, minimum: 2, maximum: 400, description: Season length in periods (52 for weekly data)}
+  alpha: {type: number, default: 0.05, minimum: 0.001, maximum: 0.2, description: The significance level of the tests}
+  season: {type: integer, default: 52, minimum: 2, maximum: 400, description: The length of a season in periods (52 for weekly data)}
   horizons:
     type: array
     default: [1, 4, 8]
-    description: Forecast horizons scored in the backtest
-  gap: {type: integer, default: 0, minimum: 0, maximum: 52, description: Periods between training and test (late data)}
+    description: The forecast horizons that the backtest scores
+  gap: {type: integer, default: 0, minimum: 0, maximum: 52, description: The periods between the training data and the test data (for late data)}
   n_folds: {type: integer, default: 6, minimum: 2, maximum: 50}
   max_p: {type: integer, default: 3, minimum: 0, maximum: 8}
   max_q: {type: integer, default: 3, minimum: 0, maximum: 8}
   drivers:
     type: array
     default: []
-    description: Driver columns known for the future
+    description: The driver columns that you know for the future
 inputs:
   data: {type: dataset, description: The weekly (or daily) series to model}
 nodes:
@@ -32,8 +32,8 @@ nodes:
   label: Seasonal difference?
   with:
     condition: nodes.seas.seasonal
-    explain_then: The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).
-    explain_else: The series has no strong seasonal pattern, so it was not seasonally differenced.
+    explain_then: The series has a strong seasonal pattern. The workflow compared each value with the same period one season earlier (a seasonal difference).
+    explain_else: The series has no strong seasonal pattern, so the workflow did not apply a seasonal difference.
 - id: sdiff
   use: transform.seasonal_difference
   inputs: {data: inputs.data}
@@ -78,15 +78,15 @@ nodes:
   use: test.acf_pacf
   inputs: {data: cand.data}
   with: {nlags: 4, max_order: 1}
-  label: Too much differencing?
+  label: Too many differences?
 - id: wanders
   use: branch.if
   label: Difference?
   with:
     condition: (not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject) and nodes.overdiff.acf[1] > -0.5
     # plain words for the run report and the run monitor
-    explain_then: The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).
-    explain_else: The tests found that the series returns to a steady level (or that differencing it would go too far), so it was used as it is.
+    explain_then: The tests found that the series wanders and does not return to a steady level. The workflow applied a difference, so the model uses the change from one period to the next.
+    explain_else: The tests found that the series returns to a steady level, or that a difference would go too far. The workflow used the series as it is.
 - id: diff
   use: transform.difference
   inputs:

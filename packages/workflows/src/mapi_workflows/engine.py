@@ -628,7 +628,7 @@ class WorkflowEngine:
                 if spec.required:
                     if not alts:
                         return f"input {port!r} is not bound"
-                    return f"no value reached input {port!r} (every source was skipped)"
+                    return f"no value came to input {port!r} (the workflow skipped all the sources)"
                 continue
             inputs[port] = [f[0] for f in found]
             sources[port] = [f[1] for f in found]
@@ -776,7 +776,7 @@ class WorkflowEngine:
                 node_id,
                 NodeError(
                     code=ErrorCode.PAYLOAD_TOO_LARGE,
-                    message=f"the node's result exceeds {NODE_RESULT_MAX_BYTES} bytes",
+                    message=f"the result of the node is larger than {NODE_RESULT_MAX_BYTES} bytes",
                 ),
                 retry=False,
             )

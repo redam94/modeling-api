@@ -117,13 +117,13 @@ def _difference(ctx: NodeContext, seasonal: bool) -> NodeOutcome:
     n = dv.data.sizes[dim]
     lost = order * period
     if n - lost < 3:
-        raise data_error(f"differencing would leave {max(n - lost, 0)} periods")
+        raise data_error(f"the difference leaves only {max(n - lost, 0)} periods")
     out = dv.data
     levels: dict[str, JsonValue] = {}
     for name in names:
         da = dv.data[name]
         if dim not in da.dims:
-            raise data_error(f"{name!r} does not vary along {dim!r}")
+            raise data_error(f"{name!r} does not change along {dim!r}")
         tail = da.isel({dim: slice(-lost, None)})
         last: list[JsonValue] = []
         for x in np.asarray(tail.values, float).reshape(-1)[:200]:
@@ -157,8 +157,8 @@ def _log(ctx: NodeContext) -> NodeOutcome:
         vals = np.asarray(da.values, float)
         if np.any(vals[np.isfinite(vals)] <= 0):
             raise data_error(
-                f"{name!r} has zero or negative values: the logarithm needs "
-                "positive values (use transform.box_cox or core.log1p)"
+                f"{name!r} has zero or negative values, but the logarithm needs "
+                "positive values. Use transform.box_cox or core.log1p."
             )
         out = out.assign({name: np.log(da)})
     return _finish(

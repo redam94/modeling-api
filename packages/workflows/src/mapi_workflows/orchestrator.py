@@ -100,7 +100,7 @@ _PLAIN_METRIC: Final = {
     "mape": "average percentage error",
     "smape": "symmetric percentage error",
     "mase": "error relative to a naive forecast (MASE)",
-    "coverage_90": "share of actuals inside the 90% range",
+    "coverage_90": "share of actual values in the 90% range",
     "crps": "probabilistic error (CRPS)",
 }
 
@@ -142,12 +142,10 @@ def compare_models(params: Mapping[str, JsonValue], values: Sequence[BoundValue]
     direction = str(params.get("direction") or "min")
     cands = _candidates(values)
     if not cands:
-        raise _bad("compare.models received no candidates (every source was skipped)")
+        raise _bad("compare.models got no candidates (the workflow skipped all the sources)")
     if not any(clean_number(c.metrics.get(metric)) is not None for c in cands):
         have = sorted({m for c in cands for m in c.metrics})
-        raise _bad(
-            f"no candidate was scored on {metric!r} (scored: {', '.join(have) or 'nothing'})"
-        )
+        raise _bad(f"no candidate has a score for {metric!r} (scores: {', '.join(have) or 'none'})")
     names = sorted({m for c in cands for m in c.metrics})
     scored = sorted(
         ((c.key, clean_number(c.metrics.get(metric))) for c in cands), key=_sort_key(direction)
@@ -266,10 +264,10 @@ def select_best(
     elif beats:
         worst = min(bench_scores, key=lambda kv: abs(kv[1] or 0.0)) if bench_scores else None
         reason = (
-            f"{win_name} has the best {plain_metric} ({fmt_metric(metric, score)}) and beats "
-            f"every benchmark"
+            f"{win_name} has the best {plain_metric} ({fmt_metric(metric, score)}) and is "
+            f"better than all the benchmarks"
             + (
-                f" (the strongest, {names.get(worst[0], worst[0])}, scored "
+                f" (the strongest, {names.get(worst[0], worst[0])}, has "
                 f"{fmt_metric(metric, worst[1])})"
                 if worst
                 else ""
@@ -279,10 +277,10 @@ def select_best(
     else:
         losing = [names.get(k, k) for k, _ in bench_scores if k not in beaten]
         reason = (
-            f"{win_name} is the best model ({fmt_metric(metric, score)}) but does not beat "
-            f"{', '.join(losing) or 'the benchmarks'}"
-            + (f" by the required {margin * 100:.0f}%" if margin else "")
-            + ": no model is selected."
+            f"{win_name} is the best model ({fmt_metric(metric, score)}), but it is not better "
+            f"than {', '.join(losing) or 'the benchmarks'}"
+            + (f" by the necessary {margin * 100:.0f}%" if margin else "")
+            + ". The node selects no model."
         )
     result: dict[str, JsonValue] = {
         "selected": win_key,
@@ -330,7 +328,9 @@ def select_threshold(params: Mapping[str, JsonValue], values: Sequence[BoundValu
         if (lo is None or v >= lo) and (hi is None or v <= hi):
             passed_rows.append(row)
     passed: list[JsonValue] = [r.get("candidate") for r in passed_rows]
-    out = table.model_copy(update={"rows": passed_rows, "title": f"Passing on {metric}"})
+    out = table.model_copy(
+        update={"rows": passed_rows, "title": f"Candidates that pass on {metric}"}
+    )
     return {"passed": passed, "n_passed": len(passed)}, {"table": inline(PortType.TABLE, out)}
 
 
@@ -370,9 +370,9 @@ def _table_text(t: TablePayload) -> str:
         if ranked:
             first = ranked[0]
             return (
-                f"Ranked by {_PLAIN_METRIC.get(metric, metric)}: {first.get('candidate')} "
-                f"comes first ({fmt_metric(metric, clean_number(first.get(metric)))}) of "
-                f"{len(ranked)}."
+                f"Rank order by {_PLAIN_METRIC.get(metric, metric)}: {first.get('candidate')} "
+                f"is first of {len(ranked)} "
+                f"({fmt_metric(metric, clean_number(first.get(metric)))})."
             )
     summary = t.meta.get("summary_plain")
     if isinstance(summary, str):
@@ -478,7 +478,7 @@ def report_summary(
                     node_id=nr.node_id,
                     kind="skipped",
                     status="skipped",
-                    text=f"Skipped: {nr.skipped_reason or 'not needed'}.",
+                    text=f"Skipped: {nr.skipped_reason or 'the workflow did not need it'}.",
                 )
             )
         elif nr.status is NodeRunStatus.FAILED:
@@ -518,7 +518,9 @@ def report_summary(
     if model_ref:
         sections.append(
             ReportSection(
-                title="Chosen model", kind="model", text=f"The workflow's model is {model_ref}."
+                title="Selected model",
+                kind="model",
+                text=f"The model of the workflow is {model_ref}.",
             )
         )
     summary = _summary(sections, model_ref, explained)
@@ -590,13 +592,6 @@ def _decision_plain(s: ReportSection, explained: Mapping[str, str]) -> str:
     return f"{s.title} {answer}" if s.title.endswith("?") else f"{s.title}: {answer}"
 
 
-def _lower_first(text: str) -> str:
-    # "The series ..." -> "the series ..." mid-sentence; "ARIMAX ..." stays.
-    if len(text) > 1 and text[0].isupper() and text[1].islower():
-        return text[0].lower() + text[1:]
-    return text
-
-
 def _summary(
     sections: Sequence[ReportSection],
     model_ref: str | None,
@@ -612,7 +607,8 @@ def _summary(
         parts.append(f"{len(tests)} test(s) ran")
     if decisions:
         said = [_decision_plain(s, explained) for s in decisions]
-        joined = "; ".join([said[0], *(_lower_first(x) for x in said[1:])])
+        # one sentence for each decision (an explanation can have more than one sentence)
+        joined = ". ".join(said)
         every = all(s.node_id in explained for s in decisions)
         parts.append(joined if every else f"decisions: {joined}")
     if selection is not None:
@@ -703,9 +699,9 @@ def evidence_pack(
             )
         )
     if passed is None:
-        summary = "No governance evidence was available for this model."
+        summary = "This model has no governance evidence."
     elif passed:
-        summary = "Every blocking governance check passed."
+        summary = "All the blocking governance checks passed."
     else:
         summary = "At least one blocking governance check failed."
     report = ReportPayload(

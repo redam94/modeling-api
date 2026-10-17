@@ -110,24 +110,26 @@ TS_READINESS_ARIMAX = WorkflowTemplate(
     id="ts_readiness_arimax",
     about=About(
         title="Time-series readiness to ARIMAX",
-        summary_plain="Checks whether your series needs differencing, finds how many past "
-        "values matter, backtests a forecast with drivers against simple benchmarks and "
-        "only keeps it if it wins and passes governance.",
-        use_when=["You want an automatic, well-tested forecast of one series with drivers",
-                  "You want every modelling decision recorded and explained"],
-        avoid_when=["You have many related series that drive each other (use VAR/VECM)",
-                    "You have fewer than about two seasons of history"],
+        summary_plain="Finds whether your series needs a difference and how many past values "
+        "are important. Then it backtests a forecast with drivers against simple benchmarks "
+        "and keeps the model only if it wins and passes governance.",
+        use_when=["You want an automatic, fully tested forecast of one series with drivers",
+                  "You want a record and an explanation of each decision about the model"],
+        avoid_when=["You have many related series that affect each other (use VAR or VECM)",
+                    "You have less than about two seasons of history"],
         data_needs=["One numeric series over time, at least two seasons long",
-                    "Optional drivers known for the future (prices, holidays)"],
-        assumptions=["Past patterns carry into the forecast horizon",
-                     "Drivers affect the series linearly"],
-        outputs=["Test verdicts and the differencing decision", "Chosen AR/MA orders",
-                 "Backtest errors by horizon vs benchmarks", "A validated ARIMAX model",
-                 "A plain-language report"],
+                    "Optional drivers that you know for the future (for example, prices and "
+                    "holidays)"],
+        assumptions=["Past patterns continue into the forecast horizon",
+                     "The drivers have a linear effect on the series"],
+        outputs=["Test verdicts and the decision about the difference",
+                 "The selected AR and MA orders",
+                 "Backtest errors for each horizon, compared with the benchmarks",
+                 "A validated ARIMAX model", "A plain-language report"],
         difficulty=Difficulty.BEGINNER,
         typical_runtime=TypicalRuntime.MINUTES,
-        example="Weekly orders: the tests say 'difference once', AIC picks (2,1,1), the "
-        "backtest beats seasonal naive by 25% and governance passes.",
+        example="Weekly orders: the tests say 'difference once' and AIC selects (2,1,1). "
+        "The backtest is 25% better than seasonal naive, and governance passes.",
         related=["test.adf", "test.kpss", "search.arma_order", "ts.sarimax",
                  "split.expanding_window"],
         references=[AboutReference(title="Hyndman & Athanasopoulos, Forecasting: Principles "
@@ -139,18 +141,19 @@ TS_READINESS_ARIMAX = WorkflowTemplate(
         "ts-readiness-arimax",
         params={
             "alpha": {"type": "number", "default": 0.05, "minimum": 0.001, "maximum": 0.2,
-                      "description": "Significance level of the tests"},
+                      "description": "The significance level of the tests"},
             "season": {"type": "integer", "default": 52, "minimum": 2, "maximum": 400,
-                       "description": "Season length in periods (52 for weekly data)"},
+                       "description": "The length of a season in periods (52 for weekly data)"},
             "horizons": {"type": "array", "default": [1, 4, 8],
-                         "description": "Forecast horizons scored in the backtest"},
+                         "description": "The forecast horizons that the backtest scores"},
             "gap": {"type": "integer", "default": 0, "minimum": 0, "maximum": 52,
-                    "description": "Periods between training and test (late data)"},
+                    "description": "The periods between the training data and the test "
+                                   "data (for late data)"},
             "n_folds": {"type": "integer", "default": 6, "minimum": 2, "maximum": 50},
             "max_p": {"type": "integer", "default": 3, "minimum": 0, "maximum": 8},
             "max_q": {"type": "integer", "default": 3, "minimum": 0, "maximum": 8},
             "drivers": {"type": "array", "default": [],
-                        "description": "Driver columns known for the future"},
+                        "description": "The driver columns that you know for the future"},
         },
         inputs=_DATA,
         nodes=[
@@ -159,11 +162,11 @@ TS_READINESS_ARIMAX = WorkflowTemplate(
              "with": {"period": _p("season")}},
             {"id": "seasonal", "use": "branch.if", "label": "Seasonal difference?",
              "with": {"condition": "nodes.seas.seasonal",
-                      "explain_then": "The series repeats a strong seasonal pattern, so it "
-                                      "was compared with the same period one season earlier "
-                                      "(seasonal differencing).",
-                      "explain_else": "The series has no strong seasonal pattern, so it was "
-                                      "not seasonally differenced."}},
+                      "explain_then": "The series has a strong seasonal pattern. The "
+                                      "workflow compared each value with the same period one "
+                                      "season earlier (a seasonal difference).",
+                      "explain_else": "The series has no strong seasonal pattern, so the "
+                                      "workflow did not apply a seasonal difference."}},
             {"id": "sdiff", "use": "transform.seasonal_difference",
              "inputs": {"data": "inputs.data"}, "when": "seasonal.then",
              "with": {"period": _p("season")}},
@@ -181,18 +184,18 @@ TS_READINESS_ARIMAX = WorkflowTemplate(
             {"id": "cand", "use": "transform.difference", "inputs": {"data": _SERIES},
              "label": "Trial difference"},
             {"id": "overdiff", "use": "test.acf_pacf", "inputs": {"data": "cand.data"},
-             "with": {"nlags": 4, "max_order": 1}, "label": "Too much differencing?"},
+             "with": {"nlags": 4, "max_order": 1}, "label": "Too many differences?"},
             {"id": "wanders", "use": "branch.if", "label": "Difference?",
              "with": {"condition": "(not nodes.adf.reject or nodes.kpss.reject) and not "
                                    "(nodes.pp.reject and nodes.za.reject) and "
                                    "nodes.overdiff.acf[1] > -0.5",
-                      "explain_then": "The tests found that the series wanders rather than "
-                                      "returning to a steady level, so it was differenced "
-                                      "(the model works on the change from one period to "
-                                      "the next).",
+                      "explain_then": "The tests found that the series wanders and does not "
+                                      "return to a steady level. The workflow applied a "
+                                      "difference, so the model uses the change from one "
+                                      "period to the next.",
                       "explain_else": "The tests found that the series returns to a steady "
-                                      "level (or that differencing it would go too far), so "
-                                      "it was used as it is."}},
+                                      "level, or that a difference would go too far. The "
+                                      "workflow used the series as it is."}},
             {"id": "diff", "use": "transform.difference",
              "inputs": {"data": _SERIES}, "when": "wanders.then"},
             {"id": "acf", "use": "test.acf_pacf",
@@ -245,22 +248,23 @@ VAR_VECM = WorkflowTemplate(
     id="var_vecm_cointegration",
     about=About(
         title="Series that move together (VAR or VECM)",
-        summary_plain="Tests whether several series are tied together in the long run and "
-        "then models them together the right way, either keeping the long-run tie or "
-        "working with their changes.",
-        use_when=["Two to five series influence each other (prices, sales, search interest)"],
-        avoid_when=["A single series", "Fewer than about 50 periods"],
-        data_needs=["Two to five numeric series over time at the same frequency, one value "
-                    "per series and period (a long table, or a wide sheet ingested with the "
-                    "wide mapping)"],
+        summary_plain="Tests whether several series stay tied together in the long run. "
+        "Then it makes one model of all the series that keeps the long-run tie or uses "
+        "their changes.",
+        use_when=["Two to five series have an effect on each other (for example, prices, "
+                  "sales and search interest)"],
+        avoid_when=["A single series", "Less than about 50 periods"],
+        data_needs=["Two to five numeric series over time at the same frequency. Each series "
+                    "has one value for each period (a long table, or a wide sheet that you "
+                    "ingest with the wide mapping)"],
         assumptions=["The relationships stay the same over the period",
-                     "Effects work through past values"],
+                     "Effects come from past values"],
         outputs=["The cointegration rank", "A VECM or VAR model", "Granger test results",
                  "A report"],
         difficulty=Difficulty.EXPERT,
         typical_runtime=TypicalRuntime.SECONDS,
-        example="Your price and two competitors' prices share one long-run tie: a VECM "
-        "with rank 1 shows gaps close within a month.",
+        example="Your price and the prices of two competitors share one long-run tie. A "
+        "VECM with rank 1 shows that the gaps close in less than one month.",
         related=["test.johansen", "ts.vecm", "ts.var", "test.granger"],
         fits={"goal": ["compare_series", "forecast"], "data_shape": ["several_series"],
               "history": ["medium", "long"]},
@@ -271,12 +275,12 @@ VAR_VECM = WorkflowTemplate(
             "target": {"type": "string", "required": True,
                        "description": "The main result (one of the series)"},
             "driver": {"type": "string", "required": True,
-                       "description": "A series that may help predict it"},
+                       "description": "A series that can possibly help to predict the target"},
             "maxlags": {"type": "integer", "default": 8, "minimum": 1, "maximum": 52},
         },
         inputs={"data": {"type": "dataset",
-                         "description": "The series along one dimension (a value per series "
-                         "and period)"}},
+                         "description": "The series along one dimension (one value for each "
+                         "series and period)"}},
         nodes=[
             {"id": "johansen", "use": "test.johansen", "inputs": {"data": "inputs.data"}},
             # 0 < rank < k: tied in the long run (VECM). rank = k: every series is
@@ -284,11 +288,11 @@ VAR_VECM = WorkflowTemplate(
             {"id": "tied", "use": "branch.if", "label": "Tied in the long run?",
              "with": {"condition": "nodes.johansen.rank > 0 and "
                                    "nodes.johansen.rank < len(nodes.johansen.trace_stats)",
-                      "explain_then": "The test found that the series are tied together in "
-                                      "the long run, so a model that keeps that tie (VECM) "
-                                      "was fitted.",
+                      "explain_then": "The test found that the series stay tied together in "
+                                      "the long run. The workflow fitted a model that keeps "
+                                      "that tie (VECM).",
                       "explain_else": "The test found no long-run tie between the series, so "
-                                      "a VAR was fitted instead of a VECM."}},
+                                      "the workflow fitted a VAR and not a VECM."}},
             {"id": "rank", "use": "search.coint_rank", "inputs": {"data": "inputs.data"},
              "when": "tied.then"},
             {"id": "vecm", "use": "model.fit", "inputs": {"data": "inputs.data"},
@@ -300,10 +304,11 @@ VAR_VECM = WorkflowTemplate(
             {"id": "stationary", "use": "branch.if", "label": "Already stable?",
              "when": "tied.else",
              "with": {"condition": "nodes.johansen.rank >= len(nodes.johansen.trace_stats)",
-                      "explain_then": "Every series already returns to a steady level, so the "
-                                      "VAR was fitted on the series as they are.",
-                      "explain_else": "The series wander without a long-run tie, so they were "
-                                      "differenced before fitting the VAR."}},
+                      "explain_then": "Each series already returns to a steady level, so the "
+                                      "workflow fitted the VAR on the series as they are.",
+                      "explain_else": "The series wander and have no long-run tie. The "
+                                      "workflow applied a difference to the series before it "
+                                      "fitted the VAR."}},
             {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"},
              "when": "stationary.else"},
             {"id": "lags", "use": "search.var_lag_order",
@@ -330,20 +335,21 @@ MMM_GOVERNED = WorkflowTemplate(
     id="mmm_governed",
     about=About(
         title="Marketing mix with governance",
-        summary_plain="Checks your drivers, fits the marketing mix model, runs your "
-        "organisation's governance checks and produces a report and an evidence pack for "
-        "sign-off.",
-        use_when=["A marketing mix model will inform budget decisions",
-                  "Model risk or audit needs evidence"],
-        avoid_when=["Quick exploration (use the guided template)"],
-        data_needs=["Weekly sales and spend per channel (by market if you have it)"],
-        assumptions=["The governance policy for marketing mix models is set up"],
+        summary_plain="Does a check of your drivers and fits the marketing mix model. Then "
+        "it runs the governance checks of your organisation and makes a report and an "
+        "evidence pack for approval.",
+        use_when=["You will use a marketing mix model to make budget decisions",
+                  "The model risk team or the auditors need evidence"],
+        avoid_when=["You only want a quick look at the data (use the guided template)"],
+        data_needs=["Weekly sales and the spend for each channel (for each market, if you "
+                    "have this data)"],
+        assumptions=["Your organisation has a governance policy for marketing mix models"],
         outputs=["A fitted marketing mix model", "Governance evidence",
                  "A report and an evidence pack"],
         difficulty=Difficulty.INTERMEDIATE,
         typical_runtime=TypicalRuntime.LONG,
-        example="The model passes the shuffled-result and fake-channel checks and waits for "
-        "a reviewer's approval.",
+        example="The model passes the shuffled-result and fake-channel checks. Then it waits "
+        "for the approval of a reviewer.",
         related=[MMM_MODEL_ID, "governance.policy", "null.noise_regressors", "test.vif"],
         fits={"goal": ["explain_marketing", "validate_model"], "data_shape": ["panel",
               "one_series"], "history": ["medium", "long"]},
@@ -352,7 +358,7 @@ MMM_GOVERNED = WorkflowTemplate(
         "mmm-governed",
         params={
             "drivers": {"type": "array", "required": True,
-                        "description": "Spend and control columns checked for collinearity"},
+                        "description": "The spend and control columns to test for collinearity"},
             "holdout_weeks": {"type": "integer", "default": 8, "minimum": 1, "maximum": 52},
         },
         inputs={"data": {"type": "dataset"}},
@@ -388,17 +394,18 @@ FORECAST_BAKEOFF = WorkflowTemplate(
     id="forecast_bakeoff",
     about=About(
         title="Forecast bake-off",
-        summary_plain="Backtests several forecasting models on exactly the same periods, "
-        "compares them with simple benchmarks and refits the winner.",
-        use_when=["You do not know which forecasting method suits your series"],
-        avoid_when=["You already have a model you trust"],
+        summary_plain="Backtests some forecast models on the same periods and compares them "
+        "with simple benchmarks. Then it fits the winner again.",
+        use_when=["You do not know which forecast method is best for your series"],
+        avoid_when=["You already have a model that you trust"],
         data_needs=["One numeric series over time, at least two seasons long"],
-        assumptions=["The backtest periods resemble the future"],
-        outputs=["Backtest errors per model and horizon", "The winner, refitted",
+        assumptions=["The backtest periods are similar to the future"],
+        outputs=["Backtest errors for each model and horizon", "The winner, fitted again",
                  "A comparison report"],
         difficulty=Difficulty.BEGINNER,
         typical_runtime=TypicalRuntime.LONG,
-        example="ETS wins with 7% error at 4 weeks; ARIMA 8%, Theta 9%, seasonal naive 12%.",
+        example="ETS wins with 7% error at 4 weeks. ARIMA has 8%, Theta 9% and seasonal naive "
+        "12%.",
         related=["model.backtest", "compare.models", "select.best", "ts.ets", "ts.theta"],
         fits={"goal": ["forecast"], "data_shape": ["one_series"],
               "history": ["medium", "long"]},

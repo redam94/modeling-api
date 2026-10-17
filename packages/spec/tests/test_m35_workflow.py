@@ -110,7 +110,7 @@ def test_a_valid_workflow_has_an_order_and_resolved_nodes() -> None:
         (
             lambda d: d["nodes"][4]["inputs"].update(data="adf.result"),
             "/nodes/4/inputs/data",
-            "expects dataset but adf.result is test_result",
+            "must be dataset, but adf.result is test_result",
         ),
         (
             lambda d: d["nodes"][4]["inputs"].update(data="ghost.data"),
@@ -221,7 +221,7 @@ def test_unused_results_and_idle_branches_are_warnings() -> None:
     idle = {"id": "idle", "use": "branch.if", "with": {"condition": "nodes.adf.reject"}}
     issues = _issues(_doc([*copy.deepcopy(BASE), lone, idle]))
     warnings = {p: m for s, p, m in issues if s == "warning"}
-    assert "not used" in warnings["/nodes/5"] and "gates no node" in warnings["/nodes/6"]
+    assert "uses the result" in warnings["/nodes/5"] and "controls no node" in warnings["/nodes/6"]
     assert validate_workflow(_doc([*copy.deepcopy(BASE), lone])).valid  # warnings only
 
 

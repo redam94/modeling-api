@@ -470,7 +470,7 @@ export function createWorkflowHandlers(state: WorkflowsState, ctx: { artifacts: 
       } else doc = parseDoc(body);
       if (!doc?.metadata?.name) return problem(422, "WORKFLOW_INVALID", "Invalid workflow", "metadata.name is required");
       const name = doc.metadata.name;
-      if ([...state.workflows.values()].some((w) => w.name === name)) return problem(409, "CONFLICT", "Conflict", `a workflow named '${name}' already exists; add a revision instead`);
+      if ([...state.workflows.values()].some((w) => w.name === name)) return problem(409, "CONFLICT", "Conflict", `a workflow with the name '${name}' already exists. Add a revision to it.`);
       const now = new Date().toISOString();
       const wf: Workflow = {
         id: newId("wf"),
@@ -519,12 +519,12 @@ export function createWorkflowHandlers(state: WorkflowsState, ctx: { artifacts: 
       if (!wf) return problem(404, "NOT_FOUND", "Not found");
       const body = (await request.json()) as WorkflowRevisionCreate;
       if (body.expected_revision != null && body.expected_revision !== wf.latest_revision) {
-        return problem(409, "CONFLICT", "Conflict", `the latest revision is ${wf.latest_revision}, not ${body.expected_revision}; reload and save again`);
+        return problem(409, "CONFLICT", "Conflict", `the latest revision is ${wf.latest_revision}, not ${body.expected_revision}. Load the workflow again and save.`);
       }
       const doc = parseDoc(body);
       if (!doc) return problem(400, "SPEC_PARSE_ERROR", "The document could not be parsed");
       if (doc.metadata?.name && doc.metadata.name !== wf.name) {
-        return problem(422, "WORKFLOW_INVALID", "Invalid workflow", `metadata.name must stay '${wf.name}' (create a new workflow to rename)`, [
+        return problem(422, "WORKFLOW_INVALID", "Invalid workflow", `metadata.name must stay '${wf.name}'. To change the name, create a new workflow.`, [
           { code: "WORKFLOW_INVALID", pointer: "/metadata/name", message: `metadata.name must stay '${wf.name}'`, severity: "error", context: {} },
         ]);
       }
