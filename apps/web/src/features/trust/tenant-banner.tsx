@@ -24,7 +24,7 @@ export function TenantStatusBanner() {
       <p>
         {status === "deleting" ? (
           <>
-            <span className="font-medium">{t.name} is being deleted.</span> <span className="text-muted-foreground">Nothing can be changed, and its data is being purged.</span>{" "}
+            <span className="font-medium">The app is deleting {t.name}.</span> <span className="text-muted-foreground">You cannot change anything. The app removes its data now.</span>{" "}
             {admin ? (
               <Link to="/settings" hash="data" className="font-medium text-primary hover:underline">
                 See the progress
@@ -34,7 +34,7 @@ export function TenantStatusBanner() {
         ) : scheduled ? (
           <>
             <span className="font-medium">{t.name} is scheduled for deletion on {absoluteTime(d.purge_after)}.</span>{" "}
-            <span className="text-muted-foreground">Until then it is read-only, and you can still export its data or cancel.</span>{" "}
+            <span className="text-muted-foreground">Until then, it is read-only. You can export its data or cancel the deletion.</span>{" "}
             <Link to="/settings" hash="data" className="font-medium text-primary hover:underline">
               Cancel or export
             </Link>
@@ -43,7 +43,7 @@ export function TenantStatusBanner() {
           <>
             <span className="font-medium">{t.name} is suspended.</span>{" "}
             <span className="text-muted-foreground">
-              Everything is read-only: nothing can be changed or run.
+              All items are read-only. You cannot change or run anything.
               {t.status_reason ? ` Reason: ${t.status_reason}` : ""}
             </span>
           </>

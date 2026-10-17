@@ -162,7 +162,7 @@ export function DataTable<T>({
             ) : null}
           </tbody>
         </table>
-        {rows.length === 0 ? <div className="p-6 text-muted-foreground">{empty ?? "Nothing to show."}</div> : null}
+        {rows.length === 0 ? <div className="p-6 text-muted-foreground">{empty ?? "There is no data to show."}</div> : null}
       </div>
     </div>
   );

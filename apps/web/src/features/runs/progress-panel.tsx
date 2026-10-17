@@ -85,7 +85,7 @@ export function ProgressPanel({ run, progress }: { run: Run; progress: ProgressS
     <div className="grid gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <p className="text-[15px] font-semibold">{p ? phaseLabel(p.phase) : "Waiting for the first progress report"}</p>
+          <p className="text-[15px] font-semibold">{p ? phaseLabel(p.phase) : "No progress report yet"}</p>
           {p?.message ? <p className="text-muted-foreground">{p.message}</p> : null}
         </div>
         <div className="flex gap-4 text-xs text-muted-foreground tabular">
@@ -100,7 +100,7 @@ export function ProgressPanel({ run, progress }: { run: Run; progress: ProgressS
           <ChainLanes chains={p.chains} />
           {totalDiv > 0 ? (
             <p className="text-xs text-destructive">
-              {totalDiv} divergent transition{totalDiv === 1 ? "" : "s"} so far. Check the convergence diagnostics when the fit finishes.
+              {totalDiv} divergent transition{totalDiv === 1 ? "" : "s"} until now. When the fit finishes, look at the convergence diagnostics.
             </p>
           ) : null}
         </>

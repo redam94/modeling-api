@@ -121,7 +121,7 @@ function DecisionPanel({ validation }: { validation: ModelValidation }) {
         <div>
           <CardTitle>Approvals</CardTitle>
           <CardDescription>
-            {validation.require_approval ? `${validation.approvals_required ?? 1} reviewer approval${(validation.approvals_required ?? 1) === 1 ? "" : "s"} needed, from someone other than the submitter.` : "This validation needs no approval."}
+            {validation.require_approval ? `This validation needs ${validation.approvals_required ?? 1} reviewer approval${(validation.approvals_required ?? 1) === 1 ? "" : "s"}. The submitter cannot approve it.` : "This validation needs no approval."}
           </CardDescription>
         </div>
       </CardHeader>
@@ -145,11 +145,11 @@ function DecisionPanel({ validation }: { validation: ModelValidation }) {
           <div className="grid gap-3 rounded-md border p-3" data-testid="decision-form">
             {isSubmitter ? (
               <p role="note" className="text-[13px] text-muted-foreground">
-                You submitted this validation, so a second person has to review it.
+                You submitted this validation. Another person must review it.
               </p>
             ) : null}
-            <Field label="Comment" htmlFor="approval-comment" hint="Required to reject; recorded in the audit log." error={rejectNeedsComment ? "Say why you reject it." : null}>
-              <Textarea id="approval-comment" maxLength={2000} value={comment} disabled={isSubmitter} onChange={(e) => setComment(e.target.value)} placeholder="Null tests are convincing; benchmarks beaten by 30%." />
+            <Field label="Comment" htmlFor="approval-comment" hint="Type a comment to reject. The audit log records the comment." error={rejectNeedsComment ? "The comment is empty. Type the reason for the rejection." : null}>
+              <Textarea id="approval-comment" maxLength={2000} value={comment} disabled={isSubmitter} onChange={(e) => setComment(e.target.value)} placeholder="The null tests are good. The model is 30% better than the benchmarks." />
             </Field>
             {decide.isError ? <ErrorNotice error={decide.error} title="The decision was not recorded" /> : null}
             <div className="flex flex-wrap gap-2">
@@ -228,7 +228,7 @@ function NoteDialog({ title, description, label, required, action, onSubmit, onC
             onSubmit(note.trim() || null);
           }}
         >
-          <Field label={label} htmlFor="note-text" error={tried && required && !note.trim() ? "Required." : null}>
+          <Field label={label} htmlFor="note-text" error={tried && required && !note.trim() ? "This field is empty. Type a note." : null}>
             <Textarea id="note-text" autoFocus maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
           </Field>
           {error ? <ErrorNotice error={error} title={`${action} failed`} /> : null}
@@ -255,7 +255,7 @@ export function ValidationView({ validationId }: { validationId: string }) {
   const actions = useValidationActions(validationId);
   const [dialog, setDialog] = useState<"cancel" | "resubmit" | "deprecate" | null>(null);
   if (q.isPending) return <LoadingRows rows={6} />;
-  if (q.isError || !q.data) return <ErrorNotice error={q.error} title="The validation could not be loaded" />;
+  if (q.isError || !q.data) return <ErrorNotice error={q.error} title="Cannot load the validation" />;
   const v = q.data;
   const mayValidate = can(ws.grants, "validate", "model");
   const mayDeprecate = can(ws.grants, "update", "model");
@@ -332,7 +332,7 @@ export function ValidationView({ validationId }: { validationId: string }) {
           <h2 className="text-base font-semibold">Checks</h2>
           {v.status === "checks_running" ? (
             <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              <Spinner /> The checks are running in the sandbox{v.workflow_run_id ? (
+              <Spinner /> The checks run in the sandbox now{v.workflow_run_id ? (
                 <>
                   {" "}
                   (run{" "}
@@ -364,7 +364,7 @@ export function ValidationView({ validationId }: { validationId: string }) {
               <CardTitle>Evidence pack</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3">
-              <p className="text-[13px] text-muted-foreground">Everything an auditor needs in one file: the results, approvals, history, policies, lineage and a digest.</p>
+              <p className="text-[13px] text-muted-foreground">One file with all the data that an auditor needs: the results, approvals, history, policies, lineage and a digest.</p>
               <ExportPack validation={v} />
             </CardContent>
           </Card>
@@ -413,12 +413,12 @@ export function ValidationView({ validationId }: { validationId: string }) {
           title={dialog === "cancel" ? "Cancel the running checks?" : dialog === "resubmit" ? "Run the checks again?" : "Deprecate this validated version?"}
           description={
             dialog === "cancel"
-              ? "The governance run stops and the validation goes back to draft."
+              ? "The governance run stops. The validation goes back to draft."
               : dialog === "resubmit"
-                ? "A new round starts under the policies in force now; the earlier results are kept in the history."
-                : "It stays in the audit trail but should no longer be used; promotions that require validation will refuse it."
+                ? "The checks run again with the policies that are in force now. The history keeps the earlier results."
+                : "The audit trail keeps it, but do not use it. Promotions that need validation will not accept it."
           }
-          label={dialog === "deprecate" ? "Why should it no longer be used?" : "Note (optional)"}
+          label={dialog === "deprecate" ? "Reason for the deprecation" : "Note (optional)"}
           required={dialog === "deprecate"}
           action={dialog === "cancel" ? "Cancel checks" : dialog === "resubmit" ? "Resubmit" : "Deprecate"}
           pending={mutation.isPending}

@@ -61,7 +61,7 @@ test("a runner cannot promote and is told why", async ({ page }) => {
   await page.goto("/integrations?tab=endpoints");
   const promote = page.getByRole("button", { name: "Promote a model" });
   await expect(promote).toBeDisabled();
-  await expect(promote).toHaveAttribute("title", "Project admins promote endpoints");
+  await expect(promote).toHaveAttribute("title", "Only project admins can promote endpoints.");
 });
 
 test("snippets are copied and the example call is tried", async ({ page, context }) => {
@@ -197,7 +197,7 @@ test("an organisation admin exports the data and schedules, then cancels, the de
   await page.getByRole("button", { name: "Delete Acme Retail…" }).click();
   const dialog = page.getByRole("dialog", { name: "Delete Acme Retail?" });
   await dialog.getByLabel("Type acme to confirm").fill("acme");
-  await dialog.getByRole("checkbox", { name: /cannot be undone/ }).click();
+  await dialog.getByRole("checkbox", { name: /cannot undo this/ }).click();
   await dialog.getByRole("button", { name: "Schedule deletion" }).click();
   await expect(page.getByRole("list", { name: "Deletion progress" })).toBeVisible();
   const banner = page.getByRole("status").filter({ hasText: "is scheduled for deletion on" });

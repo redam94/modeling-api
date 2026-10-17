@@ -33,7 +33,7 @@ const RENDER_POLL_MS = 1500;
 const RENDER_TIMEOUT_MS = 3 * 60_000;
 export const EXPIRY_DAYS = [7, 30, 90, 180, 365] as const;
 
-const NOT_EMBEDDABLE = "Only plots of the platform's own recipes can be shared by link: a shared view must never run code a plugin or a person wrote.";
+const NOT_EMBEDDABLE = "You can share only plots of the platform recipes by link. A shared view must never run code from a plugin or a person.";
 
 function fileStem(title: string): string {
   return title.replace(/[^A-Za-z0-9_.-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) || "plot";
@@ -72,7 +72,7 @@ export function RenderButtons({ plot, plotlyRefusal, onPlotlyRefused }: { plot: 
       const started = Date.now();
       while (!r.done) {
         if (isTerminal(r.run.state) && r.run.state !== "succeeded") break;
-        if (Date.now() - started > RENDER_TIMEOUT_MS) throw new Error("The render is taking longer than expected; it keeps running, open the Runs page to follow it.");
+        if (Date.now() - started > RENDER_TIMEOUT_MS) throw new Error("The render takes more time than usual. It continues to run. Open the Runs page to monitor it.");
         await sleep(RENDER_POLL_MS);
         r = await getPlotRender(scope, r.run.id);
       }
@@ -80,7 +80,7 @@ export function RenderButtons({ plot, plotlyRefusal, onPlotlyRefused }: { plot: 
         throw new Error(r.run.problem ? `${r.run.problem.title}${r.run.problem.detail ? `: ${r.run.problem.detail}` : ""}` : `The render run ended ${r.run.state}.`);
       }
       const link = r.outputs?.find((o) => o.name.endsWith(`.${format}`)) ?? r.outputs?.[0];
-      if (!link) throw new Error("The render finished without a file.");
+      if (!link) throw new Error("The render finished, but it did not make a file.");
       const bytes = await fetchArtifactBytes(link, { maxBytes: MAX_RENDER_BYTES });
       saveBytes(bytes, `${fileStem(plot.title)}.${format}`, link.content_type ?? "application/octet-stream");
       toast.success("Downloaded", `${plot.title} (${format.toUpperCase()})`);
@@ -106,7 +106,7 @@ export function RenderButtons({ plot, plotlyRefusal, onPlotlyRefused }: { plot: 
             disabled={!canRender || busy !== null || refused !== null}
             onClick={() => void download(f)}
             aria-label={`Download ${f.toUpperCase()}`}
-            title={!canRender ? "Rendering starts a run: it needs the runner role" : (refused ?? undefined)}
+            title={!canRender ? "A render starts a run. You need the runner role." : (refused ?? undefined)}
           >
             {busy === f ? <Spinner /> : <Download />} {f.toUpperCase()}
           </Button>
@@ -114,10 +114,10 @@ export function RenderButtons({ plot, plotlyRefusal, onPlotlyRefused }: { plot: 
       </div>
       {refused ? (
         <p className="text-xs text-muted-foreground" data-testid="plotly-refused">
-          Static Plotly downloads are off on this server: {refused} Open the plot and use the sandbox&apos;s own PNG export instead.
+          This server does not do static Plotly downloads: {refused} Open the plot and use the PNG export of the sandbox.
         </p>
       ) : null}
-      {error ? <ErrorNotice error={error} title="The plot could not be rendered" /> : null}
+      {error ? <ErrorNotice error={error} title="The app could not render the plot" /> : null}
     </div>
   );
 }
@@ -181,7 +181,7 @@ export function EmbedsTable({ plot }: { plot: SavedPlot }) {
               <Dialog open onOpenChange={(o) => !o && setConfirm(null)}>
                 <DialogContent>
                   <DialogTitle>Revoke “{confirm.label ?? confirm.display}”?</DialogTitle>
-                  <DialogDescription>Everyone with the link sees “This link has expired” from the next view. This cannot be undone; create a new link to share again.</DialogDescription>
+                  <DialogDescription>From the next view, all persons with the link see “This link has expired”. You cannot undo this. To share again, create a new link.</DialogDescription>
                   {revoke.isError ? <ErrorNotice error={revoke.error} /> : null}
                   <DialogFooter>
                     <Button variant="ghost" onClick={() => setConfirm(null)}>
@@ -207,7 +207,7 @@ export function EmbedsTable({ plot }: { plot: SavedPlot }) {
             ) : null}
           </>
         ) : (
-          <p className="text-[13px] text-muted-foreground">No links yet.</p>
+          <p className="text-[13px] text-muted-foreground">This plot has no links.</p>
         )
       }
     </QueryView>
@@ -231,10 +231,10 @@ export function CreateEmbedDialog({ plot, onClose, onCreated }: { plot: SavedPlo
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent wide>
         <DialogTitle>Share “{plot.title}” by link</DialogTitle>
-        <DialogDescription>Anyone with the link sees this plot - read-only, no sign-in - until it expires or you revoke it. Paste it into a BI tool or Notion; Slack shows it as a link card, so post the PNG there.</DialogDescription>
+        <DialogDescription>All persons with the link can see this plot until it expires or you revoke it. They can only read it, and they do not sign in. Paste the link into a BI tool or Notion. Slack shows only a link card. Post the PNG in Slack.</DialogDescription>
         <form className="grid gap-5" onSubmit={submit} noValidate>
           <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-            <Field label="Label (optional)" htmlFor="emb-label" hint="Who the link is for; only you see it.">
+            <Field label="Label (optional)" htmlFor="emb-label" hint="Type the name of the person or group that gets the link. Only you can see the label.">
               <Input id="emb-label" autoFocus maxLength={200} placeholder="Q4 board deck" value={label} onChange={(e) => setLabel(e.target.value)} />
             </Field>
             <Field label="Expires after" htmlFor="emb-exp">
@@ -248,10 +248,10 @@ export function CreateEmbedDialog({ plot, onClose, onCreated }: { plot: SavedPlo
             </Field>
           </div>
           <Field
-            label="Sites that may frame it (optional)"
+            label="Sites that can frame it (optional)"
             htmlFor="emb-origins"
             error={submitted ? parsed.error : null}
-            hint="https origins, one per line (up to 10), such as https://acme.notion.site. Empty: any site may frame the link."
+            hint="Type https origins, one on each line, for example https://acme.notion.site. The maximum is 10. If you type no origins, all sites can frame the link."
           >
             <Textarea id="emb-origins" className="min-h-16 font-mono text-xs" value={origins} onChange={(e) => setOrigins(e.target.value)} />
           </Field>
@@ -276,7 +276,7 @@ export function EmbedCreatedDialog({ created, title, onClose }: { created: PlotE
       title="Copy the link now"
       description={
         <>
-          The link carries its own token, so it is shown only this once. It works until {absoluteTime(created.embed.expires_at)}
+          The app shows the link only one time, because it contains its own token. It works until {absoluteTime(created.embed.expires_at)}
           {created.embed.allowed_origins?.length ? `, framed only by ${created.embed.allowed_origins.join(", ")}` : ""}.
         </>
       }
@@ -331,7 +331,7 @@ export function SavePlotDialog({ initial, onClose, onSaved }: { initial?: ModelP
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent wide>
         <DialogTitle>Save a model plot</DialogTitle>
-        <DialogDescription>The saved plot keeps pointing at this model version, so a link to it never changes when the model is refitted.</DialogDescription>
+        <DialogDescription>The saved plot always points to this model version. A link to the plot does not change when you fit the model again.</DialogDescription>
         <form className="grid gap-4" onSubmit={submit} noValidate>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Model" htmlFor="sp-model">
@@ -379,7 +379,7 @@ export function SavePlotDialog({ initial, onClose, onSaved }: { initial?: ModelP
               </NativeSelect>
             </Field>
           </div>
-          <Field label="Title" htmlFor="sp-title" hint="Shown above the plot wherever it is shared.">
+          <Field label="Title" htmlFor="sp-title" hint="The title shows above the plot in all locations where you share it.">
             <Input id="sp-title" maxLength={300} placeholder={effectiveTitle || "Response curves for the board"} value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
           {chosen && !chosen.recipe ? <p className="text-xs text-warning">{NOT_EMBEDDABLE}</p> : null}
@@ -483,7 +483,7 @@ function SavedPlotCard({ plot, plotlyRefusal, onPlotlyRefused }: { plot: SavedPl
         <Dialog open onOpenChange={(o) => !o && setDeleting(false)}>
           <DialogContent>
             <DialogTitle>Delete “{plot.title}”?</DialogTitle>
-            <DialogDescription>Its share links stop working at once. The model version and its plots are kept.</DialogDescription>
+            <DialogDescription>Its share links do not work after this. The app keeps the model version and its plots.</DialogDescription>
             {del.isError ? <ErrorNotice error={del.error} /> : null}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setDeleting(false)}>
@@ -495,7 +495,7 @@ function SavedPlotCard({ plot, plotlyRefusal, onPlotlyRefused }: { plot: SavedPl
                 onClick={() =>
                   del.mutate(plot.id, {
                     onSuccess: () => toast.success("Plot deleted", plot.title),
-                    onError: (e) => toast.error("Delete failed", errorMessage(e)),
+                    onError: (e) => toast.error("The plot was not deleted", errorMessage(e)),
                   })
                 }
               >
@@ -521,7 +521,7 @@ export function SharingSection({ initial, onConsumeInitial }: { initial?: ModelP
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-[68ch] text-muted-foreground">
-          Save the plots you report on, download them for slides (PNG, SVG or PDF, rendered in the sandbox) or share them read-only by an expiring link.
+          Save the plots for your reports. You can download them for slides as PNG, SVG or PDF (the sandbox renders them). You can also share them with a read-only link that expires.
         </p>
         <Button onClick={() => setSaving(true)} disabled={!canSave}>
           <Plus /> Save a model plot
@@ -536,8 +536,8 @@ export function SharingSection({ initial, onConsumeInitial }: { initial?: ModelP
               ))}
             </div>
           ) : (
-            <EmptyState icon={<BarChart3 />} title="No saved plots yet" action={canSave ? <Button onClick={() => setSaving(true)}>Save a model plot</Button> : null}>
-              Save a plot from a fitted model to download it or share it by link.
+            <EmptyState icon={<BarChart3 />} title="This project has no saved plots" action={canSave ? <Button onClick={() => setSaving(true)}>Save a model plot</Button> : null}>
+              Save a plot from a fitted model. Then you can download it or share it by link.
             </EmptyState>
           )
         }

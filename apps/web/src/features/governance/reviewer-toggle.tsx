@@ -27,13 +27,13 @@ export function ReviewerToggle({
   const has = caps.includes("reviewer");
   if (member.role === "admin") {
     return (
-      <Badge variant="outline" title="Admins approve validations without a separate grant">
+      <Badge variant="outline" title="Admins can approve validations without the reviewer capability.">
         implicit
       </Badge>
     );
   }
   if (!atLeast(member.role, "editor")) {
-    return <span className="text-xs text-muted-foreground" title="Reviewers need the editor role or higher">—</span>;
+    return <span className="text-xs text-muted-foreground" title="A reviewer needs the editor role or a higher role.">—</span>;
   }
   if (!editable) return has ? <Badge variant="info">reviewer</Badge> : <span className="text-xs text-muted-foreground">no</span>;
   return (

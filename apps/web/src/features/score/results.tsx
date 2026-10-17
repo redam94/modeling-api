@@ -37,7 +37,7 @@ function ArrowOutput({ link }: { link: ArtifactLink }) {
     queryFn: async ({ signal }) => pivotStats(decodeArrow(await fetchArtifactBytes(link, { signal }))),
   });
   if (q.isPending) return <LoadingRows rows={4} />;
-  if (q.isError) return <ErrorNotice error={q.error} title={`${link.name} could not be opened`} />;
+  if (q.isError) return <ErrorNotice error={q.error} title={`Cannot open ${link.name}`} />;
   return <ResultTable table={q.data} name={link.name} />;
 }
 
@@ -129,7 +129,7 @@ function JsonOutput({ link }: { link: ArtifactLink }) {
     queryFn: ({ signal }) => fetchArtifactJson(link, { signal }),
   });
   if (q.isPending) return <LoadingRows rows={3} />;
-  if (q.isError) return <ErrorNotice error={q.error} title={`${link.name} could not be opened`} />;
+  if (q.isError) return <ErrorNotice error={q.error} title={`Cannot open ${link.name}`} />;
   return <JsonBlock value={q.data} />;
 }
 
@@ -154,7 +154,7 @@ function RunPlot({ plot, outputs }: { plot: PlotSpec; outputs: ArtifactLink[] })
         {plot.caption_plain ? <span className="block text-xs text-muted-foreground">{plot.caption_plain}</span> : null}
       </figcaption>
       {data.isError ? (
-        <ErrorNotice error={data.error} title="The plot data could not be loaded" />
+        <ErrorNotice error={data.error} title="Cannot load the plot data" />
       ) : data.data ? (
         <PlotFrame kind={plot.kind} spec={plot.spec as JsonObject} datasets={data.data} title={plot.title} exportName={plot.id} />
       ) : (
@@ -167,7 +167,7 @@ function RunPlot({ plot, outputs }: { plot: PlotSpec; outputs: ArtifactLink[] })
 /** Plots the score run rendered, fetched sanitized from the API and drawn in the sandbox. */
 function RunPlots({ runId, outputs }: { runId: string; outputs: ArtifactLink[] }) {
   const plots = useRunPlots(runId);
-  if (plots.isError) return <ErrorNotice error={plots.error} title="The run's plots could not be loaded" />;
+  if (plots.isError) return <ErrorNotice error={plots.error} title="Cannot load the plots of the run" />;
   const items = plots.data?.items ?? [];
   if (!items.length) return null;
   return (
@@ -209,7 +209,7 @@ function OutputDownload({ link }: { link: ArtifactLink }) {
         try {
           saveBytes(await fetchArtifactBytes(link), filename);
         } catch (e) {
-          toast.error(`${filename} could not be downloaded`, errorMessage(e));
+          toast.error(`Cannot download ${filename}`, errorMessage(e));
         } finally {
           setBusy(false);
         }
@@ -227,7 +227,7 @@ function OutputDownload({ link }: { link: ArtifactLink }) {
 export function ScoreResults({ outputs, runId }: { outputs: ArtifactLink[]; runId?: string | undefined }) {
   const [open, setOpen] = useState<string | null>(outputs.find(isArrow)?.name ?? outputs[0]?.name ?? null);
   const current = outputs.find((o) => o.name === open) ?? null;
-  if (!outputs.length) return <p className="text-muted-foreground">The run finished without output files.</p>;
+  if (!outputs.length) return <p className="text-muted-foreground">The run finished, but it did not make output files.</p>;
   return (
     <div className="grid gap-4">
       {runId ? <RunPlots runId={runId} outputs={outputs} /> : null}

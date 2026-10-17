@@ -65,7 +65,7 @@ export function ModelInputsPanel({ inputs }: { inputs: ModelInputSchema }) {
         {hdim ? (
           <>
             {" "}
-            It can forecast past the end of its fitted <Mono>{hdim}</Mono>
+            It can forecast after the end of its fitted <Mono>{hdim}</Mono>
             {unit ? `, one ${unit} at a time` : ""}.
           </>
         ) : null}
@@ -80,7 +80,7 @@ export function ModelInputsPanel({ inputs }: { inputs: ModelInputSchema }) {
                 <Mono>{v.name}</Mono>
                 {(ROLE_LABEL[v.role] ?? v.role) !== v.name ? <Badge variant="outline">{ROLE_LABEL[v.role] ?? v.role}</Badge> : null}
                 {v.future ? (
-                  <Badge variant="warning" title="Forecasts need a value on every period they cover: type it, or choose how to fill it in">
+                  <Badge variant="warning" title="A forecast needs a value for each period that it covers. Type the value, or select how to fill it in.">
                     needed on future periods
                   </Badge>
                 ) : null}
@@ -93,7 +93,7 @@ export function ModelInputsPanel({ inputs }: { inputs: ModelInputSchema }) {
           </ul>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">It reads no inputs besides its own history: a forecast needs nothing typed in.</p>
+        <p className="text-xs text-muted-foreground">It reads no inputs other than its own history. You do not have to type values for a forecast.</p>
       )}
 
       {dims.length ? (
@@ -116,7 +116,7 @@ export function ModelInputsPanel({ inputs }: { inputs: ModelInputSchema }) {
       ) : null}
       <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
         <CircleHelp className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-        Names are the spec&apos;s canonical names (its <Mono>data.bind</Mono>), which is what typed values use.
+        The names are the canonical names of the spec (its <Mono>data.bind</Mono>). Use these names for the values that you type.
       </p>
     </section>
   );

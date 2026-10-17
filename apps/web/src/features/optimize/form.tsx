@@ -67,10 +67,10 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
   const setLimit = (ch: string, patch: Partial<ChannelLimit>) => set({ limits: { ...form.limits, [ch]: { ...(form.limits[ch] ?? { unit: "multiplier", min: null, max: null, locked: false }), ...patch } } });
   const budget = targetBudget(form, total);
   const modes: { value: BudgetMode; label: ReactNode; help?: ReactNode }[] = [
-    { value: "same", label: "Keep today's total", help: `Split ${amount(total, units)} better.` },
+    { value: "same", label: "Keep today's total", help: `Find a better split of ${amount(total, units)}.` },
     { value: "total", label: "Set a new total" },
     { value: "change", label: "Change it by a percentage" },
-    ...(expert ? [{ value: "free" as const, label: "Let the model choose the total", help: "Fund every channel up to break-even." }] : []),
+    ...(expert ? [{ value: "free" as const, label: "Let the model choose the total", help: "Give money to each channel until it breaks even." }] : []),
   ];
   const limitsTable = (
     <div className="grid gap-3">
@@ -116,7 +116,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
         </table>
       </div>
       <div className="flex flex-wrap items-end gap-2 text-[13px]">
-        <span className="pb-2 text-muted-foreground">Channels without limits may go from</span>
+        <span className="pb-2 text-muted-foreground">Channels without limits can go from</span>
         <Input aria-label="Default minimum (× today's spend)" type="number" min={0} step={0.1} value={form.defaultMin} onChange={(e) => set({ defaultMin: Number(e.target.value) })} className="h-8 w-20" />
         <span className="pb-2 text-muted-foreground">× to</span>
         <Input aria-label="Default maximum (× today's spend)" type="number" min={0} step={0.1} value={form.defaultMax} onChange={(e) => set({ defaultMax: Number(e.target.value) })} className="h-8 w-20" />
@@ -151,12 +151,12 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
             </Field>
           ) : null}
           {form.mode === "change" ? (
-            <Field label="Change (%)" htmlFor={`${name}-pct`} hint="For example −10 to spend 10% less, 15 to spend 15% more.">
+            <Field label="Change (%)" htmlFor={`${name}-pct`} hint="Type −10 to spend 10% less. Type 15 to spend 15% more.">
               <Input id={`${name}-pct`} type="number" min={-99} max={1000} step="any" value={form.changePct ?? ""} onChange={(e) => set({ changePct: numberOrNull(e.target.value) })} className="w-32" />
             </Field>
           ) : null}
           {form.mode === "free" ? (
-            <Field label="Value of one unit of the result in money" htmlFor={`${name}-vpk`} hint="1 when the result is revenue in the same currency as spend.">
+            <Field label="Value of one unit of the result in money" htmlFor={`${name}-vpk`} hint="Type 1 if the result is revenue in the same currency as the spend.">
               <Input id={`${name}-vpk`} type="number" min={0} step="any" value={form.valuePerKpi ?? ""} onChange={(e) => set({ valuePerKpi: numberOrNull(e.target.value) })} className="w-32" />
             </Field>
           ) : null}
@@ -167,7 +167,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
             </Field>
           ) : null}
           <div className="flex flex-wrap items-end gap-6">
-            <Field label="Periods the plan covers" htmlFor={`${name}-h`} hint={periods ? `Empty: ${periods}, as the fitted period.` : "Empty: as the fitted period."}>
+            <Field label="Periods the plan covers" htmlFor={`${name}-h`} hint={periods ? `Empty: ${periods}, the same as the fitted period.` : "Empty: the same as the fitted period."}>
               <Input id={`${name}-h`} type="number" min={1} max={520} value={form.horizon ?? ""} onChange={(e) => set({ horizon: numberOrNull(e.target.value) })} className="w-28" />
             </Field>
             {geos.length ? (
@@ -187,7 +187,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
           <CardHeader>
             <div className="grid gap-1">
               <CardTitle>Limits per channel</CardTitle>
-              <CardDescription>Bounds as multiples of today&apos;s spend or in money (money wins). Locked channels keep today&apos;s spend.</CardDescription>
+              <CardDescription>Set the limits as multiples of today&apos;s spend or in money. If you set both, the money limit applies. Locked channels keep today&apos;s spend.</CardDescription>
             </div>
           </CardHeader>
           <CardContent>{limitsTable}</CardContent>
@@ -243,7 +243,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
         <Button type="submit" size="lg" disabled={pending || problems.length > 0 || !canRun}>
           {pending ? <Spinner /> : <Wallet />} Optimise the budget
         </Button>
-        {!canRun ? <p className="text-xs text-muted-foreground">Your role cannot start runs in this project.</p> : <p className="text-xs text-muted-foreground">Runs in the sandbox over the model&apos;s uncertainty; usually under a minute.</p>}
+        {!canRun ? <p className="text-xs text-muted-foreground">Your role cannot start runs in this project.</p> : <p className="text-xs text-muted-foreground">The plan runs in the sandbox and uses the uncertainty of the model. It usually takes less than one minute.</p>}
       </div>
     </form>
   );
@@ -256,14 +256,14 @@ function GroupsEditor({ form, onChange, channels }: { form: PlanForm; onChange: 
       <CardHeader>
         <div className="grid gap-1">
           <CardTitle>Portfolio groups</CardTitle>
-          <CardDescription>Constraints over several channels, e.g. digital gets at least 40% of the budget.</CardDescription>
+          <CardDescription>Set limits for a group of channels. For example, digital gets at least 40% of the budget.</CardDescription>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => setGroups([...form.groups, { name: `group ${form.groups.length + 1}`, channels: [], min_share: null, max_share: null }])}>
           <Plus /> Add a group
         </Button>
       </CardHeader>
       <CardContent className="grid gap-3">
-        {!form.groups.length ? <p className="text-[13px] text-muted-foreground">No groups.</p> : null}
+        {!form.groups.length ? <p className="text-[13px] text-muted-foreground">There are no groups. Click Add a group to make one.</p> : null}
         {form.groups.map((g, i) => {
           const update = (patch: Partial<(typeof form.groups)[number]>) => setGroups(form.groups.map((x, j) => (j === i ? { ...x, ...patch } : x)));
           return (

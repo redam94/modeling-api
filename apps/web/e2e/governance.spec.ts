@@ -57,9 +57,9 @@ test("a policy is edited and then gates promotion with NOT_VALIDATED", async ({ 
   const whiteness = editor.locator('li[data-check="residuals.whiteness"]');
   await whiteness.getByRole("switch", { name: "Custom limits for residuals.whiteness" }).click();
   await whiteness.getByLabel("Fail below").fill("0.2");
-  await expect(whiteness.getByText("The fail limit must be at most the warn limit")).toBeVisible();
+  await expect(whiteness.getByText(/The fail limit is more than the warn limit/)).toBeVisible();
   await whiteness.getByLabel("Fail below").fill("0.01");
-  await expect(whiteness.getByText("The fail limit must be at most the warn limit")).toHaveCount(0);
+  await expect(whiteness.getByText(/The fail limit is more than the warn limit/)).toHaveCount(0);
 
   await editor.getByRole("switch", { name: "Only validated models can be promoted" }).click();
   await shot(page, "policy-editor");
@@ -75,7 +75,7 @@ test("a policy is edited and then gates promotion with NOT_VALIDATED", async ({ 
   await dialog.getByLabel("Endpoint name").fill("geo-mmm-governed");
   await dialog.getByRole("button", { name: "Promote", exact: true }).click();
   const notice = dialog.getByTestId("not-validated");
-  await expect(notice).toContainText("A governance policy requires a validated model");
+  await expect(notice).toContainText("A governance policy needs a validated model");
   await expect(notice).toContainText("Awaiting approval");
   await notice.getByRole("link", { name: "Open the validation" }).click();
   await expect(page).toHaveURL(new RegExp(`/validations/${AWAITING}$`));
@@ -96,7 +96,7 @@ test("a reviewer approves a validation that a colleague submitted", async ({ pag
 
   const form = view.getByTestId("decision-form");
   await form.getByRole("button", { name: "Reject" }).click();
-  await expect(form.getByText("Say why you reject it.")).toBeVisible();
+  await expect(form.getByText("The comment is empty. Type the reason for the rejection.")).toBeVisible();
   await form.getByLabel("Comment").fill("Null tests are convincing; benchmarks beaten by 22%.");
   await form.getByRole("button", { name: "Approve" }).click();
   await expect(view.locator("[data-validation-status]").first()).toHaveText("Validated");
@@ -120,7 +120,7 @@ test("the submitter cannot approve their own validation", async ({ page }) => {
   await expect(view.locator("[data-validation-status]").first()).toHaveText("Checks running");
   await expect(view.locator("[data-validation-status]").first()).toHaveText("Awaiting approval", { timeout: 10_000 });
   const form = view.getByTestId("decision-form");
-  await expect(form.getByRole("note")).toHaveText("You submitted this validation, so a second person has to review it.");
+  await expect(form.getByRole("note")).toHaveText("You submitted this validation. Another person must review it.");
   await expect(form.getByRole("button", { name: "Approve" })).toBeDisabled();
 });
 

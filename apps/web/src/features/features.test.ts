@@ -95,7 +95,7 @@ describe("score request", () => {
 
   it("parses selections with typed values", () => {
     expect(parseSel("a=1, 2; b=true; c=x")).toEqual({ a: [1, 2], b: [true], c: ["x"] });
-    expect(parseSel("bad dim=1")).toMatch(/not a valid dim/);
+    expect(parseSel("bad dim=1")).toMatch(/not a correct dim name/);
   });
 });
 
@@ -114,8 +114,8 @@ describe("ingest mapping", () => {
   it("flags duplicate and invalid names and a missing dim", () => {
     const m = initialMappings(["a", "b"], [["1", "2"]]).map((x) => ({ ...x, as: "var" as const, name: "dup" }));
     const problems = validateMappings(m).map((p) => p.message);
-    expect(problems.some((p) => p.includes("at least one column as a dim"))).toBe(true);
-    expect(problems.some((p) => p.includes("used twice"))).toBe(true);
+    expect(problems.some((p) => p.includes("one or more columns as a dim"))).toBe(true);
+    expect(problems.some((p) => p.includes("Two columns use the name"))).toBe(true);
   });
 });
 

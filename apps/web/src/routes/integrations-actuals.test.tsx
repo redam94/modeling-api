@@ -45,7 +45,7 @@ describe("forecasts with actuals", () => {
     expect(header).toEqual(["month (date / level)", "sales (target)", "price (driver)"]);
     expect(within(layout).getByText("2026-10-01")).toBeInTheDocument();
     const help = screen.getByRole("group", { name: "Input sheet" });
-    expect(help).toHaveTextContent(/leave it blank on the dates to forecast/);
+    expect(help).toHaveTextContent(/blank on the dates to forecast/);
     expect(within(help).getByText("scoreSalesForecastInputSheet()")).toBeInTheDocument();
   });
 
@@ -67,7 +67,7 @@ describe("forecasts with actuals", () => {
     expect((body.data as { data_vars: Record<string, { data: unknown[] }> }).data_vars.sales?.data.slice(0, 3)).toEqual([1520.5, 1610, null]);
     await user.click(screen.getByRole("button", { name: "Score" }));
     const note = await screen.findByRole("note", { name: "What the forecast was conditioned on" });
-    expect(note).toHaveTextContent("Conditioned on 2 actuals through 2026-11-01");
+    expect(note).toHaveTextContent("Uses 2 actuals up to 2026-11-01");
     expect(note).toHaveTextContent("the model's parameters were not re-estimated");
     expect(screen.getByRole("table", { name: "Summary of sales" })).toHaveTextContent("2026-12-01");
     await waitFor(() => expect(scored).toHaveLength(1));
@@ -89,6 +89,6 @@ describe("forecasts with actuals", () => {
 
   it("explains a model that forecasts from the end of its fit", async () => {
     renderApp(`/integrations/endpoints/${FORECAST_ALIAS}?tab=schema`);
-    expect(await screen.findByText(/A forecast can carry your latest actuals/)).toBeInTheDocument();
+    expect(await screen.findByText(/A forecast can contain your latest actuals/)).toBeInTheDocument();
   });
 });

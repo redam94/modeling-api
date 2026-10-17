@@ -114,7 +114,7 @@ function QuestionField({ question, value, onChange }: { question: ChooserQuestio
       </legend>
       {question.help_plain || multiple ? (
         <p id={`${legendId}-help`} className="-mt-1 text-[13px] text-muted-foreground">
-          {[question.help_plain, multiple ? "Pick all that apply." : null].filter(Boolean).join(" ")}
+          {[question.help_plain, multiple ? "Select all the applicable answers." : null].filter(Boolean).join(" ")}
         </p>
       ) : null}
       <div className="grid gap-2 sm:grid-cols-2">
@@ -158,7 +158,7 @@ function MatchMeter({ score }: { score: number }) {
   const pct = Math.round(score * 100);
   const tone = pct >= 75 ? "bg-success" : pct >= 50 ? "bg-primary" : "bg-warning";
   return (
-    <span className="flex items-center gap-2 text-xs text-muted-foreground" title="How well it fits your answers">
+    <span className="flex items-center gap-2 text-xs text-muted-foreground" title="Shows how well the item fits your answers.">
       <span className="relative h-1.5 w-16 overflow-hidden rounded-full bg-muted" aria-hidden>
         <span className={cn("absolute inset-y-0 left-0 rounded-full", tone)} style={{ width: `${pct}%` }} />
       </span>
@@ -226,11 +226,11 @@ function Results({ answers, kind, limit, compact }: { answers: ChooserAnswers; k
     return (
       <div className="grid place-items-start gap-2 rounded-xl border border-dashed p-5 text-[13px] text-muted-foreground">
         <Sparkles aria-hidden className="size-5 text-primary" />
-        <p>Answer the first question and your best matches appear here. They update with every answer.</p>
+        <p>Answer the first question. Your best matches then show here. They change after each answer.</p>
       </div>
     );
   }
-  if (recs.isError) return <ErrorNotice error={recs.error} title="The recommendations could not be loaded" onRetry={() => void recs.refetch()} />;
+  if (recs.isError) return <ErrorNotice error={recs.error} title="The app cannot load the recommendations" onRetry={() => void recs.refetch()} />;
   if (!recs.data) return <LoadingRows rows={3} />;
   return (
     <div className="grid gap-3" aria-busy={recs.isFetching}>
@@ -238,7 +238,7 @@ function Results({ answers, kind, limit, compact }: { answers: ChooserAnswers; k
         {recs.isFetching ? <Spinner className="size-3" /> : null}
         {(recs.data.items ?? []).length
           ? `Your ${(recs.data.items ?? []).length === 1 ? "best match" : `top ${(recs.data.items ?? []).length} matches`}, from ${answered} answer${answered === 1 ? "" : "s"}.`
-          : "Nothing fits these answers. Try changing one."}
+          : "No item fits these answers. Change one of the answers."}
       </p>
       <ol className="grid gap-3" aria-label="Recommendations">
         {(recs.data.items ?? []).map((rec, i) => (
@@ -269,7 +269,7 @@ export function HelpMeChoose({ answers, onAnswersChange, kind = null, limit = 5,
   const chooser = useChooser();
   const [step, setStep] = useState(0);
   if (chooser.isPending) return <LoadingRows rows={4} />;
-  if (chooser.isError) return <ErrorNotice error={chooser.error} title="The questions could not be loaded" onRetry={() => void chooser.refetch()} />;
+  if (chooser.isError) return <ErrorNotice error={chooser.error} title="The app cannot load the questions" onRetry={() => void chooser.refetch()} />;
   const questions = chooser.data.questions.filter((q) => !only || only.includes(q.id));
   const at = Math.min(step, questions.length);
   const question = questions[at];
@@ -298,8 +298,8 @@ export function HelpMeChoose({ answers, onAnswersChange, kind = null, limit = 5,
         <QuestionField key={question.id} question={question} value={answers[question.id] ?? []} onChange={(v) => set(question.id, v)} />
       ) : (
         <div className="grid gap-2">
-          <p className="text-[17px] font-semibold tracking-tight">That&apos;s everything.</p>
-          <p className="text-[13px] text-muted-foreground">Change any answer below; the matches update as you go.</p>
+          <p className="text-[17px] font-semibold tracking-tight">You answered all the questions.</p>
+          <p className="text-[13px] text-muted-foreground">You can change an answer below. The matches change immediately.</p>
           <ul className="grid gap-1 text-[13px]">
             {questions.map((q, i) => (
               <li key={q.id}>

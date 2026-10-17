@@ -109,9 +109,9 @@ function amount(limit: string, v: number | string | undefined): string {
 
 function usage(f: QuotaFacts): string {
   if (f.used !== undefined && f.maximum !== undefined) {
-    return ` ${amount(f.limit, f.used)} of ${amount(f.limit, f.maximum)} is used and this needs ${amount(f.limit, f.requested)} more.`;
+    return ` ${amount(f.limit, f.used)} of ${amount(f.limit, f.maximum)} is used. This request needs ${amount(f.limit, f.requested)} more.`;
   }
-  if (f.maximum !== undefined) return ` The limit is ${amount(f.limit, f.maximum)}; this asked for ${amount(f.limit, f.requested)}.`;
+  if (f.maximum !== undefined) return ` The limit is ${amount(f.limit, f.maximum)}. This request asked for ${amount(f.limit, f.requested)}.`;
   return "";
 }
 
@@ -137,8 +137,8 @@ function quotaAdvice(f: QuotaFacts | null, detail: string | null, retryAfter: nu
         ...base,
         kind: "quota",
         title: "Too many parallel tasks",
-        message: `${who} limits one run to ${amount(limit, f?.maximum)} tasks; this run asked for ${amount(limit, f?.requested)}.`,
-        steps: ["Split the sweep into smaller parts, or reduce the number of simulations."],
+        message: `${who} limits one run to ${amount(limit, f?.maximum)} tasks. This run asked for ${amount(limit, f?.requested)}.`,
+        steps: ["Divide the sweep into smaller parts, or decrease the number of simulations."],
         actions: [],
       };
     case "concurrent_runs":
@@ -146,8 +146,8 @@ function quotaAdvice(f: QuotaFacts | null, detail: string | null, retryAfter: nu
         ...base,
         kind: "quota",
         title: "Too many runs at once",
-        message: `${who} can have ${amount(limit, f?.maximum)} runs going at the same time, and all of them are in use.`,
-        steps: ["Wait for a run to finish, or cancel one you no longer need, then try again."],
+        message: `${who} can have ${amount(limit, f?.maximum)} runs at the same time. All of them are in use.`,
+        steps: ["Wait until a run is complete, or cancel a run that you do not need. Then try again."],
         actions: [{ label: "Show running runs", kind: "link", to: "/runs", search: { state: "running" } }, { label: "Try again", kind: "retry" }],
       };
     case "vcpu_seconds_per_day":
@@ -161,7 +161,7 @@ function quotaAdvice(f: QuotaFacts | null, detail: string | null, retryAfter: nu
         steps: [
           "Use a smaller resource class, fewer draws or chains, or a shorter horizon.",
           limit.endsWith("day") ? "Try again after midnight UTC." : "Try again next month.",
-          "Ask a platform operator to raise the quota if you need more.",
+          "If you need more, ask a platform operator to increase the quota.",
         ],
         actions: [USAGE_LINK],
       };
@@ -171,15 +171,15 @@ function quotaAdvice(f: QuotaFacts | null, detail: string | null, retryAfter: nu
         ...base,
         kind: "quota",
         title: "Storage is full",
-        message: `${who} has used its storage.${f ? usage(f) : ""} Reading and deleting still work.`,
-        steps: ["Delete dataset versions or model versions you no longer need, then try again."],
+        message: `${who} has used all of its storage.${f ? usage(f) : ""} You can still read and delete data.`,
+        steps: ["Delete the dataset versions and model versions that you do not need. Then try again."],
         actions: [USAGE_LINK, { label: "Open datasets", kind: "link", to: "/datasets" }],
       };
     case "egress_bytes_per_month":
       return {
         ...base,
         kind: "quota",
-        title: "Download allowance used up",
+        title: "The download allowance is used up",
         message: `${who} has used this month's download allowance.${f ? usage(f) : ""}${when}`,
         steps: ["Download fewer or smaller artifacts, or wait for the next month."],
         actions: [USAGE_LINK],
@@ -189,8 +189,8 @@ function quotaAdvice(f: QuotaFacts | null, detail: string | null, retryAfter: nu
         ...base,
         kind: "paused",
         title: "Uploaded code is paused",
-        message: "Platform operators have paused running uploaded plugin code. Built-in models and steps still run.",
-        steps: ["Use a built-in model for now, or try again later."],
+        message: "Platform operators paused all uploaded plugin code. Built-in models and steps continue to run.",
+        steps: ["Use a built-in model now, or try again later."],
         actions: [],
       };
     case "global_spend":
@@ -198,8 +198,8 @@ function quotaAdvice(f: QuotaFacts | null, detail: string | null, retryAfter: nu
         ...base,
         kind: "paused",
         title: "The platform is at its spend cap",
-        message: `New runs are paused until the platform's spend window resets.${when}`,
-        steps: ["Try again later. Runs already in progress are not affected."],
+        message: `The platform pauses new runs until its spend window resets.${when}`,
+        steps: ["Try again later. This does not stop the runs that already started."],
         actions: [{ label: "Try again", kind: "retry" }],
       };
     default:
@@ -207,8 +207,8 @@ function quotaAdvice(f: QuotaFacts | null, detail: string | null, retryAfter: nu
         ...base,
         kind: "quota",
         title: "A quota stops this request",
-        message: detail ?? "A usage limit was reached.",
-        steps: ["Check usage and quotas, or ask a platform operator."],
+        message: detail ?? "The request goes above a usage limit.",
+        steps: ["Look at the usage and quotas, or ask a platform operator for help."],
         actions: [USAGE_LINK],
       };
   }
@@ -227,9 +227,9 @@ export function adviseProblem(problem: Pick<Problem, "code" | "detail" | "title"
       return {
         kind: "rate",
         title: "Too many requests",
-        message: `${f ? subjectLabel(f) : "You"} sent more requests in the last minute than allowed${
+        message: `${f ? subjectLabel(f) : "You"} sent more requests in the last minute than the limit permits${
           f?.maximum !== undefined ? ` (${amount("requests_per_minute", f.maximum)} per minute)` : ""
-        }. Nothing was changed.`,
+        }. The server did not change data.`,
         steps: [`Wait ${humanWait(wait)}, then try again.`],
         actions: [{ label: "Try again", kind: "retry" }],
         retryAfter: wait,
@@ -241,8 +241,8 @@ export function adviseProblem(problem: Pick<Problem, "code" | "detail" | "title"
     case "UNAUTHENTICATED":
       return {
         kind: "unauthenticated",
-        title: "Please sign in again",
-        message: "Your session has ended. Sign in to continue; what you see on this page stays as it is.",
+        title: "Sign in again",
+        message: "Your session has ended. Sign in to continue. The data on this page does not change.",
         steps: [],
         actions: [{ label: "Sign in", kind: "signin" }],
         retryAfter: null,
@@ -253,7 +253,7 @@ export function adviseProblem(problem: Pick<Problem, "code" | "detail" | "title"
         return {
           kind: "suspended",
           title: "This organisation is read-only",
-          message: "The organisation is suspended, so nothing can be changed or run. You can still look at everything.",
+          message: "The organisation is suspended. You cannot change data or start runs. You can still look at all the data.",
           steps: ["Contact your organisation's admin or the platform operators."],
           actions: [],
           retryAfter: null,
@@ -263,9 +263,9 @@ export function adviseProblem(problem: Pick<Problem, "code" | "detail" | "title"
       const role = ctx.role ? ` Your role${ctx.projectKey ? ` in ${ctx.projectKey}` : ""} is ${ctx.role}.` : "";
       return {
         kind: "forbidden",
-        title: "You don't have permission to do this",
-        message: `${problem.detail ? `${problem.detail.replace(/\.?$/, ".")}` : "Your role does not allow this action."}${role}`,
-        steps: ["Ask a project admin for a higher role (runner to start runs, editor to change data and specs)."],
+        title: "You do not have permission to do this",
+        message: `${problem.detail ? `${problem.detail.replace(/\.?$/, ".")}` : "Your role does not permit this action."}${role}`,
+        steps: ["Ask a project admin for a higher role. A runner can start runs. An editor can change data and specs."],
         actions: [{ label: "See project members", kind: "link", to: "/members" }],
         retryAfter: null,
         facts: null,

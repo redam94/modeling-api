@@ -82,7 +82,7 @@ export const InsertPanel = forwardRef<HTMLInputElement, InsertPanelProps>(functi
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        Click to add it to the spec. In the editor, <kbd className="font-mono">Ctrl Space</kbd> suggests the same values where the cursor is.
+        Click an item to add it to the spec. In the editor, push <kbd className="font-mono">Ctrl Space</kbd> to see the same values at the cursor.
       </p>
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1" role="list" aria-label="Insertable items">
         {filtered.map((g) => (
@@ -102,7 +102,7 @@ export const InsertPanel = forwardRef<HTMLInputElement, InsertPanelProps>(functi
           </details>
         ))}
         {filtered.length === 0 ? (
-          <p className="px-2 text-[13px] text-muted-foreground">{q ? `Nothing matches “${q}”.` : "Loading the catalog…"}</p>
+          <p className="px-2 text-[13px] text-muted-foreground">{q ? `No item matches “${q}”. Type a different word.` : "The app gets the catalog…"}</p>
         ) : null}
       </div>
     </section>
@@ -135,7 +135,7 @@ function ItemButton({ item, disabled }: { item: InsertItem; disabled?: boolean |
 
 function applied(next: string | null, onText: (t: string) => void, title: string, detail?: string) {
   if (next === null) {
-    toast.error("Fix the YAML first", "The spec does not parse, so it cannot be edited structurally.");
+    toast.error("Correct the YAML first", "The app cannot read the YAML of the spec. Correct the YAML, then try again.");
     return;
   }
   onText(next);
@@ -156,7 +156,7 @@ export function buildGroups({
 
   groups.push({
     name: "Datasets",
-    hint: "Sets data.dataset. Its columns then show up under Columns.",
+    hint: "Sets data.dataset. The columns of the dataset then show under Columns.",
     items: sources.datasets.map((d) => ({
       key: `dataset:${d.ref}`,
       title: d.name,
@@ -170,7 +170,7 @@ export function buildGroups({
 
   groups.push({
     name: "Models",
-    hint: "Sets model.use. Switching to a different model clears the old model's settings.",
+    hint: "Sets model.use. If you change to a different model, the app removes the settings of the old model.",
     items: latestModels(catalog).map((m) => {
       const use = pinnedUse(m.id, m.version);
       return {
@@ -189,7 +189,7 @@ export function buildGroups({
   const inPipeline = new Set(shape.steps.map((s) => pluginId(s.use)));
   groups.push({
     name: "Pipeline steps",
-    hint: "Appends a step to the pipeline, with its required settings filled in to edit.",
+    hint: "Adds a step to the end of the pipeline. The app fills in the necessary settings for you to edit.",
     items: latestSteps(catalog).map((s) => {
       const use = pinnedUse(s.id, s.version);
       return {
@@ -230,13 +230,13 @@ export function buildGroups({
   }
   groups.push({
     name: "Columns",
-    hint: shape.datasetRef ? "Inserts the name at the cursor. Bound names show their canonical name." : "Pick a dataset to see its columns.",
+    hint: shape.datasetRef ? "Puts the name at the cursor. A bound name shows its canonical name." : "This spec has no dataset. Select a dataset to see its columns.",
     items: columnItems,
   });
 
   groups.push({
     name: "Plots",
-    hint: "Adds to outputs.plots. The model's own plots are listed first.",
+    hint: "Adds the plot to outputs.plots. The plots of the model show first.",
     items: plotSnippets(catalog, model).map((p) => ({
       key: `plot:${p.body}`,
       title: p.description ?? p.label,
@@ -248,7 +248,7 @@ export function buildGroups({
   if (model?.derived?.length) {
     groups.push({
       name: "Derived outputs",
-      hint: `Adds to outputs.derived: quantities ${model.id} can compute after the fit.`,
+      hint: `Adds the output to outputs.derived. ${model.id} can calculate these quantities after the fit.`,
       items: model.derived.map((d) => ({
         key: `derived:${d.name}`,
         title: d.name,

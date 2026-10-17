@@ -19,7 +19,7 @@ export function SpecAboutPanel({ modelUse, steps }: { modelUse: string | null; s
       {about && entry ? (
         <AboutCard about={about} kind="model" id={entry.id} />
       ) : (
-        <p className="text-[13px] text-muted-foreground">{isPending ? "Loading the catalog…" : modelUse ? `No About card for ${bareId(modelUse)} in this catalog.` : "The spec names no model yet."}</p>
+        <p className="text-[13px] text-muted-foreground">{isPending ? "The app loads the catalog…" : modelUse ? `This catalog has no About card for ${bareId(modelUse)}.` : "The spec does not name a model yet."}</p>
       )}
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" size="sm">

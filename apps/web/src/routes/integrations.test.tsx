@@ -65,7 +65,7 @@ describe("Integrations hub", () => {
     expect(within(dialog).getByRole("list", { name: "Gate reasons" })).toHaveTextContent("holdout.mape");
     // The override needs a reason.
     await user.click(within(dialog).getByRole("button", { name: "Override and promote" }));
-    expect(within(dialog).getByText(/Say why this version should serve/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Type the reason to serve this version/)).toBeInTheDocument();
     await user.type(within(dialog).getByLabelText("Override reason"), "Accepted for the Q4 plan");
     await user.click(within(dialog).getByRole("button", { name: "Override and promote" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/integrations/endpoints/geo-mmm-staging"));
@@ -107,7 +107,7 @@ describe("Integrations hub", () => {
     await user.click(body);
     await user.paste('{"mode": "simulate"}');
     await user.click(screen.getByRole("button", { name: "Validate" }));
-    expect(await screen.findByText("The call would be refused")).toBeInTheDocument();
+    expect(await screen.findByText("The endpoint will refuse the call")).toBeInTheDocument();
     expect(screen.getByText(/does not support mode 'simulate'/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Reset to the example" }));
     await user.click(screen.getByRole("button", { name: "Score" }));
@@ -186,7 +186,7 @@ describe("webhooks", () => {
 
   it("is explained, not listed, to non-admins", async () => {
     renderApp("/integrations?tab=webhooks", "rui");
-    expect(await screen.findByText("Webhooks are managed by project admins")).toBeInTheDocument();
+    expect(await screen.findByText("Only project admins can manage webhooks")).toBeInTheDocument();
   });
 });
 
@@ -220,11 +220,11 @@ describe("plots and links", () => {
     const dialog = await screen.findByRole("dialog", { name: /Share “EU posterior predictive fan/ });
     await user.type(within(dialog).getByLabelText("Label (optional)"), "Weekly review");
     await user.selectOptions(within(dialog).getByLabelText("Expires after"), "90");
-    await user.type(within(dialog).getByLabelText(/Sites that may frame it/), "http://bad.example");
+    await user.type(within(dialog).getByLabelText(/Sites that can frame it/), "http://bad.example");
     await user.click(within(dialog).getByRole("button", { name: "Create link" }));
     expect(within(dialog).getByText(/is not an https origin/)).toBeInTheDocument();
-    await user.clear(within(dialog).getByLabelText(/Sites that may frame it/));
-    await user.type(within(dialog).getByLabelText(/Sites that may frame it/), "https://lookerstudio.google.com");
+    await user.clear(within(dialog).getByLabelText(/Sites that can frame it/));
+    await user.type(within(dialog).getByLabelText(/Sites that can frame it/), "https://lookerstudio.google.com");
     await user.click(within(dialog).getByRole("button", { name: "Create link" }));
     const created = await screen.findByRole("dialog", { name: "Copy the link now" });
     expect(within(created).getByLabelText<HTMLInputElement>("Embed link").value).toMatch(new RegExp(`^${env.plotsOrigin}/embed/mpe_`));

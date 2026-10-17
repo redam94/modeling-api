@@ -31,7 +31,7 @@ export interface NavItem {
 /** The selected project's people, credentials and spend (v0.3 servers only). */
 export const PROJECT_NAV: NavItem[] = [
   { to: "/usage", label: "Usage", icon: BarChart3, chord: "u", description: "Compute, cost and quotas" },
-  { to: "/members", label: "Members", icon: Users, chord: "p", description: "Who can do what in this project" },
+  { to: "/members", label: "Members", icon: Users, chord: "p", description: "The persons in this project and their roles" },
   { to: "/tokens", label: "Tokens", icon: KeyRound, chord: "t", description: "API tokens for programs and integrations" },
 ];
 
@@ -58,7 +58,7 @@ export const GUIDED_NAV: NavItem = {
   label: "Guided",
   icon: Sparkles,
   chord: "g",
-  description: "Task-based flows for analysts",
+  description: "Tasks for analysts in business terms",
 };
 
 /** "Help me choose" (M3.5): a few plain questions, then the models, analyses and recipes that fit. */
@@ -67,7 +67,7 @@ export const CHOOSE_NAV: NavItem = {
   label: "Help me choose",
   icon: Compass,
   chord: "o",
-  description: "Answer a few questions and get the analyses that fit",
+  description: "Answer some questions to find the applicable analyses",
 };
 
 /** Workflows as Expert users see them (the editor, runs and automation)… */
@@ -88,18 +88,18 @@ export const RECIPES_NAV: NavItem = {
 
 /** Expert navigation; Guided stays one click away (opening it switches the mode). */
 export const EXPERT_NAV: NavItem[] = [
-  { to: "/", label: "Home", icon: Home, chord: "h", description: "Activity and health at a glance" },
+  { to: "/", label: "Home", icon: Home, chord: "h", description: "Recent activity and the health of the project" },
   GUIDED_NAV,
-  { to: "/datasets", label: "Datasets", icon: Database, chord: "d", description: "Upload, map and inspect data" },
+  { to: "/datasets", label: "Datasets", icon: Database, chord: "d", description: "Upload, map and examine data" },
   { to: "/build", label: "Build", icon: FileCode2, chord: "b", description: "Write and validate model specs" },
   { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" },
-  { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Inspect fitted model versions" },
+  { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Examine fitted model versions" },
   { to: "/score", label: "Score", icon: Gauge, chord: "s", description: "Forecasts, scenarios and counterfactuals" },
   // M3.5: automated analyses and the governance that validates models.
   WORKFLOWS_NAV,
   { to: "/governance", label: "Governance", icon: BadgeCheck, chord: "v", description: "Policies, validations and approvals" },
   INTEGRATIONS_NAV,
-  { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "About cards of every model, step, check and template" },
+  { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "About cards for all models, steps, checks and templates" },
   CHOOSE_NAV,
 ];
 

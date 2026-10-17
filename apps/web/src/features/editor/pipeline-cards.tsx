@@ -52,8 +52,8 @@ function SchemaSummary({ schema, highlight }: { schema: DataSchema; highlight?: 
 
 function StageBlock({ stage, open }: { stage: StageSchema | null; open: boolean }) {
   if (!open) return null;
-  if (!stage) return <p className="text-xs text-muted-foreground">Validate to see the schema at this stage.</p>;
-  if (!stage.data_schema) return <p className="text-xs text-warning">Dynamic effect: only a dry-run can resolve this stage.</p>;
+  if (!stage) return <p className="text-xs text-muted-foreground">No schema is available for this stage. Validate the spec to see it.</p>;
+  if (!stage.data_schema) return <p className="text-xs text-warning">This stage has a dynamic effect. Only a dry-run can show its schema.</p>;
   return <SchemaSummary schema={stage.data_schema} />;
 }
 
@@ -118,8 +118,8 @@ function StepCardView({ card, onIssue }: { card: StepCard; onIssue?: ((i: Issue)
         {r?.context ? (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <History className="size-3.5" />
-            Keeps a {r.context.n}-step tail along {r.context.along}
-            {r.context.within?.length ? `, per ${r.context.within.join(", ")},` : ""} as scoring context.
+            Keeps the last {r.context.n} steps along {r.context.along}
+            {r.context.within?.length ? `, per ${r.context.within.join(", ")},` : ""} as context to score the model.
           </p>
         ) : null}
         {card.delta &&
@@ -168,7 +168,7 @@ export function PipelineCards({ model, onIssue }: { model: PipelineModel; onIssu
         <div className="rounded-lg border border-dashed p-3">
           <button type="button" className="flex w-full items-center gap-2 text-left" onClick={() => setRawOpen((o) => !o)} aria-expanded={rawOpen}>
             <span className="font-medium">Raw data</span>
-            <span className="text-xs text-muted-foreground">after binding, before any step</span>
+            <span className="text-xs text-muted-foreground">after the binding, before the first step</span>
             <ChevronDown className={cn("ml-auto size-3.5 transition-transform", rawOpen && "rotate-180")} />
           </button>
           {rawOpen ? <div className="mt-2"><StageBlock stage={model.raw} open /></div> : null}

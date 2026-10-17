@@ -64,23 +64,23 @@ describe("planProblems", () => {
   });
 
   it("explains field problems", () => {
-    expect(planProblems(form({ mode: "total", total: null }), current)).toEqual(["Enter a total budget above zero."]);
+    expect(planProblems(form({ mode: "total", total: null }), current)).toEqual(["Type a total budget that is more than zero."]);
     expect(planProblems(form({ objective: "p70" }), current)[0]).toMatch(/goal/);
-    expect(planProblems(form({ limits: { tv: { unit: "multiplier", min: 2, max: 1, locked: false } } }), current)).toEqual(["tv: the minimum is above the maximum."]);
+    expect(planProblems(form({ limits: { tv: { unit: "multiplier", min: 2, max: 1, locked: false } } }), current)).toEqual(["tv: the minimum is more than the maximum. Lower the minimum or increase the maximum."]);
     expect(planProblems(form({ limits: { tv: { unit: "multiplier", min: 3, max: null, locked: false } } }), current)[0]).toMatch(/usual maximum/);
   });
 
   it("finds infeasible budgets like the server", () => {
     // minimums above the budget
     const high = planProblems(form({ limits: { tv: { unit: "money", min: 200_000, max: null, locked: false } } }), current);
-    expect(high).toEqual(["The channel minimums add up to 200,000, more than the budget of 104,000. Lower some minimums or raise the budget."]);
+    expect(high).toEqual(["The channel minimums add up to 200,000. This is more than the budget of 104,000. Lower some minimums or increase the budget."]);
     // maximums below the budget (a listed channel's unset minimum is 0x, its maximum 2x)
     const low = planProblems(form({ mode: "total", total: 500_000 }), current);
-    expect(low[0]).toMatch(/maximums add up to 208,000, less than the budget of 500,000/);
+    expect(low[0]).toMatch(/maximums add up to 208,000\. This is less than the budget of 500,000/);
     // a locked channel counts at today's spend on both sides
     expect(planProblems(form({ mode: "total", total: 74_000, limits: { tv: { unit: "multiplier", min: null, max: null, locked: true } } }), current)).toEqual([]);
     expect(planProblems(form({ groups: [{ name: "a", channels: ["tv"], min_share: 0.7 }, { name: "b", channels: ["search"], min_share: 0.5 }] }), current)).toEqual([
-      "The groups' minimum shares add up to more than 100%.",
+      "The minimum shares of the groups add up to more than 100%. Lower some minimum shares.",
     ]);
   });
 });
@@ -90,7 +90,7 @@ describe("the plan", () => {
     const plan = planFor({ objective: "mean" });
     const h = planHeadline(plan.result!);
     expect(h.text).toMatch(/^Move money from tv \(−7,491\) to search \(\+7,491\)\. That adds about \+3,063 to revenue \(90% likely between/);
-    expect(h.text).toContain("The chance it beats today's plan is 100%.");
+    expect(h.text).toContain("The chance that it is better than today's plan is 100%.");
     expect(h.tone).toBe("good");
     const bigger = planFor({ total_budget: 150_000 });
     expect(planHeadline(bigger.result!).text).toMatch(/^With 150K instead of 104\.3K: spend more on search \(\+23\.9K\), tv \(\+21\.8K\)\./);
@@ -111,13 +111,13 @@ describe("the plan in plain words", () => {
   it("turns the planning notes into plain sentences, or leaves them to experts", () => {
     const notes = planNotes(planFor({}).result!.notes_plain ?? []);
     expect(notes.plain).toEqual([
-      "The model sees tv's effect pick up before it tails off, so this is the best plan found, not one proven to be the very best.",
-      "“What other budgets would bring” shows the best plan for each total budget. Adding money is worth it while each extra unit brings back more than it costs.",
+      "The effect of tv increases and then decreases. Thus, this plan is the best plan that the model found. It is possibly not the very best plan.",
+      "“What other budgets would bring” shows the best plan for each total budget. More money is a good decision while each extra unit gives back more than it costs.",
     ]);
     for (const n of notes.plain) expect(n).not.toMatch(/greedy|allocator|posterior|marginal roi|concave|solver/i);
     expect(notes.technical).toHaveLength(0);
     expect(planNotes(["Some new solver detail."])).toEqual({ plain: [], technical: ["Some new solver detail."] });
-    expect(planNotes(["2 channel(s) are recommended beyond the spend range the model has observed; those figures extrapolate."]).plain[0]).toMatch(/^2 channels would spend more than the data has seen/);
+    expect(planNotes(["2 channel(s) are recommended beyond the spend range the model has observed; those figures extrapolate."]).plain[0]).toMatch(/^2 channels will spend more than the data shows/);
   });
 
   it("shows ranges with enough digits that their ends differ", () => {

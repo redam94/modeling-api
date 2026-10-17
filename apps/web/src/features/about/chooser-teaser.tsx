@@ -19,7 +19,7 @@ export function ChooserTeaser({ className, title = "Not sure where to start?" }:
           <h2 id="chooser-teaser-h" className="flex items-center gap-2 text-[17px] font-semibold tracking-tight">
             <Sparkles aria-hidden className="size-4 text-primary" /> {title}
           </h2>
-          <p className="text-[13px] text-muted-foreground">Tell us what you want to do; a few plain questions later you get the analyses and models that fit, with the reasons.</p>
+          <p className="text-[13px] text-muted-foreground">Tell us what you want to do. Answer some plain questions. Then you get the applicable analyses and models, with the reasons.</p>
         </div>
         <Link to="/choose" className="inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline">
           Help me choose <ArrowRight aria-hidden className="size-3.5" />

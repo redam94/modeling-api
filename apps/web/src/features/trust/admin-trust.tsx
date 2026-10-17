@@ -31,7 +31,7 @@ function ReviewDialog({ signup, decision, onClose }: { signup: SignupReview; dec
   const review = useReviewSignup();
   const [reason, setReason] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const error = reason.trim() ? null : "The reason is audited with the decision.";
+  const error = reason.trim() ? null : "Type the reason. The audit log records it with the decision.";
   const submit = (e: FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
@@ -54,10 +54,10 @@ function ReviewDialog({ signup, decision, onClose }: { signup: SignupReview; dec
         </DialogTitle>
         <DialogDescription>
           {decision === "approve"
-            ? "The flag is cleared; the workspace keeps working."
+            ? "The app removes the flag. The workspace continues to operate."
             : signup.tenant_id
-              ? `The workspace ${signup.tenant_id} it created is suspended (read-only).`
-              : "The sign-up has no workspace yet; its link stops working."}
+              ? `The app suspends the workspace ${signup.tenant_id} that this sign-up created. The workspace becomes read-only.`
+              : "The sign-up has no workspace yet. Its link will not work after this."}
         </DialogDescription>
         <form className="grid gap-4" onSubmit={submit} noValidate>
           <Field label="Reason" htmlFor="review-reason" error={submitted ? error : null}>
@@ -93,7 +93,7 @@ export function SignupsTab() {
             </option>
           ))}
         </NativeSelect>
-        <p className="text-[13px] text-muted-foreground">A flag never blocks a sign-up: it queues it here. Network addresses and browsers appear only as keyed digests.</p>
+        <p className="text-[13px] text-muted-foreground">A flag never stops a sign-up. It puts the sign-up in this queue. Network addresses and browsers show only as keyed digests.</p>
       </div>
       <QueryView query={signups}>
         {(page) =>
@@ -173,8 +173,8 @@ export function SignupsTab() {
               </TBody>
             </Table>
           ) : (
-            <EmptyState icon={<UserCheck />} title={review === "flagged" ? "Nothing waiting for review" : "No sign-ups match"}>
-              Sign-ups that trip a Sybil heuristic (same address, same browser, repeated e-mail, a burst from one domain) wait here for a decision.
+            <EmptyState icon={<UserCheck />} title={review === "flagged" ? "No sign-ups wait for review" : "No sign-ups agree with the filter"}>
+              Sign-ups that trigger a Sybil heuristic wait here for a decision. The heuristics are: same address, same browser, repeated e-mail and a burst from one domain.
             </EmptyState>
           )
         }
@@ -224,13 +224,13 @@ function VerificationSection({ tenant }: { tenant: Tenant }) {
                       toast.success(v.identity_verified ? "Verification withdrawn" : "Identity marked verified", tenant.name);
                       setReason("");
                     },
-                    onError: (err) => toast.error("Change failed", errorMessage(err)),
+                    onError: (err) => toast.error("The change did not save", errorMessage(err)),
                   },
                 );
               }}
             >
               {!v.identity_verified ? (
-                <Field label="How was the identity checked?" htmlFor="ver-method">
+                <Field label="How did you do a check of the identity?" htmlFor="ver-method">
                   <NativeSelect id="ver-method" value={method} onChange={(e) => setMethod(e.target.value as VerificationMethod)}>
                     {METHODS.map((m) => (
                       <option key={m.value} value={m.value}>
@@ -247,7 +247,7 @@ function VerificationSection({ tenant }: { tenant: Tenant }) {
                 {put.isPending ? <Spinner /> : <ShieldCheck />} {v.identity_verified ? "Withdraw verification" : "Mark identity verified"}
               </Button>
               {tenant.trust_tier === "public" && !v.identity_verified ? (
-                <p className="text-xs text-muted-foreground">Public tenants stay limited to built-in models until cut line B, even once verified; move them to the verified tier for uploaded code.</p>
+                <p className="text-xs text-muted-foreground">Public tenants can use only built-in models until cut line B, also after verification. To let a tenant upload code, move it to the verified tier.</p>
               ) : null}
             </form>
           </>
@@ -282,14 +282,14 @@ function DeletionSection({ tenant }: { tenant: Tenant }) {
                   size="sm"
                   className="w-fit"
                   disabled={retry.isPending}
-                  onClick={() => retry.mutate(undefined, { onSuccess: () => toast.success("Purge restarted", tenant.name), onError: (e) => toast.error("Retry failed", errorMessage(e)) })}
+                  onClick={() => retry.mutate(undefined, { onSuccess: () => toast.success("Purge restarted", tenant.name), onError: (e) => toast.error("The purge did not start again", errorMessage(e)) })}
                 >
                   {retry.isPending ? <Spinner /> : <RefreshCw />} Retry the purge
                 </Button>
               ) : null}
             </>
           ) : (
-            <p className="text-[13px] text-muted-foreground">The tenant never asked to be deleted.</p>
+            <p className="text-[13px] text-muted-foreground">The tenant did not ask for deletion.</p>
           )
         }
       </QueryView>

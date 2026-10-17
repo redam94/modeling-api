@@ -89,8 +89,8 @@ describe("forecasts with actuals", () => {
   it("says what a forecast was conditioned on", () => {
     const base = { dim: "t", fit_end: "1960-12-01", horizon_source: "rows", periods: 2, message: "" } as const;
     const yes = { ...base, conditioned: true, n_actuals: 3, actuals_through: "1961-03-01" } as ForecastConditioning;
-    expect(conditioningHeadline(yes)).toBe("Conditioned on 3 actuals through 1961-03-01");
+    expect(conditioningHeadline(yes)).toBe("Uses 3 actuals up to 1961-03-01");
     const no = { ...base, conditioned: false, n_actuals: 0 } as ForecastConditioning;
-    expect(conditioningHeadline(no)).toBe("From the end of the fitted history (1960-12-01)");
+    expect(conditioningHeadline(no)).toBe("Starts at the end of the fitted history (1960-12-01)");
   });
 });

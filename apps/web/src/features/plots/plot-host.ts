@@ -120,7 +120,7 @@ export class PlotHost {
       this.compromised = true;
       this.ready = false;
       this.pending = null;
-      this.callbacks.onError?.("COMPROMISED", "The plot frame navigated away unexpectedly; rendering stopped.");
+      this.callbacks.onError?.("COMPROMISED", "The plot frame went to a different page. The app stopped the plot.");
     }
   };
 

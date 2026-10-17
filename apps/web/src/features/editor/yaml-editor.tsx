@@ -167,7 +167,7 @@ export function YamlEditor({
           <Spinner /> Loading editor…
         </div>
       ) : null}
-      {error ? <p className="p-4 text-destructive">The editor failed to load: {error}</p> : null}
+      {error ? <p className="p-4 text-destructive">The editor did not load. Refresh the page to try again. Error: {error}</p> : null}
     </div>
   );
 }

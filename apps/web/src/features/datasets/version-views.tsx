@@ -118,7 +118,7 @@ function CoordValues({ name, c }: { name: string; c: CoordSummary }) {
 
 export function CoordBrowser({ version }: { version: DatasetVersion }) {
   const coords = Object.entries(version.summary?.coords ?? {});
-  if (!coords.length) return <p className="text-muted-foreground">No coordinate summary for this version.</p>;
+  if (!coords.length) return <p className="text-muted-foreground">This version has no coordinate summary.</p>;
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {coords.map(([name, c]) => <CoordValues key={name} name={name} c={c} />)}
@@ -142,16 +142,16 @@ function useDatasetView<T>(version: DatasetVersion, name: "profile.json" | "prev
 export function MissingnessPanel({ version }: { version: DatasetVersion }) {
   const profile = useDatasetView<ProfileView>(version, "profile.json", parseProfile, Boolean(version.profile));
   const plot = useMemo(() => (profile.data?.missingness ? missingnessHeatmap(profile.data.missingness) : null), [profile.data]);
-  if (!version.profile) return <EmptyState icon={<Grid3x3 />} title="No profile for this version">The ingest run did not write a profile.</EmptyState>;
+  if (!version.profile) return <EmptyState icon={<Grid3x3 />} title="This version has no profile">The ingest run did not write a profile.</EmptyState>;
   if (profile.isPending) return <LoadingRows rows={3} />;
-  if (profile.isError) return <ErrorNotice error={profile.error} title="The profile could not be loaded" />;
+  if (profile.isError) return <ErrorNotice error={profile.error} title="The app could not load the profile" />;
   const vars = Object.entries(profile.data.vars);
   return (
     <div className="grid gap-6">
       {plot ? (
         <PlotFrame kind="vega-lite" spec={plot.spec} datasets={plot.datasets} title="Missingness heatmap" exportName="missingness" height={260} />
       ) : (
-        <p className="text-muted-foreground">No missing-value grid in the profile.</p>
+        <p className="text-muted-foreground">The profile has no grid of missing values.</p>
       )}
       <Table>
         <THead>
@@ -190,9 +190,9 @@ export function MissingnessPanel({ version }: { version: DatasetVersion }) {
 
 export function PreviewPanel({ version }: { version: DatasetVersion }) {
   const preview = useDatasetView<PreviewView>(version, "preview.json", parsePreview, Boolean(version.preview));
-  if (!version.preview) return <p className="text-muted-foreground">No preview for this version.</p>;
+  if (!version.preview) return <p className="text-muted-foreground">This version has no preview.</p>;
   if (preview.isPending) return <LoadingRows rows={5} />;
-  if (preview.isError) return <ErrorNotice error={preview.error} title="The preview could not be loaded" />;
+  if (preview.isError) return <ErrorNotice error={preview.error} title="The app could not load the preview" />;
   const p = preview.data;
   return (
     <div className="grid gap-2">

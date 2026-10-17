@@ -118,7 +118,7 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
         >
           <UploadCloud className="size-6 text-muted-foreground" />
           <p className="max-w-[48ch] text-muted-foreground">
-            Drop a CSV, Parquet, zarr zip or netCDF file. CSV files are previewed here in your browser before anything is uploaded.
+            Drop a CSV, Parquet, zarr zip or netCDF file here. For a CSV file, this page shows a preview in your browser before the upload.
           </p>
           <Button variant="outline" onClick={() => inputRef.current?.click()}>
             <FileUp /> Choose file
@@ -151,7 +151,7 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
       {preview && phase === "map" ? (
         <div className="grid gap-2">
           <p className="text-xs text-muted-foreground">
-            Local preview: first {preview.rows.length} rows{preview.truncated ? " (more in the file)" : ""}; delimiter{" "}
+            Local preview: first {preview.rows.length} rows{preview.truncated ? " (the file has more rows)" : ""}. Delimiter:{" "}
             <Mono>{preview.delimiter === "\t" ? "tab" : preview.delimiter}</Mono>.
           </p>
           <div className="max-h-56 overflow-auto rounded-lg border">
@@ -192,7 +192,7 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
             ) : null}
           </div>
           {format === "parquet" ? (
-            <p className="text-xs text-muted-foreground">Parquet files are read only inside the sandboxed ingest run, so enter the column names yourself.</p>
+            <p className="text-xs text-muted-foreground">Only the sandboxed ingest run can read Parquet files. Type the column names yourself.</p>
           ) : null}
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full text-[13px]">
@@ -289,11 +289,11 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
 
       {phase === "uploading" ? (
         <div className="grid gap-2">
-          <p className="text-[13px]">Uploading to quarantine storage…</p>
+          <p className="text-[13px]">The file uploads to quarantine storage…</p>
           <Progress label="Upload progress" value={progress ? progress.loaded / Math.max(1, progress.total) : null} />
         </div>
       ) : null}
-      {phase === "ingesting" ? <p className="text-[13px]">Upload complete. Starting the sandboxed ingest run…</p> : null}
+      {phase === "ingesting" ? <p className="text-[13px]">The upload is complete. The sandboxed ingest run starts…</p> : null}
       {error ? <p role="alert" className="text-[13px] text-destructive">{error}</p> : null}
     </div>
   );
