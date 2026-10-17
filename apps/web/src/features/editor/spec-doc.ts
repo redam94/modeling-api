@@ -85,11 +85,77 @@ export function starterWith(step: StepCatalogEntry, names: Names): Json {
 
 /** Append a pipeline step (flow style) with an id derived from `stepId`, unique in the pipeline. */
 export function addStep(text: string, use: string, withValue: Json, stepId: string): string | null {
+  return insertStep(text, Number.POSITIVE_INFINITY, use, withValue, stepId);
+}
+
+/** Insert a pipeline step at `index` (clamped; the end for `Infinity`). */
+export function insertStep(text: string, index: number, use: string, withValue: Json, stepId: string): string | null {
   return edit(text, (doc) => {
     const step: Json = { id: newStepId(stepId, stepIds(text)), use };
     if (Object.keys(withValue).length) step.with = withValue;
-    seqAt(doc, ["pipeline"]).items.push(flow(doc, step));
+    const seq = seqAt(doc, ["pipeline"]);
+    seq.items.splice(Math.max(0, Math.min(index, seq.items.length)), 0, flow(doc, step));
   });
+}
+
+/** Move the step at `from` so it ends up at index `to` (in the list without it). */
+export function moveStep(text: string, from: number, to: number): string | null {
+  return edit(text, (doc) => {
+    const seq = doc.getIn(["pipeline"], true);
+    if (!isSeq(seq) || from < 0 || from >= seq.items.length) return;
+    const [item] = seq.items.splice(from, 1);
+    seq.items.splice(Math.max(0, Math.min(to, seq.items.length)), 0, item);
+  });
+}
+
+/** Remove a step, and the split's `after_step` when it named that step. */
+export function removeStep(text: string, index: number): string | null {
+  return edit(text, (doc) => {
+    const seq = doc.getIn(["pipeline"], true);
+    if (!isSeq(seq) || index < 0 || index >= seq.items.length) return;
+    const [item] = seq.items.splice(index, 1);
+    const id = isMap(item) ? item.get("id") : null;
+    if (typeof id === "string" && doc.getIn(["data", "split", "after_step"]) === id) doc.deleteIn(["data", "split", "after_step"]);
+  });
+}
+
+/** Rename a step, and the split's `after_step` when it named that step. */
+export function renameStep(text: string, index: number, to: string): string | null {
+  return edit(text, (doc) => {
+    const from = doc.getIn(["pipeline", index, "id"]);
+    doc.setIn(["pipeline", index, "id"], to);
+    if (typeof from === "string" && doc.getIn(["data", "split", "after_step"]) === from) doc.setIn(["data", "split", "after_step"], to);
+  });
+}
+
+/**
+ * Set (or with `undefined`, delete) the value at `path`. An object is applied key by key onto
+ * an existing mapping, so the comments and order of the keys it keeps survive.
+ */
+export function setPath(text: string, path: (string | number)[], value: unknown): string | null {
+  return edit(text, (doc) => apply(doc, path, value));
+}
+
+function apply(doc: Document, path: (string | number)[], value: unknown): void {
+  if (value === undefined) {
+    if (doc.hasIn(path)) doc.deleteIn(path);
+    return;
+  }
+  const existing = doc.getIn(path, true);
+  if (isObj(value) && isMap(existing)) {
+    for (const item of [...existing.items]) {
+      const key = isScalar(item.key) ? item.key.value : item.key;
+      if (typeof key === "string" && !(key in value)) existing.delete(key);
+    }
+    for (const [k, v] of Object.entries(value)) {
+      if (JSON.stringify(doc.getIn([...path, k])) !== JSON.stringify(v)) apply(doc, [...path, k], v);
+    }
+    return;
+  }
+  // Keep a flow collection flow (`[a, b]` stays on one line).
+  const node = doc.createNode(value);
+  if ((isMap(existing) || isSeq(existing)) && existing.flow && (isMap(node) || isSeq(node))) node.flow = true;
+  doc.setIn(path, node);
 }
 
 /** Set `model.use`. A different model's settings are dropped (they belong to the old model). */

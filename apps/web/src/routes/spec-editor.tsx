@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, FlaskConical, GitCompare, History, Play, Plus, Save, ShieldCheck, XCircle } from "lucide-react";
+import { Blocks, CheckCircle2, Code2, FlaskConical, GitCompare, History, Play, Plus, Save, ShieldCheck, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parse as parseYaml } from "yaml";
 
@@ -22,7 +22,7 @@ import {
 import type { Issue, SpecRevision, ValidateResponse } from "@/api/types";
 import { ErrorNotice, IssueList, LoadingRows, Mono, PageHeader, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
+import { SegmentedControl, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Input, NativeSelect } from "@/components/ui/primitives";
 import { useAbout } from "@/features/about/api";
 import { SpecAboutPanel } from "@/features/about/spec-about";
@@ -36,6 +36,7 @@ import { STARTER_SPEC } from "@/features/editor/starter";
 import { useHintSources, useSchemaHints } from "@/features/editor/use-spec-hints";
 import { YamlEditor, type YamlEditorHandle } from "@/features/editor/yaml-editor";
 import { GuidedReturnLink } from "@/features/guided/return-link";
+import { VisualBuilder } from "@/features/spec-builder/visual-builder";
 import { env } from "@/env";
 import { useDebounced } from "@/hooks/use-debounced";
 import { relativeTime, shortId } from "@/lib/format";
@@ -43,6 +44,29 @@ import { locateIssues, YamlLocator } from "@/lib/yaml-diagnostics";
 import { toast } from "@/stores/toast";
 
 const existingRoute = getRouteApi("/build/$specId");
+
+type EditorView = "yaml" | "visual";
+const VIEW_KEY = "mapi.spec-editor.view";
+
+/** The last view the user picked (a per-browser convenience; YAML when storage is unavailable). */
+function useEditorView(): [EditorView, (v: EditorView) => void] {
+  const [view, setView] = useState<EditorView>(() => {
+    try {
+      return window.localStorage.getItem(VIEW_KEY) === "visual" ? "visual" : "yaml";
+    } catch {
+      return "yaml";
+    }
+  });
+  const set = useCallback((v: EditorView) => {
+    setView(v);
+    try {
+      window.localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // Storage blocked: the choice lasts for this page only.
+    }
+  }, []);
+  return [view, set];
+}
 const newRoute = getRouteApi("/build/new");
 
 interface ValidationState {
@@ -113,6 +137,9 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
   const [message, setMessage] = useState("");
   const [compare, setCompare] = useState<{ a: number; b: number } | null>(null);
   const editor = useRef<YamlEditorHandle | null>(null);
+  const [view, setView] = useEditorView();
+  /** An issue to reveal once the YAML editor is mounted (picked in the visual view). */
+  const pendingReveal = useRef<Issue | null>(null);
   const loadedKey = useRef<string | null>(null);
   const dirty = text !== base;
   const latest = spec.data?.latest_revision;
@@ -239,8 +266,19 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
   };
 
   const reveal = (issue: Issue) => {
+    if (view !== "yaml" || !editor.current) {
+      pendingReveal.current = issue;
+      setView("yaml");
+      return;
+    }
     const { range } = new YamlLocator(text).locate(issue.pointer ?? "");
-    editor.current?.reveal(range);
+    editor.current.reveal(range);
+  };
+  const onEditorReady = (h: YamlEditorHandle) => {
+    editor.current = h;
+    const issue = pendingReveal.current;
+    pendingReveal.current = null;
+    if (issue) h.reveal(new YamlLocator(text).locate(issue.pointer ?? "").range);
   };
 
   // Runs use the revision whose text is on screen, and only when it is saved as shown.
@@ -284,7 +322,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
               onChange={(e) => setMessage(e.target.value)}
               className="h-9 w-56"
             />
-            <Button variant="outline" onClick={openInsert} disabled={compare !== null} title="Search models, steps, datasets and columns to insert">
+            <Button variant="outline" onClick={openInsert} disabled={compare !== null || view !== "yaml"} title="Search models, steps, datasets and columns to insert">
               <Plus /> Insert
             </Button>
             <Button variant="outline" onClick={validateNow} title="Validate now (⌘Enter)">
@@ -337,6 +375,21 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_26rem]">
         <div className="grid min-w-0 content-start gap-3">
+          {!compare ? (
+            <SegmentedControl
+              label="Editor view"
+              value={view}
+              onValueChange={(v) => {
+                if (v === "visual") editor.current = null;
+                setView(v);
+              }}
+              options={[
+                { value: "visual", label: <><Blocks /> Visual</>, title: "Build the spec from blocks: drag steps, models and datasets in" },
+                { value: "yaml", label: <><Code2 /> YAML</>, title: "Edit the YAML text" },
+              ]}
+              className="justify-self-start"
+            />
+          ) : null}
           {specId && !compare && heldBack && loaded.data ? (
             <RevisionBanner
               text={`r${loaded.data.revision} is selected, but the editor still holds your unsaved changes to r${baseRev}.`}
@@ -358,6 +411,17 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
             <RevisionDiff specId={specId} a={compare.a} b={compare.b} onClose={() => setCompare(null)} />
           ) : specId && loaded.isPending ? (
             <LoadingRows rows={8} />
+          ) : view === "visual" ? (
+            <VisualBuilder
+              text={text}
+              document={document}
+              onText={setText}
+              schema={schema.data}
+              shape={hints.shape}
+              sources={hints.sources}
+              issues={allIssues}
+              onIssue={reveal}
+            />
           ) : (
             <YamlEditor
               path={`spec-${specId ?? "new"}.mapi.yaml`}
@@ -366,7 +430,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
               issues={located}
               onSave={save}
               onValidate={validateNow}
-              onReady={(h) => (editor.current = h)}
+              onReady={onEditorReady}
               ariaLabel="Spec YAML"
               height="calc(100svh - 15rem)"
             />

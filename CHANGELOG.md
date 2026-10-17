@@ -16,6 +16,17 @@ milestone releases are tagged on `main`.
 - Spec editor **Insert** panel (button and tab): search datasets, models, pipeline steps,
   columns, plots and derived outputs and add them to the spec. Steps come with their required
   settings filled in; edits keep the document's comments and formatting.
+- Spec editor **Visual** view, next to YAML (the choice is remembered per browser): the spec
+  as a stack of blocks (metadata, data, pipeline steps, model, outputs, execution). Drag steps,
+  models, datasets and plots in from a searchable palette (or pick one and press Add), drag a
+  step's handle to reorder it (or use its arrows), and open a block to edit it in a form built
+  from its schema: each step's and the model's own settings, the data binding as canonical
+  name → dataset column, the split by kind, the fit and execution. Dim and variable names the
+  step can see are offered as one-click suggestions. Both views edit the same YAML, so
+  comments and formatting survive; renaming or removing a step keeps the split's `after_step`
+  in step. Problems show on their block and open in the YAML view.
+- Schema forms render objects with declared properties as collapsible nested sections (opt-in;
+  the workflow inspector is unchanged).
 - Mock mode serves the real ModelSpec schema and plugin catalog
   (`apps/web/scripts/gen_editor_fixtures.py` → `src/mocks/editor.gen.json`).
 
