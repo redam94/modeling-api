@@ -1,6 +1,6 @@
 [project]
 name = "mapi-steps"
-version = "0.5.0"
+version = "0.5.1"
 description = "Built-in preprocessing steps for modeling-api (core.*) and their exported SchemaEffect catalog"
 readme = "README.md"
 requires-python = ">=3.12"

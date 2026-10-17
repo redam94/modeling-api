@@ -28,7 +28,7 @@ pytestmark = [pytest.mark.docker, pytest.mark.slow]
 
 Compose = Callable[..., subprocess.CompletedProcess[str]]
 
-VERSION = os.environ.get("MAPI_VERSION", "0.5.0")
+VERSION = os.environ.get("MAPI_VERSION", "0.5.1")
 IMAGES = (f"mapi/server:{VERSION}", f"mapi/worker:{VERSION}", f"mapi/gcs-shim:{VERSION}")
 
 #: Printed by ``python -I -c`` inside a container: what the control plane resolved at start-up.
