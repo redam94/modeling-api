@@ -1005,6 +1005,10 @@ class WorkflowOrchestrator:
             result["_lineage"] = lineage
         deferred = result.get("deferred_outputs")
         if isinstance(deferred, list) and deferred and row.phase == _PHASE_NODE:
+            if env.engine.cancel_requested or env.engine.error is not None:
+                # the run is stopping: never start the second phase (the winner's refit)
+                env.engine.cancelled(nid)
+                return
             best = result.get("best_settings")
             if isinstance(best, dict):
                 action = self._action_for(env, row)

@@ -410,6 +410,10 @@ milestone releases are tagged on `main`.
   to stop lived in memory only and was dropped before the next pass, so a long fit ran to
   the end before the run reported `failed`. Running siblings are now stopped in the same
   pass, and a restored failed or cancelled run lists them again.
+- **server**: cancelling (or failing) a workflow run while a `search.*` node was between its
+  backtests and the winner's refit started the refit anyway - a `fit` run nothing cancelled,
+  billed and registered after the run was cancelled. The refit is no longer started once the
+  run is stopping, and a child started in the same pass is stopped by its current run id.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

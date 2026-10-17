@@ -9,12 +9,14 @@ from typing import Any
 import httpx
 import pytest
 from mapi_server.context import ServerContext
+from mapi_server.db import models as m
 from mapi_server.services.runs import apply_transition, load_run
 from mapi_server.services.workflows import WorkflowOrchestrator
 from mapi_server.settings import Settings
-from mapi_server_testkit.workflows import catalog_file, put_dataset
+from mapi_server_testkit.workflows import catalog_file, drive, execute_children, put_dataset
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_workflows.testing import weekly_series
+from sqlalchemy import select
 
 pytestmark = [pytest.mark.integration, pytest.mark.filterwarnings("ignore")]
 
@@ -90,3 +92,50 @@ async def test_a_node_failing_at_start_stops_its_running_siblings(
         "adf": "cancelled",
         "fit": "failed",
     }
+
+
+# ============================================================================== searches
+
+GRID = {
+    "id": "grid",
+    "use": "search.grid",
+    "inputs": {"data": "inputs.data", "split": "hold.plan"},
+    "with": {
+        "model": "ts.sarimax@^1",
+        "settings": {"order": [1, 0, 0]},
+        "grid": {"/order": [[1, 0, 0], [2, 0, 0]]},
+    },
+}
+HOLD = {
+    "id": "hold",
+    "use": "split.holdout",
+    "inputs": {"data": "inputs.data"},
+    "with": {"split": {"kind": "time_holdout", "dim": "time", "last": 8}},
+}
+
+
+async def test_cancelling_between_a_search_and_its_refit_starts_no_fit(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await put_dataset(ctx, "sales", weekly_series(120))
+    rid = await _start(client, await _create(client, _doc([HOLD, GRID], name="gridwf")))
+    orch = WorkflowOrchestrator(ctx)
+    for _ in range(2):
+        await orch.tick(rid)
+        await execute_children(ctx)
+    async with ctx.db.session() as s:
+        row = await s.get(m.WorkflowNodeRunRow, (rid, "grid"))
+        assert row is not None and row.child_run_id is not None
+        child = await s.get(m.Run, row.child_run_id)
+        assert child is not None and child.state == "succeeded" and row.phase == "node"
+    # the backtests finished; the user cancels before the orchestrator collects them
+    c = await client.post(f"/v1/workflow-runs/{rid}:cancel")
+    assert c.status_code == 202
+    for _ in range(3):
+        await orch.tick(rid)
+    view = (await client.get(f"/v1/workflow-runs/{rid}")).json()
+    async with ctx.db.session() as s:
+        fits = list((await s.execute(select(m.Run).where(m.Run.kind == "fit"))).scalars())
+    assert [(f.id, f.state) for f in fits] == []
+    assert view["status"] == "cancelled", view["status"]
+    assert {n["node_id"]: n["status"] for n in view["nodes"]}["grid"] == "cancelled"
