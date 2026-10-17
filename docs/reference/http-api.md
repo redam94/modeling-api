@@ -239,7 +239,7 @@ How validation reports results:
 | `GET /v1/runs/{run_id}/plots` | Plots a succeeded run rendered (`plots.json`: forecast fans, counterfactual bands), passed through the plot sanitizer on every read; rejected plots are left out. Empty until the run succeeds. | — | `Page[PlotSpec]` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
 | `POST /v1/runs/{run_id}:cancel` | Request cancellation. Idempotent: it returns the run in `cancelling`, or in its terminal state if the run had already finished. A `finalizing` run is left alone and returned as it is: its execution is already over. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` |
 | `POST /v1/runs/{run_id}:resume` | Resume a `partial` run from its checkpoints (new attempt) | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (not `partial`) |
-| `POST /v1/runs/{run_id}:retry` | Start a **new** run from a failed one, for example one resource class up after `RESOURCE_EXHAUSTED`. Accepts `Idempotency-Key`. | `RunRetry` | `Run` | 201 | `NOT_FOUND`, `CONFLICT` (not failed) |
+| `POST /v1/runs/{run_id}:retry` | Start a **new** run from a failed one, for example one resource class up after `RESOURCE_EXHAUSTED`. Accepts `Idempotency-Key`. | `RunRetry` | `Run` | 201 | `NOT_FOUND`, `CONFLICT` (not failed; a workflow, workflow node or governance run - start the workflow again or resubmit the validation) |
 
 What `RunCreate` needs depends on `kind`:
 

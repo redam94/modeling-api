@@ -451,6 +451,10 @@ milestone releases are tagged on `main`.
   finished run as `cancelling`; the next pass flipped it back and sent `workflow.run.succeeded`
   (event and webhook) a second time. The cancel now locks the run and leaves a finished run
   as it is.
+- **server**: `POST /v1/runs/{id}:retry` on a failed workflow run crashed with a `500`
+  (`NotImplementedError`), and on a failed workflow node or governance run created a run that
+  nothing collected. These are now refused with `409 CONFLICT` naming what to do instead:
+  start the workflow again (unchanged nodes come from the cache) or resubmit the validation.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

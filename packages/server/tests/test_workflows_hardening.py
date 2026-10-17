@@ -486,3 +486,23 @@ async def test_a_cancel_racing_completion_does_not_reopen_the_run(
         assert row is not None and row.cancel_requested is False
     again = await client.post(f"/v1/workflow-runs/{rid}:cancel")
     assert again.status_code == 202 and again.json()["status"] == "succeeded"
+
+
+async def test_workflow_runs_and_their_node_runs_are_not_retried_one_by_one(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await put_dataset(ctx, "sales", weekly_series(80))
+    wf = await _create(client, _doc([ADF], name="fr"))
+    rid = await _start(client, wf)
+    assert await drive(ctx, rid, fail=lambda _r: True) is WorkflowRunStatus.FAILED
+    node_run = (await client.get(f"/v1/workflow-runs/{rid}")).json()["nodes"][0]["run_id"]
+    assert (await client.get(f"/v1/runs/{node_run}")).json()["state"] == "failed"
+    for run_id in (rid, node_run):
+        r = await client.post(f"/v1/runs/{run_id}:retry", json={})
+        assert r.status_code == 409 and r.json()["code"] == "CONFLICT", r.text
+        assert f"/v1/workflows/{wf}/runs" in r.json()["detail"]
+    async with ctx.db.session() as s:
+        retried = (
+            await s.execute(select(func.count()).where(m.Run.retry_of.is_not(None)))
+        ).scalar_one()
+    assert retried == 0

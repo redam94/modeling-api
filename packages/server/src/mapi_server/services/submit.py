@@ -556,12 +556,37 @@ async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate)
     )
 
 
+async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
+    """Workflow runs, their node runs and governance runs are driven by their owner (the
+    workflow orchestrator, a validation): a stand-alone retry would be a run nobody
+    collects, so it is refused (``CONFLICT``) with where to start again instead."""
+    kind = RunKind(old.kind)
+    if kind in (RunKind.WORKFLOW, RunKind.WORKFLOW_NODE):
+        workflow_id: object = (old.payload or {}).get("workflow_id")
+        if kind is RunKind.WORKFLOW_NODE:
+            parent = (old.payload or {}).get("workflow_run_id") or old.parent_run_id
+            wr = await session.get(m.WorkflowRunRow, str(parent)) if parent else None
+            workflow_id = wr.workflow_id if wr is not None else None
+        where = f"POST /v1/workflows/{workflow_id}/runs" if workflow_id else "the workflow"
+        raise Conflict(
+            f"{kind.value} runs are not retried one by one: start the workflow again "
+            f"({where}); unchanged nodes are reused from the cache"
+        )
+    if kind is RunKind.GOVERNANCE:
+        validation = (old.labels or {}).get("validation")
+        raise Conflict(
+            "governance runs are not retried one by one: resubmit the validation "
+            f"(POST /v1/validations/{validation or '{validation_id}'}:resubmit)"
+        )
+
+
 async def submit_retry(
     session: AsyncSession, ctx: ServerContext, old: m.Run, body: RunRetry
 ) -> m.Run:
     """A *new* run from a failed one (same resolved payload and pinned inputs)."""
     if old.state != RunState.FAILED.value:
         raise Conflict(f"only failed runs can be retried (run is {old.state})")
+    await _refuse_orchestrated_retry(session, old)
     if old.model_version_id is not None:  # its pinned bundle inputs must still verify
         mv = await _ready_model_version(session, ctx.scope, old.model_version_id)
         await verify_bundle_inputs(ctx.store, ctx.signer, mv, old.inputs)
