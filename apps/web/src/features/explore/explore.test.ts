@@ -28,7 +28,7 @@ import {
   suggestionKey,
   vifReading,
 } from "./plain";
-import { barsPlot, fevdPlot, fitPlot, histogramPlot, irfPlot, lagPlot, linesPlot, stlPlot, xType } from "./plots";
+import { barsPlot, fevdPlot, fitPlot, histogramPlot, irfPlot, lagPlot, linesPlot, missingSharePlot, stlPlot, xType } from "./plots";
 import { periodUnit } from "./sections-meta";
 import { DATA_SECTIONS, facetLabel, parseIndex, parseView, seriesLabel, ViewFormatError, type SectionViews } from "./views";
 
@@ -96,6 +96,11 @@ describe("plain readings (data)", () => {
   it("reads quality, missingness and outliers", () => {
     expect(qualityReading(view("quality", ds.ingest.views.quality)).tone).toBe("good");
     expect(qualityReading({ items: [{ code: "NEGATIVE_SPEND", severity: "error", message_plain: "x" }] } as never)).toMatchObject({ tone: "bad" });
+    // things to know are not "no problems found" (regression: the page said so above a list of them)
+    const infoOnly = qualityReading({ items: [{ code: "MISSING", severity: "info", message_plain: "0.3% missing" }, { code: "OUTLIERS", severity: "info", message_plain: "16.5% extreme" }] } as never);
+    expect(infoOnly).toMatchObject({ tone: "good" });
+    expect(infoOnly.text).toBe("No problems to fix; 2 things to know.");
+    expect(qualityReading({ items: [] } as never).text).toBe("No data problems found.");
     expect(missingnessReading(view("missingness", ds.ingest.views.missingness)).text).toMatch(/^spend \(0\.\d%\) has missing values; spend the most\. The longest gap is 4 periods in spend\./);
   });
 
@@ -159,5 +164,13 @@ describe("plot builders", () => {
     expect(xType([1, 2])).toBe("quantitative");
     expect(xType(["a"])).toBe("ordinal");
     expect(plots[1]!.datasets.bins).toHaveLength(30);
+  });
+
+  it("let Vega choose the precision of percent axes (no duplicate rounded ticks)", () => {
+    // Regression: a fixed ".1~%" on a 0-0.3% range rendered "0% 0% 0% 0.1% 0.1% ..."
+    const spec = JSON.stringify(missingSharePlot([{ name: "spend", missing_share: 0.003 }, { name: "price", missing_share: 0.0004 }])!.spec);
+    expect(spec).toContain('"axis":{"format":"~%"}');
+    expect(spec).toContain('"format":".2~%"'); // the tooltip keeps a readable precision
+    expect(missingSharePlot([{ name: "spend", missing_share: 0 }])).toBeNull();
   });
 });

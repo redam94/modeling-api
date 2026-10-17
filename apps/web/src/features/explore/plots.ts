@@ -190,16 +190,18 @@ export interface BarDatum {
 }
 
 /** Horizontal bars (VIF, shares, outlier counts) with an optional reference line and error bars. */
-export function barsPlot(data: readonly BarDatum[], opts: { title: string; format?: string; ruleAt?: number | null; ruleLabel?: string; sort?: "value" | "none"; groups?: { domain: string[]; range?: string[] } }): BuiltPlot {
+export function barsPlot(data: readonly BarDatum[], opts: { title: string; format?: string; axisFormat?: string; ruleAt?: number | null; ruleLabel?: string; sort?: "value" | "none"; groups?: { domain: string[]; range?: string[] } }): BuiltPlot {
   const rows: Row[] = data.map((d) => ({ label: d.label, value: d.value, group: d.group ?? null, lo: d.lo ?? null, hi: d.hi ?? null }));
   const y: JsonObject = { field: "label", type: "nominal", title: null, sort: opts.sort === "none" ? null : "-x" };
   const fmt = opts.format ?? ",.4~g";
+  // the axis may need its own format: a fixed precision rounds small ranges into duplicate ticks
+  const axisFmt = opts.axisFormat ?? fmt;
   const layers: JsonObject[] = [
     {
       mark: { type: "bar", cornerRadiusEnd: 2 },
       encoding: {
         y,
-        x: { field: "value", type: "quantitative", title: opts.title, axis: { format: fmt } },
+        x: { field: "value", type: "quantitative", title: opts.title, axis: { format: axisFmt } },
         ...(opts.groups ? { color: { field: "group", type: "nominal", title: null, scale: { domain: opts.groups.domain, ...(opts.groups.range ? { range: opts.groups.range } : {}) } } } : {}),
         tooltip: [{ field: "label", title: "Item" }, { field: "value", title: opts.title, format: fmt }],
       },
@@ -220,6 +222,17 @@ export function barsPlot(data: readonly BarDatum[], opts: { title: string; forma
     });
   }
   return { datasets: { bars: rows }, spec: { data: { name: "bars" }, height: { step: 24 }, layer: layers } };
+}
+
+/** The share of missing values per variable (``null`` when nothing is missing). The axis
+ * format has no fixed precision, so Vega picks one from the tick step: ``.1%`` on a 0-0.3%
+ * range would print "0.0% 0.0% 0.1% 0.1% ...". */
+export function missingSharePlot(vars: readonly { name: string; missing_share?: number | null; role?: string | null }[]): BuiltPlot | null {
+  if (!vars.some((v) => (v.missing_share ?? 0) > 0)) return null;
+  return barsPlot(
+    vars.map((v) => ({ label: v.name, value: v.missing_share ?? 0, group: v.role ?? "other" })),
+    { title: "Share missing", format: ".2~%", axisFormat: "~%" },
+  );
 }
 
 /** Estimates with their intervals as a forest plot (one row per parameter cell). */

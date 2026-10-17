@@ -53,6 +53,9 @@ export function qualityReading(v: QualityView): Reading {
   const warnings = items.filter((i) => (i.severity ?? "warning") === "warning").length;
   if (errors) return { text: `${plural(errors, "serious problem")} to fix before modelling${warnings ? `, and ${plural(warnings, "thing")} to look at` : ""}.`, tone: "bad" };
   if (warnings) return { text: `No serious problems; ${plural(warnings, "thing")} worth a look before modelling.`, tone: "warn" };
+  // "good to know" items are not problems, but the page must not say there is nothing above them
+  const infos = items.filter((i) => i.severity === "info").length;
+  if (infos) return { text: `No problems to fix; ${plural(infos, "thing")} to know.`, tone: "good" };
   return { text: "No data problems found.", tone: "good" };
 }
 

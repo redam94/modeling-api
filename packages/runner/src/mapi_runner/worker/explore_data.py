@@ -412,6 +412,7 @@ def overview(c: DataContext) -> DataOverviewView:
         )
     issues = quality_warnings(c)
     serious = sum(1 for w in issues if w.severity != "info")
+    infos = len(issues) - serious
     n_cells = int(sum(int(np.asarray(ds[v].values).size) for v in ds.data_vars))
     shape = " x ".join(_dim_phrase(d) for d in dims) or "no dimensions"
     period_txt = ""
@@ -426,7 +427,13 @@ def overview(c: DataContext) -> DataOverviewView:
             if c.kpi
             else "No variable is marked as the result (target). "
         )
-        + (f"{serious} data problem(s) to look at." if serious else "No data problems found.")
+        + (
+            f"{serious} data problem(s) to look at."
+            if serious
+            else f"No data problems to fix; {infos} thing(s) to know."
+            if infos
+            else "No data problems found."
+        )
     )
     return DataOverviewView(
         n_cells=n_cells,

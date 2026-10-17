@@ -536,6 +536,12 @@ milestone releases are tagged on `main`.
   partial cuts are now skipped with the reason (listed in
   `learned.calibration.lift_tests.skipped`); increases and full holdouts calibrate as
   before.
+- **web, runner**: the Data Explorer overview's missingness chart printed duplicate rounded
+  ticks ("0% 0% 0% 0.1% 0.1% ...") on small ranges - its axis had a fixed precision; Vega
+  now picks the precision from the tick step (the tooltip keeps two decimals). The overview
+  and the quality section also said "No data problems found." above a list of good-to-know
+  items (a little missing spend, extreme values); they now say "No problems to fix; 2
+  things to know."
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
