@@ -218,24 +218,35 @@ _CHECKS: list[GovernanceCheckDef] = [
             "metric": {"type": "string", "default": "rmse",
                        "enum": ["rmse", "mae", "mape", "smape", "crps"]},
             "block": {"type": "integer", "minimum": 1, "maximum": 520,
-                      "description": "Periods shuffled together (default: about one season)"},
+                      "description": "Periods of the drivers shuffled together (default: a "
+                      "twentieth of the series)"},
         }),
         about=_a(
             "Beats a shuffled result",
-            "Refits the model on a copy of the data where the result column is shuffled at "
-            "random; a real model must do clearly better on the true data than on noise.",
+            "Refits the model on copies of the data where the drivers are shuffled in time "
+            "(for a model without drivers, the result's ups and downs); a real model must do "
+            "clearly better on the true data than on the shuffled copies.",
             ["Every model whose accuracy is used to make decisions"],
             ["Models without a test period (there is nothing to compare)"],
             ["The model's data, its settings and a test period"],
-            ["Shuffling breaks any real link between drivers and result"],
+            ["Shuffling the drivers breaks any real link between them and the result, while "
+             "trend, season and the result itself stay as they are"],
             ["The share of shuffled fits that did as well as the real one (a p-value)",
              "The distribution of shuffled scores"],
             _I, _LONG,
-            "The real model's error is lower than all 20 shuffled fits: p = 0.0, pass.",
+            "The real model forecasts better than all 19 shuffled fits: p = 0.05, pass.",
             related=["null.noise_regressors", "baseline.beats_naive"],
-            expert="Permutation (randomisation) test: the holdout metric of the real fit is "
-            "compared with K refits on permuted targets (block permutation along time keeps "
-            "the marginal distribution); p = (1 + #{perm <= real}) / (K + 1).",
+            expert="Permutation (randomisation) test on a scale-free statistic: holdout skill "
+            "1 - L(model) / L(null forecast) on each dataset (the null forecast is the last "
+            "training value of an integrated series, else its mean). Null: models with drivers "
+            "keep the result and get their drivers block-permuted jointly (so trend, season "
+            "and controls cannot pass on their own; a model that ignores its drivers is "
+            "tested as one without); models without drivers get the d-th differences of the "
+            "result permuted i.i.d. and re-integrated from the original start (d from the "
+            "ARIMA order or ADF/KPSS), which keeps the integration order and the increments' "
+            "distribution but destroys predictable dynamics. Without a time order the result "
+            "is permuted across rows and the statistic is the holdout error. "
+            "p = (1 + #{perm >= real}) / (K + 1).",
             refs=[("Ojala & Garriga (2010), Permutation tests for studying classifier "
                    "performance", None)],
         ),

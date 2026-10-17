@@ -479,6 +479,22 @@ milestone releases are tagged on `main`.
   a model had many parameters, e.g. ETS). It now counts ARMA terms only (`ar.L*`, `ma.L*`,
   seasonal terms, ARDL/ECM lags of the target), stored per series as `model_df`, which
   `residuals.whiteness` also uses (it previously ignored seasonal AR/MA terms).
+- **runner, spec, web** (statistics, critical): the governance null test
+  `null.permutation_target` had the wrong size and no power on time series. It shuffled
+  blocks of the result's levels (which keeps the series' own persistence and adds a level
+  jump at every block edge, including the train/test boundary) and compared raw holdout
+  errors, whose spread came from which levels landed in the test periods: in simulation it
+  rejected 35% of random walks and 33% of real AR alternatives, and a marketing mix model
+  with no media signal passed. It now compares a scale-free statistic - the held-out skill
+  against the null forecast (the last value of an integrated series, else its mean) on
+  each dataset - under a null that matches what is tested: a model with drivers keeps its
+  result and gets its drivers shuffled in time (so trend, season and controls cannot pass
+  on their own; a model that ignores its drivers is tested as one without); a model without
+  drivers gets the d-th differences of its result shuffled and re-integrated from the same
+  start (d from its ARIMA order or ADF/KPSS). In simulation the test keeps its 5% size on
+  random walks and rejects real dynamics far more often; data without a time order keep the
+  classic row permutation of the result. The evidence names the null and the statistic, and
+  the web's null-distribution chart labels its axis from it.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

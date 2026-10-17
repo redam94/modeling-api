@@ -6,9 +6,15 @@ Every check of :data:`mapi_spec.governance.GOVERNANCE_CHECKS` is implemented her
 ========================== =================================================================
 check                      how it is measured
 ========================== =================================================================
-``null.permutation_target`` refit on block-shuffled targets ``n_permutations`` times (same
-                           budgeted settings as the real refit); ``p = (1 + #{shuffled <=
-                           real}) / (K + 1)`` on the holdout metric
+``null.permutation_target`` ``n_permutations`` refits on shuffled data (same budgeted
+                           settings as the real refit); statistic: holdout skill against
+                           naive on each dataset (scale-free); null: models with drivers keep
+                           the result and get the drivers block-shuffled (trend, season and
+                           controls alone cannot pass), models without drivers (or that ignore
+                           them) get the ``d``-th differences of the result shuffled and
+                           re-integrated (``d`` from the ARIMA order or ADF/KPSS);
+                           ``p = (1 + #{shuffled >= real}) / (K + 1)``; without a time order,
+                           the result shuffled across rows on the holdout metric
 ``null.noise_regressors``  add ``n_noise`` placebo drivers (a shuffled real driver or
                            Gaussian noise; new channels for channel-dim models, new
                            variables otherwise), refit, and measure each one's effect share
@@ -402,6 +408,71 @@ def _shift_time(
 # ================================================================================= checks
 
 
+def _integration_order(env: GovernanceEnv, y: np.ndarray) -> int:
+    """How often the target is differenced under the null: the ``d`` of an ARIMA ``order``
+    setting, else 1 when ADF keeps a unit root or KPSS rejects stationarity on the training
+    periods (of the total series), else 0."""
+    order = env.bundle.spec.model.plugin_settings.get("order")
+    if isinstance(order, list | tuple) and len(order) == 3 and isinstance(order[1], int):
+        return max(0, min(2, int(order[1])))
+    total = np.nansum(y.reshape(y.shape[0], -1), axis=1)
+    if stats.finite(total).size < 20:
+        return 0
+    adf = stats.adf_test(total)
+    kpss = stats.kpss_test(total)
+    verdict, _ = stats.stationarity_verdict(adf, kpss)
+    return 1 if verdict == "difference" else 0
+
+
+def _permute_increments(
+    values: np.ndarray, axis: int, d: int, rng: np.random.Generator
+) -> np.ndarray:
+    """The ``d``-th differences of ``values`` along ``axis`` shuffled i.i.d. (the same
+    permutation for every series) and integrated again from the original first ``d``
+    values: the integration order and the distribution of the increments are kept, any
+    predictable dynamics are destroyed."""
+    x = np.moveaxis(np.asarray(values, dtype=float), axis, 0)
+    n = x.shape[0]
+    if d <= 0 or not np.isfinite(x).all() or n <= d + 1:
+        return np.moveaxis(x[rng.permutation(n)], 0, axis)
+    levels = [x]
+    for _ in range(d):
+        levels.append(np.diff(levels[-1], axis=0))
+    out = levels[-1][rng.permutation(n - d)]
+    # integrate back: the first value of each lower-order difference is kept
+    for lvl in reversed(levels[:-1]):
+        out = np.concatenate([lvl[:1], lvl[:1] + np.cumsum(out, axis=0)], axis=0)
+    return np.moveaxis(out, 0, axis)
+
+
+def _holdout_skill(
+    b: Bundle, data: xr.Dataset, target: str, dim: str, held: np.ndarray, metric: str, d: int
+) -> float | None:
+    """``1 - L(model) / L(null forecast)`` on the held-out periods of ``data``: the refit's
+    holdout metric against the forecast of the null model of each series - its last
+    training value when it is integrated (``d >= 1``: a random walk), its training mean
+    otherwise (white noise). Scale-free, so the shuffles are compared on skill rather than
+    on the level jumps a shuffle creates."""
+    model = _holdout_metric(b, metric)
+    if model is None:
+        return None
+    da = data[target].transpose(dim, ...)
+    y = np.asarray(da.values, dtype=float).reshape(da.sizes[dim], -1)
+    train = y[~held]
+    if train.shape[0] == 0 or not held.any():
+        return None
+    ref = []
+    for j in range(y.shape[1]):
+        hist = stats.finite(train[:, j])
+        ref.append(np.nan if hist.size == 0 else (hist[-1] if d >= 1 else float(hist.mean())))
+    bench = np.broadcast_to(np.asarray(ref), y[held].shape)
+    key = "mae" if metric == "crps" else metric
+    loss = error_metrics(y[held], bench).get(key)
+    if loss is None or loss <= 0:
+        return None
+    return 1.0 - model / loss
+
+
 def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     p = check.params
     k = _pint(p, "n_permutations", 20)
@@ -413,60 +484,147 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if dim is None or not env.targets:
         return _skip(check, "the model has no target to shuffle along its split")
     n = int(env.data.sizes[dim])
-    block = (_pint(p, "block", 0) or max(1, n // 20)) if env.time_dim else 1
     k = min(k, env.refitter.remaining - 1)
     if k < 5:
         return _error(check, "the refit budget allows fewer than 5 shuffled fits")
     spec = env.refitter.spec(metrics=[metric])
     real_b = env.refitter.fit(env.data, spec)
-    real = _holdout_metric(real_b, metric)
+    target = env.targets[0]
+    rng = env.rng(check.check)
+    held = None
+    if env.time_dim is not None:
+        hm = holdout_mask(real_b, env.data)
+        held = (
+            np.asarray(hm.values, dtype=bool) if hm is not None and str(hm.dims[0]) == dim else None
+        )
+
+    if held is not None:
+        # time series: a scale-free statistic (skill against naive on each dataset) and a
+        # null that matches what is tested (see the module docstring)
+        drivers = [v for v in env.drivers() if dim in env.data[v].dims]
+        block = _pint(p, "block", 0) or max(1, n // 20)
+        d = _integration_order(
+            env, np.asarray(env.data[target].transpose(dim, ...).values, dtype=float)[~held]
+        )
+
+        def statistic(b: Bundle, data: xr.Dataset) -> float | None:
+            assert held is not None
+            return _holdout_skill(b, data, target, dim, held, metric, d)
+
+        def shuffle_drivers() -> xr.Dataset:
+            perm = stats.block_permutation(n, block, rng)  # one permutation for all drivers
+            return env.data.assign(
+                {
+                    v: env.data[v].copy(
+                        data=np.take(env.data[v].values, perm, axis=env.data[v].get_axis_num(dim))
+                    )
+                    for v in drivers
+                }
+            )
+
+        def shuffle_target() -> xr.Dataset:
+            return env.data.assign(
+                {
+                    t: env.data[t].copy(
+                        data=_permute_increments(
+                            env.data[t].values, env.data[t].get_axis_num(dim), d, rng
+                        )
+                    )
+                    for t in env.targets
+                    if dim in env.data[t].dims
+                }
+            )
+
+        null = "drivers" if drivers else "target"
+        how = (
+            f"the drivers {', '.join(drivers[:5])} shuffled in blocks of {block} (the result "
+            "untouched)"
+            if drivers
+            else f"the result's {_ORDINAL.get(d, f'{d}th')} shuffled"
+        )
+    else:
+        # rows without a time order: the classic permutation test on the error itself
+        def statistic(b: Bundle, data: xr.Dataset) -> float | None:
+            s = _holdout_metric(b, metric)
+            return None if s is None else -s
+
+        null, how, block, d = "target", "the result shuffled across rows", 1, 0
+
+        def shuffle_target() -> xr.Dataset:
+            perm = rng.permutation(n)
+            return env.data.assign(
+                {
+                    t: env.data[t].copy(
+                        data=np.take(env.data[t].values, perm, axis=env.data[t].get_axis_num(dim))
+                    )
+                    for t in env.targets
+                    if dim in env.data[t].dims
+                }
+            )
+
+        def shuffle_drivers() -> xr.Dataset:  # pragma: no cover - never used without time
+            return shuffle_target()
+
+    real = statistic(real_b, env.data)
     if real is None:
         return _error(
             check, f"the refit has no holdout {metric}", real_b.metrics.skipped.get(metric)
         )
-    rng = env.rng(check.check)
     scores: list[float] = []
-    for _i in range(k):
-        perm = stats.block_permutation(n, block, rng)
-        shuffled = env.data.assign(
-            {
-                t: env.data[t].copy(
-                    data=np.take(env.data[t].values, perm, axis=env.data[t].get_axis_num(dim))
-                )
-                for t in env.targets
-                if dim in env.data[t].dims
-            }
-        )
+    for i in range(k):
+        shuffled = shuffle_drivers() if null == "drivers" else shuffle_target()
         try:
             b = env.refitter.fit(shuffled, spec)
         except BudgetExhausted:
             break
-        s = _holdout_metric(b, metric)
-        if s is not None:
-            scores.append(s)
+        s = statistic(b, shuffled)
+        if s is None:
+            continue
+        if i == 0 and null == "drivers" and abs(s - real) <= 1e-9 * (1.0 + abs(real)):
+            # the model does not use these drivers: test its dynamics instead
+            null, how = "target", f"the result's {_ORDINAL.get(d, f'{d}th')} shuffled"
+            continue
+        scores.append(s)
     if len(scores) < 5:
         return _error(check, "fewer than 5 shuffled fits produced a score")
-    as_good = sum(1 for s in scores if s <= real)
+    as_good = sum(1 for s in scores if s >= real)
     pval = (1 + as_good) / (len(scores) + 1)
+    timed = held is not None
+    shown = (lambda v: f"skill {v:.3f}") if timed else (lambda v: f"{metric} {-v:.3g}")
     ev = [
-        _metric(f"holdout_{metric}", real, "The real model's error on held-out data"),
+        _metric(
+            "holdout_skill_vs_naive" if timed else f"holdout_{metric}",
+            real if timed else -real,
+            "The real model's skill on held-out data against the null forecast (the last "
+            "value of an integrated series, else its mean)"
+            if timed
+            else "The real model's error on held-out data",
+        ),
         _table(
             "permutation_scores",
             {
-                "real": real,
-                "shuffled": [round(s, 6) for s in scores],
-                "shuffled_min": min(scores),
-                "shuffled_median": float(np.median(scores)),
+                "real": real if timed else -real,
+                "shuffled": [round(s if timed else -s, 6) for s in scores],
+                "shuffled_median": float(np.median(scores)) * (1 if timed else -1),
+                "statistic": f"skill vs the null forecast ({metric})" if timed else metric,
+                "axis": (
+                    f"Skill on held-out data ({metric.upper()} against the null forecast; "
+                    "higher is better)"
+                    if timed
+                    else f"{metric.upper()} on held-out data (lower is better)"
+                ),
+                "null": how,
                 "block": block,
+                "d": d,
                 "metric": metric,
             },
-            "Errors of the fits on shuffled results",
+            "Scores of the fits on shuffled data",
         ),
     ]
     if as_good == 0:
         msg = (
-            f"The model's error on held-out data ({real:.3g}) was lower than all "
-            f"{len(scores)} fits on shuffled results (p = {pval:.3f})."
+            f"The model did better on held-out data ({shown(real)}) than all {len(scores)} "
+            f"fits with {how} (p = {pval:.3f})."
         )
         if len(scores) < 19:
             msg += (
@@ -475,19 +633,28 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             )
     else:
         msg = (
-            f"{as_good} of {len(scores)} fits on shuffled results did as well as the real "
-            f"model (p = {pval:.3f}): it may be fitting noise rather than signal."
+            f"{as_good} of {len(scores)} fits with {how} did as well as the real model "
+            f"(p = {pval:.3f}): it may be fitting noise rather than signal."
         )
     return result(
         check,
         pval,
         msg,
-        expert=f"Block permutation test (block {block}), {metric}: real {real:.4g}, shuffled "
-        f"median {np.median(scores):.4g}; p = (1 + {as_good}) / ({len(scores)} + 1).",
+        expert=f"Permutation test, null: {how}; statistic: "
+        + (
+            f"holdout skill 1 - {metric}(model)/{metric}(naive) on each dataset"
+            if timed
+            else f"holdout {metric}"
+        )
+        + f"; real {shown(real)}, shuffled median {shown(float(np.median(scores)))}; "
+        f"p = (1 + {as_good}) / ({len(scores)} + 1).",
         action="Check for leakage between training and test data, simplify the model, or add "
         "drivers that carry real signal.",
         evidence=ev,
     )
+
+
+_ORDINAL: Final = {0: "values", 1: "period-to-period changes", 2: "second differences"}
 
 
 @dataclass
@@ -936,11 +1103,11 @@ def _arma_df(settings: Mapping[str, Any], bundle: Bundle | None = None) -> int:
     of an ``order``/``seasonal_order`` setting."""
     if bundle is not None:
         cells = (bundle.model.learned or {}).get("cells")
-        stored = [
-            int(c["model_df"])
-            for c in (cells if isinstance(cells, list) else [])
-            if isinstance(c, dict) and isinstance(c.get("model_df"), int)
-        ]
+        stored: list[int] = []
+        for c in cells if isinstance(cells, list) else []:
+            v = c.get("model_df") if isinstance(c, dict) else None
+            if isinstance(v, int):
+                stored.append(v)
         if stored:
             return max(stored)
     df = 0

@@ -103,9 +103,15 @@ def _null_result(data: Any) -> dict[str, Any]:
 
 @pytest.mark.slow
 def test_the_permutation_null_test_tells_signal_from_noise() -> None:
-    """A shuffled-target null test inside a workflow: the ARIMAX with a real price effect
-    beats its own fits on shuffled targets; fitted to pure noise it does not."""
+    """A permutation null test inside a workflow: the ARIMAX with a real price effect beats
+    its own fits with the price shuffled in time (the sales stay as they are); fitted to
+    pure noise it does not. The price varies enough from week to week for its effect to
+    matter on the held-out weeks (a slowly drifting price adds little forecast skill
+    beyond the sales' own dynamics, and the test then rightly finds no difference)."""
     signal = weekly_series(160, phi=0.5, beta=6.0, seed=3)
+    price = 10 + np.random.default_rng(4).normal(0, 1.0, signal.sizes["time"])
+    signal["sales"] = signal["sales"] - 6.0 * (price - signal["price"])
+    signal["price"] = ("time", price)
     real = _null_result(signal)
     assert real["status"] == "pass", real
     assert real["value"] is not None and real["value"] <= 0.05  # p = 1/(K+1) at best
