@@ -93,6 +93,23 @@ together is in the [Architecture overview](architecture.md), and what keeps it s
     Endpoints and aliases with a gated promotion, code snippets, signed webhooks, rendered
     and embedded plots, and the trust lifecycle from sign-up to deletion.
 
+-   **[Workflows](workflows.md)** <span class="mapi-badge">v0.5</span>
+
+    Versioned DAGs of statistical tests, transforms, branches, train/test plans, searches,
+    fits, comparisons, governance and reports, with typed ports, a safe condition language,
+    caching, schedules and triggers.
+
+-   **[Governance](governance.md)** <span class="mapi-badge">v0.5</span>
+
+    Policies of checks - null tests against shuffled targets and fake drivers, benchmarks,
+    residuals, stability - a validation state machine, second-person approval, evidence packs
+    and promotion that requires validation.
+
+-   **[About cards and choosing](about-and-choosing.md)** <span class="mapi-badge">v0.5</span>
+
+    A plain-language card on every model, step, node, check and template, and the
+    deterministic *Help me choose* ranking.
+
 </div>
 
 ## Vocabulary
@@ -107,3 +124,7 @@ together is in the [Architecture overview](architecture.md), and what keeps it s
 | **Output space** | Where an output's values live after inversion, for example `raw` or `weekly`. |
 | **Bundle** | The verified result of a fit: states, model groups, native artifacts, manifest and hashes. |
 | **Run** | A unit of work (`fit`, `score`, …) submitted to an executor as JSON. |
+| **Workflow** | A versioned graph of nodes (tests, transforms, splits, searches, fits, checks, reports); a workflow run is a parent run whose nodes run in the orchestrator, as sandboxed `workflow_node` runs or as child fits. |
+| **Policy** | The governance checks a model must pass, with thresholds and severities, per model family; tenant-wide or per project, versioned. |
+| **Validation** | One model version measured against the policies in force, with its results, evidence, approvals and status (`draft` … `validated`). |
+| **About card** | The plain-language description every selectable catalog item carries. |

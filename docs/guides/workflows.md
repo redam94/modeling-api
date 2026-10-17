@@ -81,6 +81,8 @@ Explorer of data over time offers the readiness recipe with that data already ch
 page then shows each step in plain words as it finishes, with the decisions taken and the
 report's summary.
 
+![A recipe in Guided mode: the About card in plain words, then the data to run it on](../assets/screenshots/workflows-recipe.png){ .mapi-shot }
+
 ### Start from a template (Expert)
 
 **Use this template** opens a three-step wizard: the template's About card and the workflow's
@@ -88,10 +90,14 @@ name, its parameters (saved as the workflow's defaults; every run can still chan
 the data it runs on by default (saved as the input's default reference, so schedules and runs
 started without data use it). The workflow is created as revision 1.
 
+![The workflow gallery: each template's About card, difficulty and typical runtime](../assets/screenshots/workflows-gallery.png){ .mapi-shot }
+
 ### The editor
 
 A workflow's **Editor** tab has three panes, side by side on wide screens and stacked on
 narrow ones:
+
+![The editor on the readiness-to-ARIMAX workflow: tests on the left, decisions, the order search, the backtest, selection, governance and the report on the right](../assets/screenshots/workflows-editor.png){ .mapi-shot }
 
 | Pane | What it does |
 |---|---|
@@ -131,6 +137,10 @@ resumes with `Last-Event-ID` after a dropped connection:
   the expression and the values it read (open in Expert mode, collapsed in a Guided recipe).
 - **Outputs** and **Events**: the run's outputs (the report, rendered) and the event log.
 
+![A finished run: 19 of 19 steps, the decisions taken, the cost, and every node done on the graph](../assets/screenshots/workflows-run-monitor.png){ .mapi-shot }
+
+![Decisions: each branch's condition, the values it read and the arm it took](../assets/screenshots/workflows-decisions.png){ .mapi-shot }
+
 Select a step to open its drawer: whether it ran or reused an earlier result (with a link to
 the run it came from), its test verdict (the statistic, p-value and decision, per series for
 panels), its outputs (tables, scores, train/test folds, reports, governance evidence, charts
@@ -138,6 +148,8 @@ in the plot sandbox, and a download for file outputs such as derived datasets), 
 it ran with, its sandbox run, fits or child workflow runs with their logs, and its cost.
 **Cancel run** stops a running workflow and its children; the run's cost is shown when it
 finishes.
+
+![A step's drawer: the ADF verdict with its p-value and statistic, the settings it ran with, its sandbox run and logs](../assets/screenshots/workflows-node-drawer.png){ .mapi-shot }
 
 A model the run fitted opens in the [Model Explorer](model-explorer.md#in-the-web-app):
 **Explore *name* vN** sits under the run's summary when it succeeds, beside the fit step's
@@ -152,6 +164,8 @@ gaps skipped, repeats fired once); an expression that would fire more often than
 minutes is refused before it is sent. Schedules can be paused and deleted. A **trigger**
 runs the workflow whenever a chosen dataset gets a new version, bound to one of its dataset
 inputs, after a debounce.
+
+![A new schedule from a preset, with the next five firing times in its time zone](../assets/screenshots/workflows-schedule.png){ .mapi-shot }
 
 ## The canonical workflow
 

@@ -147,20 +147,54 @@ The [cookbook](guides/workflow-cookbook.md) walks through it node by node. In sh
     curl -N -H "Accept: text/event-stream" "$API/v1/workflow-runs/$RUN/events"
     ```
 
-What it prints, on three years of a wandering weekly KPI:
+What the Python walkthrough printed on a live local stack, on three years of a wandering
+weekly KPI with a price driver (the event stream shortened; the run took about two minutes on
+a laptop, most of it sandboxed fits):
 
 ```text
+23 nodes, queued
+  adf: queued
+  kpss: queued
+  …
+  adf: succeeded
+  kpss: succeeded
+  …
+  wanders: took the then arm
+  seasonal: took the else arm
+  sdiff: skipped
+  …
+  governance: succeeded
+  trusted: took the then arm
+run succeeded
 The series wanders: consider differencing it.
-wanders then {'nodes.adf.reject': False, 'nodes.kpss.reject': True, ...}
+wanders then {'nodes.pp.reject': False, 'nodes.za.reject': False, 'nodes.adf.reject': False, 'nodes.kpss.reject': True}
+seasonal else {'nodes.seas.seasonal': False}
+trusted then {'nodes.governance.passed': True}
 ARIMA(1, 1, 1)
+The difference between backtest and naive at horizon 1 may be luck.
 ARIMAX has the best average error (1.83) and beats every benchmark (the strongest, Naive forecast, scored 1.87).
+passed
 validated
 data.quality                 pass    No data problems found (156 periods of history).
-baseline.beats_naive         pass    On the 13 held-out periods the model's error is 25% lower than 'same as last period' ...
-null.permutation_target      warn    1 of 20 fits on shuffled results did as well as the real model (p = 0.095) ...
+convergence                  pass    The fit reported no convergence problems.
+baseline.beats_naive         pass    On the 13 held-out periods the model's error is 25% lower than 'same as last period' (the strongest simple benchmark).
+holdout.accuracy             pass    On data it was not fitted on, the model's average percentage error is 1.8% (limit 15%).
+residuals.whiteness          pass    No pattern is left in the errors (Ljung-Box p = 0.39 at 10 lags).
+null.permutation_target      fail    2 of 20 fits on shuffled results did as well as the real model (p = 0.143): it may be fitting noise rather than signal.
+stability.rolling_params     fail    ar.L1 changes a lot across windows of history (variation 1205%): the relationship may not be stable over time.
 ```
 
-The documentation runs this walkthrough, unchanged, against a real server on every test run.
+This is the platform being honest rather than flattering. All four unit-root tests agree the
+series wanders, so it is differenced once; ARIMAX beats "same as last week" by 25% on weeks
+it never saw, yet Diebold-Mariano says the one-week-ahead edge over naive *may be luck*, two
+shuffled fits in twenty did as well, and the AR coefficient moves across windows of history.
+The default forecasting policy treats the shuffled-result test as a warning and stability as
+information, so the version is `validated` - with every warning on the record for the
+reviewer. A stricter policy makes either one blocking. (Every validation draws its own
+random shuffles, so the number of shuffled fits that tie the real one varies between
+validations.)
+
+The documentation's tests run this walkthrough, unchanged, against a real server.
 
 ## Upgrading from 0.4
 

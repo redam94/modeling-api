@@ -1,6 +1,6 @@
 # Guided mode and integrations <span class="mapi-badge">v0.4</span>
 
-!!! success "Status: this release (milestone M3), the first public launch"
+!!! success "Status: available in v0.4 (milestone M3), the first public launch"
     With the multi-tenant core in place ([v0.3](cloud.md)), v0.4 lets analysts go from a
     spreadsheet to a trustworthy report and a what-if scenario without writing YAML, and lets
     other applications call fitted models through stable endpoints. It is the first public
@@ -62,7 +62,7 @@ journey
 | Criterion | Where it stands |
 |---|---|
 | Five non-technical testers go from upload to report to scenario unaided in under 30 minutes | Prepared: an automated run takes 135 s of system time, six usability defects it found are fixed, and the [protocol for the testers](../operations/m3-verification.md#protocol-for-the-five-non-technical-testers) is written. The sessions themselves are still to run |
-| An external optimiser works against an endpoint | Met on a laptop: +0.22 % revenue at the same budget against the live endpoint ([details](../operations/m3-verification.md#an-external-optimiser-against-the-live-endpoint)) |
+| An external optimiser works against an endpoint | Met on a laptop: +0.22 % revenue at the same budget against the live endpoint ([details](../operations/m3-verification.md#an-external-optimiser-against-the-live-endpoint)). Since v0.5 budgets are optimised next to the model instead, in a sandboxed `optimize` run on mmm-framework planning ([Optimise a budget](../tutorials/optimise-a-budget.md)); the external-optimiser adapter was removed |
 | Cut line A: public launch of declarative specs and built-ins | Met for admission: sign-up workspaces are `public`, uploaded code is refused; public runs need an executor that enforces egress and DNS (`docker-gvisor` or Cloud Run Jobs), which this laptop could not run |
 
 Everything was verified locally; see [M3 verification](../operations/m3-verification.md) for

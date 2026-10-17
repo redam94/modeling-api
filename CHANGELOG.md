@@ -299,6 +299,22 @@ milestone releases are tagged on `main`.
   `docs/operations/m35-verification.md` records what they verified, the defects they found
   and what remains. The M1 and M3 journeys were brought up to date with v0.5 (the E33 spec
   on mmm-framework, the plan's KPI name, webhook deliveries verified as they arrive).
+- **docs**: the site for v0.5. The home page shows the new screens at work and leads its
+  measurements with the M3.5 journeys; "Why modeling-api?" covers workflows, governance,
+  About cards and the Data Explorer and compares workflows with general orchestrators; "Use
+  cases" adds a governed forecasting pipeline and macro/VAR analysis; the roadmap marks v0.5
+  available (with its own page) and M4 next (plugin upload for allow-listed experts, an MCP
+  server). Screenshots of the workflow gallery, editor, run monitor, a step's drawer,
+  decisions, schedules, the Guided recipe, policies, the policy editor, the review queue, a
+  validation and its evidence (`make docs-screenshots-workflows`,
+  `apps/web/e2e/workflow-screenshots.spec.ts`). Terminal outputs on the What's new, cookbook,
+  choosing, Python client, CLI, mmm-framework and budget pages are captured from a live
+  stack instead of illustrated. A generated governance-check reference
+  (`reference/generated/governance-checks.md`, every check with its About card, limits and
+  parameters, and the default policies); the permissions reference groups each resource's
+  actions, marks `approve` as needing the `reviewer` capability, lists every scope including
+  the v0.5 ones and has a Capabilities section; Tenancy and authentication lists the v0.5
+  roles, scopes and capability.
 
 ### Changed
 - **spec**: a dataset's generated summary shows dates without a midnight time

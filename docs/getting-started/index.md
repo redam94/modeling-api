@@ -1,6 +1,6 @@
 # Getting started
 
-There are three ways in, and they share everything: the spec format, the steps, the models
+There are four ways in, and they share everything: the spec format, the steps, the models
 and the bundles.
 
 <div class="grid cards" markdown>
@@ -23,6 +23,16 @@ and the bundles.
     `make dev`, then fit and score from the browser, the CLI, Python or HTTP.
 
     [:octicons-arrow-right-24: Quickstart: zero to first model in 10 minutes](quickstart.md)
+
+-   :material-graph-outline: **Automate an analysis** <span class="mapi-badge">v0.5</span>
+
+    ---
+
+    Start a gallery workflow - unit-root tests to a backtested, governed ARIMAX, VAR/VECM, a
+    forecast bake-off, a governed MMM - and run it from the browser, `mapi workflows run
+    --watch` or Python.
+
+    [:octicons-arrow-right-24: Workflow cookbook](../guides/workflow-cookbook.md)
 
 -   :material-language-python: **Use the library in your own process**
 
@@ -65,6 +75,7 @@ with pnpm for the web app; Docker is optional
     uv add mapi-sklearn                        # scikit-learn and xgboost models
     uv add "mapi-plots[recipes]"               # plot recipes (Altair, Plotly)
     uv add mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular   # the built-in models
+    uv add mapi-plugin-statsmodels "mapi-workflows[runtime]"    # statsmodels models, workflows
     ```
 
     !!! note "Not on PyPI yet"
@@ -81,7 +92,8 @@ with pnpm for the web app; Docker is optional
 | `mapi-pymc` | `mapi_pymc` | `PyMCModel`: write `build()`, get engines, diagnostics, new levels and counterfactuals | PyMC |
 | `mapi-sklearn` | `mapi_sklearn` | `SklearnModel`: write `estimator()`, get stacking, safe persistence and uncertainty | scikit-learn, xgboost, skops |
 | `mapi-plots` | `mapi_plots` | The JSON-only plot sanitizer and templates; recipes with the `recipes` extra | Altair, Plotly (extra) |
-| `mapi-plugin-*` | `mapi_plugin_*` | Built-in models: marketing mix, time series, tabular | as above |
+| `mapi-plugin-*` | `mapi_plugin_*` | Built-in models: marketing mix (`mapi-plugin-mmm`, on mmm-framework), time series, statsmodels time series (`mapi-plugin-statsmodels`), tabular | as above; mmm-framework, statsmodels |
+| `mapi-workflows` | `mapi_workflows` | The workflow engine, the node implementations and a local runner for notebooks ([guide](../guides/workflows.md#run-it-locally)) | none in the engine (pure Python, safe for the control plane); the node implementations are the `runtime` extra (numpy, xarray, scipy, statsmodels) |
 | `mapi-conformance` | `mapi_conformance` | The conformance corpus and its runner | all of the above |
 | `mapi-client` | `mapi_client` | Typed Python client for the HTTP API ([guide](../guides/python-client.md)) | httpx (xarray optional) |
 | `mapi-cli` | `mapi_cli` | The `mapi` command line ([guide](../guides/cli.md)) | typer, rich |

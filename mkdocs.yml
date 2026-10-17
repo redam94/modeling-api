@@ -197,6 +197,7 @@ nav:
       - "Marketing-mix models (mmm-framework)": models/mmm-framework.md
       - Models catalog: reference/generated/models-catalog.md
       - Workflow nodes: reference/workflow-nodes.md
+      - Governance checks: reference/generated/governance-checks.md
       - Plots and the sanitizer: reference/plots.md
       - Plot recipes catalog: reference/generated/plots-catalog.md
       - Error codes: reference/generated/error-codes.md
@@ -243,7 +244,8 @@ nav:
       - The local platform (v0.2): roadmap/platform-api.md
       - Cloud and multi-tenant (v0.3): roadmap/cloud.md
       - Guided mode and integrations (v0.4): roadmap/guided-ui.md
-      - "Next: expert plugins, MCP and sweeps (v0.6)": roadmap/expert-plugins.md
+      - Workflows, governance and explorers (v0.5): roadmap/workflows-governance.md
+      - "Next: expert plugins and MCP (v0.6)": roadmap/expert-plugins.md
   - Project:
       - Licensing: project/licensing.md
       - Contributing: project/contributing.md

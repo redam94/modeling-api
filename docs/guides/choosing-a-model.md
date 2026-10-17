@@ -34,17 +34,46 @@ Eight questions, all optional; the goal counts most:
 
     `mapi choose` asks the questions one by one (numbers; several for questions that take
     more than one answer; Enter skips) and prints the shortlist, then the About card of the
-    top three:
+    top three. With the four answers above, on a local stack (shortened):
 
     ```text
-                                  Recommended for you
-     #  item                       kind    fit  difficulty    time     why
-     1  Forecast with past values  model   92%  intermediate  seconds  Suits: forecast the future
-        and drivers                                                    Suits: one number over time
-        ts.sarimax                                                     Suits: other columns that
-                                                                       could explain the result
-     2  Weekly forecast            template 88% beginner      minutes  ...
+    Recommended for you
+     # ┃ item                ┃ kind              ┃ fit  ┃ difficulty   ┃ time               ┃ why
+    ━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━
+     1 │ Smooth trend        │ model             │ 100% │ beginner     │ minutes            │ Suits: forecast the
+       │ forecast            │                   │      │              │                    │ future
+       │ ts.hsgp_trend       │                   │      │              │                    │ Suits: one number
+       │                     │                   │      │              │                    │ over time
+     2 │ Weekly forecast     │ template          │ 100% │ beginner     │ minutes            │ …
+       │ weekly_forecast     │                   │      │              │                    │
+     3 │ Forecast bake-off   │ workflow_template │ 100% │ beginner     │ more than 15       │ …
+       │ workflow.forecast_b │                   │      │              │ minutes            │
+       │ akeoff              │                   │      │              │                    │
+     4 │ Time-series         │ workflow_template │ 100% │ beginner     │ minutes            │ …
+       │ readiness to ARIMAX │                   │      │              │                    │
+     5 │ Effects that build  │ model             │ 86%  │ intermediate │ seconds            │ Suits: forecast the
+       │ up over time        │                   │      │              │                    │ future
+       │ ts.ardl             │                   │      │              │                    │ …
+       │                     │                   │      │              │                    │ Suits: yes (prices,
+       │                     │                   │      │              │                    │ promotions,
+       │                     │                   │      │              │                    │ weather, spend)
+       │                     │                   │      │              │                    │ careful: Needs
+       │                     │                   │      │              │                    │ intermediate-level
+       │                     │                   │      │              │                    │ statistics
+       │                     │                   │      │              │                    │ knowledge
+
+    Smooth trend forecast  model ts.hsgp_trend
+    Forecasts one regular series with a smooth, flexible trend and a repeating seasonal pattern, and gives a range of likely values.
+    difficulty: beginner   typical time: minutes
+    …
+    unanswered (answer them to sharpen the ranking): frequency, history, uncertainty, speed
     ```
+
+    Being new to statistics counts: models that need more experience (`ts.ardl` above,
+    `ts.sarimax` sixth) carry a caution and rank below beginner-friendly choices, including
+    the *readiness* workflow, which chooses an ARIMAX's settings for you. Answer
+    `experience=intermediate`, or skip the question, and `ts.ardl` and `ts.sarimax` - the
+    models that use the drivers - come first.
 
 === "Python"
 

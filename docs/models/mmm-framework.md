@@ -287,18 +287,45 @@ mapi explore model model://growth/geo-mmm@v7 -s response_curves -s decomposition
 --8<-- "cli_v05.sh:optimize"
 ```
 
+What the plan looked like for the demo's two-channel model (`eu-geo-mmm`, the Python client
+guide's fit: tiny sampler settings, half a year of data), captured on a laptop:
+
 ```text
- optimisation        run_01m53…
- objective           10th percentile of revenue (cautious)
- budget              1,000,000 EUR (now 1,000,000)
- expected revenue    3.42e+06 (now 3.31e+06)
- uplift              +1.2e+05
- chance it beats the current plan   97%
-                                    Plan
- channel   now        recommended   change   next unit returns   note
- tv        600,000    450,000       -25%     1.4
- search    400,000    550,000       +38%     1.4
+ optimisation                      run_01m53hqpb8690ja1nkrc7b8j12
+ objective                         downside P10 (a low quantile — risk-averse)
+ budget                            639,176 EUR (now 639,176)
+ expected revenue_local            1.656e+07 (now 1.658e+07)
+ uplift                            -1.431e+04
+ chance it beats the current plan  48%
+ draws                             200
+Plan
+ channel ┃ geo ┃ now     ┃ recommended ┃ change ┃ next unit returns ┃ note
+━━━━━━━━━╇━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━
+ tv      │     │ 370,845 │ 488,240     │ +32%   │ 2.92              │
+ search  │     │ 268,331 │ 150,936     │ -44%   │ 2.94              │
+What more (or less) budget buys
+ budget    ┃ expected revenue_local ┃ next unit returns
+━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━
+ 255,670   │ 1.504e+07              │ 4.15
+ 547,865   │ 1.622e+07              │ 3.9
+ 840,060   │ 1.725e+07              │ 3.43
+ 986,157   │ 1.766e+07              │ 2.78
+ 1,132,254 │ 1.784e+07              │ 1.24
+ 1,278,352 │ 1.79e+07               │ 0.41
+ …
+note: Non-concave response curve(s) detected for tv, search: the greedy allocator's exactness
+precondition fails, so this run used the multi-start constrained solver instead. Treat the
+optimum as the best point found, not a proven global one.
 ```
+
+Read it the way the planning module intends. The plan protects the cautious outcome (the
+10th percentile), so its *expected* revenue is a little below today's and it beats today's
+plan in only 48% of the draws: on this model, moving money from search to TV buys
+insurance, not growth, and the next euro returns about the same (2.9) in both channels -
+today's split is already close to efficient. The frontier is the more useful answer: up to
+roughly 1 million EUR each extra euro still returns 2.8 or more; beyond 1.13 million it
+falls to 1.2 and then 0.4. The notes (printed on standard error) say which solver ran and why. With `--objective mean` the same request maximises expected
+revenue instead.
 
 A workflow can do all of it on a schedule: the `mmm_governed` gallery template fits
 `mmm.bayesian` on a geo panel, runs the policy with `submit: true` and keeps the evidence pack

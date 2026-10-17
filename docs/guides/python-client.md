@@ -46,7 +46,7 @@ each value came from. Use the client as a context manager (`with Client() as api
 ```
 
 ```text
-dataset://default/eu_media_daily@v2 ready sha256:0073129ba8ee
+dataset://default/eu_media_daily@v2 ready sha256:3062fa82622c
 dataset://default/fx_daily@v2 ready sha256:7f27db4a2ac4
 dataset://default/holidays_eu@v2 ready sha256:11abf028d5f5
 dataset://default/eu_media_future@v2 ready sha256:2db88e1af79d
@@ -81,16 +81,14 @@ valid
 raw ['channel', 'geo', 'time']
 to_eur ['channel', 'geo', 'time']
 weekly ['channel', 'geo', 'time'] <- split
-scale_spend ['channel', 'geo', 'time']
-scale_y ['channel', 'geo', 'time']
-lags ['channel', 'geo', 'lag', 'time']
-season ['channel', 'fourier_mode', 'geo', 'lag', 'time']
-hols ['channel', 'fourier_mode', 'geo', 'lag', 'time']
+hols ['channel', 'geo', 'time']
 ```
 
 Validation is synchronous and static: the server never imports plugin code. It returns every
 issue at once with a JSON pointer (`/pipeline/2/with/over`), plus the schema at every stage,
-here in the dataset's canonical names (`geo`, `time`) after binding.
+here in the dataset's canonical names (`geo`, `time`) after binding. The marketing-mix model
+(`mmm.bayesian`, on mmm-framework) scales the data and carries spend over itself, so the
+pipeline stops at the currency, weekly and holiday steps.
 
 ## Fit and follow the run
 
@@ -104,19 +102,30 @@ warning DEV_MODE_ISOLATION worker isolation is reduced (development mode): …
 state  downloading the dataset
 state  fitting the pipeline and the model
    validated the spec and the data
-   chain 1/2: tuning 116/150, 0 divergences
-   chain 2/2: sampling 31/100, 0 divergences
-   evaluated the holdout through the score path
+   sampling (pymc)
+   posterior ready
+   fit complete
+   posterior ready
 state  rendering plots and views
-diagnostic RHAT 1.0488798610868963
-…
-metric mape 7.589774995896182
+   explorer: params
+diagnostic RHAT 1.0485957785967657
+diagnostic ESS_BULK 70.61247760811287
+diagnostic ESS_TAIL 51.394768720375154
+diagnostic DIVERGENCES 0.0
+diagnostic PARETO_K_HIGH 3.0
+metric coverage_90 0.9583333333333334
+metric elpd_loo 89.0564020582058
+metric mape 2.53957229942099
 state  uploading outputs
 complete  None
 state  complete manifest uploaded
 end: succeeded
-succeeded mv_01m4zxxfd6xbmbmnv1byrxenf3
+succeeded mv_01m53hmgdhfby1esy1xe341hvh
 ```
+
+(Captured on a laptop against `make dev`, with the demo spec's deliberately tiny sampler
+settings; "posterior ready" appears twice because the model is fitted on the training weeks,
+evaluated on the holdout, then refitted on every week.)
 
 `runs.stream_events` follows the server-sent event stream and yields four kinds of items:
 
@@ -138,14 +147,28 @@ the run's error; `runs.logs(run_id)` pages through the captured output.
 ```
 
 ```text
-model://default/eu-geo-mmm@v4 warn
-{'mape': 7.589774995896182, 'elpd_loo': 183.46594271421736, 'coverage_90': 0.875}
-warn RHAT: The independent sampling runs disagree about 'beta_sigma', so its estimates are not reliable yet.
-warn ESS_BULK: There is too little independent information about 'beta_channel' (about 53 effective draws) for stable averages.
-warn ESS_TAIL: There is too little independent information about 'gamma_control' (about 35 effective draws) for stable intervals.
-pass DIVERGENCES: The sampler explored the model without running into trouble.
-warn PARETO_K_HIGH: Some data points strongly influence the model, so the leave-one-out score is only approximate.
+model://default/eu-geo-mmm@v1 fail
+{'mape': 2.53957229942099, 'elpd_loo': 89.0564020582058, 'coverage_90': 0.9583333333333334}
+warn RHAT: The chains mostly agree, but not fully (R-hat 1.05).
+fail ESS: Only 71 independent draws: the numbers are not stable.
+pass DIVERGENCES: The sampler explored the model without problems.
+pass HOLDOUT_MAPE: Forecasts were off by 3% on the held-out periods.
+pass HOLDOUT_COVERAGE: 96% of held-out values fell inside the 90% range, as expected.
+pass NEGATIVE_ROI: No channel is likely to have a negative return.
+pass ROI_ABSURD: The highest channel return (4.34 per unit spent) is believable.
+pass SHARE_OUTLIER: No single channel explains most of the KPI.
+pass BASELINE_SHARE: The baseline (KPI without media) is 84%, a plausible share.
+pass PRIOR_OVERLAP: The data moved every parameter away from its prior.
+pass DATA_MISSING: Only 0% of the values are missing.
+fail DATA_HISTORY: Only 0.6 years of history: too short to separate media from seasonality.
+pass SPEND_VARIATION: Every channel's spend varies enough to measure its effect.
 ```
+
+The scorecard is doing its job: the demo spec samples 100 draws on 2 chains from about half
+a year of weekly data so the walkthrough stays fast, and the scorecard says exactly that - too
+few independent draws and too little history - in plain words. A scorecard that fails blocks
+promotion to an endpoint outright (`PROMOTION_BLOCKED`); one that only warns needs an admin's
+audited reason ([the promotion gate](../concepts/integrations.md#promotion-gate)).
 
 A `ModelVersion` also carries the signed `manifest`, the `diagnostics`, the `capabilities`, the
 `lineage` and the list of `artifacts`. Download any of them:
@@ -165,10 +188,14 @@ client checks the download against the CRC32C and size the object store computed
 ```
 
 ```text
-succeeded ['plots.json', 'result.json', 'score.zarr.zip', 'ui/summary.arrow']
-{"contributions": "weekly", "y_hat": "weekly"}
-[69720. 60339. 61101. 60544. 63529. 64553. 61885. 60652.]
+succeeded ['plots.json', 'result.json', 'score.zarr.zip', 'summary.json', 'ui/guided/forecast.json', 'ui/summary.arrow']
+{"contributions": "model-owned", "y_hat": "model-owned"}
+[272645. 254447. 259143. 258366. 265242. 269497. 268112. 266377.]
 ```
+
+`model-owned` means the model returned its answers in its own stage's units, recorded in each
+variable's `units` attribute: weekly EUR, because the pipeline converted and resampled before
+the model.
 
 `models.score` sends the request with `Prefer: wait=60`. If the run is not done by then, it
 repeats the *same* request with the *same* idempotency key: the server answers with the one

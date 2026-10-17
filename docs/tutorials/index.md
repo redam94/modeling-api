@@ -1,5 +1,5 @@
 ---
-description: Step-by-step tutorials for v0.4 - your first MMM in Guided mode, Google Sheets, embedded charts, webhook receivers, and budget optimisation on mmm-framework.
+description: Step-by-step tutorials - your first MMM in Guided mode, a forecast that tests and checks itself, null tests before a model goes live, Google Sheets, embedded charts, webhook receivers, and budget optimisation on mmm-framework.
 ---
 
 # Tutorials
@@ -54,6 +54,35 @@ Apps Scripts run against stand-ins for Google's services.
     cautious objectives, the uplift and the chance it helps, and the efficient frontier.
 
     *For data scientists.* [:octicons-arrow-right-24: Start](../tutorials/optimise-a-budget.md)
+
+-   :material-graph-outline:{ .lg .middle } **A forecast that tests itself** <span class="mapi-badge">v0.5</span>
+
+    ---
+
+    Unit-root tests, a differencing decision, an AR/MA order search, a rolling-origin
+    backtest against naive forecasts and governance, as one workflow you run with `--watch`
+    and schedule for Monday mornings.
+
+    *For data scientists.* [:octicons-arrow-right-24: Start](../guides/workflow-cookbook.md#readiness-to-arimax)
+
+-   :material-shield-check-outline:{ .lg .middle } **Prove a model is not fitting noise** <span class="mapi-badge">v0.5</span>
+
+    ---
+
+    Write a policy with null tests, validate a model version, have a colleague approve it,
+    export the evidence pack and make the endpoint refuse anything unvalidated.
+
+    *For data scientists and reviewers.* [:octicons-arrow-right-24: Start](../guides/governance.md)
+
+-   :material-magnify-scan:{ .lg .middle } **Explore your data, then choose a model** <span class="mapi-badge">v0.5</span>
+
+    ---
+
+    Read the Data Explorer's quality warnings, stationarity and lead-lag views, then let
+    *Help me choose* turn a few answers into a shortlist with reasons.
+
+    *For analysts.* [:octicons-arrow-right-24: Start](../guides/data-explorer.md) ·
+    [Choosing a model](../guides/choosing-a-model.md)
 
 </div>
 
