@@ -188,11 +188,19 @@ class WorkflowParam(StrictModel):
         return self
 
 
+PARAM_MAX_MAGNITUDE: Final = 1e15
+"""The largest magnitude a number parameter may have (conditions compute with them)."""
+
+
 def param_value_problem(p: WorkflowParam, value: object) -> str | None:
     """Why ``value`` does not fit parameter ``p`` (``None`` if it does)."""
     if not _PARAM_JSON[p.type](value):
         return f"expected a {p.type}"
     if isinstance(value, int | float) and not isinstance(value, bool):
+        if isinstance(value, float) and value != value:  # NaN
+            return "must be a number"
+        if not -PARAM_MAX_MAGNITUDE <= value <= PARAM_MAX_MAGNITUDE:
+            return f"is too large (at most {PARAM_MAX_MAGNITUDE:.0e} either way)"
         if p.minimum is not None and value < p.minimum:
             return f"must be at least {p.minimum}"
         if p.maximum is not None and value > p.maximum:

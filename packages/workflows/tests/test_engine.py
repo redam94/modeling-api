@@ -509,3 +509,26 @@ def test_unknown_cache_keys_wait_for_the_driver() -> None:
     actions = eng.step()
     assert [a.node_id for a in actions] == ["kpss"]
     assert eng.node_run("adf").status is NodeRunStatus.CACHED
+
+
+def test_a_restored_failed_run_still_lists_its_running_nodes_to_cancel() -> None:
+    """``to_cancel`` is not persisted: restoring a failed run lists the nodes still running."""
+    from mapi_spec.workflow import NodeError
+
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {"id": "kpss", "use": "test.kpss", "inputs": {"data": "inputs.data"}},
+        ]
+    )
+    eng = WorkflowEngine(spec, inputs={"data": DATA})
+    for a in eng.step():
+        eng.attach_run(a.node_id, f"run_{a.node_id}")
+    eng.failed("kpss", NodeError(code=ErrorCode.SETTINGS_INVALID, message="bad"), retryable=False)
+    assert eng.to_cancel == {"adf"} and eng.error is not None
+    restored = WorkflowEngine.restore(
+        spec, copy.deepcopy(eng.node_runs()), error=eng.error, inputs={"data": DATA}
+    )
+    assert restored.to_cancel == {"adf"}
+    restored.cancelled("adf")
+    assert restored.status is WorkflowRunStatus.FAILED

@@ -379,6 +379,10 @@ class WorkflowEngine:
             eng.decisions[d.node_id] = d
         eng.error = error
         eng.cancel_requested = cancel_requested
+        if error is not None or cancel_requested:
+            # :attr:`to_cancel` is not persisted: a failed or cancelled run lists the nodes
+            # still running again, so the driver keeps stopping them on every pass
+            eng._stop_all(error.message if error is not None else "the run was cancelled")
         return eng
 
     # --------------------------------------------------------------------- read side

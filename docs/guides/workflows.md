@@ -164,7 +164,8 @@ Reading it from the top:
 
 `params`
 :   Everything a user may change per run, each with a type, a default and bounds. A run that
-    passes `{"alpha": "x"}` is refused with `422` and the pointer `/params/alpha`.
+    passes `{"alpha": "x"}` is refused with `422` and the pointer `/params/alpha`; so is a
+    number larger than 1e15 either way (conditions and `$expr` compute with parameters).
 
 `seas`, `seasonal` and `sdiff`
 :   The seasonal decision comes first (as in `nsdiffs` before `ndiffs`): the seasonal
@@ -391,8 +392,11 @@ validation request's), measured in the node's sandbox on the model and its data;
 in force is the one the project or tenant set up for the model's family (the platform's
 default policies apply until you add your own). With `submit: true` a passing model is
 recorded as a validation of that model version: `validated`, or `awaiting_approval` when the
-policy asks for a reviewer (see [governance](governance.md)). Governance nodes are never
-cached: the checks run again on every run.
+policy asks for a reviewer (see [governance](governance.md)). A node's `policy` only adds to
+the policies in force (the tenant floor and the project's policies always apply), and the
+validation counts as submitted by the person who started the run - or who created its
+schedule or trigger - so that person cannot approve it. Governance nodes are never cached:
+the checks run again on every run.
 
 ### Reuse a workflow as a node
 
@@ -426,7 +430,11 @@ execution: {max_parallel: 4, timeout: 2h}
 
 `execution` applies to the whole run: how many nodes run at once and a deadline after which
 the run fails with `TIMEOUT`. A failed node without `on_failure: continue` fails the run; the
-nodes still pending are cancelled, and the run's `error` names the node.
+nodes still pending are cancelled, the ones running are stopped, and the run's `error` names
+the node. A condition or `$expr` that cannot be computed on the data it reads (a number too
+large, values nested too deeply) fails its node with `EXPRESSION_ERROR`. Should the
+orchestrator itself be unable to advance a run, the run fails with `INTERNAL_ERROR` and its
+running children are stopped; other runs are not held up.
 
 ## Where nodes run
 
@@ -503,7 +511,10 @@ api POST "/v1/workflows/$WF/triggers" -d '{
 - Runs started by schedules and triggers carry `trigger: schedule` or
   `trigger: dataset.version.created` and the schedule or trigger id, are audited as the
   platform acting for the person who created the schedule, and count against the project's
-  quotas like any other run.
+  quotas like any other run. They run as that person (an API token's owner when a token
+  created the schedule): a schedule or trigger whose creator is no longer allowed to run
+  workflows in the project - removed, demoted below `runner`, or whose token was revoked or
+  expired - pauses itself (`active: false`, audited) instead of firing.
 
 ## Run it locally
 
@@ -536,7 +547,7 @@ some.
 | Setting | Default | Meaning |
 |---|---|---|
 | `MAPI_WORKFLOW_TICK_S` | 1.0 | How often the orchestrator advances active runs |
-| `MAPI_WORKFLOW_MAX_ACTIVE_RUNS` | 20 | Runs a project may have going at once (`429` beyond) |
+| `MAPI_WORKFLOW_MAX_ACTIVE_RUNS` | 20 | Runs a project may have going at once, sub-workflow runs included (`429` beyond; a `subworkflow.run` node over it fails with `QUOTA_EXCEEDED`) |
 | `MAPI_WORKFLOW_MAX_SCHEDULES` | 20 | Active schedules per project |
 | `MAPI_WORKFLOW_MAX_TRIGGERS` | 20 | Active triggers per project |
 | `MAPI_WORKFLOW_NODE_TIMEOUT_S` | 1800 | Timeout of a node without its own `timeout` |

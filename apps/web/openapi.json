@@ -33622,7 +33622,7 @@
         ]
       },
       "post": {
-        "description": "The policies in force for the model's family (or ``policy_ids``) decide the checks;\nthey run in the sandbox and the validation advances when they finish.",
+        "description": "Every policy in force for the model's family (plus any ``policy_ids``, which can only\nadd policies) decides the checks; they run in the sandbox and the validation advances\nwhen they finish.",
         "operationId": "request_model_validation",
         "parameters": [
           {

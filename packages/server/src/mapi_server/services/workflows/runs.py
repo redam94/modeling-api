@@ -5,7 +5,7 @@ executor, the dispatcher and the reconciler skip it) plus its orchestration stat
 ``workflow_runs`` and one ``workflow_node_runs`` row per node. Starting a run checks the
 revision is runnable, the parameters and the inputs (dataset and model references are
 pinned to versions now, so a re-run sees the same data), and the project's limit of active
-workflow runs; the orchestrator's workflow loop does the rest
+workflow runs (sub-workflow runs included); the orchestrator's workflow loop does the rest
 (:mod:`mapi_server.services.workflows.orchestrate`).
 """
 
@@ -179,10 +179,13 @@ async def start_workflow_run(
         )
     ).scalar_one()
     limit = ctx.settings.workflow_max_active_runs
-    if active >= limit and parent_run_id is None:
+    if active >= limit:
+        # sub-workflow runs count too: otherwise one start fans out to max_parallel ** depth
+        # active runs (the subworkflow.run node then fails with QUOTA_EXCEEDED)
+        what = "a sub-workflow cannot start: " if parent_run_id is not None else ""
         raise ProblemWithHeaders(
-            f"the project already has {active} workflow runs going (the limit is {limit}); "
-            "wait for one to finish",
+            f"{what}the project already has {active} workflow runs going (the limit is "
+            f"{limit}, sub-workflows included); wait for one to finish",
             code=ErrorCode.QUOTA_EXCEEDED,
             headers={"Retry-After": "60"},
         )
@@ -334,16 +337,22 @@ def set_parent_state(run: m.Run, status: WorkflowRunStatus, error: NodeError | N
         ).model_dump(mode="json", exclude_none=True)
 
 
-async def request_cancel(session: AsyncSession, wr: m.WorkflowRunRow) -> None:
-    """Flag a run for cancellation (the orchestrator stops its children)."""
+async def request_cancel(session: AsyncSession, wr: m.WorkflowRunRow) -> bool:
+    """Flag a run for cancellation (the orchestrator stops its children).
+
+    The row is re-read under ``FOR UPDATE`` first: a run the orchestrator finished since the
+    caller loaded it stays finished (no ``cancelling`` over ``succeeded``, no second
+    terminal event). Returns whether this call flagged it."""
+    await session.refresh(wr, with_for_update=True)
     status = WorkflowRunStatus(wr.status)
     if status.terminal or wr.cancel_requested:
-        return
+        return False
     wr.cancel_requested = True
     wr.status = WorkflowRunStatus.CANCELLING.value
     wr.updated_at = now()
     await session.flush()
     await notify_run(session, wr.run_id, "run")
+    return True
 
 
 def node_run_dto(row: m.WorkflowNodeRunRow) -> NodeRun:
@@ -391,6 +400,44 @@ def sum_costs(costs: Sequence[RunCost]) -> RunCost | None:
     )
 
 
+_MAX_COST_DEPTH = 16
+"""How deep the cost roll-up follows sub-workflows (nesting is capped at 8 when started)."""
+
+
+async def _descendant_runs(
+    session: AsyncSession, run_id: str, nodes: Sequence[m.WorkflowNodeRunRow]
+) -> set[str]:
+    """Every child run of a workflow run, through its sub-workflow runs: a sub-workflow's
+    own run has no attempts, its nodes' children carry the cost."""
+    out: set[str] = set()
+    seen = {run_id}
+    level = list(nodes)
+    for _ in range(_MAX_COST_DEPTH):
+        children = {str(c) for n in level for c in n.child_runs} - out
+        out |= children
+        subs = sorted(children - seen)
+        if not subs:
+            break
+        sub_ids = list(
+            (
+                await session.execute(
+                    select(m.WorkflowRunRow.run_id).where(m.WorkflowRunRow.run_id.in_(subs))
+                )
+            ).scalars()
+        )
+        seen.update(subs)
+        if not sub_ids:
+            break
+        level = list(
+            (
+                await session.execute(
+                    select(m.WorkflowNodeRunRow).where(m.WorkflowNodeRunRow.run_id.in_(sub_ids))
+                )
+            ).scalars()
+        )
+    return out
+
+
 async def workflow_run_dto(
     session: AsyncSession, wr: m.WorkflowRunRow, *, with_cost: bool = True
 ) -> WorkflowRun:
@@ -405,7 +452,7 @@ async def workflow_run_dto(
     )
     cost: RunCost | None = None
     if with_cost:
-        child_ids = sorted({str(c) for n in nodes for c in n.child_runs})
+        child_ids = sorted(await _descendant_runs(session, wr.run_id, nodes))
         if child_ids:
             rows = list(
                 (await session.execute(select(m.Run).where(m.Run.id.in_(child_ids)))).scalars()

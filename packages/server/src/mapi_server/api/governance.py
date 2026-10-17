@@ -340,8 +340,9 @@ async def request_model_validation(
     body: ValidationRequest,
     idempotency_key: IdempotencyKeyHeader = None,
 ) -> JSONResponse:
-    """The policies in force for the model's family (or ``policy_ids``) decide the checks;
-    they run in the sandbox and the validation advances when they finish."""
+    """Every policy in force for the model's family (plus any ``policy_ids``, which can only
+    add policies) decides the checks; they run in the sandbox and the validation advances
+    when they finish."""
     idem = Idempotency(session, ctx.scope, idempotency_key)
     replay = await idem.begin(f"POST {_MV}/validations", await request.json())
     if replay is not None:

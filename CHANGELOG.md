@@ -555,6 +555,84 @@ milestone releases are tagged on `main`.
   as dims. Ingest notes say what was spread. A parity test compares the panel with
   `mmm_framework.load_mff` on national media and campaign rows.
 
+### Fixed (M3.5 review: platform server)
+
+- **server** (security): a submitter could skip the tenant's strict policy - and the
+  second-person approval it requires - by naming a lenient policy (even one for another
+  model family) in `policy_ids`, and the promotion gate only looked at the latest status.
+  A validation is now always held to every policy in force (tenant floor and project);
+  `policy_ids` only adds policies. The gate accepts a `validated` version only when that
+  validation covered every gating policy in force *as it stands now* (by version, or by
+  checks, limits, settings and reviewers at least as strict); a version validated before a
+  policy was added or made stricter reads "validated under other or older policies" and may
+  be validated again.
+- **server**: two simultaneous validation requests for one model version (or a request and
+  a workflow's `submit: true`) both passed the "no open validation" check and created two
+  validations and two governance runs. The version row is now locked while the check runs.
+- **server** (security): a workflow's `governance.policy` node with `submit: true` recorded its
+  validation under the one policy the node named, dropping the tenant floor, and as submitted
+  by `system`, so the person who started the workflow could approve their own model. The
+  submission is now held to every policy in force (evidence missing a required check fails),
+  is submitted by the run's creator (the schedule's or trigger's creator for automated runs)
+  and the second-person rule applies to them; a validation no person submitted cannot be
+  approved (reject and resubmit it).
+- **server, workflows**: when a node failed while starting (invalid settings, a missing
+  input), the run's fail-fast did not stop the siblings already started: the list of nodes
+  to stop lived in memory only and was dropped before the next pass, so a long fit ran to
+  the end before the run reported `failed`. Running siblings are now stopped in the same
+  pass, and a restored failed or cancelled run lists them again.
+- **server**: cancelling (or failing) a workflow run while a `search.*` node was between its
+  backtests and the winner's refit started the refit anyway - a `fit` run nothing cancelled,
+  billed and registered after the run was cancelled. The refit is no longer started once the
+  run is stopping, and a child started in the same pass is stopped by its current run id.
+- **server**: `search.grid` (and the other searches with a winner refit) always failed with
+  `SPLIT_INVALID` "model.fit takes a holdout plan" when its split was a backtest plan -
+  rolling origin, expanding window - which is what a search needs: the refit of the winner
+  reused the backtest plan as a fit split. The winner is now fitted on all the data for a
+  backtest plan (a holdout plan is still kept).
+- **spec, server** (security): an exception other than `MapiError` while advancing a workflow
+  run - a 400-digit number parameter multiplied by a float in a `$expr` (`OverflowError`), or
+  deeply nested data compared in a condition (`RecursionError`) - escaped the orchestrator's
+  pass, left the run `queued` until its deadline (up to 7 days) and, with enough such runs
+  at the head of the loop's queue, stopped every tenant's workflows. The condition language
+  now raises only `EXPRESSION_ERROR` (arithmetic guarded, equality iterative and bounded to
+  64 levels), number parameters (and defaults) are limited to 1e15 in magnitude, and a run
+  the orchestrator cannot advance is failed (`INTERNAL_ERROR`) with its children stopped
+  instead of being retried at the head of the queue.
+- **server** (security): sub-workflow runs were exempt from `MAPI_WORKFLOW_MAX_ACTIVE_RUNS`, so
+  one start of a workflow with 32 `subworkflow.run` nodes (and nesting up to 8 deep) created
+  far more active runs than the limit. Sub-workflow runs now count against it, and a
+  `subworkflow.run` node over the limit fails with `QUOTA_EXCEEDED`. (The children's
+  executions were and are held by the dispatcher's per-tenant concurrency and vCPU limits.)
+- **server** (security): schedules and dataset triggers kept firing - and spending quota -
+  for a member who had been removed from the project, demoted, or whose API token had been
+  revoked: nothing re-checked the creator at fire time. They now pause themselves
+  (`active: false`, audited as `workflow.schedule_update`/`workflow.update`) when the creator
+  may no longer run workflows there, and their runs are created by the person (a token's
+  owner, with the token recorded) rather than by the token id.
+- **server**: a dataset version that became ready while its trigger was firing could be lost
+  for good: the finalizer wrote the new `pending_version` over the fired row without its
+  `pending_since`, so no pass ever selected the trigger again until another version arrived.
+  The pending version and its time are now set together in one atomic update that waits for
+  a firing pass holding the trigger.
+- **server**: a workflow run's `cost` left out everything its sub-workflows ran (a
+  `subworkflow.run` node's child is a workflow run with no attempts of its own); the roll-up
+  now follows sub-workflow runs down to their node runs.
+- **server**: `POST /v1/workflow-runs/{id}:cancel` racing the run's completion reopened a
+  finished run as `cancelling`; the next pass flipped it back and sent `workflow.run.succeeded`
+  (event and webhook) a second time. The cancel now locks the run and leaves a finished run
+  as it is.
+- **server**: `POST /v1/runs/{id}:retry` on a failed workflow run crashed with a `500`
+  (`NotImplementedError`), and on a failed workflow node or governance run created a run that
+  nothing collected. These are now refused with `409 CONFLICT` naming what to do instead:
+  start the workflow again (unchanged nodes come from the cache) or resubmit the validation.
+- **server**: workflow node runs carried no plugin label, so the Docker and Cloud Run
+  executors ran every node in the default `base-bayes` image, which does not ship the
+  statsmodels plugin: backtests, forecasts, evaluations and governance checks of `ts.*`
+  models (the readiness-to-ARIMAX template) could not resolve their model in production
+  images. A node run now goes to the image of its `model` parameter, or of the plugin of the
+  model version bound to it.
+
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
 Analysts who do not write code can now build a model from a spreadsheet, read it and try

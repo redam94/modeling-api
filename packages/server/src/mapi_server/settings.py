@@ -612,7 +612,10 @@ class Settings(BaseSettings):
         1.0, gt=0, description="How often the orchestrator advances active workflow runs"
     )
     workflow_max_active_runs: int = Field(
-        20, ge=1, le=10_000, description="Workflow runs a project may have going at once"
+        20,
+        ge=1,
+        le=10_000,
+        description="Workflow runs a project may have going at once, sub-workflow runs included",
     )
     workflow_max_schedules: int = Field(
         20, ge=0, le=1000, description="Active cron schedules per project"

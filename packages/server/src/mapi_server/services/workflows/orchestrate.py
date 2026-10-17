@@ -58,6 +58,7 @@ from mapi_spec.workflow import (
     NodeOutputRef,
     NodeResultSidecar,
     NodeRunStatus,
+    WorkflowEventType,
     WorkflowNodeJob,
     WorkflowRunCreate,
     WorkflowRunStatus,
@@ -71,7 +72,7 @@ from mapi_workflows.binding import (
     canonical_steps,
     model_input_schema,
 )
-from mapi_workflows.engine import UNKNOWN, Action, CacheHit, WorkflowEngine
+from mapi_workflows.engine import UNKNOWN, Action, CacheHit, EngineEvent, WorkflowEngine
 from mapi_workflows.orchestrator import BoundValue, evidence_pack
 from mapi_workflows.payloads import MetricsCandidate, MetricsPayload, clean_number
 from mapi_workflows.specs import MODEL_LABEL, model_spec_document, node_model_name
@@ -177,7 +178,7 @@ class WorkflowOrchestrator:
                 await self.tick(run_id)
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # pragma: no cover - tick records a run's own failures
                 log.exception("advancing workflow run %s failed", run_id)
         return len(ids)
 
@@ -189,7 +190,118 @@ class WorkflowOrchestrator:
 
     # ---------------------------------------------------------------------------- tick
     async def tick(self, run_id: str) -> WorkflowRunStatus | None:
-        """Advance one run (a no-op when another orchestrator holds it)."""
+        """Advance one run (a no-op when another orchestrator holds it).
+
+        Never raises for a run's own problem: an unexpected exception while advancing it
+        (bad data reaching an expression, a bug) is recorded as the run's error in a fresh
+        transaction, so the next pass stops its children and fails it; a run that raises
+        again with an error recorded is failed outright (:meth:`_stop_poisoned`). Either
+        way its ``updated_at`` moves, so it cannot keep the head of the loop's queue."""
+        try:
+            return await self._tick(run_id)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            log.exception("advancing workflow run %s failed", run_id)
+            return await self._stop_poisoned(run_id, exc)
+
+    async def _stop_poisoned(self, run_id: str, exc: Exception) -> WorkflowRunStatus | None:
+        async with self.ctx.db.session() as s:
+            wr = (
+                await s.execute(
+                    select(m.WorkflowRunRow)
+                    .where(m.WorkflowRunRow.run_id == run_id)
+                    .with_for_update(skip_locked=True)
+                )
+            ).scalar_one_or_none()
+            if wr is None or WorkflowRunStatus(wr.status).terminal:
+                return None
+            ts = now()
+            wr.updated_at = ts
+            if wr.error is None:
+                error = NodeError(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=(
+                        "the workflow run could not be advanced "
+                        f"({type(exc).__name__}); it is being stopped"
+                    ),
+                )
+                wr.error = error.model_dump(mode="json", exclude_none=True)
+                return WorkflowRunStatus(wr.status)
+            # it raised again with an error recorded: stop it without the engine
+            error = NodeError.model_validate(wr.error)
+            run = (
+                await s.execute(select(m.Run).where(m.Run.id == run_id).with_for_update())
+            ).scalar_one()
+            rows = (
+                await s.execute(
+                    select(m.WorkflowNodeRunRow).where(m.WorkflowNodeRunRow.run_id == run_id)
+                )
+            ).scalars()
+            for row in rows:
+                if NodeRunStatus(row.status).done:
+                    continue
+                with contextlib.suppress(MapiError):
+                    await self._stop_child(s, row)
+                row.status = NodeRunStatus.CANCELLED.value
+                row.skipped_reason = error.message[:500]
+                row.finished_at = row.updated_at = ts
+            wr.status = WorkflowRunStatus.FAILED.value
+            wr.finished_at = ts
+            set_parent_state(run, WorkflowRunStatus.FAILED, error)
+            await append_events(
+                s,
+                wr,
+                [
+                    EngineEvent(
+                        WorkflowEventType.RUN_FAILED,
+                        None,
+                        {"status": "failed", "code": error.code.value, "message": error.message},
+                        ts,
+                    )
+                ],
+            )
+            await emit_event(
+                s,
+                tenant_id=wr.tenant_id,
+                project_id=wr.project_id,
+                event_type=WebhookEventType.WORKFLOW_RUN_FAILED,
+                data={
+                    "run_id": wr.run_id,
+                    "workflow_id": wr.workflow_id,
+                    "revision": wr.revision,
+                    "status": "failed",
+                    "trigger": wr.trigger,
+                    "code": error.code.value,
+                    "message": error.message[:500],
+                },
+            )
+            await s.flush()
+            return WorkflowRunStatus.FAILED
+
+    async def _stop_child(self, s: AsyncSession, row: m.WorkflowNodeRunRow) -> None:
+        if row.child_run_id is None:
+            return
+        if row.phase == _PHASE_SUB:
+            sub = await s.get(m.WorkflowRunRow, row.child_run_id)
+            if sub is not None:
+                await request_cancel(s, sub)
+            return
+        child = await s.get(m.Run, row.child_run_id, with_for_update=True)
+        state = RunState(child.state) if child is not None else None
+        if (
+            child is not None
+            and state is not None
+            and not state.terminal
+            and state
+            not in (
+                RunState.CANCELLING,
+                RunState.FINALIZING,
+            )
+        ):
+            await apply_transition(s, child, RunTrigger.CANCEL, Actor.API)
+
+    async def _tick(self, run_id: str) -> WorkflowRunStatus | None:
         async with self.ctx.db.session() as s:
             wr = (
                 await s.execute(
@@ -270,6 +382,9 @@ class WorkflowOrchestrator:
                         continue
                     if not actions:
                         break
+                # a node that failed while starting stops the siblings started before it
+                for nid in sorted(engine.to_cancel):
+                    await self._cancel_child(env, nid)
             if engine.finished:
                 engine.finish_events()
             await self._persist(env)
@@ -635,8 +750,13 @@ class WorkflowOrchestrator:
         *,
         settings: Mapping[str, Any] | None = None,
         data_ref_text: str | None = None,
+        refit: bool = False,
     ) -> str:
-        """A ``fit`` child run of the spec ``wf-<workflow>-<node>`` (a new revision)."""
+        """A ``fit`` child run of the spec ``wf-<workflow>-<node>`` (a new revision).
+
+        ``refit`` is a search's winner: a holdout plan is kept, any other plan (a backtest
+        the search scored the candidates on) is not a fit split, so the winner is fitted on
+        all the data."""
         s = env.session
         values = action.inputs.get("data") or []
         dataset = data_ref_text or (values[0].ref if values else None)
@@ -651,6 +771,8 @@ class WorkflowOrchestrator:
         for ref in action.inputs.get("split") or []:
             plan = ref.inline if isinstance(ref.inline, dict) else {}
             inner = plan.get("plan") if isinstance(plan, dict) else None
+            if refit and isinstance(inner, dict) and inner.get("kind") != "holdout":
+                continue
             if not isinstance(inner, dict) or inner.get("kind") != "holdout":
                 raise _NodeFailure(
                     ErrorCode.SPLIT_INVALID, "model.fit takes a holdout plan (split.holdout)"
@@ -878,7 +1000,11 @@ class WorkflowOrchestrator:
                 engine.started_node(nid, run_id=child.id)
             return
         if state is not RunState.SUCCEEDED:
-            if engine.cancel_requested or (state is RunState.CANCELLED and env.wr.cancel_requested):
+            if (
+                engine.cancel_requested
+                or (state is RunState.CANCELLED and env.wr.cancel_requested)
+                or (state is RunState.CANCELLED and engine.error is not None)
+            ):
                 engine.cancelled(nid)
                 return
             problem = Problem.model_validate(child.problem) if child.problem else None
@@ -998,11 +1124,15 @@ class WorkflowOrchestrator:
             result["_lineage"] = lineage
         deferred = result.get("deferred_outputs")
         if isinstance(deferred, list) and deferred and row.phase == _PHASE_NODE:
+            if env.engine.cancel_requested or env.engine.error is not None:
+                # the run is stopping: never start the second phase (the winner's refit)
+                env.engine.cancelled(nid)
+                return
             best = result.get("best_settings")
             if isinstance(best, dict):
                 action = self._action_for(env, row)
                 try:
-                    fit_id = await self._submit_fit(env, action, settings=best)
+                    fit_id = await self._submit_fit(env, action, settings=best, refit=True)
                 except (ValidationFailed, MapiError) as exc:
                     raise _NodeFailure(
                         exc.code, f"refitting the winner failed: {exc.detail}"
@@ -1278,7 +1408,9 @@ class WorkflowOrchestrator:
     # -------------------------------------------------------------------------- cancel
     async def _cancel_child(self, env: _Env, nid: str) -> None:
         row = env.rows[nid]
-        child_id = row.child_run_id
+        # the engine's run id: a child started (or a search's refit) in this very pass is
+        # not on the row yet
+        child_id = env.engine.node_run(nid).run_id or row.child_run_id
         if child_id is None:
             env.engine.cancelled(nid)
             return
@@ -1294,7 +1426,8 @@ class WorkflowOrchestrator:
             env.engine.cancelled(nid)
             return
         state = RunState(child.state)
+        if state not in (RunState.CANCELLING, RunState.FINALIZING) and not state.terminal:
+            await apply_transition(env.session, child, RunTrigger.CANCEL, Actor.API)
+            state = RunState(child.state)
         if state.terminal:
             env.engine.cancelled(nid)
-        elif state not in (RunState.CANCELLING, RunState.FINALIZING):
-            await apply_transition(env.session, child, RunTrigger.CANCEL, Actor.API)
