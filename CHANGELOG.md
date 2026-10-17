@@ -437,6 +437,14 @@ milestone releases are tagged on `main`.
   now Holm-corrected for the lags tried (size 0.05 in simulation; `correction: holm`), or
   the exact F test at one prespecified `lag` (new parameter); the per-lag p-values and the
   uncorrected `min_p_value` stay as descriptive results.
+- **workflows** (statistics): `compare.diebold_mariano` treated one h-step error per
+  backtest fold as errors from consecutive forecast origins: its long-run variance used
+  h - 1 autocovariances in fold units and the small-sample factor of horizon h, which for
+  folds 4 periods apart at horizon 4 shrank the statistic by 0.41 (or left no variance at
+  all), and refused horizon 8 on 6 folds. Folds `step` periods apart only overlap up to
+  ceil(h / step) - 1 folds; the node now reads the spacing from the folds (backtest and
+  benchmark metrics carry each fold's origin, `origins`) or a `step` parameter, and uses
+  that many autocovariances with the matching correction (`details.variance_lags`).
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

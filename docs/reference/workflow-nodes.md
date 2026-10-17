@@ -1176,12 +1176,13 @@ Tests whether one model's forecasts are truly more accurate than another's or wh
 |---|---|---|---|
 | `loss` | `squared` \\| `absolute` | `"squared"` | Loss |
 | `horizon` | integer | `1` | h |
+| `step` | integer |  | Periods between fold origins (default: from the folds) |
 | `alpha` | number | `0.05` | Significance level |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number).
 
 ??? note "Expert detail"
-    Diebold-Mariano test with the Harvey-Leybourne-Newbold small-sample correction on squared or absolute loss.
+    Diebold-Mariano test with the Harvey-Leybourne-Newbold small-sample correction on squared or absolute loss, on one h-step error per backtest fold. Folds `step` periods apart share test periods only up to ceil(h / step) - 1 folds, which is the number of autocovariances in the long-run variance (h - 1 for consecutive origins); the step is read from the folds.
 
 ### `compare.models` — Compare models side by side
 

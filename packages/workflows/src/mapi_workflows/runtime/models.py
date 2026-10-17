@@ -647,6 +647,11 @@ def candidate(
         by_fold=[fold_metrics([fc]) for fc in fcs],
         n_folds=len(fcs),
         errors=[[clean_number(x) for x in forecast_errors(fc)] for fc in fcs],
+        origins=[
+            f.get("test_start") if isinstance(f.get("test_start"), int) else None
+            for f in (plan.get("folds") or [])
+            if isinstance(f, dict)
+        ][: len(fcs)],
     )
 
 

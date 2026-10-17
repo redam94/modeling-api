@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Final
@@ -251,32 +252,51 @@ def _residuals(ctx: NodeContext) -> NodeOutcome:
 # ============================================================================ Diebold-Mariano
 
 
+def dm_lags(h: int, step: int = 1) -> int:
+    """Autocovariance lags of ``h``-step loss differences whose forecast origins are
+    ``step`` periods apart: two such forecasts share test periods (and so are correlated)
+    only when they are less than ``h`` periods apart, i.e. ``ceil(h / step) - 1`` origins."""
+    return max(0, math.ceil(h / max(1, step)) - 1)
+
+
 def diebold_mariano(
-    e1: Sequence[float], e2: Sequence[float], *, h: int = 1, loss: str = "squared"
+    e1: Sequence[float],
+    e2: Sequence[float],
+    *,
+    h: int = 1,
+    loss: str = "squared",
+    lags: int | None = None,
 ) -> tuple[float, float, int]:
     """``(statistic, p_value, n)`` of the Diebold-Mariano test with the Harvey, Leybourne
     and Newbold (1997) correction; p-values from Student's t with ``n - 1`` df. A negative
-    statistic means the first forecast has the smaller loss."""
+    statistic means the first forecast has the smaller loss.
+
+    ``lags`` is the number of autocovariances in the long-run variance: ``h - 1`` (the
+    default) for errors from consecutive forecast origins, :func:`dm_lags` for origins
+    further apart (backtest folds); the small-sample correction uses ``lags + 1`` as its
+    horizon."""
     a, b = np.asarray(e1, float), np.asarray(e2, float)
     ok = np.isfinite(a) & np.isfinite(b)
     a, b = a[ok], b[ok]
     n = len(a)
     if n < 3:
         raise ValueError("needs at least three paired errors")
-    if n <= h:
-        # the long-run variance needs autocovariances up to lag h - 1, and the small-sample
-        # correction is not defined below h + 1 pairs: more folds are needed, not a NaN
+    big_l = h - 1 if lags is None else max(0, int(lags))
+    k_eff = big_l + 1
+    if n <= k_eff:
+        # the long-run variance needs autocovariances up to lag L, and the small-sample
+        # correction is not defined below L + 2 pairs: more folds are needed, not a NaN
         raise ValueError(
-            f"needs more than {h} paired errors at horizon {h} (it has {n}): add folds"
+            f"needs more than {k_eff} paired errors at horizon {h} (it has {n}): add folds"
         )
     d = (a**2 - b**2) if loss == "squared" else (np.abs(a) - np.abs(b))
     dbar = float(d.mean())
-    gamma = [float(np.mean((d[k:] - dbar) * (d[: n - k] - dbar))) for k in range(h)]
+    gamma = [float(np.mean((d[k:] - dbar) * (d[: n - k] - dbar))) for k in range(k_eff)]
     var = (gamma[0] + 2 * sum(gamma[1:])) / n
     if not math.isfinite(var) or var <= 0:
         raise ValueError("the loss differences have no variance")
     dm = dbar / math.sqrt(var)
-    factor = (n + 1 - 2 * h + h * (h - 1) / n) / n
+    factor = (n + 1 - 2 * k_eff + k_eff * (k_eff - 1) / n) / n
     if factor <= 0:
         raise ValueError(f"too few paired errors ({n}) for horizon {h}: add folds")
     hln = math.sqrt(factor)
@@ -285,7 +305,7 @@ def diebold_mariano(
     return float(stat), p, n
 
 
-def _errors(payload: Mapping[str, Any], h: int) -> tuple[str, list[float]]:
+def _errors(payload: Mapping[str, Any], h: int) -> tuple[str, list[float], list[int]]:
     mp = MetricsPayload.model_validate(payload)
     cands = [c for c in mp.candidates if c.errors]
     if not cands:
@@ -293,11 +313,21 @@ def _errors(payload: Mapping[str, Any], h: int) -> tuple[str, list[float]]:
             "the metrics carry no forecast errors (use model.backtest or evaluate.baseline)"
         )
     c = min(cands, key=lambda c: c.metrics.get("mae") or math.inf)
-    out = []
-    for fold in c.errors or []:
+    out: list[float] = []
+    origins: list[int] = []
+    for i, fold in enumerate(c.errors or []):
         if len(fold) >= h and fold[h - 1] is not None:
             out.append(float(fold[h - 1]))  # type: ignore[arg-type]
-    return c.key, out
+            o = c.origins[i] if c.origins is not None and i < len(c.origins) else None
+            if o is not None:
+                origins.append(int(o))
+    return c.key, out, origins
+
+
+def _fold_step(*origins: list[int]) -> int | None:
+    """The smallest spacing of the folds' forecast origins (``None`` when unknown)."""
+    steps = [b - a for o in origins for a, b in itertools.pairwise(sorted(set(o)))]
+    return min(steps) if steps else None
 
 
 def _dm(ctx: NodeContext) -> NodeOutcome:
@@ -307,10 +337,15 @@ def _dm(ctx: NodeContext) -> NodeOutcome:
     h = int(clean_number(ctx.params.get("horizon")) or 1)
     loss = str(ctx.params.get("loss") or "squared")
     alpha = float(clean_number(ctx.params.get("alpha")) or 0.05)
-    name_a, ea = _errors(pa[0], h)
-    name_b, eb = _errors(pb[0], h)
+    name_a, ea, oa = _errors(pa[0], h)
+    name_b, eb, ob = _errors(pb[0], h)
+    # one h-step error per fold: errors of folds `step` periods apart overlap (and are
+    # correlated) only up to ceil(h / step) - 1 folds, not h - 1
+    given = clean_number(ctx.params.get("step"))
+    step = int(given) if given else (_fold_step(oa, ob) or 1)
+    lags = dm_lags(h, step)
     try:
-        stat, p, n = diebold_mariano(ea, eb, h=h, loss=loss)
+        stat, p, n = diebold_mariano(ea, eb, h=h, loss=loss, lags=lags)
     except ValueError as exc:
         raise data_error(f"compare.diebold_mariano: {exc}") from None
     reject = p < alpha
@@ -331,7 +366,14 @@ def _dm(ctx: NodeContext) -> NodeOutcome:
         verdict_plain=verdict[:500],
         null_plain="The two forecasts are equally accurate.",
         n_obs=n,
-        details={"a": name_a, "b": name_b, "loss": loss, "horizon": h},
+        details={
+            "a": name_a,
+            "b": name_b,
+            "loss": loss,
+            "horizon": h,
+            "fold_step": step,
+            "variance_lags": lags,
+        },
     )
     body = res.model_dump(mode="json")
     return NodeOutcome(result=body, outputs={"result": body})

@@ -1271,9 +1271,14 @@ _node("compare.diebold_mariano", NodeKind.COMPARE, _a(
     _X, _NOW, "ARIMAX beats ETS but p = 0.31: the difference may be luck.",
     related=["compare.models"],
     expert="Diebold-Mariano test with the Harvey-Leybourne-Newbold small-sample correction "
-    "on squared or absolute loss.",
-    refs=[("Diebold & Mariano (1995)", None)], fits={"goal": ["validate_model"]},
+    "on squared or absolute loss, on one h-step error per backtest fold. Folds `step` "
+    "periods apart share test periods only up to ceil(h / step) - 1 folds, which is the "
+    "number of autocovariances in the long-run variance (h - 1 for consecutive origins); "
+    "the step is read from the folds.",
+    refs=[("Diebold & Mariano (1995)", None),
+          ("Harvey, Leybourne & Newbold (1997)", None)], fits={"goal": ["validate_model"]},
 ), params={"loss": _enum("Loss", ["squared", "absolute"], "squared"), "horizon": _int("h", 1, 1),
+           "step": _int("Periods between fold origins (default: from the folds)", None, 1),
            "alpha": _ALPHA},
    inputs={"a": PortSpec(type=PortType.METRICS), "b": PortSpec(type=PortType.METRICS)},
    outputs={"result": PortType.TEST_RESULT}, fields=_TEST_FIELDS)  # fmt: skip

@@ -414,6 +414,80 @@ def test_diebold_mariano_refuses_horizons_its_folds_cannot_support() -> None:
         run_node("compare.diebold_mariano", {"horizon": 4}, a=payload(e1), b=payload(e2))
 
 
+def _fold_payload(errs: np.ndarray, h: int, step: int) -> dict[str, Any]:
+    """One h-step error per fold, folds ``step`` periods apart (as model.backtest)."""
+    return MetricsPayload.model_validate(
+        {
+            "candidates": [
+                {
+                    "name": "m",
+                    "group": "m",
+                    "metrics": {"mae": float(np.mean(np.abs(errs)))},
+                    "errors": [[0.0] * (h - 1) + [float(x)] for x in errs],
+                    "origins": [100 + step * i for i in range(len(errs))],
+                }
+            ]
+        }
+    ).model_dump(mode="json")
+
+
+def test_diebold_mariano_on_folds_uses_the_fold_spacing() -> None:
+    """Regression: per-fold h-step errors were treated as consecutive-origin errors (h - 1
+    autocovariances in fold units and the HLN factor of h), which for folds 4 periods
+    apart at h = 4 shrank the statistic by 0.41 and refused h = 8 on 6 folds. Folds `step`
+    apart overlap only up to ceil(h / step) - 1 folds."""
+    rng = np.random.default_rng(3)
+    e1, e2 = rng.normal(size=6), rng.normal(scale=3.0, size=6)
+    out = run_node(
+        "compare.diebold_mariano",
+        {"horizon": 4},
+        a=_fold_payload(e1, 4, 4),
+        b=_fold_payload(e2, 4, 4),
+    )
+    ref, p_ref, _ = diebold_mariano(e1, e2, h=1)  # no overlap: the h = 1 formula
+    assert out.result["statistic"] == pytest.approx(ref)
+    assert out.result["p_value"] == pytest.approx(p_ref)
+    assert out.result["details"]["variance_lags"] == 0
+    assert out.result["details"]["fold_step"] == 4
+    eight = run_node(
+        "compare.diebold_mariano",
+        {"horizon": 8},
+        a=_fold_payload(e1, 8, 4),
+        b=_fold_payload(e2, 8, 4),
+    )
+    assert eight.result["details"]["variance_lags"] == 1  # neighbouring folds overlap
+    assert math.isfinite(eight.result["statistic"])
+
+
+def test_diebold_mariano_on_spaced_folds_keeps_size_and_gains_power() -> None:
+    """Simulation: a random walk scored by expanding-window folds 4 periods apart at h = 4
+    (non-overlapping test windows). Two equally good forecasts: rejection near alpha. A
+    forecast with a bias of 2: rejected far more often than with the old h - 1 lags."""
+
+    reps, n_folds, h, step = 300, 12, 4, 4
+    size = power = old_power = 0
+    for seed in range(reps):
+        rng = np.random.default_rng(seed)
+        y = np.cumsum(rng.normal(size=200))
+        origins = [120 + step * i for i in range(n_folds)]
+        actual = np.array([y[o + h - 1] for o in origins])
+        last = np.array([y[o - 1] for o in origins])
+        ea = actual - (last + 0.5)
+        eb = actual - (last - 0.5)
+        ec = actual - (last + 2.0)
+        _, p, _ = diebold_mariano(ea, eb, h=h, lags=0)
+        size += p < 0.05
+        _, p, _ = diebold_mariano(actual - last, ec, h=h, lags=0)
+        power += p < 0.05
+        try:  # the old rule (h - 1 lags in fold units) often has no variance at all
+            _, p, _ = diebold_mariano(actual - last, ec, h=h)
+            old_power += p < 0.05
+        except ValueError:
+            pass
+    assert size / reps <= 0.10, size / reps
+    assert power > old_power, (power, old_power)
+
+
 # ============================================================================ governance
 
 _POLICY = GovernancePolicy(
