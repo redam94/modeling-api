@@ -1,8 +1,9 @@
 # Port a model in 15 minutes
 
-You have a model that works in a notebook. This guide turns it into a plugin that the platform
-can fit, score on new data, forecast, version and plot, and proves it with the contract kit.
-You write the statistics; the platform writes everything around them.
+You have a model that works in a notebook. This guide changes it into a plugin. The platform can
+fit the plugin, score it on new data, forecast with it, keep its versions and plot it. The
+contract kit proves that the plugin works. You write the statistics. The platform writes all the
+other code.
 
 ```mermaid
 flowchart LR
@@ -16,30 +17,37 @@ flowchart LR
 
 | | You write | The platform does |
 |---|---|---|
-| **`PyMCModel`** | `build(ds, settings, ctx) -> pm.Model` | Engines (nutpie, PyMC with resumable segments, MAP, ADVI), convergence diagnostics, rebuild-and-predict scoring, new levels from the hyperprior, common-random-number counterfactuals, fast scoring |
-| **`SklearnModel`** | `estimator(settings)` | Stacking labelled dims into rows and features, coordinate features, safe persistence (skops / xgboost JSON), quantile / bootstrap / conformal uncertainty, pooled new levels, contributions |
-| **`CustomModel`** | `fit(...)` and `score(...)` | Binding, preprocessing, splits, context tails, coordinate canonicalisation, inverse transforms, summaries, bundles |
+| **`PyMCModel`** | `build(ds, settings, ctx) -> pm.Model` | Engines (nutpie, PyMC with segments that can continue, MAP, ADVI), convergence diagnostics, scores that build the model again and predict, new levels from the hyperprior, counterfactuals with common random numbers, fast scores |
+| **`SklearnModel`** | `estimator(settings)` | It stacks labelled dims into rows and features. Also coordinate features, safe persistence (skops / xgboost JSON), quantile / bootstrap / conformal uncertainty, pooled new levels, contributions |
+| **`CustomModel`** | `fit(...)` and `score(...)` | Binding, preprocessing, splits, context tails, the canonical form of coordinates, inverse transforms, summaries, bundles |
 
-All three get, for free: validated settings with JSON Schemas, static spec validation,
-evaluate-then-refit, CoordPlan checks, representation-aware summaries, plots and bundles.
+The three base classes get these items at no cost:
+
+- Validated settings with JSON Schemas
+- Static validation of the spec
+- An evaluation, then a new fit
+- CoordPlan checks
+- Summaries that obey the representation
+- Plots and bundles
 
 ## 1. Pick a base class (0–3 min)
 
-- Your model is a **PyMC** model → `mapi_pymc.PyMCModel`.
-- Your model is an **sklearn or xgboost estimator** on a design matrix → `mapi_sklearn.SklearnModel`
-  (or the quantile, bootstrap, conformal or classifier variants).
-- Anything else (statsmodels, JAX, a Kalman filter, closed-form maths) → `mapi_sdk.CustomModel`.
+- If your model is a **PyMC** model, use `mapi_pymc.PyMCModel`.
+- If your model is an **sklearn or xgboost estimator** on a design matrix, use
+  `mapi_sklearn.SklearnModel` (or the quantile, bootstrap, conformal or classifier variants).
+- For all other models (statsmodels, JAX, a Kalman filter, closed-form mathematics), use
+  `mapi_sdk.CustomModel`.
 
 ## 2. Declare the data contract (3–6 min)
 
-Write down, in **canonical names**, the dims and variables your model needs and what may
-happen to each dim at score time. This is the model's `schema_template`. Users bind their own
-dataset names onto it in the spec.
+Write the dims and the variables that your model needs, in **canonical names**. For each dim,
+write what can occur to it at score time. This is the `schema_template` of the model. In the
+spec, users bind the names of their own dataset to it.
 
-!!! tip "Three questions per dim"
-    Can a score request bring a **new level** (a new county, store, market)? Then `new_levels`,
-    with a strategy. Does it **grow** at forecast time (time, observations)? Then `extend`.
-    Otherwise `fixed`.
+!!! tip "Three questions for each dim"
+    Can a score request bring a **new level** (a new county, store or market)? If yes, the dim
+    is `new_levels`, with a strategy. Does the dim **grow** at forecast time (time,
+    observations)? If yes, the dim is `extend`. If not, the dim is `fixed`.
 
 ## 3. Write the model (6–11 min)
 
@@ -49,17 +57,17 @@ dataset names onto it in the spec.
     --8<-- "plugin_pymc.py:model"
     ```
 
-    The `ctx` helpers are what make scoring work without you thinking about it:
+    The `ctx` helpers make the scores work. You do not have to think about them:
 
     | Helper | Why you use it |
     |---|---|
-    | `ctx.coords()` | The model's coords; at score time includes new levels |
-    | `ctx.data(name)` | A `pm.Data` over the training values at fit and the score values at score time (the model is rebuilt) |
-    | `ctx.observed(name)` | The target at fit; a placeholder at score time (never imputed) |
-    | `ctx.hier_effect(name, dim)` | A partially pooled effect whose **new levels** are drawn from the hyperprior per posterior draw |
-    | `ctx.position(dim)` | 0, 1, 2, … along an `extend` dim, continued into the forecast horizon |
+    | `ctx.coords()` | The coords of the model. At score time, it includes new levels. |
+    | `ctx.data(name)` | A `pm.Data` over the training values at fit time and over the score values at score time (the platform builds the model again) |
+    | `ctx.observed(name)` | The target at fit time. A placeholder at score time (never imputed). |
+    | `ctx.hier_effect(name, dim)` | A partially pooled effect. Its **new levels** come from the hyperprior, for each posterior draw. |
+    | `ctx.position(dim)` | 0, 1, 2, … along an `extend` dim. The count continues into the forecast horizon. |
 
-    `expected` names the `Deterministic` that is the expected value of each output, so
+    `expected` names the `Deterministic` that is the expected value of each output. Thus
     `output.kind: expected` returns it without observation noise.
 
 === "scikit-learn / xgboost"
@@ -68,10 +76,10 @@ dataset names onto it in the spec.
     --8<-- "plugin_sklearn.py:model"
     ```
 
-    `estimator()` returns an **allow-listed** estimator instance (or a `{kind, params}`
-    mapping). Subclasses and parameters outside the estimator's params model are rejected, so the
-    bundle can always be loaded safely. Rows, columns and coordinate features are settings,
-    not code: see [Tabular models](sklearn.md).
+    `estimator()` returns an estimator instance from the **allow-list** (or a `{kind, params}`
+    mapping). The platform rejects subclasses and parameters that are not in the params model of
+    the estimator. Thus the platform can always load the bundle safely. Rows, columns and
+    coordinate features are settings, not code. See [Tabular models](sklearn.md).
 
 === "Custom"
 
@@ -81,19 +89,21 @@ dataset names onto it in the spec.
 
     The rules for `score`:
 
-    - the dataset arrives **canonicalised**: fit order, new levels appended and flagged by
-      `<dim>__is_new` (`new_level_mask(ds, dim)`), so position-indexed parameters line up;
-    - return an `xr.DataTree` with a `predictions` group in your declared representation;
-    - never look at targets in the payload (`evaluate` mode passes them for metrics, not for
-      you).
+    - The dataset comes in the **canonical** form. It has the fit order. New levels come at
+      the end, with the flag `<dim>__is_new` (`new_level_mask(ds, dim)`). Thus parameters that
+      use the position as an index stay aligned.
+    - Return an `xr.DataTree` with a `predictions` group in the representation that you
+      declared.
+    - Never look at the targets in the payload. The `evaluate` mode sends them for the metrics,
+      not for you.
 
-    `FitOutput.groups` uses ArviZ group names (`posterior`, `sample_stats`, …), `learned` holds
-    small JSON, and `native` holds bytes in a **safe** format only (skops, xgboost JSON,
-    safetensors). Pickle is rejected.
+    `FitOutput.groups` uses the ArviZ group names (`posterior`, `sample_stats`, …). `learned`
+    contains small JSON. `native` contains bytes in a **safe** format only (skops, xgboost JSON,
+    safetensors). The platform rejects pickle.
 
 ## 4. Write a tiny spec (11–13 min)
 
-The spec the contract kit fits. Keep it small and fast: few draws, few trees.
+The contract kit fits this spec. Keep it small and fast: use few draws and few trees.
 
 === "PyMC"
 
@@ -109,7 +119,8 @@ The spec the contract kit fits. Keep it small and fast: few draws, few trees.
 
 ## 5. Run the contract kit (13–15 min)
 
-`check_model` fits your fixture and then tries to break your plugin the way real users will:
+`check_model` fits your fixture. Then it tries to break your plugin in the same ways that real
+users will:
 
 ```text
 contract kit: model acme.geo_baseline@1.0.0
@@ -131,24 +142,24 @@ contract kit: model acme.geo_baseline@1.0.0
 
 | Check | What it proves |
 |---|---|
-| `bundle_roundtrip_no_pickle` | Scores are identical after writing and reading the bundle, and nothing in it is pickle |
-| `shuffled_scoring`, `subset_scoring` | Reordered labels and subsets give the same answers for the same cells |
-| `new_level_policies` | Every strategy your dims declare works (or raises `UNSEEN_LEVELS` when it should) |
-| `extend_typed_errors` | Gaps and out-of-range time labels raise typed errors |
-| `unsupported_mode` | Undeclared modes are refused |
-| `context_window_equivalence` | Scoring the last training periods as a forecast equals the in-sample result |
-| `evaluate_path_equals_score_path` | The holdout metrics are reproduced through the normal score path |
-| `output_space_and_units` | Outputs are inverted and labelled with units and output space |
-| `representation_aggregation` | Aggregations are allowed or refused according to the representation |
-| `additive_contributions` | Declared-additive contributions sum to the prediction |
-| `seed_determinism` | The same seed gives the same fit and scores, when the plugin claims it |
+| `bundle_roundtrip_no_pickle` | The scores are the same after the kit writes and reads the bundle. The bundle contains no pickle. |
+| `shuffled_scoring`, `subset_scoring` | Labels in a different sequence and subsets give the same answers for the same cells. |
+| `new_level_policies` | Each strategy that your dims declare works (or raises `UNSEEN_LEVELS` when it must). |
+| `extend_typed_errors` | Gaps and time labels out of range raise typed errors. |
+| `unsupported_mode` | The model refuses modes that it does not declare. |
+| `context_window_equivalence` | A forecast score of the last training periods is equal to the in-sample result. |
+| `evaluate_path_equals_score_path` | The normal score path makes the same holdout metrics again. |
+| `output_space_and_units` | The outputs are inverted. They have labels for the units and the output space. |
+| `representation_aggregation` | The representation controls which aggregations the model allows or refuses. |
+| `additive_contributions` | The sum of the contributions that are declared additive is equal to the prediction. |
+| `seed_determinism` | If the plugin claims it, the same seed gives the same fit and scores. |
 
-A failed check raises `ContractViolation` with the report (pass `raise_on_failure=False` to
-get the report instead).
+If a check fails, the kit raises `ContractViolation` with the report. To get the report as a
+return value, pass `raise_on_failure=False`.
 
 ### In your test suite
 
-`mapi-sdk` installs a pytest plugin, so the kit is available as fixtures in any project:
+`mapi-sdk` installs a pytest plugin. Thus the kit is available as fixtures in all projects:
 
 ```python
 --8<-- "test_my_plugin.py:pytest"
@@ -156,8 +167,9 @@ get the report instead).
 
 ## Bonus: a preprocessing step
 
-Steps follow the same pattern: settings, an optional state, `fit` / `transform` / `inverse`,
-and a static `effect_template` that tells the control plane how the schema changes.
+Steps use the same pattern. A step has settings, an optional state, `fit` / `transform` /
+`inverse`, and a static `effect_template`. The `effect_template` tells the control plane how the
+schema changes.
 
 ```python
 --8<-- "plugin_custom.py:step"
@@ -167,15 +179,23 @@ and a static `effect_template` that tells the control plane how the schema chang
 --8<-- "plugin_custom.py:check_step"
 ```
 
-The step kit checks the exported catalog entry, deterministic and pure fitting, that
-`transform` never learns, the state's bundle round trip, that the declared schema effect matches
-the real output, that a missing target is tolerated, the inverse round trip, context-window
-equivalence for look-back steps, and every unseen-level policy. More in
-[Write a step or model plugin](plugins.md).
+The step kit does a check of these items:
+
+- The exported catalog entry
+- A deterministic and pure fit
+- That `transform` never learns
+- The bundle round trip of the state
+- That the declared schema effect agrees with the real output
+- That the step accepts a missing target
+- The inverse round trip
+- The equivalence of the context window for steps that look back
+- Each policy for unseen levels
+
+For more information, see [Write a step or model plugin](plugins.md).
 
 ## Ship it
 
-Register your plugins through entry points in your package's `pyproject.toml`; the value may
+Register your plugins through entry points in the `pyproject.toml` of your package. The value can
 be a class, a tuple of classes or a function that returns them:
 
 ```toml
@@ -186,16 +206,16 @@ acme = "acme_models.plugins:PLUGINS"      # PLUGINS = (Radon, GeoBaseline)
 acme = "acme_models.steps:STEPS"          # STEPS = (ScaleStep,)
 ```
 
-`mapi_sdk.default_registry()` then finds them, and so will the platform's runner images.
+`mapi_sdk.default_registry()` then finds them. The runner images of the platform also find them.
 
 !!! success "Checklist"
-    - [x] `schema_template` in canonical names, with honest dim policies
+    - [x] `schema_template` in canonical names, with correct dim policies
     - [x] `capabilities`: representation, score modes, contribution scale
-    - [x] `outputs` with `units_of`, so results come back in the user's units
+    - [x] `outputs` with `units_of`, so that the results come back in the units of the user
     - [x] settings as a `ModelSettings` subclass with defaults and descriptions (they become
       the form in the UI)
-    - [x] a tiny spec and `check_model` passing in CI
+    - [x] a tiny spec, and `check_model` passes in CI
     - [x] no pickle: native artifacts as skops, xgboost JSON or safetensors
 
-See the full worked guides: [PyMC](pymc.md), [scikit-learn and xgboost](sklearn.md),
-[steps and custom models](plugins.md).
+For the full guides with examples, see [PyMC](pymc.md), [scikit-learn and xgboost](sklearn.md)
+and [steps and custom models](plugins.md).
