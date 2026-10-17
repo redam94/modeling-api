@@ -240,9 +240,10 @@ def table_cell(value: Any, *, numeric: bool = False) -> Leaf:
     if isinstance(value, datetime):
         if value.time() == datetime.min.time():
             return value.date().isoformat()  # local midnight: the date (as a sheet shows it)
+        naive: datetime = value
         if value.tzinfo is not None:
-            value = value.astimezone(UTC).replace(tzinfo=None)
-        return value.isoformat()
+            naive = value.astimezone(UTC).replace(tzinfo=None)
+        return naive.isoformat()
     if isinstance(value, date):
         return value.isoformat()
     to_py = getattr(value, "to_pydatetime", None)  # pandas Timestamp
