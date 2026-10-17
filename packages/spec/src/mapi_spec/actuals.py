@@ -220,9 +220,16 @@ def build_conditioning(
         where = ""
         if len(series) > 1:
             where = f" across {len(with_actuals)} of {len(series)} series"
+        # where the actuals fall against the fit: after it, revising it, or both
+        if not revised:
+            against = "after"
+        elif revised == n_actuals:
+            against = "inside"
+        else:
+            against = "overlapping the end of"
         text = (
             f"Forecast updated with {_plural(n_actuals, 'actual')} ({_span(first, through)})"
-            f"{where} after the fitted history, which ends {fit_label}"
+            f"{where} {against} the fitted history, which ends {fit_label}"
         )
         if revised:
             text += f"; {revised} of them replaced fitted values"
