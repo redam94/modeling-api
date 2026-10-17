@@ -579,7 +579,7 @@ async def rollback(
     from mapi_server.services.governance import promotion_requirement
 
     governance = await promotion_requirement(session, ctx, mv)
-    if governance.require_validated and governance.validation_status != "validated":
+    if not governance.satisfied:
         # M3.5: a rollback serves an earlier version again, so it meets the same policy
         state = (governance.validation_status or "not submitted").replace("_", " ")
         raise MapiError(

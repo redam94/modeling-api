@@ -122,7 +122,9 @@ api -X POST "$API/v1/models/$MODEL_ID/versions/7/validations" -d '{"note": "Q4 r
 ```
 
 The answer (`202`) is a validation in `checks_running` with the checks it is held to and the
-governance run (`workflow_run_id`) that measures them in the sandbox. Follow the run like any
+governance run (`workflow_run_id`) that measures them in the sandbox. A validation is always
+held to **every** policy in force for the model (the tenant-wide floor and the project's own);
+`policy_ids` can only add more active policies on top of them, never leave one out. Follow the run like any
 other (`GET /v1/runs/{run_id}`, or its event stream). When it finishes the validation moves
 on by itself:
 
@@ -163,8 +165,13 @@ comment) rejects it. A validated version that should no longer be used is retire
 ## Promotion requires validation
 
 When any policy in force says `require_validated_for_promotion`, promoting a model version to
-an endpoint needs its latest validation to be `validated`. Anything else is refused with
-`409 NOT_VALIDATED`, and no administrator override changes that; the refusal is audited as
+an endpoint needs its latest validation to be `validated` **and** to have covered every such
+policy as it stands now: either it names the policy at its current version, or it was held to
+each of the policy's checks at least as strictly (severity, limits and settings) and had the
+reviewers the policy asks for. A version validated before a gating policy was added or made
+stricter is reported as *validated under other or older policies*; request a new validation
+(allowed in that case). Anything else is refused with `409 NOT_VALIDATED`, and no
+administrator override changes that; the refusal is audited as
 `endpoint.promote_not_validated`.
 
 ## Export the evidence pack
@@ -209,8 +216,8 @@ versions for audit.
 ### Validating a model version
 
 A model version's page has a **Validation** button. It lists the version's validations and
-requests a new one: choose which of the policies in force it is held to (all of them by
-default), optionally the data to check against, and a note. The validation page then shows:
+requests a new one: the policies it is held to (every policy in force always applies; ticking
+others adds them), optionally the data to check against, and a note. The validation page then shows:
 
 - **Status**: where the validation is on its path (draft → checks running → checks passed →
   awaiting approval → validated, or checks failed, rejected, deprecated) and the history of

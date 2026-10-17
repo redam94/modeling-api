@@ -384,6 +384,18 @@ milestone releases are tagged on `main`.
   Before, the API's CORS allow-list and `SameSite=strict` session cookie only matched `127.0.0.1`, so
   every call failed and the home page said the API was not reachable.
 
+### Fixed (M3.5 review: platform server)
+
+- **server** (security): a submitter could skip the tenant's strict policy - and the
+  second-person approval it requires - by naming a lenient policy (even one for another
+  model family) in `policy_ids`, and the promotion gate only looked at the latest status.
+  A validation is now always held to every policy in force (tenant floor and project);
+  `policy_ids` only adds policies. The gate accepts a `validated` version only when that
+  validation covered every gating policy in force *as it stands now* (by version, or by
+  checks, limits, settings and reviewers at least as strict); a version validated before a
+  policy was added or made stricter reads "validated under other or older policies" and may
+  be validated again.
+
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
 Analysts who do not write code can now build a model from a spreadsheet, read it and try

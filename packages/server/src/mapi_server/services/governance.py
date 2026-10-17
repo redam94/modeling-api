@@ -26,7 +26,7 @@ import html
 import json
 import logging
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final
 
@@ -78,6 +78,7 @@ from mapi_spec.loader import canonical_json, spec_hash
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
+from mapi_spec.scorecard import CheckDirection
 from mapi_spec.tenancy import Action, PrincipalKind, ResourceKind
 from mapi_spec.webhooks import WebhookEventType
 from pydantic import JsonValue, ValidationError
@@ -548,11 +549,91 @@ async def policies_in_force(
 
 @dataclass(frozen=True, slots=True)
 class PolicyRequirement:
-    """What the policies in force demand of a model version at promotion."""
+    """What the policies in force demand of a model version at promotion.
+
+    ``validation_status`` is the latest validation's status, except that a ``validated``
+    validation which did not cover every gating policy in force (at its current version)
+    reads :data:`STALE_VALIDATION` - the gate refuses it like any other non-validated
+    status. ``uncovered`` lists those policies (``id@version``)."""
 
     require_validated: bool
     validation_status: str | None
     policies: list[str]
+    uncovered: list[str] = field(default_factory=list)
+
+    @property
+    def satisfied(self) -> bool:
+        return not self.require_validated or self.validation_status == "validated"
+
+
+STALE_VALIDATION: Final = "validated under other or older policies"
+"""What the promotion gate reports for a validation that missed a gating policy now in force."""
+
+
+def _policy_refs(refs: Iterable[str]) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for ref in refs:
+        pid, _, ver = str(ref).partition("@")
+        try:
+            out[pid] = max(out.get(pid, 0), int(ver or 0))
+        except ValueError:
+            continue
+    return out
+
+
+def _check_covered(want: PolicyCheck, held: PolicyCheck | None) -> bool:
+    """Whether a check held at ``held`` is at least as demanding as ``want``."""
+    if held is None or held.severity.rank < want.severity.rank:
+        return False
+    if any(held.params.get(k) != v for k, v in want.params.items()):
+        return False
+    w, h = want.thresholds, held.thresholds
+    if w is None:
+        return True
+    if h is None:
+        return False
+    if GOVERNANCE_CHECKS[want.check].direction is CheckDirection.MIN:
+        return h.warn >= w.warn and h.fail >= w.fail
+    return h.warn <= w.warn and h.fail <= w.fail
+
+
+def validation_covers(v: m.ModelValidation, policy: GovernancePolicy) -> bool:
+    """Whether validation ``v`` held its model to everything ``policy`` asks now: it
+    names the policy at its current version (or later), or it was held to every check of
+    the policy at least as strictly and had the approvals the policy wants."""
+    refs = _policy_refs(v.policies or [])
+    if refs.get(policy.id, 0) >= policy.version:
+        return True
+    held = {c.check: c for c in (PolicyCheck.model_validate(x) for x in v.required_checks or [])}
+    if not all(_check_covered(c, held.get(c.check)) for c in policy.checks):
+        return False
+    if policy.require_approval:
+        return bool(v.require_approval) and v.approvals_required >= policy.approvals_required
+    return True
+
+
+def uncovered_policies(v: m.ModelValidation, policies: Iterable[GovernancePolicy]) -> list[str]:
+    """The gating policies (``require_validated_for_promotion``) ``v`` does not cover."""
+    return [
+        f"{p.id}@{p.version}"
+        for p in policies
+        if p.active and p.require_validated_for_promotion and not validation_covers(v, p)
+    ]
+
+
+async def _in_force_now(
+    session: AsyncSession, ctx: ServerContext, mv: m.ModelVersion
+) -> list[GovernancePolicy]:
+    """:func:`policies_in_force` without seeding (read-only paths)."""
+    family, plugin_id = await model_family(session, ctx, mv)
+    rows = await latest_policy_rows(session, mv.tenant_id, project_id=mv.project_id)
+    return policies_for(
+        (policy_dto(r) for r in rows),
+        project_id=mv.project_id,
+        family=family,
+        model_id=plugin_id,
+        template=await _template_of(session, mv),
+    )
 
 
 async def promotion_requirement(
@@ -560,21 +641,24 @@ async def promotion_requirement(
 ) -> PolicyRequirement:
     """Whether a policy requires ``validated`` to promote ``mv``, and its latest status.
 
+    A ``validated`` latest validation passes only when it covered every gating policy in
+    force now (:func:`validation_covers`): naming a lenient policy, or validating before
+    a policy was added or made stricter, does not get past the gate.
+
     Read-only: it does not seed defaults (the defaults never require validation)."""
-    family, plugin_id = await model_family(session, ctx, mv)
-    rows = await latest_policy_rows(session, mv.tenant_id, project_id=mv.project_id)
-    pols = policies_for(
-        (policy_dto(r) for r in rows),
-        project_id=mv.project_id,
-        family=family,
-        model_id=plugin_id,
-        template=await _template_of(session, mv),
-    )
+    pols = await _in_force_now(session, ctx, mv)
     latest = await _latest_validation(session, mv.id)
+    status = latest.status if latest is not None else None
+    uncovered: list[str] = []
+    if latest is not None and status == ValidationStatus.VALIDATED.value:
+        uncovered = uncovered_policies(latest, pols)
+        if uncovered:
+            status = STALE_VALIDATION
     return PolicyRequirement(
         require_validated=requires_validation(pols),
-        validation_status=latest.status if latest is not None else None,
+        validation_status=status,
         policies=[f"{p.id}@{p.version}" for p in pols if p.require_validated_for_promotion],
+        uncovered=uncovered,
     )
 
 
@@ -720,31 +804,64 @@ async def _apply(
 async def _resolve_policies(
     session: AsyncSession, ctx: ServerContext, mv: m.ModelVersion, wanted: Sequence[str]
 ) -> list[GovernancePolicy]:
-    if not wanted:
-        pols = await policies_in_force(session, ctx, mv)
-        if not pols:
-            raise MapiError(
-                "no governance policy applies to this model; add a policy for its family "
-                "or name one in policy_ids",
-                code=ErrorCode.POLICY_INVALID,
-                pointer="/policy_ids",
-            )
-        return pols
-    await seed_default_policies(session, mv.tenant_id)
-    rows = {
-        r.id: r for r in await latest_policy_rows(session, mv.tenant_id, project_id=mv.project_id)
-    }
-    out: list[GovernancePolicy] = []
-    for i, pid in enumerate(wanted):
-        row = rows.get(pid)
-        if row is None or not row.active:
-            raise MapiError(
-                f"policy {pid} is not an active policy of this project or tenant",
-                code=ErrorCode.POLICY_INVALID,
-                pointer=f"/policy_ids/{i}",
-            )
-        out.append(policy_dto(row))
-    return out
+    """Every policy in force for ``mv`` (the tenant floor and the project's own) plus the
+    active policies ``wanted`` names. Naming policies only ever *adds* to what a model is
+    held to: the policies in force cannot be left out (``POLICY_INVALID`` for a name that
+    is not an active policy of the project or tenant, or when nothing applies at all)."""
+    pols = await policies_in_force(session, ctx, mv)
+    if wanted:
+        rows = {
+            r.id: r
+            for r in await latest_policy_rows(session, mv.tenant_id, project_id=mv.project_id)
+        }
+        have = {p.id for p in pols}
+        for i, pid in enumerate(wanted):
+            row = rows.get(pid)
+            if row is None or not row.active:
+                raise MapiError(
+                    f"policy {pid} is not an active policy of this project or tenant",
+                    code=ErrorCode.POLICY_INVALID,
+                    pointer=f"/policy_ids/{i}",
+                )
+            if pid not in have:
+                pols.append(policy_dto(row))
+                have.add(pid)
+    if not pols:
+        raise MapiError(
+            "no governance policy applies to this model; add a policy for its family "
+            "or name one in policy_ids",
+            code=ErrorCode.POLICY_INVALID,
+            pointer="/policy_ids",
+        )
+    return pols
+
+
+def _approval_of(pols: Sequence[GovernancePolicy]) -> tuple[bool, int]:
+    """``(require_approval, approvals_required)`` over every policy a validation is held to."""
+    return (
+        any(p.require_approval for p in pols),
+        max((p.approvals_required for p in pols if p.require_approval), default=1),
+    )
+
+
+async def _lock_version(session: AsyncSession, mv: m.ModelVersion) -> None:
+    """Serialise validation requests of one model version (one open validation each)."""
+    await session.execute(
+        select(m.ModelVersion.id).where(m.ModelVersion.id == mv.id).with_for_update()
+    )
+
+
+async def _blocks_new_validation(
+    session: AsyncSession, ctx: ServerContext, mv: m.ModelVersion, latest: m.ModelValidation
+) -> bool:
+    """An open validation blocks a new one; so does a ``validated`` one unless it no longer
+    covers a gating policy in force (a policy was added or made stricter since)."""
+    status = ValidationStatus(latest.status)
+    if status not in _OPEN:
+        return False
+    if status is not ValidationStatus.VALIDATED:
+        return True
+    return not uncovered_policies(latest, await policies_in_force(session, ctx, mv))
 
 
 def _evaluation_present(mv: m.ModelVersion) -> bool:
@@ -833,11 +950,15 @@ async def request_validation(
 ) -> m.ModelValidation:
     """Create a validation of ``mv`` and submit it: the policies' checks run as a
     ``governance`` run (``VALIDATION_TRANSITION_INVALID`` when the version already has an
-    open or validated validation; ``POLICY_INVALID`` without an applicable policy)."""
+    open or validated validation; ``POLICY_INVALID`` without an applicable policy).
+
+    The validation is held to every policy in force plus the ones ``policy_ids`` names
+    (:func:`_resolve_policies`); concurrent requests for one version are serialised on
+    the version row, so only one of them creates a validation."""
     if mv.status != "ready":
         raise Conflict(f"model version {mv.id} is {mv.status}; only ready versions are validated")
     latest = await _latest_validation(session, mv.id)
-    if latest is not None and ValidationStatus(latest.status) in _OPEN:
+    if latest is not None and await _blocks_new_validation(session, ctx, mv, latest):
         raise MapiError(
             f"model version v{mv.version} already has a validation that is {latest.status} "
             f"({latest.id}); resubmit or deprecate that one",
@@ -845,6 +966,7 @@ async def request_validation(
         )
     pols = await _resolve_policies(session, ctx, mv, body.policy_ids)
     required = effective_checks(pols)
+    require_approval, approvals_required = _approval_of(pols)
     actor = _Actor.of(ctx)
     ts = now()
     v = m.ModelValidation(
@@ -860,10 +982,8 @@ async def request_validation(
         required_checks=[c.model_dump(mode="json", exclude_none=True) for c in required],
         results=[],
         failing_checks=[],
-        require_approval=any(p.require_approval for p in pols),
-        approvals_required=max(
-            (p.approvals_required for p in pols if p.require_approval), default=1
-        ),
+        require_approval=require_approval,
+        approvals_required=approvals_required,
         history=[],
         dataset=body.dataset,
         note=body.note,
@@ -910,10 +1030,7 @@ async def resubmit_validation(
     required = effective_checks(pols)
     v.policies = [f"{p.id}@{p.version}" for p in pols]
     v.required_checks = [c.model_dump(mode="json", exclude_none=True) for c in required]
-    v.require_approval = any(p.require_approval for p in pols)
-    v.approvals_required = max(
-        (p.approvals_required for p in pols if p.require_approval), default=1
-    )
+    v.require_approval, v.approvals_required = _approval_of(pols)
     v.round += 1
     v.results = []
     v.failing_checks = []
