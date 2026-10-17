@@ -1349,8 +1349,8 @@ class BranchDecision(ResponseModel):
             "value": True,
             "arm": "then",
             "inputs": {"nodes.adf.p_value": 0.57, "params.alpha": 0.05, "nodes.kpss.reject": True},
-            "explain_plain": "The tests found that the series wanders rather than returning to "
-            "a steady level, so it was differenced.",
+            "explain_plain": "The tests found that the series wanders and does not return to "
+            "a steady level. The workflow applied a difference.",
             "decided_at": EXAMPLE_TS,
         }
     )
