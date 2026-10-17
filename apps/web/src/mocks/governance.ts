@@ -354,7 +354,9 @@ export function createGovernanceHandlers(
     }),
     http.post(`${API}/v1/models/:model/versions/:v/validations`, async ({ params, request }) => {
       const body = (await request.json()) as ValidationRequest;
-      const policies = inForce(state).filter((p) => !body.policy_ids?.length || body.policy_ids.includes(p.id));
+      // every policy in force applies whatever policy_ids names: it can only add (as the
+      // server), and the mock's catalog holds no policy that is not in force
+      const policies = inForce(state);
       const required = policies.flatMap((p) => p.checks).filter((c, i, all) => all.findIndex((x) => x.check === c.check) === i);
       const now = new Date().toISOString();
       const actor = me()?.id ?? null;

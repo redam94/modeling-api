@@ -1,6 +1,6 @@
 /**
- * Validations of one model version: request a new one (held to the policies in force, or a
- * chosen few), and every earlier validation with its status. Also the notice the promotion
+ * Validations of one model version: request a new one (held to every policy in force, plus
+ * any the requester adds), and every earlier validation with its status. Also the notice the promotion
  * dialog shows when a policy requires a validated version (`NOT_VALIDATED`).
  */
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -27,12 +27,13 @@ function RequestForm({ modelId, version }: { modelId: string; version: number })
   const request = useRequestValidation(modelId, version);
   const [note, setNote] = useState("");
   const [dataset, setDataset] = useState("");
-  const [only, setOnly] = useState<string[] | null>(null);
+  // Every policy in force always applies (the server never drops one); these are extra.
+  const [extra, setExtra] = useState<string[]>([]);
   const items = policies.data?.items ?? [];
   const submit = (e: FormEvent) => {
     e.preventDefault();
     request.mutate(
-      { note: note.trim() || null, policy_ids: only ?? [], ...(dataset ? { dataset } : {}) },
+      { note: note.trim() || null, policy_ids: extra, ...(dataset ? { dataset } : {}) },
       {
         onSuccess: (v) => {
           toast.success("Validation requested", "The checks run in the sandbox; this page updates when they finish.");
@@ -45,19 +46,20 @@ function RequestForm({ modelId, version }: { modelId: string; version: number })
     <form className="grid gap-4" onSubmit={submit} aria-label="Request a validation">
       <div className="grid gap-2">
         <p className="text-[13px] font-medium">Policies it is held to</p>
+        <p className="text-xs text-muted-foreground" data-testid="policies-in-force-note">
+          Every policy in force for this kind of model always applies. Tick a policy to hold this version to it as well.
+        </p>
         {items.length ? (
-          <ul className="grid gap-1.5">
+          <ul className="grid gap-1.5" aria-label="Also hold it to">
             {items.map((p) => {
-              const checked = only === null || only.includes(p.id);
+              const checked = extra.includes(p.id);
               return (
                 <li key={p.id} className="flex items-start gap-2 text-[13px]">
                   <Checkbox
                     id={`pol-${p.id}`}
                     checked={checked}
                     onCheckedChange={(c) => {
-                      const current = only ?? items.map((x) => x.id);
-                      const next = c === true ? [...new Set([...current, p.id])] : current.filter((x) => x !== p.id);
-                      setOnly(next.length === items.length ? null : next);
+                      setExtra(c === true ? [...new Set([...extra, p.id])] : extra.filter((x) => x !== p.id));
                     }}
                   />
                   <label htmlFor={`pol-${p.id}`} className="grid">
@@ -83,7 +85,7 @@ function RequestForm({ modelId, version }: { modelId: string; version: number })
       </Field>
       {request.isError ? <ErrorNotice error={request.error} title="The validation was not requested" /> : null}
       <div>
-        <Button type="submit" disabled={request.isPending || (only !== null && only.length === 0)}>
+        <Button type="submit" disabled={request.isPending}>
           {request.isPending ? <Spinner /> : <ShieldCheck />} Request validation
         </Button>
       </div>

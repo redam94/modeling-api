@@ -1000,7 +1000,10 @@ class ValidationRequest(RequestModel):
     """``POST /v1/models/{model_id}/versions/{version}/validations``: run the checks."""
 
     policy_ids: list[Id] = Field(
-        default_factory=list, max_length=8, description="Default: every policy that applies"
+        default_factory=list,
+        max_length=8,
+        description="Policies to add: every policy in force always applies, and these can "
+        "only add to it",
     )
     note: str | None = Field(None, max_length=2000)
     dataset: str | None = Field(

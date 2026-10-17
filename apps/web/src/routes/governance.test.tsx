@@ -110,6 +110,20 @@ describe("Governance", () => {
     await waitFor(() => expect(within(view).getAllByText("Checks running").length).toBeGreaterThan(0));
   });
 
+  it("requests a validation held to every policy in force; ticking a policy only adds it", async () => {
+    const user = userEvent.setup();
+    renderApp("/models/mdl_01jaf3c1d2e3f4g5h6j7k8m9n0/versions/1/validations");
+    const form = await screen.findByRole("form", { name: "Request a validation" });
+    expect(within(form).getByTestId("policies-in-force-note")).toHaveTextContent("Every policy in force for this kind of model always applies.");
+    const boxes = await within(form).findAllByRole("checkbox");
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const box of boxes) expect(box).not.toBeChecked();
+    await user.click(within(form).getByRole("button", { name: "Request validation" }));
+    await waitFor(() => expect(seen.some((r) => r.method === "POST" && r.path.endsWith("/validations"))).toBe(true));
+    const post = seen.find((r) => r.method === "POST" && r.path.endsWith("/validations"))!;
+    expect(post.body).toMatchObject({ policy_ids: [] });
+  });
+
   it("grants the reviewer capability on Members", async () => {
     const user = userEvent.setup();
     renderApp("/members");

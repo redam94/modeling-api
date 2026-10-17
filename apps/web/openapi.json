@@ -23408,7 +23408,7 @@
             "title": "Note"
           },
           "policy_ids": {
-            "description": "Default: every policy that applies",
+            "description": "Policies to add: every policy in force always applies, and these can only add to it",
             "items": {
               "examples": [
                 "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
