@@ -66,6 +66,12 @@ Never rebase or rewrite `develop` or `main`. Keep changes to shared files (the r
 `pyproject.toml`, the `Makefile`, `uv.lock`, CI) minimal and additive, and mention them in
 your pull request.
 
+## Writing style
+
+Write all text for users in ASD-STE100 Simplified Technical English: documentation, text in
+the web app, and the messages that the server sends for the app to show. The rules are in
+[Writing style](writing-style.md).
+
 ## Commit messages
 
 [Conventional commits](https://www.conventionalcommits.org/), scoped by package:

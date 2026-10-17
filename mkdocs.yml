@@ -250,6 +250,7 @@ nav:
   - Project:
       - Licensing: project/licensing.md
       - Contributing: project/contributing.md
+      - Writing style: project/writing-style.md
       - Changelog: project/changelog.md
 
 validation:
