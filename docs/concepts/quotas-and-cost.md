@@ -4,53 +4,61 @@ description: How the multi-tenant platform limits compute, schedules interactive
 
 # Quotas and cost <span class="mapi-badge">v0.3</span>
 
-A public modelling platform's real cost risk is compute: an accidental 500-task sweep, a
-leaked token, or someone mining on free fits. From v0.3 every run is estimated before it
-starts, checked against quotas at three levels, scheduled fairly against everyone else's
-work, and metered into a cost ledger when it ends. The contracts are in `mapi_spec.quotas`,
-`mapi_spec.cost` and `mapi_spec.admin`.
+Compute is the largest cost risk for a public modelling platform. Examples are an accidental
+500-task sweep, a leaked token, or a person who mines on free fits. From v0.3, the platform
+does these steps for each run:
+
+1. It estimates the cost of the run before the run starts.
+2. It compares the run with quotas at three levels.
+3. It schedules the run fairly with the work of all other users.
+4. It meters the run into a cost ledger when the run ends.
+
+The contracts are in `mapi_spec.quotas`, `mapi_spec.cost` and `mapi_spec.admin`.
 
 ## Quotas are vCPU-seconds
 
-Compute is limited in **vCPU-seconds**, not runs: a two-minute fit on class S (2 vCPU) uses
-240 vCPU-seconds, a five-minute fit on class M (4 vCPU) 1,200. Each limit below is optional;
-an unset limit means "no limit at this level".
+The platform limits compute in **vCPU-seconds**, not in runs. A two-minute fit on class S
+(2 vCPU) uses 240 vCPU-seconds. A five-minute fit on class M (4 vCPU) uses 1,200
+vCPU-seconds. Each limit in the table is optional. If a limit is not set, there is no limit
+at this level.
 
 | Limit | Kind | Notes |
 |---|---|---|
-| `vcpu_seconds_per_day`, `vcpu_seconds_per_month` | Cumulative, UTC day and month | Checked against the run's estimate at submit |
+| `vcpu_seconds_per_day`, `vcpu_seconds_per_month` | Cumulative, UTC day and month | The platform compares the limit with the estimate of the run at submit. |
 | `concurrent_runs` | Live count | Runs between `queued` and a terminal state |
-| `max_fanout_tasks` | Per submission | Caps one sweep, backtest or SBC (`taskCount`) |
-| `max_resource_class` | Per submission | For example, the free tier runs on class S only |
-| `storage_bytes` | Cumulative | Dataset versions, uploads in progress and model bundles (every model version's stored objects) |
-| `egress_bytes_per_month` | Cumulative, UTC month | Downloads: the size of every object the API hands out a signed link to (dataset and model artifacts, `ui/` views, score and render outputs), and of public embed views. Charged when the link is minted; GDPR exports are never charged |
+| `max_fanout_tasks` | Per submission | The maximum for one sweep, backtest or SBC (`taskCount`) |
+| `max_resource_class` | Per submission | For example, the free tier runs on class S only. |
+| `storage_bytes` | Cumulative | Dataset versions, uploads in progress and model bundles (the stored objects of all model versions) |
+| `egress_bytes_per_month` | Cumulative, UTC month | Downloads. This is the size of each object that the API gives a signed link for: dataset and model artifacts, `ui/` views, and score and render outputs. It also includes public embed views. The platform charges the bytes when it mints the link. The platform never charges GDPR exports. |
 | `requests_per_minute` | Rate | API calls |
 
 ## Three levels
 
-Every request is checked against up to three policies, most specific first:
+The platform compares each request with a maximum of three policies. It starts with the
+most specific policy:
 
-1. **Token**: the token's own rate limit and vCPU-second budget (set when it was minted).
-2. **Tenant**: the tenant's policy, or the defaults of its trust tier.
-3. **Global**: platform-wide limits that protect the cloud project itself (Cloud Run allows
-   1,000 running executions per region; the global default stops at 700).
+1. **Token**: the rate limit and the vCPU-second budget of the token. The person who mints
+   the token sets these values.
+2. **Tenant**: the policy of the tenant, or the defaults of its trust tier.
+3. **Global**: platform-wide limits that protect the cloud project. Cloud Run permits 1,000
+   running executions for each region. The global default stops at 700.
 
-The first limit a request would exceed decides the answer:
+The first limit that a request goes above decides the answer:
 
 | Code | HTTP | When | What the client does |
 |---|---|---|---|
-| `RATE_LIMITED` | 429 | Too many requests per minute at any level | Wait `Retry-After` seconds and retry |
-| `QUOTA_EXCEEDED` | 429 | Any other limit | Read `detail` (which level, which limit); `Retry-After` is set when the limit resets with the UTC day or month |
+| `RATE_LIMITED` | 429 | Too many requests per minute at one level | Wait for `Retry-After` seconds. Then send the request again. |
+| `QUOTA_EXCEEDED` | 429 | All other limits | Read `detail` to find the level and the limit. If the limit resets with the UTC day or month, the response sets `Retry-After`. |
 
-Cumulative limits only block requests that ask for more: a tenant over its storage quota can
-still read, download and delete.
+Cumulative limits stop only the requests that ask for more. A tenant that is above its
+storage quota can continue to read, download and delete.
 
 ```python
 --8<-- "concepts_quotas.py:decide"
 ```
 
-Default tenant limits by trust tier (operators override them per tenant with
-`PUT /v1/admin/quotas`):
+The table shows the default tenant limits for each trust tier. Operators can change them for
+one tenant with `PUT /v1/admin/quotas`.
 
 | Tier | vCPU-s / day | vCPU-s / month | Concurrent runs | Fan-out tasks | Largest class | Requests / min |
 |---|---|---|---|---|---|---|
@@ -59,90 +67,101 @@ Default tenant limits by trust tier (operators override them per tenant with
 | `internal` | — | — | 100 | 1,000 | — | 6,000 |
 | `self-hosted-trusted` | — | — | — | — | — | — |
 
-**Returned draws.** A score request returns a summary by default (no draws). Draws on request
-(`output.draws`) are capped per tier: at most 300 on `public`, 500 on every other tier
-(`mapi_spec.quotas.MAX_SCORE_DRAWS`). More is refused with `QUOTA_EXCEEDED` at
-`/output/draws`, whether the call comes through `POST /v1/models/…:score`, an endpoint, or
-its `…/validate`; the score job carries the cap and the runner enforces it again.
+**Returned draws.** By default, a score request returns a summary and no draws. You can ask
+for draws with `output.draws`. Each tier has a maximum (`mapi_spec.quotas.MAX_SCORE_DRAWS`).
+The maximum is 300 on `public` and 500 on all other tiers. If you ask for more, the platform
+refuses the request with `QUOTA_EXCEEDED` at `/output/draws`. This occurs for
+`POST /v1/models/…:score`, for an endpoint, and for its `…/validate`. The score job also
+contains the maximum, and the runner applies it again.
 
 ## Interactive and batch work
 
 Each run has a priority class:
 
-- **`interactive`**: score, render, derive, validate and describe runs. Someone is usually
-  waiting for them.
+- **`interactive`**: score, render, derive, validate and describe runs. Usually, a person
+  waits for these runs.
 - **`batch`**: fits, ingest, evaluation, optimisation and fan-out parents.
 
-The dispatcher leases queued runs with **weighted fair sharing**. For each candidate it
-computes `(tenant's running tasks + the run's tasks) / (tenant weight × class weight)`, with
-weight 4 for interactive and 1 for batch, and leases the smallest first, until the free
-capacity (and the Cloud Run `jobs.run` rate, 180 calls a minute) is used up. A tenant with 40
-tasks running has to wait behind an idle tenant's score, and a 200-task SBC fills in
-the capacity left over instead of blocking everyone:
+The dispatcher leases queued runs with **weighted fair sharing**. For each candidate run, it
+calculates `(tenant's running tasks + the run's tasks) / (tenant weight × class weight)`. The
+class weight is 4 for interactive and 1 for batch. The dispatcher leases the smallest value
+first. It continues until it uses all the free capacity, or the Cloud Run `jobs.run` rate of
+180 calls a minute. A tenant with 40 running tasks must wait for the score of an idle tenant.
+A 200-task SBC uses the remaining capacity and does not stop the work of other tenants:
 
 ```python
 --8<-- "concepts_quotas.py:lease"
 ```
 
-When the backend itself answers 429, the dispatcher backs off exponentially (1, 2, 4 … 64
-seconds, never less than a `Retry-After`) and submits exactly once when the limit clears.
+If the backend answers 429, the dispatcher waits for an exponentially longer time before
+each new attempt: 1, 2, 4 … 64 seconds. The time is never less than a `Retry-After`. The
+dispatcher submits the run one time only when the limit clears.
 
 ## Prices and the cost ledger
 
-Every run's cost is computed from its resource class and wall time:
+The platform calculates the cost of each run from its resource class and its wall time:
 
-- vCPU-seconds = vCPUs of the class × billed seconds × tasks;
-- GiB-seconds = memory of the class × billed seconds × tasks;
-- billed seconds = wall time rounded up to 100 ms.
+- vCPU-seconds = vCPUs of the class × billed seconds × tasks
+- GiB-seconds = memory of the class × billed seconds × tasks
+- billed seconds = wall time, rounded up to 100 ms
 
-Prices come from a versioned **price table**. The default mirrors Cloud Run's list prices,
-0.000018 USD per vCPU-second and 0.000002 USD per GiB-second; a deployment sets its own.
-Unit prices are integer nanos and amounts are integer **micros** (1 USD = 1,000,000 micros),
-so every amount is exact and can be recomputed from its ledger row. Every amount names the
-price-table version used: new prices never rewrite old costs.
+The prices come from a versioned **price table**. The default uses the list prices of Cloud
+Run: 0.000018 USD for each vCPU-second and 0.000002 USD for each GiB-second. A deployment can
+set its own prices. Unit prices are integer nanos. Amounts are integer **micros**
+(1 USD = 1,000,000 micros). Thus, each amount is exact, and you can calculate it again from
+its ledger row.
+
+Each amount names the version of the price table that the platform used. New prices never
+change old costs.
 
 ```python
 --8<-- "concepts_quotas.py:cost"
 ```
 
-The **cost ledger** is append-only. Each finished attempt adds one `actual` entry with its
-run, attempt, resource class, task count, wall time, vCPU- and GiB-seconds, price version and
-amount. Operators can add `adjustment` entries (for example, a refund after an infrastructure
-failure). A run's `cost` field folds its entries together:
+The **cost ledger** is append-only. Each finished attempt adds one `actual` entry. The entry
+contains the run, the attempt, the resource class, the task count and the wall time. It also
+contains the vCPU-seconds, the GiB-seconds, the price version and the amount. Operators can
+add `adjustment` entries, for example a refund after an infrastructure failure. The `cost`
+field of a run combines its entries:
 
 | `Run.cost` field | Meaning |
 |---|---|
-| `estimated` | `true` until the first attempt has been metered |
-| `estimate_micros` | The estimate made at submit |
-| `amount_micros`, `currency` | The total so far, over all attempts |
+| `estimated` | `true` until the platform meters the first attempt |
+| `estimate_micros` | The estimate that the platform made at submit |
+| `amount_micros`, `currency` | The total at this time, for all attempts |
 | `vcpu_seconds`, `gib_seconds` | The metered usage |
-| `price_version` | The price table used |
-| `attempts_billed` | How many attempts have been metered |
-| `usd` | Kept from v0.2: the amount in dollars when the currency is USD |
+| `price_version` | The price table that the platform used |
+| `attempts_billed` | The number of metered attempts |
+| `usd` | Kept from v0.2. The amount in dollars when the currency is USD. |
 
-`GET /v1/usage` reports a project's ledger totals for a UTC day or month (grouped by resource
-class, day, token or run) and where it stands against each quota. Tenant admins see the
-whole tenant at `GET /v1/tenants/{tenant_id}/usage`. Operators see cost by tenant for the
-whole platform at `GET /v1/admin/usage` (the **Cost** tab of the admin console).
+`GET /v1/usage` gives the ledger totals of a project for a UTC day or month. It groups the
+totals by resource class, day, token or run. It also shows the usage of the project against
+each quota. Tenant admins see the full tenant at `GET /v1/tenants/{tenant_id}/usage`.
+Operators see the cost of each tenant for the full platform at `GET /v1/admin/usage`. This is
+the **Cost** tab of the admin console.
 
-Retries are capped by cost as well as by count: an infrastructure failure is retried
-automatically only while what the run has cost (its metered attempts plus the attempt that
-just failed) stays below `MAPI_AUTO_RETRY_COST_FACTOR` (default 2) times its estimate, at most
-`MAPI_MAX_INFRA_RETRIES` times. A retry resumes from the newest checkpoints any earlier
-attempt wrote, and a run that has already used more than 30 minutes is only retried with the
-user's consent.
+The platform limits retries by cost and by count. After an infrastructure failure, the
+platform tries the run again automatically only if these two conditions are true:
+
+- The cost of the run stays below `MAPI_AUTO_RETRY_COST_FACTOR` (default 2) times its
+  estimate. This cost includes the metered attempts and the attempt that failed.
+- The number of retries is not more than `MAPI_MAX_INFRA_RETRIES`.
+
+A retry continues from the newest checkpoints that an earlier attempt wrote. If a run used
+more than 30 minutes, the platform tries it again only with the consent of the user.
 
 ## Kill switches
 
-Operators have two platform-wide switches (`PUT /v1/admin/kill-switches`, audited, a reason
-is required):
+Operators have two platform-wide switches (`PUT /v1/admin/kill-switches`). The platform
+audits each change, and the operator must give a reason:
 
 | Switch | Effect |
 |---|---|
-| `untrusted_execution_enabled` | When off, no run of tenant-uploaded plugin code is accepted or leased. Built-in models keep working. |
-| `global_spend_cap_micros` | Once the platform's spend in the current UTC day (or month) reaches the cap, no new compute starts except for `internal` tenants. Spend counts the cost ledger plus the estimates of work not metered yet: admitted runs at admission, started runs (one by one) at dispatch |
+| `untrusted_execution_enabled` | When this switch is off, the platform does not accept or lease runs of plugin code that tenants uploaded. Built-in models continue to work. |
+| `global_spend_cap_micros` | When the spend of the platform in the current UTC day (or month) gets to the cap, no new compute starts. Only `internal` tenants can start compute. The spend is the cost ledger plus the estimates of work that the platform did not meter yet. Admitted runs count at admission. Started runs count one by one at dispatch. |
 
-Both answer `QUOTA_EXCEEDED` at the global level. `GET /v1/admin/usage` returns the spend
-in the cap's current window next to the cap (`spend_cap`), and the admin console shows it as a
-meter that warns at 70% and 90%. In a suspected sandbox escape, turning off
-untrusted execution is the first step of the incident runbook.
+Both switches answer `QUOTA_EXCEEDED` at the global level. `GET /v1/admin/usage` returns the
+spend in the current window of the cap, next to the cap (`spend_cap`). The admin console
+shows this spend as a meter that gives a warning at 70% and at 90%. If you think that code
+escaped the sandbox, turn off untrusted execution. This is the first step of the incident
+runbook.
