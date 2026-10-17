@@ -21,7 +21,8 @@ VAR representation, the Kalman filter for the state-space models).
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import copy
+from collections.abc import Callable, Mapping
 from typing import Any, Literal
 
 import numpy as np
@@ -172,6 +173,60 @@ def _check_vars(cell: Cell, s: Any) -> None:
         raise settings_error("multivariate models take at most 20 series along 'variable'")
 
 
+def _one_step(
+    step: Callable[[np.ndarray, int, np.ndarray | None], np.ndarray],
+    ext: Cell,
+    lags: int,
+    insample: np.ndarray,
+) -> np.ndarray:
+    """``(len(insample), k)`` one-step-ahead means at the positions ``insample`` of ``ext``
+    from ``step(history before the position, position, drivers at it)`` (NaN in the first
+    ``lags`` periods, which have no full set of lags)."""
+    out = np.full((insample.size, len(ext.variables)), np.nan)
+    for i, pos in enumerate(insample.tolist()):
+        if pos < lags:
+            continue
+        x = None if ext.x is None else ext.x[pos : pos + 1]
+        out[i] = np.asarray(step(ext.y[:pos], pos, x), dtype=float).reshape(-1)
+    return out
+
+
+def _var_at(res: Any, periods: int) -> Any:
+    """A shallow copy of the ``VARResults`` ``res`` whose deterministic trend continues after
+    ``periods`` observations (``forecast`` takes the lags explicitly; only the trend index
+    depends on the sample length)."""
+    at = copy.copy(getattr(res, "_results", res))
+    at.n_totobs = periods
+    return at
+
+
+def var_forecast(
+    res: Any, history: np.ndarray, steps: int, x_future: np.ndarray | None
+) -> np.ndarray:
+    """``(steps, k)`` VAR forecast after ``history`` (``(t, k)``) with the fitted coefficients."""
+    lags = int(res.k_ar)
+    with quiet():
+        return np.asarray(
+            _var_at(res, history.shape[0]).forecast(
+                history[-lags:], steps=steps, exog_future=x_future
+            ),
+            dtype=float,
+        )
+
+
+def vecm_forecast(
+    res: Any, history: np.ndarray, steps: int, x_future: np.ndarray | None
+) -> np.ndarray:
+    """``(steps, k)`` VECM forecast after ``history`` (``(t, k)``, levels) with the fitted
+    coefficients: statsmodels' ``predict`` on a shallow copy whose sample ends there (the
+    last ``k_ar`` levels and the deterministic terms' time index)."""
+    at = copy.copy(res)
+    at.y_all = np.asarray(history, dtype=float).T
+    at.nobs = history.shape[0] - int(res.k_ar)
+    with quiet():
+        return np.asarray(at.predict(steps=steps, exog_fc=x_future), dtype=float)
+
+
 # ==================================================================================== VAR
 
 
@@ -204,6 +259,7 @@ class VarModel(StatsmodelsModel[VarSettings]):
     )
     capabilities = quantile_capabilities("point")
     schema_template = schema_template(multivariate=True, exog=True)
+    rebuild_estimates = True
 
     def _fit(self, cell: Cell, s: VarSettings, lags: int | None) -> Any:
         from statsmodels.tsa.api import VAR
@@ -294,6 +350,53 @@ class VarModel(StatsmodelsModel[VarSettings]):
         var = np.diagonal(np.asarray(mse), axis1=1, axis2=2)
         return q_in, normal_quantiles(np.asarray(mean, dtype=float), var, q)
 
+    def predict_conditioned(
+        self,
+        fit_res: Callable[[], Any],
+        cell: Cell,
+        ext: Cell,
+        s: VarSettings,
+        params: Mapping[str, float],
+        learned: Mapping[str, Any],
+        insample: np.ndarray,
+        x_future: np.ndarray | None,
+        horizon: int,
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The fitted VAR on the supplied lags: one-step predictions and the forecast from
+        the last actual, the trend continuing; the band is the fitted ``mse``."""
+        return _lagged_predict(
+            fit_res(), ext, s.quantiles, insample, x_future, horizon, var_forecast
+        )
+
+
+def _lagged_predict(
+    res: Any,
+    ext: Cell,
+    q: list[float],
+    insample: np.ndarray,
+    x_future: np.ndarray | None,
+    horizon: int,
+    forecast: Callable[[Any, np.ndarray, int, np.ndarray | None], np.ndarray],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Quantiles of a VAR or VECM (``forecast``) over the extended history ``ext``."""
+    sigma_u = np.asarray(res.sigma_u, dtype=float)
+    lags = int(res.k_ar)
+    one = _one_step(lambda hist, pos, x: forecast(res, hist, 1, x), ext, lags, insample)
+    q_in = normal_quantiles(one, np.broadcast_to(np.diag(sigma_u), one.shape), q)
+    k = len(ext.variables)
+    if not horizon:
+        return q_in, np.empty((len(q), 0, k))
+    mean = forecast(res, np.asarray(ext.y, dtype=float), horizon, x_future)
+    mse = _ma_mse(_var_coefs(res), sigma_u, horizon)
+    return q_in, normal_quantiles(mean, np.diagonal(mse, axis1=1, axis2=2), q)
+
+
+def _var_coefs(res: Any) -> np.ndarray:
+    """The levels-VAR coefficients ``[lag-1](k, k)`` of a VAR or VECM."""
+    rep = getattr(res, "var_rep", None)
+    return np.asarray(res.coefs if rep is None else rep, dtype=float)
+
 
 def _flat(frame: Any) -> np.ndarray:
     return np.asarray(frame, dtype=float).T.reshape(-1)
@@ -382,6 +485,7 @@ class VecmModel(StatsmodelsModel[VecmSettings]):
     )
     capabilities = quantile_capabilities("point")
     schema_template = schema_template(multivariate=True, exog=True)
+    rebuild_estimates = True
 
     def _rank_test(self, cell: Cell, s: VecmSettings) -> Any:
         from statsmodels.tsa.vector_ar.vecm import select_coint_rank
@@ -493,6 +597,25 @@ class VecmModel(StatsmodelsModel[VecmSettings]):
         mse = _ma_mse(np.asarray(res.var_rep, dtype=float), sigma_u, horizon)
         var = np.diagonal(mse, axis1=1, axis2=2)
         return q_in, normal_quantiles(np.asarray(mean, dtype=float), var, q)
+
+    def predict_conditioned(
+        self,
+        fit_res: Callable[[], Any],
+        cell: Cell,
+        ext: Cell,
+        s: VecmSettings,
+        params: Mapping[str, float],
+        learned: Mapping[str, Any],
+        insample: np.ndarray,
+        x_future: np.ndarray | None,
+        horizon: int,
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The fitted VECM on the supplied levels (its deterministic terms continuing):
+        one-step predictions and the forecast from the last actual."""
+        return _lagged_predict(
+            fit_res(), ext, s.quantiles, insample, x_future, horizon, vecm_forecast
+        )
 
 
 def _vecm_params(
