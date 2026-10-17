@@ -396,7 +396,8 @@ def _stationarity(v: Mapping[str, Any]) -> list[Plot]:
             "Unit-root and stationarity tests",
             spec,
             {"st": rows},
-            "ADF below the dashed line: stable. KPSS below it: wanders.",
+            "If ADF is below the dashed line, the series is stable. If KPSS is below it, the "
+            "series wanders.",
         )
     ]
 
@@ -719,7 +720,7 @@ def _residuals(v: Mapping[str, Any]) -> list[Plot]:
                 "Normal QQ plot of residuals",
                 spec,
                 {"qq": pts},
-                "Points on the line: residuals follow a bell curve.",
+                "If the points are on the line, the residuals follow a bell curve.",
             )
         )
     acf = _lag_rows(v.get("acf", []))
@@ -731,7 +732,7 @@ def _residuals(v: Mapping[str, Any]) -> list[Plot]:
                 "Autocorrelation of residuals",
                 _facet_spec(_lag_layer("racf"), "series"),
                 {"racf": acf},
-                "Bars beyond the dashed band: a pattern is left.",
+                "If bars go out of the dashed band, the residuals still have a pattern.",
             )
         )
     return out

@@ -136,6 +136,8 @@ class PriorPredictiveSettings(RecipeSettings):
     settings=PriorPredictiveSettings,
     persona="expert",
     requires_groups=["prior_predictive"],
+    summary="Datasets that the model can make before it sees data, compared with the observed "
+    "data.",
 )
 def prior_predictive(inp: RecipeInput, s: PriorPredictiveSettings) -> Figure:
     """Datasets the model can generate before seeing data, against the observed data."""
@@ -166,9 +168,8 @@ def prior_predictive(inp: RecipeInput, s: PriorPredictiveSettings) -> Figure:
         datasets["fan"] = fan
         charts.append(_fan_chart("fan", t, var, s.levels, "observed" in fan, s, mean_over=other))
     caption = (
-        f"Grey curves are datasets of {var} the model could generate before seeing any data; "
-        "the black curve is your data. Your data should look like a plausible member of the "
-        "grey family."
+        f"The grey curves are datasets of {var} that the model can make before it sees data. "
+        "The black curve is your data. Your data should look similar to the grey curves."
     )
     if obs is not None:
         pr = stack_samples(prior[var])
@@ -179,11 +180,13 @@ def prior_predictive(inp: RecipeInput, s: PriorPredictiveSettings) -> Figure:
         inside = float(np.mean((y >= lo) & (y <= hi), where=ok)) if ok.any() else float("nan")
         width = float(np.nanmedian(hi - lo))
         data_range = float(np.nanmax(y) - np.nanmin(y)) if ok.any() else float("nan")
-        caption += f" {pct(inside)} of observations fall inside the prior 90% range."
+        caption += f" {pct(inside)} of the observations are in the prior 90% range."
         if np.isfinite(inside) and inside < 0.5:
-            caption += " The priors may be too narrow or on the wrong scale."
+            caption += " The priors are possibly too narrow or on the wrong scale."
         elif data_range > 0 and width > 100 * data_range:
-            caption += " The priors are very wide compared with the data; consider tightening them."
+            caption += (
+                " The priors are very wide compared with the data. You can make them narrower."
+            )
     return Figure(chart=alt.vconcat(*charts), datasets=datasets, caption=caption)
 
 
@@ -249,6 +252,8 @@ def _posterior(inp: RecipeInput, var_names: list[str] | None) -> tuple[xr.Datase
     persona="expert",
     requires_groups=["posterior"],
     requires_representation=[Representation.DRAWS],
+    summary="R-hat and ESS for each parameter, a table of the worst parameters, and trace and "
+    "rank plots.",
 )
 def convergence(inp: RecipeInput, s: ConvergenceSettings) -> Figure:
     """R-hat and ESS per parameter, a table of the worst ones, trace and rank plots."""
@@ -402,25 +407,26 @@ def convergence(inp: RecipeInput, s: ConvergenceSettings) -> Figure:
     n = len(diag)
     if n_bad == 0:
         caption = (
-            f"All {n} parameters look converged: R-hat is at most {s.rhat_threshold} and the "
-            f"effective sample size is at least {ess_thr:.0f} for each."
+            f"All {n} parameters look converged. For each parameter, R-hat is not more than "
+            f"{s.rhat_threshold} and the effective sample size is not less than {ess_thr:.0f}."
         )
     else:
         worst = ", ".join(diag.loc[diag["status"] == "check", "parameter"].head(3))
         caption = (
-            f"{n_bad} of {n} parameters have not converged (R-hat above {s.rhat_threshold} or "
-            f"fewer than {ess_thr:.0f} effective samples), for example {worst}. Run the sampler "
-            "longer, increase tuning or reparameterise before trusting the results."
+            f"{n_bad} of {n} parameters have not converged (R-hat more than {s.rhat_threshold} "
+            f"or fewer than {ess_thr:.0f} effective samples), for example {worst}. Before you "
+            "trust the results, run the sampler longer, increase the tuning or reparameterise "
+            "the model."
         )
     stats = inp.find("sample_stats")
     if stats is not None and "diverging" in stats.data_vars:
         div = int(np.asarray(stats["diverging"].values).astype(bool).sum())
         if div:
-            caption += f" There were {div} divergent transitions; estimates may be biased."
+            caption += f" There were {div} divergent transitions. The estimates can be biased."
         else:
             caption += " There were no divergent transitions."
     if truncated:
-        caption += f" Only the first {s.max_elements} parameter elements were checked."
+        caption += f" The check used only the first {s.max_elements} parameter elements."
     datasets = {
         "diagnostics": shown,
         "table": pd.DataFrame(cells),
@@ -519,9 +525,9 @@ def posterior_forest(inp: RecipeInput, s: ForestSettings) -> Figure:
         )
     excl = int(((forest["lo"] > 0) | (forest["hi"] < 0)).sum())
     caption = (
-        f"Each row is a model parameter: the dot is the posterior {s.point}, the thick bar the "
-        f"central {pct(s.inner_prob)} interval and the thin line the {pct(s.hdi_prob)} "
-        f"highest-density interval. {excl} of {len(forest)} intervals exclude zero."
+        f"Each row is a model parameter. The dot is the posterior {s.point}. The thick bar is "
+        f"the central {pct(s.inner_prob)} interval. The thin line is the {pct(s.hdi_prob)} "
+        f"highest-density interval. {excl} of {len(forest)} intervals do not include zero."
     )
     return Figure(chart=chart, datasets={"forest": forest}, caption=caption)
 
@@ -611,18 +617,18 @@ def ppc(inp: RecipeInput, s: PPCSettings) -> Figure:
 
     c90 = dict(_stats.coverage_curve(draws, y, [0.9]))[0.9]
     caption = (
-        f"{pct(c90)} of observations of {var} fall inside the model's 90% predictive interval "
-        "(ideal: about 90%)."
+        f"{pct(c90)} of the observations of {var} are in the 90% predictive interval of the "
+        "model (ideal: about 90%)."
     )
     mean_pit = float(np.mean(pit))
     if mean_pit < 0.4:
-        caption += " Observations tend to sit below the predictions: the model over-predicts."
+        caption += " Most observations are below the predictions. The model over-predicts."
     elif mean_pit > 0.6:
-        caption += " Observations tend to sit above the predictions: the model under-predicts."
+        caption += " Most observations are above the predictions. The model under-predicts."
     tails = float(np.mean((pit < 0.05) | (pit > 0.95)))
     if tails > 0.2:
-        caption += " Too many observations fall in the tails: the intervals are too narrow."
+        caption += " Too many observations are in the tails. The intervals are too narrow."
     elif tails < 0.02 and n >= 50:
-        caption += " Very few observations fall in the tails: the intervals may be too wide."
+        caption += " Very few observations are in the tails. The intervals are possibly too wide."
     datasets = {"density": density, "pit": pit_frame, "coverage": cov}
     return Figure(chart=chart, datasets=datasets, caption=caption)
