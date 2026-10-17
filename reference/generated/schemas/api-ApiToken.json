@@ -30,7 +30,7 @@
       "expires_at": "2026-11-14T09:30:00Z",
       "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
       "last_used_at": "2026-10-16T08:00:00Z",
-      "name": "atlas-optimiser",
+      "name": "budget-planner",
       "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
       "prefix": "7k2m9q4x",
       "project_id": "growth",
@@ -185,5 +185,5 @@
   ],
   "title": "ApiToken",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

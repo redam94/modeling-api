@@ -1,0 +1,113 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/explore-decomposition.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``decomposition``: additive components over time and their share of the total.",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "components": {
+      "additionalProperties": {
+        "items": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": "array"
+      },
+      "maxProperties": 128,
+      "title": "Components",
+      "type": "object"
+    },
+    "coords": {
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "maxItems": 5000,
+      "title": "Coords",
+      "type": "array"
+    },
+    "dim": {
+      "maxLength": 128,
+      "title": "Dim",
+      "type": "string"
+    },
+    "format": {
+      "const": "mapi.model-explorer.decomposition/v1",
+      "default": "mapi.model-explorer.decomposition/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "scale": {
+      "default": "additive",
+      "enum": [
+        "additive",
+        "multiplicative"
+      ],
+      "title": "Scale",
+      "type": "string"
+    },
+    "shares": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "maxProperties": 128,
+      "title": "Shares",
+      "type": "object"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "dim",
+    "coords"
+  ],
+  "title": "DecompositionView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -1,0 +1,134 @@
+{
+  "$defs": {
+    "ChooserChoice": {
+      "properties": {
+        "help_plain": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help Plain"
+        },
+        "label": {
+          "maxLength": 120,
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "label"
+      ],
+      "title": "ChooserChoice",
+      "type": "object"
+    },
+    "ChooserQuestion": {
+      "description": "One plain-language question of the chooser (``multiple``: several answers allowed).",
+      "properties": {
+        "choices": {
+          "items": {
+            "$ref": "#/$defs/ChooserChoice"
+          },
+          "maxItems": 16,
+          "minItems": 2,
+          "title": "Choices",
+          "type": "array"
+        },
+        "help_plain": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help Plain"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "multiple": {
+          "default": false,
+          "title": "Multiple",
+          "type": "boolean"
+        },
+        "prompt_plain": {
+          "maxLength": 200,
+          "title": "Prompt Plain",
+          "type": "string"
+        },
+        "weight": {
+          "default": 1,
+          "description": "How much a match on it counts",
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Weight",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "prompt_plain",
+        "choices"
+      ],
+      "title": "ChooserQuestion",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ChooserQuestionnaire.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /v1/catalog/chooser``: the questions, in the order to ask them.",
+  "examples": [
+    {
+      "questions": [
+        {
+          "choices": [
+            {
+              "label": "Forecast the future",
+              "value": "forecast"
+            },
+            {
+              "label": "Measure what my marketing adds",
+              "value": "explain_marketing"
+            }
+          ],
+          "id": "goal",
+          "multiple": true,
+          "prompt_plain": "What do you want to do?",
+          "weight": 3
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/ChooserQuestion"
+      },
+      "title": "Questions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "questions"
+  ],
+  "title": "ChooserQuestionnaire",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

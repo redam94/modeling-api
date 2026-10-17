@@ -1,0 +1,29 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-DatasetAboutUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PATCH /v1/datasets/{dataset_id}/about``: the owner's own description.",
+  "examples": [
+    {
+      "description_user": "Weekly media spend and revenue from the finance warehouse."
+    }
+  ],
+  "properties": {
+    "description_user": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description User"
+    }
+  },
+  "title": "DatasetAboutUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

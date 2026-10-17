@@ -54,7 +54,21 @@
         "EMAIL_NOT_ALLOWED",
         "TERMS_NOT_ACCEPTED",
         "EMAIL_NOT_VERIFIED",
-        "IDENTITY_VERIFICATION_REQUIRED"
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -256,5 +270,5 @@
   ],
   "title": "RoleSuggestions",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

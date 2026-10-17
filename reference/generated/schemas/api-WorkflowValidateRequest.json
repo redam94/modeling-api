@@ -1,0 +1,114 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-WorkflowValidateRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/workflows:validate`` (sync, stores nothing).",
+  "examples": [
+    {
+      "document": {
+        "apiVersion": "mapi/v1",
+        "inputs": {
+          "data": {
+            "type": "dataset"
+          }
+        },
+        "kind": "Workflow",
+        "metadata": {
+          "name": "ts-readiness",
+          "project": "growth"
+        },
+        "nodes": [
+          {
+            "id": "adf",
+            "inputs": {
+              "data": "inputs.data"
+            },
+            "use": "test.adf",
+            "with": {
+              "alpha": {
+                "$param": "alpha"
+              }
+            }
+          },
+          {
+            "id": "kpss",
+            "inputs": {
+              "data": "inputs.data"
+            },
+            "use": "test.kpss"
+          },
+          {
+            "id": "wanders",
+            "use": "branch.if",
+            "with": {
+              "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject"
+            }
+          },
+          {
+            "id": "diff",
+            "inputs": {
+              "data": "inputs.data"
+            },
+            "use": "transform.difference",
+            "when": "wanders.then"
+          },
+          {
+            "id": "order",
+            "inputs": {
+              "data": [
+                "diff.data",
+                "inputs.data"
+              ]
+            },
+            "use": "search.arma_order"
+          }
+        ],
+        "outputs": {
+          "orders": "order.table"
+        },
+        "params": {
+          "alpha": {
+            "default": 0.05,
+            "type": "number"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "document": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Document"
+    },
+    "text": {
+      "anyOf": [
+        {
+          "maxLength": 262144,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Text"
+    }
+  },
+  "title": "WorkflowValidateRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

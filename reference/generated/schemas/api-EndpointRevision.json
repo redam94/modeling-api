@@ -32,7 +32,8 @@
             "TRAIN_ONLY",
             "PARTIAL_MODEL",
             "SCHEMA_CHANGE",
-            "NOT_EVALUATED"
+            "NOT_EVALUATED",
+            "NOT_VALIDATED"
           ],
           "title": "Code",
           "type": "string"
@@ -262,5 +263,5 @@
   ],
   "title": "EndpointRevision",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

@@ -1,0 +1,247 @@
+{
+  "$defs": {
+    "DimOverview": {
+      "additionalProperties": true,
+      "properties": {
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Freq"
+        },
+        "kind": {
+          "maxLength": 32,
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 256,
+          "title": "Name",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "size"
+      ],
+      "title": "DimOverview",
+      "type": "object"
+    },
+    "VarOverview": {
+      "additionalProperties": true,
+      "properties": {
+        "constant": {
+          "default": false,
+          "title": "Constant",
+          "type": "boolean"
+        },
+        "dims": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Dims",
+          "type": "array"
+        },
+        "distinct": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Distinct"
+        },
+        "dtype": {
+          "maxLength": 64,
+          "title": "Dtype",
+          "type": "string"
+        },
+        "missing_share": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Missing Share",
+          "type": "number"
+        },
+        "name": {
+          "maxLength": 256,
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "name",
+        "dtype"
+      ],
+      "title": "VarOverview",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-overview.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``overview``: shape, dims, variables and a plain-language summary.",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "dims": {
+      "items": {
+        "$ref": "#/$defs/DimOverview"
+      },
+      "maxItems": 32,
+      "title": "Dims",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.data-explorer.overview/v1",
+      "default": "mapi.data-explorer.overview/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "n_cells": {
+      "minimum": 0,
+      "title": "N Cells",
+      "type": "integer"
+    },
+    "quality_score": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "1 = no issues found",
+      "title": "Quality Score"
+    },
+    "summary_plain": {
+      "maxLength": 1000,
+      "title": "Summary Plain",
+      "type": "string"
+    },
+    "vars": {
+      "items": {
+        "$ref": "#/$defs/VarOverview"
+      },
+      "maxItems": 256,
+      "title": "Vars",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "n_cells",
+    "summary_plain"
+  ],
+  "title": "DataOverviewView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

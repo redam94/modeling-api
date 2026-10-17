@@ -18,7 +18,7 @@
     {
       "budget_period": "month",
       "expires_in_days": 30,
-      "name": "atlas-optimiser",
+      "name": "budget-planner",
       "rate_limit_per_minute": 120,
       "scopes": [
         "score:geo-mmm-prod",
@@ -95,5 +95,5 @@
   ],
   "title": "TokenCreate",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

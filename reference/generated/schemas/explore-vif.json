@@ -1,0 +1,78 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/explore-vif.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``vif``: variance inflation per driver and the condition number.",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "condition_number": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Condition Number"
+    },
+    "flagged": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Flagged",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.data-explorer.vif/v1",
+      "default": "mapi.data-explorer.vif/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "limit": {
+      "default": 10.0,
+      "exclusiveMinimum": 0,
+      "title": "Limit",
+      "type": "number"
+    },
+    "vif": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "maxProperties": 256,
+      "title": "Vif",
+      "type": "object"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "title": "VifView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

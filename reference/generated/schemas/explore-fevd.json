@@ -1,0 +1,71 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/explore-fevd.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``fevd``: forecast-error variance decomposition: ``shares[i][h][j]`` is the share of\n``variables[i]``'s forecast-error variance at horizon ``h + 1`` due to ``variables[j]``.",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.model-explorer.fevd/v1",
+      "default": "mapi.model-explorer.fevd/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "horizons": {
+      "maximum": 200,
+      "minimum": 1,
+      "title": "Horizons",
+      "type": "integer"
+    },
+    "shares": {
+      "items": {
+        "items": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "type": "array"
+      },
+      "title": "Shares",
+      "type": "array"
+    },
+    "variables": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "title": "Variables",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "variables",
+    "horizons",
+    "shares"
+  ],
+  "title": "FevdView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

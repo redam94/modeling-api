@@ -1,0 +1,408 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "SeriesTestResult": {
+      "description": "The test on one series of a panel (``coords`` names it, e.g. ``{\"geo\": \"DE\"}``).",
+      "properties": {
+        "coords": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Coords",
+          "type": "object"
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decision"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        },
+        "p_value": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Value"
+        },
+        "reject": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reject"
+        },
+        "statistic": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statistic"
+        }
+      },
+      "title": "SeriesTestResult",
+      "type": "object"
+    },
+    "StatTestResult": {
+      "description": "The ``test_result`` of one test node (and one stationarity-table row).\n\nFor panels the test runs per series: ``per_series`` holds each one and the headline\nfields summarise them (``reject`` when ``reject_share >= 0.5``; ``p_value`` is the\nmedian). Branch conditions read these fields, e.g. ``nodes.adf.reject``.",
+      "examples": [
+        {
+          "alpha": 0.05,
+          "critical_values": {
+            "1%": -3.46,
+            "10%": -2.57,
+            "5%": -2.87
+          },
+          "decision": "unit_root",
+          "lags": 3,
+          "n_obs": 156,
+          "null_plain": "The series has a unit root (it wanders without returning to a stable level).",
+          "p_value": 0.57,
+          "reject": false,
+          "statistic": -1.42,
+          "test": "test.adf",
+          "var": "y",
+          "verdict_plain": "The series wanders: consider differencing it."
+        }
+      ],
+      "properties": {
+        "alpha": {
+          "default": 0.05,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Alpha",
+          "type": "number"
+        },
+        "critical_values": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "maxProperties": 16,
+          "title": "Critical Values",
+          "type": "object"
+        },
+        "decision": {
+          "maxLength": 64,
+          "title": "Decision",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "description": "Test-specific fields (rank, break_at, suggested_p, max_vif, ...)",
+          "title": "Details",
+          "type": "object"
+        },
+        "lags": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lags"
+        },
+        "message_plain": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Why skipped/error",
+          "title": "Message Plain"
+        },
+        "n_obs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Obs"
+        },
+        "null_plain": {
+          "maxLength": 500,
+          "title": "Null Plain",
+          "type": "string"
+        },
+        "p_value": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Value"
+        },
+        "per_series": {
+          "items": {
+            "$ref": "#/$defs/SeriesTestResult"
+          },
+          "maxItems": 10000,
+          "title": "Per Series",
+          "type": "array"
+        },
+        "reject": {
+          "title": "Reject",
+          "type": "boolean"
+        },
+        "reject_share": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reject Share"
+        },
+        "statistic": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statistic"
+        },
+        "status": {
+          "default": "ok",
+          "enum": [
+            "ok",
+            "skipped",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "test": {
+          "pattern": "^test\\.[a-z0-9_]+$",
+          "title": "Test",
+          "type": "string"
+        },
+        "var": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Var"
+        },
+        "verdict_plain": {
+          "maxLength": 500,
+          "title": "Verdict Plain",
+          "type": "string"
+        }
+      },
+      "required": [
+        "test",
+        "reject",
+        "decision",
+        "verdict_plain",
+        "null_plain"
+      ],
+      "title": "StatTestResult",
+      "type": "object"
+    },
+    "StationarityRow": {
+      "additionalProperties": true,
+      "description": "ADF and KPSS on one series and what to do about it.",
+      "properties": {
+        "adf": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StatTestResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "facet": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Facet",
+          "type": "object"
+        },
+        "kpss": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StatTestResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "stable",
+            "difference",
+            "unclear",
+            "trend_stable"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "verdict_plain": {
+          "maxLength": 500,
+          "title": "Verdict Plain",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "verdict",
+        "verdict_plain"
+      ],
+      "title": "StationarityRow",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-stationarity.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``stationarity``: the unit-root / stationarity table (ADF + KPSS per series).",
+  "properties": {
+    "alpha": {
+      "default": 0.05,
+      "exclusiveMaximum": 1,
+      "exclusiveMinimum": 0,
+      "title": "Alpha",
+      "type": "number"
+    },
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.data-explorer.stationarity/v1",
+      "default": "mapi.data-explorer.stationarity/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "rows": {
+      "items": {
+        "$ref": "#/$defs/StationarityRow"
+      },
+      "maxItems": 200,
+      "title": "Rows",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "title": "StationarityView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

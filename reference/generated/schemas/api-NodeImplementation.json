@@ -1,0 +1,450 @@
+{
+  "$defs": {
+    "About": {
+      "additionalProperties": false,
+      "description": "The plain-language card of one catalog item.\n\nEvery field except the expert ones is required, so an About that validates is\nstructurally complete; :func:`about_issues` adds the editorial rules (one or two\nsentences, no jargon in the summary, known chooser tags, related ids that exist).",
+      "examples": [
+        {
+          "assumptions": [
+            "Numbers can be added up (spend, sales); averages are averaged"
+          ],
+          "avoid_when": [
+            "Your data already has one row per week"
+          ],
+          "data_needs": [
+            "A date column"
+          ],
+          "difficulty": "beginner",
+          "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+          "fits": {
+            "goal": [
+              "check_data"
+            ]
+          },
+          "outputs": [
+            "The same columns, one row per week"
+          ],
+          "related": [
+            "core.calendar"
+          ],
+          "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+          "title": "Weekly totals",
+          "typical_runtime": "instant",
+          "use_when": [
+            "Your data is daily but you want to plan or report by week"
+          ]
+        }
+      ],
+      "properties": {
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "avoid_when": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Avoid When",
+          "type": "array"
+        },
+        "data_needs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Data Needs",
+          "type": "array"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/Difficulty"
+        },
+        "example": {
+          "description": "A tiny example",
+          "maxLength": 600,
+          "minLength": 10,
+          "title": "Example",
+          "type": "string"
+        },
+        "expert_notes": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maths, estimator details, caveats for experts",
+          "title": "Expert Notes"
+        },
+        "fits": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "description": "Chooser tags: question id -> the answers this item suits",
+          "maxProperties": 16,
+          "title": "Fits",
+          "type": "object"
+        },
+        "outputs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Outputs",
+          "type": "array"
+        },
+        "references": {
+          "items": {
+            "$ref": "#/$defs/AboutReference"
+          },
+          "maxItems": 10,
+          "title": "References",
+          "type": "array"
+        },
+        "related": {
+          "description": "Ids of related catalog items (models, steps, nodes, checks, templates)",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Related",
+          "type": "array"
+        },
+        "summary_plain": {
+          "description": "One or two sentences without jargon: what it does for you",
+          "maxLength": 400,
+          "minLength": 20,
+          "title": "Summary Plain",
+          "type": "string"
+        },
+        "title": {
+          "description": "A human name",
+          "maxLength": 80,
+          "minLength": 3,
+          "title": "Title",
+          "type": "string"
+        },
+        "typical_runtime": {
+          "$ref": "#/$defs/TypicalRuntime"
+        },
+        "use_when": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Use When",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "summary_plain",
+        "use_when",
+        "avoid_when",
+        "data_needs",
+        "assumptions",
+        "outputs",
+        "difficulty",
+        "typical_runtime",
+        "example"
+      ],
+      "title": "About",
+      "type": "object"
+    },
+    "AboutReference": {
+      "additionalProperties": false,
+      "description": "A source for the expert detail (a paper, a book chapter, library documentation).",
+      "properties": {
+        "title": {
+          "maxLength": 300,
+          "minLength": 3,
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "pattern": "^https://\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "AboutReference",
+      "type": "object"
+    },
+    "Difficulty": {
+      "description": "How much statistical background an item needs to use well.",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "expert"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "NodeKind": {
+      "enum": [
+        "test",
+        "transform",
+        "branch",
+        "split",
+        "search",
+        "model",
+        "evaluate",
+        "compare",
+        "select",
+        "governance",
+        "report",
+        "subworkflow"
+      ],
+      "title": "NodeKind",
+      "type": "string"
+    },
+    "PortSpec": {
+      "description": "An input port: its type, whether it must be bound and whether it takes several.",
+      "properties": {
+        "description": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Description",
+          "type": "string"
+        },
+        "multiple": {
+          "default": false,
+          "description": "Accepts a list of bindings (e.g. models)",
+          "title": "Multiple",
+          "type": "boolean"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "$ref": "#/$defs/PortType"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "PortSpec",
+      "type": "object"
+    },
+    "PortType": {
+      "description": "What flows along a workflow edge.",
+      "enum": [
+        "dataset",
+        "test_result",
+        "split_plan",
+        "model_version",
+        "metrics",
+        "table",
+        "plot",
+        "report",
+        "evidence"
+      ],
+      "title": "PortType",
+      "type": "string"
+    },
+    "ResultField": {
+      "description": "A field of a node's JSON result that conditions may read (``nodes.<id>.<field>``).",
+      "properties": {
+        "description": {
+          "maxLength": 300,
+          "title": "Description",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "number",
+            "integer",
+            "boolean",
+            "string",
+            "object",
+            "array"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "description"
+      ],
+      "title": "ResultField",
+      "type": "object"
+    },
+    "TypicalRuntime": {
+      "description": "Rough wall-clock time on typical data (``S`` resource class).",
+      "enum": [
+        "instant",
+        "seconds",
+        "minutes",
+        "long"
+      ],
+      "title": "TypicalRuntime",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-NodeImplementation.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One node implementation of the catalog (``GET /v1/catalog/workflow-nodes``).",
+  "examples": [
+    {
+      "about": {
+        "assumptions": [
+          "Numbers can be added up (spend, sales); averages are averaged"
+        ],
+        "avoid_when": [
+          "Your data already has one row per week"
+        ],
+        "data_needs": [
+          "A date column"
+        ],
+        "difficulty": "beginner",
+        "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+        "fits": {
+          "goal": [
+            "check_data"
+          ]
+        },
+        "outputs": [
+          "The same columns, one row per week"
+        ],
+        "related": [
+          "core.calendar"
+        ],
+        "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+        "title": "Weekly totals",
+        "typical_runtime": "instant",
+        "use_when": [
+          "Your data is daily but you want to plan or report by week"
+        ]
+      },
+      "id": "test.adf",
+      "inputs": {
+        "data": {
+          "description": "The data to work on",
+          "type": "dataset"
+        }
+      },
+      "kind": "test",
+      "outputs": {
+        "result": "test_result"
+      },
+      "params_schema": {
+        "properties": {
+          "alpha": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "result_fields": {
+        "p_value": {
+          "description": "The p-value",
+          "type": "number"
+        }
+      },
+      "version": "1.0.0"
+    }
+  ],
+  "properties": {
+    "about": {
+      "$ref": "#/$defs/About"
+    },
+    "cacheable": {
+      "default": true,
+      "description": "Same inputs and params give the same result",
+      "title": "Cacheable",
+      "type": "boolean"
+    },
+    "id": {
+      "pattern": "^[a-z]+\\.[a-z0-9_]+$",
+      "title": "Id",
+      "type": "string"
+    },
+    "inputs": {
+      "additionalProperties": {
+        "$ref": "#/$defs/PortSpec"
+      },
+      "title": "Inputs",
+      "type": "object"
+    },
+    "kind": {
+      "$ref": "#/$defs/NodeKind"
+    },
+    "outputs": {
+      "additionalProperties": {
+        "$ref": "#/$defs/PortType"
+      },
+      "title": "Outputs",
+      "type": "object"
+    },
+    "params_schema": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Params Schema",
+      "type": "object"
+    },
+    "result_fields": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ResultField"
+      },
+      "title": "Result Fields",
+      "type": "object"
+    },
+    "runs_in": {
+      "default": "sandbox",
+      "enum": [
+        "orchestrator",
+        "sandbox",
+        "child_run"
+      ],
+      "title": "Runs In",
+      "type": "string"
+    },
+    "version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "about"
+  ],
+  "title": "NodeImplementation",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

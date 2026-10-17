@@ -1,5 +1,13 @@
 {
   "$defs": {
+    "Capability": {
+      "description": "Grants on top of a role (M3.5). Project admins hold every capability implicitly.",
+      "enum": [
+        "reviewer"
+      ],
+      "title": "Capability",
+      "type": "string"
+    },
     "ProjectRole": {
       "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
       "enum": [
@@ -15,21 +23,46 @@
   "$id": "https://schemas.mapi.dev/v1/api-MembershipUpdate.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Change a member's role (the last admin of a tenant or project cannot be demoted).",
+  "description": "Change a member's role (the last admin of a tenant or project cannot be demoted)\nand, from M3.5, their capabilities (``reviewer``).",
   "examples": [
     {
       "role": "editor"
+    },
+    {
+      "capabilities": [
+        "reviewer"
+      ]
     }
   ],
   "properties": {
+    "capabilities": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Capabilities"
+    },
     "role": {
-      "$ref": "#/$defs/ProjectRole"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProjectRole"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
-  "required": [
-    "role"
-  ],
   "title": "MembershipUpdate",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

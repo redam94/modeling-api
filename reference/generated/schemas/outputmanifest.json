@@ -102,7 +102,11 @@
         "backtest",
         "sbc",
         "campaign",
-        "translate_priors"
+        "translate_priors",
+        "workflow",
+        "workflow_node",
+        "explore",
+        "governance"
       ],
       "title": "RunKind",
       "type": "string"
@@ -295,5 +299,5 @@
   ],
   "title": "OutputManifest",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

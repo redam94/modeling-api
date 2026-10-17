@@ -1,0 +1,135 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-WorkflowTrigger.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "examples": [
+    {
+      "active": true,
+      "created_at": "2026-10-15T09:30:00Z",
+      "dataset": "dataset://growth/weekly_sales",
+      "event": "dataset.version.created",
+      "id": "trg_01jaf3g1h2j3k4m5n6p7q8r9s0",
+      "input": "data",
+      "workflow_id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0"
+    }
+  ],
+  "properties": {
+    "active": {
+      "title": "Active",
+      "type": "boolean"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Created By"
+    },
+    "dataset": {
+      "title": "Dataset",
+      "type": "string"
+    },
+    "debounce_seconds": {
+      "default": 300,
+      "title": "Debounce Seconds",
+      "type": "integer"
+    },
+    "event": {
+      "const": "dataset.version.created",
+      "title": "Event",
+      "type": "string"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "input": {
+      "title": "Input",
+      "type": "string"
+    },
+    "last_fired_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Fired At"
+    },
+    "last_run_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Run Id"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Params",
+      "type": "object"
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revision"
+    },
+    "workflow_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Workflow Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "workflow_id",
+    "event",
+    "dataset",
+    "input",
+    "active",
+    "created_at"
+  ],
+  "title": "WorkflowTrigger",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

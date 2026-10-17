@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-TriggerCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/workflows/{workflow_id}/triggers``: run when a new version of a dataset\nis ready; the version is bound to workflow input ``input``.",
+  "examples": [
+    {
+      "dataset": "dataset://growth/weekly_sales",
+      "debounce_seconds": 600,
+      "input": "data"
+    }
+  ],
+  "properties": {
+    "active": {
+      "default": true,
+      "title": "Active",
+      "type": "boolean"
+    },
+    "dataset": {
+      "description": "dataset://project/name (any version)",
+      "examples": [
+        "dataset://growth/eu_media_daily@latest"
+      ],
+      "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+      "title": "Dataset",
+      "type": "string"
+    },
+    "debounce_seconds": {
+      "default": 300,
+      "description": "Collapse versions arriving within this window",
+      "maximum": 86400,
+      "minimum": 0,
+      "title": "Debounce Seconds",
+      "type": "integer"
+    },
+    "event": {
+      "const": "dataset.version.created",
+      "default": "dataset.version.created",
+      "title": "Event",
+      "type": "string"
+    },
+    "input": {
+      "description": "The workflow input the new version is bound to",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Input",
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "maxProperties": 64,
+      "title": "Params",
+      "type": "object"
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revision"
+    }
+  },
+  "required": [
+    "dataset",
+    "input"
+  ],
+  "title": "TriggerCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

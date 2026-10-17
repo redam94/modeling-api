@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Import a BayesInsight project (model_def.json, metadata.json and its MFF data) into modeling-api - choose the dedicated mmm.bayesinsight model or the built-in geo MMM, read the import report, check and fit it on a laptop, then run it on the platform.">
+        <meta name="description" content="What was verified of M3.5 (workflows, governance, explorers, mmm-framework, statsmodels) against a live local stack, the defects the runs found and fixed, how to rerun the journeys, and what still needs Google Cloud, Docker or people.">
       
       
         <meta name="author" content="Matthew Reda">
       
       
       
-        <link rel="prev" href="../../guides/atlas/">
+        <link rel="prev" href="../m3-verification/">
       
       
-        <link rel="next" href="../../concepts/">
+        <link rel="next" href="../configuration/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Import a BayesInsight model - modeling-api</title>
+        <title>M3.5 verification - modeling-api</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#import-a-bayesinsight-model-v04" class="md-skip">
+        <a href="#m35-verification-v05" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Import a BayesInsight model
+              M3.5 verification
             
           </span>
         </div>
@@ -254,13 +254,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
           
   
   
@@ -354,11 +352,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../operations/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -471,6 +471,8 @@
       
         
       
+        
+      
     
     
     
@@ -523,6 +525,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -756,8 +786,6 @@
       
   
   
-    
-  
   
   
     
@@ -777,29 +805,24 @@
       
         
       
-        
-      
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../tutorials/" class="md-nav__link ">
               
   
   
@@ -817,13 +840,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -871,7 +894,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../google-sheets/" class="md-nav__link">
+      <a href="../../tutorials/google-sheets/" class="md-nav__link">
         
   
   
@@ -899,7 +922,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../embed-a-chart/" class="md-nav__link">
+      <a href="../../tutorials/embed-a-chart/" class="md-nav__link">
         
   
   
@@ -955,14 +978,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/atlas/" class="md-nav__link">
+      <a href="../../tutorials/optimise-a-budget/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Optimise a budget with Atlas
+    Optimise a budget
   
 
     
@@ -971,158 +994,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Import a BayesInsight model
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Import a BayesInsight model
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-example-project" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The example project
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#1-choose-a-target" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Choose a target
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-import" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Import
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-check-the-draft" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Check the draft
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-fit-it-on-your-laptop" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Fit it on your laptop
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-run-it-on-the-platform" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Run it on the platform
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1146,6 +1017,12 @@
       
         
           
+        
+      
+        
+      
+        
+      
         
       
         
@@ -1562,6 +1439,90 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/about-and-choosing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1637,6 +1598,16 @@
   
     
     
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
       
         
       
@@ -1923,6 +1894,146 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/data-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a dataset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/model-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate models with governance policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/null-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Can you trust this model? Null tests explained
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/choosing-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2091,6 +2202,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -2360,6 +2477,90 @@
   
   
     <li class="md-nav__item">
+      <a href="../../models/statsmodels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    statsmodels time-series models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows: tests, decisions, models, automation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/workflow-cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/plots/" class="md-nav__link">
         
   
@@ -2460,6 +2661,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -2725,6 +2932,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../models/mmm-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/generated/models-catalog/" class="md-nav__link">
         
   
@@ -2733,6 +2968,62 @@
     
   
     Models catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/workflow-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/governance-checks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance checks
   
 
     
@@ -3165,6 +3456,8 @@
       
         
       
+        
+      
     
     
     
@@ -3178,7 +3471,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3200,14 +3493,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_22" id="__nav_6_22_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_22">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_25">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3415,6 +3708,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3434,6 +3755,8 @@
       
   
   
+    
+  
   
   
     
@@ -3471,24 +3794,29 @@
       
         
       
+        
+      
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../operations/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -3506,13 +3834,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3532,7 +3860,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/local-development/" class="md-nav__link">
+      <a href="../local-development/" class="md-nav__link">
         
   
   
@@ -3560,7 +3888,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/docker/" class="md-nav__link">
+      <a href="../docker/" class="md-nav__link">
         
   
   
@@ -3588,7 +3916,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/images/" class="md-nav__link">
+      <a href="../images/" class="md-nav__link">
         
   
   
@@ -3616,7 +3944,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/gcp-deployment/" class="md-nav__link">
+      <a href="../gcp-deployment/" class="md-nav__link">
         
   
   
@@ -3644,7 +3972,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/security-hardening/" class="md-nav__link">
+      <a href="../security-hardening/" class="md-nav__link">
         
   
   
@@ -3672,7 +4000,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/authentication/" class="md-nav__link">
+      <a href="../authentication/" class="md-nav__link">
         
   
   
@@ -3700,7 +4028,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/signup-and-abuse/" class="md-nav__link">
+      <a href="../signup-and-abuse/" class="md-nav__link">
         
   
   
@@ -3728,7 +4056,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/cloud-run/" class="md-nav__link">
+      <a href="../cloud-run/" class="md-nav__link">
         
   
   
@@ -3756,7 +4084,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/observability/" class="md-nav__link">
+      <a href="../observability/" class="md-nav__link">
         
   
   
@@ -3784,7 +4112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/security-suite/" class="md-nav__link">
+      <a href="../security-suite/" class="md-nav__link">
         
   
   
@@ -3812,7 +4140,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/m2-verification/" class="md-nav__link">
+      <a href="../m2-verification/" class="md-nav__link">
         
   
   
@@ -3840,7 +4168,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/m3-verification/" class="md-nav__link">
+      <a href="../m3-verification/" class="md-nav__link">
         
   
   
@@ -3865,10 +4193,190 @@
                 
   
   
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3.5 verification
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3.5 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-runs-found-and-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the runs found and fixed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What the runs found and fixed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-earlier-journeys-brought-up-to-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The earlier journeys, brought up to date
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#an-observation-since-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An observation, since fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-rerun" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to rerun
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#timings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-verification-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full verification set
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-remains-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What remains unverified
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#final-integration-v050" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final integration (v0.5.0)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
   
   
     <li class="md-nav__item">
-      <a href="../../operations/configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -3896,7 +4404,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/troubleshooting/" class="md-nav__link">
+      <a href="../troubleshooting/" class="md-nav__link">
         
   
   
@@ -3935,6 +4443,8 @@
       
         
           
+        
+      
         
       
         
@@ -4090,6 +4600,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../roadmap/workflows-governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows, governance and explorers (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../roadmap/expert-plugins/" class="md-nav__link">
         
   
@@ -4097,7 +4635,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins, MCP and optimisation (v0.5)
+    Next: expert plugins and MCP (v0.6)
   
 
     
@@ -4296,10 +4834,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-example-project" class="md-nav__link">
+  <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The example project
+        Summary
       
     </span>
   </a>
@@ -4307,10 +4845,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-choose-a-target" class="md-nav__link">
+  <a href="#what-the-runs-found-and-fixed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Choose a target
+        What the runs found and fixed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What the runs found and fixed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-earlier-journeys-brought-up-to-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The earlier journeys, brought up to date
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#an-observation-since-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An observation, since fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-rerun" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to rerun
       
     </span>
   </a>
@@ -4318,10 +4895,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-import" class="md-nav__link">
+  <a href="#timings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Import
+        Timings
       
     </span>
   </a>
@@ -4329,10 +4906,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-check-the-draft" class="md-nav__link">
+  <a href="#full-verification-set" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Check the draft
+        Full verification set
       
     </span>
   </a>
@@ -4340,10 +4917,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-fit-it-on-your-laptop" class="md-nav__link">
+  <a href="#what-remains-unverified" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Fit it on your laptop
+        What remains unverified
       
     </span>
   </a>
@@ -4351,21 +4928,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-run-it-on-the-platform" class="md-nav__link">
+  <a href="#final-integration-v050" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Run it on the platform
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next
+        Final integration (v0.5.0)
       
     </span>
   </a>
@@ -4389,180 +4955,319 @@
 
 
 
-<h1 id="import-a-bayesinsight-model-v04">Import a BayesInsight model <span class="mapi-badge">v0.4</span><a class="headerlink" href="#import-a-bayesinsight-model-v04" title="Permanent link">&para;</a></h1>
-<p>A BayesInsight project is three files: <code>model_def.json</code> (the model), <code>metadata.json</code> (the
-keys of the data) and the data itself as an MFF long table. modeling-api imports them as a
-<strong>draft</strong>: an ingest mapping for the MFF table and a <code>ModelSpec</code>, plus a report of every
-feature that did not carry over exactly. Nothing is dropped silently.</p>
-<p>In this tutorial you import a project, read the report, check the draft and fit it on your
-laptop - where you can see that it recovers the parameters the data was simulated with - and
-then run it on the platform. The code is <code>docs/snippets/bayesinsight_import.py</code> in the
-repository, which the test suite runs.</p>
-<h2 id="the-example-project">The example project<a class="headerlink" href="#the-example-project" title="Permanent link">&para;</a></h2>
-<p>The files come from <code>mapi_plugin_mmm.bayesinsight_examples</code>: 60 weeks of sales for two
-geographies (US, DE) × two products (Phones, Watches), driven by TV (delayed carry-over,
-Hill curve) and search (geometric carry-over, Hill curve), a price control with a negative
-sign, an annual season and Normal noise. The MFF table looks like this:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Period,Geography,Product,Outlet,Campaign,Creative,VariableName,VariableValue
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>2023-01-02,DE,Phones,Total,Total,Total,Price,8.904
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>2023-01-02,DE,Phones,Total,Total,Total,Sales,240.633
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>2023-01-02,DE,Phones,Total,Total,Total,Search,26.58
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>2023-01-02,DE,Phones,Total,Total,Total,TV,102.21
-</span></code></pre></div>
-<p>and <code>model_def.json</code> names its variables BayesInsight's way, <code>TV_Total_Total_Total</code>, with
-priors in the KPI's own units (a TV coefficient around 30 sales per unit of the curve).</p>
-<h2 id="1-choose-a-target">1. Choose a target<a class="headerlink" href="#1-choose-a-target" title="Permanent link">&para;</a></h2>
+<h1 id="m35-verification-v05">M3.5 verification <span class="mapi-badge">v0.5</span><a class="headerlink" href="#m35-verification-v05" title="Permanent link">&para;</a></h1>
+<p>M3.5 adds workflows, governance policies and validations, the Data and Model Explorers,
+mmm-framework as the marketing-mix engine, the statsmodels time-series models, About cards
+and <em>Help me choose</em>. Every part has unit, integration and mocked-browser tests. This page
+records the step after those: the five journeys below run <strong>through the running stack</strong>,
+from outside its processes, with real fits in the runner, the real orchestrator driving
+workflow runs, and the web app talking to the real API.</p>
+<p>Verified on 2026-10-16 on branch <code>fix/m35-e2e</code> (v0.5 development), on an Apple-silicon
+laptop (8 cores, 16 GB, macOS), against a live <code>make dev</code> stack:</p>
+<ul>
+<li>the API, worker, web app (Vite dev server) and plot sandbox on non-default ports (API
+  <code>18000</code>, GCS shim <code>14443</code>, web <code>15173</code>, plot sandbox <code>15174</code>) with their own
+  <code>MAPI_DATA_DIR</code>;</li>
+<li>the <code>dev</code> profile: the development identity provider (<code>admin@dev.local</code> submits,
+  <code>analyst@dev.local</code> reviews) and the outbox mailer;</li>
+<li>the GCS shim instead of Cloud Storage and the embedded <code>pgserver</code> Postgres;</li>
+<li>every run on the <code>local-process</code> executor (no Docker daemon, no cloud project).</li>
+</ul>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th></th>
-<th><code>mmm.bayesinsight</code></th>
-<th><code>mmm.hierarchical_geo</code> (default)</th>
+<th>Journey</th>
+<th>Verified through the live stack</th>
+<th>Result</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>What it fits</td>
-<td>BayesInsight's model <strong>as <code>model_def.json</code> defines it</strong>: likelihoods (Normal, log-normal, Poisson, negative binomial, zero-inflated), priors in KPI units, Hill/linear/S-shaped curves, delayed, geometric or Weibull carry-over, enforced signs, random effects per row id, seasons, local trends</td>
-<td>The platform's hierarchical geo MMM, with every BayesInsight feature that has an equivalent mapped onto it</td>
+<td>1. The canonical time-series workflow</td>
+<td>A weekly KPI with a unit root (a random walk plus a price driver with a true effect of -3) through the <code>ts_readiness_arimax</code> template, followed over server-sent events (API), in the run monitor (browser, Expert) and as a Guided recipe started from the Data Explorer</td>
+<td>ADF (p = 0.62), KPSS, Phillips-Perron and Zivot-Andrews all say the series wanders; the branch differences it (and skips the seasonal difference) and records the four values it read; the AIC search picks ARIMA(1, 1, 1), and the fitted ARIMAX and the backtest use exactly <code>[1, 1, 1]</code> with <code>price</code>; six expanding-window folds score ARIMAX and the naive benchmarks per horizon; ARIMAX wins (MAE 1.45 against naive 1.68) and is selected; the governance node passes the default forecasting policy. <strong>Pass, after two fixes</strong> (the dev server's workflow graph, a recipe's first run)</td>
 </tr>
 <tr>
-<td>Panel dims</td>
-<td>Every row id besides <code>Period</code> is its own dim (<code>geo</code>, <code>product</code>)</td>
-<td>One <code>geo</code> dim; several row ids are joined (<code>US|Phones</code>)</td>
+<td>2. Governance</td>
+<td>A project policy requiring <code>null.permutation_target</code> and <code>null.noise_regressors</code> with a reviewer's approval; ARIMAX fitted on real signal and on pure noise</td>
+<td>Noise: the shuffled-target test fails (13 to 18 of 19 shuffled fits did as well across runs, p = 0.7-0.95), the validation is <code>checks_failed</code>, promotion answers <code>409 NOT_VALIDATED</code>. Signal: p = 0.05 (better than every shuffled fit), fake drivers get 0.1 % of the result, <code>awaiting_approval</code>; promotion refused until approved; the submitter's approval is <code>SELF_APPROVAL_FORBIDDEN</code>; the reviewer (an editor with the <code>reviewer</code> capability) approves; <code>validated</code>; promotion succeeds; the evidence pack exports as HTML (no script) and JSON (with its digest). <strong>Pass, after three fixes</strong> (the policy's families, the reviewer capability in the client, uploading the same data again)</td>
 </tr>
 <tr>
-<td>Priors</td>
-<td>Kept, in KPI units</td>
-<td>Coefficient priors are <strong>not</strong> carried over (they would mean something else on the mean-scaled KPI): state them as <a href="../../guides/guided-modelling/">business priors</a> instead</td>
+<td>3. mmm-framework</td>
+<td><code>mmm.bayesian</code> (150 tuning steps and draws, 2 chains) pooled over 3 regions, 2 channels, 40 weeks</td>
+<td>Fitted in about 30 s; the Model Explorer's contributions and response curves (non-decreasing in spend, both channels); a budget plan that keeps the total, respects tv's 0.5-1.5x bounds, reports the chance of beating today's plan and a 5-point efficient frontier, in about 10 s. <strong>Pass, after one fix</strong></td>
 </tr>
 <tr>
-<td>Guided extras</td>
-<td>Lift tests (under the model's own likelihood)</td>
-<td>Business priors, lift tests, what-if grids</td>
+<td>4. Explorers and the chooser</td>
+<td>The Data Explorer of the unit-root series; a statsmodels VAR(2) on three weekly series; <em>Help me choose</em> for "forecast weekly sales with drivers"</td>
+<td>Stationarity per series; impulse responses with bands and a variance decomposition whose shares sum to 1; the browser renders both in the plot sandbox. The chooser now ranks <code>ts.sarimax</code> first with four reasons and no caution, and its About card opens. <strong>Pass, after two fixes</strong></td>
 </tr>
 <tr>
-<td>Use it when</td>
-<td>You want BayesInsight's results, reproduced and served</td>
-<td>You want to move to the platform's geo MMM and its Guided tools</td>
+<td>5. The CLI</td>
+<td><code>mapi workflows validate</code>, <code>apply</code> and <code>run --watch</code> on the cookbook's canonical document, exactly as <code>docs/snippets/cli_v05.sh</code> runs them (project renamed)</td>
+<td>23 nodes valid; the live board prints every node and decision; the rolling-origin backtest (window 104) and the Diebold-Mariano node run; exit status 0 with the fitted model's reference. <strong>Pass</strong></td>
 </tr>
 </tbody>
 </table>
-<h2 id="2-import">2. Import<a class="headerlink" href="#2-import" title="Permanent link">&para;</a></h2>
-<p>The import is pure JSON in, JSON out, the same function the API runs, so you can call it
-offline:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.bayesinsight</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_bayesinsight</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.guided</span><span class="w"> </span><span class="kn">import</span> <span class="n">BayesInsightImport</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">request</span> <span class="o">=</span> <span class="n">BayesInsightImport</span><span class="p">(</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">"bi-sales"</span><span class="p">,</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">dataset</span><span class="o">=</span><span class="s2">"bi_mff"</span><span class="p">,</span>  <span class="c1"># the dataset the MFF upload becomes</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">target</span><span class="o">=</span><span class="s2">"mmm.bayesinsight"</span><span class="p">,</span>  <span class="c1"># or "mmm.hierarchical_geo" (the default)</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">model_def</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">"model_def.json"</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)),</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">metadata</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">"metadata.json"</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)),</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">)</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">draft</span> <span class="o">=</span> <span class="n">import_bayesinsight</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="s2">"retail"</span><span class="p">)</span>  <span class="c1"># pure JSON: no server, no numpy</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">draft</span><span class="o">.</span><span class="n">issues</span><span class="p">:</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">severity</span><span class="o">.</span><span class="n">value</span><span class="si">:</span><span class="s2">7</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">pointer</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">message</span><span class="p">[:</span><span class="mi">70</span><span class="p">]</span><span class="si">}</span><span class="s2">…"</span><span class="p">)</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">draft</span><span class="o">.</span><span class="n">mapping</span><span class="o">.</span><span class="n">dims</span><span class="p">),</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">draft</span><span class="o">.</span><span class="n">mapping</span><span class="o">.</span><span class="n">vars</span><span class="p">))</span>
+<p><code>tests/e2e/test_m35_stack.py</code> (5 tests, the API and the CLI, about 5 minutes) and
+<code>apps/web/e2e/m35-live.e2e.spec.ts</code> (7 tests, the browser in Expert and Guided mode, about
+3 minutes including a 90-second seed) both pass. The cookbook run from the CLI reuses the
+canonical run's unchanged unit-root tests from the cache (<code>cached_from</code> names that run).
+The earlier end-to-end suites (M1 to M3) were run against the same stack too; see
+<a href="#full-verification-set">Full verification set</a>.</p>
+<h2 id="what-the-runs-found-and-fixed">What the runs found and fixed<a class="headerlink" href="#what-the-runs-found-and-fixed" title="Permanent link">&para;</a></h2>
+<p>Eight defects, none of which the unit, integration or mocked-browser tests could see. Each
+fix has a regression test.</p>
+<table>
+<thead>
+<tr>
+<th>Found in</th>
+<th>Defect</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Governance</td>
+<td>A policy with <code>applies_to: {families: [ts]}</code> - the example on every governance page and in <code>forecast-policy.yaml</code> - covered <strong>no</strong> statsmodels model, whose manifests declare the family <code>forecast</code> (or <code>ts_multivariate</code>, <code>regime</code>). Its checks, approval and promotion gate silently never applied: the model fitted on noise was judged by the default policy only, came out <code>validated</code> and was promoted.</td>
+<td>A family matches a model's declared family or the namespace of its id (<code>mapi_spec.governance.PolicyMatch</code>).</td>
+</tr>
+<tr>
+<td>Governance</td>
+<td>The client could not give a member the <code>reviewer</code> capability (<code>add_member</code> and <code>set_role</code> dropped it), so the second person could not be set up without raw HTTP.</td>
+<td><code>tenants.add_member(..., capabilities=[...])</code> and <code>tenants.set_capabilities(...)</code>, sync and async.</td>
+</tr>
+<tr>
+<td>Every upload</td>
+<td>Uploading data that had been uploaded before - the same file as the next version, or into another dataset or project - failed its ingest with <code>INTEGRITY_FAILURE</code> ("ui/explore/index.json already holds different content"). Ingest outputs are stored under the data's content hash, and the Data Explorer views an ingest writes since v0.5 name the dataset version and carry plot timestamps.</td>
+<td>Each ingest's explorer views are stored under its run (<code>t/&lt;tenant&gt;/datasets/&lt;sha&gt;/runs/&lt;run&gt;/ui/explore/</code>); the data and its sidecars keep the strict same-content check.</td>
+</tr>
+<tr>
+<td>mmm-framework</td>
+<td><code>api.explorations.view(..., "response_curves")</code> (and <code>mapi explore --show</code>) returned the section's list of plots instead of its view, for every section whose name sorts after <code>plots</code> (<code>residuals</code>, <code>response_curves</code>, <code>stationarity</code>, <code>stl</code>...).</td>
+<td>The exact view is looked up first; plot files never match.</td>
+</tr>
+<tr>
+<td>Chooser</td>
+<td><em>Help me choose</em> ranked <code>ts.sarimax</code> sixth for "forecast weekly sales with drivers" although it is the only model that fits all four answers: items silent on a question also scored 1.0 and ties broke on difficulty.</td>
+<td>Ties break on the number of answers an item fits explicitly.</td>
+</tr>
+<tr>
+<td>Browser</td>
+<td>On the dev server, the first page to open a workflow graph crashed with "Invalid hook call" in <code>ReactFlowProvider</code>, and a route loading while the spec editor's YAML worker first started failed with "Failed to fetch dynamically imported module": Vite found React Flow and the worker's dependency late, optimised them in a second pass and reloaded.</td>
+<td>Both are pre-bundled when the dev server starts (<code>apps/web/dev-prebundle.ts</code>; a test requires every package a web worker imports to be listed). Production builds were not affected.</td>
+</tr>
+<tr>
+<td>Data Explorer</td>
+<td>The overview of the most common upload, a time dimension called <code>time</code>, read "2 variables over 156 time".</td>
+<td>The time dimension is named by its frequency ("156 weeks").</td>
+</tr>
+<tr>
+<td>Guided recipes</td>
+<td>A Guided user's first run of a recipe in a project failed with "The recipe did not start: Not Found": the click created the workflow from the template, then posted the run to <code>/v1/workflows//runs</code> with the id the page was rendered with. The mock project always had the workflow.</td>
+<td>A run can name its workflow; the recipe runs the one it just created.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-earlier-journeys-brought-up-to-date">The earlier journeys, brought up to date<a class="headerlink" href="#the-earlier-journeys-brought-up-to-date" title="Permanent link">&para;</a></h3>
+<p>Run against the same stack, four assertions of the M1 and M3 journeys had gone stale with
+M3.5 (the product was right): the E33 spec on mmm-framework no longer has scaling or lag
+steps (M1 now checks its currency, weekly and holiday steps), and its scores carry six
+components, not five (the M1 browser flow counts the rows); a Guided draft records no
+units, so the budget plan is checked by its KPI's name; and the M3 webhook receiver verified
+deliveries minutes after they arrived, against the 5-minute signature tolerance (it now
+verifies each delivery at its arrival, as a real receiver does).</p>
+<h3 id="an-observation-since-fixed">An observation, since fixed<a class="headerlink" href="#an-observation-since-fixed" title="Permanent link">&para;</a></h3>
+<p>Under a project policy that made the shuffled-target test blocking, the cookbook's ARIMA(1,
+1, 1) on the random walk failed it: 4 of 19 shuffled refits did as well (p = 0.25), although
+the model beat the naive forecast by 25 % on the held-out weeks. The null shuffled the
+target in blocks, which kept most of the persistence a differenced model exploits. The M3.5
+review replaced it before the release: a model with drivers now has its drivers shuffled in
+blocks with the result untouched, a model without drivers has its differences shuffled and
+re-integrated, and every fit is scored by its holdout skill against the null forecast (see
+<a href="../../guides/null-tests/">null tests explained</a>). On the same data the cookbook's model now
+beats all 20 shuffled fits (p = 0.048).</p>
+<h2 id="how-to-rerun">How to rerun<a class="headerlink" href="#how-to-rerun" title="Permanent link">&para;</a></h2>
+<p>Start a stack on free ports with its own data directory (the variables are those of
+<a href="../local-development/">local development</a>):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:18000<span class="w"> </span><span class="nv">MAPI_GCS_ENDPOINT</span><span class="o">=</span>http://127.0.0.1:14443
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_WEB_ORIGIN</span><span class="o">=</span>http://127.0.0.1:15173<span class="w"> </span><span class="nv">MAPI_PLOTS_ORIGIN</span><span class="o">=</span>http://127.0.0.1:15174
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">VITE_API_BASE</span><span class="o">=</span><span class="nv">$MAPI_API_URL</span><span class="w"> </span><span class="nv">MAPI_DATA_DIR</span><span class="o">=</span><span class="nv">$PWD</span>/.local/m35e2e
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>make<span class="w"> </span>dev<span class="w">                    </span><span class="c1"># in one shell; `make stop` with the same variables stops it</span>
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>info    /model_def/variable_details/2/adstock: Search_Total_Total_Total: BayesInsight's code cannot run 'geometric' c…
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>info    /model_def/variable_details/3/sign: Price_Total_Total_Total: the negative sign is enforced (BayesInsight d…
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>['date', 'geo', 'product'] ['price', 'sales', 'search', 'tv']
+<p>Then, in another shell with the same variables:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>e2e<span class="w"> </span>tests/e2e/test_m35_stack.py<span class="w"> </span>-s<span class="w">          </span><span class="c1"># the API and CLI journeys</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pnpm<span class="w"> </span>--filter<span class="w"> </span>@mapi/web<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>env<span class="w"> </span><span class="nv">MAPI_E2E</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>playwright<span class="w"> </span><span class="nb">test</span><span class="w"> </span>e2e/m35-live.e2e.spec.ts<span class="w">                    </span><span class="c1"># the browser journeys</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>make<span class="w"> </span>e2e<span class="w">                                                      </span><span class="c1"># or every end-to-end suite</span>
 </span></code></pre></div>
-<p>Each issue has a severity, a JSON pointer into your files and a message:</p>
+<p>Each suite creates its own project in the <code>default</code> tenant (<code>m35e2e-&lt;id&gt;</code>, <code>m35ui-&lt;id&gt;</code>) and
+deletes it afterwards; <code>MAPI_E2E_KEEP=1</code> keeps it to look at in the app. Timings are written
+to <code>$MAPI_DATA_DIR/e2e/m35-timings.json</code> and <code>apps/web/e2e/screenshots/m35-timings.json</code>, and
+the browser suite saves its screens as <code>apps/web/e2e/screenshots/m35-*.png</code> (git-ignored).</p>
+<h2 id="timings">Timings<a class="headerlink" href="#timings" title="Permanent link">&para;</a></h2>
+<p>Wall-clock seconds of the last run, on the laptop above (no Docker, no cold starts):</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Seconds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Upload and ingest of a small dataset (the sandboxed ingest with its Data Explorer views)</td>
+<td>8-13</td>
+</tr>
+<tr>
+<td>The canonical workflow, 19 nodes, through the orchestrator and the runner</td>
+<td>37-40</td>
+</tr>
+<tr>
+<td>The cookbook workflow from the CLI, 23 nodes</td>
+<td>45</td>
+</tr>
+<tr>
+<td>A validation with the null tests (19 shuffled refits plus 3 fake drivers)</td>
+<td>26</td>
+</tr>
+<tr>
+<td><code>mmm.bayesian</code>, tiny settings, 3 regions x 2 channels x 40 weeks</td>
+<td>31-34</td>
+</tr>
+<tr>
+<td>A statsmodels VAR(2) fit</td>
+<td>13</td>
+</tr>
+<tr>
+<td>A Model Explorer request served from the fit's views</td>
+<td>8</td>
+</tr>
+<tr>
+<td>A budget plan with a 5-point frontier</td>
+<td>10-16</td>
+</tr>
+</tbody>
+</table>
+<h2 id="full-verification-set">Full verification set<a class="headerlink" href="#full-verification-set" title="Permanent link">&para;</a></h2>
+<p>On the final tree of <code>fix/m35-e2e</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv run pytest -q -n 6</code></td>
+<td>6988 passed, 12 skipped (Docker, Linux-only and cloud-library tests), 0 failed</td>
+</tr>
+<tr>
+<td><code>make conformance</code></td>
+<td>11 of 11 fixtures</td>
+</tr>
+<tr>
+<td><code>make lint</code> (ruff, the 5 import contracts), <code>make typecheck</code>, <code>make release-check</code></td>
+<td>clean, clean, passed</td>
+</tr>
+<tr>
+<td><code>pnpm -r lint</code>, <code>pnpm -r typecheck</code>, <code>pnpm -r build</code></td>
+<td>clean; the entry chunk is 598 kB of its 640 KiB budget</td>
+</tr>
+<tr>
+<td>Vitest</td>
+<td>web 373, plot sandbox 97</td>
+</tr>
+<tr>
+<td>Playwright smoke (mock mode, CSP and Trusted Types enforced, ports 15173/15174)</td>
+<td>78 passed, 2 skipped (the opt-in screenshot specs)</td>
+</tr>
+<tr>
+<td>The generated fixtures and types (<code>gen_*_fixtures.py --check</code>, <code>openapi:check</code>)</td>
+<td>up to date</td>
+</tr>
+<tr>
+<td><code>uv run --group docs mkdocs build --strict</code></td>
+<td>passes</td>
+</tr>
+<tr>
+<td>Every end-to-end suite against the live stack: <code>uv run pytest -m e2e tests/e2e</code> (M1, M2, M3, M3.5 and the corpus) and the browser <code>@e2e</code> specs (M1, M2, M3, M3.5 and the stack spec)</td>
+<td>Python: 48 passed, 1 skipped (the opt-in fit burst); the M1, M3 and M3.5 modules were re-run after their fixes. Browser: 23 passed; the M1 and <code>stack</code> specs were re-run after <code>make seed</code> (the <code>stack</code> spec needs its demo data) and the dev-server fix.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-remains-unverified">What remains unverified<a class="headerlink" href="#what-remains-unverified" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>info</strong>: faithful but perhaps surprising. Here, geometric carry-over is fitted as
-  documented although BayesInsight's own code cannot run it, and the price sign is enforced
-  (BayesInsight declares signs without enforcing them).</li>
-<li><strong>warning</strong>: something fell back to BayesInsight's default or has no equivalent. Read
-  every one before you fit.</li>
-<li><strong>error</strong>: the project cannot be imported (no single KPI, no media or control, names that
-  do not match the row ids); the API answers <code>422 IMPORT_UNSUPPORTED</code>.</li>
+<li><strong>Real Google Cloud.</strong> Cloud Storage (the GCS shim stood in), Cloud Run Jobs (every
+  workflow node, fit, governance, explore and optimise run used the <code>local-process</code>
+  executor), Pub/Sub, Cloud SQL and Identity Platform. Cold starts of the runner images add
+  to every workflow node, which runs as its own sandboxed run: a 19-node workflow starts about
+  15 of them.</li>
+<li><strong>Docker.</strong> No daemon here, so the images were not built: in particular <code>base-bayes</code>
+  with mmm-framework, JAX and nutpie, and <code>base-forecast</code> with statsmodels and the workflow
+  runtime. The <code>docker</code> and <code>docker-gvisor</code> executors, and so public (shared-tier)
+  workspaces, never ran a workflow, a validation or an optimisation.</li>
+<li><strong>People.</strong> No non-technical user tried the Guided recipes, Help me choose or the About
+  cards, and no reviewer used the approval screens on real models; nothing was tried with a
+  screen reader. The protocol of the <a href="../m3-verification/#protocol-for-the-five-non-technical-testers">M3 testers</a>
+  applies, with "run the readiness recipe on your weekly sales and say whether you would
+  trust the forecast" as an extra task.</li>
+<li><strong>Scale and real fits.</strong> Only tiny MCMC settings and small panels ran here; full-size
+  mmm-framework fits (4 chains, thousands of draws, dozens of geos), governance refit budgets
+  on them, and workflows with hundreds of nodes were not timed.</li>
+<li><strong>Not driven live by these journeys</strong> (covered by the server's integration tests with
+  embedded Postgres): schedules and dataset triggers firing, workflow cancellation,
+  sub-workflows, the <code>workflow.run.*</code> and validation webhooks, tenant-wide policies,
+  deprecation and resubmission, the visual workflow editor and the policy editor (their
+  mocked Playwright specs only).</li>
 </ul>
-<p>The same project imported for the geo MMM warns about what does not carry over:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">geo</span> <span class="o">=</span> <span class="n">import_bayesinsight</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">"target"</span><span class="p">:</span> <span class="s2">"mmm.hierarchical_geo"</span><span class="p">}),</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>                          <span class="n">project</span><span class="o">=</span><span class="s2">"retail"</span><span class="p">)</span>  <span class="c1"># fmt: skip</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">geo</span><span class="o">.</span><span class="n">issues</span><span class="p">:</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="k">if</span> <span class="n">issue</span><span class="o">.</span><span class="n">severity</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">"warning"</span><span class="p">:</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"warning </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">pointer</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">message</span><span class="p">[:</span><span class="mi">70</span><span class="p">]</span><span class="si">}</span><span class="s2">…"</span><span class="p">)</span>
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>warning /model_def/variable_details: mmm.hierarchical_geo uses one adstock kind for every channel; 'geometr…
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>warning /model_def/variable_details/2/coeff_prior: media coefficient priors are in KPI units and are not carried over; st…
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>warning /model_def/variable_details/3/sign: Price_Total_Total_Total: sign constraints on controls have no equivale…
-</span></code></pre></div>
-<p>The full mapping table is in
-<a href="../../guides/guided-data/#import-a-bayesinsight-model">From a spreadsheet to a Guided draft</a>.</p>
-<h2 id="3-check-the-draft">3. Check the draft<a class="headerlink" href="#3-check-the-draft" title="Permanent link">&para;</a></h2>
-<p>Validate the spec against the installed catalog and the schema the mapping promises, as the
-API does when you save it:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">default_registry</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.guided</span><span class="w"> </span><span class="kn">import</span> <span class="n">draft_schema</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelSpec</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.validate</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_spec</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">spec</span> <span class="o">=</span> <span class="n">ModelSpec</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">draft</span><span class="o">.</span><span class="n">spec</span><span class="p">)</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">check</span> <span class="o">=</span> <span class="n">validate_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">default_registry</span><span class="p">()</span><span class="o">.</span><span class="n">catalog</span><span class="p">(),</span> <span class="n">draft_schema</span><span class="p">(</span><span class="n">draft</span><span class="o">.</span><span class="n">mapping</span><span class="p">))</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"valid"</span> <span class="k">if</span> <span class="n">check</span><span class="o">.</span><span class="n">ok</span> <span class="k">else</span> <span class="p">[(</span><span class="n">e</span><span class="o">.</span><span class="n">pointer</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">check</span><span class="o">.</span><span class="n">errors</span><span class="p">])</span>
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>valid
-</span></code></pre></div>
-<p><code>draft.yaml</code> is the spec as YAML, the file you would review in a pull request:
-<code>model.settings.model_def</code> carries your <code>model_def.json</code>, <code>variables</code> maps each analytic name
-(<code>TV_Total_Total_Total</code>) to its variable, and a <code>core.lag_tensor</code> step with 12 lags feeds the
-carry-over.</p>
-<h2 id="4-fit-it-on-your-laptop">4. Fit it on your laptop<a class="headerlink" href="#4-fit-it-on-your-laptop" title="Permanent link">&para;</a></h2>
-<p>Before you spend platform compute, fit the draft in-process with tiny settings. The dataset
-comes from the sandboxed ingest's own code applied to the MFF table:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_runner.jobs</span><span class="w"> </span><span class="kn">import</span> <span class="n">IngestJob</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_runner.worker.ingest</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_dataset</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_spec</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1"># the sandboxed ingest's own code: the MFF table through the draft's mapping</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">ds</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">build_dataset</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">"sales_mff.csv"</span><span class="p">),</span> <span class="n">IngestJob</span><span class="p">(</span><span class="n">mapping</span><span class="o">=</span><span class="n">draft</span><span class="o">.</span><span class="n">mapping</span><span class="p">))</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">quick</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exclude_defaults</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">quick</span><span class="p">[</span><span class="s2">"model"</span><span class="p">][</span><span class="s2">"fit"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"mode"</span><span class="p">:</span> <span class="s2">"evaluate_then_refit"</span><span class="p">,</span> <span class="s2">"engine"</span><span class="p">:</span> <span class="s2">"pymc"</span><span class="p">,</span>
-</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>                         <span class="s2">"tune"</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s2">"draws"</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s2">"chains"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">"seed"</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>  <span class="c1"># fmt: skip</span>
-</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">ModelSpec</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">quick</span><span class="p">),</span> <span class="n">ds</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">default_registry</span><span class="p">(),</span>
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>                  <span class="n">raw_schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span>  <span class="c1"># fmt: skip</span>
-</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">post</span> <span class="o">=</span> <span class="n">bundle</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">posterior</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="s2">"chain"</span><span class="p">,</span> <span class="s2">"draw"</span><span class="p">))</span>
-</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="nb">print</span><span class="p">({</span><span class="n">v</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">post</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">__coef"</span><span class="p">]),</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"tv"</span><span class="p">,</span> <span class="s2">"search"</span><span class="p">,</span> <span class="s2">"price"</span><span class="p">)})</span>
-</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"holdout MAPE %:"</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="s2">"mape"</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>{'tv': 25.9, 'search': 17.5, 'price': -7.6}
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>holdout MAPE %: 1.9
-</span></code></pre></div>
-<p>The data was simulated with coefficients of 30 (TV), 20 (search) and −8 (price): 100 draws on
-two chains, well under a minute on a laptop, land close, and the eight held-back weeks are
-forecast within 2%. Keep the draft's own fit settings (500 tuning steps and 500 draws on 4
-chains) for results you act on.</p>
-<h2 id="5-run-it-on-the-platform">5. Run it on the platform<a class="headerlink" href="#5-run-it-on-the-platform" title="Permanent link">&para;</a></h2>
-<p>The same import through the API (here with the Python client; the answer is the same draft):</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">remote</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">guided</span><span class="o">.</span><span class="n">import_bayesinsight</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>  <span class="c1"># the same draft, from the platform</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">remote</span><span class="o">.</span><span class="n">dataset_ref</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">remote</span><span class="o">.</span><span class="n">issues</span><span class="p">),</span> <span class="s2">"issues"</span><span class="p">)</span>
-</span></code></pre></div>
-<p>Then upload the MFF table with the draft's mapping, save the spec and fit:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">version</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">upload</span><span class="p">(</span><span class="s2">"sales_mff.csv"</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="s2">"bi_mff"</span><span class="p">,</span> <span class="n">mapping</span><span class="o">=</span><span class="n">remote</span><span class="o">.</span><span class="n">mapping</span><span class="p">)</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">revision</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">specs</span><span class="o">.</span><span class="n">upsert</span><span class="p">(</span><span class="n">remote</span><span class="o">.</span><span class="n">yaml</span><span class="p">)</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">revision</span><span class="o">.</span><span class="n">spec_id</span><span class="p">,</span> <span class="n">revision</span><span class="o">.</span><span class="n">revision</span><span class="p">)</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>                    <span class="n">raise_on_failure</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">output_model_version_id</span><span class="p">)</span>
-</span></code></pre></div>
-<p>The upload is checked in a sandbox with the <code>bayesinsight</code> preset: only the <code>allowed_*</code> key
-values and the <code>start_period</code>/<code>end_period</code> range of <code>metadata.json</code> are kept, and the
-<code>necessary_variables</code> must be present. With <code>curl</code>, the import is
-<code>POST /v1/guided/import/bayesinsight</code> (<a href="../../guides/guided-data/#import-a-bayesinsight-model">the guide</a>).</p>
-<p>The fitted version gets the same sanity scorecard as every model; promote it to an endpoint
-from the <a href="../../guides/integrations-hub/">Integrations hub</a>, and Atlas, Sheets and embeds work
-with it like with any other model.</p>
-<h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="../../reference/models/#mmmbayesinsight-a-bayesinsight-model_defjson">The <code>mmm.bayesinsight</code> model reference</a>:
-  every likelihood, curve and carry-over, and how contributions are split.</li>
-<li><a href="../../guides/guided-modelling/">Lift tests for <code>mmm.bayesinsight</code></a>: calibration under the
-  model's own likelihood.</li>
-<li><a href="../../guides/atlas/">Optimise a budget with Atlas</a> against the promoted endpoint.</li>
-</ul>
+<h2 id="final-integration-v050">Final integration (v0.5.0)<a class="headerlink" href="#final-integration-v050" title="Permanent link">&para;</a></h2>
+<p>After the M3.5 review fixes were merged (modeling and statistics, platform server, web,
+client/CLI/docs, and the v0.5 documentation site), the whole set above was run again on the
+integrated <code>develop</code>, on the same laptop and ports, with a fresh <code>MAPI_DATA_DIR</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv run pytest -q -n 6</code>, twice</td>
+<td>7116 passed, 12 skipped; the first run also had one order-dependent failure (two runner tests left their test models in the shared plugin registry), fixed</td>
+</tr>
+<tr>
+<td><code>make conformance</code></td>
+<td>11 of 11 fixtures</td>
+</tr>
+<tr>
+<td><code>make lint</code>, <code>make typecheck</code>, <code>mkdocs build --strict</code>, <code>make tf-validate</code></td>
+<td>clean</td>
+</tr>
+<tr>
+<td><code>pnpm -r lint</code>, <code>typecheck</code>, <code>build</code>; Vitest</td>
+<td>clean; web 384, plot sandbox 97</td>
+</tr>
+<tr>
+<td>Playwright smoke (mock mode, ports 15173/15174)</td>
+<td>79 passed, 4 skipped (the opt-in screenshot specs)</td>
+</tr>
+<tr>
+<td><code>uv run pytest -m e2e tests/e2e</code> (M1, M2, M3, M3.5)</td>
+<td>46 passed, 3 skipped (opt-in burst, two purge checks that need a zero grace period) after two stale M3.5 assertions were updated (the readiness branch now also reads the over-differencing guard)</td>
+</tr>
+<tr>
+<td>Browser <code>@e2e</code> specs (M1, M2, M3, M3.5, stack)</td>
+<td>23 passed after the M3.5 spec followed the seasonal-first readiness order</td>
+</tr>
+</tbody>
+</table>
+<p>The outputs of the governance walkthrough in <a href="../../whats-new-0.5/">What's new</a>, the
+<a href="../../guides/workflow-cookbook/">cookbook</a> and <a href="../../guides/null-tests/">null tests explained</a>
+were captured again from this stack.</p>
 
 
 
@@ -4603,7 +5308,7 @@ with it like with any other model.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../guides/atlas/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Optimise a budget with Atlas">
+          <a href="../m3-verification/" class="md-footer__link md-footer__link--prev" aria-label="Previous: M3 verification">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -4613,20 +5318,20 @@ with it like with any other model.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Optimise a budget with Atlas
+                M3 verification
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../concepts/" class="md-footer__link md-footer__link--next" aria-label="Next: Concepts">
+          <a href="../configuration/" class="md-footer__link md-footer__link--next" aria-label="Next: Configuration reference">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Concepts
+                Configuration reference
               </div>
             </div>
             <div class="md-footer__button md-icon">

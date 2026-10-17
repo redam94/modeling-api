@@ -1,0 +1,56 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ValidationRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/models/{model_id}/versions/{version}/validations``: run the checks.",
+  "examples": [
+    {
+      "note": "Q4 refresh of the geo MMM"
+    }
+  ],
+  "properties": {
+    "dataset": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "dataset:// for data checks (default: the fit's)",
+      "title": "Dataset"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "policy_ids": {
+      "description": "Policies to add: every policy in force always applies, and these can only add to it",
+      "items": {
+        "examples": [
+          "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+        ],
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Policy Ids",
+      "type": "array"
+    }
+  },
+  "title": "ValidationRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

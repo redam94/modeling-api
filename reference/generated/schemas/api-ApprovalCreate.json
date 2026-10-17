@@ -1,0 +1,41 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ApprovalCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/validations/{validation_id}/approvals``: a reviewer's decision.",
+  "examples": [
+    {
+      "comment": "Evidence reviewed; null tests are convincing.",
+      "decision": "approve"
+    }
+  ],
+  "properties": {
+    "comment": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Comment"
+    },
+    "decision": {
+      "enum": [
+        "approve",
+        "reject"
+      ],
+      "title": "Decision",
+      "type": "string"
+    }
+  },
+  "required": [
+    "decision"
+  ],
+  "title": "ApprovalCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

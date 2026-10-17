@@ -1,4 +1,75 @@
 {
+  "$defs": {
+    "DatasetAbout": {
+      "description": "The About of a dataset: the owner's description plus a generated summary.\n\n``summary_generated`` and ``highlights`` come from the version's schema and coordinate\nsummary (:func:`describe_dataset`); ``warnings_plain`` from its ingest issues and profile.",
+      "examples": [
+        {
+          "description_user": "Weekly media spend and revenue from the finance warehouse.",
+          "highlights": [
+            "104 weeks of history",
+            "10 markets",
+            "3 channels"
+          ],
+          "summary_generated": "Weekly data from 2023-01-01 to 2024-12-29 (104 weeks) for 10 markets and 3 channels, with 3 measures: revenue (the result you want to explain), spend (marketing spend) and price.",
+          "warnings_plain": []
+        }
+      ],
+      "properties": {
+        "description_user": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description User"
+        },
+        "generated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generated At"
+        },
+        "highlights": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Highlights",
+          "type": "array"
+        },
+        "summary_generated": {
+          "maxLength": 1000,
+          "title": "Summary Generated",
+          "type": "string"
+        },
+        "warnings_plain": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Warnings Plain",
+          "type": "array"
+        }
+      },
+      "required": [
+        "summary_generated"
+      ],
+      "title": "DatasetAbout",
+      "type": "object"
+    }
+  },
   "$id": "https://schemas.mapi.dev/v1/api-Dataset.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "examples": [
@@ -14,6 +85,18 @@
     }
   ],
   "properties": {
+    "about": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DatasetAbout"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M3.5: the description plus a summary generated from the schema"
+    },
     "created_at": {
       "format": "date-time",
       "title": "Created At",
@@ -96,5 +179,5 @@
   ],
   "title": "Dataset",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

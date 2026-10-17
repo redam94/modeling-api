@@ -1,0 +1,29 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ValidationNote.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/validations/{validation_id}:cancel|:resubmit|:deprecate``: why (a\ndeprecation needs a reason; it is audited).",
+  "examples": [
+    {
+      "note": "Superseded by v8 after the Q1 data refresh."
+    }
+  ],
+  "properties": {
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    }
+  },
+  "title": "ValidationNote",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

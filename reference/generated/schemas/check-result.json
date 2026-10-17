@@ -1,0 +1,270 @@
+{
+  "$defs": {
+    "CheckSeverity": {
+      "description": "What a failing check does: ``blocking`` stops validation, ``warning`` is recorded and\nshown to the approver, ``info`` is evidence only.",
+      "enum": [
+        "blocking",
+        "warning",
+        "info"
+      ],
+      "title": "CheckSeverity",
+      "type": "string"
+    },
+    "CheckStatus": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail",
+        "error",
+        "skipped"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "EvidenceItem": {
+      "description": "One piece of evidence behind a check: a number, a small table, a plot or a stored\nartifact (``ref`` is a run artifact name or a ``model://`` reference).",
+      "properties": {
+        "caption_plain": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption Plain"
+        },
+        "inline": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "kind": {
+          "enum": [
+            "metric",
+            "table",
+            "plot",
+            "artifact",
+            "text"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/check-result.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The outcome of one check on one model version.",
+  "examples": [
+    {
+      "check": "null.permutation_target",
+      "computed_at": "2026-10-15T09:30:00Z",
+      "evidence": [
+        {
+          "inline": {
+            "real": 0.081,
+            "shuffled_min": 0.079
+          },
+          "kind": "table",
+          "name": "permutation_scores"
+        }
+      ],
+      "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+      "metric": "permutation_p_value",
+      "severity": "blocking",
+      "status": "pass",
+      "threshold": 0.05,
+      "value": 0.048
+    }
+  ],
+  "properties": {
+    "check": {
+      "title": "Check",
+      "type": "string"
+    },
+    "computed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Computed At"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceItem"
+      },
+      "maxItems": 50,
+      "title": "Evidence",
+      "type": "array"
+    },
+    "message_expert": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message Expert"
+    },
+    "message_plain": {
+      "maxLength": 2000,
+      "title": "Message Plain",
+      "type": "string"
+    },
+    "metric": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Metric"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Params",
+      "type": "object"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The run that computed it",
+      "title": "Run Id"
+    },
+    "severity": {
+      "$ref": "#/$defs/CheckSeverity"
+    },
+    "status": {
+      "$ref": "#/$defs/CheckStatus"
+    },
+    "suggested_action": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "What to do about a warning or failure (plain words)",
+      "title": "Suggested Action"
+    },
+    "threshold": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Threshold"
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Value"
+    }
+  },
+  "required": [
+    "check",
+    "status",
+    "severity",
+    "message_plain"
+  ],
+  "title": "CheckResult",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

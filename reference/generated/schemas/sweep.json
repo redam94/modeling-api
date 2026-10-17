@@ -1,5 +1,213 @@
 {
   "$defs": {
+    "About": {
+      "additionalProperties": false,
+      "description": "The plain-language card of one catalog item.\n\nEvery field except the expert ones is required, so an About that validates is\nstructurally complete; :func:`about_issues` adds the editorial rules (one or two\nsentences, no jargon in the summary, known chooser tags, related ids that exist).",
+      "examples": [
+        {
+          "assumptions": [
+            "Numbers can be added up (spend, sales); averages are averaged"
+          ],
+          "avoid_when": [
+            "Your data already has one row per week"
+          ],
+          "data_needs": [
+            "A date column"
+          ],
+          "difficulty": "beginner",
+          "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+          "fits": {
+            "goal": [
+              "check_data"
+            ]
+          },
+          "outputs": [
+            "The same columns, one row per week"
+          ],
+          "related": [
+            "core.calendar"
+          ],
+          "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+          "title": "Weekly totals",
+          "typical_runtime": "instant",
+          "use_when": [
+            "Your data is daily but you want to plan or report by week"
+          ]
+        }
+      ],
+      "properties": {
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "avoid_when": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Avoid When",
+          "type": "array"
+        },
+        "data_needs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Data Needs",
+          "type": "array"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/Difficulty"
+        },
+        "example": {
+          "description": "A tiny example",
+          "maxLength": 600,
+          "minLength": 10,
+          "title": "Example",
+          "type": "string"
+        },
+        "expert_notes": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maths, estimator details, caveats for experts",
+          "title": "Expert Notes"
+        },
+        "fits": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "description": "Chooser tags: question id -> the answers this item suits",
+          "maxProperties": 16,
+          "title": "Fits",
+          "type": "object"
+        },
+        "outputs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Outputs",
+          "type": "array"
+        },
+        "references": {
+          "items": {
+            "$ref": "#/$defs/AboutReference"
+          },
+          "maxItems": 10,
+          "title": "References",
+          "type": "array"
+        },
+        "related": {
+          "description": "Ids of related catalog items (models, steps, nodes, checks, templates)",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Related",
+          "type": "array"
+        },
+        "summary_plain": {
+          "description": "One or two sentences without jargon: what it does for you",
+          "maxLength": 400,
+          "minLength": 20,
+          "title": "Summary Plain",
+          "type": "string"
+        },
+        "title": {
+          "description": "A human name",
+          "maxLength": 80,
+          "minLength": 3,
+          "title": "Title",
+          "type": "string"
+        },
+        "typical_runtime": {
+          "$ref": "#/$defs/TypicalRuntime"
+        },
+        "use_when": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Use When",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "summary_plain",
+        "use_when",
+        "avoid_when",
+        "data_needs",
+        "assumptions",
+        "outputs",
+        "difficulty",
+        "typical_runtime",
+        "example"
+      ],
+      "title": "About",
+      "type": "object"
+    },
+    "AboutReference": {
+      "additionalProperties": false,
+      "description": "A source for the expert detail (a paper, a book chapter, library documentation).",
+      "properties": {
+        "title": {
+          "maxLength": 300,
+          "minLength": 3,
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "pattern": "^https://\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "AboutReference",
+      "type": "object"
+    },
+    "Difficulty": {
+      "description": "How much statistical background an item needs to use well.",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "expert"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
     "ExecutionBlock": {
       "additionalProperties": false,
       "properties": {
@@ -26,6 +234,18 @@
       "additionalProperties": false,
       "description": "Identity and labels of a document.",
       "properties": {
+        "about": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/About"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3.5: a plain-language About card so others can choose this spec, pipeline or workflow (see mapi_spec.about)"
+        },
         "description": {
           "anyOf": [
             {
@@ -78,6 +298,17 @@
         "XL"
       ],
       "title": "ResourceClass",
+      "type": "string"
+    },
+    "TypicalRuntime": {
+      "description": "Rough wall-clock time on typical data (``S`` resource class).",
+      "enum": [
+        "instant",
+        "seconds",
+        "minutes",
+        "long"
+      ],
+      "title": "TypicalRuntime",
       "type": "string"
     }
   },
@@ -158,5 +389,5 @@
   ],
   "title": "Sweep",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

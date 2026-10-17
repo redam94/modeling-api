@@ -1,0 +1,144 @@
+{
+  "$defs": {
+    "OutlierPoint": {
+      "additionalProperties": true,
+      "properties": {
+        "coords": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Coords",
+          "type": "object"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "score"
+      ],
+      "title": "OutlierPoint",
+      "type": "object"
+    },
+    "VarOutliers": {
+      "additionalProperties": true,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/OutlierPoint"
+          },
+          "maxItems": 100,
+          "title": "Points",
+          "type": "array"
+        },
+        "share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Share",
+          "type": "number"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "count",
+        "share"
+      ],
+      "title": "VarOutliers",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-outliers.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``outliers``: unusual values per variable by a robust rule.",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.data-explorer.outliers/v1",
+      "default": "mapi.data-explorer.outliers/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/VarOutliers"
+      },
+      "maxItems": 256,
+      "title": "Items",
+      "type": "array"
+    },
+    "method": {
+      "default": "mad",
+      "enum": [
+        "iqr",
+        "mad",
+        "zscore"
+      ],
+      "title": "Method",
+      "type": "string"
+    },
+    "threshold": {
+      "exclusiveMinimum": 0,
+      "title": "Threshold",
+      "type": "number"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "threshold"
+  ],
+  "title": "OutliersView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

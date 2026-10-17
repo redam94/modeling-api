@@ -67,7 +67,7 @@
           "status": "ok"
         }
       },
-      "contract_version": "0.1",
+      "contract_version": "0.2",
       "status": "ok",
       "version": "0.2.0"
     }
@@ -87,7 +87,7 @@
       "type": "object"
     },
     "contract_version": {
-      "default": "0.1",
+      "default": "0.2",
       "title": "Contract Version",
       "type": "string"
     },
@@ -111,5 +111,5 @@
   ],
   "title": "Health",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

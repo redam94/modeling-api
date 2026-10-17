@@ -1,0 +1,248 @@
+{
+  "$defs": {
+    "CheckSeverity": {
+      "description": "What a failing check does: ``blocking`` stops validation, ``warning`` is recorded and\nshown to the approver, ``info`` is evidence only.",
+      "enum": [
+        "blocking",
+        "warning",
+        "info"
+      ],
+      "title": "CheckSeverity",
+      "type": "string"
+    },
+    "CheckThresholds": {
+      "additionalProperties": false,
+      "description": "Warn and fail thresholds of a check (in the check's direction).",
+      "properties": {
+        "fail": {
+          "title": "Fail",
+          "type": "number"
+        },
+        "warn": {
+          "title": "Warn",
+          "type": "number"
+        }
+      },
+      "required": [
+        "warn",
+        "fail"
+      ],
+      "title": "CheckThresholds",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "PolicyCheck": {
+      "additionalProperties": false,
+      "description": "A required check in a policy: thresholds, severity and parameters.",
+      "properties": {
+        "check": {
+          "title": "Check",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "severity": {
+          "$ref": "#/$defs/CheckSeverity",
+          "default": "blocking"
+        },
+        "thresholds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CheckThresholds"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "check"
+      ],
+      "title": "PolicyCheck",
+      "type": "object"
+    },
+    "PolicyMatch": {
+      "additionalProperties": false,
+      "description": "Which models a policy covers; an empty list matches everything on that axis.\n\nA family matches a model's declared family (``forecast`` for the statsmodels\nforecasters, ``ts_multivariate``, ``mmm``) *or* the namespace of its id (``ts`` for\n``ts.sarimax``), so ``families: [ts]`` covers every ``ts.*`` model whatever family its\nplugin declares.",
+      "properties": {
+        "families": {
+          "description": "Model families or model-id namespaces (ts covers ts.sarimax)",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Families",
+          "type": "array"
+        },
+        "models": {
+          "description": "Model ids",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Models",
+          "type": "array"
+        },
+        "templates": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "title": "PolicyMatch",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-GovernancePolicy.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A versioned policy. ``project_id`` is ``None`` for tenant-wide policies.",
+  "examples": [
+    {
+      "checks": [
+        {
+          "check": "convergence"
+        },
+        {
+          "check": "data.quality"
+        },
+        {
+          "check": "null.permutation_target"
+        }
+      ],
+      "created_at": "2026-10-15T09:30:00Z",
+      "id": "pol_01jaf3h1j2k3m4n5p6q7r8s9t0",
+      "name": "All models",
+      "project_id": null,
+      "require_approval": true,
+      "scope": "tenant",
+      "tenant_id": "acme",
+      "version": 3
+    }
+  ],
+  "properties": {
+    "active": {
+      "default": true,
+      "title": "Active",
+      "type": "boolean"
+    },
+    "applies_to": {
+      "$ref": "#/$defs/PolicyMatch"
+    },
+    "approvals_required": {
+      "default": 1,
+      "title": "Approvals Required",
+      "type": "integer"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/PolicyCheck"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Created By"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "require_approval": {
+      "default": false,
+      "title": "Require Approval",
+      "type": "boolean"
+    },
+    "require_validated_for_promotion": {
+      "default": true,
+      "title": "Require Validated For Promotion",
+      "type": "boolean"
+    },
+    "scope": {
+      "enum": [
+        "tenant",
+        "project"
+      ],
+      "title": "Scope",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "tenant_id",
+    "scope",
+    "version",
+    "name",
+    "checks",
+    "created_at"
+  ],
+  "title": "GovernancePolicy",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

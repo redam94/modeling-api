@@ -1,0 +1,128 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "NodeOutputRef": {
+      "description": "Where a node output lives: a reference (``dataset://``, ``model://``), a run artifact\n(``run_id`` + ``object``) or, for small JSON payloads (test results, split plans,\nmetrics), ``inline``.",
+      "properties": {
+        "inline": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "object": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Object"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "type": {
+          "$ref": "#/$defs/PortType"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "NodeOutputRef",
+      "type": "object"
+    },
+    "PortType": {
+      "description": "What flows along a workflow edge.",
+      "enum": [
+        "dataset",
+        "test_result",
+        "split_plan",
+        "model_version",
+        "metrics",
+        "table",
+        "plot",
+        "report",
+        "evidence"
+      ],
+      "title": "PortType",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/node-result.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``node_result.json`` of a ``workflow_node`` run (validated by the finalizer, capped\nat :data:`NODE_RESULT_MAX_BYTES`): the JSON result and where each output port's object\nis (``object``: a run output name) or its inline JSON payload.",
+  "properties": {
+    "format": {
+      "const": "mapi.node-result/v1",
+      "default": "mapi.node-result/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "node_id": {
+      "title": "Node Id",
+      "type": "string"
+    },
+    "outputs": {
+      "additionalProperties": {
+        "$ref": "#/$defs/NodeOutputRef"
+      },
+      "title": "Outputs",
+      "type": "object"
+    },
+    "result": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Result",
+      "type": "object"
+    },
+    "use": {
+      "title": "Use",
+      "type": "string"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "node_id",
+    "use"
+  ],
+  "title": "NodeResultSidecar",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

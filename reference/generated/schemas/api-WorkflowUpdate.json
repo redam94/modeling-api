@@ -1,0 +1,42 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-WorkflowUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PATCH /v1/workflows/{workflow_id}``: metadata only (documents are revisions).",
+  "examples": [
+    {
+      "archived": false,
+      "description": "Weekly readiness checks"
+    }
+  ],
+  "properties": {
+    "archived": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Archived"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    }
+  },
+  "title": "WorkflowUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -1,0 +1,322 @@
+{
+  "$defs": {
+    "FanChart": {
+      "description": "Quantile bands of a series along one dim (a KPI fan): ``values[i][j]`` is quantile\n``quantiles[i]`` at ``coords[j]``. ``observed`` (if any) is the data over ``coords``.",
+      "examples": [
+        {
+          "coords": [
+            "2026-01-04",
+            "2026-01-11"
+          ],
+          "dim": "time",
+          "observed": [
+            101.0,
+            99.5
+          ],
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "units": "kEUR",
+          "values": [
+            [
+              80.0,
+              82.0
+            ],
+            [
+              100.0,
+              103.0
+            ],
+            [
+              125.0,
+              129.0
+            ]
+          ]
+        }
+      ],
+      "properties": {
+        "coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 10000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "observed": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed"
+        },
+        "quantiles": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Quantiles",
+          "type": "array"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "values": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "maxItems": 16,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "dim",
+        "coords",
+        "quantiles",
+        "values"
+      ],
+      "title": "FanChart",
+      "type": "object"
+    },
+    "SeriesView": {
+      "additionalProperties": true,
+      "description": "One series along a dim; ``values`` align with ``coords``.",
+      "properties": {
+        "coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "downsampled": {
+          "default": false,
+          "title": "Downsampled",
+          "type": "boolean"
+        },
+        "facet": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Facet",
+          "type": "object"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Values",
+          "type": "array"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "coords",
+        "values"
+      ],
+      "title": "SeriesView",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-fit.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``fit``: actual vs fitted with an interval, the split line at ``split_at``.",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "dim": {
+      "maxLength": 128,
+      "title": "Dim",
+      "type": "string"
+    },
+    "facets": {
+      "items": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "type": "object"
+      },
+      "maxItems": 200,
+      "title": "Facets",
+      "type": "array"
+    },
+    "fitted": {
+      "items": {
+        "$ref": "#/$defs/FanChart"
+      },
+      "maxItems": 200,
+      "title": "Fitted",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.model-explorer.fit/v1",
+      "default": "mapi.model-explorer.fit/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "series": {
+      "items": {
+        "$ref": "#/$defs/SeriesView"
+      },
+      "maxItems": 200,
+      "title": "Series",
+      "type": "array"
+    },
+    "split_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Split At"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "dim"
+  ],
+  "title": "FitVsActualView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

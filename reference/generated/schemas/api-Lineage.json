@@ -25,7 +25,7 @@
       "lib_versions": {
         "pymc": "5.25.1"
       },
-      "plugin": "mmm.hierarchical_geo@1.3.2",
+      "plugin": "mmm.bayesian@1.3.2",
       "resource_class": "M",
       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
       "seed": 20261014,
@@ -148,7 +148,7 @@
       ],
       "default": null,
       "examples": [
-        "mmm.hierarchical_geo@1.3.2"
+        "mmm.bayesian@1.3.2"
       ],
       "title": "Plugin"
     },
@@ -204,5 +204,5 @@
   ],
   "title": "Lineage",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

@@ -1,0 +1,152 @@
+{
+  "$defs": {
+    "SeriesView": {
+      "additionalProperties": true,
+      "description": "One series along a dim; ``values`` align with ``coords``.",
+      "properties": {
+        "coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "downsampled": {
+          "default": false,
+          "title": "Downsampled",
+          "type": "boolean"
+        },
+        "facet": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Facet",
+          "type": "object"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Values",
+          "type": "array"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "coords",
+        "values"
+      ],
+      "title": "SeriesView",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-timeseries.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``timeseries``: every variable over time, faceted by ``facet_by`` (geo, product).",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "dim": {
+      "maxLength": 128,
+      "title": "Dim",
+      "type": "string"
+    },
+    "facet_by": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 4,
+      "title": "Facet By",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.data-explorer.timeseries/v1",
+      "default": "mapi.data-explorer.timeseries/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "omitted_series": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Omitted Series",
+      "type": "integer"
+    },
+    "series": {
+      "items": {
+        "$ref": "#/$defs/SeriesView"
+      },
+      "maxItems": 200,
+      "title": "Series",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "dim"
+  ],
+  "title": "TimeSeriesView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

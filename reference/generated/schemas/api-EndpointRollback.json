@@ -2,7 +2,7 @@
   "$id": "https://schemas.mapi.dev/v1/api-EndpointRollback.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "``POST /v1/endpoints/{alias}/rollback``: point the alias back at the version of an\nearlier revision (default: the one before the current). The gate is not re-run - the\nversion was promoted before - but the rollback is audited with its reason.",
+  "description": "``POST /v1/endpoints/{alias}/rollback``: point the alias back at the version of an\nearlier revision (default: the one before the current). The gate is not re-run - the\nversion was promoted before - but the rollback is audited with its reason. M3.5: when a\ngovernance policy requires validated models, the earlier version must still be\n``validated`` (``NOT_VALIDATED`` otherwise).",
   "examples": [
     {
       "reason": "v3 over-forecasts after the price change"
@@ -34,5 +34,5 @@
   ],
   "title": "EndpointRollback",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

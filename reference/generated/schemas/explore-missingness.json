@@ -1,0 +1,112 @@
+{
+  "$defs": {
+    "MissingnessGrid": {
+      "additionalProperties": true,
+      "description": "Fraction missing per (variable, coordinate of the time-like dim ``along``).",
+      "properties": {
+        "along": {
+          "title": "Along",
+          "type": "string"
+        },
+        "coords": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "fraction": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "maxItems": 1024,
+          "title": "Fraction",
+          "type": "array"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1024,
+          "title": "Labels",
+          "type": "array"
+        }
+      },
+      "required": [
+        "along",
+        "labels",
+        "coords",
+        "fraction"
+      ],
+      "title": "MissingnessGrid",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-missingness.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``missingness``: the heatmap plus the share missing per variable.",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.data-explorer.missingness/v1",
+      "default": "mapi.data-explorer.missingness/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "grid": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MissingnessGrid"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "longest_gap": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "maxProperties": 256,
+      "title": "Longest Gap",
+      "type": "object"
+    },
+    "share_by_var": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "maxProperties": 256,
+      "title": "Share By Var",
+      "type": "object"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "title": "MissingnessView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

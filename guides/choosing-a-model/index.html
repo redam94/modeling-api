@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Optimise a marketing budget against a modeling-api endpoint with Atlas - mapi_client.atlas.RemoteModel scores candidate allocations in batches, caches them and backs off on rate limits.">
+        <meta name="description" content="Pick the right model, template or workflow with About cards and Help me choose - in the web app, the terminal or Python - and the families of models the platform offers, compared.">
       
       
         <meta name="author" content="Matthew Reda">
       
       
       
-        <link rel="prev" href="../webhook-receivers/">
+        <link rel="prev" href="../null-tests/">
       
       
-        <link rel="next" href="../../tutorials/bayesinsight-import/">
+        <link rel="next" href="../authentication/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Optimise a budget with Atlas - modeling-api</title>
+        <title>Choosing a model - modeling-api</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#optimise-a-budget-with-atlas-v04" class="md-skip">
+        <a href="#choosing-a-model-v05" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Optimise a budget with Atlas
+              Choosing a model
             
           </span>
         </div>
@@ -254,12 +254,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../../tutorials/" class="md-tabs__link">
           
   
@@ -300,6 +298,8 @@
   
   
   
+    
+  
   
     
     
@@ -307,10 +307,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../web-ui/" class="md-tabs__link">
           
   
@@ -471,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -523,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -756,8 +788,6 @@
       
   
   
-    
-  
   
   
     
@@ -777,25 +807,20 @@
       
         
       
-        
-      
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -817,13 +842,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -952,147 +977,17 @@
                 
   
   
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Optimise a budget with Atlas
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Optimise a budget with Atlas
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#wrap-the-endpoint" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Wrap the endpoint
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#batching-caching-and-rate-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Batching, caching and rate limits
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optimise" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optimise
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#with-atlas-installed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        With Atlas installed
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
   
     <li class="md-nav__item">
-      <a href="../../tutorials/bayesinsight-import/" class="md-nav__link">
+      <a href="../../tutorials/optimise-a-budget/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Import a BayesInsight model
+    Optimise a budget
   
 
     
@@ -1124,6 +1019,12 @@
       
         
           
+        
+      
+        
+      
+        
+      
         
       
         
@@ -1540,6 +1441,90 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/about-and-choosing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1551,8 +1536,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1566,19 +1553,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -1596,7 +1586,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1611,8 +1601,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1632,23 +1624,36 @@
       
         
       
-    
-    
-    
+        
       
+        
+      
+        
+      
+        
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    
       
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+      
         
           
-          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="">
             
   
   
@@ -1666,7 +1671,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1901,6 +1906,237 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a dataset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate models with governance policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../null-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Can you trust this model? Null tests explained
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a model
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#answer-a-few-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Answer a few questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-an-about-card" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Read an About card
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-model-families-compared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The model families, compared
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-the-chooser-is-not-enough" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When the chooser is not enough
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1930,17 +2166,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
         
           
-          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="">
             
   
   
@@ -2090,23 +2329,32 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="">
             
   
   
@@ -2338,6 +2586,90 @@
   
   
     <li class="md-nav__item">
+      <a href="../../models/statsmodels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    statsmodels time-series models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows: tests, decisions, models, automation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workflow-cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../plots/" class="md-nav__link">
         
   
@@ -2438,6 +2770,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -2703,6 +3041,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../models/mmm-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/generated/models-catalog/" class="md-nav__link">
         
   
@@ -2711,6 +3077,62 @@
     
   
     Models catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/workflow-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/governance-checks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance checks
   
 
     
@@ -3143,6 +3565,8 @@
       
         
       
+        
+      
     
     
     
@@ -3156,7 +3580,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_22" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3178,14 +3602,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_22" id="__nav_6_22_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_22_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_22">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_25">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3393,6 +3817,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3419,6 +3871,8 @@
       
         
           
+        
+      
         
       
         
@@ -3846,6 +4300,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../operations/m35-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3.5 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../operations/configuration/" class="md-nav__link">
         
   
@@ -3913,6 +4395,8 @@
       
         
           
+        
+      
         
       
         
@@ -4068,6 +4552,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../roadmap/workflows-governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows, governance and explorers (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../roadmap/expert-plugins/" class="md-nav__link">
         
   
@@ -4075,7 +4587,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins, MCP and optimisation (v0.5)
+    Next: expert plugins and MCP (v0.6)
   
 
     
@@ -4274,10 +4786,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
+  <a href="#answer-a-few-questions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install
+        Answer a few questions
       
     </span>
   </a>
@@ -4285,10 +4797,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#wrap-the-endpoint" class="md-nav__link">
+  <a href="#read-an-about-card" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Wrap the endpoint
+        Read an About card
       
     </span>
   </a>
@@ -4296,10 +4808,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#batching-caching-and-rate-limits" class="md-nav__link">
+  <a href="#the-model-families-compared" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Batching, caching and rate limits
+        The model families, compared
       
     </span>
   </a>
@@ -4307,21 +4819,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optimise" class="md-nav__link">
+  <a href="#when-the-chooser-is-not-enough" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optimise
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#with-atlas-installed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        With Atlas installed
+        When the chooser is not enough
       
     </span>
   </a>
@@ -4345,159 +4846,267 @@
 
 
 
-<h1 id="optimise-a-budget-with-atlas-v04">Optimise a budget with Atlas <span class="mapi-badge">v0.4</span><a class="headerlink" href="#optimise-a-budget-with-atlas-v04" title="Permanent link">&para;</a></h1>
-<p><a href="https://github.com/redam94/optimizer-framework">Atlas</a> optimises budget allocations
-against any model that has its model interface. <code>mapi_client.atlas.RemoteModel</code> gives an
-<a href="../endpoints-and-webhooks/">endpoint</a> that interface: each candidate allocation the optimiser
-tries is scored by the endpoint's current model version, so the fitted posterior - not a
-local copy - decides where the next euro goes, and promoting a better model changes the
-optimiser's answers without touching its code.</p>
-<p>The examples come from <code>docs/snippets/atlas_budget.py</code>, which runs offline against a stand-in
-endpoint with a concave response whose optimum is known in closed form, so the page can
-check that the optimiser finds it.</p>
-<h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'mapi-client[atlas]'</span><span class="w">                         </span><span class="c1"># the client and the xarray runtime</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/redam94/optimizer-framework<span class="w">   </span><span class="c1"># Atlas itself</span>
+<h1 id="choosing-a-model-v05">Choosing a model <span class="mapi-badge">v0.5</span><a class="headerlink" href="#choosing-a-model-v05" title="Permanent link">&para;</a></h1>
+<p>You do not need to know what "SARIMAX" means to pick a good forecasting model, and you should
+not have to read a statistics textbook to know when <em>not</em> to use one. Every model, preprocessing
+step, workflow node, governance check and template carries an <strong>About card</strong> in plain words, and
+<strong>Help me choose</strong> turns a few questions about your goal and your data into a ranked shortlist
+with the reasons. This page shows both, then compares the model families for those who want the
+detail. The contract behind them is in <a href="../../concepts/about-and-choosing/">About cards and choosing</a>.</p>
+<h2 id="answer-a-few-questions">Answer a few questions<a class="headerlink" href="#answer-a-few-questions" title="Permanent link">&para;</a></h2>
+<p>Eight questions, all optional; the goal counts most:</p>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What do you want to do?</td>
+<td>measure what marketing adds · plan a budget · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model</td>
+</tr>
+<tr>
+<td>What does your data look like?</td>
+<td>one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time</td>
+</tr>
+<tr>
+<td>How often is it recorded?</td>
+<td>daily · weekly · monthly or less often · not over time</td>
+</tr>
+<tr>
+<td>How much history?</td>
+<td>under a year · one to three years · more</td>
+</tr>
+<tr>
+<td>Other columns that could explain it?</td>
+<td>yes (prices, promotions, weather, spend) · no</td>
+</tr>
+<tr>
+<td>Do you need a range?</td>
+<td>essential · nice to have · one number is enough</td>
+</tr>
+<tr>
+<td>How comfortable with statistics?</td>
+<td>new to it · the basics · expert</td>
+</tr>
+<tr>
+<td>How quickly do you need results?</td>
+<td>seconds · minutes · can wait</td>
+</tr>
+</tbody>
+</table>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Terminal</label><label for="__tabbed_1_2">Python</label><label for="__tabbed_1_3">HTTP</label><label for="__tabbed_1_4">Web app</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mapi<span class="w"> </span>choose<span class="w">                                   </span><span class="c1"># questions, one at a time; Enter skips one</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mapi<span class="w"> </span>choose<span class="w"> </span>-a<span class="w"> </span><span class="nv">goal</span><span class="o">=</span>forecast<span class="w"> </span>-a<span class="w"> </span><span class="nv">data_shape</span><span class="o">=</span>one_series<span class="w"> </span>-a<span class="w"> </span><span class="nv">drivers</span><span class="o">=</span>yes<span class="w"> </span>-a<span class="w"> </span><span class="nv">experience</span><span class="o">=</span>beginner
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.sarimax<span class="w">                         </span><span class="c1"># one item's About card</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.sarimax<span class="w"> </span>--expert<span class="w">                </span><span class="c1"># ... with the maths and references</span>
 </span></code></pre></div>
-<p>The <code>atlas</code> extra installs only what the adapter needs (xarray and the SDK's wire format).
-Atlas is installed separately: it is AGPL-licensed, so the Apache-2.0 client never imports
-it - <code>RemoteModel</code> matches Atlas's interface <em>structurally</em> (<code>predict(x) -&gt; xr.DataArray</code>,
-<code>contributions(x) -&gt; xr.Dataset</code>, <code>model_type</code>, <code>required_dimensions</code>) and works with any
-code written against <code>atlas.core.interfaces.ModelProtocol</code>.</p>
-<p>Give the program a token that can only score this endpoint:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mapi<span class="w"> </span>tokens<span class="w"> </span>create<span class="w"> </span>budget-optimiser<span class="w"> </span>-s<span class="w"> </span>score:budget-planner<span class="w"> </span>--rate-limit<span class="w"> </span><span class="m">600</span>
+<p><code>mapi choose</code> asks the questions one by one (numbers; several for questions that take
+more than one answer; Enter skips) and prints the shortlist, then the About card of the
+top three. With the four answers above, on a local stack (shortened):</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Recommended for you
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a> # ┃ item                ┃ kind              ┃ fit  ┃ difficulty   ┃ time               ┃ why
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a> 1 │ Smooth trend        │ model             │ 100% │ beginner     │ minutes            │ Suits: forecast the
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>   │ forecast            │                   │      │              │                    │ future
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>   │ ts.hsgp_trend       │                   │      │              │                    │ Suits: one number
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>   │                     │                   │      │              │                    │ over time
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a> 2 │ Weekly forecast     │ template          │ 100% │ beginner     │ minutes            │ …
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>   │ weekly_forecast     │                   │      │              │                    │
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a> 3 │ Forecast bake-off   │ workflow_template │ 100% │ beginner     │ more than 15       │ …
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>   │ workflow.forecast_b │                   │      │              │ minutes            │
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>   │ akeoff              │                   │      │              │                    │
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a> 4 │ Time-series         │ workflow_template │ 100% │ beginner     │ minutes            │ …
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>   │ readiness to ARIMAX │                   │      │              │                    │
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a> 5 │ Effects that build  │ model             │ 86%  │ intermediate │ seconds            │ Suits: forecast the
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>   │ up over time        │                   │      │              │                    │ future
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>   │ ts.ardl             │                   │      │              │                    │ …
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>   │                     │                   │      │              │                    │ Suits: yes (prices,
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>   │                     │                   │      │              │                    │ promotions,
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>   │                     │                   │      │              │                    │ weather, spend)
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>   │                     │                   │      │              │                    │ careful: Needs
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>   │                     │                   │      │              │                    │ intermediate-level
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>   │                     │                   │      │              │                    │ statistics
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>   │                     │                   │      │              │                    │ knowledge
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>Smooth trend forecast  model ts.hsgp_trend
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>Forecasts one regular series with a smooth, flexible trend and a repeating seasonal pattern, and gives a range of likely values.
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>difficulty: beginner   typical time: minutes
+</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>…
+</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>unanswered (answer them to sharpen the ranking): frequency, history, uncertainty, speed
 </span></code></pre></div>
-<h2 id="wrap-the-endpoint">Wrap the endpoint<a class="headerlink" href="#wrap-the-endpoint" title="Permanent link">&para;</a></h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client.atlas</span><span class="w"> </span><span class="kn">import</span> <span class="n">RemoteModel</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RemoteModel</span><span class="p">(</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">api</span><span class="p">,</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">endpoint</span><span class="o">=</span><span class="s2">"budget-planner"</span><span class="p">,</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">batch_dim</span><span class="o">=</span><span class="s2">"scenario"</span><span class="p">,</span>  <span class="c1"># the model scores every scenario independently</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">output</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">,</span>  <span class="c1"># or "draws" for risk-aware objectives</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">)</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">x</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">allocation</span><span class="p">({</span><span class="s2">"tv"</span><span class="p">:</span> <span class="mf">4000.0</span><span class="p">,</span> <span class="s2">"search"</span><span class="p">:</span> <span class="mf">4000.0</span><span class="p">,</span> <span class="s2">"social"</span><span class="p">:</span> <span class="mf">2000.0</span><span class="p">})</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="nb">print</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>  <span class="c1"># the KPI (revenue) of this allocation</span>
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>8634.97622707262
-</span></code></pre></div>
-<ul>
-<li><strong>KPI.</strong> <code>predict</code> returns the endpoint's output variable - the only one, or the one
-  named like the target; set <code>kpi=</code> (e.g. <code>"y_hat"</code>) when there are several - summed over
-  every other dim (<code>reduce="sum"</code>; <code>"mean"</code> and <code>"none"</code> too). It reads one summary
-  statistic, chosen by the endpoint's representation: the <code>mean</code> of a Bayesian (draws),
-  point or moments model, the <code>median</code> of a quantile model such as <code>tabular.regressor</code>,
-  the <code>point</code> of an interval model (<code>stat=</code> overrides it). Summing per-cell medians is an
-  approximation; prefer endpoints with draws for totals across many cells. With
-  <code>output="draws"</code> (and <code>draws=100</code>, at most 300) a draws endpoint returns posterior draws
-  along a <code>sample</code> dim instead, for risk-aware objectives (a quantile, an expected
-  shortfall).</li>
-<li><strong>Allocations.</strong> <code>allocation({"tv": 4000, ...})</code> builds the payload from a budget per
-  channel (<code>spend_var=</code> and <code>channel_dim=</code> name them; by default the endpoint's only spend
-  variable along <code>channel</code>). With <code>base=</code> - a dataset holding the other inputs (controls,
-  prices, the weeks of the plan) - each channel's flighting across weeks and markets is kept
-  and rescaled to its budget, and every input the allocation lacks is sent from the base.</li>
-<li><strong>Scoring.</strong> Every payload is first transposed to the dim order of the endpoint's input
-  schema (the server checks each variable's dims in order; <code>Client.endpoint(alias)</code> does the
-  same unless <code>conform=False</code>). Candidates go inline as XrJSON in the call's <code>data</code> (<code>payload_field="scenario"</code>
-  for counterfactual endpoints); <code>call={"mode": "forecast", "horizon": {...}}</code> adds any other
-  <code>EndpointScoreCall</code> field. Each call waits with <code>Prefer: wait=60</code> and collects slow runs
-  with the same idempotency key.</li>
-<li><strong><code>contributions(x)</code></strong> returns every output variable of the endpoint for <code>x</code>, unreduced -
-  including the decomposition variables an MMM returns.</li>
-</ul>
-<h2 id="batching-caching-and-rate-limits">Batching, caching and rate limits<a class="headerlink" href="#batching-caching-and-rate-limits" title="Permanent link">&para;</a></h2>
-<p>An optimiser evaluates many nearby allocations - finite differences, line searches,
-populations. <code>RemoteModel</code> keeps that cheap:</p>
-<ul>
-<li><strong>Batching.</strong> <code>predict_batch(xs)</code> scores a list of allocations. With <code>batch_dim=</code> - a dim of
-  the endpoint's input that accepts new coordinates (a categorical dim with policy
-  <code>new_levels</code>, or an integer/index dim with <code>extend</code>) and that the model scores
-  independently, such as a <code>scenario</code> dim - up to <code>max_batch</code> (64) candidates are stacked
-  along it into <strong>one</strong> score request and split again from the result. Without <code>batch_dim</code>
-  each candidate is its own request. Only batch along a dim the model really treats
-  independently: a hierarchical model's <code>geo</code> dim does not qualify (new markets are pooled).
-  The endpoint's schema is checked first, and a dim it cannot extend is refused.</li>
-<li><strong>Caching.</strong> Results are cached by the exact payload (an LRU of <code>cache_size=1024</code>), so
-  re-evaluating a point costs nothing; <code>cache_info()</code> reports hits, misses and requests.</li>
-<li><strong>Rate limits.</strong> The client already waits out short <code>429 RATE_LIMITED</code> answers. When the
-  server asks for a longer wait, <code>RemoteModel</code> retries up to <code>rate_limit_retries</code> (5) times
-  with exponential backoff (<code>backoff=1</code> s, doubling, capped at <code>max_backoff=60</code> s, honouring
-  <code>Retry-After</code>) and the same idempotency key. <code>QUOTA_EXCEEDED</code> is raised at once: waiting
-  will not help until the quota window resets.</li>
-</ul>
-<h2 id="optimise">Optimise<a class="headerlink" href="#optimise" title="Permanent link">&para;</a></h2>
-<p>Atlas's <code>OptimizerProtocol</code> is <code>optimize(model, constraints, config) -&gt; OptimizationResult</code>.
-This SLSQP optimiser keeps the total budget fixed and scores each iteration's point and its
-central finite differences in one batched request:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">minimize</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">BudgetOptimizer</span><span class="p">:</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="sd">"""An Atlas optimiser (``OptimizerProtocol``): maximise ``model.predict`` with a fixed</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="sd">    total. Each iteration scores the point and its finite differences in one batch."""</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">optimize</span><span class="p">(</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">constraints</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">config</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="n">channels</span><span class="p">,</span> <span class="n">total</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">"channels"</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">constraints</span><span class="p">[</span><span class="s2">"total_budget"</span><span class="p">]),</span> <span class="mf">1e-4</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="k">def</span><span class="w"> </span><span class="nf">budget</span><span class="p">(</span><span class="n">w</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>            <span class="k">return</span> <span class="p">{</span><span class="n">c</span><span class="p">:</span> <span class="n">total</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">channels</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)}</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
-</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        <span class="k">def</span><span class="w"> </span><span class="nf">objective</span><span class="p">(</span><span class="n">w</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>            <span class="n">steps</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">w</span><span class="p">)]</span> <span class="o">+</span> <span class="p">[</span><span class="n">s</span> <span class="o">*</span> <span class="n">h</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">))[</span><span class="n">i</span><span class="p">]</span>
-</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>                                          <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">))</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)]</span>
-</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>            <span class="n">values</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_batch</span><span class="p">([</span><span class="n">model</span><span class="o">.</span><span class="n">allocation</span><span class="p">(</span><span class="n">budget</span><span class="p">(</span><span class="n">w</span> <span class="o">+</span> <span class="n">e</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">])</span>
-</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>            <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
-</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>            <span class="n">grad</span> <span class="o">=</span> <span class="p">[(</span><span class="n">f</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">f</span><span class="p">[</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">h</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">))]</span>
-</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>            <span class="k">return</span> <span class="o">-</span><span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span>
-</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>
-</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>        <span class="n">res</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
-</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>            <span class="n">objective</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">),</span> <span class="mi">1</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">)),</span> <span class="n">jac</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"SLSQP"</span><span class="p">,</span>
-</span><span id="__span-4-26"><a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>            <span class="n">bounds</span><span class="o">=</span><span class="p">[(</span><span class="n">h</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">h</span><span class="p">)]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">),</span>
-</span><span id="__span-4-27"><a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>            <span class="n">constraints</span><span class="o">=</span><span class="p">[{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"eq"</span><span class="p">,</span> <span class="s2">"fun"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">w</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)}],</span>
-</span><span id="__span-4-28"><a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>        <span class="p">)</span>  <span class="c1"># fmt: skip</span>
-</span><span id="__span-4-29"><a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>        <span class="k">return</span> <span class="p">{</span><span class="s2">"optimal_budget"</span><span class="p">:</span> <span class="n">budget</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="s2">"optimal_value"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="n">res</span><span class="o">.</span><span class="n">fun</span><span class="p">)}</span>
-</span><span id="__span-4-30"><a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>
-</span><span id="__span-4-31"><a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>
-</span><span id="__span-4-32"><a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="n">result</span> <span class="o">=</span> <span class="n">BudgetOptimizer</span><span class="p">()</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span>
-</span><span id="__span-4-33"><a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>    <span class="n">model</span><span class="p">,</span> <span class="p">{</span><span class="s2">"total_budget"</span><span class="p">:</span> <span class="mi">10_000</span><span class="p">},</span> <span class="p">{</span><span class="s2">"channels"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"tv"</span><span class="p">,</span> <span class="s2">"search"</span><span class="p">,</span> <span class="s2">"social"</span><span class="p">]}</span>
-</span><span id="__span-4-34"><a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a><span class="p">)</span>
-</span><span id="__span-4-35"><a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="nb">print</span><span class="p">({</span><span class="n">c</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s2">"optimal_budget"</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
-</span><span id="__span-4-36"><a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">cache_info</span><span class="p">())</span>
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>{'tv': 5750, 'search': 2500, 'social': 1750}
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>CacheInfo(hits=0, misses=71, requests=11, size=71)
-</span></code></pre></div>
-<p>71 candidate allocations cost 11 score requests. The optimum matches the closed form
-(<code>a_c / (b_c + x_c)</code> equal across channels). With a real endpoint, each request is one
-sandboxed score run, so the wall time is dominated by run start-up; batching is what keeps a
-gradient optimiser to a few minutes.</p>
-<h2 id="with-atlas-installed">With Atlas installed<a class="headerlink" href="#with-atlas-installed" title="Permanent link">&para;</a></h2>
-<p>Code that checks <code>isinstance(model, AbstractModel)</code> accepts <code>RemoteModel</code> once it is
-registered as a virtual subclass (this imports Atlas, so call it only where Atlas is
-installed):</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">atlas.core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">AbstractModel</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client.atlas</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_with_atlas</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">register_with_atlas</span><span class="p">()</span>  <span class="c1"># RemoteModel becomes a virtual subclass of AbstractModel</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">AbstractModel</span><span class="p">)</span>
-</span></code></pre></div>
-<p>Atlas optimisers can then return Atlas's own <code>OptimizationResult</code>. In this repository,
-<code>make test-atlas</code> runs the adapter's tests with Atlas installed from a sibling checkout
-(<code>ATLAS_DIR=../optimizer-framework</code>) into a throwaway environment overlay - Atlas is never a
-locked dependency of the platform.</p>
-<p>Against a running stack (a <code>tabular.regressor</code> fitted on 1,800 rows of the same concave
-response, promoted to an endpoint), this optimiser found <code>tv 5534, search 2233, social 2233</code>
-- the closed form is <code>5750 / 2500 / 1750</code>; the gap is the gradient-boosted model's own
-error - from 98 candidate allocations in 14 batched score requests, in about 140 seconds.</p>
-<div class="admonition note">
-<p class="admonition-title">Optimising in the sandbox</p>
-<p><code>RemoteModel</code> drives the optimiser from your machine, one score run per batch. For long
-optimisations the plan's in-sandbox <code>optimize</code> job (M4) runs Atlas next to the model,
-without a network round trip per batch.</p>
+<p>Being new to statistics counts: models that need more experience (<code>ts.ardl</code> above,
+<code>ts.sarimax</code> sixth) carry a caution and rank below beginner-friendly choices, including
+the <em>readiness</em> workflow, which chooses an ARIMAX's settings for you. Answer
+<code>experience=intermediate</code>, or skip the question, and <code>ts.ardl</code> and <code>ts.sarimax</code> - the
+models that use the drivers - come first.</p>
 </div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">api</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>  <span class="c1"># MAPI_URL, the `mapi login` sign-in (or MAPI_TOKEN) and MAPI_PROJECT</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">result</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">recommend</span><span class="p">(</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">goal</span><span class="o">=</span><span class="s2">"forecast"</span><span class="p">,</span> <span class="n">data_shape</span><span class="o">=</span><span class="s2">"one_series"</span><span class="p">,</span> <span class="n">drivers</span><span class="o">=</span><span class="s2">"yes"</span><span class="p">,</span> <span class="n">experience</span><span class="o">=</span><span class="s2">"beginner"</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">3</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">)</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">items</span><span class="p">:</span>  <span class="c1"># best first, with the reasons in plain words</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">score</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">kind</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="k">for</span> <span class="n">reason</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">reasons_plain</span><span class="p">:</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">"     +"</span><span class="p">,</span> <span class="n">reason</span><span class="p">)</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="k">for</span> <span class="n">caution</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">cautions_plain</span><span class="p">:</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">"     !"</span><span class="p">,</span> <span class="n">caution</span><span class="p">)</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="n">card</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">about</span><span class="p">(</span><span class="s2">"ts.sarimax"</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"model"</span><span class="p">)</span>  <span class="c1"># any item's About card</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="nb">print</span><span class="p">(</span><span class="n">card</span><span class="o">.</span><span class="n">summary_plain</span><span class="p">)</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"use it when:"</span><span class="p">,</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">card</span><span class="o">.</span><span class="n">use_when</span><span class="p">))</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"pick something else when:"</span><span class="p">,</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">card</span><span class="o">.</span><span class="n">avoid_when</span><span class="p">))</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>api<span class="w"> </span>GET<span class="w"> </span><span class="s2">"/v1/catalog/chooser"</span><span class="w">        </span><span class="c1"># the questions</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>api<span class="w"> </span>GET<span class="w"> </span><span class="s2">"/v1/catalog/recommendations?goal=forecast&amp;data_shape=one_series&amp;drivers=yes&amp;experience=beginner&amp;limit=3"</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>api<span class="w"> </span>GET<span class="w"> </span><span class="s2">"/v1/catalog/abouts?kind=model"</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><strong>Help me choose</strong> on the model, template and workflow pickers asks the same questions and
+shows the same ranking; every card has <em>About</em> with the plain explanation first and the
+expert detail folded away.</p>
+</div>
+</div>
+</div>
+<p>The ranking is deterministic and explainable: a matching answer adds the question's weight, a
+mismatch subtracts it, items harder than your experience or slower than your patience lose
+points, and every recommendation lists its <strong>reasons</strong> ("Suits: forecast the future") and its
+<strong>cautions</strong> ("Needs expert-level statistics knowledge", "Usually takes long"). Without a
+<code>kind</code> the candidates are the places you start from - models, guided templates and workflow
+templates; <code>--kind step</code>, <code>node</code> or <code>check</code> ranks one kind of building block.</p>
+<h2 id="read-an-about-card">Read an About card<a class="headerlink" href="#read-an-about-card" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.ets
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Exponential smoothing forecast  ts.ets
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Forecasts a series by giving recent values more weight than older ones, with optional trend and
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>seasonality, and is quick and robust.
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>difficulty: beginner   typical time: seconds
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>Use it when
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>  • You need a fast, reliable baseline forecast
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  • The level, trend and seasonality shift slowly
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>Pick something else when
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>  • Outside drivers explain most of the movement
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>It needs
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  • One number over time at a regular frequency
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>It assumes
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>  • Recent history is the best guide to the near future
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>You get
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>  • A forecast with a range
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>  • Level, trend and seasonal parts
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>Example: Forecast monthly demand 12 months ahead with a damped trend.
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>Related: ts.theta, ts.arima, evaluate.baseline
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>(--expert shows the maths and references)
+</span></code></pre></div>
+<p>Every card has the same parts: a one- or two-sentence summary without jargon, when to use it
+and when not, the data it needs, what it assumes, what you get, how hard it is, how long it
+usually takes, a tiny example and related items. <code>--expert</code> (or <em>Expert detail</em> in the web app)
+adds the maths and the references. The platform refuses catalog items without a complete card,
+so every model you can pick explains itself - including your own plugins
+(<a href="../plugins/">the About check</a>).</p>
+<h2 id="the-model-families-compared">The model families, compared<a class="headerlink" href="#the-model-families-compared" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>You want to</th>
+<th>Start with</th>
+<th>Why</th>
+<th>Then consider</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Measure what each marketing channel adds; plan budgets</td>
+<td><code>mmm.bayesian</code></td>
+<td>Pooled over markets, adstock and saturation, business priors and lift tests, ranges on everything, budget optimisation</td>
+<td><code>mmm.frequentist</code> for a quick first look; the <code>mmm_governed</code> workflow to gate it on null tests</td>
+</tr>
+<tr>
+<td>Forecast one series with known drivers (price, promotions)</td>
+<td><code>ts.sarimax</code></td>
+<td>Past values, season and drivers, prediction intervals, forecasts from planned drivers</td>
+<td>The <code>ts_readiness_arimax</code> workflow to choose the differencing and orders and prove it beats naive</td>
+</tr>
+<tr>
+<td>Forecast without drivers, fast and robust</td>
+<td><code>ts.ets</code> or <code>ts.theta</code></td>
+<td>Strong, simple baselines that are hard to beat</td>
+<td>The <code>forecast_bakeoff</code> workflow: let them compete</td>
+</tr>
+<tr>
+<td>See the trend under the noise</td>
+<td><code>ts.unobserved_components</code></td>
+<td>Level, trend, season and noise as separate parts</td>
+<td><code>ts.hsgp_trend</code> for a Bayesian smooth trend</td>
+</tr>
+<tr>
+<td>Know how an effect builds up over weeks</td>
+<td><code>ts.ardl</code></td>
+<td>Lags of the drivers, chosen automatically</td>
+<td><code>ts.ecm</code> when the result and drivers trend together</td>
+</tr>
+<tr>
+<td>Several series that drive each other</td>
+<td><code>ts.var</code></td>
+<td>Impulse responses, variance decompositions, Granger tests</td>
+<td><code>ts.vecm</code> when they are tied in the long run (the <code>var_vecm_cointegration</code> workflow decides)</td>
+</tr>
+<tr>
+<td>Spot regimes (normal vs promotion-driven)</td>
+<td><code>ts.markov_switching</code></td>
+<td>Probability of each regime per period</td>
+<td><code>ts.gaussian_hmm</code> for a Bayesian hidden-state model</td>
+</tr>
+<tr>
+<td>Predict a value per store, product or customer</td>
+<td><code>sklearn.tabular_regressor</code></td>
+<td>Gradient boosting or forests, quantiles and conformal intervals</td>
+<td><code>tabular.hierarchical_glm</code> when groups should borrow strength</td>
+</tr>
+<tr>
+<td>Understand which product people choose</td>
+<td><code>choice.multinomial_logit</code></td>
+<td>Price and promotion effects, household effects</td>
+<td></td>
+</tr>
+<tr>
+<td>Check data before modelling</td>
+<td>the <a href="../data-explorer/">Data Explorer</a></td>
+<td>Stationarity, cross-correlation with the KPI, STL, VIF, quality warnings</td>
+<td></td>
+</tr>
+<tr>
+<td>Check a model can be trusted</td>
+<td>a <a href="../null-tests/">governance policy</a></td>
+<td>Null tests, benchmarks, residuals, stability, signs</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The detail for each family: <a href="../../models/mmm-framework/">Marketing-mix models</a>,
+<a href="../../models/statsmodels/">statsmodels time-series models</a>,
+<a href="../time-series/">forecasting</a>, <a href="../sklearn/">tabular models</a>,
+<a href="../../reference/models/">the built-in models</a>.</p>
+<h2 id="when-the-chooser-is-not-enough">When the chooser is not enough<a class="headerlink" href="#when-the-chooser-is-not-enough" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Compare instead of guessing.</strong> Fit two candidates and compare them on the same holdout:
+  <code>mapi explore compare model://growth/a@v1 model://growth/b@v1</code> (metrics, ranking and
+  Diebold-Mariano tests), or run a <a href="../workflow-cookbook/#forecast-bake-off">bake-off workflow</a>.</li>
+<li><strong>Let the data decide the details.</strong> The readiness workflow chooses differencing and ARMA
+  orders by tests and information criteria, and records why.</li>
+<li><strong>Make "good enough" explicit.</strong> A governance policy turns "it looks fine" into checks with
+  thresholds, evidence and a second person's sign-off.</li>
+</ul>
 
 
 
@@ -4538,7 +5147,7 @@ without a network round trip per batch.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../webhook-receivers/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Receive webhooks">
+          <a href="../null-tests/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Can you trust this model? Null tests explained">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -4548,20 +5157,20 @@ without a network round trip per batch.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Receive webhooks
+                Can you trust this model? Null tests explained
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../tutorials/bayesinsight-import/" class="md-footer__link md-footer__link--next" aria-label="Next: Import a BayesInsight model">
+          <a href="../authentication/" class="md-footer__link md-footer__link--next" aria-label="Next: Authentication">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Import a BayesInsight model
+                Authentication
               </div>
             </div>
             <div class="md-footer__button md-icon">

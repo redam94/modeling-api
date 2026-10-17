@@ -1,0 +1,307 @@
+{
+  "$defs": {
+    "BacktestFoldResult": {
+      "additionalProperties": true,
+      "properties": {
+        "by_horizon": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object"
+          },
+          "title": "By Horizon",
+          "type": "object"
+        },
+        "fold": {
+          "$ref": "#/$defs/Fold"
+        },
+        "metrics": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Metrics",
+          "type": "object"
+        }
+      },
+      "required": [
+        "fold"
+      ],
+      "title": "BacktestFoldResult",
+      "type": "object"
+    },
+    "Fold": {
+      "description": "One fold. Ordered plans fill the position windows; group plans fill the groups.\n\n``excluded`` are extra windows left out of training (gaps, purges, embargoes); the\nfirst ``gap`` positions of the test window's lead are scored for continuity only when\nthe plan says so (``as_of`` semantics), never counted in metrics.",
+      "examples": [
+        {
+          "excluded": [
+            [
+              80,
+              82
+            ]
+          ],
+          "horizons": [
+            1,
+            4,
+            8
+          ],
+          "index": 0,
+          "test_start": 82,
+          "test_stop": 90,
+          "train_start": 0,
+          "train_stop": 80
+        }
+      ],
+      "properties": {
+        "excluded": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Excluded",
+          "type": "array"
+        },
+        "horizons": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Horizons",
+          "type": "array"
+        },
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "inner": {
+          "description": "nested plans: inner folds",
+          "items": {
+            "$ref": "#/$defs/Fold"
+          },
+          "title": "Inner",
+          "type": "array"
+        },
+        "test_groups": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Test Groups"
+        },
+        "test_start": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Test Start"
+        },
+        "test_stop": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Test Stop"
+        },
+        "train_groups": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Train Groups"
+        },
+        "train_start": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Train Start"
+        },
+        "train_stop": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Train Stop"
+        }
+      },
+      "required": [
+        "index"
+      ],
+      "title": "Fold",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-backtest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``backtest``: metrics per fold and horizon for the model and its benchmarks.",
+  "properties": {
+    "benchmarks": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": "object"
+      },
+      "title": "Benchmarks",
+      "type": "object"
+    },
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "folds": {
+      "items": {
+        "$ref": "#/$defs/BacktestFoldResult"
+      },
+      "maxItems": 200,
+      "title": "Folds",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.model-explorer.backtest/v1",
+      "default": "mapi.model-explorer.backtest/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "plan": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "description": "The SplitPlan",
+      "title": "Plan",
+      "type": "object"
+    },
+    "summary": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Summary",
+      "type": "object"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "title": "BacktestView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

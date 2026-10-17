@@ -88,5 +88,5 @@
   ],
   "title": "SignedGet",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

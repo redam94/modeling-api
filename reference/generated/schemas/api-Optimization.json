@@ -1,0 +1,1945 @@
+{
+  "$defs": {
+    "ChainProgress": {
+      "additionalProperties": false,
+      "description": "Per-chain sampler progress (Expert run view).",
+      "properties": {
+        "chain": {
+          "minimum": 0,
+          "title": "Chain",
+          "type": "integer"
+        },
+        "divergences": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Divergences",
+          "type": "integer"
+        },
+        "draws_done": {
+          "minimum": 0,
+          "title": "Draws Done",
+          "type": "integer"
+        },
+        "draws_total": {
+          "minimum": 0,
+          "title": "Draws Total",
+          "type": "integer"
+        },
+        "tuning": {
+          "default": false,
+          "title": "Tuning",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "chain",
+        "draws_done",
+        "draws_total"
+      ],
+      "title": "ChainProgress",
+      "type": "object"
+    },
+    "ChannelAllocation": {
+      "description": "The plan for one channel (and geo): spend now and at the optimum, shares, the\nexpected contribution, the marginal return at the plan and how stable the\nrecommendation is across draws.",
+      "properties": {
+        "change_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change Pct"
+        },
+        "channel": {
+          "title": "Channel",
+          "type": "string"
+        },
+        "current_share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Current Share",
+          "type": "number"
+        },
+        "current_spend": {
+          "minimum": 0,
+          "title": "Current Spend",
+          "type": "number"
+        },
+        "expected_contribution": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DistributionSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "extrapolated": {
+          "default": false,
+          "description": "Beyond the spend range seen in the data",
+          "title": "Extrapolated",
+          "type": "boolean"
+        },
+        "geo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geo"
+        },
+        "marginal_roi": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Next unit of money's KPI return",
+          "title": "Marginal Roi"
+        },
+        "optimal_share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Optimal Share",
+          "type": "number"
+        },
+        "optimal_spend": {
+          "minimum": 0,
+          "title": "Optimal Spend",
+          "type": "number"
+        },
+        "stability": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Share of draws whose own optimum moves the same way",
+          "title": "Stability"
+        }
+      },
+      "required": [
+        "channel",
+        "current_spend",
+        "optimal_spend",
+        "current_share",
+        "optimal_share"
+      ],
+      "title": "ChannelAllocation",
+      "type": "object"
+    },
+    "ChannelBounds": {
+      "additionalProperties": false,
+      "description": "Bounds on one channel: as multiples of its current spend and/or in money (money\nbounds override multiples, as in mmm-framework).",
+      "properties": {
+        "locked": {
+          "default": false,
+          "description": "Keep the channel at its current spend",
+          "title": "Locked",
+          "type": "boolean"
+        },
+        "max_multiplier": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Multiplier"
+        },
+        "max_spend": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Spend"
+        },
+        "min_multiplier": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Multiplier"
+        },
+        "min_spend": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Spend"
+        }
+      },
+      "title": "ChannelBounds",
+      "type": "object"
+    },
+    "DistributionSummary": {
+      "description": "A distribution in business units: mean, sd and named quantiles (``\"0.05\"`` \u2026).",
+      "examples": [
+        {
+          "mean": 2.6,
+          "quantiles": {
+            "0.05": 1.5,
+            "0.5": 2.5,
+            "0.95": 4.1
+          },
+          "sd": 0.8
+        }
+      ],
+      "properties": {
+        "mean": {
+          "title": "Mean",
+          "type": "number"
+        },
+        "quantiles": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "maxProperties": 32,
+          "title": "Quantiles",
+          "type": "object"
+        },
+        "sd": {
+          "minimum": 0,
+          "title": "Sd",
+          "type": "number"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "mean",
+        "sd"
+      ],
+      "title": "DistributionSummary",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "FailureClass": {
+      "description": "Why a run ended ``FAILED``; each maps to one stable :class:`ErrorCode`.",
+      "enum": [
+        "user",
+        "resource_exhausted",
+        "infra",
+        "integrity",
+        "timeout",
+        "sandbox"
+      ],
+      "title": "FailureClass",
+      "type": "string"
+    },
+    "FrontierPoint": {
+      "description": "The best plan at one total budget.",
+      "properties": {
+        "allocation": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Allocation",
+          "type": "object"
+        },
+        "expected_kpi": {
+          "title": "Expected Kpi",
+          "type": "number"
+        },
+        "kpi_p5": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kpi P5"
+        },
+        "kpi_p95": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kpi P95"
+        },
+        "marginal_roi": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marginal Roi"
+        },
+        "total_budget": {
+          "minimum": 0,
+          "title": "Total Budget",
+          "type": "number"
+        }
+      },
+      "required": [
+        "total_budget",
+        "expected_kpi"
+      ],
+      "title": "FrontierPoint",
+      "type": "object"
+    },
+    "FrontierRequest": {
+      "additionalProperties": false,
+      "description": "Also sweep budgets from ``budget_min`` to ``budget_max`` (default 40%-200% of the\ncurrent total) in ``n_points`` steps.",
+      "properties": {
+        "budget_max": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Max"
+        },
+        "budget_min": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Min"
+        },
+        "n_points": {
+          "default": 12,
+          "maximum": 50,
+          "minimum": 3,
+          "title": "N Points",
+          "type": "integer"
+        }
+      },
+      "title": "FrontierRequest",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "OptimizeRequest": {
+      "additionalProperties": false,
+      "description": "``POST \u2026:optimize``: how should the budget be split?\n\n``objective``: ``mean`` (expected KPI), ``p<q>`` (the q-th percentile across posterior\ndraws, a cautious plan) or ``cvar<a>`` (mean of the worst a% of draws). ``mode``:\n``fixed`` spends the budget; ``free`` funds each channel to break-even (marginal value\n= 1 per unit of money, with ``value_per_kpi`` converting KPI to money) and makes the\ntotal an output. ``horizon`` is the number of future periods the plan covers (default:\nthe fit window's length, as the response grid).",
+      "examples": [
+        {
+          "channels": {
+            "search": {
+              "min_spend": 50000
+            },
+            "tv": {
+              "max_multiplier": 1.5,
+              "min_multiplier": 0.5
+            }
+          },
+          "frontier": {
+            "n_points": 10
+          },
+          "groups": [
+            {
+              "channels": [
+                "search",
+                "social"
+              ],
+              "min_share": 0.4,
+              "name": "digital"
+            }
+          ],
+          "objective": "p10",
+          "total_budget": 1000000
+        },
+        {
+          "budget_change_pct": -10,
+          "objective": "mean"
+        },
+        {
+          "mode": "free",
+          "value_per_kpi": 1.0
+        }
+      ],
+      "properties": {
+        "budget_change_pct": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": -100,
+              "maximum": 1000,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Change Pct"
+        },
+        "by_geo": {
+          "default": false,
+          "description": "Allocate per (geo, channel) jointly",
+          "title": "By Geo",
+          "type": "boolean"
+        },
+        "channels": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/ChannelBounds"
+            }
+          },
+          "title": "Channels",
+          "type": "object"
+        },
+        "default_bounds": {
+          "$ref": "#/$defs/ChannelBounds",
+          "description": "Bounds of channels not listed in channels"
+        },
+        "frontier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FrontierRequest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "groups": {
+          "items": {
+            "$ref": "#/$defs/SpendGroup"
+          },
+          "maxItems": 16,
+          "title": "Groups",
+          "type": "array"
+        },
+        "horizon": {
+          "anyOf": [
+            {
+              "maximum": 520,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Horizon"
+        },
+        "max_draws": {
+          "default": 200,
+          "maximum": 2000,
+          "minimum": 20,
+          "title": "Max Draws",
+          "type": "integer"
+        },
+        "min_channel_spend": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Keep every channel funded at least this much",
+          "title": "Min Channel Spend"
+        },
+        "mode": {
+          "default": "fixed",
+          "enum": [
+            "fixed",
+            "free"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "n_steps": {
+          "default": 400,
+          "maximum": 5000,
+          "minimum": 50,
+          "title": "N Steps",
+          "type": "integer"
+        },
+        "objective": {
+          "default": "mean",
+          "examples": [
+            "mean",
+            "p10",
+            "cvar5"
+          ],
+          "title": "Objective",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "total_budget": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Budget"
+        },
+        "value_per_kpi": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Per Kpi"
+        }
+      },
+      "title": "OptimizeRequest",
+      "type": "object"
+    },
+    "OptimizeResult": {
+      "description": "``optimize.json``: the recommended plan and its uncertainty.",
+      "examples": [
+        {
+          "allocation": [
+            {
+              "change_pct": -25,
+              "channel": "tv",
+              "current_share": 0.6,
+              "current_spend": 600000,
+              "marginal_roi": 1.4,
+              "optimal_share": 0.45,
+              "optimal_spend": 450000,
+              "stability": 0.82
+            },
+            {
+              "change_pct": 37.5,
+              "channel": "search",
+              "current_share": 0.4,
+              "current_spend": 400000,
+              "marginal_roi": 1.4,
+              "optimal_share": 0.55,
+              "optimal_spend": 550000,
+              "stability": 0.9
+            }
+          ],
+          "current_total": 1000000,
+          "expected_kpi": {
+            "mean": 3400000.0,
+            "quantiles": {
+              "0.05": 3060000.0,
+              "0.95": 3750000.0
+            },
+            "sd": 210000.0
+          },
+          "expected_regret": 8000.0,
+          "kpi": "revenue",
+          "kpi_units": "EUR",
+          "n_draws": 200,
+          "objective": "p10",
+          "objective_label": "cautious plan (10th percentile of the KPI)",
+          "prob_positive_uplift": 0.97,
+          "spend_units": "EUR",
+          "total_budget": 1000000,
+          "uplift": {
+            "mean": 120000.0,
+            "quantiles": {
+              "0.05": 25000.0,
+              "0.95": 220000.0
+            },
+            "sd": 60000.0
+          }
+        }
+      ],
+      "properties": {
+        "allocation": {
+          "items": {
+            "$ref": "#/$defs/ChannelAllocation"
+          },
+          "maxItems": 16384,
+          "minItems": 1,
+          "title": "Allocation",
+          "type": "array"
+        },
+        "computed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Computed At"
+        },
+        "current_kpi": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DistributionSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "current_total": {
+          "minimum": 0,
+          "title": "Current Total",
+          "type": "number"
+        },
+        "expected_kpi": {
+          "$ref": "#/$defs/DistributionSummary"
+        },
+        "expected_regret": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Regret"
+        },
+        "format": {
+          "const": "mapi.optimize/v1",
+          "default": "mapi.optimize/v1",
+          "title": "Format",
+          "type": "string"
+        },
+        "frontier": {
+          "items": {
+            "$ref": "#/$defs/FrontierPoint"
+          },
+          "maxItems": 50,
+          "title": "Frontier",
+          "type": "array"
+        },
+        "horizon": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Horizon"
+        },
+        "kpi": {
+          "maxLength": 128,
+          "title": "Kpi",
+          "type": "string"
+        },
+        "kpi_units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kpi Units"
+        },
+        "mode": {
+          "default": "fixed",
+          "enum": [
+            "fixed",
+            "free"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "n_draws": {
+          "minimum": 1,
+          "title": "N Draws",
+          "type": "integer"
+        },
+        "notes_plain": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Notes Plain",
+          "type": "array"
+        },
+        "objective": {
+          "title": "Objective",
+          "type": "string"
+        },
+        "objective_label": {
+          "maxLength": 200,
+          "title": "Objective Label",
+          "type": "string"
+        },
+        "prob_positive_uplift": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prob Positive Uplift"
+        },
+        "shadow_price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "KPI value of the next unit of money",
+          "title": "Shadow Price"
+        },
+        "spend_units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spend Units"
+        },
+        "total_budget": {
+          "minimum": 0,
+          "title": "Total Budget",
+          "type": "number"
+        },
+        "uplift": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DistributionSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Plan minus current plan"
+        }
+      },
+      "required": [
+        "objective",
+        "objective_label",
+        "total_budget",
+        "current_total",
+        "kpi",
+        "allocation",
+        "expected_kpi",
+        "n_draws"
+      ],
+      "title": "OptimizeResult",
+      "type": "object"
+    },
+    "Problem": {
+      "additionalProperties": false,
+      "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "instance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instance"
+        },
+        "status": {
+          "maximum": 599,
+          "minimum": 100,
+          "title": "Status",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trace Id"
+        },
+        "type": {
+          "default": "about:blank",
+          "title": "Type",
+          "type": "string"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "title",
+        "status",
+        "code"
+      ],
+      "title": "Problem",
+      "type": "object"
+    },
+    "ProgressSnapshot": {
+      "description": "Latest coalesced progress (one upserted row per run).",
+      "examples": [
+        {
+          "chains": [
+            {
+              "chain": 0,
+              "divergences": 0,
+              "draws_done": 400,
+              "draws_total": 1000
+            },
+            {
+              "chain": 1,
+              "divergences": 1,
+              "draws_done": 380,
+              "draws_total": 1000
+            }
+          ],
+          "eta_seconds": 95,
+          "fraction": 0.4,
+          "message": "drawing samples",
+          "phase": "sample",
+          "seq": 42,
+          "updated_at": "2026-10-15T09:30:00Z"
+        }
+      ],
+      "properties": {
+        "chains": {
+          "items": {
+            "$ref": "#/$defs/ChainProgress"
+          },
+          "title": "Chains",
+          "type": "array"
+        },
+        "eta_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eta Seconds"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "phase": {
+          "$ref": "#/$defs/RunnerPhase"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "phase",
+        "updated_at"
+      ],
+      "title": "ProgressSnapshot",
+      "type": "object"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    },
+    "Run": {
+      "description": "A unit of work and its lifecycle (see the state machine in ``mapi_spec.run``).",
+      "examples": [
+        {
+          "attempt": 1,
+          "cost": {
+            "estimated": true
+          },
+          "created_at": "2026-10-15T09:30:00Z",
+          "executor": "local-process",
+          "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+          "kind": "fit",
+          "progress": {
+            "chains": [
+              {
+                "chain": 0,
+                "divergences": 0,
+                "draws_done": 400,
+                "draws_total": 1000
+              },
+              {
+                "chain": 1,
+                "divergences": 1,
+                "draws_done": 380,
+                "draws_total": 1000
+              }
+            ],
+            "eta_seconds": 95,
+            "fraction": 0.4,
+            "message": "drawing samples",
+            "phase": "sample",
+            "seq": 42,
+            "updated_at": "2026-10-15T09:30:00Z"
+          },
+          "project_id": "default",
+          "queued_at": "2026-10-15T09:30:00Z",
+          "resource_class": "M",
+          "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+          "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+          "spec_revision": 2,
+          "started_at": "2026-10-15T09:30:05Z",
+          "state": "running",
+          "tenant_id": "default",
+          "timeout": "45m",
+          "updated_at": "2026-10-15T09:31:00Z"
+        },
+        {
+          "attempt": 1,
+          "created_at": "2026-10-15T09:30:00Z",
+          "failure_class": "resource_exhausted",
+          "finished_at": "2026-10-15T09:40:00Z",
+          "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+          "kind": "fit",
+          "problem": {
+            "code": "RESOURCE_EXHAUSTED",
+            "detail": "the worker was killed (exit 137); retry at class L",
+            "status": 507,
+            "title": "Run exhausted its resources",
+            "type": "urn:mapi:error:RESOURCE_EXHAUSTED"
+          },
+          "project_id": "default",
+          "resource_class": "M",
+          "state": "failed",
+          "tenant_id": "default",
+          "timeout": "45m",
+          "updated_at": "2026-10-15T09:40:00Z"
+        }
+      ],
+      "properties": {
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "cost": {
+          "$ref": "#/$defs/RunCost"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dataset_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Id"
+        },
+        "executor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Executor"
+        },
+        "failure_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FailureClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RunKind"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "model_version_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version Id"
+        },
+        "output_model_version_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The model version a successful fit produced",
+          "title": "Output Model Version Id"
+        },
+        "parent_run_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Run Id"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Problem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "progress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProgressSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "queued_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Queued At"
+        },
+        "resource_class": {
+          "$ref": "#/$defs/ResourceClass"
+        },
+        "retry_of": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retry Of"
+        },
+        "spec_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spec Hash"
+        },
+        "spec_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spec Id"
+        },
+        "spec_revision": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spec Revision"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "state": {
+          "$ref": "#/$defs/RunState"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Duration such as '45m', '1h30m' or '90s'.",
+          "examples": [
+            "45m",
+            "1h30m"
+          ],
+          "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+          "title": "Timeout",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "tenant_id",
+        "project_id",
+        "kind",
+        "state",
+        "attempt",
+        "resource_class",
+        "timeout",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "Run",
+      "type": "object"
+    },
+    "RunCost": {
+      "description": "Cost of a run (all attempts). ``estimated`` is true until an ``actual`` ledger entry\nexists; ``usd`` is kept for v0.2 clients and is set only when the currency is USD.",
+      "examples": [
+        {
+          "estimated": true,
+          "gib_seconds": null,
+          "usd": null,
+          "vcpu_seconds": null
+        },
+        {
+          "amount_micros": 31200,
+          "attempts_billed": 1,
+          "currency": "USD",
+          "estimate_micros": 30000,
+          "estimated": false,
+          "gib_seconds": 4800,
+          "price_version": "cloudrun-list-2026-10",
+          "usd": 0.0312,
+          "vcpu_seconds": 1200
+        }
+      ],
+      "properties": {
+        "amount_micros": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Micros"
+        },
+        "attempts_billed": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Attempts Billed",
+          "type": "integer"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "estimate_micros": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pre-run estimate",
+          "title": "Estimate Micros"
+        },
+        "estimated": {
+          "default": true,
+          "title": "Estimated",
+          "type": "boolean"
+        },
+        "gib_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gib Seconds"
+        },
+        "price_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price Version"
+        },
+        "usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Usd"
+        },
+        "vcpu_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vcpu Seconds"
+        }
+      },
+      "title": "RunCost",
+      "type": "object"
+    },
+    "RunKind": {
+      "description": "What a run does. ``validate`` is the explicit sandboxed dry-run of a spec.\n\n``sweep``, ``backtest``, ``sbc`` and ``campaign`` are fan-out *parents* (plan \u00a76.2,\nM4): they own child runs and never execute on an executor themselves.",
+      "enum": [
+        "ingest",
+        "describe",
+        "validate",
+        "fit",
+        "score",
+        "evaluate",
+        "derive",
+        "render",
+        "optimize",
+        "sweep",
+        "backtest",
+        "sbc",
+        "campaign",
+        "translate_priors",
+        "workflow",
+        "workflow_node",
+        "explore",
+        "governance"
+      ],
+      "title": "RunKind",
+      "type": "string"
+    },
+    "RunState": {
+      "description": "Lifecycle of a run (plan \u00a78.3). Terminal states never change again, except that a\n``PARTIAL`` run can be resumed (``RESUME`` \u2192 ``QUEUED`` with a new attempt).",
+      "enum": [
+        "created",
+        "rejected",
+        "queued",
+        "dispatching",
+        "provisioning",
+        "running",
+        "stalled",
+        "finalizing",
+        "succeeded",
+        "partial",
+        "failed",
+        "cancelling",
+        "cancelled"
+      ],
+      "title": "RunState",
+      "type": "string"
+    },
+    "RunnerPhase": {
+      "description": "Coarse phase reported by the runner (drives progress text in the UI).",
+      "enum": [
+        "bootstrap",
+        "load_inputs",
+        "validate",
+        "preprocess",
+        "fit",
+        "sample",
+        "score",
+        "evaluate",
+        "derive",
+        "plots",
+        "upload",
+        "done"
+      ],
+      "title": "RunnerPhase",
+      "type": "string"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SpendGroup": {
+      "additionalProperties": false,
+      "description": "A portfolio constraint over several channels (shares of the total and/or money).",
+      "properties": {
+        "channels": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Channels",
+          "type": "array"
+        },
+        "max_share": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Share"
+        },
+        "max_spend": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Spend"
+        },
+        "min_share": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Share"
+        },
+        "min_spend": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Spend"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "channels"
+      ],
+      "title": "SpendGroup",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Optimization.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``POST \u2026:optimize`` (``Prefer: wait=N``: ``200`` when done, else ``202``) and\n``GET /v1/optimizations/{run_id}``: the ``optimize`` run and, once done, the plan.",
+  "examples": [
+    {
+      "done": true,
+      "request": {
+        "channels": {
+          "search": {
+            "min_spend": 50000
+          },
+          "tv": {
+            "max_multiplier": 1.5,
+            "min_multiplier": 0.5
+          }
+        },
+        "frontier": {
+          "n_points": 10
+        },
+        "groups": [
+          {
+            "channels": [
+              "search",
+              "social"
+            ],
+            "min_share": 0.4,
+            "name": "digital"
+          }
+        ],
+        "objective": "p10",
+        "total_budget": 1000000
+      },
+      "result": {
+        "allocation": [
+          {
+            "change_pct": -25,
+            "channel": "tv",
+            "current_share": 0.6,
+            "current_spend": 600000,
+            "marginal_roi": 1.4,
+            "optimal_share": 0.45,
+            "optimal_spend": 450000,
+            "stability": 0.82
+          },
+          {
+            "change_pct": 37.5,
+            "channel": "search",
+            "current_share": 0.4,
+            "current_spend": 400000,
+            "marginal_roi": 1.4,
+            "optimal_share": 0.55,
+            "optimal_spend": 550000,
+            "stability": 0.9
+          }
+        ],
+        "current_total": 1000000,
+        "expected_kpi": {
+          "mean": 3400000.0,
+          "quantiles": {
+            "0.05": 3060000.0,
+            "0.95": 3750000.0
+          },
+          "sd": 210000.0
+        },
+        "expected_regret": 8000.0,
+        "kpi": "revenue",
+        "kpi_units": "EUR",
+        "n_draws": 200,
+        "objective": "p10",
+        "objective_label": "cautious plan (10th percentile of the KPI)",
+        "prob_positive_uplift": 0.97,
+        "spend_units": "EUR",
+        "total_budget": 1000000,
+        "uplift": {
+          "mean": 120000.0,
+          "quantiles": {
+            "0.05": 25000.0,
+            "0.95": 220000.0
+          },
+          "sd": 60000.0
+        }
+      },
+      "run": {
+        "attempt": 1,
+        "cost": {
+          "estimated": true
+        },
+        "created_at": "2026-10-15T09:30:00Z",
+        "executor": "local-process",
+        "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+        "kind": "optimize",
+        "progress": null,
+        "project_id": "default",
+        "queued_at": "2026-10-15T09:30:00Z",
+        "resource_class": "M",
+        "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+        "spec_revision": 2,
+        "started_at": "2026-10-15T09:30:05Z",
+        "state": "succeeded",
+        "tenant_id": "default",
+        "timeout": "45m",
+        "updated_at": "2026-10-15T09:31:00Z"
+      }
+    }
+  ],
+  "properties": {
+    "done": {
+      "title": "Done",
+      "type": "boolean"
+    },
+    "request": {
+      "$ref": "#/$defs/OptimizeRequest"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OptimizeResult"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "run": {
+      "$ref": "#/$defs/Run"
+    }
+  },
+  "required": [
+    "run",
+    "done",
+    "request"
+  ],
+  "title": "Optimization",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

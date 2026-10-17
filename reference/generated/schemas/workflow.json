@@ -1,0 +1,712 @@
+{
+  "$defs": {
+    "About": {
+      "additionalProperties": false,
+      "description": "The plain-language card of one catalog item.\n\nEvery field except the expert ones is required, so an About that validates is\nstructurally complete; :func:`about_issues` adds the editorial rules (one or two\nsentences, no jargon in the summary, known chooser tags, related ids that exist).",
+      "examples": [
+        {
+          "assumptions": [
+            "Numbers can be added up (spend, sales); averages are averaged"
+          ],
+          "avoid_when": [
+            "Your data already has one row per week"
+          ],
+          "data_needs": [
+            "A date column"
+          ],
+          "difficulty": "beginner",
+          "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+          "fits": {
+            "goal": [
+              "check_data"
+            ]
+          },
+          "outputs": [
+            "The same columns, one row per week"
+          ],
+          "related": [
+            "core.calendar"
+          ],
+          "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+          "title": "Weekly totals",
+          "typical_runtime": "instant",
+          "use_when": [
+            "Your data is daily but you want to plan or report by week"
+          ]
+        }
+      ],
+      "properties": {
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "avoid_when": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Avoid When",
+          "type": "array"
+        },
+        "data_needs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Data Needs",
+          "type": "array"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/Difficulty"
+        },
+        "example": {
+          "description": "A tiny example",
+          "maxLength": 600,
+          "minLength": 10,
+          "title": "Example",
+          "type": "string"
+        },
+        "expert_notes": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maths, estimator details, caveats for experts",
+          "title": "Expert Notes"
+        },
+        "fits": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "description": "Chooser tags: question id -> the answers this item suits",
+          "maxProperties": 16,
+          "title": "Fits",
+          "type": "object"
+        },
+        "outputs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Outputs",
+          "type": "array"
+        },
+        "references": {
+          "items": {
+            "$ref": "#/$defs/AboutReference"
+          },
+          "maxItems": 10,
+          "title": "References",
+          "type": "array"
+        },
+        "related": {
+          "description": "Ids of related catalog items (models, steps, nodes, checks, templates)",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Related",
+          "type": "array"
+        },
+        "summary_plain": {
+          "description": "One or two sentences without jargon: what it does for you",
+          "maxLength": 400,
+          "minLength": 20,
+          "title": "Summary Plain",
+          "type": "string"
+        },
+        "title": {
+          "description": "A human name",
+          "maxLength": 80,
+          "minLength": 3,
+          "title": "Title",
+          "type": "string"
+        },
+        "typical_runtime": {
+          "$ref": "#/$defs/TypicalRuntime"
+        },
+        "use_when": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Use When",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "summary_plain",
+        "use_when",
+        "avoid_when",
+        "data_needs",
+        "assumptions",
+        "outputs",
+        "difficulty",
+        "typical_runtime",
+        "example"
+      ],
+      "title": "About",
+      "type": "object"
+    },
+    "AboutReference": {
+      "additionalProperties": false,
+      "description": "A source for the expert detail (a paper, a book chapter, library documentation).",
+      "properties": {
+        "title": {
+          "maxLength": 300,
+          "minLength": 3,
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "pattern": "^https://\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "AboutReference",
+      "type": "object"
+    },
+    "Difficulty": {
+      "description": "How much statistical background an item needs to use well.",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "expert"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "Metadata": {
+      "additionalProperties": false,
+      "description": "Identity and labels of a document.",
+      "properties": {
+        "about": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/About"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3.5: a plain-language About card so others can choose this spec, pipeline or workflow (see mapi_spec.about)"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "labels": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[a-z0-9]([a-z0-9_.\\-/]{0,62})$": {
+              "maxLength": 63,
+              "pattern": "^[A-Za-z0-9_.\\-]*$",
+              "type": "string"
+            }
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "name": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+          "title": "Name",
+          "type": "string"
+        },
+        "project": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+          "title": "Project",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "project"
+      ],
+      "title": "Metadata",
+      "type": "object"
+    },
+    "NodeKind": {
+      "enum": [
+        "test",
+        "transform",
+        "branch",
+        "split",
+        "search",
+        "model",
+        "evaluate",
+        "compare",
+        "select",
+        "governance",
+        "report",
+        "subworkflow"
+      ],
+      "title": "NodeKind",
+      "type": "string"
+    },
+    "PortType": {
+      "description": "What flows along a workflow edge.",
+      "enum": [
+        "dataset",
+        "test_result",
+        "split_plan",
+        "model_version",
+        "metrics",
+        "table",
+        "plot",
+        "report",
+        "evidence"
+      ],
+      "title": "PortType",
+      "type": "string"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    },
+    "TypicalRuntime": {
+      "description": "Rough wall-clock time on typical data (``S`` resource class).",
+      "enum": [
+        "instant",
+        "seconds",
+        "minutes",
+        "long"
+      ],
+      "title": "TypicalRuntime",
+      "type": "string"
+    },
+    "WorkflowExecution": {
+      "additionalProperties": false,
+      "description": "Run-wide settings.",
+      "properties": {
+        "max_parallel": {
+          "default": 4,
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Max Parallel",
+          "type": "integer"
+        },
+        "resource_class": {
+          "$ref": "#/$defs/ResourceClass",
+          "default": "S"
+        },
+        "timeout": {
+          "description": "Duration such as '45m', '1h30m' or '90s'.",
+          "examples": [
+            "45m",
+            "1h30m"
+          ],
+          "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+          "title": "Timeout",
+          "type": "string"
+        }
+      },
+      "title": "WorkflowExecution",
+      "type": "object"
+    },
+    "WorkflowInput": {
+      "additionalProperties": false,
+      "description": "A workflow input (``inputs.<name>``): a dataset, a model version, a split plan...",
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A reference used when the run gives none",
+          "title": "Default"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "$ref": "#/$defs/PortType"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "WorkflowInput",
+      "type": "object"
+    },
+    "WorkflowNode": {
+      "additionalProperties": false,
+      "description": "One node: an implementation (``use``), its parameters and its wiring.",
+      "properties": {
+        "cache": {
+          "default": true,
+          "description": "Reuse an identical earlier result",
+          "title": "Cache",
+          "type": "boolean"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inputs": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "maxProperties": 32,
+          "title": "Inputs",
+          "type": "object"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NodeKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional; must match the implementation"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "on_failure": {
+          "default": "fail",
+          "description": "continue: the node counts as skipped for its dependants",
+          "enum": [
+            "fail",
+            "continue"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "resource_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResourceClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retries": {
+          "default": 0,
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Retries",
+          "type": "integer"
+        },
+        "timeout": {
+          "anyOf": [
+            {
+              "description": "Duration such as '45m', '1h30m' or '90s'.",
+              "examples": [
+                "45m",
+                "1h30m"
+              ],
+              "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout"
+        },
+        "use": {
+          "maxLength": 128,
+          "pattern": "^[a-z]+\\.[a-z0-9_]+(@\\S{1,64})?$",
+          "title": "Use",
+          "type": "string"
+        },
+        "when": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "<branch node id>.then or .else",
+          "title": "When"
+        },
+        "with": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "With",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "use"
+      ],
+      "title": "WorkflowNode",
+      "type": "object"
+    },
+    "WorkflowParam": {
+      "additionalProperties": false,
+      "description": "A run-time parameter (``params.<name>`` in conditions, ``{$param: name}`` in nodes).",
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "enum": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "maxItems": 64,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enum"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum"
+        },
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum"
+        },
+        "required": {
+          "default": false,
+          "description": "Must be given at run time (no default)",
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "number",
+            "integer",
+            "boolean",
+            "string",
+            "array",
+            "object"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "WorkflowParam",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/workflow.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The declarative workflow document (``kind: Workflow``).",
+  "properties": {
+    "apiVersion": {
+      "const": "mapi/v1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "execution": {
+      "$ref": "#/$defs/WorkflowExecution"
+    },
+    "inputs": {
+      "maxProperties": 16,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/WorkflowInput"
+        }
+      },
+      "title": "Inputs",
+      "type": "object"
+    },
+    "kind": {
+      "const": "Workflow",
+      "title": "Kind",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/Metadata"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/WorkflowNode"
+      },
+      "maxItems": 200,
+      "minItems": 1,
+      "title": "Nodes",
+      "type": "array"
+    },
+    "outputs": {
+      "description": "name -> <node>.<port>",
+      "maxProperties": 32,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "type": "string"
+        }
+      },
+      "title": "Outputs",
+      "type": "object"
+    },
+    "params": {
+      "maxProperties": 64,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/WorkflowParam"
+        }
+      },
+      "title": "Params",
+      "type": "object"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "nodes"
+  ],
+  "title": "WorkflowSpec",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

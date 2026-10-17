@@ -54,7 +54,21 @@
         "EMAIL_NOT_ALLOWED",
         "TERMS_NOT_ACCEPTED",
         "EMAIL_NOT_VERIFIED",
-        "IDENTITY_VERIFICATION_REQUIRED"
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -154,7 +168,7 @@
           "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
           "tenant_id": "default",
           "valid": true,
-          "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+          "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
         }
       ],
       "properties": {
@@ -369,5 +383,5 @@
   ],
   "title": "SpecDoc",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

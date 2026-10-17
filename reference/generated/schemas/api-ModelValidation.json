@@ -1,0 +1,665 @@
+{
+  "$defs": {
+    "Approval": {
+      "examples": [
+        {
+          "approver_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+          "decided_at": "2026-10-15T09:30:00Z",
+          "decision": "approve",
+          "id": "apv_01jaf3j1k2m3n4p5q6r7s8t9v0",
+          "validation_id": "val_01jaf3k1m2n3p4q5r6s7t8v9w0"
+        }
+      ],
+      "properties": {
+        "approver_id": {
+          "title": "Approver Id",
+          "type": "string"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "approve",
+            "reject"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "validation_id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Validation Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "validation_id",
+        "approver_id",
+        "decision",
+        "decided_at"
+      ],
+      "title": "Approval",
+      "type": "object"
+    },
+    "CheckResult": {
+      "description": "The outcome of one check on one model version.",
+      "examples": [
+        {
+          "check": "null.permutation_target",
+          "computed_at": "2026-10-15T09:30:00Z",
+          "evidence": [
+            {
+              "inline": {
+                "real": 0.081,
+                "shuffled_min": 0.079
+              },
+              "kind": "table",
+              "name": "permutation_scores"
+            }
+          ],
+          "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+          "metric": "permutation_p_value",
+          "severity": "blocking",
+          "status": "pass",
+          "threshold": 0.05,
+          "value": 0.048
+        }
+      ],
+      "properties": {
+        "check": {
+          "title": "Check",
+          "type": "string"
+        },
+        "computed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Computed At"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceItem"
+          },
+          "maxItems": 50,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "message_expert": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message Expert"
+        },
+        "message_plain": {
+          "maxLength": 2000,
+          "title": "Message Plain",
+          "type": "string"
+        },
+        "metric": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The run that computed it",
+          "title": "Run Id"
+        },
+        "severity": {
+          "$ref": "#/$defs/CheckSeverity"
+        },
+        "status": {
+          "$ref": "#/$defs/CheckStatus"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What to do about a warning or failure (plain words)",
+          "title": "Suggested Action"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "check",
+        "status",
+        "severity",
+        "message_plain"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    },
+    "CheckSeverity": {
+      "description": "What a failing check does: ``blocking`` stops validation, ``warning`` is recorded and\nshown to the approver, ``info`` is evidence only.",
+      "enum": [
+        "blocking",
+        "warning",
+        "info"
+      ],
+      "title": "CheckSeverity",
+      "type": "string"
+    },
+    "CheckStatus": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail",
+        "error",
+        "skipped"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "CheckThresholds": {
+      "additionalProperties": false,
+      "description": "Warn and fail thresholds of a check (in the check's direction).",
+      "properties": {
+        "fail": {
+          "title": "Fail",
+          "type": "number"
+        },
+        "warn": {
+          "title": "Warn",
+          "type": "number"
+        }
+      },
+      "required": [
+        "warn",
+        "fail"
+      ],
+      "title": "CheckThresholds",
+      "type": "object"
+    },
+    "EvidenceItem": {
+      "description": "One piece of evidence behind a check: a number, a small table, a plot or a stored\nartifact (``ref`` is a run artifact name or a ``model://`` reference).",
+      "properties": {
+        "caption_plain": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption Plain"
+        },
+        "inline": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "kind": {
+          "enum": [
+            "metric",
+            "table",
+            "plot",
+            "artifact",
+            "text"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "PolicyCheck": {
+      "additionalProperties": false,
+      "description": "A required check in a policy: thresholds, severity and parameters.",
+      "properties": {
+        "check": {
+          "title": "Check",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "severity": {
+          "$ref": "#/$defs/CheckSeverity",
+          "default": "blocking"
+        },
+        "thresholds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CheckThresholds"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "check"
+      ],
+      "title": "PolicyCheck",
+      "type": "object"
+    },
+    "ValidationEvent": {
+      "enum": [
+        "submit",
+        "cancel",
+        "checks_passed",
+        "checks_failed",
+        "request_approval",
+        "validate",
+        "approve",
+        "reject",
+        "resubmit",
+        "deprecate"
+      ],
+      "title": "ValidationEvent",
+      "type": "string"
+    },
+    "ValidationStatus": {
+      "enum": [
+        "draft",
+        "checks_running",
+        "checks_passed",
+        "checks_failed",
+        "awaiting_approval",
+        "validated",
+        "rejected",
+        "deprecated"
+      ],
+      "title": "ValidationStatus",
+      "type": "string"
+    },
+    "ValidationTransitionRecord": {
+      "description": "One step of a validation's history (also an audit event).",
+      "properties": {
+        "actor_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actor Id"
+        },
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "event": {
+          "$ref": "#/$defs/ValidationEvent"
+        },
+        "from_status": {
+          "$ref": "#/$defs/ValidationStatus"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "to_status": {
+          "$ref": "#/$defs/ValidationStatus"
+        }
+      },
+      "required": [
+        "from_status",
+        "to_status",
+        "event",
+        "at"
+      ],
+      "title": "ValidationTransitionRecord",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ModelValidation.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A validation of one model version: status, policies, results, approvals, history.",
+  "examples": [
+    {
+      "id": "val_01jaf3k1m2n3p4q5r6s7t8v9w0",
+      "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+      "policies": [
+        "pol_01jaf3h1j2k3m4n5p6q7r8s9t0@3"
+      ],
+      "project_id": "growth",
+      "require_approval": true,
+      "results": [
+        {
+          "check": "null.permutation_target",
+          "computed_at": "2026-10-15T09:30:00Z",
+          "evidence": [
+            {
+              "inline": {
+                "real": 0.081,
+                "shuffled_min": 0.079
+              },
+              "kind": "table",
+              "name": "permutation_scores"
+            }
+          ],
+          "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+          "metric": "permutation_p_value",
+          "severity": "blocking",
+          "status": "pass",
+          "threshold": 0.05,
+          "value": 0.048
+        }
+      ],
+      "status": "awaiting_approval",
+      "submitted_at": "2026-10-15T09:30:00Z",
+      "submitted_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+      "tenant_id": "acme",
+      "updated_at": "2026-10-15T09:30:00Z",
+      "version": 7
+    }
+  ],
+  "properties": {
+    "approvals": {
+      "items": {
+        "$ref": "#/$defs/Approval"
+      },
+      "title": "Approvals",
+      "type": "array"
+    },
+    "approvals_required": {
+      "default": 1,
+      "title": "Approvals Required",
+      "type": "integer"
+    },
+    "failing_checks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Failing Checks",
+      "type": "array"
+    },
+    "history": {
+      "items": {
+        "$ref": "#/$defs/ValidationTransitionRecord"
+      },
+      "title": "History",
+      "type": "array"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "model_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Model Id",
+      "type": "string"
+    },
+    "policies": {
+      "description": "<policy id>@<version>",
+      "items": {
+        "type": "string"
+      },
+      "title": "Policies",
+      "type": "array"
+    },
+    "project_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "require_approval": {
+      "default": false,
+      "title": "Require Approval",
+      "type": "boolean"
+    },
+    "required_checks": {
+      "items": {
+        "$ref": "#/$defs/PolicyCheck"
+      },
+      "title": "Required Checks",
+      "type": "array"
+    },
+    "results": {
+      "items": {
+        "$ref": "#/$defs/CheckResult"
+      },
+      "title": "Results",
+      "type": "array"
+    },
+    "status": {
+      "$ref": "#/$defs/ValidationStatus"
+    },
+    "submitted_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Submitted At"
+    },
+    "submitted_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Submitted By"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "workflow_run_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The governance workflow run",
+      "title": "Workflow Run Id"
+    }
+  },
+  "required": [
+    "id",
+    "tenant_id",
+    "project_id",
+    "model_id",
+    "version",
+    "status",
+    "updated_at"
+  ],
+  "title": "ModelValidation",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

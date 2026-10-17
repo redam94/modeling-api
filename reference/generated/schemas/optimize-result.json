@@ -1,0 +1,485 @@
+{
+  "$defs": {
+    "ChannelAllocation": {
+      "description": "The plan for one channel (and geo): spend now and at the optimum, shares, the\nexpected contribution, the marginal return at the plan and how stable the\nrecommendation is across draws.",
+      "properties": {
+        "change_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change Pct"
+        },
+        "channel": {
+          "title": "Channel",
+          "type": "string"
+        },
+        "current_share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Current Share",
+          "type": "number"
+        },
+        "current_spend": {
+          "minimum": 0,
+          "title": "Current Spend",
+          "type": "number"
+        },
+        "expected_contribution": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DistributionSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "extrapolated": {
+          "default": false,
+          "description": "Beyond the spend range seen in the data",
+          "title": "Extrapolated",
+          "type": "boolean"
+        },
+        "geo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geo"
+        },
+        "marginal_roi": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Next unit of money's KPI return",
+          "title": "Marginal Roi"
+        },
+        "optimal_share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Optimal Share",
+          "type": "number"
+        },
+        "optimal_spend": {
+          "minimum": 0,
+          "title": "Optimal Spend",
+          "type": "number"
+        },
+        "stability": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Share of draws whose own optimum moves the same way",
+          "title": "Stability"
+        }
+      },
+      "required": [
+        "channel",
+        "current_spend",
+        "optimal_spend",
+        "current_share",
+        "optimal_share"
+      ],
+      "title": "ChannelAllocation",
+      "type": "object"
+    },
+    "DistributionSummary": {
+      "description": "A distribution in business units: mean, sd and named quantiles (``\"0.05\"`` \u2026).",
+      "examples": [
+        {
+          "mean": 2.6,
+          "quantiles": {
+            "0.05": 1.5,
+            "0.5": 2.5,
+            "0.95": 4.1
+          },
+          "sd": 0.8
+        }
+      ],
+      "properties": {
+        "mean": {
+          "title": "Mean",
+          "type": "number"
+        },
+        "quantiles": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "maxProperties": 32,
+          "title": "Quantiles",
+          "type": "object"
+        },
+        "sd": {
+          "minimum": 0,
+          "title": "Sd",
+          "type": "number"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "mean",
+        "sd"
+      ],
+      "title": "DistributionSummary",
+      "type": "object"
+    },
+    "FrontierPoint": {
+      "description": "The best plan at one total budget.",
+      "properties": {
+        "allocation": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Allocation",
+          "type": "object"
+        },
+        "expected_kpi": {
+          "title": "Expected Kpi",
+          "type": "number"
+        },
+        "kpi_p5": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kpi P5"
+        },
+        "kpi_p95": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kpi P95"
+        },
+        "marginal_roi": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marginal Roi"
+        },
+        "total_budget": {
+          "minimum": 0,
+          "title": "Total Budget",
+          "type": "number"
+        }
+      },
+      "required": [
+        "total_budget",
+        "expected_kpi"
+      ],
+      "title": "FrontierPoint",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/optimize-result.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``optimize.json``: the recommended plan and its uncertainty.",
+  "examples": [
+    {
+      "allocation": [
+        {
+          "change_pct": -25,
+          "channel": "tv",
+          "current_share": 0.6,
+          "current_spend": 600000,
+          "marginal_roi": 1.4,
+          "optimal_share": 0.45,
+          "optimal_spend": 450000,
+          "stability": 0.82
+        },
+        {
+          "change_pct": 37.5,
+          "channel": "search",
+          "current_share": 0.4,
+          "current_spend": 400000,
+          "marginal_roi": 1.4,
+          "optimal_share": 0.55,
+          "optimal_spend": 550000,
+          "stability": 0.9
+        }
+      ],
+      "current_total": 1000000,
+      "expected_kpi": {
+        "mean": 3400000.0,
+        "quantiles": {
+          "0.05": 3060000.0,
+          "0.95": 3750000.0
+        },
+        "sd": 210000.0
+      },
+      "expected_regret": 8000.0,
+      "kpi": "revenue",
+      "kpi_units": "EUR",
+      "n_draws": 200,
+      "objective": "p10",
+      "objective_label": "cautious plan (10th percentile of the KPI)",
+      "prob_positive_uplift": 0.97,
+      "spend_units": "EUR",
+      "total_budget": 1000000,
+      "uplift": {
+        "mean": 120000.0,
+        "quantiles": {
+          "0.05": 25000.0,
+          "0.95": 220000.0
+        },
+        "sd": 60000.0
+      }
+    }
+  ],
+  "properties": {
+    "allocation": {
+      "items": {
+        "$ref": "#/$defs/ChannelAllocation"
+      },
+      "maxItems": 16384,
+      "minItems": 1,
+      "title": "Allocation",
+      "type": "array"
+    },
+    "computed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Computed At"
+    },
+    "current_kpi": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DistributionSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "current_total": {
+      "minimum": 0,
+      "title": "Current Total",
+      "type": "number"
+    },
+    "expected_kpi": {
+      "$ref": "#/$defs/DistributionSummary"
+    },
+    "expected_regret": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Regret"
+    },
+    "format": {
+      "const": "mapi.optimize/v1",
+      "default": "mapi.optimize/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "frontier": {
+      "items": {
+        "$ref": "#/$defs/FrontierPoint"
+      },
+      "maxItems": 50,
+      "title": "Frontier",
+      "type": "array"
+    },
+    "horizon": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Horizon"
+    },
+    "kpi": {
+      "maxLength": 128,
+      "title": "Kpi",
+      "type": "string"
+    },
+    "kpi_units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Kpi Units"
+    },
+    "mode": {
+      "default": "fixed",
+      "enum": [
+        "fixed",
+        "free"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "n_draws": {
+      "minimum": 1,
+      "title": "N Draws",
+      "type": "integer"
+    },
+    "notes_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Notes Plain",
+      "type": "array"
+    },
+    "objective": {
+      "title": "Objective",
+      "type": "string"
+    },
+    "objective_label": {
+      "maxLength": 200,
+      "title": "Objective Label",
+      "type": "string"
+    },
+    "prob_positive_uplift": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Prob Positive Uplift"
+    },
+    "shadow_price": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "KPI value of the next unit of money",
+      "title": "Shadow Price"
+    },
+    "spend_units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Spend Units"
+    },
+    "total_budget": {
+      "minimum": 0,
+      "title": "Total Budget",
+      "type": "number"
+    },
+    "uplift": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DistributionSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Plan minus current plan"
+    }
+  },
+  "required": [
+    "objective",
+    "objective_label",
+    "total_budget",
+    "current_total",
+    "kpi",
+    "allocation",
+    "expected_kpi",
+    "n_draws"
+  ],
+  "title": "OptimizeResult",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

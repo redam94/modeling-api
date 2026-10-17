@@ -7,7 +7,6 @@
         "curl",
         "r",
         "apps_script",
-        "atlas",
         "notebook"
       ],
       "title": "SnippetLanguage",
@@ -61,5 +60,5 @@
   ],
   "title": "Snippet",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

@@ -1,0 +1,115 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/explore-response-curves.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``response_curves``: mean response per channel with a band (``[channel][point]``;\nthe full per-draw grid is :class:`ResponseGridView`).",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "channels": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Channels",
+      "type": "array"
+    },
+    "current_spend": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Current Spend",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.model-explorer.response-curves/v1",
+      "default": "mapi.model-explorer.response-curves/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "lower": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lower"
+    },
+    "mean": {
+      "items": {
+        "items": {
+          "type": "number"
+        },
+        "type": "array"
+      },
+      "title": "Mean",
+      "type": "array"
+    },
+    "spend": {
+      "items": {
+        "items": {
+          "type": "number"
+        },
+        "type": "array"
+      },
+      "title": "Spend",
+      "type": "array"
+    },
+    "upper": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Upper"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "channels",
+    "spend",
+    "mean"
+  ],
+  "title": "ResponseCurvesView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

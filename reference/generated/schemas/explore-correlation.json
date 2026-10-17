@@ -1,0 +1,101 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/explore-correlation.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``correlation``: the matrix (``matrix[i][j]`` for ``vars[i]``, ``vars[j]``).",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.data-explorer.correlation/v1",
+      "default": "mapi.data-explorer.correlation/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "matrix": {
+      "items": {
+        "items": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": "array"
+      },
+      "title": "Matrix",
+      "type": "array"
+    },
+    "method": {
+      "default": "pearson",
+      "enum": [
+        "pearson",
+        "spearman"
+      ],
+      "title": "Method",
+      "type": "string"
+    },
+    "p_values": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "P Values"
+    },
+    "vars": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 256,
+      "title": "Vars",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "vars",
+    "matrix"
+  ],
+  "title": "CorrelationView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

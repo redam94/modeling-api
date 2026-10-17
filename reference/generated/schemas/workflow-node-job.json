@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "PortType": {
+      "description": "What flows along a workflow edge.",
+      "enum": [
+        "dataset",
+        "test_result",
+        "split_plan",
+        "model_version",
+        "metrics",
+        "table",
+        "plot",
+        "report",
+        "evidence"
+      ],
+      "title": "PortType",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/workflow-node-job.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``RunSpec.spec`` of a ``workflow_node`` run: execute one sandbox node.\n\nInputs arrive as run inputs named ``in.<port>.<k>`` (``WORKFLOW_RUN_INPUT_PREFIX``);\n``input_types`` gives each one's port type and ``inline_inputs`` carries small JSON\npayloads (test results, split plans, metrics) directly. The runner writes\n:data:`NODE_RESULT_OUTPUT` and one object per output port it lists there.",
+  "examples": [
+    {
+      "input_types": {
+        "in.data.0": "dataset"
+      },
+      "node_id": "adf",
+      "params": {
+        "alpha": 0.05,
+        "autolag": "AIC",
+        "per_series": true,
+        "regression": "c"
+      },
+      "use": "test.adf@1.0.0",
+      "workflow_run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+    }
+  ],
+  "properties": {
+    "inline_inputs": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Inline Inputs",
+      "type": "object"
+    },
+    "input_types": {
+      "additionalProperties": {
+        "$ref": "#/$defs/PortType"
+      },
+      "title": "Input Types",
+      "type": "object"
+    },
+    "node_id": {
+      "pattern": "^[a-z][a-z0-9_]{0,62}$",
+      "title": "Node Id",
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Params",
+      "type": "object"
+    },
+    "seed": {
+      "default": 0,
+      "exclusiveMaximum": 4294967296,
+      "minimum": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "use": {
+      "description": "Resolved implementation ref (id@version)",
+      "title": "Use",
+      "type": "string"
+    },
+    "workflow_run_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Workflow Run Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "workflow_run_id",
+    "node_id",
+    "use"
+  ],
+  "title": "WorkflowNodeJob",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

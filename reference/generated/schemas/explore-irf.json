@@ -1,0 +1,118 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/explore-irf.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``irf``: impulse responses of VAR/VECM models: ``values[i][j][h]`` is the response of\n``variables[i]`` to a shock in ``variables[j]`` after ``h`` periods (h = 0..horizons).",
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.model-explorer.irf/v1",
+      "default": "mapi.model-explorer.irf/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "horizons": {
+      "maximum": 200,
+      "minimum": 1,
+      "title": "Horizons",
+      "type": "integer"
+    },
+    "lower": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lower"
+    },
+    "orthogonalized": {
+      "default": true,
+      "title": "Orthogonalized",
+      "type": "boolean"
+    },
+    "upper": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Upper"
+    },
+    "values": {
+      "items": {
+        "items": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "type": "array"
+      },
+      "title": "Values",
+      "type": "array"
+    },
+    "variables": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "title": "Variables",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "variables",
+    "horizons",
+    "values"
+  ],
+  "title": "IrfView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

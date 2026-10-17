@@ -1,0 +1,394 @@
+{
+  "$defs": {
+    "ChannelBounds": {
+      "additionalProperties": false,
+      "description": "Bounds on one channel: as multiples of its current spend and/or in money (money\nbounds override multiples, as in mmm-framework).",
+      "properties": {
+        "locked": {
+          "default": false,
+          "description": "Keep the channel at its current spend",
+          "title": "Locked",
+          "type": "boolean"
+        },
+        "max_multiplier": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Multiplier"
+        },
+        "max_spend": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Spend"
+        },
+        "min_multiplier": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Multiplier"
+        },
+        "min_spend": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Spend"
+        }
+      },
+      "title": "ChannelBounds",
+      "type": "object"
+    },
+    "FrontierRequest": {
+      "additionalProperties": false,
+      "description": "Also sweep budgets from ``budget_min`` to ``budget_max`` (default 40%-200% of the\ncurrent total) in ``n_points`` steps.",
+      "properties": {
+        "budget_max": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Max"
+        },
+        "budget_min": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Min"
+        },
+        "n_points": {
+          "default": 12,
+          "maximum": 50,
+          "minimum": 3,
+          "title": "N Points",
+          "type": "integer"
+        }
+      },
+      "title": "FrontierRequest",
+      "type": "object"
+    },
+    "SpendGroup": {
+      "additionalProperties": false,
+      "description": "A portfolio constraint over several channels (shares of the total and/or money).",
+      "properties": {
+        "channels": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Channels",
+          "type": "array"
+        },
+        "max_share": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Share"
+        },
+        "max_spend": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Spend"
+        },
+        "min_share": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Share"
+        },
+        "min_spend": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Spend"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "channels"
+      ],
+      "title": "SpendGroup",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/optimize-request.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST \u2026:optimize``: how should the budget be split?\n\n``objective``: ``mean`` (expected KPI), ``p<q>`` (the q-th percentile across posterior\ndraws, a cautious plan) or ``cvar<a>`` (mean of the worst a% of draws). ``mode``:\n``fixed`` spends the budget; ``free`` funds each channel to break-even (marginal value\n= 1 per unit of money, with ``value_per_kpi`` converting KPI to money) and makes the\ntotal an output. ``horizon`` is the number of future periods the plan covers (default:\nthe fit window's length, as the response grid).",
+  "examples": [
+    {
+      "channels": {
+        "search": {
+          "min_spend": 50000
+        },
+        "tv": {
+          "max_multiplier": 1.5,
+          "min_multiplier": 0.5
+        }
+      },
+      "frontier": {
+        "n_points": 10
+      },
+      "groups": [
+        {
+          "channels": [
+            "search",
+            "social"
+          ],
+          "min_share": 0.4,
+          "name": "digital"
+        }
+      ],
+      "objective": "p10",
+      "total_budget": 1000000
+    },
+    {
+      "budget_change_pct": -10,
+      "objective": "mean"
+    },
+    {
+      "mode": "free",
+      "value_per_kpi": 1.0
+    }
+  ],
+  "properties": {
+    "budget_change_pct": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": -100,
+          "maximum": 1000,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Budget Change Pct"
+    },
+    "by_geo": {
+      "default": false,
+      "description": "Allocate per (geo, channel) jointly",
+      "title": "By Geo",
+      "type": "boolean"
+    },
+    "channels": {
+      "maxProperties": 64,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/ChannelBounds"
+        }
+      },
+      "title": "Channels",
+      "type": "object"
+    },
+    "default_bounds": {
+      "$ref": "#/$defs/ChannelBounds",
+      "description": "Bounds of channels not listed in channels"
+    },
+    "frontier": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FrontierRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "groups": {
+      "items": {
+        "$ref": "#/$defs/SpendGroup"
+      },
+      "maxItems": 16,
+      "title": "Groups",
+      "type": "array"
+    },
+    "horizon": {
+      "anyOf": [
+        {
+          "maximum": 520,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Horizon"
+    },
+    "max_draws": {
+      "default": 200,
+      "maximum": 2000,
+      "minimum": 20,
+      "title": "Max Draws",
+      "type": "integer"
+    },
+    "min_channel_spend": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Keep every channel funded at least this much",
+      "title": "Min Channel Spend"
+    },
+    "mode": {
+      "default": "fixed",
+      "enum": [
+        "fixed",
+        "free"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "n_steps": {
+      "default": 400,
+      "maximum": 5000,
+      "minimum": 50,
+      "title": "N Steps",
+      "type": "integer"
+    },
+    "objective": {
+      "default": "mean",
+      "examples": [
+        "mean",
+        "p10",
+        "cvar5"
+      ],
+      "title": "Objective",
+      "type": "string"
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Seed"
+    },
+    "total_budget": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Total Budget"
+    },
+    "value_per_kpi": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Value Per Kpi"
+    }
+  },
+  "title": "OptimizeRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

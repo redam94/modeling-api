@@ -1,0 +1,108 @@
+{
+  "$defs": {
+    "ExplorerSectionRef": {
+      "additionalProperties": true,
+      "properties": {
+        "message_plain": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message Plain"
+        },
+        "section": {
+          "maxLength": 32,
+          "title": "Section",
+          "type": "string"
+        },
+        "status": {
+          "default": "ok",
+          "enum": [
+            "ok",
+            "skipped",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "view": {
+          "description": "ui/explore/<section>.json",
+          "maxLength": 256,
+          "title": "View",
+          "type": "string"
+        }
+      },
+      "required": [
+        "section",
+        "view"
+      ],
+      "title": "ExplorerSectionRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ExplorerIndex.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``ui/explore/index.json``: what an explore run produced (and why a section is\nmissing).",
+  "examples": [
+    {
+      "ref": "dataset://growth/weekly_sales@v4",
+      "sections": [
+        {
+          "section": "stationarity",
+          "view": "ui/explore/stationarity.json"
+        },
+        {
+          "message_plain": "Less than two seasons of data.",
+          "section": "stl",
+          "status": "skipped",
+          "view": "ui/explore/stl.json"
+        }
+      ],
+      "target": "dataset"
+    }
+  ],
+  "properties": {
+    "format": {
+      "const": "mapi.explorer-index/v1",
+      "default": "mapi.explorer-index/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "ref": {
+      "description": "dataset://\u2026 or model://\u2026",
+      "maxLength": 512,
+      "title": "Ref",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/ExplorerSectionRef"
+      },
+      "maxItems": 32,
+      "title": "Sections",
+      "type": "array"
+    },
+    "target": {
+      "enum": [
+        "dataset",
+        "model"
+      ],
+      "title": "Target",
+      "type": "string"
+    }
+  },
+  "required": [
+    "target",
+    "ref"
+  ],
+  "title": "ExplorerIndex",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -1,0 +1,1117 @@
+{
+  "$defs": {
+    "AsOfSplit": {
+      "additionalProperties": false,
+      "description": "Train on coords up to and including ``as_of``; hold out the rest (optionally ``gap``).",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "as_of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "title": "As Of"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "gap": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Gap",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "as_of",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "dim",
+        "as_of"
+      ],
+      "title": "AsOfSplit",
+      "type": "object"
+    },
+    "BlockedKFoldPlan": {
+      "additionalProperties": false,
+      "description": "``k`` contiguous blocks; ``gap`` periods on each side of the test block are dropped.",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the folds are cut at (a step id or 'raw'), as data.split",
+          "title": "After Step"
+        },
+        "dim": {
+          "default": "time",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "gap": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Gap",
+          "type": "integer"
+        },
+        "k": {
+          "maximum": 200,
+          "minimum": 2,
+          "title": "K",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "blocked_kfold",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "k"
+      ],
+      "title": "BlockedKFoldPlan",
+      "type": "object"
+    },
+    "ExpandingWindowPlan": {
+      "additionalProperties": false,
+      "description": "Training from the first period up to each origin.",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the folds are cut at (a step id or 'raw'), as data.split",
+          "title": "After Step"
+        },
+        "anchor": {
+          "default": "end",
+          "description": "end: the last test window ends at the last period",
+          "enum": [
+            "end",
+            "start"
+          ],
+          "title": "Anchor",
+          "type": "string"
+        },
+        "dim": {
+          "default": "time",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "gap": {
+          "default": 0,
+          "description": "Periods between training and test (not scored)",
+          "minimum": 0,
+          "title": "Gap",
+          "type": "integer"
+        },
+        "horizons": {
+          "description": "Forecast horizons scored per fold",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Horizons",
+          "type": "array"
+        },
+        "kind": {
+          "const": "expanding_window",
+          "title": "Kind",
+          "type": "string"
+        },
+        "min_train": {
+          "default": 1,
+          "description": "Fewest training periods a fold may have",
+          "minimum": 1,
+          "title": "Min Train",
+          "type": "integer"
+        },
+        "n_folds": {
+          "anyOf": [
+            {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Folds"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods between origins (default: max)",
+          "title": "Step"
+        }
+      },
+      "required": [
+        "horizons",
+        "kind"
+      ],
+      "title": "ExpandingWindowPlan",
+      "type": "object"
+    },
+    "GeoHoldoutPlan": {
+      "additionalProperties": false,
+      "description": "Hold out whole groups along ``dim``: the explicit ``groups`` (one fold), or ``n``\nseeded random groups in each of ``n_folds`` folds. With ``time_dim``/``test_last``, the\nheld-out groups are tested on their last periods only, and ``include_pre_period``\ntrains on their earlier periods too (a geo experiment readout).",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the folds are cut at (a step id or 'raw'), as data.split",
+          "title": "After Step"
+        },
+        "dim": {
+          "default": "geo",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "groups": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "maxItems": 10000,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Groups"
+        },
+        "include_pre_period": {
+          "default": false,
+          "title": "Include Pre Period",
+          "type": "boolean"
+        },
+        "kind": {
+          "const": "geo_holdout",
+          "title": "Kind",
+          "type": "string"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N"
+        },
+        "n_folds": {
+          "default": 1,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "N Folds",
+          "type": "integer"
+        },
+        "seed": {
+          "default": 0,
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "test_last": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Test Last"
+        },
+        "time_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Dim"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "GeoHoldoutPlan",
+      "type": "object"
+    },
+    "HoldoutPlan": {
+      "additionalProperties": false,
+      "description": "One fold: the existing train/holdout split.",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the folds are cut at (a step id or 'raw'), as data.split",
+          "title": "After Step"
+        },
+        "kind": {
+          "const": "holdout",
+          "title": "Kind",
+          "type": "string"
+        },
+        "split": {
+          "discriminator": {
+            "mapping": {
+              "as_of": "#/$defs/AsOfSplit",
+              "last_per_group": "#/$defs/LastPerGroupSplit",
+              "leave_group_out": "#/$defs/LeaveGroupOutSplit",
+              "mask_block": "#/$defs/MaskBlockSplit",
+              "time_holdout": "#/$defs/TimeHoldoutSplit"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TimeHoldoutSplit"
+            },
+            {
+              "$ref": "#/$defs/LastPerGroupSplit"
+            },
+            {
+              "$ref": "#/$defs/AsOfSplit"
+            },
+            {
+              "$ref": "#/$defs/LeaveGroupOutSplit"
+            },
+            {
+              "$ref": "#/$defs/MaskBlockSplit"
+            }
+          ],
+          "title": "Split"
+        }
+      },
+      "required": [
+        "kind",
+        "split"
+      ],
+      "title": "HoldoutPlan",
+      "type": "object"
+    },
+    "LastPerGroupSplit": {
+      "additionalProperties": false,
+      "description": "Hold out the last ``last`` rows along ``dim`` within each group (``min_len`` kept).",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "kind": {
+          "const": "last_per_group",
+          "title": "Kind",
+          "type": "string"
+        },
+        "last": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Last",
+          "type": "integer"
+        },
+        "min_len": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Min Len",
+          "type": "integer"
+        },
+        "within": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Within",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "dim",
+        "within"
+      ],
+      "title": "LastPerGroupSplit",
+      "type": "object"
+    },
+    "LeaveGroupOutSplit": {
+      "additionalProperties": false,
+      "description": "Hold out whole groups of ``dim`` (explicit ``groups`` or ``n`` random ones).",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "groups": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "maxItems": 10000,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Groups"
+        },
+        "kind": {
+          "const": "leave_group_out",
+          "title": "Kind",
+          "type": "string"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        }
+      },
+      "required": [
+        "kind",
+        "dim"
+      ],
+      "title": "LeaveGroupOutSplit",
+      "type": "object"
+    },
+    "MaskBlockSplit": {
+      "additionalProperties": false,
+      "description": "Hold out random blocks over ``dims`` (block sizes per dim) covering ``fraction``.",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "block": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "type": "integer"
+            }
+          },
+          "title": "Block",
+          "type": "object"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Dims",
+          "type": "array"
+        },
+        "fraction": {
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Fraction",
+          "type": "number"
+        },
+        "kind": {
+          "const": "mask_block",
+          "title": "Kind",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        }
+      },
+      "required": [
+        "kind",
+        "dims",
+        "fraction"
+      ],
+      "title": "MaskBlockSplit",
+      "type": "object"
+    },
+    "NestedPlan": {
+      "additionalProperties": false,
+      "description": "An ``inner`` plan inside every training window of an ``outer`` ordered plan.",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the folds are cut at (a step id or 'raw'), as data.split",
+          "title": "After Step"
+        },
+        "inner": {
+          "discriminator": {
+            "mapping": {
+              "blocked_kfold": "#/$defs/BlockedKFoldPlan",
+              "expanding_window": "#/$defs/ExpandingWindowPlan",
+              "geo_holdout": "#/$defs/GeoHoldoutPlan",
+              "holdout": "#/$defs/HoldoutPlan",
+              "purged_kfold": "#/$defs/PurgedKFoldPlan",
+              "rolling_origin": "#/$defs/RollingOriginPlan"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/HoldoutPlan"
+            },
+            {
+              "$ref": "#/$defs/RollingOriginPlan"
+            },
+            {
+              "$ref": "#/$defs/ExpandingWindowPlan"
+            },
+            {
+              "$ref": "#/$defs/BlockedKFoldPlan"
+            },
+            {
+              "$ref": "#/$defs/PurgedKFoldPlan"
+            },
+            {
+              "$ref": "#/$defs/GeoHoldoutPlan"
+            }
+          ],
+          "title": "Inner"
+        },
+        "kind": {
+          "const": "nested",
+          "title": "Kind",
+          "type": "string"
+        },
+        "outer": {
+          "discriminator": {
+            "mapping": {
+              "blocked_kfold": "#/$defs/BlockedKFoldPlan",
+              "expanding_window": "#/$defs/ExpandingWindowPlan",
+              "geo_holdout": "#/$defs/GeoHoldoutPlan",
+              "holdout": "#/$defs/HoldoutPlan",
+              "purged_kfold": "#/$defs/PurgedKFoldPlan",
+              "rolling_origin": "#/$defs/RollingOriginPlan"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/HoldoutPlan"
+            },
+            {
+              "$ref": "#/$defs/RollingOriginPlan"
+            },
+            {
+              "$ref": "#/$defs/ExpandingWindowPlan"
+            },
+            {
+              "$ref": "#/$defs/BlockedKFoldPlan"
+            },
+            {
+              "$ref": "#/$defs/PurgedKFoldPlan"
+            },
+            {
+              "$ref": "#/$defs/GeoHoldoutPlan"
+            }
+          ],
+          "title": "Outer"
+        }
+      },
+      "required": [
+        "kind",
+        "outer",
+        "inner"
+      ],
+      "title": "NestedPlan",
+      "type": "object"
+    },
+    "PurgedKFoldPlan": {
+      "additionalProperties": false,
+      "description": "Blocked k-fold with ``purge`` periods before and ``embargo`` after each test block\nremoved from training (labels that overlap the test window).",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the folds are cut at (a step id or 'raw'), as data.split",
+          "title": "After Step"
+        },
+        "dim": {
+          "default": "time",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "embargo": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Embargo",
+          "type": "integer"
+        },
+        "k": {
+          "maximum": 200,
+          "minimum": 2,
+          "title": "K",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "purged_kfold",
+          "title": "Kind",
+          "type": "string"
+        },
+        "purge": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Purge",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "k"
+      ],
+      "title": "PurgedKFoldPlan",
+      "type": "object"
+    },
+    "RollingOriginPlan": {
+      "additionalProperties": false,
+      "description": "A fixed-length training ``window`` sliding forward.",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the folds are cut at (a step id or 'raw'), as data.split",
+          "title": "After Step"
+        },
+        "anchor": {
+          "default": "end",
+          "description": "end: the last test window ends at the last period",
+          "enum": [
+            "end",
+            "start"
+          ],
+          "title": "Anchor",
+          "type": "string"
+        },
+        "dim": {
+          "default": "time",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "gap": {
+          "default": 0,
+          "description": "Periods between training and test (not scored)",
+          "minimum": 0,
+          "title": "Gap",
+          "type": "integer"
+        },
+        "horizons": {
+          "description": "Forecast horizons scored per fold",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Horizons",
+          "type": "array"
+        },
+        "kind": {
+          "const": "rolling_origin",
+          "title": "Kind",
+          "type": "string"
+        },
+        "min_train": {
+          "default": 1,
+          "description": "Fewest training periods a fold may have",
+          "minimum": 1,
+          "title": "Min Train",
+          "type": "integer"
+        },
+        "n_folds": {
+          "anyOf": [
+            {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Folds"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods between origins (default: max)",
+          "title": "Step"
+        },
+        "window": {
+          "description": "Training periods per fold",
+          "minimum": 1,
+          "title": "Window",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "horizons",
+        "kind",
+        "window"
+      ],
+      "title": "RollingOriginPlan",
+      "type": "object"
+    },
+    "TimeHoldoutSplit": {
+      "additionalProperties": false,
+      "description": "Hold out the end of an ordered dim: ``last`` periods, a ``fraction`` or ``after`` a coord.",
+      "properties": {
+        "after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "After"
+        },
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 1,
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "kind": {
+          "const": "time_holdout",
+          "title": "Kind",
+          "type": "string"
+        },
+        "last": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last"
+        }
+      },
+      "required": [
+        "kind",
+        "dim"
+      ],
+      "title": "TimeHoldoutSplit",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ModelExploreRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Which Model Explorer sections to compute. ``compare_with`` adds other model versions\n(``model://\u2026``) to the comparison section; ``backtest`` runs a split plan for the\nbacktest section (fits run as child runs).",
+  "examples": [
+    {
+      "compare_with": [
+        "model://growth/sales-arimax@v2"
+      ],
+      "horizon": 12,
+      "sections": [
+        "params",
+        "fit",
+        "residuals",
+        "irf",
+        "fevd",
+        "comparison"
+      ]
+    }
+  ],
+  "properties": {
+    "backtest": {
+      "anyOf": [
+        {
+          "discriminator": {
+            "mapping": {
+              "blocked_kfold": "#/$defs/BlockedKFoldPlan",
+              "expanding_window": "#/$defs/ExpandingWindowPlan",
+              "geo_holdout": "#/$defs/GeoHoldoutPlan",
+              "holdout": "#/$defs/HoldoutPlan",
+              "nested": "#/$defs/NestedPlan",
+              "purged_kfold": "#/$defs/PurgedKFoldPlan",
+              "rolling_origin": "#/$defs/RollingOriginPlan"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/HoldoutPlan"
+            },
+            {
+              "$ref": "#/$defs/RollingOriginPlan"
+            },
+            {
+              "$ref": "#/$defs/ExpandingWindowPlan"
+            },
+            {
+              "$ref": "#/$defs/BlockedKFoldPlan"
+            },
+            {
+              "$ref": "#/$defs/PurgedKFoldPlan"
+            },
+            {
+              "$ref": "#/$defs/GeoHoldoutPlan"
+            },
+            {
+              "$ref": "#/$defs/NestedPlan"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Backtest"
+    },
+    "compare_with": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Compare With",
+      "type": "array"
+    },
+    "horizon": {
+      "anyOf": [
+        {
+          "maximum": 520,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Forecast/IRF horizon",
+      "title": "Horizon"
+    },
+    "interval": {
+      "default": "hdi_90",
+      "enum": [
+        "hdi_90",
+        "hdi_95",
+        "ci_90",
+        "ci_95"
+      ],
+      "title": "Interval",
+      "type": "string"
+    },
+    "max_params": {
+      "default": 500,
+      "maximum": 5000,
+      "minimum": 1,
+      "title": "Max Params",
+      "type": "integer"
+    },
+    "sections": {
+      "items": {
+        "enum": [
+          "params",
+          "diagnostics",
+          "fit",
+          "residuals",
+          "decomposition",
+          "response_curves",
+          "irf",
+          "fevd",
+          "forecast",
+          "backtest",
+          "comparison"
+        ],
+        "type": "string"
+      },
+      "maxItems": 11,
+      "minItems": 1,
+      "title": "Sections",
+      "type": "array"
+    }
+  },
+  "title": "ModelExploreRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

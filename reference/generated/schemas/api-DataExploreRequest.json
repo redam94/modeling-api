@@ -1,0 +1,179 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-DataExploreRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Which Data Explorer sections to compute, and how.\n\n``kpi`` is the result the cross-correlations are computed against (default: the\ndataset's target variable); ``facet_by`` splits series by up to two dims; ``period``\nis the season length for STL and seasonal strength (default: from the frequency).",
+  "examples": [
+    {
+      "facet_by": [
+        "geo"
+      ],
+      "kpi": "revenue",
+      "max_lag": 12,
+      "sections": [
+        "overview",
+        "timeseries",
+        "stationarity",
+        "ccf",
+        "stl",
+        "quality"
+      ]
+    }
+  ],
+  "properties": {
+    "alpha": {
+      "default": 0.05,
+      "exclusiveMaximum": 0.5,
+      "exclusiveMinimum": 0,
+      "title": "Alpha",
+      "type": "number"
+    },
+    "correlation": {
+      "default": "pearson",
+      "enum": [
+        "pearson",
+        "spearman"
+      ],
+      "title": "Correlation",
+      "type": "string"
+    },
+    "facet_by": {
+      "items": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "maxItems": 2,
+      "title": "Facet By",
+      "type": "array"
+    },
+    "group_by": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Dim for group comparisons",
+      "title": "Group By"
+    },
+    "kpi": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Kpi"
+    },
+    "max_lag": {
+      "default": 26,
+      "maximum": 200,
+      "minimum": 1,
+      "title": "Max Lag",
+      "type": "integer"
+    },
+    "max_series": {
+      "default": 50,
+      "maximum": 200,
+      "minimum": 1,
+      "title": "Max Series",
+      "type": "integer"
+    },
+    "outlier_threshold": {
+      "default": 3.5,
+      "exclusiveMinimum": 0,
+      "maximum": 20,
+      "title": "Outlier Threshold",
+      "type": "number"
+    },
+    "outliers": {
+      "default": "mad",
+      "enum": [
+        "iqr",
+        "mad",
+        "zscore"
+      ],
+      "title": "Outliers",
+      "type": "string"
+    },
+    "period": {
+      "anyOf": [
+        {
+          "maximum": 400,
+          "minimum": 2,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Period"
+    },
+    "prewhiten": {
+      "default": true,
+      "description": "Prewhiten before cross-correlations (filter both series with the driver's AR model, so a peak is not just two smooth series moving together)",
+      "title": "Prewhiten",
+      "type": "boolean"
+    },
+    "sections": {
+      "items": {
+        "enum": [
+          "overview",
+          "distributions",
+          "timeseries",
+          "missingness",
+          "outliers",
+          "correlation",
+          "ccf",
+          "acf_pacf",
+          "stationarity",
+          "stl",
+          "vif",
+          "groups",
+          "quality"
+        ],
+        "type": "string"
+      },
+      "maxItems": 13,
+      "minItems": 1,
+      "title": "Sections",
+      "type": "array"
+    },
+    "time_dim": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Default: the dataset's time dim",
+      "title": "Time Dim"
+    },
+    "vars": {
+      "description": "Default: all",
+      "items": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "maxItems": 256,
+      "title": "Vars",
+      "type": "array"
+    }
+  },
+  "title": "DataExploreRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

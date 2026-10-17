@@ -1,153 +1,5 @@
 {
   "$defs": {
-    "BayesInsightMetadata": {
-      "description": "BayesInsight's ``metadata.json`` (``{\"metadata\": {...}}`` is accepted too).\n\n``row_ids`` are the MFF key columns the model is indexed by (``Period`` always last);\nthe key columns *not* in ``row_ids`` are aggregated away and suffix variable names\n(``Promotion_Total_Total_Total``).",
-      "properties": {
-        "allowed_campaigns": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 10000,
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Allowed Campaigns"
-        },
-        "allowed_creatives": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 10000,
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Allowed Creatives"
-        },
-        "allowed_geos": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 10000,
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Allowed Geos"
-        },
-        "allowed_outlets": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 10000,
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Allowed Outlets"
-        },
-        "allowed_products": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 10000,
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Allowed Products"
-        },
-        "end_period": {
-          "anyOf": [
-            {
-              "maxLength": 40,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "End Period"
-        },
-        "necessary_variables": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 4096,
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Necessary Variables"
-        },
-        "periodicity": {
-          "default": "Weekly",
-          "enum": [
-            "Weekly",
-            "Daily"
-          ],
-          "title": "Periodicity",
-          "type": "string"
-        },
-        "row_ids": {
-          "default": [
-            "Period"
-          ],
-          "items": {
-            "type": "string"
-          },
-          "title": "Row Ids",
-          "type": "array"
-        },
-        "start_period": {
-          "anyOf": [
-            {
-              "maxLength": 40,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Start Period"
-        }
-      },
-      "title": "BayesInsightMetadata",
-      "type": "object"
-    },
     "DimMapping": {
       "additionalProperties": false,
       "description": "A dim of the dataset, read from one column of a tabular upload.",
@@ -325,14 +177,28 @@
         "EMAIL_NOT_ALLOWED",
         "TERMS_NOT_ACCEPTED",
         "EMAIL_NOT_VERIFIED",
-        "IDENTITY_VERIFICATION_REQUIRED"
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE"
       ],
       "title": "ErrorCode",
       "type": "string"
     },
     "IngestMapping": {
       "additionalProperties": false,
-      "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.\n\nWith the ``mff``/``bayesinsight`` presets the long table is first pivoted to one column\nper ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then\npick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may\nrefine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and\n``wide`` every variable is kept under its own name.",
+      "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.\n\nWith the ``mff`` preset the long table is first pivoted to one column\nper ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then\npick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may\nrefine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and\n``wide`` every variable is kept under its own name.",
       "examples": [
         {
           "dims": {
@@ -428,18 +294,6 @@
         }
       ],
       "properties": {
-        "bayesinsight": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/BayesInsightMetadata"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "BayesInsight's metadata.json (the bayesinsight preset)"
-        },
         "dims": {
           "additionalProperties": {
             "$ref": "#/$defs/DimMapping"
@@ -490,7 +344,7 @@
             }
           ],
           "default": null,
-          "description": "Options of the mff/bayesinsight presets"
+          "description": "Options of the mff preset"
         },
         "preset": {
           "$ref": "#/$defs/IngestPreset",
@@ -525,8 +379,7 @@
       "enum": [
         "none",
         "mff",
-        "meridian",
-        "bayesinsight"
+        "meridian"
       ],
       "title": "IngestPreset",
       "type": "string"
@@ -808,8 +661,20 @@
     },
     "MffOptions": {
       "additionalProperties": false,
-      "description": "The MFF (\"model feature format\") long-table preset.\n\nOne row per ``(period, geography, product, campaign, outlet, creative, variable)`` with\nthe value in ``value_column``. ``Period`` becomes the time dim; the other key columns\nbecome dims only when they hold more than one distinct value; ``VariableName`` values\nbecome data variables.\n\n``combine`` joins several key columns into one dim (``{\"geo\": [\"Geography\", \"Product\"]}``\ngives labels such as ``US|Watches``) - a model with one panel dim can then fit a\ngeography x product panel. A combined dim is created even when it has a single label,\nso ``{\"geo\": [\"Geography\"]}`` keeps a national table's geo dim.",
+      "description": "The MFF (\"model feature format\") long-table preset.\n\nOne row per ``(period, geography, product, campaign, outlet, creative, variable)`` with\nthe value in ``value_column``. ``Period`` becomes the time dim; ``VariableName`` values\nbecome data variables. The rest follows mmm-framework's MFF semantics (its\n``MFFLoader``), so both read a file the same way:\n\n* ``Geography`` and ``Product`` become dims when they hold more than one level. A blank\n  label (or ``National``, ``Total``, ``All``) is the coarser level: a variable given\n  only there (national TV) is spread across the levels - equal weights, or the KPI's\n  share of each level (``allocation``; mmm-framework's defaults: geographies equally,\n  products by sales). A variable may not mix the two levels.\n* ``Campaign``, ``Outlet`` and ``Creative`` are breakdowns: rows that differ only there\n  are summed, unless the column is listed in ``split`` (then it becomes a dim).\n\n``combine`` joins several key columns into one dim (``{\"geo\": [\"Geography\", \"Product\"]}``\ngives labels such as ``US|Watches``) - a model with one panel dim can then fit a\ngeography x product panel. A combined dim is created even when it has a single label,\nso ``{\"geo\": [\"Geography\"]}`` keeps a national table's geo dim.",
       "properties": {
+        "allocation": {
+          "additionalProperties": {
+            "enum": [
+              "equal",
+              "kpi"
+            ],
+            "type": "string"
+          },
+          "description": "v0.5: how a variable given only at the coarser level (a blank or 'National' label) is spread across the levels of a key column: equally, or by the KPI's share of each level (the variable with role 'target', or 'kpi')",
+          "title": "Allocation",
+          "type": "object"
+        },
         "combine": {
           "description": "M3: dim -> key columns whose labels are joined ('|') into that one dim",
           "maxProperties": 4,
@@ -845,6 +710,20 @@
           "title": "Key Columns",
           "type": "object"
         },
+        "kpi": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.5: the KPI variable of 'kpi' allocation",
+          "title": "Kpi"
+        },
         "missing": {
           "default": "allow",
           "enum": [
@@ -867,6 +746,15 @@
           "description": "Variable -> role",
           "title": "Roles",
           "type": "object"
+        },
+        "split": {
+          "description": "v0.5: breakdown key columns (Campaign, Outlet, Creative) kept as dims instead of summed",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Split",
+          "type": "array"
         },
         "time_dim": {
           "default": "date",
@@ -1169,5 +1057,5 @@
   ],
   "title": "GuidedDraft",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

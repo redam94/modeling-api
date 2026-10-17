@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-WorkflowRunCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/workflows/{workflow_id}/runs`` (``Idempotency-Key``).",
+  "examples": [
+    {
+      "inputs": {
+        "data": "dataset://growth/weekly_sales@v4"
+      },
+      "params": {
+        "alpha": 0.05
+      }
+    }
+  ],
+  "properties": {
+    "inputs": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "input name -> reference",
+      "maxProperties": 16,
+      "title": "Inputs",
+      "type": "object"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "maxProperties": 64,
+      "title": "Params",
+      "type": "object"
+    },
+    "resource_class": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourceClass"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Default: the latest revision",
+      "title": "Revision"
+    },
+    "use_cache": {
+      "default": true,
+      "description": "Reuse unchanged node results",
+      "title": "Use Cache",
+      "type": "boolean"
+    }
+  },
+  "title": "WorkflowRunCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

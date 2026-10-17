@@ -7,7 +7,17 @@
         "model.version.ready",
         "endpoint.promoted",
         "score.completed",
-        "tenant.deletion.completed"
+        "tenant.deletion.completed",
+        "workflow.run.succeeded",
+        "workflow.run.failed",
+        "model.validation.checks_passed",
+        "model.validation.checks_failed",
+        "model.validation.awaiting_approval",
+        "model.validated",
+        "model.rejected",
+        "model.deprecated",
+        "dataset.version.created",
+        "optimize.completed"
       ],
       "title": "WebhookEventType",
       "type": "string"
@@ -69,5 +79,5 @@
   ],
   "title": "WebhookCreate",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

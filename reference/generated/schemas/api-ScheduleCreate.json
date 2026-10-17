@@ -1,0 +1,92 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ScheduleCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/workflows/{workflow_id}/schedules``: run on a cron schedule.",
+  "examples": [
+    {
+      "cron": "0 6 * * 1",
+      "description": "Every Monday at 06:00",
+      "inputs": {
+        "data": "dataset://growth/weekly_sales@latest"
+      },
+      "timezone": "Europe/Berlin"
+    }
+  ],
+  "properties": {
+    "active": {
+      "default": true,
+      "title": "Active",
+      "type": "boolean"
+    },
+    "cron": {
+      "examples": [
+        "0 6 * * 1"
+      ],
+      "maxLength": 200,
+      "title": "Cron",
+      "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "inputs": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "maxProperties": 16,
+      "title": "Inputs",
+      "type": "object"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "maxProperties": 64,
+      "title": "Params",
+      "type": "object"
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Pin a revision (default: latest)",
+      "title": "Revision"
+    },
+    "timezone": {
+      "default": "UTC",
+      "examples": [
+        "Europe/Berlin"
+      ],
+      "maxLength": 64,
+      "title": "Timezone",
+      "type": "string"
+    }
+  },
+  "required": [
+    "cron"
+  ],
+  "title": "ScheduleCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

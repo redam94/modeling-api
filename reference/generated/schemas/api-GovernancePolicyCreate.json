@@ -1,0 +1,207 @@
+{
+  "$defs": {
+    "CheckSeverity": {
+      "description": "What a failing check does: ``blocking`` stops validation, ``warning`` is recorded and\nshown to the approver, ``info`` is evidence only.",
+      "enum": [
+        "blocking",
+        "warning",
+        "info"
+      ],
+      "title": "CheckSeverity",
+      "type": "string"
+    },
+    "CheckThresholds": {
+      "additionalProperties": false,
+      "description": "Warn and fail thresholds of a check (in the check's direction).",
+      "properties": {
+        "fail": {
+          "title": "Fail",
+          "type": "number"
+        },
+        "warn": {
+          "title": "Warn",
+          "type": "number"
+        }
+      },
+      "required": [
+        "warn",
+        "fail"
+      ],
+      "title": "CheckThresholds",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "PolicyCheck": {
+      "additionalProperties": false,
+      "description": "A required check in a policy: thresholds, severity and parameters.",
+      "properties": {
+        "check": {
+          "title": "Check",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "severity": {
+          "$ref": "#/$defs/CheckSeverity",
+          "default": "blocking"
+        },
+        "thresholds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CheckThresholds"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "check"
+      ],
+      "title": "PolicyCheck",
+      "type": "object"
+    },
+    "PolicyMatch": {
+      "additionalProperties": false,
+      "description": "Which models a policy covers; an empty list matches everything on that axis.\n\nA family matches a model's declared family (``forecast`` for the statsmodels\nforecasters, ``ts_multivariate``, ``mmm``) *or* the namespace of its id (``ts`` for\n``ts.sarimax``), so ``families: [ts]`` covers every ``ts.*`` model whatever family its\nplugin declares.",
+      "properties": {
+        "families": {
+          "description": "Model families or model-id namespaces (ts covers ts.sarimax)",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Families",
+          "type": "array"
+        },
+        "models": {
+          "description": "Model ids",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Models",
+          "type": "array"
+        },
+        "templates": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "title": "PolicyMatch",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-GovernancePolicyCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/governance/policies`` (project) or ``/v1/tenants/{id}/governance/policies``.",
+  "examples": [
+    {
+      "applies_to": {
+        "families": [
+          "ts"
+        ]
+      },
+      "checks": [
+        {
+          "check": "baseline.beats_naive",
+          "severity": "blocking"
+        },
+        {
+          "check": "residuals.whiteness",
+          "severity": "warning"
+        },
+        {
+          "check": "null.permutation_target",
+          "params": {
+            "n_permutations": 20
+          },
+          "severity": "blocking"
+        },
+        {
+          "check": "holdout.accuracy",
+          "thresholds": {
+            "fail": 0.2,
+            "warn": 0.1
+          }
+        }
+      ],
+      "name": "Forecast models",
+      "require_approval": true
+    }
+  ],
+  "properties": {
+    "active": {
+      "default": true,
+      "title": "Active",
+      "type": "boolean"
+    },
+    "applies_to": {
+      "$ref": "#/$defs/PolicyMatch"
+    },
+    "approvals_required": {
+      "default": 1,
+      "maximum": 3,
+      "minimum": 1,
+      "title": "Approvals Required",
+      "type": "integer"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/PolicyCheck"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "title": "Checks",
+      "type": "array"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "name": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "require_approval": {
+      "default": false,
+      "title": "Require Approval",
+      "type": "boolean"
+    },
+    "require_validated_for_promotion": {
+      "default": true,
+      "title": "Require Validated For Promotion",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "name",
+    "checks"
+  ],
+  "title": "GovernancePolicyCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

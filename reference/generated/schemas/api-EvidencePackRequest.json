@@ -1,0 +1,31 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-EvidencePackRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/validations/{validation_id}/evidence-pack``.",
+  "examples": [
+    {
+      "format": "html",
+      "include_plots": true
+    }
+  ],
+  "properties": {
+    "format": {
+      "default": "html",
+      "enum": [
+        "html",
+        "json"
+      ],
+      "title": "Format",
+      "type": "string"
+    },
+    "include_plots": {
+      "default": true,
+      "title": "Include Plots",
+      "type": "boolean"
+    }
+  },
+  "title": "EvidencePackRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

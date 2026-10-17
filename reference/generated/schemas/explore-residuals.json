@@ -1,0 +1,595 @@
+{
+  "$defs": {
+    "Histogram": {
+      "additionalProperties": true,
+      "properties": {
+        "counts": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 201,
+          "minItems": 1,
+          "title": "Counts",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 202,
+          "minItems": 2,
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "edges",
+        "counts"
+      ],
+      "title": "Histogram",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LagProfile": {
+      "additionalProperties": true,
+      "description": "Values by lag with a significance bound (``\u00b1bound`` is the 95% band).",
+      "properties": {
+        "bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bound"
+        },
+        "facet": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Facet",
+          "type": "object"
+        },
+        "lags": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 401,
+          "title": "Lags",
+          "type": "array"
+        },
+        "peak_lag": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Peak Lag"
+        },
+        "significant_lags": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Significant Lags",
+          "type": "array"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 401,
+          "title": "Values",
+          "type": "array"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "lags",
+        "values"
+      ],
+      "title": "LagProfile",
+      "type": "object"
+    },
+    "QQPoints": {
+      "additionalProperties": true,
+      "properties": {
+        "sample": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2000,
+          "title": "Sample",
+          "type": "array"
+        },
+        "theoretical": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2000,
+          "title": "Theoretical",
+          "type": "array"
+        }
+      },
+      "required": [
+        "theoretical",
+        "sample"
+      ],
+      "title": "QQPoints",
+      "type": "object"
+    },
+    "SeriesTestResult": {
+      "description": "The test on one series of a panel (``coords`` names it, e.g. ``{\"geo\": \"DE\"}``).",
+      "properties": {
+        "coords": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Coords",
+          "type": "object"
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decision"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        },
+        "p_value": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Value"
+        },
+        "reject": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reject"
+        },
+        "statistic": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statistic"
+        }
+      },
+      "title": "SeriesTestResult",
+      "type": "object"
+    },
+    "SeriesView": {
+      "additionalProperties": true,
+      "description": "One series along a dim; ``values`` align with ``coords``.",
+      "properties": {
+        "coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "downsampled": {
+          "default": false,
+          "title": "Downsampled",
+          "type": "boolean"
+        },
+        "facet": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Facet",
+          "type": "object"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Values",
+          "type": "array"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "coords",
+        "values"
+      ],
+      "title": "SeriesView",
+      "type": "object"
+    },
+    "StatTestResult": {
+      "description": "The ``test_result`` of one test node (and one stationarity-table row).\n\nFor panels the test runs per series: ``per_series`` holds each one and the headline\nfields summarise them (``reject`` when ``reject_share >= 0.5``; ``p_value`` is the\nmedian). Branch conditions read these fields, e.g. ``nodes.adf.reject``.",
+      "examples": [
+        {
+          "alpha": 0.05,
+          "critical_values": {
+            "1%": -3.46,
+            "10%": -2.57,
+            "5%": -2.87
+          },
+          "decision": "unit_root",
+          "lags": 3,
+          "n_obs": 156,
+          "null_plain": "The series has a unit root (it wanders without returning to a stable level).",
+          "p_value": 0.57,
+          "reject": false,
+          "statistic": -1.42,
+          "test": "test.adf",
+          "var": "y",
+          "verdict_plain": "The series wanders: consider differencing it."
+        }
+      ],
+      "properties": {
+        "alpha": {
+          "default": 0.05,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Alpha",
+          "type": "number"
+        },
+        "critical_values": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "maxProperties": 16,
+          "title": "Critical Values",
+          "type": "object"
+        },
+        "decision": {
+          "maxLength": 64,
+          "title": "Decision",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "description": "Test-specific fields (rank, break_at, suggested_p, max_vif, ...)",
+          "title": "Details",
+          "type": "object"
+        },
+        "lags": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lags"
+        },
+        "message_plain": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Why skipped/error",
+          "title": "Message Plain"
+        },
+        "n_obs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Obs"
+        },
+        "null_plain": {
+          "maxLength": 500,
+          "title": "Null Plain",
+          "type": "string"
+        },
+        "p_value": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Value"
+        },
+        "per_series": {
+          "items": {
+            "$ref": "#/$defs/SeriesTestResult"
+          },
+          "maxItems": 10000,
+          "title": "Per Series",
+          "type": "array"
+        },
+        "reject": {
+          "title": "Reject",
+          "type": "boolean"
+        },
+        "reject_share": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reject Share"
+        },
+        "statistic": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statistic"
+        },
+        "status": {
+          "default": "ok",
+          "enum": [
+            "ok",
+            "skipped",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "test": {
+          "pattern": "^test\\.[a-z0-9_]+$",
+          "title": "Test",
+          "type": "string"
+        },
+        "var": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Var"
+        },
+        "verdict_plain": {
+          "maxLength": 500,
+          "title": "Verdict Plain",
+          "type": "string"
+        }
+      },
+      "required": [
+        "test",
+        "reject",
+        "decision",
+        "verdict_plain",
+        "null_plain"
+      ],
+      "title": "StatTestResult",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-residuals.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``residuals``: residuals over time, their ACF, Ljung-Box, normality and spread tests.",
+  "properties": {
+    "acf": {
+      "items": {
+        "$ref": "#/$defs/LagProfile"
+      },
+      "maxItems": 200,
+      "title": "Acf",
+      "type": "array"
+    },
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.model-explorer.residuals/v1",
+      "default": "mapi.model-explorer.residuals/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "histogram": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Histogram"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "qq": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/QQPoints"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "series": {
+      "items": {
+        "$ref": "#/$defs/SeriesView"
+      },
+      "maxItems": 200,
+      "title": "Series",
+      "type": "array"
+    },
+    "tests": {
+      "items": {
+        "$ref": "#/$defs/StatTestResult"
+      },
+      "maxItems": 50,
+      "title": "Tests",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "title": "ResidualDiagnosticsView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

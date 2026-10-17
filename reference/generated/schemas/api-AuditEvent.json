@@ -59,7 +59,29 @@
         "webhook.disabled",
         "webhook.url_blocked",
         "plot.embed_create",
-        "plot.embed_revoke"
+        "plot.embed_revoke",
+        "workflow.create",
+        "workflow.revision",
+        "workflow.update",
+        "workflow.delete",
+        "workflow.run",
+        "workflow.run_cancel",
+        "workflow.schedule_create",
+        "workflow.schedule_update",
+        "workflow.schedule_delete",
+        "workflow.trigger_create",
+        "workflow.trigger_delete",
+        "policy.create",
+        "policy.update",
+        "policy.delete",
+        "model.validation_request",
+        "model.validation_transition",
+        "model.approve",
+        "model.reject",
+        "model.deprecate",
+        "model.evidence_export",
+        "endpoint.promote_not_validated",
+        "dataset.about_update"
       ],
       "title": "AuditAction",
       "type": "string"
@@ -127,7 +149,21 @@
         "EMAIL_NOT_ALLOWED",
         "TERMS_NOT_ACCEPTED",
         "EMAIL_NOT_VERIFIED",
-        "IDENTITY_VERIFICATION_REQUIRED"
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -168,7 +204,10 @@
         "webhook",
         "embed",
         "tenant_deletion",
-        "tenant_export"
+        "tenant_export",
+        "workflow",
+        "policy",
+        "tenant_policy"
       ],
       "title": "ResourceKind",
       "type": "string"
@@ -395,5 +434,5 @@
   ],
   "title": "AuditEvent",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

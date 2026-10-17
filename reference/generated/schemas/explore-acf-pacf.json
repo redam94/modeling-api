@@ -1,0 +1,160 @@
+{
+  "$defs": {
+    "LagProfile": {
+      "additionalProperties": true,
+      "description": "Values by lag with a significance bound (``\u00b1bound`` is the 95% band).",
+      "properties": {
+        "bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bound"
+        },
+        "facet": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Facet",
+          "type": "object"
+        },
+        "lags": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 401,
+          "title": "Lags",
+          "type": "array"
+        },
+        "peak_lag": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Peak Lag"
+        },
+        "significant_lags": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Significant Lags",
+          "type": "array"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 401,
+          "title": "Values",
+          "type": "array"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "lags",
+        "values"
+      ],
+      "title": "LagProfile",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-acf-pacf.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``acf_pacf``: autocorrelation and partial autocorrelation per series.",
+  "properties": {
+    "acf": {
+      "items": {
+        "$ref": "#/$defs/LagProfile"
+      },
+      "maxItems": 200,
+      "title": "Acf",
+      "type": "array"
+    },
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.data-explorer.acf-pacf/v1",
+      "default": "mapi.data-explorer.acf-pacf/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "pacf": {
+      "items": {
+        "$ref": "#/$defs/LagProfile"
+      },
+      "maxItems": 200,
+      "title": "Pacf",
+      "type": "array"
+    },
+    "suggested": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "type": "object"
+      },
+      "description": "var -> {p, q} suggested ARMA orders",
+      "title": "Suggested",
+      "type": "object"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "title": "AcfPacfView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

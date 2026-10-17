@@ -106,7 +106,21 @@
         "EMAIL_NOT_ALLOWED",
         "TERMS_NOT_ACCEPTED",
         "EMAIL_NOT_VERIFIED",
-        "IDENTITY_VERIFICATION_REQUIRED"
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -422,7 +436,7 @@
   },
   "$id": "https://schemas.mapi.dev/v1/priortranslation.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "``priors.json`` of a ``translate_priors`` run.\n\n``priors`` are model-space priors in the plugin's ``settings.priors`` form (pymc-marketing\n``Prior`` dicts; per-channel parameters are lists in ``channels`` order), to be written\nat :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range\n(close to the stated credibility when the translation is faithful).",
+  "description": "``priors.json`` of a ``translate_priors`` run.\n\n``priors`` are model-space priors in the plugin's ``settings.priors`` form (engine-neutral\n``{distribution, <params>, dims}`` dicts; per-channel parameters are lists in ``channels``\norder), to be written\nat :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range\n(close to the stated credibility when the translation is faithful).",
   "examples": [
     {
       "channels": [
@@ -492,21 +506,23 @@
         }
       },
       "priors": {
-        "beta_channel": {
-          "dims": [
-            "channel"
-          ],
-          "distribution": "LogNormal",
-          "mu": [
-            -1.2,
-            -0.9,
-            -2.1
-          ],
-          "sigma": [
-            0.38,
-            0.33,
-            0.5
-          ]
+        "intercept": {
+          "mu": 0.2,
+          "sigma": 0.3
+        },
+        "roi": {
+          "search": {
+            "mu": 1.2,
+            "sigma": 0.33
+          },
+          "social": {
+            "mu": 0.1,
+            "sigma": 0.5
+          },
+          "tv": {
+            "mu": 0.9,
+            "sigma": 0.38
+          }
         }
       },
       "seed": 7
@@ -581,5 +597,5 @@
   ],
   "title": "PriorTranslationResult",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

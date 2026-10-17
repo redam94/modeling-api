@@ -1,5 +1,13 @@
 {
   "$defs": {
+    "Capability": {
+      "description": "Grants on top of a role (M3.5). Project admins hold every capability implicitly.",
+      "enum": [
+        "reviewer"
+      ],
+      "title": "Capability",
+      "type": "string"
+    },
     "ProjectRole": {
       "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
       "enum": [
@@ -27,6 +35,14 @@
     }
   ],
   "properties": {
+    "capabilities": {
+      "description": "M3.5: e.g. reviewer (approves model validations)",
+      "items": {
+        "$ref": "#/$defs/Capability"
+      },
+      "title": "Capabilities",
+      "type": "array"
+    },
     "email": {
       "anyOf": [
         {
@@ -66,5 +82,5 @@
   ],
   "title": "MembershipCreate",
   "type": "object",
-  "x-mapi-contract-version": "0.1"
+  "x-mapi-contract-version": "0.2"
 }

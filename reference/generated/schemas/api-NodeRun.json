@@ -1,0 +1,557 @@
+{
+  "$defs": {
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED",
+        "ABOUT_INCOMPLETE",
+        "CHOOSER_ANSWER_INVALID",
+        "WORKFLOW_INVALID",
+        "EXPRESSION_INVALID",
+        "EXPRESSION_ERROR",
+        "NODE_UNKNOWN",
+        "SCHEDULE_INVALID",
+        "WORKFLOW_NOT_RUNNABLE",
+        "POLICY_INVALID",
+        "VALIDATION_TRANSITION_INVALID",
+        "SELF_APPROVAL_FORBIDDEN",
+        "NOT_VALIDATED",
+        "EXPLORE_INVALID",
+        "OPTIMIZE_INFEASIBLE"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "NodeError": {
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "message": {
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "NodeError",
+      "type": "object"
+    },
+    "NodeKind": {
+      "enum": [
+        "test",
+        "transform",
+        "branch",
+        "split",
+        "search",
+        "model",
+        "evaluate",
+        "compare",
+        "select",
+        "governance",
+        "report",
+        "subworkflow"
+      ],
+      "title": "NodeKind",
+      "type": "string"
+    },
+    "NodeOutputRef": {
+      "description": "Where a node output lives: a reference (``dataset://``, ``model://``), a run artifact\n(``run_id`` + ``object``) or, for small JSON payloads (test results, split plans,\nmetrics), ``inline``.",
+      "properties": {
+        "inline": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "object": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Object"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "type": {
+          "$ref": "#/$defs/PortType"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "NodeOutputRef",
+      "type": "object"
+    },
+    "NodeRunStatus": {
+      "enum": [
+        "pending",
+        "queued",
+        "running",
+        "succeeded",
+        "cached",
+        "skipped",
+        "failed",
+        "cancelled"
+      ],
+      "title": "NodeRunStatus",
+      "type": "string"
+    },
+    "PortType": {
+      "description": "What flows along a workflow edge.",
+      "enum": [
+        "dataset",
+        "test_result",
+        "split_plan",
+        "model_version",
+        "metrics",
+        "table",
+        "plot",
+        "report",
+        "evidence"
+      ],
+      "title": "PortType",
+      "type": "string"
+    },
+    "RunCost": {
+      "description": "Cost of a run (all attempts). ``estimated`` is true until an ``actual`` ledger entry\nexists; ``usd`` is kept for v0.2 clients and is set only when the currency is USD.",
+      "examples": [
+        {
+          "estimated": true,
+          "gib_seconds": null,
+          "usd": null,
+          "vcpu_seconds": null
+        },
+        {
+          "amount_micros": 31200,
+          "attempts_billed": 1,
+          "currency": "USD",
+          "estimate_micros": 30000,
+          "estimated": false,
+          "gib_seconds": 4800,
+          "price_version": "cloudrun-list-2026-10",
+          "usd": 0.0312,
+          "vcpu_seconds": 1200
+        }
+      ],
+      "properties": {
+        "amount_micros": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Micros"
+        },
+        "attempts_billed": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Attempts Billed",
+          "type": "integer"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "estimate_micros": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pre-run estimate",
+          "title": "Estimate Micros"
+        },
+        "estimated": {
+          "default": true,
+          "title": "Estimated",
+          "type": "boolean"
+        },
+        "gib_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gib Seconds"
+        },
+        "price_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price Version"
+        },
+        "usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Usd"
+        },
+        "vcpu_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vcpu Seconds"
+        }
+      },
+      "title": "RunCost",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-NodeRun.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One node of a workflow run.",
+  "examples": [
+    {
+      "attempt": 1,
+      "cache_key": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+      "finished_at": "2026-10-15T09:30:04Z",
+      "kind": "test",
+      "node_id": "adf",
+      "outputs": {
+        "result": {
+          "inline": {
+            "test": "test.adf"
+          },
+          "type": "test_result"
+        }
+      },
+      "params": {
+        "alpha": 0.05,
+        "regression": "c"
+      },
+      "result": {
+        "decision": "unit_root",
+        "p_value": 0.57,
+        "reject": false,
+        "statistic": -1.42
+      },
+      "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "started_at": "2026-10-15T09:30:00Z",
+      "status": "succeeded",
+      "use": "test.adf@1.0.0"
+    }
+  ],
+  "properties": {
+    "attempt": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "cache_key": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cache Key"
+    },
+    "cached_from": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Workflow run whose result was reused",
+      "title": "Cached From"
+    },
+    "child_runs": {
+      "description": "Fits and other children",
+      "items": {
+        "examples": [
+          "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+        ],
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "title": "Child Runs",
+      "type": "array"
+    },
+    "cost": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunCost"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NodeError"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "finished_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finished At"
+    },
+    "kind": {
+      "$ref": "#/$defs/NodeKind"
+    },
+    "node_id": {
+      "title": "Node Id",
+      "type": "string"
+    },
+    "outputs": {
+      "additionalProperties": {
+        "$ref": "#/$defs/NodeOutputRef"
+      },
+      "title": "Outputs",
+      "type": "object"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "description": "Resolved params",
+      "title": "Params",
+      "type": "object"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "JSON result conditions read (nodes.<id>.<field>)",
+      "title": "Result"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The workflow_node run that executed it",
+      "title": "Run Id"
+    },
+    "skipped_reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Skipped Reason"
+    },
+    "started_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Started At"
+    },
+    "status": {
+      "$ref": "#/$defs/NodeRunStatus"
+    },
+    "use": {
+      "description": "Resolved implementation ref (id@version)",
+      "title": "Use",
+      "type": "string"
+    }
+  },
+  "required": [
+    "node_id",
+    "use",
+    "kind",
+    "status"
+  ],
+  "title": "NodeRun",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}
