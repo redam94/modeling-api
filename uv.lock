@@ -2166,7 +2166,7 @@ wheels = [
 
 [[package]]
 name = "mapi-cli"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "mapi-client", extra = ["xarray"] },
@@ -2193,7 +2193,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-client"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/client" }
 dependencies = [
     { name = "google-crc32c" },
@@ -2218,7 +2218,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-conformance"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "conformance" }
 dependencies = [
     { name = "mapi-client", extra = ["xarray"] },
@@ -2249,7 +2249,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-gcs-shim"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/gcs-shim" }
 dependencies = [
     { name = "anyio" },
@@ -2280,7 +2280,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plots"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/plots-core" }
 dependencies = [
     { name = "jsonschema" },
@@ -2315,7 +2315,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-mmm"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "plugins/mmm" }
 dependencies = [
     { name = "mapi-pymc" },
@@ -2336,7 +2336,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-statsmodels"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "plugins/statsmodels" }
 dependencies = [
     { name = "mapi-sdk" },
@@ -2359,7 +2359,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-tabular"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "plugins/tabular" }
 dependencies = [
     { name = "mapi-pymc" },
@@ -2384,7 +2384,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-ts"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "plugins/ts" }
 dependencies = [
     { name = "mapi-pymc" },
@@ -2407,7 +2407,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-pymc"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/sdk-pymc" }
 dependencies = [
     { name = "arviz" },
@@ -2426,7 +2426,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-runner"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/runner" }
 dependencies = [
     { name = "httpx" },
@@ -2471,7 +2471,7 @@ test = [
 
 [[package]]
 name = "mapi-sdk"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/sdk" }
 dependencies = [
     { name = "google-crc32c" },
@@ -2510,7 +2510,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-server"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/server" }
 dependencies = [
     { name = "alembic" },
@@ -2587,7 +2587,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-sklearn"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/sdk-sklearn" }
 dependencies = [
     { name = "mapi-sdk" },
@@ -2612,7 +2612,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-spec"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/spec" }
 dependencies = [
     { name = "jsonschema" },
@@ -2629,7 +2629,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-steps"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/steps-core" }
 dependencies = [
     { name = "lark" },
@@ -2652,7 +2652,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-workflows"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "packages/workflows" }
 dependencies = [
     { name = "jsonschema" },
@@ -2914,7 +2914,7 @@ version = "1.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
     { name = "ghp-import" },
     { name = "jinja2" },
     { name = "markdown" },
@@ -3120,7 +3120,7 @@ wheels = [
 
 [[package]]
 name = "modeling-api"
-version = "0.5.1"
+version = "0.6.0"
 source = { virtual = "." }
 dependencies = [
     { name = "mapi-cli" },
@@ -5328,7 +5328,7 @@ name = "tqdm"
 version = "4.70.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0d/ea/b2a5bd54b28a324dae8211928b2d730b6547500342c7e6c6dea08bd0a485/tqdm-4.70.1.tar.gz", hash = "sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4", size = 171846 }
 wheels = [
@@ -5341,7 +5341,7 @@ version = "0.27.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
     { name = "rich" },
     { name = "shellingham" },
 ]
@@ -5840,7 +5840,7 @@ version = "3.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
-    { name = "nvidia-nccl-cu13", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-nccl-cu13", marker = "platform_system == 'Linux' and sys_platform != 'win32'" },
     { name = "scipy" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/38/a9/295320f741c5be4be996c73ee65a2a11852028c50daa7229adb0d61c330b/xgboost-3.4.1.tar.gz", hash = "sha256:6968a4c71efdfa859df0dfcad0d99211c95c28c4ffd6aecff46efff77d18026a", size = 1231819 }
