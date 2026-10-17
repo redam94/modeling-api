@@ -116,6 +116,8 @@ LABEL org.opencontainers.image.title="mapi/worker" \
       io.mapi.image.role="worker" \
       io.mapi.image.user="10001"
 COPY --from=worker-builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 # The image digest `mapi-server worker` keys the catalog by: sha256 of this uv.lock, the same
 # value the mapi/server image (api) computes (Settings.resolve_image_digest).
 COPY --chmod=0644 uv.lock /opt/mapi/uv.lock
@@ -160,6 +162,8 @@ LABEL org.opencontainers.image.title="mapi/${MAPI_IMAGE_NAME}" \
       io.mapi.image.user="10001" \
       io.mapi.catalog="/opt/mapi/catalog.json"
 COPY --from=builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 # Fail the build if the environment is not what this image promises, then export the static
 # catalog (+ digest) and bake the PyTensor/Numba caches read-only into /opt/mapi/cache.
 RUN python -I /opt/mapi/bin/assert_dists.py \

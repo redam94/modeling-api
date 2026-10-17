@@ -124,6 +124,15 @@ The Dockerfile frontend (`# syntax=`) and the compose `postgres` image are pinne
 you should review the resulting diff like any dependency bump. `make docker-pin-check` (also run
 in CI and by `make release-check`) fails if anything is unpinned.
 
+## Licences in the images
+
+Every image carries the project's licence files and `THIRD-PARTY-NOTICES.md` in
+`/usr/share/doc/mapi/`. The notices list every third-party Python and JavaScript package
+the image set ships, with its version and licence, and reproduce the NOTICE files and the
+licence texts of the JavaScript packages compiled into the web app. Regenerate the file with
+`make notices` whenever `uv.lock` or `pnpm-lock.yaml` changes; the test suite and
+`make release-check` fail while it is stale. See [Licensing](../project/licensing.md).
+
 ## CI
 
 `.github/workflows/ci.yml` builds every image, plus the `worker` target, on each push and pull

@@ -22,7 +22,8 @@ make help             # every developer entry point
 | `make docs-test` | Run every documentation snippet and the docs checks |
 | `make dev` | The whole stack locally without Docker ([Local, without Docker](../operations/local-development.md)) |
 | `make docker-build` / `make compose-up` | Build the images / run the compose stack ([Docker Compose](../operations/docker.md)) |
-| `make release-check` | Version consistency, changelog entry, no plan files, pinned images |
+| `make release-check` | Version consistency, changelog entry, no plan files, pinned images, current third-party notices |
+| `make notices` | Regenerate `THIRD-PARTY-NOTICES.md` after a change to `uv.lock` or `pnpm-lock.yaml` ([Licensing](licensing.md#third-party-libraries)) |
 
 ## Branching model
 

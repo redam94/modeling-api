@@ -71,6 +71,8 @@ RUN apt-get update \
 ENV PATH=/opt/mapi/venv/bin:${PATH} \
     HOME=/tmp/mapi-home
 COPY --from=builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 COPY --chmod=0644 images/common/healthcheck.py images/common/assert_dists.py /opt/mapi/bin/
 RUN python -I /opt/mapi/bin/assert_dists.py \
       --present mapi-gcs-shim google-crc32c starlette uvicorn \
