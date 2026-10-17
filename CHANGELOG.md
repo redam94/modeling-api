@@ -5,6 +5,40 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.5.1] — Forecasts with actuals — 2026-10-17
+
+A forecast endpoint can now be given the actual results that arrived since the model was
+fitted, together with the dates to forecast. The model updates its state with the actuals
+using its fitted parameters (nothing is re-estimated) and forecasts the requested dates from
+the last actual. Rows with a target value are actuals; rows with the target blank are the
+dates to forecast. All twelve statsmodels models can do this, including models fitted before
+this release, without a refit. Models that cannot (the PyMC time-series models, mmm-framework
+and the tabular models) refuse with `422 ACTUALS_NOT_SUPPORTED`; before, the values were
+silently ignored. Google Sheets (an **Input** sheet), the Python client, the CLI, the web app's
+Try it panel and every snippet support it. Verified on a laptop against a live local stack,
+like 0.5.0.
+
+### Known gaps
+- Models fitted on `transform.log`, `transform.box_cox` or `transform.difference` output
+  before 0.5.1 carry no data-space label, so they still accept actuals until they are refitted.
+  New fits are labelled and refuse. There is no replayable log, Box-Cox or difference step with
+  an inverse yet, so such models refuse actuals instead of transforming them.
+- The pre-run checks see the union of a panel's series. A problem in only one series (for
+  example a missing driver) is caught in the run: the call returns 200 with `run.problem`
+  instead of a 422. The same applies to `dataset://` payloads whose stored summary predates
+  `DataSummary.observed`.
+- When a split after the entry stage ends the model stage earlier (mmm `train_only`), a
+  forecast payload that only covers fitted periods predicts those rows instead of appending the
+  horizon.
+- VARMAX and DynamicFactor refuse series that end on different dates instead of filtering
+  them. The jointly modelled models' own refusal text is reported as untrusted detail only.
+- The "horizon.periods is not used" warning reuses the code `SCHEMA_INVALID` at warning level.
+- The Guided forecast view and fan chart (`ui/guided/forecast.json`, `sheets_forecast.gs`) do
+  not draw the actuals or the new forecast origin yet.
+- The Apps Script sends date cells as `yyyy-MM-dd`, so time steps shorter than a day lose their
+  hours.
+- The `integrations-try-it.png` screenshot does not show the actuals editor yet.
+
 ### Added
 - **Forecasts with actuals** (contract and score harness): a forecast request can carry the
   actuals that arrived since the fit (target values for periods after the fitted history, or
