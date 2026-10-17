@@ -122,11 +122,19 @@ export function forecastPeriods(table: InputTable, data: XrDataset): number {
 
 /**
  * The forecast call over the table (`table_forecast_call`): when the table ends with an actual,
- * `fallbackPeriods` periods are appended after it. Empty future drivers are carried forward.
+ * `fallbackPeriods` periods are appended after it. Empty future drivers are carried forward. A
+ * table without any filled row sends no data: the example's horizon follows the fitted history.
  */
 export function tableForecastCall(table: InputTable, rows: Cell[][], example: Record<string, unknown>, fallbackPeriods = 8): EndpointScoreCall {
   const dim = table.horizon_dim;
   if (!dim) throw new Error("this endpoint has no dim a forecast extends");
+  if (!rows.some((r) => r.some((c) => c !== null && c !== ""))) {
+    const given = (example.horizon as { periods?: number } | undefined)?.periods;
+    const call: Record<string, unknown> = { mode: "forecast", horizon: { dim, periods: given ?? fallbackPeriods }, future_covariates: "carry_last" };
+    if (example.output) call.output = example.output;
+    call.data = null;
+    return call;
+  }
   const data = tableToXr(table, rows);
   if (!Object.keys(data.data_vars).length) throw new Error("the table has no values");
   const periods = forecastPeriods(table, data) || fallbackPeriods;
