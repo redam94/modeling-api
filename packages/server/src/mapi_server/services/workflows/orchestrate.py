@@ -35,6 +35,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Final
 
+from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
 from mapi_spec.api import new_id
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, MapiError, Problem, ValidationFailed
@@ -734,8 +735,13 @@ class WorkflowOrchestrator:
         src = sources[0] if sources else None
         if src is None:
             return {}
-        row = env.rows.get(src)
-        lineage = ((row.result or {}).get("_lineage") or {}) if row is not None else {}
+        # the engine holds the source's result as soon as it finished; the row only after the
+        # tick is persisted (a model node may start in the same tick)
+        result = env.engine.node_run(src).result
+        if result is None:
+            row = env.rows.get(src)
+            result = row.result if row is not None else None
+        lineage = (result or {}).get("_lineage") or {}
         if not isinstance(lineage, dict):
             return {}
         for _port, meta in lineage.items():
@@ -781,6 +787,11 @@ class WorkflowOrchestrator:
             split = dict(raw_split) if isinstance(raw_split, dict) else {}
         dv = await self._dataset(env, dataset)
         name = node_model_name(env.wf.name, action.node_id)
+        labels = {MODEL_LABEL: action.node_id[:63], "workflow": env.wf.name[:63]}
+        if lineage.get("replayable") is False:
+            # fitted on the output of a transform the endpoint cannot replay (transform.log,
+            # box_cox, difference): forecasts are in that space and actuals are refused
+            labels[DATA_SPACE_LABEL] = TRANSFORMED_SPACE
         try:
             doc = model_spec_document(
                 action.params,
@@ -790,7 +801,7 @@ class WorkflowOrchestrator:
                 pipeline=pipeline,
                 split=split,
                 settings=settings,
-                labels={MODEL_LABEL: action.node_id[:63], "workflow": env.wf.name[:63]},
+                labels=labels,
             )
         except ValueError as exc:
             raise _NodeFailure(ErrorCode.WORKFLOW_INVALID, str(exc)) from None

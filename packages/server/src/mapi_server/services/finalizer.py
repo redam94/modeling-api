@@ -26,6 +26,7 @@ from typing import Any
 
 from mapi_plots.sanitize import SanitizeError, sanitize_plot
 from mapi_spec._types import MetricName
+from mapi_spec.actuals import DataSpace, data_space_of
 from mapi_spec.api import Lineage, ObjectRef, Scorecard, ScorecardItem, new_id
 from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT
 from mapi_spec.capabilities import Diagnostic
@@ -686,10 +687,15 @@ class Finalizer:
         model = await session.get(m.Model, model_id, with_for_update=True)
         assert model is not None
         resolved: ResolvedSpec | None = None
+        data_space: DataSpace | None = None
         if run.spec_id is not None and run.spec_revision is not None:
             rev = await session.get(m.SpecRevision, (run.spec_id, run.spec_revision))
             if rev is not None and rev.resolved:
                 resolved = ResolvedSpec.model_validate(rev.resolved)
+            if rev is not None and isinstance(rev.document, dict):
+                meta_doc = rev.document.get("metadata")
+                labels = meta_doc.get("labels") if isinstance(meta_doc, dict) else None
+                data_space = data_space_of(labels if isinstance(labels, dict) else None)
         fit = (run.payload.get("model") or {}).get("fit") or {}
         lineage = Lineage(
             run_id=run.id,
@@ -712,7 +718,9 @@ class Finalizer:
             for name, o in sorted(signed.objects.items())
         ]
         score_meta = (
-            ScoreMetadata(resolved=resolved, fit_coords=coords).model_dump(mode="json")
+            ScoreMetadata(resolved=resolved, fit_coords=coords, data_space=data_space).model_dump(
+                mode="json"
+            )
             if resolved is not None
             else None
         )
