@@ -40,6 +40,7 @@ from mapi_spec.endpoints import (
     EndpointSchemaSnapshot,
     EndpointScoreCall,
     EvaluationPolicy,
+    capability_breaks,
     endpoint_ref,
     policy_relaxations,
     schema_breaks,
@@ -243,9 +244,20 @@ async def evaluate_gate(
 
     The decision comes from :func:`~mapi_server.services.scorecards.promotion_decision`: the
     scorecard the runner measured at fit (stored by the finalizer), the fit mode of the
-    version's fit run (Q13) and its status, plus the schema breaks against ``current``."""
+    version's fit run (Q13) and its status, plus the schema breaks against ``current`` -
+    including a forecast feature the callers may rely on (actuals) that ``mv``'s plugin build
+    lacks (:func:`~mapi_spec.endpoints.capability_breaks`)."""
     snapshot = snapshot_for(mv)
+    if ctx is not None and mv.score_meta is not None:
+        meta = ScoreMetadata.model_validate(mv.score_meta)
+        live = await live_capabilities(session, ctx.catalogs, meta)
+        if live is not None and live.conditions_on_actuals != snapshot.conditions_on_actuals:
+            snapshot = snapshot.model_copy(
+                update={"conditions_on_actuals": live.conditions_on_actuals}
+            )
     breaks = schema_breaks(current.input_schema, snapshot.input_schema) if current else []
+    if current is not None:
+        breaks += capability_breaks(current, snapshot)
     required, status = False, None
     if ctx is not None:  # M3.5: governance policies may require a validated version
         from mapi_server.services.governance import promotion_requirement
@@ -412,7 +424,7 @@ async def promote(
             row.updated_at = _now()
             return row, True
         return row, False
-    current = EndpointSchemaSnapshot.model_validate(row.schema_snapshot) if row else None
+    current = await live_snapshot(session, ctx.catalogs, row) if row else None
     if row is not None and row.model_version_id == mv.id:
         current = None  # same version: its contract is the one callers already use
     decision, snapshot = await evaluate_gate(session, mv, policy, current=current, ctx=ctx)

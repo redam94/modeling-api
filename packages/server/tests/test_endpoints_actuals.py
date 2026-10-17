@@ -17,7 +17,7 @@ import httpx
 import pytest
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
-from mapi_server_testkit.integrations import fitted_version
+from mapi_server_testkit.integrations import fitted_version, refit_version
 from mapi_spec.endpoints import EndpointSchema, EndpointScoreCall
 from sqlalchemy import func, select
 
@@ -196,3 +196,29 @@ async def test_a_dataset_payload_with_target_values_is_checked_too(
     }
     r = await client.post(f"/v1/models/{mv.model_id}/versions/1:score", json={"request": request})
     assert r.status_code == 422 and r.json()["code"] == "ACTUALS_NOT_SUPPORTED", r.text
+
+
+async def test_promoting_a_version_that_cannot_use_actuals_is_a_breaking_change(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """Callers of an endpoint that conditions on actuals send them; a version whose plugin
+    build refuses them breaks those calls, so the endpoint's schema_change policy decides."""
+    v1 = await fitted_version(ctx)
+    v2 = await refit_version(ctx, v1)
+    await _capable(ctx)
+    r = await client.put(ALIAS, json={"model_version_id": v1.id})
+    assert r.status_code == 200 and r.json()["schema_snapshot"]["conditions_on_actuals"]
+    # v2 was fitted with a plugin version the catalog does not list: its fitted capabilities
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, v2.id)
+        assert mv is not None
+        meta = json.loads(json.dumps(mv.score_meta))
+        meta["resolved"]["model"]["resolved"] = "ts.hsgp_trend@1.0.1"
+        mv.score_meta = meta
+    r = await client.put(ALIAS, json={"model_version_id": v2.id})
+    assert r.status_code == 409 and r.json()["code"] == "PROMOTION_BLOCKED", r.text
+    assert "ACTUALS_NOT_SUPPORTED" in r.json()["errors"][0]["message"]
+    r = await client.put(
+        ALIAS, json={"model_version_id": v2.id, "evaluation_policy": {"schema_change": "allow"}}
+    )
+    assert r.status_code == 200 and not r.json()["schema_snapshot"]["conditions_on_actuals"]

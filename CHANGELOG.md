@@ -37,7 +37,9 @@ milestone releases are tagged on `main`.
     score - the catalog entry of exactly the fitted plugin version - so a model fitted before its
     plugin learned to condition can do so without a refit. `GET /v1/endpoints/{alias}/schema`
     reports `snapshot.conditions_on_actuals` from that build and returns `actuals_example` and
-    the new `input_table`.
+    the new `input_table`. Promoting a version that cannot use actuals onto an endpoint whose
+    version can is a breaking change for the endpoint's `schema_change` policy
+    (`mapi_spec.endpoints.capability_breaks`; blocked by default).
 - **Input tables** (spec): `EndpointSchema.input_table` describes an endpoint's inline input as
   one long table - the coordinate columns (the forecast dim first), the target, the drivers and
   other inputs, each with what it holds - with the periods after the fit as empty example rows.
@@ -70,6 +72,9 @@ milestone releases are tagged on `main`.
 - Empty values of supplied drivers on the periods to forecast are now filled by a
   `future_covariates` policy other than `supplied`; before, only drivers missing from the
   payload altogether were.
+- The workflow node `model.forecast` sends only the rows of its `data` (future drivers) after
+  the fitted history: workflows that wire the fit's own dataset in forecast from the end of the
+  fit again instead of being refused for "actuals" that are the fitted values.
 - The Apps Script snippet's **Input** sheet: a variable column the sheet does not have is left
   out of the call instead of failing the script (the server reports missing required inputs),
   dates are formatted in the spreadsheet's time zone, two rows with different values for one

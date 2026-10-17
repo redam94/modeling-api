@@ -12,6 +12,7 @@ from mapi_spec.endpoints import (
     EndpointSchemaSnapshot,
     EndpointScoreCall,
     InputTable,
+    capability_breaks,
     example_actuals_call,
     input_table,
     table_forecast_call,
@@ -211,6 +212,16 @@ def test_the_horizon_of_a_table_call(ys: list[Any], periods: int | None, expecte
     assert call.future_covariates.value == "carry_last"
     assert "price" not in call.inline_inputs()["inline.data"].data_vars  # no column, no var
     EndpointScoreCall.model_validate(call.model_dump(mode="json"))
+
+
+def test_losing_actuals_is_a_capability_break() -> None:
+    capable, plain = snapshot(), snapshot(conditions_on_actuals=False)
+    [why] = capability_breaks(capable, plain)
+    assert "ACTUALS_NOT_SUPPORTED" in why
+    assert capability_breaks(plain, capable) == []  # gaining it breaks nobody
+    assert capability_breaks(capable, capable) == []
+    no_forecast = plain.model_copy(update={"score_modes": ["predict"]})
+    assert capability_breaks(capable, no_forecast) == []  # a lost mode is not this check's
 
 
 def test_a_table_call_needs_a_forecasting_endpoint() -> None:

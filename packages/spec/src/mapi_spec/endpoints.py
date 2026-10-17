@@ -60,6 +60,7 @@ __all__ = [
     "InputColumnRole",
     "InputTable",
     "InputTableColumn",
+    "capability_breaks",
     "endpoint_ref",
     "example_actuals_call",
     "example_score_call",
@@ -545,6 +546,26 @@ def schema_breaks(old: DataSchema, new: DataSchema) -> list[str]:
             out.append(f"input {name!r} now has dims {list(var.dims)} (was {list(ov.dims)})")
         if _FAMILY.get(ov.dtype) != _FAMILY.get(var.dtype):
             out.append(f"input {name!r} changed type from {ov.dtype} to {var.dtype}")
+    return out
+
+
+def capability_breaks(old: EndpointSchemaSnapshot, new: EndpointSchemaSnapshot) -> list[str]:
+    """Why callers of ``old`` would break against ``new`` beyond the input schema (plain
+    text): a version that forecasts but cannot update the forecast with actuals refuses calls
+    that send them (``ACTUALS_NOT_SUPPORTED``, :mod:`mapi_spec.actuals`), which the version
+    served now accepts. Counted with :func:`schema_breaks` by the endpoint's
+    ``schema_change`` policy."""
+    out: list[str] = []
+    if (
+        old.conditions_on_actuals
+        and "forecast" in old.score_modes
+        and not new.conditions_on_actuals
+        and "forecast" in new.score_modes
+    ):
+        out.append(
+            "forecasts with actuals: the version served now updates a forecast with the "
+            "actuals a call sends; this version refuses them (ACTUALS_NOT_SUPPORTED)"
+        )
     return out
 
 
