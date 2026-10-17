@@ -8,6 +8,7 @@ import { EmptyState, ErrorNotice, LoadingRows, Mono, PageHeader, ProblemNotice, 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, NativeSelect } from "@/components/ui/primitives";
 import { ConditioningNote } from "@/features/integrations/actuals-editor";
 import { ProgressPanel } from "@/features/runs/progress-panel";
+import { ActualsComparison } from "@/features/score/actuals-comparison";
 import { ModelInputsPanel } from "@/features/score/model-inputs";
 import { sideTableOptions, type SideTableOption } from "@/features/score/request";
 import { ScoreResults } from "@/features/score/results";
@@ -189,6 +190,7 @@ function ScoreWorkspace({ mv }: { mv: ModelVersion }) {
                 ) : (
                   <div className="grid gap-3">
                     {done.summary?.conditioning ? <ConditioningNote conditioning={done.summary.conditioning} /> : null}
+                    {done.summary?.actuals?.length ? <ActualsComparison summary={done.summary} /> : null}
                     <ScoreResults outputs={done.outputs ?? []} runId={done.run.id} />
                   </div>
                 )

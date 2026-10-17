@@ -115,4 +115,32 @@ describe("ScorePage", () => {
     await waitFor(() => expect(sent.request).toBeDefined());
     expect(sent.request?.output).toMatchObject({ summary: ["median", "q5", "q95"], draws: 0 });
   });
+
+  it("shows the one-step-ahead predictions against the actuals that were sent", async () => {
+    server.use(
+      http.post(new RegExp(`/v1/models/[^/]+/versions/\\d+:score$`), () =>
+        HttpResponse.json({
+          done: true,
+          run: { id: "run_x", kind: "score", state: "succeeded" },
+          outputs: [],
+          summary: {
+            tables: [{ variable: "y_hat", columns: ["time", "mean", "hdi_90_lower", "hdi_90_upper"], rows: [["2026-10-01", 100, 90, 110], ["2026-10-02", 104, 94, 114], ["2026-10-03", 103, 92, 114]] }],
+            actuals: [{ variable: "y_hat", columns: ["time", "actual"], rows: [["2026-10-01", 98], ["2026-10-02", 120]] }],
+            conditioning: { dim: "time", fit_end: "2026-09-30", conditioned: true, n_actuals: 2, actuals_through: "2026-10-02", horizon_source: "payload", periods: 1, message: "Forecast updated with 2 actuals." },
+          },
+        }),
+      ),
+    );
+    renderAt(`/score?model=${MODEL_ID}&version=1`);
+    await userEvent.click(await screen.findByRole("button", { name: /^Forecast$/ }, { timeout: 3000 }));
+    const section = await screen.findByRole("region", { name: "Predictions against your actuals: y_hat" });
+    const stats = within(section).getByLabelText("How close the one-step-ahead predictions were");
+    expect(stats).toHaveTextContent("Actuals compared2");
+    expect(stats).toHaveTextContent("Inside the hdi 90 band50%");
+    const table = within(section).getByRole("table", { name: "Actuals and predictions" });
+    expect(within(table).getAllByRole("row")).toHaveLength(1 + 3);
+    expect(within(table).getByText("+2")).toBeInTheDocument(); // predicted − actual
+    expect(within(table).getByText(/^[-−]16$/)).toBeInTheDocument();
+    expect(within(table).getByText("forecast")).toBeInTheDocument();
+  });
 });

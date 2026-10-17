@@ -22,6 +22,16 @@ milestone releases are tagged on `main`.
   `POST …/versions/{version}:score`, checked against the version's inputs and stored as run
   inputs exactly like an endpoint's inline payloads. The route gets the endpoint score body cap.
 
+- **Predictions against your actuals.** A forecast sent actuals returns one-step-ahead
+  predictions on those periods (what the model expected before seeing each actual); the Score
+  page now shows them next to the actuals: the number compared, the typical (MAE) and
+  percentage error, how often the actuals fell inside the band and the average over/under
+  prediction, a chart per series in the plot sandbox (actuals as points, the forecast dashed
+  after the last actual) and a table with the error per period.
+- `ScoreSummary.actuals`: the actuals a forecast used, as tables named after the prediction
+  variable they compare with (its coordinate columns, then `actual`), in the output's names
+  and original units (raw-stage payloads; none for model-space output).
+
 ### Fixed
 - The Score page asked every model for `mean`/`hdi_90` summaries, which quantile, interval and
   point models refuse (`CAPABILITY_UNSUPPORTED`). Summaries now default to the model's
