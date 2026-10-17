@@ -56,6 +56,7 @@ from mapi_spec.about import (
     DatasetAbout,
     DatasetAboutUpdate,
 )
+from mapi_spec.actuals import ForecastConditioning
 from mapi_spec.admin import (
     ExecutorEvidence,
     ExecutorEvidenceUpdate,
@@ -1341,10 +1342,13 @@ class ScoreSummary(_Response):
     """The requested summary of a score run as plain tables (``summary.json``), inlined in
     :class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without
     zarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the
-    ``score.zarr.zip`` output for everything)."""
+    ``score.zarr.zip`` output for everything). ``conditioning`` (forecasts): what the
+    forecast was conditioned on - the end of the fitted history and the actuals the request
+    supplied (:mod:`mapi_spec.actuals`)."""
 
     tables: list[ScoreSummaryTable] = Field(default_factory=list, max_length=1000)
     truncated: bool = False
+    conditioning: ForecastConditioning | None = None
 
     model_config = _examples(
         {
@@ -1356,7 +1360,21 @@ class ScoreSummary(_Response):
                 }
             ],
             "truncated": False,
-        }
+        },
+        {
+            "tables": [
+                {
+                    "variable": "y_hat",
+                    "columns": ["t", "median", "q5", "q95"],
+                    "rows": [
+                        ["1961-01-01", 447.2, 424.9, 469.5],
+                        ["1961-04-01", 461.8, 431.0, 492.6],
+                    ],
+                }
+            ],
+            "truncated": False,
+            "conditioning": ForecastConditioning.model_json_schema()["examples"][0],
+        },
     )
 
 

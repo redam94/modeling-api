@@ -111,6 +111,9 @@ class ErrorCode(StrEnum):
     # --- M3.5: explorers and optimisation -----------------------------------------------------
     EXPLORE_INVALID = "EXPLORE_INVALID"
     OPTIMIZE_INFEASIBLE = "OPTIMIZE_INFEASIBLE"
+    # --- forecasts conditioned on actuals (additive, after v0.5) ----------------------------
+    ACTUALS_NOT_SUPPORTED = "ACTUALS_NOT_SUPPORTED"
+    ACTUALS_INVALID = "ACTUALS_INVALID"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -226,6 +229,13 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.EXPLORE_INVALID: ErrorInfo(422, "The explorer request is not valid", "spec"),
     ErrorCode.OPTIMIZE_INFEASIBLE: ErrorInfo(
         422, "The budget constraints cannot all be met", "capability"
+    ),
+    # forecasts conditioned on actuals (additive)
+    ErrorCode.ACTUALS_NOT_SUPPORTED: ErrorInfo(
+        422, "The model cannot update its forecast with supplied actuals", "capability"
+    ),
+    ErrorCode.ACTUALS_INVALID: ErrorInfo(
+        422, "The supplied actuals cannot be used for this forecast", "coords"
     ),
 }
 
@@ -445,6 +455,18 @@ class ModeNotSupported(CapabilityError):
     default_code = ErrorCode.MODE_NOT_SUPPORTED
 
 
+class ActualsNotSupported(CapabilityError):
+    """A forecast request carries actuals (target values) the model cannot condition on."""
+
+    default_code = ErrorCode.ACTUALS_NOT_SUPPORTED
+
+
+class ActualsInvalid(CoordPlanError):
+    """The actuals of a forecast request leave gaps, start too late or lack their drivers."""
+
+    default_code = ErrorCode.ACTUALS_INVALID
+
+
 class QuotaExceeded(MapiError):
     default_code = ErrorCode.QUOTA_EXCEEDED
 
@@ -494,6 +516,8 @@ _CLASS_FOR_CODE: dict[ErrorCode, type[MapiError]] = {
     ErrorCode.RECURSIVE_UNSUPPORTED: CoordPlanError,
     ErrorCode.CAPABILITY_UNSUPPORTED: CapabilityError,
     ErrorCode.MODE_NOT_SUPPORTED: ModeNotSupported,
+    ErrorCode.ACTUALS_NOT_SUPPORTED: ActualsNotSupported,
+    ErrorCode.ACTUALS_INVALID: ActualsInvalid,
     ErrorCode.QUOTA_EXCEEDED: QuotaExceeded,
     ErrorCode.USER_CODE_ERROR: UserCodeError,
     ErrorCode.RESOURCE_EXHAUSTED: ResourceExhausted,
