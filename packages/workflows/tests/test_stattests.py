@@ -201,6 +201,35 @@ def _fitted_model() -> ModelValue:
     return mv
 
 
+def test_model_residuals_drop_the_diffuse_start_of_differenced_models() -> None:
+    """Regression: the score path predicts 0 for the first period of an integrated model,
+    so the first residual was the level itself (about 500) and Jarque-Bera, Ljung-Box,
+    ARCH and CUSUM on the residuals saw a huge outlier (JB p = 0.0 instead of ~0.5)."""
+    from mapi_workflows.runtime.models import fit_node, model_residuals
+    from scipy import stats as sps
+    from wf_ctx import node_ctx
+    from wf_models import registry
+
+    rng = np.random.default_rng(3)
+    y = 500 + np.cumsum(rng.normal(size=200))
+    reg = registry()
+    for model, settings in (
+        ("ts.arima@^1", {"order": [0, 1, 0]}),
+        ("ts.unobserved_components@^1", {"level": "random walk"}),
+    ):
+        ctx = node_ctx(
+            "model.fit", {"model": model, "settings": settings}, data=series_ds(y),
+            registry=reg,
+        )  # fmt: skip
+        mv = fit_node(ctx).outputs["model"]
+        assert isinstance(mv, ModelValue)
+        res = model_residuals(mv, reg)
+        assert np.max(np.abs(res.resid)) < 10, (model, res.resid[:3])
+        assert sps.jarque_bera(res.resid).pvalue > 0.01
+        jb = _result(run_node("test.jarque_bera", model=mv, registry=reg))
+        assert jb.decision == "normal", model
+
+
 def test_regression_residual_tests_match_statsmodels_on_model_residuals() -> None:
     from mapi_workflows.runtime.models import model_residuals
     from statsmodels.stats.diagnostic import (

@@ -460,6 +460,12 @@ milestone releases are tagged on `main`.
   Bartlett's formula for two autocorrelated series (it is the white-noise band when either
   series is white), so the raw view no longer flags such lags either (under 10% in
   simulation).
+- **workflows** (statistics): the residual tests of a workflow (`test.ljung_box`,
+  `test.jarque_bera`, `test.arch_lm`, `test.breusch_pagan`, `test.white`, `test.cusum`,
+  `evaluate.residuals`) on an integrated or unobserved-components model included its
+  diffuse first residual - the level itself, since the first prediction is 0 - so for
+  ARIMA(0,1,0) on a series around 500 Jarque-Bera gave p = 0.0 instead of 0.47. The fit's
+  own burn-in (statsmodels' `loglikelihood_burn`, stored per series) is now dropped.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

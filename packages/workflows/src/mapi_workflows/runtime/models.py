@@ -67,6 +67,7 @@ __all__ = [
     "Residuals",
     "backtest_model",
     "build_spec",
+    "fit_burn_in",
     "fold_metrics",
     "forecast_errors",
     "model_residuals",
@@ -778,6 +779,24 @@ class Residuals:
     exog_names: list[str]
 
 
+def fit_burn_in(bundle: Bundle) -> int:
+    """Leading periods whose one-step residuals are start-up values of the fit: the
+    statsmodels ``loglikelihood_burn`` a plugin stores per series (``learned.cells[].burn``,
+    the diffuse start of an integrated or unobserved-components model), else a top-level
+    ``learned.burn``; ``0`` when the model stores none."""
+    learned = bundle.model.learned or {}
+    burns: list[int] = []
+    cells = learned.get("cells")
+    if isinstance(cells, list):
+        burns += [
+            int(c["burn"]) for c in cells if isinstance(c, dict) and isinstance(c.get("burn"), int)
+        ]
+    top = learned.get("burn")
+    if isinstance(top, int):
+        burns.append(top)
+    return max([0, *burns])
+
+
 def model_residuals(mv: ModelValue, registry: Registry | None = None) -> Residuals:
     """``actual - fitted`` over the fit data, through the score path (``predict``)."""
     if mv.data is None:
@@ -807,8 +826,11 @@ def model_residuals(mv: ModelValue, registry: Registry | None = None) -> Residua
     labels = np.asarray(mv.data[tdim].values)[-n:] if tdim in mv.data.coords else np.arange(n)
     resid = a - p
     ok = np.isfinite(resid)
-    # one-step-ahead predictions of state-space models start cold: drop a short burn-in
-    burn = min(int(np.argmax(ok)) if ok.any() else 0, n)
+    # one-step-ahead predictions of state-space models start cold: drop the fit's own
+    # burn-in (the score path predicts a finite 0 for the first period of an integrated
+    # model, so leading non-finite values alone do not find it)
+    lead = int(np.argmax(ok)) if ok.any() else 0
+    burn = min(max(lead, fit_burn_in(bundle)), n)
     exog_names = [
         str(v)
         for v, s in schema.vars.items()
