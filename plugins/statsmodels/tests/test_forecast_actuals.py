@@ -608,6 +608,106 @@ def test_vecm_forecasts_from_the_supplied_levels(registry: Registry, determinist
     )
 
 
+@pytest.mark.parametrize("model_id", ["ts.var", "ts.vecm"])
+def test_the_whole_history_as_actuals_gives_fitted_values_and_the_plain_forecast(
+    registry: Registry, model_id: str
+) -> None:
+    """What a workflow's ``model.forecast`` node sends: the training data itself. Every
+    fitted period, the first one with a full set of lags included, gets its fitted value."""
+    data = macro_dataset(quarters=100) if model_id == "ts.vecm" else macro_growth(quarters=100)
+    schema = MACRO_SCHEMA if model_id == "ts.vecm" else GROWTH_SCHEMA
+    settings = "{k_ar_diff: 2, coint_rank: 1}" if model_id == "ts.vecm" else "{lags: 2}"
+    b = fit(registry, model_id, settings, data, schema, bind=MACRO_BIND)
+    plain, _ = forecast(registry, b, None, periods=3)
+    full, record = forecast(registry, b, data, periods=3)
+    assert record["revised"] == record["n_actuals"] == 300
+    full = full.transpose("quantile", "quarter", "series")
+    np.testing.assert_allclose(
+        q(full, 0.5)[100:], q(plain.transpose("quantile", "quarter", "series"), 0.5), rtol=RTOL
+    )
+    if model_id == "ts.vecm":
+        from statsmodels.tsa.vector_ar.vecm import VECM
+
+        direct = VECM(ky(data), k_ar_diff=2, coint_rank=1, deterministic="ci").fit()
+    else:
+        from statsmodels.tsa.api import VAR
+
+        direct = VAR(ky(data)).fit(2, trend="c")
+    fitted = np.asarray(direct.fittedvalues)
+    lags = int(direct.k_ar)
+    np.testing.assert_allclose(q(full, 0.5)[lags:100], fitted, rtol=RTOL)
+    assert np.isnan(q(full, 0.5)[:lags]).all()
+
+
+def _with_driver(ds: xr.Dataset, schema: DataSchema, seed: int) -> tuple[xr.Dataset, DataSchema]:
+    rng = np.random.default_rng(seed)
+    out = ds.assign(x=(("quarter",), rng.normal(size=ds.sizes["quarter"])))
+    doc = schema.model_dump()
+    doc["vars"]["x"] = {
+        "dims": ["quarter"],
+        "dtype": "float64",
+        "role": "covariate",
+        "future_required": True,
+    }
+    return out, DataSchema.model_validate(doc)
+
+
+@pytest.mark.parametrize("model_id", ["ts.var", "ts.vecm"])
+def test_revisions_inside_the_fit_with_drivers_move_the_next_one_step_predictions(
+    registry: Registry, model_id: str
+) -> None:
+    """Revised targets and drivers inside the fitted range change the one-step predictions
+    that use them as lags (and the forecast), exactly as statsmodels' one-step forecast from
+    the revised history."""
+    vecm = model_id == "ts.vecm"
+    base = macro_dataset(quarters=106) if vecm else macro_growth(quarters=106)
+    data, schema = _with_driver(base, MACRO_SCHEMA if vecm else GROWTH_SCHEMA, seed=5)
+    train = data.isel(quarter=slice(0, 100))
+    settings = "{k_ar_diff: 1, coint_rank: 1, exog: [x]}" if vecm else "{lags: 2, exog: [x]}"
+    b = fit(registry, model_id, settings, train, schema, bind=MACRO_BIND)
+    payload = data.isel(quarter=slice(95, 103)).copy(deep=True)  # 5 in the fit, 3 new
+    payload["value"].values[:, 1] += 0.3  # revise the second fitted period sent (row 96)
+    payload["x"].values[2] += 1.0  # and a driver of row 97
+    fut = blank(data.isel(quarter=slice(103, 105)), "value")
+    fc, record = forecast(registry, b, xr.concat([payload, fut], "quarter"), periods=2)
+    assert record["revised"] == 15
+    y_rev = np.vstack([ky(train)[:95], ky(payload)])
+    x_rev = np.concatenate([train["x"].values[:95], payload["x"].values]).reshape(-1, 1)
+    if vecm:
+        from statsmodels.tsa.vector_ar.vecm import VECM
+
+        direct = VECM(
+            ky(train),
+            exog=train["x"].values.reshape(-1, 1),
+            k_ar_diff=1,
+            coint_rank=1,
+            deterministic="ci",
+        ).fit()
+
+        def one(pos: int, steps: int = 1) -> np.ndarray:
+            at = copy.copy(direct)
+            at.y_all = y_rev[:pos].T
+            at.nobs = pos - direct.k_ar
+            return np.asarray(at.predict(steps=steps, exog_fc=x_rev_all[pos : pos + steps]))
+    else:
+        from statsmodels.tsa.api import VAR
+
+        direct = VAR(ky(train), exog=train["x"].values.reshape(-1, 1)).fit(2, trend="c")
+
+        def one(pos: int, steps: int = 1) -> np.ndarray:
+            at = copy.copy(direct._results)
+            at.n_totobs = pos
+            return np.asarray(
+                at.forecast(y_rev[pos - 2 : pos], steps, exog_future=x_rev_all[pos : pos + steps])
+            )
+
+    x_rev_all = np.concatenate([x_rev.reshape(-1), fut["x"].values]).reshape(-1, 1)
+    fc = fc.transpose("quantile", "quarter", "series")
+    for row, pos in enumerate(range(95, 103)):
+        np.testing.assert_allclose(q(fc, 0.5)[row], one(pos)[0], rtol=RTOL, atol=1e-10)
+    np.testing.assert_allclose(q(fc, 0.5)[8:], one(103, 2), rtol=RTOL)
+
+
 def test_varmax_equals_append(registry: Registry) -> None:
     from statsmodels.tsa.statespace.varmax import VARMAX
 

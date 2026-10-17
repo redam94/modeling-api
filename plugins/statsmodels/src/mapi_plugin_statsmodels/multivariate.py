@@ -174,20 +174,47 @@ def _check_vars(cell: Cell, s: Any) -> None:
 
 
 def _one_step(
-    step: Callable[[np.ndarray, int, np.ndarray | None], np.ndarray],
+    res: Any,
+    cell: Cell,
     ext: Cell,
-    lags: int,
     insample: np.ndarray,
+    forecast: Callable[[Any, np.ndarray, int, np.ndarray | None], np.ndarray],
+    exog_coefs: np.ndarray | None,
 ) -> np.ndarray:
-    """``(len(insample), k)`` one-step-ahead means at the positions ``insample`` of ``ext``
-    from ``step(history before the position, position, drivers at it)`` (NaN in the first
-    ``lags`` periods, which have no full set of lags)."""
-    out = np.full((insample.size, len(ext.variables)), np.nan)
+    """``(len(insample), k)`` one-step-ahead means of a VAR or VECM at the positions
+    ``insample`` of the extended history ``ext`` (NaN in the first ``k_ar`` periods, which
+    have no full set of lags).
+
+    Inside the fitted range the model is linear in the lags and drivers with the
+    deterministic terms of the same period, so the prediction is the fitted value plus the
+    coefficients times the revisions (``ext - cell``) - exact, and no new evaluation of the
+    model. After the fit it is the one-step ``forecast`` from the history before the period.
+    """
+    lags = int(res.k_ar)
+    k = len(ext.variables)
+    coefs = _var_coefs(res)  # (lags, k, k)
+    n = cell.n
+    fitted = np.full((n, k), np.nan)
+    fv = np.asarray(res.fittedvalues, dtype=float).reshape(-1, k)
+    fitted[n - fv.shape[0] :] = fv
+    dy = np.asarray(ext.y[:n], dtype=float) - np.asarray(cell.y, dtype=float)
+    dx = None
+    if exog_coefs is not None and ext.x is not None and cell.x is not None:
+        dx = np.asarray(ext.x[:n], dtype=float) - np.asarray(cell.x, dtype=float)
+    out = np.full((insample.size, k), np.nan)
     for i, pos in enumerate(insample.tolist()):
         if pos < lags:
             continue
+        if pos < n:
+            val = fitted[pos].copy()
+            for lag in range(1, lags + 1):
+                val += coefs[lag - 1] @ dy[pos - lag]
+            if dx is not None and exog_coefs is not None:
+                val += exog_coefs @ dx[pos]
+            out[i] = val
+            continue
         x = None if ext.x is None else ext.x[pos : pos + 1]
-        out[i] = np.asarray(step(ext.y[:pos], pos, x), dtype=float).reshape(-1)
+        out[i] = np.asarray(forecast(res, ext.y[:pos], 1, x), dtype=float).reshape(-1)
     return out
 
 
@@ -365,24 +392,29 @@ class VarModel(StatsmodelsModel[VarSettings]):
     ) -> tuple[np.ndarray, np.ndarray]:
         """The fitted VAR on the supplied lags: one-step predictions and the forecast from
         the last actual, the trend continuing; the band is the fitted ``mse``."""
+        res = fit_res()
+        m = len(cell.exog_names)
+        coefs = np.asarray(res.coefs_exog, dtype=float)[:, coefs_cols(res, m)] if m else None
         return _lagged_predict(
-            fit_res(), ext, s.quantiles, insample, x_future, horizon, var_forecast
+            res, cell, ext, s.quantiles, insample, x_future, horizon, var_forecast, coefs
         )
 
 
 def _lagged_predict(
     res: Any,
+    cell: Cell,
     ext: Cell,
     q: list[float],
     insample: np.ndarray,
     x_future: np.ndarray | None,
     horizon: int,
     forecast: Callable[[Any, np.ndarray, int, np.ndarray | None], np.ndarray],
+    exog_coefs: np.ndarray | None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Quantiles of a VAR or VECM (``forecast``) over the extended history ``ext``."""
+    """Quantiles of a VAR or VECM (``forecast``) over the extended history ``ext`` of the
+    fitted cell ``cell``; ``exog_coefs`` ``(k, m)`` are the drivers' coefficients."""
     sigma_u = np.asarray(res.sigma_u, dtype=float)
-    lags = int(res.k_ar)
-    one = _one_step(lambda hist, pos, x: forecast(res, hist, 1, x), ext, lags, insample)
+    one = _one_step(res, cell, ext, insample, forecast, exog_coefs)
     q_in = normal_quantiles(one, np.broadcast_to(np.diag(sigma_u), one.shape), q)
     k = len(ext.variables)
     if not horizon:
@@ -390,6 +422,13 @@ def _lagged_predict(
     mean = forecast(res, np.asarray(ext.y, dtype=float), horizon, x_future)
     mse = _ma_mse(_var_coefs(res), sigma_u, horizon)
     return q_in, normal_quantiles(mean, np.diagonal(mse, axis1=1, axis2=2), q)
+
+
+def coefs_cols(res: Any, m: int) -> slice:
+    """The columns of a VAR's ``coefs_exog`` that belong to its ``m`` drivers (after the
+    deterministic terms)."""
+    total = np.asarray(res.coefs_exog).shape[1]
+    return slice(total - m, total)
 
 
 def _var_coefs(res: Any) -> np.ndarray:
@@ -613,8 +652,11 @@ class VecmModel(StatsmodelsModel[VecmSettings]):
     ) -> tuple[np.ndarray, np.ndarray]:
         """The fitted VECM on the supplied levels (its deterministic terms continuing):
         one-step predictions and the forecast from the last actual."""
+        res = fit_res()
+        k, m = len(cell.variables), len(cell.exog_names)
+        coefs = np.asarray(res.exog_coefs, dtype=float).reshape(k, -1)[:, :m] if m else None
         return _lagged_predict(
-            fit_res(), ext, s.quantiles, insample, x_future, horizon, vecm_forecast
+            res, cell, ext, s.quantiles, insample, x_future, horizon, vecm_forecast, coefs
         )
 
 
