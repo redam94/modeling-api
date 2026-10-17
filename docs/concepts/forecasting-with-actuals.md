@@ -47,6 +47,17 @@ next to it.
 
 `GET /v1/endpoints/{alias}/schema` returns `actuals_example` for endpoints whose model can do
 this: a call with inline data over the periods after the fit, every value empty, to fill in.
+It also returns `input_table` for every endpoint: the same table as columns (the time column
+first, then the target, the drivers and other inputs, each with what it holds) and, for a
+forecasting endpoint, the periods after the fit as empty rows. Every client reads that layout:
+
+| From | How |
+|---|---|
+| Google Sheets | The **Input** sheet of the generated Apps Script ([Connect Google Sheets](../tutorials/google-sheets.md#5-add-your-latest-actuals-and-future-dates)); a second function creates it |
+| Python | `api.endpoints.forecast(alias, rows)` with a DataFrame or rows, or `actuals=` and `future=` ([The Python client](../guides/python-client.md#forecast-with-your-latest-actuals)) |
+| The terminal | `mapi endpoints forecast ALIAS input.csv` ([The command line](../guides/cli.md#endpoints-webhooks-and-sharing)) |
+| The web app | The endpoint's **Schema** tab: *Your latest actuals and the dates to forecast*, then **Use in the call** |
+| curl, TypeScript, R | The endpoint's snippets add the call over the periods after the fit, to fill in |
 
 ## The rules
 

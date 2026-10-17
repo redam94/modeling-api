@@ -239,6 +239,22 @@ or a netCDF file, sent inline) and `--draws`; it waits like `mapi score --remote
 downloads the result tree. With one `--language`, `snippets` prints only the code.
 
 ```bash
+mapi endpoints schema ts-forecast                           # the Input table's columns
+mapi endpoints forecast ts-forecast input.csv               # actuals + blank-target future rows
+mapi endpoints forecast ts-forecast --actuals new.csv --periods 6
+mapi endpoints forecast ts-forecast --actuals new.csv --future 1961-04-01 --future 1961-05-01
+mapi endpoints forecast ts-forecast input.csv --dry-run     # print the call, send nothing
+```
+
+`forecast` sends [actuals and the dates to forecast](../concepts/forecasting-with-actuals.md)
+without a refit. The CSV has a header row with the endpoint's input-table columns (the time
+column, the target, the drivers; `schema` lists them): rows with the target filled are actuals,
+rows after them with it blank are forecast; without such rows `--periods` (default 8) are
+appended after the last actual. Blank drivers on future rows are carried forward
+(`--future-covariates`). It prints what the forecast was conditioned on
+("Forecast updated with 3 actuals …") and the summary table; `score` prints them too.
+
+```bash
 mapi webhooks create https://hooks.example.com/mapi -e endpoint.promoted -e run.failed > hook.secret
 mapi webhooks ls
 mapi webhooks deliveries WEBHOOK_ID --status failed
