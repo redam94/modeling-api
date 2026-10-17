@@ -5,9 +5,10 @@ on 144 monthly observations (1949-01 to 1960-12), as on a developer's stack.
 * A plain forecast answers with the conditioning record inline (``conditioned: false``, the end
   of the fitted history).
 * Dates to forecast with the target empty are forecast exactly (``horizon_source: rows``).
-* Target values are actuals: a plugin build that conditions on them moves the forecast origin;
-  one that cannot is refused with ``422 ACTUALS_NOT_SUPPORTED`` before any run starts - never the
-  old silent ignore (the same numbers for the supplied months, the horizon dropped).
+* Target values are actuals: ``ts.sarimax`` conditions on them with its fitted parameters,
+  so the forecast starts after the last actual and moves with the actuals - never the old
+  silent ignore (the same numbers for the supplied months, the horizon dropped). Models that
+  cannot condition are refused before a run (``test_endpoints_actuals.py``).
 """
 
 from __future__ import annotations
@@ -125,7 +126,7 @@ async def test_a_sarimax_endpoint_forecasts_with_dates_and_answers_for_actuals(
     try:
         catalog = await _catalog(client, 300)
         entry = next(e for e in catalog["models"] if e["manifest"]["id"] == "ts.sarimax")
-        capable = bool(entry["manifest"]["capabilities"].get("conditions_on_actuals"))
+        assert entry["manifest"]["capabilities"].get("conditions_on_actuals") is True
 
         # ---------------------------------------------- 144 monthly observations, ingested
         rng = np.random.default_rng(3)
@@ -174,7 +175,8 @@ async def test_a_sarimax_endpoint_forecasts_with_dates_and_answers_for_actuals(
         )  # fmt: skip
         assert r.status_code == 200, r.text
         schema = (await client.get("/v1/endpoints/ts-forecast/schema")).json()
-        assert schema["snapshot"]["conditions_on_actuals"] is capable
+        assert schema["snapshot"]["conditions_on_actuals"] is True
+        assert schema["actuals_example"]["data"]["coords"]["t"]["data"][0] == "1961-01-01"
         assert schema["input_table"]["rows"][0][0] == "1961-01-01"
 
         # ------------------------------------- a plain forecast says what it started from
@@ -202,20 +204,32 @@ async def test_a_sarimax_endpoint_forecasts_with_dates_and_answers_for_actuals(
         assert cond["periods"] == 5
         assert len(r.json()["summary"]["tables"][0]["rows"]) == 5
 
-        # ------------------------------------ actuals: used, or refused - never ignored
-        actuals = {**plain, "data": _inline([417, 391, 419])}
-        r = await _score(client, actuals, "actuals")
-        if capable:
-            assert r.status_code == 200, r.text
-            cond = r.json()["summary"]["conditioning"]
-            assert cond["conditioned"] and cond["n_actuals"] == 3
-            assert cond["actuals_through"] == "1961-03-01"
-            rows = r.json()["summary"]["tables"][0]["rows"]
-            assert rows[-1][0] == "1961-11-01"  # 8 periods after the last actual
-        else:
-            assert r.status_code == 422, r.text
-            assert r.json()["code"] == "ACTUALS_NOT_SUPPORTED"
-            assert "3 periods (1961-01-01 to 1961-03-01)" in r.json()["errors"][0]["message"]
+        # --------------------------------------------- actuals: used, never ignored
+        def summary(resp: httpx.Response) -> tuple[dict[str, Any], list[list[Any]]]:
+            assert resp.status_code == 200, resp.text
+            body = resp.json()
+            assert body["run"]["state"] == "succeeded", body["run"]
+            return body["summary"]["conditioning"], body["summary"]["tables"][0]["rows"]
+
+        cond, rows = summary(await _score(client, {**plain, "data": _inline([417, 391, 419])}, "a"))
+        assert cond["conditioned"] and cond["n_actuals"] == 3 and cond["revised"] == 0
+        assert cond["actuals_through"] == "1961-03-01" and cond["horizon_source"] == "horizon"
+        assert cond["series"][0]["forecast_from"] == "1961-04-01" and cond["periods"] == 8
+        assert [row[0] for row in rows] == _months("1961-01-01", 3 + 8)
+        wild, wild_rows = summary(
+            await _score(client, {**plain, "data": _inline([9999, 1, 50000])}, "b")
+        )
+        assert wild["actuals_through"] == "1961-03-01"
+        assert rows[3:] != wild_rows[3:]  # different actuals, a different forecast
+        # actuals plus listed dates: exactly those dates, the unused periods flagged
+        listed, listed_rows = summary(
+            await _score(client, {**plain, "data": _inline([417, 391, 419, None, None])}, "c")
+        )
+        assert listed["horizon_source"] == "rows" and listed["periods"] == 2
+        assert [row[0] for row in listed_rows] == _months("1961-01-01", 5)
+        np.testing.assert_allclose(
+            [float(v) for v in listed_rows[3][1:]], [float(v) for v in rows[3][1:]], rtol=1e-9
+        )
     finally:
         orch.stop.set()
         await asyncio.wait_for(task, 60)
