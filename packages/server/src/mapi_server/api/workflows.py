@@ -182,7 +182,7 @@ async def create_workflow(ctx: Ctx, session: Session, body: WorkflowCreate) -> J
             session.add(wf)
     except DBIntegrityError:
         raise Conflict(
-            f"a workflow named {wf.name!r} already exists; add a revision instead"
+            f"a workflow with the name {wf.name!r} already exists. Add a revision to it."
         ) from None
     rev = revision_row(wf, 1, doc, validation, message=body.message, created_by=_principal(ctx))
     session.add(rev)
@@ -274,7 +274,7 @@ async def delete_workflow(ctx: Ctx, session: Session, workflow_id: WorkflowId) -
         )
     ).scalar_one()
     if active:
-        raise Conflict(f"the workflow has {active} run(s) going; cancel them first")
+        raise Conflict(f"the workflow has {active} active run(s). Cancel them first.")
     await session.delete(wf)
     await session.flush()
     await _audit(ctx, session, AuditAction.WORKFLOW_DELETE, workflow_id, details={"name": wf.name})
@@ -330,14 +330,14 @@ async def create_workflow_revision(
     wf = await load_workflow(session, ctx.scope, workflow_id, for_update=True)
     if body.expected_revision is not None and body.expected_revision != wf.latest_revision:
         raise Conflict(
-            f"the latest revision is {wf.latest_revision}, not {body.expected_revision}; "
-            "reload and save again"
+            f"the latest revision is {wf.latest_revision}, not {body.expected_revision}. "
+            "Load the workflow again and save."
         )
     doc, _ = document_of(document=body.document, text=body.text)
     meta = doc.get("metadata")
     if isinstance(meta, dict) and meta.get("name") not in (None, wf.name):
         raise MapiError(
-            f"metadata.name must stay {wf.name!r} (create a new workflow to rename)",
+            f"metadata.name must stay {wf.name!r}. To change the name, create a new workflow.",
             code=ErrorCode.WORKFLOW_INVALID,
             pointer="/metadata/name",
         )
@@ -695,7 +695,8 @@ async def _check_quota(
     ).scalar_one()
     if count >= limit:
         raise ProblemWithHeaders(
-            f"the project already has {count} active {what} (the limit is {limit})",
+            f"the project already has {count} active {what} (the limit is {limit}). Make one "
+            "inactive first.",
             code=ErrorCode.QUOTA_EXCEEDED,
         )
 
@@ -927,7 +928,7 @@ async def create_workflow_trigger(
         )
     if body.dataset.project != ctx.scope.project_id:
         raise MapiError(
-            "a trigger watches a dataset of its own project",
+            "a trigger can only watch a dataset of its own project",
             code=ErrorCode.SCHEDULE_INVALID,
             pointer="/dataset",
         )

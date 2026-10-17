@@ -165,7 +165,7 @@ def test_select_refuses_a_model_that_loses_to_the_benchmarks() -> None:
     runs = {n.node_id: n for n in eng.node_runs()}
     sel = runs["select"]
     assert sel.result is not None and sel.result["beats_baselines"] is False
-    assert "does not beat" in str(sel.result["reason_plain"])
+    assert "is not better than" in str(sel.result["reason_plain"])
     assert "model" not in sel.outputs
     # governance needs the selected model: skipped, and the report still runs
     assert runs["governance"].status is NodeRunStatus.SKIPPED
@@ -557,7 +557,7 @@ def test_decisions_and_selections_are_explained_in_plain_words() -> None:
     report = runs["report"].outputs["report"].inline
     assert isinstance(report, dict)
     summary = str(report["summary_plain"])
-    # the seasonal decision comes first, so this one continues the sentence
+    # each decision is a sentence of the summary
     assert wanders.explain_plain.rstrip(".").lower() in summary.lower()
     assert "-> then" not in summary and "-> else" not in summary
     assert "ARIMAX has the best" in summary

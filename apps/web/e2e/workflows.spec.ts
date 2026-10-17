@@ -143,7 +143,7 @@ test("a run is followed live, a node's details open and another run is cancelled
   await expect(monitor.getByTestId("run-status")).toHaveText(/Queued|Running/);
   await expect(page.getByTestId("canvas-node-adf")).toHaveAttribute("data-status", /queued|running|succeeded/);
   await expect(monitor).toHaveAttribute("data-status", "succeeded", { timeout: 20_000 });
-  await expect(page.getByTestId("run-summary")).toContainText(/the tests found that the series wanders rather than returning to a steady level, so it was differenced/i);
+  await expect(page.getByTestId("run-summary")).toContainText(/the tests found that the series wanders and does not return to a steady level/i);
   await shot(page, "run-monitor");
 
   await page.getByRole("tab", { name: "Steps" }).click();
@@ -190,7 +190,7 @@ test("a schedule previews its next runs and is added", async ({ page }) => {
   await page.getByRole("button", { name: "Schedule", exact: true }).click();
   const form = page.getByRole("form", { name: "New schedule" });
   await form.getByLabel("Cron expression").fill("*/5 * * * *");
-  await expect(form.getByText("schedules may fire at most every 15 minutes")).toBeVisible();
+  await expect(form.getByText("a schedule can run at most one time every 15 minutes")).toBeVisible();
   await form.getByRole("button", { name: "Every weekday at 07:00" }).click();
   await form.getByLabel("Time zone").fill("Europe/Berlin");
   await expect(form.getByTestId("cron-preview")).toContainText("Every weekday at 07:00 (Europe/Berlin)");

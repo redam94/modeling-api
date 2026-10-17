@@ -6,19 +6,19 @@ Every node a workflow can use, grouped by kind. Each entry starts with the plain
 
 ## Statistical test (`test`)
 
-Checks a property of the data or of a model's errors and gives a yes/no verdict with its evidence.
+Tests a property of the data or of the errors of a model. It gives a yes/no verdict with its evidence.
 
 ### `test.acf_pacf` — How far back does the past matter? (ACF/PACF)
 
-Measures how strongly each past period is related to the present and suggests how many past values a forecasting model should use.
+Measures how strongly each past period is related to the present. It also suggests the number of past values for a forecast model.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
 
-**Use it when:** Choosing the orders of an ARIMA model; Seeing seasonality at a glance.
+**Use it when:** You must select the orders of an ARIMA model; You want a quick look at the seasonality.
 
-**Avoid it when:** The series still wanders (difference it first).
+**Avoid it when:** The series still wanders (apply a difference first).
 
-**Example:** Partial correlations cut off after lag 2 and plain ones fade slowly: try an AR(2).
+**Example:** The partial correlations stop after lag 2 and the plain correlations decrease slowly. Try an AR(2).
 
 **Inputs:** `data` (dataset).
 
@@ -26,10 +26,10 @@ Measures how strongly each past period is related to the present and suggests ho
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `var` | string |  | The variable to test (default: the dataset's target) |
-| `nlags` | integer | `24` | Lags computed |
-| `max_order` | integer | `5` | Largest order suggested |
+| `nlags` | integer | `24` | The number of lags to calculate |
+| `max_order` | integer | `5` | The largest order to suggest |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `significant_acf_lags` (array), `significant_pacf_lags` (array), `suggested_p` (integer), `suggested_q` (integer), `acf` (array), `pacf` (array).
 
@@ -38,15 +38,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.adf` — Does the series wander? (ADF)
 
-Checks whether a series keeps returning to a stable level or wanders off, which decides whether it should be differenced before forecasting.
+Tests whether a series returns to a stable level or wanders away. The result tells you whether to apply a difference before you forecast.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
 
-**Use it when:** Before fitting a forecasting model that needs a stable series; Together with the KPSS test, which looks at the same question from the other side.
+**Use it when:** Before you fit a forecast model that needs a stable series; With the KPSS test, which examines the same question from the opposite side.
 
-**Avoid it when:** The series is very short (under about 30 periods); There is an obvious one-off break (use Zivot-Andrews).
+**Avoid it when:** The series is very short (less than about 30 periods); The series has one clear break (use Zivot-Andrews).
 
-**Example:** Weekly sales give p = 0.57: the series wanders, so difference it once.
+**Example:** Weekly sales give p = 0.57. The series wanders, so apply one difference.
 
 **Inputs:** `data` (dataset).
 
@@ -54,11 +54,11 @@ Checks whether a series keeps returning to a stable level or wanders off, which 
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `var` | string |  | The variable to test (default: the dataset's target) |
 | `regression` | `c` \\| `ct` \\| `ctt` \\| `n` | `"c"` | Deterministic terms |
 | `autolag` | `AIC` \\| `BIC` \\| `t-stat` \\| `none` | `"AIC"` | Lag selection |
-| `maxlag` | integer |  | Largest lag tried (default: Schwert's rule) |
+| `maxlag` | integer |  | The largest lag to try (default: Schwert's rule) |
 | `per_series` | boolean | `true` | For panels, test every series (geo, product) separately |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number).
@@ -68,7 +68,7 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.arch_lm` — Do volatile periods cluster? (ARCH-LM)
 
-Checks whether calm and turbulent periods come in clusters, in which case ranges should widen after a shock.
+Tests whether calm periods and turbulent periods occur in groups. If they do, the ranges must become wider after a shock.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
@@ -76,7 +76,7 @@ Checks whether calm and turbulent periods come in clusters, in which case ranges
 
 **Avoid it when:** Series without visible bursts.
 
-**Example:** Errors after promotions are larger for several weeks (p = 0.02).
+**Example:** The errors after promotions are larger for several weeks (p = 0.02).
 
 **Inputs:** `data` (dataset, optional), `model` (model_version, optional).
 
@@ -84,8 +84,8 @@ Checks whether calm and turbulent periods come in clusters, in which case ranges
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
-| `var` | string |  | Series to test (default: residuals of the model input) |
+| `alpha` | number | `0.05` | The significance level |
+| `var` | string |  | The series to test (default: the residuals of the model input) |
 | `nlags` | integer | `4` | Lags |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number).
@@ -95,15 +95,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.breusch_pagan` — Even-sized errors? (Breusch-Pagan)
 
-Checks whether a model's errors are bigger at some times or for some inputs than others, which makes its ranges too narrow in places.
+Tests whether the errors of a model are larger at some times or for some inputs. Then the ranges of the model are too narrow in some places.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
-**Use it when:** Checking a regression-type model's errors.
+**Use it when:** You want to test the errors of a regression model.
 
 **Avoid it when:** Models without inputs.
 
-**Example:** Errors grow with spend (p = 0.003): ranges are too narrow for big weeks.
+**Example:** The errors increase with spend (p = 0.003). The ranges are too narrow for weeks with a large spend.
 
 **Inputs:** `model` (model_version).
 
@@ -111,8 +111,8 @@ Checks whether a model's errors are bigger at some times or for some inputs than
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
-| `robust` | boolean | `true` | Koenker's studentised version |
+| `alpha` | number | `0.05` | The significance level |
+| `robust` | boolean | `true` | Use the studentised version of Koenker |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number).
 
@@ -121,7 +121,7 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.chow` — Did it change on this date? (Chow)
 
-Checks whether the relationship between a result and its drivers is different before and after a date you choose.
+Tests whether the relationship between a result and its drivers is different before and after a date that you select.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* instant.
 
@@ -129,7 +129,7 @@ Checks whether the relationship between a result and its drivers is different be
 
 **Avoid it when:** You do not know the date (use CUSUM).
 
-**Example:** The price effect differs after the 2023 relaunch (p = 0.01).
+**Example:** The price effect is different after the 2023 relaunch (p = 0.01).
 
 **Inputs:** `data` (dataset).
 
@@ -137,10 +137,10 @@ Checks whether the relationship between a result and its drivers is different be
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `y` | string | **required** | The result |
 | `x` | array | **required** | The drivers |
-| `break_at` | string or integer | **required** | Break date or position |
+| `break_at` | string or integer | **required** | The date or position of the break |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number).
 
@@ -149,15 +149,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.cusum` — Did the relationship change? (CUSUM)
 
-Checks whether a model's relationship between result and drivers stayed the same over time, without having to guess when it might have changed.
+Tests whether the relationship between the result and the drivers of a model stayed the same over time. You do not have to guess when it changed.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
-**Use it when:** You suspect something changed but not when.
+**Use it when:** You think that something changed, but you do not know when.
 
 **Avoid it when:** You know the date (use the Chow test).
 
-**Example:** The cumulative errors cross the bound in 2022: the relationship shifted.
+**Example:** The cumulative errors go across the bound in 2022. The relationship changed.
 
 **Inputs:** `model` (model_version).
 
@@ -165,7 +165,7 @@ Checks whether a model's relationship between result and drivers stayed the same
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `break_detected` (boolean), `break_at` (string).
 
@@ -174,15 +174,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.engle_granger` — Are two series tied together? (Engle-Granger)
 
-Checks whether two wandering series stay tied together in the long run, so their gap keeps closing.
+Tests whether two wandering series stay tied together in the long run, so that the gap between them closes again.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* seconds.
 
-**Use it when:** Before an error-correction model of one result and one driver.
+**Use it when:** Before you make an error-correction model of one result and one driver.
 
 **Avoid it when:** More than two series (use Johansen).
 
-**Example:** Your price and a competitor's price are tied (p = 0.02).
+**Example:** Your price and the price of a competitor are tied (p = 0.02).
 
 **Inputs:** `data` (dataset).
 
@@ -190,7 +190,7 @@ Checks whether two wandering series stay tied together in the long run, so their
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `y` | string | **required** | The first series |
 | `x` | string | **required** | The second series |
 | `trend` | `c` \\| `ct` \\| `ctt` \\| `n` | `"c"` | Deterministic terms |
@@ -202,15 +202,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.granger` — Does one series help predict another? (Granger)
 
-Checks whether past values of a driver help predict a result beyond what the result's own past already tells you.
+Tests whether the past values of a driver help to predict a result better than the past values of the result alone.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
 
-**Use it when:** Deciding which series to include in a VAR; Checking that a leading indicator really leads.
+**Use it when:** You must decide which series to include in a VAR; You want to make sure that a leading indicator really leads.
 
-**Avoid it when:** Proving cause and effect (it only shows predictive help).
+**Avoid it when:** You want to prove cause and effect (the test shows only help with the prediction).
 
-**Example:** Search interest helps predict sales two weeks later (p = 0.004).
+**Example:** Search interest helps to predict sales two weeks later (p = 0.004).
 
 **Inputs:** `data` (dataset).
 
@@ -218,11 +218,11 @@ Checks whether past values of a driver help predict a result beyond what the res
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `y` | string | **required** | The result |
 | `x` | string | **required** | The candidate driver |
-| `maxlag` | integer | `4` | Largest lag tested |
-| `lag` | integer |  | Test only this lag (no correction needed) |
+| `maxlag` | integer | `4` | The largest lag to test |
+| `lag` | integer |  | Test only this lag (no correction is necessary) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `min_p_value` (number), `best_lag` (integer), `p_values` (object), `correction` (string).
 
@@ -231,15 +231,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.jarque_bera` — Bell-shaped errors? (Jarque-Bera)
 
-Checks whether values, usually a model's errors, follow a bell curve; if not, ranges built on that assumption may be off.
+Tests whether values, usually the errors of a model, follow a bell curve. If not, the ranges that use this assumption can be wrong.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* instant.
 
-**Use it when:** Checking a model's errors before trusting its ranges.
+**Use it when:** You want to test the errors of a model before you trust its ranges.
 
-**Avoid it when:** Small samples (the test is unreliable below about 50 values).
+**Avoid it when:** Small samples (the test is not reliable with less than about 50 values).
 
-**Example:** Errors are skewed (p < 0.001): a few very large misses.
+**Example:** The errors are skewed (p < 0.001). A small number of misses are very large.
 
 **Inputs:** `data` (dataset, optional), `model` (model_version, optional).
 
@@ -247,8 +247,8 @@ Checks whether values, usually a model's errors, follow a bell curve; if not, ra
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
-| `var` | string |  | Series to test (default: residuals of the model input) |
+| `alpha` | number | `0.05` | The significance level |
+| `var` | string |  | The series to test (default: the residuals of the model input) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `skew` (number), `kurtosis` (number).
 
@@ -257,15 +257,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.johansen` — Are the series tied together? (Johansen)
 
-Checks whether several wandering series stay tied together in the long run, and how many such ties there are.
+Tests whether several wandering series stay tied together in the long run. It also finds the number of these ties.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* seconds.
 
-**Use it when:** Before modelling several trending series together.
+**Use it when:** Before you make one model of several series that have a trend.
 
-**Avoid it when:** The series do not wander (no differencing needed); Only one series.
+**Avoid it when:** The series do not wander (they need no difference); Only one series.
 
-**Example:** Prices of two close competitors share one long-run tie (rank 1).
+**Example:** The prices of two close competitors share one long-run tie (rank 1).
 
 **Inputs:** `data` (dataset).
 
@@ -273,8 +273,8 @@ Checks whether several wandering series stay tied together in the long run, and 
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | `0.1` \\| `0.05` \\| `0.01` | `"0.05"` | Level for the rank (critical values exist at 10%, 5%, 1%) |
-| `vars` | array |  | The series: variable names, or labels along the data's series dimension (every series of the target when omitted) |
+| `alpha` | `0.1` \\| `0.05` \\| `0.01` | `"0.05"` | The level for the rank (critical values are available at 10%, 5% and 1%) |
+| `vars` | array |  | The series: variable names, or labels along the series dimension of the data (if empty, all the series of the target) |
 | `det_order` | integer | `0` | Deterministic terms: -1 none, 0 constant, 1 trend |
 | `k_ar_diff` | integer | `1` | Lagged differences |
 | `method` | `trace` \\| `maxeig` | `"trace"` | Test statistic |
@@ -286,15 +286,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.kpss` — Is the series stable? (KPSS)
 
-Checks whether a series varies around a stable level or trend; it is the mirror image of the ADF test, so the two together give a firmer answer.
+Tests whether a series stays near a stable level or trend. It is the opposite of the ADF test, so the two tests together give a better answer.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
 
-**Use it when:** Alongside ADF to confirm whether differencing is needed.
+**Use it when:** With ADF, to confirm whether the series needs a difference.
 
 **Avoid it when:** The series is very short.
 
-**Example:** KPSS rejects stability (p = 0.01) while ADF cannot reject a wandering series: difference it.
+**Example:** KPSS rejects stability (p = 0.01) and ADF cannot reject a wandering series. Apply a difference.
 
 **Inputs:** `data` (dataset).
 
@@ -302,9 +302,9 @@ Checks whether a series varies around a stable level or trend; it is the mirror 
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `var` | string |  | The variable to test (default: the dataset's target) |
-| `regression` | `c` \\| `ct` | `"c"` | Stationary around a level or a trend |
+| `regression` | `c` \\| `ct` | `"c"` | Stable around a level or a trend |
 | `nlags` | `auto` \\| `legacy` | `"auto"` | Bandwidth rule |
 | `per_series` | boolean | `true` | For panels, test every series (geo, product) separately |
 
@@ -315,15 +315,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.ljung_box` — Is there a pattern left? (Ljung-Box)
 
-Checks whether the errors a model leaves behind are still related to their own past, which would mean the model misses some structure.
+Tests whether the errors of a model are still related to their own past. If they are, the model does not find all of the structure.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
 
-**Use it when:** After fitting a forecasting model, on its errors.
+**Use it when:** On the errors of a forecast model, after you fit it.
 
 **Avoid it when:** On the raw series (use ACF/PACF to look for structure).
 
-**Example:** Errors of an ARIMA model show no pattern up to lag 10 (p = 0.42): good.
+**Example:** The errors of an ARIMA model show no pattern up to lag 10 (p = 0.42). This is good.
 
 **Inputs:** `data` (dataset, optional), `model` (model_version, optional).
 
@@ -331,10 +331,10 @@ Checks whether the errors a model leaves behind are still related to their own p
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
-| `var` | string |  | Series to test (default: residuals of the model input) |
-| `lags` | integer | `10` | Lags tested |
-| `model_df` | integer |  | Fitted ARMA terms to subtract (default: from the model) |
+| `alpha` | number | `0.05` | The significance level |
+| `var` | string |  | The series to test (default: the residuals of the model input) |
+| `lags` | integer | `10` | The number of lags to test |
+| `model_df` | integer |  | The number of fitted ARMA terms to subtract (default: from the model) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number).
 
@@ -343,11 +343,11 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.pp` — Does the series wander? (Phillips-Perron)
 
-Checks, like ADF, whether a series wanders off, but copes better with errors that are uneven or related over time.
+Tests whether a series wanders, as ADF does. It gives better results when the errors are uneven or related over time.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* seconds.
 
-**Use it when:** You want a second opinion to ADF on a noisy series.
+**Use it when:** You want a second test after ADF on a noisy series.
 
 **Avoid it when:** The series is very short.
 
@@ -359,7 +359,7 @@ Checks, like ADF, whether a series wanders off, but copes better with errors tha
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `var` | string |  | The variable to test (default: the dataset's target) |
 | `trend` | `n` \\| `c` \\| `ct` | `"c"` | Deterministic terms |
 | `lags` | integer |  | Newey-West lags (default: automatic) |
@@ -372,15 +372,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.seasonal_strength` — How strong is the season?
 
-Measures how much of a series' ups and downs come from a repeating seasonal pattern, on a scale from 0 (none) to 1 (all).
+Measures how much of the changes in a series come from a seasonal pattern that repeats. The scale is from 0 (none) to 1 (all).
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* beginner. *Typical runtime:* seconds.
 
-**Use it when:** Deciding whether to model seasonality or seasonally difference.
+**Use it when:** You must decide whether to model the seasonality or to apply a seasonal difference.
 
 **Avoid it when:** Less than two full seasons of data.
 
-**Example:** Weekly ice-cream sales have seasonal strength 0.85: model the season.
+**Example:** Weekly ice-cream sales have a seasonal strength of 0.85. Model the season.
 
 **Inputs:** `data` (dataset).
 
@@ -388,10 +388,10 @@ Measures how much of a series' ups and downs come from a repeating seasonal patt
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `var` | string |  | The variable to test (default: the dataset's target) |
-| `period` | integer |  | Season length in periods (default: from the frequency) |
-| `threshold` | number | `0.64` | Strength counted as seasonal |
+| `period` | integer |  | The season length in periods (default: from the frequency) |
+| `threshold` | number | `0.64` | The strength that the test counts as seasonal |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `strength` (number), `trend_strength` (number), `period` (integer), `seasonal` (boolean).
 
@@ -400,15 +400,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.vif` — Are drivers too alike? (VIF)
 
-Checks whether some drivers move almost together, which makes it hard to tell their separate effects apart.
+Tests whether some drivers change almost together. Then it is difficult to find their separate effects.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* instant.
 
 **Use it when:** Before a regression or marketing mix model with many drivers.
 
-**Avoid it when:** You only predict and do not care about separate effects.
+**Avoid it when:** You only predict and the separate effects are not important.
 
-**Example:** TV and radio spend have VIF 14: their effects cannot be separated reliably.
+**Example:** TV spend and radio spend have a VIF of 14. You cannot reliably separate their effects.
 
 **Inputs:** `data` (dataset).
 
@@ -416,9 +416,9 @@ Checks whether some drivers move almost together, which makes it hard to tell th
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `vars` | array | **required** | The drivers |
-| `limit` | number | `10` | VIF above which a driver is flagged |
+| `limit` | number | `10` | The VIF limit for a driver |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `max_vif` (number), `table` (object), `high_vif_vars` (array).
 
@@ -427,15 +427,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.white` — Even-sized errors? (White)
 
-Checks, more generally than Breusch-Pagan, whether a model's errors are bigger in some places than others.
+Tests whether the errors of a model are larger in some places. It is a more general test than Breusch-Pagan.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
-**Use it when:** You suspect the error size depends on inputs in a curved way.
+**Use it when:** You think that the size of the errors has a curved relation to the inputs.
 
-**Avoid it when:** Models with many inputs and little data (the test uses all their combinations).
+**Avoid it when:** Models with many inputs and little data (the test uses all the combinations of the inputs).
 
-**Example:** White's test also flags uneven errors (p = 0.01).
+**Example:** The White test also finds uneven errors (p = 0.01).
 
 **Inputs:** `model` (model_version).
 
@@ -443,7 +443,7 @@ Checks, more generally than Breusch-Pagan, whether a model's errors are bigger i
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number).
 
@@ -452,15 +452,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `test.zivot_andrews` — Wandering or one break? (Zivot-Andrews)
 
-Checks whether a series that looks like it wanders is really stable with one sudden jump, such as a price change or a new product launch.
+Tests whether a series that seems to wander is stable with one sudden jump. For example, a price change or a new product can cause a jump.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* seconds.
 
-**Use it when:** The series has an obvious one-off shift.
+**Use it when:** The series has one clear shift.
 
 **Avoid it when:** There are several breaks; The series is short.
 
-**Example:** Sales jump after a relaunch in March 2023; with that break allowed the series is stable.
+**Example:** Sales jump after a relaunch in March 2023. If the test permits that break, the series is stable.
 
 **Inputs:** `data` (dataset).
 
@@ -468,10 +468,10 @@ Checks whether a series that looks like it wanders is really stable with one sud
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 | `var` | string |  | The variable to test (default: the dataset's target) |
 | `regression` | `c` \\| `t` \\| `ct` | `"c"` | Break in |
-| `trim` | number | `0.15` | Share of each end excluded as a break date |
+| `trim` | number | `0.15` | The share at each end that cannot be a break date |
 | `per_series` | boolean | `true` | For panels, test every series (geo, product) separately |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `break_index` (integer), `break_at` (string).
@@ -481,19 +481,19 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ## Data processing (`transform`)
 
-Changes the data before later steps use it, for example taking differences or logs.
+Changes the data before later steps use it. For example, it calculates differences or logs.
 
 ### `transform.box_cox` — Stabilise the spread
 
-Bends a positive series so its ups and downs are about the same size at high and low levels, choosing the best bend from the data.
+Bends a positive series so that its changes have about the same size at high and low levels. It finds the best bend from the data.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* instant.
 
-**Use it when:** The spread grows with the level and a log is too strong or too weak.
+**Use it when:** The spread increases with the level and a log is too strong or too weak.
 
-**Avoid it when:** Values can be zero or negative.
+**Avoid it when:** The values can be zero or negative.
 
-**Example:** Lambda 0.3 makes monthly sales' spread roughly constant.
+**Example:** Lambda 0.3 makes the spread of monthly sales approximately constant.
 
 **Inputs:** `data` (dataset).
 
@@ -501,8 +501,8 @@ Bends a positive series so its ups and downs are about the same size at high and
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `vars` | array |  | Variables (default: the target) |
-| `lmbda` | number |  | Fixed lambda (default: estimated) |
+| `vars` | array |  | The variables (default: the target) |
+| `lmbda` | number |  | A fixed lambda (default: an estimate from the data) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `vars` (array), `lmbda` (number).
 
@@ -511,13 +511,13 @@ Result fields (`nodes.<id>.<field>` in conditions): `vars` (array), `lmbda` (num
 
 ### `transform.difference` — Change from the previous period
 
-Replaces each value by its change since the previous period, which turns a wandering series into a stable one.
+Replaces each value with its change from the previous period. This changes a wandering series into a stable series.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* instant.
 
-**Use it when:** A unit-root test says the series wanders.
+**Use it when:** A unit-root test shows that the series wanders.
 
-**Avoid it when:** The series is already stable (differencing adds noise).
+**Avoid it when:** The series is already stable (a difference adds noise).
 
 **Example:** Sales of 100, 104, 103 become changes of +4 and -1.
 
@@ -527,8 +527,8 @@ Replaces each value by its change since the previous period, which turns a wande
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `vars` | array |  | Variables to difference (default: the target) |
-| `order` | integer | `1` | How many times |
+| `vars` | array |  | The variables for the difference (default: the target) |
+| `order` | integer | `1` | The number of differences |
 | `dim` | string | `"time"` |  |
 
 Result fields (`nodes.<id>.<field>` in conditions): `vars` (array).
@@ -538,13 +538,13 @@ Result fields (`nodes.<id>.<field>` in conditions): `vars` (array).
 
 ### `transform.log` — Logarithm
 
-Takes the logarithm of positive values, which turns growth into steady steps and makes big and small series comparable.
+Calculates the logarithm of positive values. This changes growth into steady steps, and you can compare large series with small series.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* beginner. *Typical runtime:* instant.
 
-**Use it when:** Values grow by percentages; The spread grows with the level.
+**Use it when:** The values increase by percentages; The spread increases with the level.
 
-**Avoid it when:** Values can be zero or negative.
+**Avoid it when:** The values can be zero or negative.
 
 **Example:** Sales of 10, 100 and 1000 become 2.3, 4.6 and 6.9.
 
@@ -554,21 +554,21 @@ Takes the logarithm of positive values, which turns growth into steady steps and
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `vars` | array |  | Variables (default: the target) |
+| `vars` | array |  | The variables (default: the target) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `vars` (array).
 
 ### `transform.seasonal_difference` — Change from the same period last season
 
-Replaces each value by its change since the same period one season earlier, which removes a strong repeating pattern.
+Replaces each value with its change from the same period one season earlier. This removes a strong pattern that repeats.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* instant.
 
-**Use it when:** Strong seasonality that a seasonal model should not have to learn.
+**Use it when:** Strong seasonality that you do not want a seasonal model to learn.
 
 **Avoid it when:** Less than two seasons of history.
 
-**Example:** Week 53's sales minus week 1's sales a year earlier.
+**Example:** The sales of week 53 minus the sales of week 1 one year earlier.
 
 **Inputs:** `data` (dataset).
 
@@ -576,22 +576,22 @@ Replaces each value by its change since the same period one season earlier, whic
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `vars` | array |  | Variables to difference (default: the target) |
-| `period` | integer | **required** | Season length in periods |
-| `order` | integer | `1` | How many times |
+| `vars` | array |  | The variables for the difference (default: the target) |
+| `period` | integer | **required** | The season length in periods |
+| `order` | integer | `1` | The number of differences |
 | `dim` | string | `"time"` |  |
 
 Result fields (`nodes.<id>.<field>` in conditions): `vars` (array).
 
 ### `transform.select` — Keep some variables or dates
 
-Keeps only the variables, markets or dates you choose, for example to test one series or a recent period.
+Keeps only the variables, markets or dates that you select. For example, you can test one series or a recent period.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* beginner. *Typical runtime:* instant.
 
-**Use it when:** Later nodes should only see part of the data.
+**Use it when:** Later nodes must see only part of the data.
 
-**Avoid it when:** Everything is needed.
+**Avoid it when:** The workflow needs all of the data.
 
 **Example:** Keep only y and price for the market DE.
 
@@ -601,24 +601,24 @@ Keeps only the variables, markets or dates you choose, for example to test one s
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `vars` | array |  | Variables to keep |
+| `vars` | array |  | The variables to keep |
 | `sel` | object |  | dim -> labels to keep |
-| `start` | string or integer |  | First time label kept |
-| `end` | string or integer |  | Last time label kept |
+| `start` | string or integer |  | The first time label to keep |
+| `end` | string or integer |  | The last time label to keep |
 
 Result fields (`nodes.<id>.<field>` in conditions): `vars` (array).
 
 ### `transform.steps` — Preprocessing steps
 
-Runs catalog preprocessing steps, such as weekly totals, scaling or calendar features, on the data.
+Runs catalog preprocessing steps on the data. For example, the steps can make weekly totals, scale values or add calendar features.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
 
-**Use it when:** The data needs the same preparation as a model spec would apply.
+**Use it when:** The data needs the same preparation as a model spec gives.
 
-**Avoid it when:** A model node will run the same steps itself (put them in its pipeline).
+**Avoid it when:** A model node runs the same steps (put them in its pipeline).
 
-**Example:** Weekly totals then a log of spend before the tests.
+**Example:** Weekly totals, then a log of spend, before the tests.
 
 **Inputs:** `data` (dataset).
 
@@ -632,26 +632,26 @@ Result fields (`nodes.<id>.<field>` in conditions): `vars` (array).
 
 ## Decision (`branch`)
 
-Chooses which path the workflow takes from earlier results.
+Uses earlier results to select the path of the workflow.
 
 ### `branch.if` — Choose a path
 
-Decides which way the workflow goes from earlier results, for example 'difference the series only if the tests say it wanders'.
+Uses earlier results to decide the path of the workflow. For example: 'apply a difference only if the tests show that the series wanders'.
 
 *Runs in* the orchestrator (no data; computed from earlier results). *Difficulty:* intermediate. *Typical runtime:* instant.
 
-**Use it when:** A step should only run under a condition.
+**Use it when:** A step must run only under a condition.
 
-**Avoid it when:** Every step should always run.
+**Avoid it when:** All steps must always run.
 
-**Example:** nodes.adf.p_value >= params.alpha or nodes.kpss.reject decides whether to difference.
+**Example:** nodes.adf.p_value >= params.alpha or nodes.kpss.reject decides whether to apply a difference.
 
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `condition` | string | **required** | Condition in the workflow expression language |
-| `explain_then` | string |  | What it means when the condition holds, in plain words for the run report (e.g. 'The tests found the series wanders, so it was differenced.') |
-| `explain_else` | string |  | What it means when the condition does not hold, in plain words |
+| `condition` | string | **required** | The condition in the workflow expression language |
+| `explain_then` | string |  | What it means when the condition is true, in plain words for the run report (for example, 'The tests found that the series wanders, so the workflow applied a difference.') |
+| `explain_else` | string |  | What it means when the condition is false, in plain words |
 
 Result fields (`nodes.<id>.<field>` in conditions): `value` (boolean), `arm` (string).
 
@@ -660,17 +660,17 @@ Result fields (`nodes.<id>.<field>` in conditions): `value` (boolean), `arm` (st
 
 ## Train/test plan (`split`)
 
-Decides which periods or groups the model learns from and which it is tested on, possibly many times over.
+Decides which periods or groups the model learns from, and which periods or groups test the model. It can do this many times.
 
 ### `split.blocked_kfold` — Blocked cross-validation
 
-Cuts the time line into a few blocks and uses each block once as the test, leaving a buffer around it so neighbouring periods do not leak.
+Cuts the time line into some blocks and uses each block one time as the test. A buffer around each block stops data leaks from adjacent periods.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
-**Use it when:** Explanatory models where the future is not the only thing that matters; Short series where rolling backtests leave too little data.
+**Use it when:** Models that explain, where the future is not the only important thing; Short series, where rolling backtests leave too little data.
 
-**Avoid it when:** Pure forecasting (training on the future is unrealistic).
+**Avoid it when:** Forecasts only (a model that trains on the future is not realistic).
 
 **Example:** Five blocks with a 4-week buffer on each side.
 
@@ -689,11 +689,11 @@ Result fields (`nodes.<id>.<field>` in conditions): `n_folds` (integer), `folds`
 
 ### `split.expanding_window` — Rolling backtest (growing history)
 
-Repeats the test at several points in time, each time training on all history up to that point, the way a forecast is really made.
+Repeats the test at several points in time. Each time, the model trains on all the history up to that point, as in a real forecast.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* instant.
 
-**Use it when:** You forecast regularly and want a realistic error estimate; You need a gap between training and test because data arrives late.
+**Use it when:** You forecast regularly and want a realistic estimate of the error; You need a gap between the training data and the test data because the data comes late.
 
 **Avoid it when:** Very short series.
 
@@ -718,13 +718,13 @@ Result fields (`nodes.<id>.<field>` in conditions): `n_folds` (integer), `folds`
 
 ### `split.geo_holdout` — Hold out markets
 
-Leaves whole markets or stores out of training and tests the model on them, optionally only over their latest periods.
+Keeps whole markets or stores out of the training data and tests the model on them. You can also test only their latest periods.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* instant.
 
-**Use it when:** You will apply the model to new markets; Reading out a geo experiment.
+**Use it when:** You will apply the model to new markets; You want to read the result of a geo experiment.
 
-**Avoid it when:** You only predict for markets the model has seen.
+**Avoid it when:** You only predict for markets that the model knows.
 
 **Example:** Hold out 2 random markets, 5 times with different draws.
 
@@ -748,11 +748,11 @@ Result fields (`nodes.<id>.<field>` in conditions): `n_folds` (integer), `folds`
 
 ### `split.holdout` — One test period
 
-Holds back one part of the data, usually the latest periods, to test the model on.
+Keeps one part of the data, usually the latest periods, to test the model.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* beginner. *Typical runtime:* instant.
 
-**Use it when:** A quick, single honest test.
+**Use it when:** You want one quick, honest test.
 
 **Avoid it when:** You want to know how stable the error is (use a rolling backtest).
 
@@ -771,15 +771,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `n_folds` (integer), `folds`
 
 ### `split.nested` — Tuning inside a backtest
 
-Runs a second, inner backtest inside each training window, so settings are tuned without peeking at the outer test periods (search.grid tunes on the inner folds and scores on the outer ones).
+Runs a second, inner backtest in each training window, so that you can tune settings without data from the outer test periods. The search.grid node tunes on the inner folds and scores on the outer folds.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
 **Use it when:** You tune settings (orders, penalties) and want an honest final error.
 
-**Avoid it when:** You do not tune anything.
+**Avoid it when:** You do not tune settings.
 
-**Example:** Outer: expanding window, 4 origins; inner: expanding window, 3 origins.
+**Example:** Outer: expanding window, 4 origins. Inner: expanding window, 3 origins.
 
 **Inputs:** `data` (dataset).
 
@@ -795,13 +795,13 @@ Result fields (`nodes.<id>.<field>` in conditions): `n_folds` (integer), `folds`
 
 ### `split.purged_kfold` — Purged cross-validation
 
-Like blocked cross-validation, but drops periods just before and just after each test block, for results that span several periods.
+Works like blocked cross-validation, but removes the periods immediately before and after each test block. Use it for results that cover several periods.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
-**Use it when:** Results are computed over windows that overlap the test block.
+**Use it when:** The results come from windows that overlap the test block.
 
-**Avoid it when:** Plain forecasting.
+**Avoid it when:** Plain forecasts.
 
 **Example:** Five blocks, purge 2 periods before and embargo 4 after each test block.
 
@@ -821,15 +821,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `n_folds` (integer), `folds`
 
 ### `split.rolling_origin` — Rolling backtest (fixed window)
 
-Repeats the test at several points in time, each time training on the same length of recent history, to see how the error holds up.
+Repeats the test at several points in time. Each time, the model trains on the same length of recent history, so you can see if the error stays the same.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* instant.
 
-**Use it when:** Old history may no longer be relevant; You want errors at several forecast horizons.
+**Use it when:** Old history is possibly not relevant now; You want errors at several forecast horizons.
 
 **Avoid it when:** Little history (each fold needs a full window).
 
-**Example:** Train on 104 weeks, test 1, 4 and 8 weeks ahead, move 4 weeks, repeat 10 times.
+**Example:** Train on 104 weeks and test 1, 4 and 8 weeks ahead. Move 4 weeks and do this 10 times.
 
 **Inputs:** `data` (dataset).
 
@@ -851,17 +851,17 @@ Result fields (`nodes.<id>.<field>` in conditions): `n_folds` (integer), `folds`
 
 ## Search (`search`)
 
-Tries many settings and picks the best by a score.
+Tries many settings and selects the best setting by a score.
 
 ### `search.arma_order` — Find the AR and MA orders
 
-Tries a grid of past-value (AR) and past-error (MA) orders for a forecasting model and picks the one with the best balance of fit and simplicity.
+Tries a grid of past-value (AR) and past-error (MA) orders for a forecast model. It selects the order with the best balance of fit and simplicity.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
 
-**Use it when:** Before fitting an ARIMA or ARIMAX model.
+**Use it when:** Before you fit an ARIMA or ARIMAX model.
 
-**Avoid it when:** The series still wanders (difference first); Very short series.
+**Avoid it when:** The series still wanders (apply a difference first); Very short series.
 
 **Example:** Out of p = 0..4 and q = 0..4, ARMA(2,1) has the lowest AIC.
 
@@ -874,10 +874,10 @@ Tries a grid of past-value (AR) and past-error (MA) orders for a forecasting mod
 | `var` | string |  | The series (default: the target) |
 | `max_p` | integer | `4` | Largest AR order |
 | `max_q` | integer | `4` | Largest MA order |
-| `d` | integer | `0` | Differences inside the model |
-| `D` | integer | `0` | Seasonal differences inside the model |
+| `d` | integer | `0` | The differences in the model |
+| `D` | integer | `0` | The seasonal differences in the model |
 | `period` | integer |  | Season length (with D = 1) |
-| `exog` | array |  | Drivers included in every fit |
+| `exog` | array |  | The drivers to include in each fit |
 | `criterion` | `aic` \\| `bic` \\| `hqic` \\| `aicc` | `"aic"` | Information criterion |
 | `trend` | `n` \\| `c` \\| `t` \\| `ct` | `"c"` | Trend term |
 
@@ -888,11 +888,11 @@ Result fields (`nodes.<id>.<field>` in conditions): `best_p` (integer), `best_q`
 
 ### `search.coint_rank` — How many long-run ties
 
-Decides how many long-run relationships tie a set of wandering series together, which the error-correction model needs.
+Finds the number of long-run relationships that tie a set of wandering series together. The error-correction model needs this number.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* seconds.
 
-**Use it when:** Before fitting a VECM.
+**Use it when:** Before you fit a VECM.
 
 **Avoid it when:** The series do not wander.
 
@@ -904,7 +904,7 @@ Decides how many long-run relationships tie a set of wandering series together, 
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `vars` | array |  | The series: variable names, or labels along the data's series dimension (every series of the target when omitted) |
+| `vars` | array |  | The series: variable names, or labels along the series dimension of the data (if empty, all the series of the target) |
 | `det_order` | integer | `0` | -1 none, 0 constant, 1 trend |
 | `k_ar_diff` | integer | `1` | Lagged differences |
 | `method` | `trace` \\| `maxeig` | `"trace"` | Test |
@@ -914,15 +914,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `rank` (integer).
 
 ### `search.grid` — Try settings on a backtest
 
-Fits a model with each combination of settings you list, scores each on a backtest, and picks the best.
+Fits a model with each combination of the settings that you list. It scores each combination on a backtest and selects the best.
 
 *Runs in* its own child run (a `fit` run for `model.fit`, else a `workflow_node` run). *Difficulty:* expert. *Typical runtime:* long.
 
-**Use it when:** Tuning a few settings of any catalog model.
+**Use it when:** You want to tune some settings of a catalog model.
 
-**Avoid it when:** Large grids on slow models (each point is a full fit per fold).
+**Avoid it when:** Large grids on slow models (each point is a full fit for each fold).
 
-**Example:** Try 3 saturation shapes x 2 carry-over lengths, keep the lowest MAPE.
+**Example:** Try 3 saturation shapes x 2 carry-over lengths. Keep the lowest MAPE.
 
 **Inputs:** `data` (dataset), `split` (split_plan).
 
@@ -931,11 +931,11 @@ Fits a model with each combination of settings you list, scores each on a backte
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `model` | string | **required** | Catalog model ref (id@range) |
-| `settings` | object |  | Base settings |
+| `settings` | object |  | The base settings |
 | `grid` | object | **required** | JSON pointer into settings -> values |
 | `metric` | string | `"rmse"` |  |
 | `direction` | `min` \\| `max` | `"min"` | Better when |
-| `max_points` | integer | `50` | Grid points allowed |
+| `max_points` | integer | `50` | The maximum number of grid points |
 
 Result fields (`nodes.<id>.<field>` in conditions): `best_settings` (object), `best_score` (number), `n_points` (integer), `nested` (boolean), `outer_scores` (array), `selected_per_fold` (array).
 
@@ -944,11 +944,11 @@ Result fields (`nodes.<id>.<field>` in conditions): `best_settings` (object), `b
 
 ### `search.sarima_order` — Find seasonal orders
 
-Extends the order search to seasonal past values and errors, for series with a repeating pattern.
+Adds seasonal past values and errors to the order search, for series with a pattern that repeats.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* minutes.
 
-**Use it when:** The series has a clear season that differencing alone does not remove.
+**Use it when:** The series has a clear season that a difference alone does not remove.
 
 **Avoid it when:** No seasonality (use the plain order search).
 
@@ -975,15 +975,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `best_order` (array), `best_
 
 ### `search.var_lag_order` — How many lags for series together
 
-Picks how many past periods a model of several related series should use.
+Selects the number of past periods for a model of several related series.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
 
-**Use it when:** Before fitting a VAR or VECM.
+**Use it when:** Before you fit a VAR or VECM.
 
 **Avoid it when:** One series (use the AR/MA order search).
 
-**Example:** AIC picks 3 lags, BIC 1.
+**Example:** AIC selects 3 lags and BIC selects 1.
 
 **Inputs:** `data` (dataset).
 
@@ -991,7 +991,7 @@ Picks how many past periods a model of several related series should use.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `vars` | array |  | The series: variable names, or labels along the data's series dimension (every series of the target when omitted) |
+| `vars` | array |  | The series: variable names, or labels along the series dimension of the data (if empty, all the series of the target) |
 | `maxlags` | integer | `8` | Largest lag |
 | `criterion` | `aic` \\| `bic` \\| `hqic` \\| `aicc` | `"aic"` | Information criterion |
 
@@ -1003,11 +1003,11 @@ Fits, backtests or forecasts with any model from the catalog.
 
 ### `model.backtest` — Backtest a model
 
-Refits a model on every fold of a split plan and measures its forecast error at each horizon, so you see how reliable it really is.
+Fits a model again on each fold of a split plan and measures its forecast error at each horizon. This shows how reliable the model is.
 
 *Runs in* its own child run (a `fit` run for `model.fit`, else a `workflow_node` run). *Difficulty:* intermediate. *Typical runtime:* long.
 
-**Use it when:** Before trusting a forecasting model; Comparing models fairly.
+**Use it when:** Before you trust a forecast model; You want to compare models fairly.
 
 **Avoid it when:** Slow models with many folds (each fold is a fit).
 
@@ -1019,27 +1019,27 @@ Refits a model on every fold of a split plan and measures its forecast error at 
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `model` | string | **required** | Catalog model ref (id@range), e.g. ts.sarimax@^1 |
+| `model` | string | **required** | Catalog model ref (id@range), for example ts.sarimax@^1 |
 | `settings` | object |  |  |
 | `fit` | object |  |  |
 | `pipeline` | array |  |  |
 | `bind` | object |  |  |
 | `metrics` | array | `["mae", "rmse", "mape", "mase"]` |  |
-| `refit` | boolean | `true` | Refit on every fold (else fit once and roll forward) |
+| `refit` | boolean | `true` | Fit again on each fold (if false, fit one time and roll forward) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `metrics` (object), `by_horizon` (object), `n_folds` (integer).
 
 ### `model.fit` — Fit a model
 
-Fits any model from the catalog to the data, optionally scoring it on a test period, and saves it as a model version.
+Fits a model from the catalog to the data and saves it as a model version. It can also score the model on a test period.
 
 *Runs in* its own child run (a `fit` run for `model.fit`, else a `workflow_node` run). *Difficulty:* beginner. *Typical runtime:* minutes.
 
-**Use it when:** Every workflow that ends in a model.
+**Use it when:** Each workflow that ends with a model.
 
-**Avoid it when:** You only need data checks.
+**Avoid it when:** You only need checks of the data.
 
-**Example:** Fit ts.sarimax@^1 with order from the search node.
+**Example:** Fit ts.sarimax@^1 with the order from the search node.
 
 **Inputs:** `data` (dataset), `split` (split_plan, optional).
 
@@ -1047,7 +1047,7 @@ Fits any model from the catalog to the data, optionally scoring it on a test per
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `model` | string | **required** | Catalog model ref (id@range), e.g. ts.sarimax@^1 |
+| `model` | string | **required** | Catalog model ref (id@range), for example ts.sarimax@^1 |
 | `settings` | object |  | Model settings |
 | `fit` | object |  | Fit configuration (FitConfig) |
 | `pipeline` | array |  | Preprocessing steps |
@@ -1058,13 +1058,13 @@ Result fields (`nodes.<id>.<field>` in conditions): `model_version` (string), `m
 
 ### `model.forecast` — Forecast with a model
 
-Uses a fitted model version to forecast ahead, with future drivers if it needs them.
+Uses a fitted model version to forecast the future periods. It uses future drivers if the model needs them.
 
 *Runs in* its own child run (a `fit` run for `model.fit`, else a `workflow_node` run). *Difficulty:* beginner. *Typical runtime:* seconds.
 
-**Use it when:** Producing the forecast after a model was selected.
+**Use it when:** You want the forecast after you select a model.
 
-**Avoid it when:** The model cannot forecast (check its score modes).
+**Avoid it when:** The model cannot forecast (look at its score modes).
 
 **Example:** Forecast 12 weeks with planned prices.
 
@@ -1074,8 +1074,8 @@ Uses a fitted model version to forecast ahead, with future drivers if it needs t
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `horizon` | integer | `12` | Periods ahead |
-| `future_covariates` | `carry_last` \\| `seasonal_naive` \\| `zero` \\| `error` | `"error"` | Missing future drivers |
+| `horizon` | integer | `12` | The number of periods ahead |
+| `future_covariates` | `carry_last` \\| `seasonal_naive` \\| `zero` \\| `error` | `"error"` | What to do with missing future drivers |
 | `summary` | array | `["mean", "hdi_90"]` |  |
 
 Result fields (`nodes.<id>.<field>` in conditions): `total` (number).
@@ -1086,15 +1086,15 @@ Measures how good a model or a simple benchmark is on test data.
 
 ### `evaluate.baseline` — Simple benchmark forecasts
 
-Scores very simple forecasts, such as 'same as last week' or 'same as last year', on the same test periods, so you can check a model beats them.
+Scores very simple forecasts, for example 'same as last week' or 'same as last year', on the same test periods. You can then make sure that a model is better than them.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* beginner. *Typical runtime:* seconds.
 
-**Use it when:** Any forecasting workflow (a model must beat these to be worth it).
+**Use it when:** All forecast workflows (a model must be better than these benchmarks to be useful).
 
 **Avoid it when:** There is no time order.
 
-**Example:** Seasonal naive has MAPE 14%; the ARIMAX model 9%.
+**Example:** Seasonal naive has a MAPE of 14%. The ARIMAX model has 9%.
 
 **Inputs:** `data` (dataset), `split` (split_plan).
 
@@ -1103,22 +1103,22 @@ Scores very simple forecasts, such as 'same as last week' or 'same as last year'
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `methods` | array | `["naive", "seasonal_naive"]` |  |
-| `season` | integer |  | Season length (default: from the frequency) |
+| `season` | integer |  | The season length (default: from the frequency) |
 | `var` | string |  | The series (default: the target) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `by_method` (object), `best_method` (string).
 
 ### `evaluate.metrics` — Measure forecast error
 
-Measures how far a model's predictions were from what actually happened on the test data, in several easy-to-read ways.
+Measures the difference between the predictions of a model and the actual values on the test data. It gives several measures that are easy to read.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* beginner. *Typical runtime:* seconds.
 
-**Use it when:** After fitting or backtesting a model.
+**Use it when:** After you fit or backtest a model.
 
-**Avoid it when:** Nothing was held out for testing.
+**Avoid it when:** No data was kept for the test.
 
-**Example:** MAPE 8% and 88% of actual values inside the 90% range.
+**Example:** MAPE 8%, and 88% of the actual values are in the 90% range.
 
 **Inputs:** `model` (model_version, optional), `backtest` (metrics, optional).
 
@@ -1127,24 +1127,24 @@ Measures how far a model's predictions were from what actually happened on the t
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `metrics` | array | `["mae", "rmse", "mape", "mase", "coverage_90"]` |  |
-| `season` | integer |  | Season length for MASE (default: from the frequency) |
+| `season` | integer |  | The season length for MASE (default: from the frequency) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `mae` (number), `rmse` (number), `mape` (number), `smape` (number), `mase` (number), `coverage_90` (number), `crps` (number), `by_horizon` (object).
 
 ??? note "Expert detail"
     MASE scales by the in-sample seasonal-naive MAE (Hyndman & Koehler 2006); CRPS from draws or quantiles.
 
-### `evaluate.residuals` — Check the model's errors
+### `evaluate.residuals` — Test the model's errors
 
-Checks the errors a model leaves behind for leftover patterns, uneven size and non-bell shapes, all in one go.
+Tests the errors of a model for patterns that remain, uneven size and shapes that are not a bell curve. It does all these tests at the same time.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
 
-**Use it when:** After fitting any time-series or regression model.
+**Use it when:** After you fit a time-series model or a regression model.
 
 **Avoid it when:** Models without residuals (classifiers).
 
-**Example:** No leftover pattern, slightly heavy tails, even spread.
+**Example:** No pattern remains, the tails are slightly heavy and the spread is even.
 
 **Inputs:** `model` (model_version).
 
@@ -1153,17 +1153,17 @@ Checks the errors a model leaves behind for leftover patterns, uneven size and n
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `lags` | integer | `10` | Ljung-Box lags |
-| `alpha` | number | `0.05` | Significance level |
+| `alpha` | number | `0.05` | The significance level |
 
 Result fields (`nodes.<id>.<field>` in conditions): `white_noise` (boolean), `normal` (boolean), `equal_spread` (boolean).
 
 ## Comparison (`compare`)
 
-Puts several candidates' scores side by side, or tests whether one is truly better.
+Puts the scores of several candidates side by side, or tests whether one candidate is really better.
 
 ### `compare.diebold_mariano` — Is one forecast really better?
 
-Tests whether one model's forecasts are truly more accurate than another's or whether the difference could be luck.
+Tests whether the forecasts of one model are really more accurate than the forecasts of another model, or whether the difference is possibly luck.
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* instant.
 
@@ -1171,7 +1171,7 @@ Tests whether one model's forecasts are truly more accurate than another's or wh
 
 **Avoid it when:** Very few test periods.
 
-**Example:** ARIMAX beats ETS but p = 0.31: the difference may be luck.
+**Example:** ARIMAX is better than ETS, but p = 0.31. The difference is possibly luck.
 
 **Inputs:** `a` (metrics), `b` (metrics).
 
@@ -1181,8 +1181,8 @@ Tests whether one model's forecasts are truly more accurate than another's or wh
 |---|---|---|---|
 | `loss` | `squared` \\| `absolute` | `"squared"` | Loss |
 | `horizon` | integer | `1` | h |
-| `step` | integer |  | Periods between fold origins (default: from the folds) |
-| `alpha` | number | `0.05` | Significance level |
+| `step` | integer |  | The periods between fold origins (default: from the folds) |
+| `alpha` | number | `0.05` | The significance level |
 
 Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number).
 
@@ -1191,13 +1191,13 @@ Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_val
 
 ### `compare.models` — Compare models side by side
 
-Puts the scores of several models and benchmarks in one table so you can see which does best on each measure.
+Puts the scores of several models and benchmarks in one table. You can see which one is best on each measure.
 
 *Runs in* the orchestrator (no data; computed from earlier results). *Difficulty:* beginner. *Typical runtime:* instant.
 
 **Use it when:** You fitted or backtested several candidates.
 
-**Avoid it when:** Models were tested on different periods (the comparison would be unfair).
+**Avoid it when:** The models have tests on different periods (then the comparison is not fair).
 
 **Example:** ARIMAX 9% MAPE, ETS 11%, seasonal naive 14%.
 
@@ -1214,11 +1214,11 @@ Result fields (`nodes.<id>.<field>` in conditions): `ranking` (array), `best` (s
 
 ## Selection (`select`)
 
-Picks the winner, or every candidate that passes a bar.
+Selects the winner, or all candidates that pass a limit.
 
-### `select.best` — Pick the best model
+### `select.best` — Select the best model
 
-Picks the model with the best score from a comparison, and can insist that it beats the simple benchmarks.
+Selects the model with the best score from a comparison. It can also make sure that the model is better than the simple benchmarks.
 
 *Runs in* the orchestrator (no data; computed from earlier results). *Difficulty:* beginner. *Typical runtime:* instant.
 
@@ -1226,7 +1226,7 @@ Picks the model with the best score from a comparison, and can insist that it be
 
 **Avoid it when:** Only one candidate.
 
-**Example:** Pick the lowest RMSE, but only if it beats seasonal naive by 5%.
+**Example:** Select the lowest RMSE, but only if it is 5% better than seasonal naive.
 
 **Inputs:** `table` (table), `models` (model_version, several, optional).
 
@@ -1236,22 +1236,22 @@ Picks the model with the best score from a comparison, and can insist that it be
 |---|---|---|---|
 | `metric` | string | `"rmse"` |  |
 | `direction` | `min` \\| `max` | `"min"` | Better when |
-| `must_beat` | array |  | Benchmark ids the winner must beat |
-| `margin` | number | `0.0` | Required relative improvement over must_beat |
+| `must_beat` | array |  | The benchmark ids that the winner must be better than |
+| `margin` | number | `0.0` | The necessary relative improvement over must_beat |
 
 Result fields (`nodes.<id>.<field>` in conditions): `selected` (string), `selected_model` (string), `score` (number), `beats_baselines` (boolean), `reason_plain` (string).
 
-### `select.threshold` — Keep models that pass a bar
+### `select.threshold` — Keep models that pass a limit
 
-Keeps only the models whose score passes a limit you set, for example an error below 10%.
+Keeps only the models with a score that passes a limit that you set, for example an error below 10%.
 
 *Runs in* the orchestrator (no data; computed from earlier results). *Difficulty:* beginner. *Typical runtime:* instant.
 
-**Use it when:** You need every model that is good enough, not just the best.
+**Use it when:** You need all models that are good enough, not only the best.
 
-**Avoid it when:** You need exactly one winner.
+**Avoid it when:** You need one winner only.
 
-**Example:** Keep every model with MAPE under 10%.
+**Example:** Keep all models with a MAPE below 10%.
 
 **Inputs:** `table` (table).
 
@@ -1267,19 +1267,19 @@ Result fields (`nodes.<id>.<field>` in conditions): `passed` (array), `n_passed`
 
 ## Governance (`governance`)
 
-Runs the checks a model must pass before it can be validated, and stores the evidence.
+Runs the checks that a model must pass before you can validate it. It stores the evidence.
 
 ### `governance.check` — Run one governance check
 
-Runs a single check from the governance catalog on a model, for example the shuffled result test.
+Runs one check from the governance catalog on a model, for example the shuffled-result test.
 
 *Runs in* its own child run (a `fit` run for `model.fit`, else a `workflow_node` run). *Difficulty:* intermediate. *Typical runtime:* minutes.
 
-**Use it when:** Trying a check before adding it to a policy.
+**Use it when:** You want to try a check before you add it to a policy.
 
-**Avoid it when:** Formal validation (run the whole policy).
+**Avoid it when:** Formal validation (run the full policy).
 
-**Example:** The noise-channel check gives the fake channel a 2% share: pass.
+**Example:** The noise-channel check gives the fake channel a 2% share. The check passes.
 
 **Inputs:** `model` (model_version), `data` (dataset, optional).
 
@@ -1296,15 +1296,15 @@ Result fields (`nodes.<id>.<field>` in conditions): `status` (string), `value` (
 
 ### `governance.policy` — Run the governance checks
 
-Runs every check your organisation's policy requires on a model, such as beating random noise and a simple benchmark, and records the evidence.
+Runs on a model all the checks that the policy of your organisation needs, and records the evidence. For example, the model must be better than random noise and a simple benchmark.
 
 *Runs in* its own child run (a `fit` run for `model.fit`, else a `workflow_node` run). *Difficulty:* intermediate. *Typical runtime:* long. *Never cached* (its result depends on more than its inputs).
 
-**Use it when:** Before a model may be validated and promoted.
+**Use it when:** Before you validate and promote a model.
 
-**Avoid it when:** Exploratory work that will not be used.
+**Avoid it when:** Exploratory work that nobody will use.
 
-**Example:** Seven checks pass, the placebo check fails: the model is not validated.
+**Example:** Seven checks pass and the placebo check fails, so the model is not validated.
 
 **Inputs:** `model` (model_version), `data` (dataset, optional).
 
@@ -1312,24 +1312,24 @@ Runs every check your organisation's policy requires on a model, such as beating
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `policy` | string |  | Policy id (default: the one in force) |
+| `policy` | string |  | The policy id (default: the policy that is in force) |
 | `submit` | boolean | `false` | Submit the result for approval when the checks pass |
 
 Result fields (`nodes.<id>.<field>` in conditions): `passed` (boolean), `failed_checks` (array), `status` (string).
 
 ## Report (`report`)
 
-Turns the workflow's results into a readable report or an evidence pack.
+Changes the results of the workflow into a report that is easy to read, or into an evidence pack.
 
 ### `report.evidence_pack` — Evidence pack
 
-Bundles a model's governance evidence, decisions and approvals into one document for auditors, as HTML and JSON.
+Puts the governance evidence, decisions and approvals of a model into one document for auditors, as HTML and JSON.
 
 *Runs in* its own child run (a `fit` run for `model.fit`, else a `workflow_node` run). *Difficulty:* beginner. *Typical runtime:* seconds.
 
-**Use it when:** Audit, model risk review or sign-off.
+**Use it when:** An audit, a model risk review or an approval.
 
-**Avoid it when:** Before the governance checks have run.
+**Avoid it when:** Before the governance checks run.
 
 **Example:** A pack with 9 checks, 2 approvals and the lineage of model v7.
 
@@ -1343,15 +1343,15 @@ Bundles a model's governance evidence, decisions and approvals into one document
 
 ### `report.summary` — Plain-language report
 
-Writes a short report of what the workflow found: test verdicts, the decisions taken, the chosen model and how well it does.
+Writes a short report of the workflow results: the test verdicts, the decisions, the selected model and how good it is.
 
 *Runs in* the orchestrator (no data; computed from earlier results). *Difficulty:* beginner. *Typical runtime:* instant.
 
-**Use it when:** At the end of any workflow you share with others.
+**Use it when:** At the end of a workflow that you share with other persons.
 
 **Avoid it when:** You only need the raw numbers.
 
-**Example:** Sales wander, so they were differenced; ARIMAX(2,1,1) beat seasonal naive by 30%.
+**Example:** Sales wander, so the workflow applied a difference. ARIMAX(2,1,1) was 30% better than seasonal naive.
 
 **Inputs:** `items` (table, several, optional), `tests` (test_result, several, optional), `metrics` (metrics, several, optional), `model` (model_version, optional).
 
@@ -1368,18 +1368,18 @@ Runs another saved workflow as one step.
 
 ### `subworkflow.run` — Run another workflow
 
-Runs a saved workflow as one step of this one, so common sequences such as data readiness checks are written once and reused.
+Runs a saved workflow as one step of this workflow. You write common sequences, for example data readiness checks, one time and use them again.
 
 *Runs in* its own child run (a `fit` run for `model.fit`, else a `workflow_node` run). *Difficulty:* intermediate. *Typical runtime:* minutes.
 
-**Use it when:** A sequence of steps is shared by several workflows.
+**Use it when:** Several workflows use the same sequence of steps.
 
-**Avoid it when:** The steps are only used here.
+**Avoid it when:** Only this workflow uses the steps.
 
-**Example:** Reuse 'time-series readiness' before three different model workflows.
+**Example:** Use 'time-series readiness' again before three different model workflows.
 
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `workflow` | string | **required** | workflow://<project>/<name>@<revision> |
-| `params` | object |  | Parameters passed through |
+| `params` | object |  | The parameters to give to the other workflow |

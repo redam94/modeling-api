@@ -38,21 +38,21 @@ export interface CronSpec {
 
 function value(token: string, lo: number, hi: number, names?: Record<string, number>): number {
   if (names && token in names) return names[token]!;
-  if (!/^\d{1,2}$/.test(token)) throw new CronError(`"${token}" is not a number in ${lo}-${hi}`);
+  if (!/^\d{1,2}$/.test(token)) throw new CronError(`"${token}" is not a number in the range ${lo}-${hi}`);
   const v = Number(token);
-  if (v < lo || v > hi) throw new CronError(`${v} is outside ${lo}-${hi}`);
+  if (v < lo || v > hi) throw new CronError(`${v} is not in the range ${lo}-${hi}`);
   return v;
 }
 
 function field(text: string, lo: number, hi: number, names?: Record<string, number>): Set<number> {
-  if (!FIELD_RE.test(text)) throw new CronError(`invalid cron field "${text.slice(0, 40)}"`);
+  if (!FIELD_RE.test(text)) throw new CronError(`the cron field "${text.slice(0, 40)}" is not correct`);
   const out = new Set<number>();
   for (const part of text.split(",")) {
-    if (!part) throw new CronError("empty list item");
+    if (!part) throw new CronError("a list item is empty");
     const [rng = "", stepText] = part.split("/", 2) as [string, string | undefined];
     let step = 1;
     if (stepText !== undefined) {
-      if (!/^\d+$/.test(stepText) || Number(stepText) < 1 || Number(stepText) > hi - lo + 1) throw new CronError(`invalid step in "${part}"`);
+      if (!/^\d+$/.test(stepText) || Number(stepText) < 1 || Number(stepText) > hi - lo + 1) throw new CronError(`the step in "${part}" is not correct`);
       step = Number(stepText);
     }
     let a: number;
@@ -62,7 +62,7 @@ function field(text: string, lo: number, hi: number, names?: Record<string, numb
       const [left = "", right = ""] = rng.split("-", 2);
       a = value(left, lo, hi, names);
       b = value(right, lo, hi, names);
-      if (a > b) throw new CronError(`range "${part}" runs backwards`);
+      if (a > b) throw new CronError(`the range "${part}" starts after its end`);
     } else {
       a = value(rng, lo, hi, names);
       b = stepText !== undefined ? hi : a;
@@ -73,11 +73,11 @@ function field(text: string, lo: number, hi: number, names?: Record<string, numb
 }
 
 export function parseCron(expr: string): CronSpec {
-  if (typeof expr !== "string" || expr.length > 200) throw new CronError("a cron expression is a short text");
+  if (typeof expr !== "string" || expr.length > 200) throw new CronError("a cron expression must be a short text");
   const lower = expr.trim().toLowerCase();
   const text = MACROS[lower] ?? lower;
   const fields = text.split(/\s+/).filter(Boolean);
-  if (fields.length !== 5) throw new CronError("a cron expression has 5 fields: minute hour day month weekday");
+  if (fields.length !== 5) throw new CronError("a cron expression must have 5 fields: minute hour day month weekday");
   const [minute, hour, dom, month, dow] = fields as [string, string, string, string, string];
   const weekdays = new Set([...field(dow, 0, 7, DAYS)].map((d) => (d === 7 ? 0 : d)));
   return {
@@ -182,7 +182,7 @@ export function nextFire(spec: CronSpec | string, after: number, tz = "UTC"): nu
       }
     }
   }
-  throw new CronError("the schedule never fires");
+  throw new CronError("the schedule never runs");
 }
 
 /** The next `n` firing times after `after`. */
@@ -210,7 +210,7 @@ export function cronProblem(expr: string, minInterval = MIN_INTERVAL_MINUTES): s
     let prev = nextFire(cs, t);
     for (let i = 0; i < 600; i++) {
       const next = nextFire(cs, prev);
-      if (next - prev < minInterval * 60_000) return `schedules may fire at most every ${minInterval} minutes`;
+      if (next - prev < minInterval * 60_000) return `a schedule can run at most one time every ${minInterval} minutes`;
       if (next - t > 8 * 86_400_000) break;
       prev = next;
     }
