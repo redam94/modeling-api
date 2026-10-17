@@ -70,8 +70,11 @@ are explained before anything runs. The plan reads "Move money from tv (−7,491
 (+7,491). That adds about +3,063 to revenue (90% likely between +674 and +6,030)…", with
 the allocation per channel (and market), the expected result today and with the plan, the
 chance the plan beats today's, the return of the next unit per channel and the efficient
-frontier. In Guided mode the *What if…* step leads here with **Optimise my budget**. The
-request and result are those of
+frontier. The expected results show as many digits as it takes for each range's two ends to
+differ ("1.305M – 1.312M", not "1.3M – 1.3M"). In Guided mode the *What if…* step leads here
+with **Optimise my budget**; the goal and the optimiser's notes are put in plain words ("Goal:
+the most likely revenue"), and the optimiser's own wording sits under *For experts: how the
+plan was found*. The request and result are those of
 [`POST …:optimize`](../models/mmm-framework.md#budget-optimisation).
 
 ![A budget plan: the allocation, the expected result and the efficient frontier](../assets/screenshots/explorer-optimize.png){ .mapi-shot }

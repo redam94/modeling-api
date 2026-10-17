@@ -121,6 +121,11 @@ choices, any of which can be skipped - and ranks the matches as you answer, with
 editor with that model (and its About as comments), a workflow template as a recipe run on
 your data (Guided mode) or in the "use this template" wizard (Expert mode), or a governance
 check in the governance check catalog.
+In Guided mode a model starts the guided template built on it instead (*Demand by store and
+week* opens the store demand analysis, *Marketing mix model* the geo marketing mix one). A
+model with no guided template says so and offers **Set up in Expert mode**, which switches
+to Expert mode only when clicked; in a project locked to Guided mode it reads *Needs Expert
+mode* and offers nothing.
 The answers live in the address, so a suggestion can be shared; the switch at the top ranks
 models, preparation steps, governance checks or workflow nodes instead of starting points.
 

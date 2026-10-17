@@ -3685,6 +3685,7 @@ export interface components {
          *       "arm": "then",
          *       "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
          *       "decided_at": "2026-10-15T09:30:00Z",
+         *       "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
          *       "inputs": {
          *         "nodes.adf.p_value": 0.57,
          *         "nodes.kpss.reject": true,
@@ -3707,6 +3708,11 @@ export interface components {
              * Format: date-time
              */
             decided_at: string;
+            /**
+             * Explain Plain
+             * @description What the path taken means, in plain words (the branch's explain_then or explain_else); none when the branch has no explanation
+             */
+            explain_plain?: string | null;
             /**
              * Inputs
              * @description Each reference in the condition -> its value
@@ -15576,6 +15582,7 @@ export interface components {
          *           "arm": "then",
          *           "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
          *           "decided_at": "2026-10-15T09:30:00Z",
+         *           "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
          *           "inputs": {
          *             "nodes.adf.p_value": 0.57,
          *             "nodes.kpss.reject": true,

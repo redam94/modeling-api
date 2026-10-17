@@ -1444,7 +1444,14 @@ _node("branch.if", NodeKind.BRANCH, _a(
     expert="Conditions use the safe expression language (mapi_spec.expr): comparisons, "
     "and/or/not, arithmetic, a few functions; no code is executed.",
 ), params={"condition": {"type": "string", "maxLength": 2000,
-                         "description": "Condition in the workflow expression language"}},
+                         "description": "Condition in the workflow expression language"},
+           "explain_then": {"type": "string", "maxLength": 300,
+                            "description": "What it means when the condition holds, in plain "
+                            "words for the run report (e.g. 'The tests found the series "
+                            "wanders, so it was differenced.')"},
+           "explain_else": {"type": "string", "maxLength": 300,
+                            "description": "What it means when the condition does not hold, "
+                            "in plain words"}},
    required=["condition"], inputs={},
    fields={"value": _f("boolean", "The condition's value"),
            "arm": _f("string", "then or else")},

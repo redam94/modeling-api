@@ -90,21 +90,37 @@ describe("Workflows", () => {
     renderApp(`/workflow-runs/${CANONICAL_RUN_ID}`);
     const monitor = await screen.findByTestId("run-monitor");
     expect(within(monitor).getByTestId("run-status")).toHaveTextContent("Succeeded");
-    // the seasonal decision comes first (the unit-root tests run after it, M3.5 review)
-    expect(within(monitor).getByTestId("run-summary")).toHaveTextContent("Seasonal difference? -> else");
-    expect(within(monitor).getByTestId("run-summary")).toHaveTextContent("Difference? -> then");
+    const summary = within(monitor).getByTestId("run-summary");
+    // the seasonal decision comes first, so this one continues the sentence
+    expect(summary).toHaveTextContent(/the tests found that the series wanders rather than returning to a steady level, so it was differenced/i);
+    expect(summary).toHaveTextContent("ARIMAX has the best average error");
+    expect(summary).not.toHaveTextContent(/-> (then|else)/);
     await user.click(screen.getByRole("tab", { name: "Steps" }));
     const steps = screen.getByRole("table", { name: "Steps" });
-    expect(within(steps).getByText("branch 'seasonal' took the else path")).toBeInTheDocument();
+    // Branches and skipped steps say what the path means; the comparison names the model.
+    const row = (id: string) => steps.querySelector<HTMLElement>(`[data-node="${id}"]`)!;
+    expect(row("wanders")).toHaveTextContent("The tests found that the series wanders");
+    expect(row("sdiff")).toHaveTextContent("Not needed: the series has no strong seasonal pattern, so it was not seasonally differenced.");
+    expect(row("compare")).toHaveTextContent("Best: ARIMAX");
+    expect(row("select")).toHaveTextContent("ARIMAX has the best average error");
+    expect(steps).not.toHaveTextContent(/\b(then|else) (arm|path)\b/);
     await user.click(within(steps).getByRole("button", { name: /Does it wander\? \(ADF\)/ }));
     const drawer = await screen.findByTestId("node-drawer");
     expect(within(drawer).getByTestId("test-verdict")).toHaveTextContent("The series wanders: consider differencing it.");
     expect(within(drawer).getByText("unit root")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("tab", { name: /Decisions/ }));
+    // the seasonal decision comes first (the unit-root tests run after it, M3.5 review)
     const decision = screen.getAllByTestId("branch-decision").find((d) => d.textContent?.includes("nodes.kpss.reject"))!;
-    expect(decision).toHaveTextContent("The condition was true, so the then arm was taken; diff ran.");
-    expect(decision).toHaveTextContent("nodes.kpss.reject");
+    expect(decision).toHaveTextContent("The tests found that the series wanders rather than returning to a steady level, so it was differenced");
+    expect(decision).toHaveTextContent("The condition was met. Ran: Change from the previous period.");
+    // what decided it: the tests the condition read, in their own plain verdicts
+    const evidence = within(decision).getByRole("list", { name: "What decided it" });
+    expect(evidence).toHaveTextContent("The series wanders: consider differencing it.");
+    // the expression and the raw values stay, under "For experts"
+    const experts = within(decision).getByText("For experts: the condition").closest("details")!;
+    expect(experts).toHaveTextContent("nodes.kpss.reject");
+    expect(within(decision).getByText(/^The tests found/).closest("details")).toBeNull();
     await user.click(screen.getByRole("tab", { name: "Outputs" }));
     expect(await screen.findByTestId("workflow-report")).toHaveTextContent("Time-series readiness and ARIMAX");
   });

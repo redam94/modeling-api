@@ -30,13 +30,13 @@ export function PageHeader({
   meta?: ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6">
+    <header className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6">
       <div className="min-w-0">
         <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.015em] text-balance">{title}</h1>
         {description ? <p className="mt-1.5 max-w-[68ch] text-muted-foreground">{description}</p> : null}
         {meta ? <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">{meta}</div> : null}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
   );
 }

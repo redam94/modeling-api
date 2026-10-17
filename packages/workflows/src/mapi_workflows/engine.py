@@ -672,9 +672,17 @@ class WorkflowEngine:
                 v = None
             seen[key] = v
         arm: Literal["then", "else"] = "then" if value else "else"
+        explain = params.get(f"explain_{arm}")
+        plain = explain.strip()[:300] if isinstance(explain, str) and explain.strip() else None
         now = self.clock()
         decision = BranchDecision(
-            node_id=nid, condition=text, value=value, arm=arm, inputs=seen, decided_at=now
+            node_id=nid,
+            condition=text,
+            value=value,
+            arm=arm,
+            inputs=seen,
+            explain_plain=plain,
+            decided_at=now,
         )
         self.decisions[nid] = decision
         st.status = NodeRunStatus.SUCCEEDED

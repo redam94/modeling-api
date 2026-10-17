@@ -20,30 +20,54 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
 import { TERMINAL_RUN, useCancelWorkflowRun, useNodeCatalog, useWorkflow, useWorkflowRevision, useWorkflowRun } from "./api";
-import { implId } from "./doc";
+import { implId, parseWhen } from "./doc";
 import { CanvasFallback, LazyWorkflowCanvas } from "./editor";
-import { DecisionView, NodeDrawer } from "./node-drawer";
+import { decisionSentence, DecisionView, labelOfFor, NodeDrawer, type LabelOf } from "./node-drawer";
 import { ModelExplorerLinks, modelVersionRefs } from "./model-link";
 import { OutputView, PayloadView } from "./outputs";
 import { useWorkflowRunEvents } from "./run-events";
 import { KIND_LABEL, NODE_STATUS_META, RUN_STATUS_META, TONE_BADGE, TRIGGER_LABEL } from "./status";
 import { useCanvasPositions } from "./use-editor";
 import type { Catalog } from "./ports";
-import type { NodeRun, NodeRunStatus, WorkflowDoc, WorkflowRun } from "./types";
+import type { BranchDecision, NodeRun, NodeRunStatus, WorkflowDoc, WorkflowRun } from "./types";
 
 const DONE: ReadonlySet<NodeRunStatus> = new Set(["succeeded", "cached", "skipped", "failed", "cancelled"]);
 
-/** A one-line plain summary of a node's outcome. */
-export function nodeSummary(n: NodeRun): string {
+function lowerFirst(text: string): string {
+  return /^[A-Z][a-z]/.test(text) ? text[0]!.toLowerCase() + text.slice(1) : text;
+}
+
+export interface SummaryContext {
+  doc?: WorkflowDoc | null;
+  decisions?: readonly BranchDecision[];
+  labelOf?: LabelOf;
+}
+
+/**
+ * A one-line plain summary of a node's outcome: a branch says what its path means (its
+ * explanation), a step it skipped says why it was not needed, and a comparison names its
+ * winner by its label.
+ */
+export function nodeSummary(n: NodeRun, ctx: SummaryContext = {}): string {
   const r = n.result ?? {};
+  const labelOf = ctx.labelOf ?? ((id: string) => id);
   for (const key of ["verdict_plain", "reason_plain", "message_plain", "summary_plain"] as const) {
     const v = r[key];
     if (typeof v === "string" && v) return v;
   }
-  if (n.status === "skipped") return n.skipped_reason ?? "Skipped";
+  if (n.status === "skipped") {
+    const when = parseWhen(ctx.doc?.nodes.find((x) => x.id === n.node_id)?.when);
+    const d = when ? ctx.decisions?.find((x) => x.node_id === when.branch) : undefined;
+    if (when && d?.explain_plain && d.arm !== when.arm) return `Not needed: ${lowerFirst(d.explain_plain)}`;
+    return n.skipped_reason ?? "Skipped";
+  }
   if (n.error) return `${n.error.code}: ${n.error.message}`;
-  if (typeof r.arm === "string") return `Took the ${r.arm} arm`;
-  if (typeof r.best === "string") return `Best: ${r.best}`;
+  if (typeof r.arm === "string") {
+    const d = ctx.decisions?.find((x) => x.node_id === n.node_id);
+    if (d) return d.explain_plain ?? decisionSentence(d, ctx.doc ?? null, labelOf);
+    return r.value ? "The condition was met." : "The condition was not met.";
+  }
+  if (typeof r.best === "string") return `Best: ${labelOf(r.best)}`;
   if (typeof r.n_folds === "number") return `${r.n_folds} folds`;
   return NODE_STATUS_META[n.status].plain;
 }
@@ -70,6 +94,7 @@ function StreamBadge({ status, terminal }: { status: string; terminal: boolean }
 }
 
 function StepsTable({ run, doc, catalog, onOpen }: { run: WorkflowRun; doc: WorkflowDoc | null; catalog: Catalog; onOpen: (id: string) => void }) {
+  const ctx: SummaryContext = { doc, decisions: run.decisions ?? [], labelOf: labelOfFor(doc, catalog) };
   return (
     <Table aria-label="Steps">
       <THead>
@@ -97,7 +122,7 @@ function StepsTable({ run, doc, catalog, onOpen }: { run: WorkflowRun; doc: Work
               <TD>
                 <Badge variant={TONE_BADGE[meta.tone]}>{meta.label}</Badge>
               </TD>
-              <TD className={cn("text-[13px]", n.status === "failed" && "text-destructive")}>{nodeSummary(n)}</TD>
+              <TD className={cn("text-[13px]", n.status === "failed" && "text-destructive")}>{nodeSummary(n, ctx)}</TD>
               <TD className="tabular text-muted-foreground">{n.status === "cached" ? "reused" : formatDuration(elapsedSeconds(n.started_at, n.finished_at))}</TD>
             </TR>
           );
@@ -303,7 +328,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
                     <CardTitle>{doc?.nodes.find((n) => n.id === d.node_id)?.label ?? d.node_id}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <DecisionView decision={d} doc={doc} />
+                    <DecisionView decision={d} doc={doc} run={run} labelOf={labelOfFor(doc, catalog.map)} expert={!plain} />
                   </CardContent>
                 </Card>
               ))}
@@ -336,7 +361,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
         </TabsContent>
       </Tabs>
 
-      <NodeDrawer run={run} node={node} doc={doc} catalog={catalog.map} onClose={() => setOpenNode(null)} />
+      <NodeDrawer run={run} node={node} doc={doc} catalog={catalog.map} onClose={() => setOpenNode(null)} expert={!plain} />
     </div>
   );
 }

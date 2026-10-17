@@ -337,6 +337,31 @@ milestone releases are tagged on `main`.
 
 ### Fixed
 
+- **web, workflows, spec** (M3.5 review): the run monitor explained branch decisions only as
+  raw expressions and "then/else arm" ("Decisions: Difference? -> then", "Took the then
+  arm") and named the winner by its node id ("backtest has the best average error", "Best:
+  backtest"). `branch.if` now takes plain `explain_then` / `explain_else` texts, recorded as
+  `BranchDecision.explain_plain` and set in every gallery template; the report summary, the
+  Steps table and the Decisions tab lead with them ("The tests found that the series wanders
+  ..., so it was differenced"), list the verdicts of the tests a condition read, and keep the
+  expression under *For experts*. Steps not needed say why in the same words, and
+  selections and comparisons name candidates by their step labels ("ARIMAX", "Naive
+  forecast"); the gallery templates label their candidates.
+- **web** (M3.5 review): the budget plan showed Guided users the planning library's own
+  wording ("Goal: expected KPI (posterior mean)", "the greedy allocator's exactness
+  precondition fails", "posterior interval", "Marginal ROI"), and its result tiles read
+  "90% likely 1.3M – 1.3M". In Guided mode the goal and the known notes are now plain
+  sentences, the original wording is under *For experts*, and the tiles use as many digits as
+  their ranges need ("1.305M – 1.312M").
+- **web** (M3.5 review): *Help me choose* scrolled sideways on a 375 px phone: its five
+  suggestion tabs were wider than the screen and "Where to start" wrapped onto three lines.
+  A switch with more options than fit now scrolls inside its own strip, on every page.
+- **web** (M3.5 review): *Start with this* on a model in *Help me choose* or the catalog
+  dropped a Guided user into the Expert YAML spec editor, with placeholder data and an
+  error badge. In Guided mode a model now starts the guided template built on it
+  (`tabular.regressor` → store demand, `mmm.bayesian` → geo marketing mix, ...); a model with
+  none says it needs Expert mode and switches only on a click (never in a project locked to
+  Guided mode).
 - **spec, server** (found by the M3.5 live-stack verification): a governance policy with
   `applies_to: {families: [ts]}` - the example of every governance page - covered none of
   the statsmodels models, which declare the family `forecast`, `ts_multivariate` or

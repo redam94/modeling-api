@@ -123,10 +123,12 @@ resumes with `Last-Event-ID` after a dropped connection:
 
 - **Graph**: the canvas with each node's status (waiting, queued, running, done, reused,
   skipped, failed, cancelled).
-- **Steps**: every node in plain words: its verdict, the arm a decision took, why a node was
-  skipped, how long it took.
-- **Decisions**: each branch's condition, the values it read and which nodes ran or were
-  skipped because of it.
+- **Steps**: every node in plain words: its verdict, what a decision meant ("The tests found
+  that the series wanders ..., so it was differenced"), why a node was not needed, how long
+  it took. A comparison or selection names its candidates by their step labels ("ARIMAX").
+- **Decisions**: each branch's plain explanation, the steps it ran or skipped, the verdicts
+  of the earlier steps it read ("What decided it"), and under *For experts: the condition*
+  the expression and the values it read (open in Expert mode, collapsed in a Guided recipe).
 - **Outputs** and **Events**: the run's outputs (the report, rendered) and the event log.
 
 Select a step to open its drawer: whether it ran or reused an earlier result (with a link to
@@ -244,11 +246,19 @@ Each recipe is a fragment of `nodes:`; paste it into a document that declares
 - {id: kpss, use: test.kpss, inputs: {data: inputs.data}}
 - id: wanders
   use: branch.if
-  with: {condition: "not nodes.adf.reject or nodes.kpss.reject"}
+  with:
+    condition: "not nodes.adf.reject or nodes.kpss.reject"
+    # optional: what each path means, for the run report and the run monitor
+    explain_then: The tests found that the series wanders, so it was differenced.
+    explain_else: The tests found that the series is steady, so it was used as it is.
 - {id: diff, use: transform.difference, inputs: {data: inputs.data}, when: wanders.then}
 # downstream nodes take the differenced series if it exists, else the original
 - {id: lb, use: test.ljung_box, inputs: {data: [diff.data, inputs.data]}}
 ```
+
+`explain_then` and `explain_else` (up to 300 characters each) are recorded with the decision
+(`BranchDecision.explain_plain`) and lead the report's summary; without them the summary
+reads "Difference? yes". The gallery templates set both.
 
 A node that needs `diff.data` *without* an alternative is skipped with it. Add
 `when: wanders.else` to a node to run it only when the series was left alone.

@@ -30,7 +30,10 @@ nodes:
 - id: seasonal
   use: branch.if
   label: Seasonal difference?
-  with: {condition: nodes.seas.seasonal}
+  with:
+    condition: nodes.seas.seasonal
+    explain_then: The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).
+    explain_else: The series has no strong seasonal pattern, so it was not seasonally differenced.
 - id: sdiff
   use: transform.seasonal_difference
   inputs: {data: inputs.data}
@@ -79,7 +82,11 @@ nodes:
 - id: wanders
   use: branch.if
   label: Difference?
-  with: {condition: '(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject) and nodes.overdiff.acf[1] > -0.5'}
+  with:
+    condition: (not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject) and nodes.overdiff.acf[1] > -0.5
+    # plain words for the run report and the run monitor
+    explain_then: The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).
+    explain_else: The tests found that the series returns to a steady level (or that differencing it would go too far), so it was used as it is.
 - id: diff
   use: transform.difference
   inputs:
@@ -115,6 +122,7 @@ nodes:
     step: 4
 - id: backtest
   use: model.backtest
+  label: ARIMAX
   inputs: {data: inputs.data, split: folds.plan}
   with:
     model: ts.sarimax@^1
@@ -125,6 +133,7 @@ nodes:
     metrics: [mae, rmse, mape, mase]
 - id: naive
   use: evaluate.baseline
+  label: Naive forecast
   inputs: {data: inputs.data, split: folds.plan}
   with:
     methods: [naive, seasonal_naive]

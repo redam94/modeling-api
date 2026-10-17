@@ -1333,6 +1333,12 @@ class BranchDecision(ResponseModel):
     inputs: dict[str, JsonValue] = Field(
         default_factory=dict, description="Each reference in the condition -> its value"
     )
+    explain_plain: str | None = Field(
+        None,
+        max_length=300,
+        description="What the path taken means, in plain words (the branch's explain_then or "
+        "explain_else); none when the branch has no explanation",
+    )
     decided_at: AwareDatetime
 
     model_config = dto_examples(
@@ -1342,6 +1348,8 @@ class BranchDecision(ResponseModel):
             "value": True,
             "arm": "then",
             "inputs": {"nodes.adf.p_value": 0.57, "params.alpha": 0.05, "nodes.kpss.reject": True},
+            "explain_plain": "The tests found that the series wanders rather than returning to "
+            "a steady level, so it was differenced.",
             "decided_at": EXAMPLE_TS,
         }
     )

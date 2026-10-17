@@ -1,8 +1,10 @@
 /** The budget form's request and its static checks (mirroring `check_feasible`). */
 import { describe, expect, it } from "vitest";
 
+import { distinctAmounts } from "@/features/guided/plain";
 import { planFor } from "@/mocks/explore";
 
+import { objectivePlain, planNotes } from "./notes";
 import { planHeadline } from "./result";
 import { defaultForm, planProblems, targetBudget, toRequest, type PlanForm } from "./plan";
 
@@ -93,5 +95,44 @@ describe("the plan", () => {
     const bigger = planFor({ total_budget: 150_000 });
     expect(planHeadline(bigger.result!).text).toMatch(/^With 150K instead of 104\.3K: spend more on search \(\+23\.9K\), tv \(\+21\.8K\)\./);
     expect(planFor({ channels: { tv: { min_spend: 500_000 } } }).problem?.code).toBe("OPTIMIZE_INFEASIBLE");
+  });
+});
+
+describe("the plan in plain words", () => {
+  it("names the goal without statistics jargon", () => {
+    expect(objectivePlain("mean", "revenue")).toBe("the most likely revenue");
+    expect(objectivePlain("p25", "revenue")).toBe("a cautious plan: the revenue you beat 3 times in 4");
+    expect(objectivePlain("p10", "revenue")).toBe("a very cautious plan: the revenue you beat 9 times in 10");
+    expect(objectivePlain("p5", "sales")).toBe("a very cautious plan: the sales you beat 95 times in 100");
+    expect(objectivePlain("cvar10", "revenue")).toBe("protect the downside: the average revenue in the worst 10% of cases");
+    for (const o of ["mean", "p25", "p10", "p5", "cvar10"]) expect(objectivePlain(o, "revenue")).not.toMatch(/posterior|percentile|CVaR|quantile/i);
+  });
+
+  it("turns the planning notes into plain sentences, or leaves them to experts", () => {
+    const notes = planNotes(planFor({}).result!.notes_plain ?? []);
+    expect(notes.plain).toEqual([
+      "The model sees tv's effect pick up before it tails off, so this is the best plan found, not one proven to be the very best.",
+      "“What other budgets would bring” shows the best plan for each total budget. Adding money is worth it while each extra unit brings back more than it costs.",
+    ]);
+    for (const n of notes.plain) expect(n).not.toMatch(/greedy|allocator|posterior|marginal roi|concave|solver/i);
+    expect(notes.technical).toHaveLength(0);
+    expect(planNotes(["Some new solver detail."])).toEqual({ plain: [], technical: ["Some new solver detail."] });
+    expect(planNotes(["2 channel(s) are recommended beyond the spend range the model has observed; those figures extrapolate."]).plain[0]).toMatch(/^2 channels would spend more than the data has seen/);
+  });
+
+  it("shows ranges with enough digits that their ends differ", () => {
+    const r = planFor({}).result!;
+    const fmt = distinctAmounts([
+      [r.expected_kpi.quantiles!["0.05"]!, r.expected_kpi.quantiles!["0.95"]!],
+      [r.current_kpi!.quantiles!["0.05"]!, r.current_kpi!.quantiles!["0.95"]!],
+      [r.expected_kpi.mean, r.current_kpi!.mean],
+    ]);
+    expect(fmt(1_304_872)).toBe("1.305M");
+    expect(fmt(1_312_200)).toBe("1.312M");
+    expect(fmt(1_308_581)).not.toBe(fmt(1_305_518));
+    expect(fmt(2_500, "EUR")).toBe("EUR 2,500");
+    // nothing to separate: the usual one decimal
+    expect(distinctAmounts([[1_000_000, 1_000_000]])(1_234_567)).toBe("1.2M");
+    expect(distinctAmounts([[1_200_000, 1_900_000]])(1_234_567)).toBe("1.2M");
   });
 });
