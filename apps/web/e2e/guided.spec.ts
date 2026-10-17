@@ -88,11 +88,11 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   // a new experiment is not a wall of errors: one summary beside the disabled actions, and a
   // field's own message only once it was left empty
   await expect(exp.getByRole("alert")).toHaveCount(0);
-  await expect(exp.getByLabel("Spend change")).toHaveAttribute("placeholder", /^e\.g\. /);
+  await expect(exp.getByLabel("Spend change")).toHaveAttribute("placeholder", /^For example /);
   await expect(page.getByTestId("beliefs-blocking")).toContainText("Experiment 1 still needs the first day");
   await exp.getByLabel("First day").focus();
   await exp.getByLabel("Last day").focus();
-  await expect(exp.getByRole("alert")).toHaveText(["Enter the first day of the test."]);
+  await expect(exp.getByRole("alert")).toHaveText(["Type the first day of the test."]);
   await exp.getByLabel("Channel tested").selectOption("tv");
   await exp.getByLabel("Market").selectOption("de");
   await exp.getByLabel("First day").fill("2025-06-01");
@@ -162,7 +162,7 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
 
   // 7. share: the gate (a warning needs an admin's reason), then an embed link
   await expect(page).toHaveURL(/\/share$/);
-  await expect(page.getByTestId("gate-sentence")).toContainText("As a project admin you can approve it anyway");
+  await expect(page.getByTestId("gate-sentence")).toContainText("As a project admin, you can approve the model.");
   await page.getByLabel("Why is it fine to go live anyway?").fill("Holdout error is high because of the summer promotion; accepted.");
   await page.getByRole("button", { name: "Approve and go live" }).click();
   await expect(page.getByTestId("endpoint-live")).toContainText("endpoint://growth/eu-media-mix");
