@@ -466,6 +466,11 @@ milestone releases are tagged on `main`.
   diffuse first residual - the level itself, since the first prediction is 0 - so for
   ARIMA(0,1,0) on a series around 500 Jarque-Bera gave p = 0.0 instead of 0.47. The fit's
   own burn-in (statsmodels' `loglikelihood_burn`, stored per series) is now dropped.
+- **runner** (statistics): the governance check `residuals.whiteness` passed (Ljung-Box
+  p = 1.00) on strongly autocorrelated errors of unobserved-components and other
+  diffuse-initialised statsmodels models: it only dropped the start-up periods of an
+  (S)ARIMA `order`, so the first residual - the level itself - stayed in and swamped every
+  autocorrelation. The fit's own burn-in (stored per series) is now dropped as well.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

@@ -76,6 +76,7 @@ from mapi_spec.run import RunnerPhase
 from mapi_spec.schema import DataSchema, Role, VarSpec
 from mapi_spec.scorecard import CheckDirection
 from mapi_spec.spec import ModelSpec
+from mapi_workflows.runtime.models import fit_burn_in
 
 from mapi_runner.worker import stats
 from mapi_runner.worker.explore_data import data_context, explore_period, quality_warnings
@@ -966,7 +967,10 @@ def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     lags = _pint(check.params, "lags", 10)
     settings = env.bundle.spec.model.plugin_settings
     model_df = _arma_df(settings)
-    burn = _burn_in(settings)
+    # the start-up residuals of a diffuse-initialised fit (the first is the level itself
+    # for an integrated or unobserved-components model): one such outlier swamps every
+    # autocorrelation and lets patterned errors pass
+    burn = max(_burn_in(settings), fit_burn_in(env.bundle))
     t = env.time_dim
     rows: list[tuple[str, float, float]] = []
     for p in env.predictions():
