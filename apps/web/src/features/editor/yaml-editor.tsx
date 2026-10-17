@@ -11,6 +11,8 @@ import { loadMonaco, type MonacoApi } from "./monaco-setup";
 export interface YamlEditorHandle {
   reveal(range: TextRange): void;
   focus(): void;
+  /** Replace the selection (or insert at the cursor) with `text`, as one undoable edit. */
+  insert(text: string): void;
 }
 
 export interface YamlEditorProps {
@@ -114,6 +116,14 @@ export function YamlEditor({
             editor.focus();
           },
           focus: () => editor.focus(),
+          insert: (text) => {
+            const selection = editor.getSelection();
+            if (!selection || editor.getOption(monaco.editor.EditorOption.readOnly)) return;
+            editor.pushUndoStop();
+            editor.executeEdits("mapi-insert", [{ range: selection, text, forceMoveMarkers: true }]);
+            editor.pushUndoStop();
+            editor.focus();
+          },
         });
         setReady(true);
       })

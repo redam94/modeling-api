@@ -5,6 +5,50 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.6.0] — Spec builder — 2026-10-17
+
+Building a spec no longer means knowing every id and column by heart. The YAML editor now
+suggests the tenant's real models, steps, datasets, columns and plots as you type, checks each
+step's and the model's settings against that plugin's own schema, and has an Insert panel to
+search for anything and add it. Next to the YAML there is a Visual view: the same spec as
+blocks, with a palette to drag steps, models, datasets and plots from, steps reordered by
+dragging, and a form for every block. Both views edit the same document, so comments and
+formatting survive switching between them. Web app only: the API, the spec contract and the
+runners are unchanged from 0.5.1. Verified with the unit and Playwright smoke suites against
+the mock API, which now serves the real ModelSpec schema and plugin catalog.
+
+### Known gaps
+- Inside a flow mapping (`with: {...}`) completion offers setting names once part of a key is
+  typed; on a line of its own it offers them straight away.
+- The Visual view edits settings it cannot draw as fields (unions of several shapes, maps of
+  per-channel overrides) as JSON text.
+- `evaluate.metrics` has no suggestions: the catalog does not list metrics yet.
+
+### Added
+- Spec editor hints: completions and hover text now come from what the tenant actually has.
+  `model.use` and `pipeline[].use` list the catalog's models and steps; `data.dataset` lists
+  datasets; `data.bind` suggests the model's canonical names as keys and the dataset's columns
+  as values; each step's `with` and the model's `settings` are checked and completed against
+  that plugin's own settings schema, with dim and variable names the step can see;
+  `outputs.plots` and `outputs.derived` list the model's plots and derived outputs. Values are
+  suggestions only: the editor is no stricter than the server.
+- Spec editor **Insert** panel (button and tab): search datasets, models, pipeline steps,
+  columns, plots and derived outputs and add them to the spec. Steps come with their required
+  settings filled in; edits keep the document's comments and formatting.
+- Spec editor **Visual** view, next to YAML (the choice is remembered per browser): the spec
+  as a stack of blocks (metadata, data, pipeline steps, model, outputs, execution). Drag steps,
+  models, datasets and plots in from a searchable palette (or pick one and press Add), drag a
+  step's handle to reorder it (or use its arrows), and open a block to edit it in a form built
+  from its schema: each step's and the model's own settings, the data binding as canonical
+  name → dataset column, the split by kind, the fit and execution. Dim and variable names the
+  step can see are offered as one-click suggestions. Both views edit the same YAML, so
+  comments and formatting survive; renaming or removing a step keeps the split's `after_step`
+  in step. Problems show on their block and open in the YAML view.
+- Schema forms render objects with declared properties as collapsible nested sections (opt-in;
+  the workflow inspector is unchanged).
+- Mock mode serves the real ModelSpec schema and plugin catalog
+  (`apps/web/scripts/gen_editor_fixtures.py` → `src/mocks/editor.gen.json`).
+
 ## [0.5.1] — Forecasts with actuals — 2026-10-17
 
 A forecast endpoint can now be given the actual results that arrived since the model was

@@ -1,6 +1,6 @@
 [project]
 name = "mapi-sdk"
-version = "0.5.1"
+version = "0.6.0"
 description = "xarray modelling runtime: steps, pipelines, coord plans, bundles, contract kit"
 readme = "README.md"
 requires-python = ">=3.12"

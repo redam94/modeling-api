@@ -42,6 +42,8 @@ jobs:
       - run: uv run python apps/web/scripts/gen_explorer_fixtures.py --check
       # M3.5: the workflow and governance mocks come from a real local run (statsmodels, checks).
       - run: uv run --all-packages python apps/web/scripts/gen_workflow_fixtures.py --check
+      # The spec editor's hints: the real ModelSpec schema and the catalog of every plugin.
+      - run: uv run --all-packages python apps/web/scripts/gen_editor_fixtures.py --check
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @mapi/web openapi:check
       - run: pnpm --filter @mapi/web exec playwright install --with-deps chromium

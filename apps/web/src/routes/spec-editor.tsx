@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, FlaskConical, GitCompare, History, Play, Save, ShieldCheck, XCircle } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Blocks, CheckCircle2, Code2, FlaskConical, GitCompare, History, Play, Plus, Save, ShieldCheck, XCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parse as parseYaml } from "yaml";
 
 import { ApiError, errorMessage, newIdempotencyKey } from "@/api/client";
@@ -22,19 +22,21 @@ import {
 import type { Issue, SpecRevision, ValidateResponse } from "@/api/types";
 import { ErrorNotice, IssueList, LoadingRows, Mono, PageHeader, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
+import { SegmentedControl, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Input, NativeSelect } from "@/components/ui/primitives";
 import { useAbout } from "@/features/about/api";
 import { SpecAboutPanel } from "@/features/about/spec-about";
 import { specStarterFor } from "@/features/about/spec-starter";
 import { DiffView } from "@/features/editor/diff-view";
-import { setSpecSchema } from "@/features/editor/monaco-setup";
+import { InsertPanel } from "@/features/editor/insert-panel";
 import { buildPipeline } from "@/features/editor/pipeline";
 import { PipelineCards } from "@/features/editor/pipeline-cards";
 import { saveParent, shouldLoadRevision } from "@/features/editor/revision-sync";
 import { STARTER_SPEC } from "@/features/editor/starter";
+import { useHintSources, useSchemaHints } from "@/features/editor/use-spec-hints";
 import { YamlEditor, type YamlEditorHandle } from "@/features/editor/yaml-editor";
 import { GuidedReturnLink } from "@/features/guided/return-link";
+import { VisualBuilder } from "@/features/spec-builder/visual-builder";
 import { env } from "@/env";
 import { useDebounced } from "@/hooks/use-debounced";
 import { relativeTime, shortId } from "@/lib/format";
@@ -42,6 +44,29 @@ import { locateIssues, YamlLocator } from "@/lib/yaml-diagnostics";
 import { toast } from "@/stores/toast";
 
 const existingRoute = getRouteApi("/build/$specId");
+
+type EditorView = "yaml" | "visual";
+const VIEW_KEY = "mapi.spec-editor.view";
+
+/** The last view the user picked (a per-browser convenience; YAML when storage is unavailable). */
+function useEditorView(): [EditorView, (v: EditorView) => void] {
+  const [view, setView] = useState<EditorView>(() => {
+    try {
+      return window.localStorage.getItem(VIEW_KEY) === "visual" ? "visual" : "yaml";
+    } catch {
+      return "yaml";
+    }
+  });
+  const set = useCallback((v: EditorView) => {
+    setView(v);
+    try {
+      window.localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // Storage blocked: the choice lasts for this page only.
+    }
+  }, []);
+  return [view, set];
+}
 const newRoute = getRouteApi("/build/new");
 
 interface ValidationState {
@@ -79,13 +104,6 @@ function useLiveValidation(text: string): { state: ValidationState; validating: 
   };
 }
 
-function useSchemaBinding() {
-  const schema = useJsonSchema("modelspec.json");
-  useEffect(() => {
-    if (schema.data) void setSpecSchema(`${env.apiBase}/v1/schemas/modelspec.json`, schema.data);
-  }, [schema.data]);
-  return schema;
-}
 
 export function NewSpecPage() {
   const { model } = newRoute.useSearch();
@@ -110,7 +128,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
   const revisions = useSpecRevisions(specId ?? undefined);
   const selectedRev = revision ?? spec.data?.latest_revision;
   const loaded = useSpecRevision(specId ?? undefined, selectedRev);
-  const schema = useSchemaBinding();
+  const schema = useJsonSchema("modelspec.json");
 
   const [text, setText] = useState(specId ? "" : starter);
   const [base, setBase] = useState(specId ? "" : "");
@@ -119,6 +137,9 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
   const [message, setMessage] = useState("");
   const [compare, setCompare] = useState<{ a: number; b: number } | null>(null);
   const editor = useRef<YamlEditorHandle | null>(null);
+  const [view, setView] = useEditorView();
+  /** An issue to reveal once the YAML editor is mounted (picked in the visual view). */
+  const pendingReveal = useRef<Issue | null>(null);
   const loadedKey = useRef<string | null>(null);
   const dirty = text !== base;
   const latest = spec.data?.latest_revision;
@@ -173,6 +194,16 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
     }
   }, [text]);
   const pipeline = useMemo(() => buildPipeline(document, validation.response), [document, validation.response]);
+  // Completions and the Insert panel: the schema enriched with this tenant's catalog and data.
+  const hints = useHintSources(document, validation.response?.stages);
+  useSchemaHints(`${env.apiBase}/v1/schemas/modelspec.json`, schema.data, hints.shape, hints.sources);
+  const [panel, setPanel] = useState("pipeline");
+  const insertSearch = useRef<HTMLInputElement>(null);
+  const insertAtCursor = useCallback((t: string) => editor.current?.insert(t), []);
+  const openInsert = () => {
+    setPanel("insert");
+    requestAnimationFrame(() => insertSearch.current?.focus());
+  };
 
   const createSpec = useCreateSpec();
   const createRevision = useCreateRevision(specId ?? "");
@@ -235,8 +266,19 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
   };
 
   const reveal = (issue: Issue) => {
+    if (view !== "yaml" || !editor.current) {
+      pendingReveal.current = issue;
+      setView("yaml");
+      return;
+    }
     const { range } = new YamlLocator(text).locate(issue.pointer ?? "");
-    editor.current?.reveal(range);
+    editor.current.reveal(range);
+  };
+  const onEditorReady = (h: YamlEditorHandle) => {
+    editor.current = h;
+    const issue = pendingReveal.current;
+    pendingReveal.current = null;
+    if (issue) h.reveal(new YamlLocator(text).locate(issue.pointer ?? "").range);
   };
 
   // Runs use the revision whose text is on screen, and only when it is saved as shown.
@@ -280,6 +322,9 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
               onChange={(e) => setMessage(e.target.value)}
               className="h-9 w-56"
             />
+            <Button variant="outline" onClick={openInsert} disabled={compare !== null || view !== "yaml"} title="Search models, steps, datasets and columns to insert">
+              <Plus /> Insert
+            </Button>
             <Button variant="outline" onClick={validateNow} title="Validate now (⌘Enter)">
               <ShieldCheck /> Validate
             </Button>
@@ -330,6 +375,21 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_26rem]">
         <div className="grid min-w-0 content-start gap-3">
+          {!compare ? (
+            <SegmentedControl
+              label="Editor view"
+              value={view}
+              onValueChange={(v) => {
+                if (v === "visual") editor.current = null;
+                setView(v);
+              }}
+              options={[
+                { value: "visual", label: <><Blocks /> Visual</>, title: "Build the spec from blocks: drag steps, models and datasets in" },
+                { value: "yaml", label: <><Code2 /> YAML</>, title: "Edit the YAML text" },
+              ]}
+              className="justify-self-start"
+            />
+          ) : null}
           {specId && !compare && heldBack && loaded.data ? (
             <RevisionBanner
               text={`r${loaded.data.revision} is selected, but the editor still holds your unsaved changes to r${baseRev}.`}
@@ -351,6 +411,17 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
             <RevisionDiff specId={specId} a={compare.a} b={compare.b} onClose={() => setCompare(null)} />
           ) : specId && loaded.isPending ? (
             <LoadingRows rows={8} />
+          ) : view === "visual" ? (
+            <VisualBuilder
+              text={text}
+              document={document}
+              onText={setText}
+              schema={schema.data}
+              shape={hints.shape}
+              sources={hints.sources}
+              issues={allIssues}
+              onIssue={reveal}
+            />
           ) : (
             <YamlEditor
               path={`spec-${specId ?? "new"}.mapi.yaml`}
@@ -359,7 +430,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
               issues={located}
               onSave={save}
               onValidate={validateNow}
-              onReady={(h) => (editor.current = h)}
+              onReady={onEditorReady}
               ariaLabel="Spec YAML"
               height="calc(100svh - 15rem)"
             />
@@ -368,9 +439,10 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
         </div>
 
         <aside className="min-w-0">
-          <Tabs defaultValue="pipeline">
+          <Tabs value={panel} onValueChange={setPanel}>
             <TabsList>
               <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+              <TabsTrigger value="insert">Insert</TabsTrigger>
               <TabsTrigger value="issues">
                 Issues {allIssues.length ? <Badge variant={errorCount ? "danger" : "warning"}>{allIssues.length}</Badge> : null}
               </TabsTrigger>
@@ -381,6 +453,17 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
             </TabsList>
             <TabsContent value="pipeline" className="max-h-[calc(100svh-17rem)] overflow-y-auto pr-1">
               <PipelineCards model={pipeline} onIssue={reveal} />
+            </TabsContent>
+            <TabsContent value="insert" className="max-h-[calc(100svh-17rem)] overflow-y-auto pr-1">
+              <InsertPanel
+                ref={insertSearch}
+                text={text}
+                shape={hints.shape}
+                sources={hints.sources}
+                onText={setText}
+                onInsertAtCursor={insertAtCursor}
+                readOnly={compare !== null}
+              />
             </TabsContent>
             <TabsContent value="issues">
               {allIssues.length ? (

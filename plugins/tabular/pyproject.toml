@@ -1,6 +1,6 @@
 [project]
 name = "mapi-plugin-tabular"
-version = "0.5.1"
+version = "0.6.0"
 description = "Tabular ML model plugins"
 readme = "README.md"
 requires-python = ">=3.12"

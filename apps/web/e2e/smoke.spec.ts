@@ -166,6 +166,107 @@ test("saving edits of an older revision asks before replacing the latest", async
   expect(posted).toEqual([expect.objectContaining({ parent_revision: 2 })]);
 });
 
+/** Put the cursor at the end of the first line containing `line`, minus `back` characters. */
+async function cursorAfter(page: import("@playwright/test").Page, line: string, back = 0, left = 0) {
+  const editor = page.getByTestId("yaml-editor");
+  await editor.locator(".view-line", { hasText: line }).first().click();
+  await page.keyboard.press("End");
+  for (let i = 0; i < left; i++) await page.keyboard.press("ArrowLeft");
+  for (let i = 0; i < back; i++) await page.keyboard.press("Backspace");
+}
+
+test("spec editor suggests catalog models, dataset columns and step settings", async ({ page }) => {
+  await page.goto("/build/new");
+  const editor = page.getByTestId("yaml-editor");
+  await expect(editor.locator(".view-lines")).toContainText("apiVersion: mapi/v1", { timeout: 20_000 });
+  const suggest = page.locator(".suggest-widget");
+
+  // model.use: every model in the catalog.
+  await cursorAfter(page, "use: mmm.bayesian@^1", "mmm.bayesian@^1".length);
+  await page.keyboard.press("Control+Space");
+  await expect(suggest).toContainText("ts.arima@^1");
+  await expect(suggest).toContainText("tabular.hierarchical_glm@^1");
+  await page.keyboard.press("Escape");
+  await page.keyboard.type("mmm.bayesian@^1");
+
+  // data.bind values: the columns of the dataset the spec reads.
+  await cursorAfter(page, "vars: {y: revenue_local", "revenue_local, spend: spend_local}".length);
+  await page.keyboard.press("Control+Space");
+  await expect(suggest).toContainText("spend_local");
+  await page.keyboard.press("Escape");
+  await page.keyboard.type("revenue_local, spend: spend_local}");
+
+  // The model's own settings: a new key under `model.settings`.
+  await cursorAfter(page, "seasonality: {yearly_order: 3}");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Control+Space");
+  await expect(suggest).toContainText("controls");
+  await page.keyboard.press("Escape");
+
+  // A step's `with`: core.impute's own settings (a new key inside its flow mapping).
+  await cursorAfter(page, "id: fill", 0, "}}".length);
+  await page.keyboard.type(", unse");
+  await page.keyboard.press("Control+Space");
+  await expect(suggest).toContainText("unseen_levels");
+});
+
+test("the Insert panel adds a pipeline step and a plot from a search", async ({ page }) => {
+  await page.goto("/build/new");
+  const editor = page.getByTestId("yaml-editor");
+  await expect(editor.locator(".view-lines")).toContainText("apiVersion: mapi/v1", { timeout: 20_000 });
+  await page.getByRole("button", { name: "Insert" }).click();
+  const search = page.getByRole("textbox", { name: "Search models, steps, datasets and columns" });
+  await expect(search).toBeFocused();
+  await search.fill("mean_scale");
+  await page.locator('[data-insert="step:core.mean_scale"]').click();
+  await expect(editor.locator(".view-lines")).toContainText("id: mean_scale, use: core.mean_scale@^1");
+  // Columns of the dataset, by the name the spec binds them to.
+  await search.fill("revenue");
+  await expect(page.locator('[data-insert="col:var:revenue_local"]')).toContainText("y ← revenue_local");
+  // A plot of the model that the starter does not list goes into outputs.plots (below the
+  // fold, so read the document that is saved).
+  await search.fill("marginal");
+  await page.locator('[data-insert="plot:mmm.marginal_cost"]').click();
+  const saved = page.waitForRequest((r) => r.method() === "POST" && /\/v1\/specs$/.test(r.url()));
+  await page.getByRole("button", { name: "Save spec" }).click();
+  const yaml = ((await saved).postDataJSON() as { yaml: string }).yaml;
+  expect(yaml).toContain("plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.response_curves, mmm.marginal_cost]");
+  // Edits elsewhere keep the starter's formatting.
+  expect(yaml).toContain("dims: {geo: market, channel: channel, time: date}");
+});
+
+test("the visual builder adds, reorders and edits steps by drag and drop", async ({ page }) => {
+  await page.goto("/build/new");
+  await expect(page.getByTestId("yaml-editor").locator(".view-lines")).toContainText("apiVersion: mapi/v1", { timeout: 20_000 });
+  await page.getByRole("radio", { name: "Visual" }).click();
+  const builder = page.getByTestId("visual-builder");
+  const stepIds = () => builder.locator('[data-block^="step:"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-block")));
+  await expect.poll(stepIds).toEqual(["step:weekly", "step:fill", "step:cal"]);
+
+  // Drag a step from the palette between weekly and fill.
+  await builder.getByRole("textbox", { name: "Search the palette" }).fill("mean_scale");
+  await builder.locator('[data-palette="step:core.mean_scale@^1"]').dragTo(builder.locator('[data-drop-index="1"]'));
+  await expect.poll(stepIds).toEqual(["step:weekly", "step:mean_scale", "step:fill", "step:cal"]);
+
+  // Drag cal by its handle to the start.
+  await builder.locator('[data-block="step:cal"] [data-drag-step]').dragTo(builder.locator('[data-drop-index="0"]'));
+  await expect.poll(stepIds).toEqual(["step:cal", "step:weekly", "step:mean_scale", "step:fill"]);
+
+  // Edit a setting in the step's form, with a suggested name.
+  await builder.locator('[data-block="step:fill"] header button[aria-expanded]').click();
+  const fill = builder.locator('[data-block="step:fill"]');
+  await fill.getByRole("combobox", { name: "Method" }).selectOption("mean");
+  await fill.getByRole("group", { name: "Add to Vars" }).getByRole("button", { name: "spend_local" }).click();
+
+  // The YAML view shows the same document.
+  await page.getByRole("radio", { name: "YAML" }).click();
+  const saved = page.waitForRequest((r) => r.method() === "POST" && /\/v1\/specs$/.test(r.url()));
+  await page.getByRole("button", { name: "Save spec" }).click();
+  const yaml = ((await saved).postDataJSON() as { yaml: string }).yaml;
+  expect(yaml).toMatch(/- \{id: cal, use: core\.calendar@\^1[^\n]*\n\s+- \{id: weekly,[^\n]*\n\s+- \{id: mean_scale, use: core\.mean_scale@\^1/);
+  expect(yaml).toContain("- {id: fill, use: core.impute@^1, with: {vars: [spend, spend_local], method: mean, over: [time]}}");
+});
+
 test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingested", async ({ page }) => {
   await page.goto("/datasets/ds_01jaf3a1b2c3d4e5f6g7h8j9k0?upload=true");
   const csv = "date,market,revenue,spend\n2026-01-01,de,10.5,3\n2026-01-02,de,11,4\n";

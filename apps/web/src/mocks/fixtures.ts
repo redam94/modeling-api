@@ -5,7 +5,6 @@
 import { tableToIPC, tableFromArrays } from "apache-arrow";
 
 import type {
-  CatalogResponse,
   Dataset,
   DatasetVersion,
   LogLine,
@@ -486,14 +485,3 @@ export function artifactLink(name: string, bytes: Uint8Array, contentType: strin
     generation: 7,
   };
 }
-
-export const catalog: CatalogResponse = {
-  digest: `sha256:${"cd".repeat(32)}`,
-  generated_at: T0,
-  steps: [
-    { id: "core.resample", version: "1.0.0", kind: "reshape", stateful: false, invertible: false, depends_on_target: false, summary: "Resample a time dim to a coarser frequency" },
-    { id: "core.mean_scale", version: "1.0.0", kind: "value", stateful: true, invertible: true, depends_on_target: false, summary: "Divide by the mean over the given dims" },
-  ] as CatalogResponse["steps"],
-  plots: [{ id: "core.ppc_fan", version: "1.0.0", title: "PPC fan", persona: "both" }] as CatalogResponse["plots"],
-  models: [],
-};

@@ -29,7 +29,7 @@ demo files: `make dev`, then `uv run python scripts/seed.py --export demo/`.
 ```
 
 ```text
-http://127.0.0.1:8000 ok 0.5.1
+http://127.0.0.1:8000 ok 0.6.0
 ```
 
 `Client()` resolves its settings like the CLI: arguments (`Client("http://…", token=…,

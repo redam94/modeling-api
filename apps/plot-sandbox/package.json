@@ -1,7 +1,7 @@
 {
   "name": "@mapi/plot-sandbox",
   "private": true,
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Isolated Vega-Lite / Plotly renderer served from its own origin (plan §10.3)",
   "license": "AGPL-3.0-only OR LicenseRef-mapi-commercial",
   "type": "module",

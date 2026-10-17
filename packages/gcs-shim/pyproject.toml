@@ -1,6 +1,6 @@
 [project]
 name = "mapi-gcs-shim"
-version = "0.5.1"
+version = "0.6.0"
 description = "Local Google Cloud Storage emulator for modeling-api dev and tests"
 readme = "README.md"
 requires-python = ">=3.12"

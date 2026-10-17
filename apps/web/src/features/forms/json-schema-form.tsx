@@ -6,6 +6,8 @@
  *
  * With `bindings`, each field can also take a workflow parameter (`{$param: name}`) or an
  * expression computed from upstream results (`{$expr: "..."}`), which the server parses.
+ * With `nested`, an object with declared properties is a fieldset of its own fields instead
+ * of a JSON field; `suggest` offers names (columns, dims) for string and list fields.
  */
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -23,7 +25,7 @@ export interface BindingOptions {
   expressions: boolean;
 }
 
-type Kind = "enum" | "boolean" | "integer" | "number" | "string" | "list" | "json";
+type Kind = "enum" | "boolean" | "integer" | "number" | "string" | "list" | "object" | "json";
 
 interface FieldModel {
   key: string;
@@ -58,7 +60,7 @@ function humanize(key: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function fieldsOf(schema: SchemaNode): FieldModel[] {
+export function fieldsOf(schema: SchemaNode, nested = false): FieldModel[] {
   const props = obj(schema.properties) ?? {};
   const required = new Set(Array.isArray(schema.required) ? schema.required.filter((x): x is string => typeof x === "string") : []);
   return Object.entries(props).map(([key, raw]) => {
@@ -71,6 +73,7 @@ export function fieldsOf(schema: SchemaNode): FieldModel[] {
     else if (type === "integer") kind = "integer";
     else if (type === "number") kind = "number";
     else if (type === "string") kind = "string";
+    else if (nested && (type === "object" || type === null) && obj(s.properties) && Object.keys(obj(s.properties)!).length) kind = "object";
     else if (type === "array") {
       const it = obj(s.items);
       const t = it && typeof it.type === "string" ? it.type : null;
@@ -134,6 +137,20 @@ function SourcePicker({ value, onChange, bindings, label }: { value: Source; onC
   return <SegmentedControl label={`Where ${label} comes from`} value={value} onValueChange={onChange} options={options} className="h-7" />;
 }
 
+function Suggestions({ names, onPick, label }: { names: string[]; onPick: (name: string) => void; label: string }) {
+  if (!names.length) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1" role="group" aria-label={`Add to ${label}`}>
+      <span className="text-[11px] text-muted-foreground">Add:</span>
+      {names.slice(0, 24).map((n) => (
+        <button key={n} type="button" onClick={() => onPick(n)} className="rounded border bg-muted/50 px-1.5 py-0.5 font-mono text-[11px] hover:bg-accent">
+          {n}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SchemaField({
   field,
   value,
@@ -142,6 +159,8 @@ function SchemaField({
   bindings,
   idPrefix,
   disabled,
+  suggest,
+  nested,
 }: {
   field: FieldModel;
   value: Json | undefined;
@@ -150,6 +169,8 @@ function SchemaField({
   bindings?: BindingOptions | undefined;
   idPrefix: string;
   disabled?: boolean | undefined;
+  suggest?: string[] | undefined;
+  nested?: boolean | undefined;
 }) {
   const id = `${idPrefix}-${field.key}`;
   const source: Source = isParamRef(value) ? "param" : isExpr(value) ? "expr" : "value";
@@ -238,9 +259,45 @@ function SchemaField({
         }}
       />
     );
+  } else if (field.kind === "object") {
+    const current = obj(value ?? null) ?? {};
+    // Collapsed until it holds a value (or a problem), so long settings stay scannable.
+    return (
+      <details className="rounded-md border" data-field={field.key} open={Object.keys(current).length > 0 || Boolean(error)}>
+        <summary className="cursor-pointer px-3 py-2 text-[13px] font-medium">
+          {label}
+          {Object.keys(current).length ? <span className="ml-2 font-mono text-[11px] font-normal text-muted-foreground">{Object.keys(current).join(", ")}</span> : null}
+        </summary>
+        <div className="grid gap-3 px-3 pb-3">
+          {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+          {error ? (
+            <p role="alert" className="text-xs font-medium text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <SchemaForm schema={field.schema} value={current} onChange={(next) => onChange(Object.keys(next).length ? next : undefined)} disabled={disabled} nested={nested} empty="" />
+        </div>
+      </details>
+    );
   } else if (field.kind === "string") {
     control = (
-      <Input id={id} placeholder={field.default !== undefined ? display(field.default) : undefined} value={typeof value === "string" ? value : ""} disabled={disabled} onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)} />
+      <>
+        <Input
+          id={id}
+          list={suggest?.length ? `${id}-names` : undefined}
+          placeholder={field.default !== undefined ? display(field.default) : undefined}
+          value={typeof value === "string" ? value : ""}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
+        />
+        {suggest?.length ? (
+          <datalist id={`${id}-names`}>
+            {suggest.map((n) => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
+        ) : null}
+      </>
     );
   } else if (field.kind === "list") {
     control = (
@@ -296,6 +353,17 @@ function SchemaField({
       <Field label={label} htmlFor={id} hint={hint} error={localError ?? error}>
         {control}
       </Field>
+      {field.kind === "list" && suggest && source === "value" && !disabled ? (
+        <Suggestions
+          label={field.label}
+          names={suggest.filter((n) => !(Array.isArray(value) && value.includes(n)))}
+          onPick={(n) => {
+            const next = [...(Array.isArray(value) ? value : []), n];
+            setText(next.map(String).join(", "));
+            emit(next);
+          }}
+        />
+      ) : null}
       {bindings ? (
         <SourcePicker
           label={field.label}
@@ -322,6 +390,8 @@ export function SchemaForm({
   skip = [],
   disabled,
   empty = "This item has no settings.",
+  suggest = {},
+  nested = false,
 }: {
   schema: SchemaNode;
   value: JsonObject;
@@ -331,13 +401,17 @@ export function SchemaForm({
   bindings?: BindingOptions;
   /** Keys rendered elsewhere (a branch's condition editor). */
   skip?: string[];
-  disabled?: boolean;
+  disabled?: boolean | undefined;
   empty?: string;
+  /** Field key → names to offer (a datalist for text, "Add" chips for lists). */
+  suggest?: Record<string, string[]>;
+  /** Render objects with declared properties as nested fieldsets. */
+  nested?: boolean | undefined;
 }) {
   const idPrefix = useId().replace(/:/g, "");
-  const fields = fieldsOf(schema).filter((f) => !skip.includes(f.key));
+  const fields = fieldsOf(schema, nested).filter((f) => !skip.includes(f.key));
   const unknown = Object.keys(value).filter((k) => !fields.some((f) => f.key === k) && !skip.includes(k));
-  if (!fields.length && !unknown.length) return <p className="text-[13px] text-muted-foreground">{empty}</p>;
+  if (!fields.length && !unknown.length) return empty ? <p className="text-[13px] text-muted-foreground">{empty}</p> : null;
   const set = (key: string, v: Json | undefined) => {
     const next = { ...value };
     if (v === undefined) delete next[key];
@@ -347,7 +421,18 @@ export function SchemaForm({
   return (
     <div className="grid gap-4">
       {fields.map((f) => (
-        <SchemaField key={f.key} field={f} value={value[f.key]} onChange={(v) => set(f.key, v)} error={errors[f.key]} bindings={bindings} idPrefix={idPrefix} disabled={disabled} />
+        <SchemaField
+          key={f.key}
+          field={f}
+          value={value[f.key]}
+          onChange={(v) => set(f.key, v)}
+          error={errors[f.key]}
+          bindings={bindings}
+          idPrefix={idPrefix}
+          disabled={disabled}
+          suggest={suggest[f.key]}
+          nested={nested}
+        />
       ))}
       {unknown.length ? (
         <p role="alert" className="text-xs text-warning">
