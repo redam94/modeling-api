@@ -211,9 +211,18 @@ def select_best(
     params: Mapping[str, JsonValue],
     table_values: Sequence[BoundValue],
     model_values: Sequence[BoundValue],
+    *,
+    name: Callable[[Mapping[str, JsonValue]], str] | None = None,
 ) -> Result:
     """``select.best``: the best candidate; the ``model`` output when it also beats the
-    ``must_beat`` benchmarks (by ``margin``) and a model version is bound for it."""
+    ``must_beat`` benchmarks (by ``margin``) and a model version is bound for it.
+
+    ``name`` gives a comparison row's plain name for ``reason_plain`` (the step's label);
+    ``selected`` stays the candidate key."""
+
+    def called(row: Mapping[str, JsonValue]) -> str:
+        return name(row) if name is not None else str(row.get("candidate"))
+
     table = _table(table_values)
     metric = str(params.get("metric") or table.meta.get("metric") or "rmse")
     direction = str(params.get("direction") or table.meta.get("direction") or "min")
@@ -239,6 +248,8 @@ def select_best(
     scored.sort(key=lambda rv: rv[1] if direction == "min" else -rv[1])
     winner, score = scored[0]
     win_key = str(winner.get("candidate"))
+    win_name = called(winner)
+    names = {str(r.get("candidate")): called(r) for r in benches}
     bench_scores = [(str(r.get("candidate")), clean_number(r.get(metric))) for r in benches]
     bench_scores = [(k, v) for k, v in bench_scores if v is not None]
     beaten = [k for k, v in bench_scores if v is not None and _better(score, v, direction, margin)]
@@ -249,25 +260,26 @@ def select_best(
     plain_metric = _PLAIN_METRIC.get(metric, metric)
     if not must_beat:
         reason = (
-            f"{win_key} has the best {plain_metric} ({fmt_metric(metric, score)}) of "
+            f"{win_name} has the best {plain_metric} ({fmt_metric(metric, score)}) of "
             f"{len(scored)} candidate(s)."
         )
     elif beats:
         worst = min(bench_scores, key=lambda kv: abs(kv[1] or 0.0)) if bench_scores else None
         reason = (
-            f"{win_key} has the best {plain_metric} ({fmt_metric(metric, score)}) and beats "
+            f"{win_name} has the best {plain_metric} ({fmt_metric(metric, score)}) and beats "
             f"every benchmark"
             + (
-                f" (the strongest, {worst[0]}, scored {fmt_metric(metric, worst[1])})"
+                f" (the strongest, {names.get(worst[0], worst[0])}, scored "
+                f"{fmt_metric(metric, worst[1])})"
                 if worst
                 else ""
             )
             + "."
         )
     else:
-        losing = [k for k, _ in bench_scores if k not in beaten]
+        losing = [names.get(k, k) for k, _ in bench_scores if k not in beaten]
         reason = (
-            f"{win_key} is the best model ({fmt_metric(metric, score)}) but does not beat "
+            f"{win_name} is the best model ({fmt_metric(metric, score)}) but does not beat "
             f"{', '.join(losing) or 'the benchmarks'}"
             + (f" by the required {margin * 100:.0f}%" if margin else "")
             + ": no model is selected."
@@ -379,6 +391,7 @@ def report_summary(
     only = {str(x) for x in only_raw} if isinstance(only_raw, list) else None
     sections: list[ReportSection] = []
     covered: set[str] = set()
+    explained: dict[str, str] = {}
 
     def keep(nid: str | None) -> bool:
         return only is None or nid is None or nid in only
@@ -407,11 +420,16 @@ def report_summary(
             if n.when and n.when.startswith(d.node_id + ".") and n.when.endswith("." + d.arm)
         )
         values = ", ".join(f"{k} = {_short(v)}" for k, v in d.inputs.items())
-        text = (
+        ran = [_label(ctx, g) or g for g in gated]
+        technical = (
             f"The condition `{d.condition}` was {'true' if d.value else 'false'}"
             + (f" ({values})" if values else "")
-            + (f", so {', '.join(gated)} ran." if gated else ".")
+            + (f", so {', '.join(ran)} ran." if ran else ".")
         )
+        # The plain explanation first; the condition stays for experts.
+        text = f"{d.explain_plain} {technical}" if d.explain_plain else technical
+        if d.explain_plain:
+            explained[d.node_id] = d.explain_plain
         sections.append(
             ReportSection(title=label, node_id=d.node_id, kind="decision", status=d.arm, text=text)
         )
@@ -503,7 +521,7 @@ def report_summary(
                 title="Chosen model", kind="model", text=f"The workflow's model is {model_ref}."
             )
         )
-    summary = _summary(sections, model_ref)
+    summary = _summary(sections, model_ref, explained)
     report = ReportPayload(title=title, summary_plain=summary, sections=sections, model=model_ref)
     result: dict[str, JsonValue] = {
         "title": title,
@@ -537,6 +555,20 @@ def _short(v: object) -> str:
     return text if len(text) <= 40 else text[:37] + "..."
 
 
+def _candidate_name(ctx: OrchestratorContext, row: Mapping[str, JsonValue]) -> str:
+    """A comparison row's plain name: its step's label ("ARIMAX"; "Naive forecast (seasonal
+    naive)" for one of several candidates of a step), else its key."""
+    key = str(row.get("candidate"))
+    nid = row.get("node")
+    node = ctx.nodes.get(nid) if isinstance(nid, str) else None
+    if node is None or not node.label:
+        return key
+    if key == nid:
+        return node.label
+    rest = key[len(nid) + 1 :] if isinstance(nid, str) and key.startswith(nid + ".") else key
+    return f"{node.label} ({rest.replace('_', ' ')})"
+
+
 def _label(ctx: OrchestratorContext, nid: str | None) -> str | None:
     if nid is None:
         return None
@@ -549,7 +581,28 @@ def _label(ctx: OrchestratorContext, nid: str | None) -> str | None:
     return impl.about.title if impl is not None else nid
 
 
-def _summary(sections: Sequence[ReportSection], model_ref: str | None) -> str:
+def _decision_plain(s: ReportSection, explained: Mapping[str, str]) -> str:
+    """A decision in the summary: its explanation, else "Difference? yes"."""
+    text = explained.get(s.node_id or "")
+    if text:
+        return text.rstrip(".")
+    answer = "yes" if s.status == "then" else "no"
+    return f"{s.title} {answer}" if s.title.endswith("?") else f"{s.title}: {answer}"
+
+
+def _lower_first(text: str) -> str:
+    # "The series ..." -> "the series ..." mid-sentence; "ARIMAX ..." stays.
+    if len(text) > 1 and text[0].isupper() and text[1].islower():
+        return text[0].lower() + text[1:]
+    return text
+
+
+def _summary(
+    sections: Sequence[ReportSection],
+    model_ref: str | None,
+    explained: Mapping[str, str] | None = None,
+) -> str:
+    explained = explained or {}
     tests = [s for s in sections if s.kind == "test"]
     decisions = [s for s in sections if s.kind == "decision"]
     failed = [s for s in sections if s.kind == "failed"]
@@ -558,7 +611,10 @@ def _summary(sections: Sequence[ReportSection], model_ref: str | None) -> str:
     if tests:
         parts.append(f"{len(tests)} test(s) ran")
     if decisions:
-        parts.append("decisions: " + "; ".join(f"{s.title} -> {s.status}" for s in decisions))
+        said = [_decision_plain(s, explained) for s in decisions]
+        joined = "; ".join([said[0], *(_lower_first(x) for x in said[1:])])
+        every = all(s.node_id in explained for s in decisions)
+        parts.append(joined if every else f"decisions: {joined}")
     if selection is not None:
         parts.append(selection.text.rstrip("."))
     elif model_ref:
@@ -683,7 +739,12 @@ def run_orchestrator_node(
     if impl_id == "compare.models":
         return compare_models(params, inputs.get("candidates", ()))
     if impl_id == "select.best":
-        return select_best(params, inputs.get("table", ()), inputs.get("models", ()))
+        return select_best(
+            params,
+            inputs.get("table", ()),
+            inputs.get("models", ()),
+            name=lambda row: _candidate_name(ctx, row),
+        )
     if impl_id == "select.threshold":
         return select_threshold(params, inputs.get("table", ()))
     if impl_id == "report.summary":

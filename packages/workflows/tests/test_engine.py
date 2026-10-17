@@ -485,3 +485,66 @@ def test_unknown_cache_keys_wait_for_the_driver() -> None:
     actions = eng.step()
     assert [a.node_id for a in actions] == ["kpss"]
     assert eng.node_run("adf").status is NodeRunStatus.CACHED
+
+
+def test_decisions_and_selections_are_explained_in_plain_words() -> None:
+    """A branch's ``explain_then`` / ``explain_else`` say what its path means; the report and
+    the selection name steps by their labels, never by "then"/"else" or node ids."""
+    spec = TS_READINESS_ARIMAX.spec
+    eng = WorkflowEngine(
+        spec, params={k: p.default for k, p in spec.params.items()}, inputs={"data": DATA}
+    )
+    drive(eng, _canonical_fakes(adf_p=0.6, kpss_p=0.01, seasonal=False))
+    wanders, seasonal = eng.decisions["wanders"], eng.decisions["seasonal"]
+    assert wanders.explain_plain is not None
+    assert wanders.explain_plain.startswith("The tests found that the series wanders")
+    assert seasonal.explain_plain is not None
+    assert "no strong seasonal pattern" in seasonal.explain_plain
+    runs = {n.node_id: n for n in eng.node_runs()}
+    # the branch result (what conditions read) is unchanged
+    assert runs["wanders"].result == {"value": True, "arm": "then"}
+    sel = runs["select"].result
+    assert sel is not None and sel["selected"] == "backtest"  # ids stay machine-readable
+    assert str(sel["reason_plain"]).startswith("ARIMAX has the best average error")
+    assert "the strongest, Naive forecast" in str(sel["reason_plain"])
+    report = runs["report"].outputs["report"].inline
+    assert isinstance(report, dict)
+    summary = str(report["summary_plain"])
+    assert wanders.explain_plain.rstrip(".") in summary
+    assert "-> then" not in summary and "-> else" not in summary
+    assert "ARIMAX has the best" in summary
+    section = next(s for s in report["sections"] if s["node_id"] == "wanders")
+    assert section["text"].startswith(wanders.explain_plain)
+
+
+def test_a_branch_without_explanations_reads_yes_or_no() -> None:
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {"id": "wanders", "use": "branch.if", "label": "Difference?",
+             "with": {"condition": "not nodes.adf.reject"}},
+            {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"},
+             "when": "wanders.then"},
+            {"id": "report", "use": "report.summary", "inputs": {"tests": ["adf.result"]}},
+        ]
+    )  # fmt: skip
+    eng = WorkflowEngine(spec, inputs={"data": DATA})
+    drive(eng, {"adf": stat_result("test.adf", 0.6), "diff": dataset("run://diff")})
+    assert eng.decisions["wanders"].explain_plain is None
+    runs = {n.node_id: n for n in eng.node_runs()}
+    report = runs["report"].outputs["report"].inline
+    assert isinstance(report, dict)
+    assert "Decisions: Difference? yes." in str(report["summary_plain"])
+
+
+def test_branch_explanations_are_checked() -> None:
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {"id": "b", "use": "branch.if",
+             "with": {"condition": "nodes.adf.reject", "explain_then": "x" * 301}},
+        ]
+    )  # fmt: skip
+    report = validate_workflow(spec)
+    assert not report.valid
+    assert any("explain_then" in (i.pointer or "") for i in report.issues)

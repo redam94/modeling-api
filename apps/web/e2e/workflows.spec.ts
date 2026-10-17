@@ -136,7 +136,7 @@ test("a run is followed live, a node's details open and another run is cancelled
   await expect(monitor.getByTestId("run-status")).toHaveText(/Queued|Running/);
   await expect(page.getByTestId("canvas-node-adf")).toHaveAttribute("data-status", /queued|running|succeeded/);
   await expect(monitor).toHaveAttribute("data-status", "succeeded", { timeout: 20_000 });
-  await expect(page.getByTestId("run-summary")).toContainText("Decisions: Difference? -> then");
+  await expect(page.getByTestId("run-summary")).toContainText("The tests found that the series wanders rather than returning to a steady level, so it was differenced");
   await shot(page, "run-monitor");
 
   await page.getByRole("tab", { name: "Steps" }).click();
@@ -148,7 +148,7 @@ test("a run is followed live, a node's details open and another run is cancelled
   await page.keyboard.press("Escape");
 
   await page.getByRole("tab", { name: /Decisions/ }).click();
-  await expect(page.getByTestId("branch-decision").first()).toContainText("the then arm was taken; diff ran");
+  await expect(page.getByTestId("branch-decision").first()).toContainText("The condition was met. Ran: Change from the previous period.");
 
   // Start another run and cancel it while it runs.
   await page.goto(`/workflows/${WORKFLOW}?tab=runs`);

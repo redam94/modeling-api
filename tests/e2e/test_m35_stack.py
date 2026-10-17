@@ -178,7 +178,8 @@ def test_the_canonical_workflow_on_a_series_with_a_unit_root(op: Client, world: 
         "residuals.whiteness",
     }
     assert (
-        res["report"]["n_sections"] > 10 and "Difference? -> then" in res["report"]["summary_plain"]
+        res["report"]["n_sections"] > 10
+        and "so it was differenced" in res["report"]["summary_plain"]
     )
     # every sandboxed node ran as a child run; orchestrator nodes ran none
     assert nodes["adf"].child_runs and not nodes["select"].child_runs

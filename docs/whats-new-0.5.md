@@ -153,7 +153,7 @@ What it prints, on three years of a wandering weekly KPI:
 The series wanders: consider differencing it.
 wanders then {'nodes.adf.reject': False, 'nodes.kpss.reject': True, ...}
 ARIMA(1, 1, 1)
-backtest has the best average error (1.83) and beats every benchmark (the strongest, naive, scored 1.87).
+ARIMAX has the best average error (1.83) and beats every benchmark (the strongest, Naive forecast, scored 1.87).
 validated
 data.quality                 pass    No data problems found (156 periods of history).
 baseline.beats_naive         pass    On the 13 held-out periods the model's error is 25% lower than 'same as last period' ...

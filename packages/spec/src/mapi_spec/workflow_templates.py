@@ -164,9 +164,20 @@ TS_READINESS_ARIMAX = WorkflowTemplate(
              "with": {"period": _p("season")}},
             {"id": "wanders", "use": "branch.if", "label": "Difference?",
              "with": {"condition": "(not nodes.adf.reject or nodes.kpss.reject) and not "
-                                   "(nodes.pp.reject and nodes.za.reject)"}},
+                                   "(nodes.pp.reject and nodes.za.reject)",
+                      "explain_then": "The tests found that the series wanders rather than "
+                                      "returning to a steady level, so it was differenced "
+                                      "(the model works on the change from one period to "
+                                      "the next).",
+                      "explain_else": "The tests found that the series returns to a steady "
+                                      "level, so it was used as it is."}},
             {"id": "seasonal", "use": "branch.if", "label": "Seasonal difference?",
-             "with": {"condition": "nodes.seas.seasonal"}},
+             "with": {"condition": "nodes.seas.seasonal",
+                      "explain_then": "The series repeats a strong seasonal pattern, so it "
+                                      "was compared with the same period one season earlier "
+                                      "(seasonal differencing).",
+                      "explain_else": "The series has no strong seasonal pattern, so it was "
+                                      "not seasonally differenced."}},
             {"id": "sdiff", "use": "transform.seasonal_difference",
              "inputs": {"data": "inputs.data"}, "when": "seasonal.then",
              "with": {"period": _p("season")}},
@@ -182,11 +193,11 @@ TS_READINESS_ARIMAX = WorkflowTemplate(
             {"id": "folds", "use": "split.expanding_window", "inputs": {"data": "inputs.data"},
              "with": {"horizons": _p("horizons"), "gap": _p("gap"), "n_folds": _p("n_folds"),
                       "step": 4}},
-            {"id": "backtest", "use": "model.backtest",
+            {"id": "backtest", "use": "model.backtest", "label": "ARIMAX",
              "inputs": {"data": "inputs.data", "split": "folds.plan"},
              "with": {"model": "ts.sarimax@^1", "settings": _ARIMAX_SETTINGS,
                       "metrics": ["mae", "rmse", "mape", "mase"]}},
-            {"id": "naive", "use": "evaluate.baseline",
+            {"id": "naive", "use": "evaluate.baseline", "label": "Naive forecast",
              "inputs": {"data": "inputs.data", "split": "folds.plan"},
              "with": {"methods": ["naive", "seasonal_naive"], "season": _p("season")}},
             {"id": "compare", "use": "compare.models",
@@ -252,7 +263,13 @@ VAR_VECM = WorkflowTemplate(
                          "and period)"}},
         nodes=[
             {"id": "johansen", "use": "test.johansen", "inputs": {"data": "inputs.data"}},
-            {"id": "tied", "use": "branch.if", "with": {"condition": "nodes.johansen.rank > 0"}},
+            {"id": "tied", "use": "branch.if", "label": "Tied together?",
+             "with": {"condition": "nodes.johansen.rank > 0",
+                      "explain_then": "The test found that the series are tied together in "
+                                      "the long run, so a model that keeps that tie (VECM) "
+                                      "was fitted.",
+                      "explain_else": "The test found no long-run tie between the series, so "
+                                      "they were differenced before fitting a VAR."}},
             {"id": "rank", "use": "search.coint_rank", "inputs": {"data": "inputs.data"},
              "when": "tied.then"},
             {"id": "vecm", "use": "model.fit", "inputs": {"data": "inputs.data"},
@@ -367,15 +384,16 @@ FORECAST_BAKEOFF = WorkflowTemplate(
         nodes=[
             {"id": "folds", "use": "split.expanding_window", "inputs": {"data": "inputs.data"},
              "with": {"horizons": _p("horizons"), "n_folds": _p("n_folds"), "step": 4}},
-            {"id": "sarimax", "use": "model.backtest", **_BT,
+            {"id": "sarimax", "use": "model.backtest", "label": "ARIMA", **_BT,
              "with": {"model": "ts.sarimax@^1",
                       "settings": {"order": [1, 1, 1], "seasonal_order": [0, 1, 0, 52]}}},
-            {"id": "ets", "use": "model.backtest", **_BT,
+            {"id": "ets", "use": "model.backtest", "label": "Exponential smoothing", **_BT,
              "with": {"model": "ts.ets@^1", "settings": {"trend": "add", "damped_trend": True}}},
-            {"id": "theta", "use": "model.backtest", **_BT, "with": {"model": "ts.theta@^1"}},
-            {"id": "smooth", "use": "model.backtest", **_BT,
+            {"id": "theta", "use": "model.backtest", "label": "Theta", **_BT,
+             "with": {"model": "ts.theta@^1"}},
+            {"id": "smooth", "use": "model.backtest", "label": "Smooth trend", **_BT,
              "with": {"model": "ts.hsgp_trend@^1", "fit": {"draws": 200, "tune": 200}}},
-            {"id": "naive", "use": "evaluate.baseline", **_BT,
+            {"id": "naive", "use": "evaluate.baseline", "label": "Naive forecast", **_BT,
              "with": {"methods": ["naive", "seasonal_naive"], "season": _p("season")}},
             {"id": "compare", "use": "compare.models",
              "inputs": {"candidates": ["sarimax.metrics", "ets.metrics", "theta.metrics",

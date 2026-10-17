@@ -7346,6 +7346,16 @@
       "type": "string",
       "maxLength": 2000,
       "description": "Condition in the workflow expression language"
+     },
+     "explain_then": {
+      "type": "string",
+      "maxLength": 300,
+      "description": "What it means when the condition holds, in plain words for the run report (e.g. 'The tests found the series wanders, so it was differenced.')"
+     },
+     "explain_else": {
+      "type": "string",
+      "maxLength": 300,
+      "description": "What it means when the condition does not hold, in plain words"
      }
     },
     "required": [
@@ -8034,7 +8044,9 @@
       "use": "branch.if",
       "label": "Difference?",
       "with": {
-       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)"
+       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)",
+       "explain_then": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).",
+       "explain_else": "The tests found that the series returns to a steady level, so it was used as it is."
       }
      },
      {
@@ -8042,7 +8054,9 @@
       "use": "branch.if",
       "label": "Seasonal difference?",
       "with": {
-       "condition": "nodes.seas.seasonal"
+       "condition": "nodes.seas.seasonal",
+       "explain_then": "The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).",
+       "explain_else": "The series has no strong seasonal pattern, so it was not seasonally differenced."
       }
      },
      {
@@ -8130,6 +8144,7 @@
      {
       "id": "backtest",
       "use": "model.backtest",
+      "label": "ARIMAX",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -8158,6 +8173,7 @@
      {
       "id": "naive",
       "use": "evaluate.baseline",
+      "label": "Naive forecast",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -8368,8 +8384,11 @@
      {
       "id": "tied",
       "use": "branch.if",
+      "label": "Tied together?",
       "with": {
-       "condition": "nodes.johansen.rank > 0"
+       "condition": "nodes.johansen.rank > 0",
+       "explain_then": "The test found that the series are tied together in the long run, so a model that keeps that tie (VECM) was fitted.",
+       "explain_else": "The test found no long-run tie between the series, so they were differenced before fitting a VAR."
       }
      },
      {
@@ -8773,6 +8792,7 @@
      {
       "id": "sarimax",
       "use": "model.backtest",
+      "label": "ARIMA",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -8797,6 +8817,7 @@
      {
       "id": "ets",
       "use": "model.backtest",
+      "label": "Exponential smoothing",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -8812,6 +8833,7 @@
      {
       "id": "theta",
       "use": "model.backtest",
+      "label": "Theta",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -8823,6 +8845,7 @@
      {
       "id": "smooth",
       "use": "model.backtest",
+      "label": "Smooth trend",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -8838,6 +8861,7 @@
      {
       "id": "naive",
       "use": "evaluate.baseline",
+      "label": "Naive forecast",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -13043,7 +13067,9 @@
      "attempt": 1,
      "child_runs": [],
      "params": {
-      "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)"
+      "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)",
+      "explain_then": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).",
+      "explain_else": "The tests found that the series returns to a steady level, so it was used as it is."
      },
      "result": {
       "value": true,
@@ -13061,7 +13087,9 @@
      "attempt": 1,
      "child_runs": [],
      "params": {
-      "condition": "nodes.seas.seasonal"
+      "condition": "nodes.seas.seasonal",
+      "explain_then": "The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).",
+      "explain_else": "The series has no strong seasonal pattern, so it was not seasonally differenced."
      },
      "result": {
       "value": false,
@@ -14674,7 +14702,7 @@
       "selected_model": "ts.sarimax@^1",
       "score": 1.86376,
       "beats_baselines": true,
-      "reason_plain": "backtest has the best average error (1.86) and beats every benchmark (the strongest, naive, scored 2.04).",
+      "reason_plain": "ARIMAX has the best average error (1.86) and beats every benchmark (the strongest, Naive forecast, scored 2.04).",
       "model_version": "model://growth/wf-weekly-readiness-fit@v1"
      },
      "outputs": {
@@ -14898,7 +14926,7 @@
      },
      "result": {
       "title": "Time-series readiness and ARIMAX",
-      "summary_plain": "6 test(s) ran. Decisions: Difference? -> then; Seasonal difference? -> else. Backtest has the best average error (1.86) and beats every benchmark (the strongest, naive, scored 2.04).",
+      "summary_plain": "6 test(s) ran. The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next); the series has no strong seasonal pattern, so it was not seasonally differenced. ARIMAX has the best average error (1.86) and beats every benchmark (the strongest, Naive forecast, scored 2.04).",
       "n_sections": 15
      },
      "outputs": {
@@ -14907,7 +14935,7 @@
        "inline": {
         "format": "mapi.report/v1",
         "title": "Time-series readiness and ARIMAX",
-        "summary_plain": "6 test(s) ran. Decisions: Difference? -> then; Seasonal difference? -> else. Backtest has the best average error (1.86) and beats every benchmark (the strongest, naive, scored 2.04).",
+        "summary_plain": "6 test(s) ran. The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next); the series has no strong seasonal pattern, so it was not seasonally differenced. ARIMAX has the best average error (1.86) and beats every benchmark (the strongest, Naive forecast, scored 2.04).",
         "sections": [
          {
           "title": "Does it wander? (ADF)",
@@ -14962,7 +14990,7 @@
           "node_id": "wanders",
           "kind": "decision",
           "status": "then",
-          "text": "The condition `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)` was true (nodes.adf.reject = False, nodes.kpss.reject = True, nodes.pp.reject = False, nodes.za.reject = False), so diff ran.",
+          "text": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next). The condition `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)` was true (nodes.adf.reject = False, nodes.kpss.reject = True, nodes.pp.reject = False, nodes.za.reject = False), so Change from the previous period ran.",
           "table": null
          },
          {
@@ -14970,7 +14998,7 @@
           "node_id": "seasonal",
           "kind": "decision",
           "status": "else",
-          "text": "The condition `nodes.seas.seasonal` was false (nodes.seas.seasonal = False).",
+          "text": "The series has no strong seasonal pattern, so it was not seasonally differenced. The condition `nodes.seas.seasonal` was false (nodes.seas.seasonal = False).",
           "table": null
          },
          {
@@ -15392,7 +15420,7 @@
           }
          },
          {
-          "title": "Backtest a model",
+          "title": "ARIMAX",
           "node_id": "backtest",
           "kind": "metrics",
           "status": null,
@@ -15400,7 +15428,7 @@
           "table": null
          },
          {
-          "title": "Simple benchmark forecasts",
+          "title": "Naive forecast",
           "node_id": "naive",
           "kind": "metrics",
           "status": null,
@@ -15420,7 +15448,7 @@
           "node_id": "select",
           "kind": "selection",
           "status": null,
-          "text": "backtest has the best average error (1.86) and beats every benchmark (the strongest, naive, scored 2.04).",
+          "text": "ARIMAX has the best average error (1.86) and beats every benchmark (the strongest, Naive forecast, scored 2.04).",
           "table": null
          },
          {
@@ -15452,6 +15480,7 @@
       "nodes.pp.reject": false,
       "nodes.za.reject": false
      },
+     "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).",
      "decided_at": "2026-10-14T09:01:00Z"
     },
     {
@@ -15462,6 +15491,7 @@
      "inputs": {
       "nodes.seas.seasonal": false
      },
+     "explain_plain": "The series has no strong seasonal pattern, so it was not seasonally differenced.",
      "decided_at": "2026-10-14T09:01:00Z"
     }
    ],
@@ -15475,7 +15505,7 @@
      "inline": {
       "format": "mapi.report/v1",
       "title": "Time-series readiness and ARIMAX",
-      "summary_plain": "6 test(s) ran. Decisions: Difference? -> then; Seasonal difference? -> else. Backtest has the best average error (1.86) and beats every benchmark (the strongest, naive, scored 2.04).",
+      "summary_plain": "6 test(s) ran. The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next); the series has no strong seasonal pattern, so it was not seasonally differenced. ARIMAX has the best average error (1.86) and beats every benchmark (the strongest, Naive forecast, scored 2.04).",
       "sections": [
        {
         "title": "Does it wander? (ADF)",
@@ -15530,7 +15560,7 @@
         "node_id": "wanders",
         "kind": "decision",
         "status": "then",
-        "text": "The condition `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)` was true (nodes.adf.reject = False, nodes.kpss.reject = True, nodes.pp.reject = False, nodes.za.reject = False), so diff ran.",
+        "text": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next). The condition `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)` was true (nodes.adf.reject = False, nodes.kpss.reject = True, nodes.pp.reject = False, nodes.za.reject = False), so Change from the previous period ran.",
         "table": null
        },
        {
@@ -15538,7 +15568,7 @@
         "node_id": "seasonal",
         "kind": "decision",
         "status": "else",
-        "text": "The condition `nodes.seas.seasonal` was false (nodes.seas.seasonal = False).",
+        "text": "The series has no strong seasonal pattern, so it was not seasonally differenced. The condition `nodes.seas.seasonal` was false (nodes.seas.seasonal = False).",
         "table": null
        },
        {
@@ -15960,7 +15990,7 @@
         }
        },
        {
-        "title": "Backtest a model",
+        "title": "ARIMAX",
         "node_id": "backtest",
         "kind": "metrics",
         "status": null,
@@ -15968,7 +15998,7 @@
         "table": null
        },
        {
-        "title": "Simple benchmark forecasts",
+        "title": "Naive forecast",
         "node_id": "naive",
         "kind": "metrics",
         "status": null,
@@ -15988,7 +16018,7 @@
         "node_id": "select",
         "kind": "selection",
         "status": null,
-        "text": "backtest has the best average error (1.86) and beats every benchmark (the strongest, naive, scored 2.04).",
+        "text": "ARIMAX has the best average error (1.86) and beats every benchmark (the strongest, Naive forecast, scored 2.04).",
         "table": null
        },
        {
@@ -17366,7 +17396,9 @@
       "use": "branch.if",
       "label": "Difference?",
       "with": {
-       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)"
+       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)",
+       "explain_then": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).",
+       "explain_else": "The tests found that the series returns to a steady level, so it was used as it is."
       }
      },
      {
@@ -17374,7 +17406,9 @@
       "use": "branch.if",
       "label": "Seasonal difference?",
       "with": {
-       "condition": "nodes.seas.seasonal"
+       "condition": "nodes.seas.seasonal",
+       "explain_then": "The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).",
+       "explain_else": "The series has no strong seasonal pattern, so it was not seasonally differenced."
       }
      },
      {
@@ -17462,6 +17496,7 @@
      {
       "id": "backtest",
       "use": "model.backtest",
+      "label": "ARIMAX",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -17490,6 +17525,7 @@
      {
       "id": "naive",
       "use": "evaluate.baseline",
+      "label": "Naive forecast",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -17754,7 +17790,9 @@
       "use": "branch.if",
       "label": "Difference?",
       "with": {
-       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)"
+       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)",
+       "explain_then": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).",
+       "explain_else": "The tests found that the series returns to a steady level, so it was used as it is."
       }
      },
      {
@@ -17762,7 +17800,9 @@
       "use": "branch.if",
       "label": "Seasonal difference?",
       "with": {
-       "condition": "nodes.seas.seasonal"
+       "condition": "nodes.seas.seasonal",
+       "explain_then": "The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).",
+       "explain_else": "The series has no strong seasonal pattern, so it was not seasonally differenced."
       }
      },
      {
@@ -17846,6 +17886,7 @@
      {
       "id": "backtest",
       "use": "model.backtest",
+      "label": "ARIMAX",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -17874,6 +17915,7 @@
      {
       "id": "naive",
       "use": "evaluate.baseline",
+      "label": "Naive forecast",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -18133,7 +18175,9 @@
       "use": "branch.if",
       "label": "Difference?",
       "with": {
-       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)"
+       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)",
+       "explain_then": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).",
+       "explain_else": "The tests found that the series returns to a steady level, so it was used as it is."
       }
      },
      {
@@ -18141,7 +18185,9 @@
       "use": "branch.if",
       "label": "Seasonal difference?",
       "with": {
-       "condition": "nodes.seas.seasonal"
+       "condition": "nodes.seas.seasonal",
+       "explain_then": "The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).",
+       "explain_else": "The series has no strong seasonal pattern, so it was not seasonally differenced."
       }
      },
      {
@@ -18229,6 +18275,7 @@
      {
       "id": "backtest",
       "use": "model.backtest",
+      "label": "ARIMAX",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -18257,6 +18304,7 @@
      {
       "id": "naive",
       "use": "evaluate.baseline",
+      "label": "Naive forecast",
       "inputs": {
        "data": "inputs.data"
       },
@@ -18523,7 +18571,9 @@
       "use": "branch.if",
       "label": "Seasonal difference?",
       "with": {
-       "condition": "nodes.seas.seasonal"
+       "condition": "nodes.seas.seasonal",
+       "explain_then": "The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).",
+       "explain_else": "The series has no strong seasonal pattern, so it was not seasonally differenced."
       }
      },
      {
@@ -18611,6 +18661,7 @@
      {
       "id": "backtest",
       "use": "model.backtest",
+      "label": "ARIMAX",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -18639,6 +18690,7 @@
      {
       "id": "naive",
       "use": "evaluate.baseline",
+      "label": "Naive forecast",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -18906,7 +18958,9 @@
       "use": "branch.if",
       "label": "Seasonal difference?",
       "with": {
-       "condition": "nodes.seas.seasonal"
+       "condition": "nodes.seas.seasonal",
+       "explain_then": "The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).",
+       "explain_else": "The series has no strong seasonal pattern, so it was not seasonally differenced."
       }
      },
      {
@@ -18994,6 +19048,7 @@
      {
       "id": "backtest",
       "use": "model.backtest",
+      "label": "ARIMAX",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -19022,6 +19077,7 @@
      {
       "id": "naive",
       "use": "evaluate.baseline",
+      "label": "Naive forecast",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -19281,7 +19337,9 @@
       "use": "branch.if",
       "label": "Difference?",
       "with": {
-       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)"
+       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)",
+       "explain_then": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).",
+       "explain_else": "The tests found that the series returns to a steady level, so it was used as it is."
       }
      },
      {
@@ -19289,7 +19347,9 @@
       "use": "branch.if",
       "label": "Seasonal difference?",
       "with": {
-       "condition": "nodes.seas.seasonal"
+       "condition": "nodes.seas.seasonal",
+       "explain_then": "The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).",
+       "explain_else": "The series has no strong seasonal pattern, so it was not seasonally differenced."
       }
      },
      {
@@ -19377,6 +19437,7 @@
      {
       "id": "backtest",
       "use": "model.backtest",
+      "label": "ARIMAX",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -19405,6 +19466,7 @@
      {
       "id": "naive",
       "use": "evaluate.baseline",
+      "label": "Naive forecast",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -19662,7 +19724,9 @@
       "use": "branch.if",
       "label": "Difference?",
       "with": {
-       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)"
+       "condition": "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)",
+       "explain_then": "The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).",
+       "explain_else": "The tests found that the series returns to a steady level, so it was used as it is."
       }
      },
      {
@@ -19670,7 +19734,9 @@
       "use": "branch.if",
       "label": "Seasonal difference?",
       "with": {
-       "condition": "nodes.seas.seasonal"
+       "condition": "nodes.seas.seasonal",
+       "explain_then": "The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).",
+       "explain_else": "The series has no strong seasonal pattern, so it was not seasonally differenced."
       }
      },
      {
@@ -19758,6 +19824,7 @@
      {
       "id": "backtest",
       "use": "model.backtest",
+      "label": "ARIMAX",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"
@@ -19786,6 +19853,7 @@
      {
       "id": "naive",
       "use": "evaluate.baseline",
+      "label": "Naive forecast",
       "inputs": {
        "data": "inputs.data",
        "split": "folds.plan"

@@ -649,6 +649,8 @@ Decides which way the workflow goes from earlier results, for example 'differenc
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `condition` | string | **required** | Condition in the workflow expression language |
+| `explain_then` | string |  | What it means when the condition holds, in plain words for the run report (e.g. 'The tests found the series wanders, so it was differenced.') |
+| `explain_else` | string |  | What it means when the condition does not hold, in plain words |
 
 Result fields (`nodes.<id>.<field>` in conditions): `value` (boolean), `arm` (string).
 

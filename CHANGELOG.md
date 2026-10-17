@@ -337,6 +337,16 @@ milestone releases are tagged on `main`.
 
 ### Fixed
 
+- **web, workflows, spec** (M3.5 review): the run monitor explained branch decisions only as
+  raw expressions and "then/else arm" ("Decisions: Difference? -> then", "Took the then
+  arm") and named the winner by its node id ("backtest has the best average error", "Best:
+  backtest"). `branch.if` now takes plain `explain_then` / `explain_else` texts, recorded as
+  `BranchDecision.explain_plain` and set in every gallery template; the report summary, the
+  Steps table and the Decisions tab lead with them ("The tests found that the series wanders
+  ..., so it was differenced"), list the verdicts of the tests a condition read, and keep the
+  expression under *For experts*. Steps not needed say why in the same words, and
+  selections and comparisons name candidates by their step labels ("ARIMAX", "Naive
+  forecast"); the gallery templates label their candidates.
 - **web** (M3.5 review): the budget plan showed Guided users the planning library's own
   wording ("Goal: expected KPI (posterior mean)", "the greedy allocator's exactness
   precondition fails", "posterior interval", "Marginal ROI"), and its result tiles read

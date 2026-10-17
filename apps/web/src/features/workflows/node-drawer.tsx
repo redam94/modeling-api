@@ -11,6 +11,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { JsonBlock, KeyValues, Mono, UntrustedText } from "@/components/common";
 import { Badge } from "@/components/ui/primitives";
 import { AboutCard } from "@/features/about/about-card";
+import { listWords } from "@/features/guided/plain";
 import { LogsViewer } from "@/features/runs/logs-viewer";
 import { runCostView } from "@/lib/cost";
 import { absoluteTime, elapsedSeconds, formatDuration, shortId } from "@/lib/format";
@@ -27,32 +28,82 @@ function show(v: unknown): string {
   return typeof v === "string" ? v : JSON.stringify(v);
 }
 
-/** "diff ran; sdiff was skipped" for the arm a branch took. */
-export function decisionSentence(d: BranchDecision, doc: WorkflowDoc | null): string {
-  const taken = (doc?.nodes ?? []).filter((n) => parseWhen(n.when)?.branch === d.node_id && parseWhen(n.when)?.arm === d.arm).map((n) => n.id);
-  const other = (doc?.nodes ?? []).filter((n) => parseWhen(n.when)?.branch === d.node_id && parseWhen(n.when)?.arm !== d.arm).map((n) => n.id);
-  const parts = [`The condition was ${d.value ? "true" : "false"}, so the ${d.arm} arm was taken`];
-  if (taken.length) parts.push(`${taken.join(", ")} ran`);
-  if (other.length) parts.push(`${other.join(", ")} ${other.length === 1 ? "was" : "were"} skipped`);
-  return `${parts.join("; ")}.`;
+/** A step's name for people: its label, else its node's About title, else its id. */
+export type LabelOf = (nodeId: string) => string;
+
+export function labelOfFor(doc: WorkflowDoc | null, catalog: Catalog): LabelOf {
+  return (id) => {
+    const node = doc?.nodes.find((n) => n.id === id);
+    return node?.label ?? (node ? catalog.get(implId(node.use))?.about.title : undefined) ?? id;
+  };
 }
 
-export function DecisionView({ decision, doc }: { decision: BranchDecision; doc: WorkflowDoc | null }) {
+/** "The condition was met. Ran: …. Skipped: …." for the path a branch took (no then/else). */
+export function decisionSentence(d: BranchDecision, doc: WorkflowDoc | null, labelOf: LabelOf = (id) => id): string {
+  const gated = (doc?.nodes ?? []).filter((n) => parseWhen(n.when)?.branch === d.node_id);
+  const taken = gated.filter((n) => parseWhen(n.when)?.arm === d.arm).map((n) => labelOf(n.id));
+  const other = gated.filter((n) => parseWhen(n.when)?.arm !== d.arm).map((n) => labelOf(n.id));
+  let text = d.value ? "The condition was met." : "The condition was not met.";
+  if (taken.length) text += ` Ran: ${listWords(taken)}.`;
+  if (other.length) text += ` Skipped: ${listWords(other)}.`;
+  return text;
+}
+
+/** The earlier steps a condition read (`nodes.<id>.<field>`), with their plain verdicts. */
+export function decisionEvidence(d: BranchDecision, run: WorkflowRun | null | undefined, labelOf: LabelOf): { id: string; label: string; verdict: string }[] {
+  const ids = [...new Set(Object.keys(d.inputs ?? {}).map((k) => /^nodes\.([^.]+)\./.exec(k)?.[1]).filter((x): x is string => Boolean(x)))];
+  const out: { id: string; label: string; verdict: string }[] = [];
+  for (const id of ids) {
+    const r = (run?.nodes ?? []).find((n) => n.node_id === id)?.result ?? {};
+    const verdict = ["verdict_plain", "summary_plain", "reason_plain"].map((k) => r[k]).find((v): v is string => typeof v === "string" && v.length > 0);
+    if (verdict) out.push({ id, label: labelOf(id), verdict });
+  }
+  return out;
+}
+
+/**
+ * A branch decision: what the path taken means in plain words (the branch's explanation), the
+ * steps it ran or skipped, the earlier results that decided it in their own plain verdicts, and
+ * - for experts, collapsed in plain mode - the condition and the values it read.
+ */
+export function DecisionView({ decision, doc, run, labelOf = (id) => id, expert = true }: { decision: BranchDecision; doc: WorkflowDoc | null; run?: WorkflowRun | null; labelOf?: LabelOf; expert?: boolean }) {
   const values = Object.entries(decision.inputs ?? {});
+  const evidence = decisionEvidence(decision, run, labelOf);
+  const sentence = decisionSentence(decision, doc, labelOf);
   return (
     <section className="grid gap-2" aria-label="Decision" data-testid="branch-decision">
-      <p className="flex items-center gap-2 text-[14px] font-medium">
-        <GitBranch className="size-4 text-muted-foreground" aria-hidden />
-        Took the <Badge variant={decision.arm === "then" ? "success" : "secondary"}>{decision.arm}</Badge> arm
+      <p className="flex items-start gap-2 text-[14px] font-medium">
+        <GitBranch className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <span>{decision.explain_plain ?? sentence}</span>
       </p>
-      <p className="text-[13px]">{decisionSentence(decision, doc)}</p>
-      <pre className="overflow-x-auto rounded-md border bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap">{decision.condition}</pre>
-      {values.length ? (
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">Values it read</p>
-          <KeyValues items={values.map(([k, v]) => [<Mono key={k}>{k}</Mono>, <Mono key={`${k}-v`}>{show(v)}</Mono>])} />
+      {decision.explain_plain ? <p className="text-[13px] text-muted-foreground">{sentence}</p> : null}
+      {evidence.length ? (
+        <div className="grid gap-1">
+          <p className="text-xs font-medium text-muted-foreground">What decided it</p>
+          <ul className="grid gap-1 text-[13px]" aria-label="What decided it">
+            {evidence.map((e) => (
+              <li key={e.id}>
+                <span className="font-medium">{e.label}:</span> {e.verdict}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
+      <details className="rounded-md border p-2" open={expert}>
+        <summary className="cursor-pointer text-xs font-medium text-muted-foreground">For experts: the condition</summary>
+        <div className="grid gap-2 pt-2">
+          <p className="text-[13px]">
+            Value <Mono>{String(decision.value)}</Mono>, so the <Badge variant={decision.arm === "then" ? "success" : "secondary"}>{decision.arm}</Badge> path ran.
+          </p>
+          <pre className="overflow-x-auto rounded-md border bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap">{decision.condition}</pre>
+          {values.length ? (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Values it read</p>
+              <KeyValues items={values.map(([k, v]) => [<Mono key={k}>{k}</Mono>, <Mono key={`${k}-v`}>{show(v)}</Mono>])} />
+            </div>
+          ) : null}
+        </div>
+      </details>
     </section>
   );
 }
@@ -75,12 +126,15 @@ export function NodeDrawer({
   doc,
   catalog,
   onClose,
+  expert = true,
 }: {
   run: WorkflowRun;
   node: NodeRun | null;
   doc: WorkflowDoc | null;
   catalog: Catalog;
   onClose: () => void;
+  /** Expert detail (the branch condition) open; plain monitors keep it collapsed. */
+  expert?: boolean;
 }) {
   const open = Boolean(node);
   const impl = node ? catalog.get(implId(node.use)) : undefined;
@@ -163,7 +217,7 @@ export function NodeDrawer({
                 />
               </section>
 
-              {decision ? <DecisionView decision={decision} doc={doc} /> : null}
+              {decision ? <DecisionView decision={decision} doc={doc} run={run} labelOf={labelOfFor(doc, catalog)} expert={expert} /> : null}
               {isTest && node.result ? (
                 <section aria-label="Test result" className="grid gap-2">
                   <h3 className="text-sm font-semibold">Verdict</h3>

@@ -153,7 +153,10 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
       await expect(monitor).toHaveAttribute("data-status", "succeeded", { timeout: WORKFLOW_TIMEOUT });
     });
     const summary = page.getByTestId("run-summary");
-    await expect(summary).toContainText("Decisions: Difference? -> then; Seasonal difference? -> else");
+    // the branches explain themselves: the series wanders (differenced), no strong season
+    await expect(summary).toContainText("so it was differenced");
+    await expect(summary).toContainText("so it was not seasonally differenced");
+    await expect(summary).not.toContainText("->");
     await expect(summary).toContainText("beats every benchmark");
     await shot(page, "run-monitor");
 
@@ -175,7 +178,7 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
 
     await page.getByRole("tab", { name: /Decisions/ }).click();
     const decisions = page.getByTestId("branch-decision");
-    await expect(decisions.first()).toContainText("the then arm was taken");
+    await expect(decisions.first()).toContainText("The condition was met.");
     await expect(decisions.filter({ hasText: "nodes.adf.reject" }).first()).toBeVisible();
 
     await step("workflow.model_explorer", async () => {
