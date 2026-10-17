@@ -5,6 +5,20 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Added
+- Spec editor hints: completions and hover text now come from what the tenant actually has.
+  `model.use` and `pipeline[].use` list the catalog's models and steps; `data.dataset` lists
+  datasets; `data.bind` suggests the model's canonical names as keys and the dataset's columns
+  as values; each step's `with` and the model's `settings` are checked and completed against
+  that plugin's own settings schema, with dim and variable names the step can see;
+  `outputs.plots` and `outputs.derived` list the model's plots and derived outputs. Values are
+  suggestions only: the editor is no stricter than the server.
+- Spec editor **Insert** panel (button and tab): search datasets, models, pipeline steps,
+  columns, plots and derived outputs and add them to the spec. Steps come with their required
+  settings filled in; edits keep the document's comments and formatting.
+- Mock mode serves the real ModelSpec schema and plugin catalog
+  (`apps/web/scripts/gen_editor_fixtures.py` → `src/mocks/editor.gen.json`).
+
 ## [0.5.1] — Forecasts with actuals — 2026-10-17
 
 A forecast endpoint can now be given the actual results that arrived since the model was
