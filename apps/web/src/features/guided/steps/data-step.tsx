@@ -120,7 +120,7 @@ function ColumnQuestion({
     <div className="grid gap-1.5" data-question={q.id}>
       <Field label={q.prompt_plain} htmlFor={id} hint={q.help_plain ?? undefined} error={error ?? undefined}>
         <NativeSelect id={id} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)}>
-          <option value="">Choose a column…</option>
+          <option value="">Select a column…</option>
           {options.map((p) => {
             const other = usedElsewhere(takenBy, p.name, q.id);
             return (
@@ -202,11 +202,11 @@ function ColumnsQuestion({
           })}
         </ul>
       ) : (
-        <p className="text-xs text-muted-foreground">No column looks like an answer.</p>
+        <p className="text-xs text-muted-foreground">No column is a good match for this question.</p>
       )}
       {fits.length > list.length || all ? (
         <Button variant="link" size="sm" className="h-auto justify-self-start px-0" onClick={() => setAll((v) => !v)}>
-          {all ? "Show likely columns only" : `Show all ${fits.length} columns that could fit`}
+          {all ? "Show likely columns only" : `Show all ${fits.length} columns that can fit`}
         </Button>
       ) : null}
       {error ? (
@@ -271,7 +271,7 @@ function DataPreview({ table, template, answers }: { table: LocalTable; template
         <h3 className="text-[13px] font-semibold">Your file</h3>
         <div className="max-h-72 overflow-auto rounded-lg border [contain:inline-size]">
           <table className="w-full text-xs">
-            <caption className="sr-only">The first rows of your file, read in your browser</caption>
+            <caption className="sr-only">The first rows of your file. Your browser read these rows.</caption>
             <thead className="sticky top-0 bg-card">
               <tr className="border-b">
                 {table.header.map((h, i) => {
@@ -299,13 +299,13 @@ function DataPreview({ table, template, answers }: { table: LocalTable; template
           </table>
         </div>
         <p className="text-xs text-muted-foreground">
-          {table.mff ? `An MFF long table: ${table.mff.longRows.toLocaleString("en")} rows pivoted to one column per variable. ` : ""}
-          Showing {Math.min(PREVIEW_ROWS, table.rows.length)} of {table.rows.length.toLocaleString("en")} rows{table.truncated ? " read so far (the whole file is checked after upload)" : ""}. Nothing has left your computer yet.
+          {table.mff ? `This is an MFF long table. The app changed its ${table.mff.longRows.toLocaleString("en")} rows to one column for each variable. ` : ""}
+          This table shows {Math.min(PREVIEW_ROWS, table.rows.length)} of {table.rows.length.toLocaleString("en")} rows{table.truncated ? " that the app read until now. The server does a check of the full file after the upload" : ""}. Your file is still only on your computer.
         </p>
       </div>
       {series.length ? (
         <div className="grid gap-2">
-          <h3 className="text-[13px] font-semibold">The series you picked{dateCol ? ", added up per date" : ""}</h3>
+          <h3 className="text-[13px] font-semibold">The series that you selected{dateCol ? ", added for each date" : ""}</h3>
           <ul className="grid gap-1.5">
             {series.map((s) => {
               const values = seriesFor(table, s.column, dateCol);
@@ -514,7 +514,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
     <div className="grid gap-6">
       <Card>
         <CardContent className="grid gap-4 pt-5">
-          <Field label="Name this analysis" htmlFor="guided-name" hint={slug !== name ? <>Saved as <Mono>{slug}</Mono></> : "Lower-case letters, digits and dashes."}>
+          <Field label="Name this analysis" htmlFor="guided-name" hint={slug !== name ? <>Saved as <Mono>{slug}</Mono></> : "Use lower-case letters, digits and dashes."}>
             <Input id="guided-name" value={name} onChange={(e) => setName(e.target.value)} className="max-w-md" maxLength={100} />
           </Field>
           {!file ? (
@@ -531,7 +531,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               <div className="grid gap-1">
                 <p className="font-medium">Drop your spreadsheet here</p>
                 <p className="max-w-[52ch] text-[13px] text-muted-foreground">
-                  {dataShapePlain(template)} Your file is previewed here first; nothing is uploaded until you say so.
+                  {dataShapePlain(template)} The app shows a preview of your file here first. It uploads the file only when you click Upload and continue.
                 </p>
               </div>
               <Button variant="outline" onClick={() => inputRef.current?.click()}>
@@ -557,7 +557,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               {format ? <Badge variant="outline">{format === "mff" ? "MFF" : format.toUpperCase()}</Badge> : <Badge variant="danger">not a CSV or Parquet file</Badge>}
               {preset ? (
                 <Badge variant="info" data-testid="preset">
-                  <Sparkles aria-hidden /> {preset.label} recognised
+                  <Sparkles aria-hidden /> {preset.label} found
                 </Badge>
               ) : null}
               {!busy ? (
@@ -578,12 +578,12 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               />
             </div>
           )}
-          {file && !format ? <p role="alert" className="text-[13px] text-destructive">Guided mode reads CSV and Parquet files. Save your spreadsheet as CSV and choose it again.</p> : null}
+          {file && !format ? <p role="alert" className="text-[13px] text-destructive">Guided mode cannot read this file. Save your spreadsheet as a CSV file and select it again.</p> : null}
           {format === "parquet" ? (
             <Field
               label="Which columns does the file have?"
               htmlFor="parquet-cols"
-              hint="Parquet files are only opened inside the secure sandbox, so type the column names, one per line (or copy them from your tool)."
+              hint="Type the column names, one name on each line. You can also paste them from your tool. Only the secure sandbox opens Parquet files."
             >
               <Textarea id="parquet-cols" value={parquetNames} onChange={(e) => setParquetNames(e.target.value)} placeholder={"week\nmarket\nrevenue\ntv_spend"} className="max-w-md font-mono" />
             </Field>
@@ -608,7 +608,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               <h2 id="questions-h" className="text-[15px] font-semibold tracking-tight">
                 A few questions about your columns
               </h2>
-              <p className="text-[13px] text-muted-foreground">{detect.isPending ? "Looking at your columns…" : "We filled in our best guesses. Check each one; change anything that is wrong."}</p>
+              <p className="text-[13px] text-muted-foreground">{detect.isPending ? "The app examines your columns…" : "The app filled in its best guesses. Examine each answer. Change the answers that are not correct."}</p>
             </div>
             {columnQs.map((q) =>
               q.kind === "column" ? (
@@ -638,7 +638,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
                 <p className="flex gap-2 text-[13px]">
                   <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   <span>
-                    Still to answer: {missing.map((q) => q.prompt_plain.replace(/\?$/, "")).join("; ")}.
+                    Answer these questions: {missing.map((q) => q.prompt_plain.replace(/\?$/, "")).join("; ")}.
                   </span>
                 </p>
               ) : draftError ? (
@@ -649,10 +649,10 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               ) : draft.data ? (
                 <p className="flex gap-2 text-[13px]">
                   <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
-                  <span>Everything the model needs is answered.</span>
+                  <span>You answered all the questions that the model needs.</span>
                 </p>
               ) : (
-                <p className="text-[13px] text-muted-foreground">Checking your answers…</p>
+                <p className="text-[13px] text-muted-foreground">The app does a check of your answers…</p>
               )}
               {warnings.length ? (
                 <ul className="grid gap-1 text-xs text-muted-foreground">
@@ -671,15 +671,15 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
 
       {phase.kind === "uploading" ? (
         <div className="grid gap-2" aria-live="polite">
-          <p className="text-[13px]">Uploading your file…</p>
+          <p className="text-[13px]">The app uploads your file…</p>
           <Progress label="Upload progress" value={phase.progress ? phase.progress.loaded / Math.max(1, phase.progress.total) : null} />
         </div>
       ) : null}
-      {phase.kind === "ingesting" ? <p aria-live="polite" className="text-[13px]">Uploaded. Starting the secure check of your data…</p> : null}
-      {phase.kind === "saving" ? <p aria-live="polite" className="text-[13px]">Saving your analysis…</p> : null}
+      {phase.kind === "ingesting" ? <p aria-live="polite" className="text-[13px]">The upload is complete. The sandbox starts a check of your data…</p> : null}
+      {phase.kind === "saving" ? <p aria-live="polite" className="text-[13px]">The app saves your analysis…</p> : null}
       {phase.kind === "error" ? (
         <p role="alert" className="text-[13px] text-destructive">
-          That did not work: {phase.message}
+          The upload did not complete. {phase.message}
         </p>
       ) : null}
 
@@ -688,7 +688,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
           Back to templates
         </Button>
         <div className="flex flex-wrap items-center gap-3">
-          {!canSave ? <span className="text-xs text-muted-foreground">Your role can look but not upload. Ask a project admin for editor access.</span> : null}
+          {!canSave ? <span className="text-xs text-muted-foreground">Your role cannot upload data. Ask a project admin for editor access.</span> : null}
           <Button onClick={() => void save()} disabled={!settled || !draft.data || !!draftError || busy || problems.length > 0 || !canSave || draft.isFetching}>
             <UploadCloud /> Upload and continue
           </Button>

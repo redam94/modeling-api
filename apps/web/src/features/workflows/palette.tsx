@@ -78,7 +78,7 @@ export function NodePalette({ catalog, onAdd, disabled }: { catalog: Catalog; on
             </details>
           );
         })}
-        {groups.length === 0 ? <p className="px-2 text-[13px] text-muted-foreground">No node matches “{q}”.</p> : null}
+        {groups.length === 0 ? <p className="px-2 text-[13px] text-muted-foreground">No node matches “{q}”. Type a different search.</p> : null}
       </div>
       {current ? (
         <AboutCard
@@ -100,7 +100,7 @@ export function NodePalette({ catalog, onAdd, disabled }: { catalog: Catalog; on
           }
         />
       ) : (
-        <p className="text-xs text-muted-foreground">Pick a node to read what it does, then drag it onto the canvas or press Add.</p>
+        <p className="text-xs text-muted-foreground">Select a node to read what it does. Then drag it onto the canvas or click Add.</p>
       )}
     </section>
   );

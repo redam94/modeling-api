@@ -210,7 +210,7 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
       await expect(runner.getByTestId("about-card")).toContainText("Time-series readiness to ARIMAX");
       await expect(runner.getByLabel("Dataset")).toHaveValue(`dataset://${seeded.project}/weekly_sales`);
       // the price plan is known ahead: the one setting worth changing, under Fine-tune
-      await runner.getByText("Fine-tune (optional: the defaults suit most data)").click();
+      await runner.getByText("Fine-tune (optional: the defaults are correct for most data)").click();
       await runner.getByLabel("Drivers").fill("price");
       await runner.getByRole("button", { name: "Run this recipe" }).click();
       await expect(page).toHaveURL(/\/workflow-runs\/run_/);

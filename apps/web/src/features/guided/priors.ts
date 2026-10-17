@@ -140,15 +140,15 @@ export function beliefProblems(form: PriorsForm): FormProblem[] {
   for (const c of form.channels) {
     if (!c.enabled) continue;
     const where = `channels/${c.channel}`;
-    if (!(Number.isFinite(c.low) && Number.isFinite(c.high))) out.push({ where, message: `Enter both ends of the range for ${c.channel}.` });
+    if (!(Number.isFinite(c.low) && Number.isFinite(c.high))) out.push({ where, message: `The range for ${c.channel} is not complete. Type the two ends of the range.` });
     else if (c.low >= c.high) out.push({ where, message: `For ${c.channel}, the low end must be below the high end.` });
-    else if (form.mode === "roi" && c.low <= 0) out.push({ where, message: `For ${c.channel}, start the ROI range above zero (a channel that returns nothing at all cannot be described as a range of returns).` });
-    else if (form.mode === "share" && (c.low <= 0 || c.high >= 1)) out.push({ where, message: `For ${c.channel}, a share must lie between 0% and 100% (not at either end).` });
+    else if (form.mode === "roi" && c.low <= 0) out.push({ where, message: `For ${c.channel}, the ROI range must start above zero. A range of returns cannot include a return of zero.` });
+    else if (form.mode === "share" && (c.low <= 0 || c.high >= 1)) out.push({ where, message: `For ${c.channel}, the share must be more than 0% and less than 100%.` });
   }
   if (form.baseline.enabled) {
     const b = form.baseline;
     if (b.low >= b.high) out.push({ where: "baseline", message: "For the baseline, the low end must be below the high end." });
-    else if (b.low <= 0 || b.high >= 1) out.push({ where: "baseline", message: "The baseline share must lie between 0% and 100% (not at either end)." });
+    else if (b.low <= 0 || b.high >= 1) out.push({ where: "baseline", message: "The baseline share must be more than 0% and less than 100%." });
   }
   // check_business_priors: the smallest shares cannot add up to more than the whole KPI.
   if (!out.length) {
@@ -160,9 +160,9 @@ export function beliefProblems(form: PriorsForm): FormProblem[] {
       high += form.baseline.high;
     }
     if (low > 1) {
-      out.push({ where: "", message: `The smallest shares you gave already add up to ${pct(low)} of the result. Lower some share ranges or the baseline share.` });
+      out.push({ where: "", message: `The smallest shares you gave already add up to ${pct(low)} of the result. Decrease some share ranges or the baseline share.` });
     } else if (form.baseline.enabled && shares.length > 0 && shares.length === form.channels.length && high < 1) {
-      out.push({ where: "", message: `Even the largest shares you gave explain only ${pct(high)} of the result. Widen the share ranges or the baseline share.` });
+      out.push({ where: "", message: `The largest shares that you gave explain only ${pct(high)} of the result. Make the share ranges or the baseline share wider.` });
     }
   }
   return out;
@@ -204,16 +204,16 @@ export function toLiftTests(rows: readonly LiftTestRow[], channels: readonly str
     if (blank) return;
     const at = (field: string, message: string) => problems.push({ where: `lift/${r.key}/${field}`, message: `Experiment ${n}: ${message}` });
     const before = problems.length;
-    if (!channels.includes(r.channel)) at("channel", "choose the channel that was tested.");
-    if (!DATE_RE.test(r.start)) at("start", "enter the first day of the test.");
-    if (!DATE_RE.test(r.end)) at("end", "enter the last day of the test.");
+    if (!channels.includes(r.channel)) at("channel", "select the channel that you tested.");
+    if (!DATE_RE.test(r.start)) at("start", "type the first day of the test.");
+    if (!DATE_RE.test(r.end)) at("end", "type the last day of the test.");
     else if (DATE_RE.test(r.start) && r.end < r.start) at("end", "the test cannot end before it starts.");
     const spend = num(r.spendDelta);
     const kpi = num(r.kpiDelta);
     const se = num(r.se);
-    if (spend === null || spend === 0) at("spendDelta", "enter how much spend changed (negative if the channel was paused).");
-    if (kpi === null) at("kpiDelta", "enter the measured change in the result.");
-    if (se === null || se <= 0) at("se", "enter the measurement's uncertainty (the ± value, above zero).");
+    if (spend === null || spend === 0) at("spendDelta", "type the change in spend. Use a negative value if you paused the channel.");
+    if (kpi === null) at("kpiDelta", "type the measured change in the result.");
+    if (se === null || se <= 0) at("se", "type the uncertainty of the measurement. This is the ± value, and it must be more than zero.");
     if (problems.length > before) return;
     tests.push({
       channel: r.channel,
@@ -229,7 +229,7 @@ export function toLiftTests(rows: readonly LiftTestRow[], channels: readonly str
 }
 
 /** Example values for an experiment's number fields: worded so they cannot pass for data. */
-export const LIFT_PLACEHOLDERS = { spendDelta: "e.g. -120,000", kpiDelta: "e.g. -260,000", se: "e.g. 70,000" } as const;
+export const LIFT_PLACEHOLDERS = { spendDelta: "For example -120,000", kpiDelta: "For example -260,000", se: "For example 70,000" } as const;
 
 const LIFT_FIELD_WORDS: Record<string, string> = {
   channel: "the channel tested",
@@ -251,7 +251,7 @@ export function liftSummary(problems: readonly FormProblem[], rows: readonly Lif
       const field = p.where.split("/")[2] ?? "";
       return field === "end" && p.message.includes("before it starts") ? "a last day after the first" : (LIFT_FIELD_WORDS[field] ?? field);
     });
-    if (fields.length) out.push(`Experiment ${i + 1} still needs ${listWords(fields)}. Fill them in, or remove the experiment.`);
+    if (fields.length) out.push(`Experiment ${i + 1} still needs ${listWords(fields)}. Type the missing values, or remove the experiment.`);
   });
   return out;
 }
@@ -325,5 +325,5 @@ export function coverageSentence(coverage: number | undefined, credibility: numb
   if (coverage === undefined) return null;
   const gap = Math.abs(coverage - credibility);
   const verdict = gap <= 0.05 ? "close to" : coverage < credibility ? "below" : "above";
-  return `${pct(coverage)} of what the model believes falls inside your range, ${verdict} the ${pct(credibility)} you stated.`;
+  return `${pct(coverage)} of the model's belief is in your range. This is ${verdict} the ${pct(credibility)} that you stated.`;
 }

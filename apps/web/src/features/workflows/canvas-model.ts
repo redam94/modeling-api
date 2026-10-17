@@ -154,9 +154,9 @@ export function checkCanvasConnection(
   const th = conn.targetHandle ?? "";
   if (sh.startsWith("arm:")) {
     const arm = sh.slice(4) as "then" | "else";
-    if (th !== GATE_HANDLE) return { kind: "control", arm, ok: false, reason: `A branch arm does not carry data: drop it on the top edge of a node to run that node only on the ${arm} arm.` };
-    if (conn.target === conn.source) return { kind: "control", arm, ok: false, reason: "A branch cannot gate itself." };
-    if (!gateCandidates(doc, conn.target).includes(conn.source)) return { kind: "control", arm, ok: false, reason: `${conn.source} runs after ${conn.target}, so it cannot gate it (that would be a cycle).` };
+    if (th !== GATE_HANDLE) return { kind: "control", arm, ok: false, reason: `A branch arm does not carry data. To run a node only on the ${arm} arm, drag the arm to the top edge of that node.` };
+    if (conn.target === conn.source) return { kind: "control", arm, ok: false, reason: "A branch cannot control itself." };
+    if (!gateCandidates(doc, conn.target).includes(conn.source)) return { kind: "control", arm, ok: false, reason: `${conn.source} runs after ${conn.target}. Thus it cannot control ${conn.target}, because that makes a cycle.` };
     return { kind: "control", arm, ok: true };
   }
   const sourcePort = sh.startsWith("out:") ? sh.slice(4) : "";

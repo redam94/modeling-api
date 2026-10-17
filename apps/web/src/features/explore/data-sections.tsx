@@ -108,7 +108,7 @@ export function DistributionsSection({ view, expert }: P<DistributionsView>) {
   const [pick, setPick] = useState(labels[0] ?? "");
   const item = items[labels.indexOf(pick)] ?? items[0];
   const plot = useMemo(() => (item?.histogram ? histogramPlot(item.histogram, { title: seriesLabel(item.var, item.facet) }) : null), [item]);
-  if (!item) return <p className="text-muted-foreground">No numeric variables.</p>;
+  if (!item) return <p className="text-muted-foreground">The dataset has no numeric variables.</p>;
   const reading = distributionReading(item);
   return (
     <>
@@ -166,11 +166,11 @@ export function TimeSeriesSection({ view, expert }: P<TimeSeriesView>) {
       <PlainSummary>
         <p>
           {variable} over {view.dim}
-          {view.facet_by?.length ? `, one line per ${view.facet_by.join(" and ")}` : ""}. Breaks, level shifts and gaps are easier to see here than to test.
+          {view.facet_by?.length ? `, one line per ${view.facet_by.join(" and ")}` : ""}. It is easier to see breaks, level shifts and gaps here than to find them with a test.
         </p>
       </PlainSummary>
       <ExplorerPlot plot={plot} title={`${variable} over time`} height={330} />
-      <ViewNotes caption={view.caption_plain} warnings={[...(view.warnings_plain ?? []), ...(shown.some((s) => s.downsampled) ? ["Long series are thinned evenly to keep the plot fast."] : []), ...(view.omitted_series ? [`${view.omitted_series} more series are not shown.`] : [])]} />
+      <ViewNotes caption={view.caption_plain} warnings={[...(view.warnings_plain ?? []), ...(shown.some((s) => s.downsampled) ? ["To keep the plot fast, the app removes points evenly from long series."] : []), ...(view.omitted_series ? [`The plot does not show ${view.omitted_series} more series.`] : [])]} />
       {expert ? <p className="text-xs text-muted-foreground">{series.length} series in the view.</p> : null}
     </>
   );
@@ -190,7 +190,7 @@ export function MissingnessSection({ view, expert }: P<MissingnessView>) {
   return (
     <>
       <PlainSummary tone={reading.tone}>{reading.text}</PlainSummary>
-      {plot ? <ExplorerPlot plot={plot} title="Missing values by variable and period" caption="Darker cells: a larger share of the values in that period is missing." /> : null}
+      {plot ? <ExplorerPlot plot={plot} title="Missing values by variable and period" caption="A darker cell shows that a larger share of the values in that period is missing." /> : null}
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert}>
         <StatTable
@@ -259,7 +259,7 @@ export function CorrelationSection({ view, expert }: P<CorrelationView>) {
   return (
     <>
       <PlainSummary tone={reading.tone}>{reading.text}</PlainSummary>
-      <ExplorerPlot plot={plot} title="Correlation matrix" caption={`${view.method === "spearman" ? "Spearman (rank)" : "Pearson"} correlations: +1 move together, −1 move opposite, 0 unrelated.`} />
+      <ExplorerPlot plot={plot} title="Correlation matrix" caption={`${view.method === "spearman" ? "Spearman (rank)" : "Pearson"} correlations: +1 is a change together, −1 is a change in opposite directions, 0 is no relation.`} />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert} label="Strongest pairs">
         <StatTable
@@ -298,7 +298,7 @@ export function CcfSection({ view, expert, unit }: P<CrossCorrelationView> & { u
         <Picker label="Driver" value={pick} options={options} onChange={setPick} />
         {view.prewhitened ? <Badge variant="info">prewhitened</Badge> : null}
       </div>
-      <ExplorerPlot plot={plot} title={`Correlation of ${pick} with ${view.kpi} by lag`} caption="Bars beyond the dashed band are more than chance." />
+      <ExplorerPlot plot={plot} title={`Correlation of ${pick} with ${view.kpi} by lag`} caption="A bar outside the dashed band shows more than chance." />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert} label="Peak lag of every driver">
         <StatTable
@@ -339,8 +339,8 @@ export function AcfPacfSection({ view, expert }: P<AcfPacfView>) {
       </div>
       <PlainSummary tone={reading.tone}>{reading.text}</PlainSummary>
       <div className="grid gap-4 xl:grid-cols-2">
-        <ExplorerPlot plot={acfPlot} title={`Autocorrelation of ${pick}`} caption="How each value relates to the value k periods earlier." />
-        <ExplorerPlot plot={pacfPlot} title={`Partial autocorrelation of ${pick}`} caption="The same, once the shorter lags are accounted for (a guide to the AR order)." />
+        <ExplorerPlot plot={acfPlot} title={`Autocorrelation of ${pick}`} caption="Shows how each value is related to the value k periods before it." />
+        <ExplorerPlot plot={pacfPlot} title={`Partial autocorrelation of ${pick}`} caption="Shows the same relation without the effect of the shorter lags. Use it to find the AR order." />
       </div>
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert} label="Suggested orders for every series">
@@ -375,7 +375,7 @@ export function StationaritySection({ view, expert }: P<StationarityView>) {
     <>
       <PlainSummary tone={reading.tone}>
         <p>{reading.text}</p>
-        <p className="text-[13px] text-muted-foreground">A series that wanders has no level to return to: model its changes (difference it) or use a model built for that.</p>
+        <p className="text-[13px] text-muted-foreground">A series that wanders has no level to go back to. Model its changes (difference it), or use a model that is made for this type of series.</p>
       </PlainSummary>
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <StatTable
@@ -396,7 +396,7 @@ export function StationaritySection({ view, expert }: P<StationarityView>) {
             : []),
         ]}
       />
-      {expert ? <p className="text-xs text-muted-foreground">ADF asks "does it wander?" (rejecting means stable); KPSS asks the opposite (rejecting means it wanders). α = {num(view.alpha ?? 0.05)}.</p> : null}
+      {expert ? <p className="text-xs text-muted-foreground">ADF tests &quot;does it wander?&quot;. If ADF rejects, the series is stable. KPSS tests the opposite. If KPSS rejects, the series wanders. α = {num(view.alpha ?? 0.05)}.</p> : null}
     </>
   );
 }
@@ -410,7 +410,7 @@ export function StlSection({ view, expert }: P<StlView>) {
   const [pick, setPick] = useState(labels[0] ?? "");
   const item = items[labels.indexOf(pick)] ?? items[0];
   const plot = useMemo(() => (item ? stlPlot(item) : null), [item]);
-  if (!item) return <p className="text-muted-foreground">No series were decomposed.</p>;
+  if (!item) return <p className="text-muted-foreground">The view has no decomposed series.</p>;
   const reading = stlReading(item);
   return (
     <>
@@ -450,7 +450,7 @@ export function VifSection({ view, expert }: P<VifView>) {
   return (
     <>
       <PlainSummary tone={reading.tone}>{reading.text}</PlainSummary>
-      <ExplorerPlot plot={plot} title="Overlap between drivers (variance inflation)" caption={`The dashed line is the limit (${num(view.limit ?? 10)}): above it a driver's separate effect is poorly identified.`} height={240} />
+      <ExplorerPlot plot={plot} title="Overlap between drivers (variance inflation)" caption={`The dashed line is the limit (${num(view.limit ?? 10)}). Above the limit, the model cannot identify the separate effect of a driver accurately.`} height={240} />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert}>
         <StatTable
@@ -463,7 +463,7 @@ export function VifSection({ view, expert }: P<VifView>) {
             { key: "flag", header: "", cell: ([k]) => (flagged.has(k) ? <Badge variant="warning">above the limit</Badge> : null) },
           ]}
         />
-        {view.condition_number != null ? <p className="text-xs text-muted-foreground">Condition number {num(view.condition_number, 4)} (above 30 signals collinearity).</p> : null}
+        {view.condition_number != null ? <p className="text-xs text-muted-foreground">Condition number {num(view.condition_number, 4)} (a value more than 30 shows collinearity).</p> : null}
       </Statistics>
     </>
   );
@@ -490,7 +490,7 @@ export function GroupsSection({ view, expert }: P<GroupComparisonView>) {
         <p>{reading.text}</p>
         {item?.p_value != null ? (
           <p className="text-[13px] text-muted-foreground">
-            {item.differs ? `${item.var} differs between the ${view.by} groups` : `${item.var} looks similar across the ${view.by} groups`} ({item.test === "kruskal" ? "Kruskal-Wallis" : "ANOVA"} p {pValue(item.p_value)}).
+            {item.differs ? `${item.var} is different between the ${view.by} groups` : `${item.var} is similar in all the ${view.by} groups`} ({item.test === "kruskal" ? "Kruskal-Wallis" : "ANOVA"} p {pValue(item.p_value)}).
           </p>
         ) : null}
       </PlainSummary>
@@ -518,7 +518,7 @@ export function GroupsSection({ view, expert }: P<GroupComparisonView>) {
 // ------------------------------------------------------------------------------ quality
 
 const SEVERITY = {
-  error: { icon: AlertOctagon, className: "text-destructive", label: "Fix first" },
+  error: { icon: AlertOctagon, className: "text-destructive", label: "Correct first" },
   warning: { icon: AlertTriangle, className: "text-warning", label: "Look at it" },
   info: { icon: Info, className: "text-info", label: "Good to know" },
 } as const;

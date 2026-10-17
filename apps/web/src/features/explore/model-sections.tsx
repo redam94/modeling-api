@@ -90,7 +90,7 @@ export function ParamsSection({ view, expert }: P<ParamTableView>) {
     <>
       <PlainSummary tone={reading.tone}>
         <p>{reading.text}</p>
-        <p className="text-[13px] text-muted-foreground">Each dot is the model&apos;s best estimate and each line its {interval}: the range the value most likely lies in. A line that crosses zero means the model cannot tell the effect from none.</p>
+        <p className="text-[13px] text-muted-foreground">Each dot is the best estimate of the model. Each line is its {interval}: the range that most probably contains the value. If a line crosses zero, the model cannot tell if there is an effect.</p>
       </PlainSummary>
       <div className="flex flex-wrap items-end gap-3">
         <Picker label="Parameter" value={group} options={names} onChange={setGroup} />
@@ -99,7 +99,7 @@ export function ParamsSection({ view, expert }: P<ParamTableView>) {
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert} label="Every parameter">
         <DataTable label="Parameters" data={rows} columns={columns} getRowId={(r, i) => `${paramLabel(r)}-${i}`} filterPlaceholder="Filter parameters" maxHeight={480} rowHeight={34} />
-        {view.omitted ? <p className="text-xs text-muted-foreground">{view.omitted} more parameter cells are not shown (raise max_params in an explore run).</p> : null}
+        {view.omitted ? <p className="text-xs text-muted-foreground">The table does not show {view.omitted} more parameter cells. To see them, increase max_params in an explore run.</p> : null}
       </Statistics>
     </>
   );
@@ -128,7 +128,7 @@ export function DiagnosticsSection({ view, expert }: P<ModelDiagnosticsView>) {
     <>
       <PlainSummary tone={reading.tone}>
         <p>{reading.text}</p>
-        {diagnostics.length ? <p className="text-[13px] text-muted-foreground">{diagnostics.length} note{diagnostics.length === 1 ? "" : "s"} from the fit below.</p> : null}
+        {diagnostics.length ? <p className="text-[13px] text-muted-foreground">The fit gave {diagnostics.length} note{diagnostics.length === 1 ? "" : "s"}. {diagnostics.length === 1 ? "It is" : "They are"} below.</p> : null}
       </PlainSummary>
       {diagnostics.length ? (
         <ul className="grid gap-2" aria-label="Fit diagnostics">
@@ -193,7 +193,7 @@ export function FitSection({ view, expert }: P<FitVsActualView>) {
           <Picker label="Series" value={pick} options={options} onChange={setPick} />
         </div>
       ) : null}
-      <ExplorerPlot plot={plot} title={`Actual and fitted ${s?.var ?? ""} (${pick})`} caption="Dots: what happened. Line and band: what the model fitted, with its range. Periods after the dashed line were held out of the fit." />
+      <ExplorerPlot plot={plot} title={`Actual and fitted ${s?.var ?? ""} (${pick})`} caption="Dots: the actual values. Line and band: the fitted values and their range. The fit did not use the periods after the dashed line." />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       {expert ? <p className="text-xs text-muted-foreground">{series.length} series along {view.dim}.</p> : null}
     </>
@@ -253,15 +253,15 @@ export function ResidualsSection({ view, expert }: P<ResidualDiagnosticsView>) {
             ))}
           </ul>
         ) : (
-          <p>The errors the model leaves over time.</p>
+          <p>The errors of the model over time.</p>
         )}
       </PlainSummary>
       {options.length > 1 ? <Picker label="Series" value={pick} options={options} onChange={setPick} /> : null}
       <div className="grid gap-4 xl:grid-cols-2">
-        <ExplorerPlot plot={line} title="Residuals over time" height={230} caption="Errors should look like noise around zero, with no runs or trend." />
-        <ExplorerPlot plot={acfPlot} title="Autocorrelation of the residuals" height={230} caption="Bars beyond the band: a pattern the model missed." />
+        <ExplorerPlot plot={line} title="Residuals over time" height={230} caption="The errors must look like random noise around zero, with no runs and no trend." />
+        <ExplorerPlot plot={acfPlot} title="Autocorrelation of the residuals" height={230} caption="A bar outside the band shows a pattern that the model did not find." />
         <ExplorerPlot plot={hist} title="Distribution of the residuals" height={230} />
-        <ExplorerPlot plot={qq} title="Normal QQ plot of the residuals" height={260} caption="Points on the dashed line: errors are close to normal." />
+        <ExplorerPlot plot={qq} title="Normal QQ plot of the residuals" height={260} caption="If the points are on the dashed line, the errors are almost normal." />
       </div>
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert} label="The tests">
@@ -280,7 +280,7 @@ export function DecompositionSection({ view, expert }: P<DecompositionView>) {
   return (
     <>
       <PlainSummary tone={reading.tone}>{reading.text}</PlainSummary>
-      <ExplorerPlot plot={plot} title="Contributions over time" caption={view.scale === "multiplicative" ? "Parts multiply rather than add up." : "The parts add up to the model's prediction."} height={320} />
+      <ExplorerPlot plot={plot} title="Contributions over time" caption={view.scale === "multiplicative" ? "The parts multiply. They do not add." : "The sum of the parts is the prediction of the model."} height={320} />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert} label="Shares of the total">
         <StatTable
@@ -316,8 +316,8 @@ export function ResponseCurvesSection({ view, expert }: P<ResponseCurvesView>) {
   return (
     <>
       <PlainSummary tone={saturated.length ? "warn" : "neutral"}>
-        <p>How much each channel adds as its spend grows; the dot is what you spend today.</p>
-        {saturated.length ? <p className="text-[13px]">{saturated.join(", ")} {saturated.length === 1 ? "is" : "are"} close to saturation: the next unit of money adds far less than the first ones did.</p> : null}
+        <p>Each curve shows how much a channel adds when its spend increases. On each curve, the dot is what you spend today.</p>
+        {saturated.length ? <p className="text-[13px]">{saturated.join(", ")} {saturated.length === 1 ? "is" : "are"} near saturation. The next unit of money adds much less than the first units.</p> : null}
       </PlainSummary>
       <fieldset className="flex flex-wrap gap-1.5">
         <legend className="sr-only">Channels to show</legend>
@@ -369,13 +369,13 @@ export function IrfSection({ view, expert }: P<IrfView>) {
       </div>
       <PlainSummary>
         <p>
-          After an unexpected rise in {shock}, {response} {(values[peakAt] ?? 0) >= 0 ? "rises" : "falls"} most {peakAt === 0 ? "at once" : `after ${peakAt} period${peakAt === 1 ? "" : "s"}`}
-          {settled ? " and the effect fades within the horizon." : ", and the effect has not faded by the end of the horizon."}
+          After an unexpected increase in {shock}, {response} {(values[peakAt] ?? 0) >= 0 ? "increases" : "decreases"} most {peakAt === 0 ? "immediately" : `after ${peakAt} period${peakAt === 1 ? "" : "s"}`}.
+          {settled ? " The effect becomes small before the end of the horizon." : " The effect is still there at the end of the horizon."}
         </p>
       </PlainSummary>
-      <ExplorerPlot plot={plot} title={`Response of ${response} to a shock in ${shock}`} caption="The band is the uncertainty; where it covers zero the response could be none." />
+      <ExplorerPlot plot={plot} title={`Response of ${response} to a shock in ${shock}`} caption="The band shows the uncertainty. Where the band includes zero, possibly there is no response." />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
-      {expert ? <p className="text-xs text-muted-foreground">{view.horizons} periods; {view.variables.length} variables.</p> : null}
+      {expert ? <p className="text-xs text-muted-foreground">{view.horizons} periods, {view.variables.length} variables.</p> : null}
     </>
   );
 }
@@ -394,8 +394,8 @@ export function FevdSection({ view, expert }: P<FevdView>) {
       <Picker label="Variable" value={variable} options={vars} onChange={setVariable} />
       <PlainSummary>
         <p>
-          {view.horizons} periods ahead, {pct(own)} of what is uncertain about {variable} comes from its own surprises
-          {top.filter(([n]) => n !== variable).length ? `; the largest outside source is ${top.filter(([n]) => n !== variable)[0]![0]} (${pct(top.filter(([n]) => n !== variable)[0]![1])}).` : "."}
+          {view.horizons} periods ahead, {pct(own)} of the uncertainty about {variable} comes from its own surprises.
+          {top.filter(([n]) => n !== variable).length ? ` The largest other source is ${top.filter(([n]) => n !== variable)[0]![0]} (${pct(top.filter(([n]) => n !== variable)[0]![1])}).` : ""}
         </p>
       </PlainSummary>
       <ExplorerPlot plot={plot} title={`Forecast-error variance of ${variable}`} height={280} />
@@ -441,7 +441,7 @@ export function ForecastSection({ view, expert }: P<ModelForecastView>) {
   const [pick, setPick] = useState(labels[0] ?? "");
   const f = items[Math.max(0, labels.indexOf(pick))];
   const plot = useMemo(() => (f ? fanPlot(f.fan, { title: f.kpi, splitAt: f.split_at ?? null }) : null), [f]);
-  if (!f) return <p className="text-muted-foreground">No forecast.</p>;
+  if (!f) return <p className="text-muted-foreground">This view has no forecast.</p>;
   const total = f.total;
   const q = (k: string) => Object.entries(total?.quantiles ?? {}).find(([key]) => Math.abs(Number(key) - Number(k)) < 1e-9)?.[1];
   return (
@@ -450,14 +450,14 @@ export function ForecastSection({ view, expert }: P<ModelForecastView>) {
       <PlainSummary>
         <p>
           {total
-            ? `Over the forecast, ${f.kpi} adds up to about ${num(total.mean, 3)}${f.units ? ` ${f.units}` : ""}${q("0.05") !== undefined && q("0.95") !== undefined ? ` (90% likely between ${num(q("0.05"), 3)} and ${num(q("0.95"), 3)})` : ""}.`
+            ? `For all the forecast periods, the total of ${f.kpi} is about ${num(total.mean, 3)}${f.units ? ` ${f.units}` : ""}${q("0.05") !== undefined && q("0.95") !== undefined ? ` (90% likely between ${num(q("0.05"), 3)} and ${num(q("0.95"), 3)})` : ""}.`
             : endOfHorizon(f)}
         </p>
-        {f.summed_over?.length ? <p className="text-[13px] text-muted-foreground">Summed over {f.summed_over.join(" and ")}.</p> : null}
+        {f.summed_over?.length ? <p className="text-[13px] text-muted-foreground">This is the sum over {f.summed_over.join(" and ")}.</p> : null}
       </PlainSummary>
       <ExplorerPlot plot={plot} title={`Forecast of ${f.kpi}`} caption="Dots: history. After the dashed line: the forecast, its middle line and the 50% and 90% bands." height={300} />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
-      {expert ? <p className="text-xs text-muted-foreground">{f.fan.coords.length - (f.history ?? 0)} periods ahead along {f.dim}; {f.kind ?? "expected"} values.</p> : null}
+      {expert ? <p className="text-xs text-muted-foreground">{f.fan.coords.length - (f.history ?? 0)} periods ahead along {f.dim}. Values: {f.kind ?? "expected"}.</p> : null}
     </>
   );
 }

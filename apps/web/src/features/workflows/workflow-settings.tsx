@@ -31,9 +31,9 @@ function parseDefault(text: string, type: WorkflowParamDecl["type"]): { ok: true
       (type === "boolean" && typeof v === "boolean") ||
       (type === "array" && Array.isArray(v)) ||
       (type === "object" && v !== null && typeof v === "object" && !Array.isArray(v));
-    return fits ? { ok: true, value: v } : { ok: false, error: `Not a ${type}.` };
+    return fits ? { ok: true, value: v } : { ok: false, error: `The value is not a ${type}. Type a ${type}.` };
   } catch {
-    return { ok: false, error: type === "array" ? "Write a JSON list, like [1, 4, 8]." : `Not a ${type}.` };
+    return { ok: false, error: type === "array" ? "The value is not a JSON list. Type a list, for example [1, 4, 8]." : `The value is not a ${type}. Type a ${type}.` };
   }
 }
 
@@ -82,9 +82,9 @@ function ParamRow({ name, decl, onChange, onRemove }: { name: string; decl: Work
             onChange(next);
           }}
         />
-        Must be given when the workflow runs
+        A value is necessary when the workflow runs
       </label>
-      <Input aria-label={`Description of ${name}`} placeholder="What it controls, in plain words" value={decl.description ?? ""} onChange={(e) => onChange({ ...decl, description: e.target.value || null })} />
+      <Input aria-label={`Description of ${name}`} placeholder="Tell what it controls, in plain words" value={decl.description ?? ""} onChange={(e) => onChange({ ...decl, description: e.target.value || null })} />
     </li>
   );
 }
@@ -128,7 +128,7 @@ export function WorkflowSettings({
           maxLength={4000}
           value={doc.metadata.description ?? ""}
           onChange={(e) => update({ metadata: { ...doc.metadata, description: e.target.value || null } })}
-          placeholder="What this workflow is for and when to run it"
+          placeholder="Tell what this workflow does and when to run it"
         />
       </Field>
 
@@ -136,7 +136,7 @@ export function WorkflowSettings({
         <h3 id={`${id}-params`} className="text-sm font-semibold">
           Parameters
         </h3>
-        <p className="text-xs text-muted-foreground">Values a run may change. Nodes take them with “Parameter”, conditions read them as params.&lt;name&gt;.</p>
+        <p className="text-xs text-muted-foreground">A run can change these values. A node gets a value with “Parameter”. A condition reads a value as params.&lt;name&gt;.</p>
         <ul className="grid gap-2">
           {Object.entries(params).map(([name, decl]) => (
             <ParamRow
@@ -205,7 +205,7 @@ export function WorkflowSettings({
         <h3 id={`${id}-outputs`} className="text-sm font-semibold">
           Outputs
         </h3>
-        <p className="text-xs text-muted-foreground">What a run hands back, and what a parent workflow reads from this one.</p>
+        <p className="text-xs text-muted-foreground">The results that a run gives. A parent workflow reads these results from this workflow.</p>
         <ul className="grid gap-2">
           {Object.entries(outputs).map(([name, b]) => (
             <li key={name} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
@@ -255,7 +255,7 @@ export function WorkflowSettings({
             onChange={(e) => update({ execution: { ...doc.execution, max_parallel: Math.min(32, Math.max(1, Number(e.target.value) || 1)) } })}
           />
         </Field>
-        <Field label="Whole-run time limit" htmlFor={`${id}-to`} hint="Like 2h or 30m (between 1 minute and 7 days).">
+        <Field label="Whole-run time limit" htmlFor={`${id}-to`} hint="Type a time, for example 2h or 30m. The minimum is 1 minute and the maximum is 7 days.">
           <Input id={`${id}-to`} className="font-mono" placeholder="6h" value={doc.execution?.timeout ?? ""} onChange={(e) => update({ execution: { ...doc.execution, ...(e.target.value ? { timeout: e.target.value } : { timeout: undefined }) } })} />
         </Field>
       </section>

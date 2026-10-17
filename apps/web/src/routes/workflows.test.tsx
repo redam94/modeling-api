@@ -76,7 +76,7 @@ describe("Workflows", () => {
     await user.click(await screen.findByRole("button", { name: "Run workflow" }));
     const dialog = await screen.findByRole("dialog", { name: "Run revision 2" });
     await user.click(within(dialog).getByRole("button", { name: "Start run" }));
-    expect(await within(dialog).findByText("Still needed: data.")).toBeInTheDocument();
+    expect(await within(dialog).findByText("Still needed: data. Give a value for each item.")).toBeInTheDocument();
     await user.selectOptions(within(dialog).getByLabelText("Your data"), "dataset://default/eu_media_daily");
     await user.click(within(dialog).getByRole("button", { name: "Start run" }));
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/workflow-runs\/run_/));

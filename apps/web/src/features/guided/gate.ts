@@ -14,9 +14,9 @@ export { previewScorecardGate as previewGate } from "@/lib/gate";
 
 /** What the gate means for this user, in one sentence. */
 export function gateSentence(outcome: GateOutcome, isAdmin: boolean): string {
-  if (outcome === "allowed") return "Every check passed, so this model can go live straight away.";
-  if (outcome === "blocked") return "This model cannot go live: fix the failing checks and fit again.";
+  if (outcome === "allowed") return "All checks passed. This model can go live now.";
+  if (outcome === "blocked") return "This model cannot go live because some checks failed. Correct the failed checks and fit the model again.";
   return isAdmin
-    ? "Some checks need a second look. As a project admin you can approve it anyway, with a short reason that is kept in the audit log."
-    : "Some checks need a second look, so a project admin has to approve this model before it goes live.";
+    ? "Some checks need a second examination. As a project admin, you can approve the model. Give a short reason. The audit log keeps the reason."
+    : "Some checks need a second examination. A project admin must approve this model before it can go live.";
 }

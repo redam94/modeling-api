@@ -31,7 +31,7 @@ export function conditionReferences(doc: WorkflowDoc, catalog: Catalog, nodeId: 
     if (n.id === nodeId || downstream.has(n.id)) continue;
     const impl = catalog.get(implId(n.use));
     for (const [field, spec] of Object.entries(impl?.result_fields ?? {})) {
-      out.push({ text: `nodes.${n.id}.${field}`, label: `${n.id}.${field}${up.has(n.id) ? "" : " (not wired yet)"}`, description: `${spec.type}: ${spec.description}` });
+      out.push({ text: `nodes.${n.id}.${field}`, label: `${n.id}.${field}${up.has(n.id) ? "" : " (not connected yet)"}`, description: `${spec.type}: ${spec.description}` });
     }
   }
   for (const [name, p] of Object.entries(doc.params ?? {})) out.push({ text: `params.${name}`, label: `params.${name}`, description: `${p.type}${p.description ? `: ${p.description}` : ""}` });
@@ -96,10 +96,10 @@ export function ConditionEditor({
         ) : status === "ok" ? (
           <>
             <CheckCircle2 className="mt-0.5 size-3.5 text-success" aria-hidden />
-            <span className="text-muted-foreground">The condition reads correctly.</span>
+            <span className="text-muted-foreground">The condition is correct.</span>
           </>
         ) : (
-          <span className="text-muted-foreground">Write when the then arm should run.</span>
+          <span className="text-muted-foreground">Type the condition that makes the then arm run.</span>
         )}
       </p>
       <NativeSelect
@@ -117,16 +117,17 @@ export function ConditionEditor({
         ))}
       </NativeSelect>
       <details id={`${id}-help`} className="text-xs text-muted-foreground">
-        <summary className="cursor-pointer">How conditions are written</summary>
+        <summary className="cursor-pointer">How to write a condition</summary>
         <div className="mt-1 grid gap-1">
           <p>
-            Read results as <code>nodes.adf.reject</code>, parameters as <code>params.alpha</code>. Combine with <code>and</code>, <code>or</code>, <code>not</code>; compare with{" "}
-            <code>== != &lt; &lt;= &gt; &gt;=</code> and <code>in</code>.
+            To read a result, type <code>nodes.adf.reject</code>. To read a parameter, type <code>params.alpha</code>. To combine conditions, use{" "}
+            <code>and</code>, <code>or</code> and <code>not</code>. To compare values, use <code>== != &lt; &lt;= &gt; &gt;=</code> and <code>in</code>.
           </p>
           <p>
-            Functions: <code>abs min max len round any all exists coalesce if</code>. A missing result is an error unless wrapped in <code>exists(…)</code> or <code>coalesce(…, default)</code>.
+            Functions: <code>abs min max len round any all exists coalesce if</code>. If a result is missing, the condition gives an error. To prevent this error, put the result in <code>exists(…)</code> or{" "}
+            <code>coalesce(…, default)</code>.
           </p>
-          <p>The server checks and evaluates conditions with a safe parser; your browser never runs them.</p>
+          <p>The server uses a safe parser to check and calculate the condition. Your browser does not run the condition.</p>
         </div>
       </details>
     </div>

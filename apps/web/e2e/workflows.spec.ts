@@ -112,7 +112,7 @@ test("a small workflow is built on the canvas, checked live and saved", async ({
   await expect(page.getByRole("status").filter({ hasText: "results have no field 'p_valu'" })).toBeVisible();
   await expect(page.getByTestId("canvas-node-if")).toContainText("1");
   await condition.fill("not nodes.adf.reject");
-  await expect(page.getByText("The condition reads correctly.")).toBeVisible();
+  await expect(page.getByText("The condition is correct.")).toBeVisible();
   await shot(page, "workflow-editor");
 
   // Gate the differencing node on the then arm (inspector), then save.
