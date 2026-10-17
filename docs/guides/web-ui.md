@@ -267,6 +267,13 @@ names the mode (**Forecast**, **Predict**, …).
 The button sends `POST /v1/models/{id}/versions/{v}:score` with `Prefer: wait=30` and an
 idempotency key, then follows the run.
 
+A forecast sent actuals (a model that conditions on them takes the target in the grid) also
+returns predictions on the actual periods: one-step-ahead, what the model expected before it
+saw each actual. **Predictions against your actuals** puts them side by side: how many actuals
+were compared, the typical and percentage error, how often the actuals fell inside the band,
+a chart per series (actuals as diamonds, the forecast dashed after the last actual) and a table
+with the error per period. The run returns the actuals it used in `ScoreSummary.actuals`.
+
 ![A forecast for the fitted markets plus FR, a market the model has never seen](../assets/screenshots/score-new-market.png){ .mapi-shot }
 
 **Results** shows the run's own plots (a forecast fan per market, or the scenario against the

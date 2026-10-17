@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-from mapi_runner.worker.score import _result_json, summary_document
+from mapi_runner.worker.score import _result_json, actuals_tables, summary_document
+from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import fit_spec, score_bundle
 from mapi_sdk.testing import toy
 from mapi_spec import DataSchema, ScoreRequest
@@ -78,3 +79,50 @@ def test_plain_forecasts_say_they_used_no_actuals() -> None:
     assert doc is not None
     rec = ScoreSummary.model_validate(doc).conditioning
     assert rec is not None and not rec.conditioned and rec.fit_end == "2022-12-01"
+
+
+def _scored(
+    payload: xr.Dataset | None, **output: object
+) -> tuple[Bundle, ScoreRequest, xr.DataTree]:
+    t = pd.date_range("2021-01-01", periods=24, freq="MS").as_unit("ns")
+    y = 100 + np.cumsum(np.random.default_rng(0).normal(0, 1, size=(1, 24)), axis=1)
+    data = xr.Dataset({"sales": (("region", "month"), y)}, coords={"region": ["n"], "month": t})
+    reg = toy.toy_registry()
+    bundle = fit_spec(SPEC, data, registry=reg, raw_schema=RAW)
+    req = ScoreRequest.model_validate(
+        {
+            "apiVersion": "mapi/v1",
+            "kind": "ScoreRequest",
+            "model": "endpoint://test/ar",
+            "mode": "forecast",
+            "horizon": {"dim": "time", "periods": 3},
+            **({"output": output} if output else {}),
+        }
+    )
+    return bundle, req, score_bundle(bundle, req, payload, registry=reg)
+
+
+def test_the_summary_carries_the_actuals_next_to_their_predictions() -> None:
+    payload = xr.Dataset(
+        {"sales": (("region", "month"), [[130.0, 131.0, np.nan]])},
+        coords={"region": ["n"], "month": pd.date_range("2023-01-01", periods=3, freq="MS")},
+    )
+    bundle, req, tree = _scored(payload)
+    actuals = actuals_tables(bundle, req, payload, tree)
+    summary = ScoreSummary.model_validate(summary_document(tree, actuals))
+    [table] = summary.actuals
+    pred = next(t for t in summary.tables if t.variable == table.variable)
+    assert table.columns == ["region", "month", "actual"]
+    assert table.rows == [["n", "2023-01-01", 130.0], ["n", "2023-02-01", 131.0]]
+    # every actual has a (one-step-ahead) prediction to compare with, on the same coordinates
+    keys = {(r[pred.columns.index("region")], r[pred.columns.index("month")]) for r in pred.rows}
+    assert {("n", "2023-01-01"), ("n", "2023-02-01")} <= keys
+    # canonical names follow the output; model-space output has nothing comparable
+    _, creq, ctree = _scored(payload, names="canonical")
+    [canon] = actuals_tables(bundle, creq, payload, ctree)
+    assert canon["columns"] == ["geo", "time", "actual"]
+    _, mreq, mtree = _scored(payload, units="model")
+    assert actuals_tables(bundle, mreq, payload, mtree) == []
+    # a plain forecast has none
+    _, preq, ptree = _scored(None)
+    assert actuals_tables(bundle, preq, None, ptree) == []
