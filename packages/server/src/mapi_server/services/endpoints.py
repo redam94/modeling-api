@@ -58,7 +58,7 @@ from mapi_spec.storage import check_segment
 from mapi_spec.tenancy import Action, ResourceKind
 from mapi_spec.validate import ScoreMetadata
 from mapi_spec.webhooks import WebhookEventType
-from mapi_spec.xrjson import XrJsonDataset, XrJsonVariable, check_xrjson_size
+from mapi_spec.xrjson import XrJsonDataset, XrJsonVariable, check_xrjson_size, observed_labels
 from pydantic import JsonValue
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,9 +68,11 @@ from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.observability import metrics as obs_metrics
 from mapi_server.services.audit import write_audit
+from mapi_server.services.catalog import CatalogService
 from mapi_server.services.runs import Scope
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.scorecards import promotion_decision
+from mapi_server.services.specs import live_capabilities
 from mapi_server.services.webhooks.outbox import emit_event
 
 __all__ = [
@@ -79,6 +81,7 @@ __all__ = [
     "endpoint_schema_issues",
     "evaluate_gate",
     "inline_summary",
+    "live_snapshot",
     "load_endpoint",
     "model_ref_of",
     "promote",
@@ -206,7 +209,26 @@ def snapshot_for(mv: m.ModelVersion) -> EndpointSchemaSnapshot:
         horizon_dim=horizon,
         future_required=sorted(n for n, v in raw.vars.items() if v.future_required),
         fit_coords=dict(meta.fit_coords.get(RESERVED_STAGE, {})),
+        conditions_on_actuals=caps.conditions_on_actuals,
     )
+
+
+async def live_snapshot(
+    session: AsyncSession, catalogs: CatalogService | None, row: m.Endpoint
+) -> EndpointSchemaSnapshot:
+    """The endpoint's frozen input contract with ``conditions_on_actuals`` as the plugin
+    build that scores the current version has it now (a plugin may learn to condition on
+    actuals after the fit; stored snapshots predate the field)."""
+    snapshot = EndpointSchemaSnapshot.model_validate(row.schema_snapshot)
+    mv = await session.get(m.ModelVersion, row.model_version_id)
+    if mv is None or mv.score_meta is None:
+        return snapshot
+    meta = ScoreMetadata.model_validate(mv.score_meta)
+    live = await live_capabilities(session, catalogs, meta)
+    caps = live if live is not None else meta.resolved.model.capabilities
+    if caps.conditions_on_actuals == snapshot.conditions_on_actuals:
+        return snapshot
+    return snapshot.model_copy(update={"conditions_on_actuals": caps.conditions_on_actuals})
 
 
 async def evaluate_gate(
@@ -739,8 +761,13 @@ def _coord_summary(
 def inline_summary(
     payload: XrJsonDataset, schema: DataSchema | None, pointer: str, issues: list[Issue]
 ) -> DataSummary:
-    """The :class:`DataSummary` of an inline payload, from its coordinates only (JSON
-    scalars - never the data values), for the static CoordPlan checks."""
+    """The :class:`DataSummary` of an inline payload, from its coordinates (JSON scalars),
+    for the static CoordPlan checks.
+
+    Data values are never decoded; only the targets of ``schema`` are null-checked
+    (:func:`~mapi_spec.xrjson.observed_labels`) so ``observed`` says, per dim, the labels at
+    which a target holds a value - the actuals of a forecast (:mod:`mapi_spec.actuals`), which
+    the checks then refuse or validate before a run starts."""
     coords: dict[str, CoordSummary] = {}
     sizes: dict[str, int] = dict(payload.dims)
     for var in [*payload.coords.values(), *payload.data_vars.values()]:
@@ -759,7 +786,24 @@ def inline_summary(
             coords[d] = CoordSummary(
                 kind="index", size=size, start=0 if size else None, end=size - 1 if size else None
             )
-    return DataSummary(vars=list(payload.data_vars), coords=coords)
+    observed: dict[str, dict[str, CoordSummary]] = {}
+    for target in schema.targets if schema is not None else []:
+        spec = payload.data_vars.get(target)
+        if spec is None:
+            continue
+        per_dim: dict[str, CoordSummary] = {}
+        for d in spec.dims:
+            labels = observed_labels(payload, target, d)
+            if labels is None or d not in coords:
+                continue
+            dim = schema.dims.get(d) if schema is not None else None
+            seen = XrJsonVariable(dims=[d], data=list(labels))
+            cs = _coord_summary(d, seen, dim, "", [])  # coord issues are reported above
+            if cs is not None:
+                per_dim[d] = cs
+        if per_dim:
+            observed[target] = per_dim
+    return DataSummary(vars=list(payload.data_vars), coords=coords, observed=observed)
 
 
 def _shape(var: XrJsonVariable) -> list[int]:

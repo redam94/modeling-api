@@ -245,7 +245,7 @@ async def compile_guided(ctx: Ctx, session: Session, body: GuidedCompile) -> Sco
             }
         )
     issues: list[Issue] = []
-    await check_score_request(session, ctx.scope, request, mv, issues)
+    await check_score_request(session, ctx.scope, request, mv, issues, catalogs=ctx.catalogs)
     if any(i.severity == Severity.ERROR for i in issues):
         raise ValidationFailed(issues)
     return request

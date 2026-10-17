@@ -473,7 +473,7 @@ async def submit_model_run(
             raise MapiError("score runs need a request", code=ErrorCode.SCHEMA_INVALID)
         issues: list[Issue] = []
         datasets = await check_score_request(
-            session, scope, request, mv, issues, inline=inline_summary
+            session, scope, request, mv, issues, inline=inline_summary, catalogs=ctx.catalogs
         )
         if any(i.severity == "error" for i in issues):
             raise ValidationFailed(issues)

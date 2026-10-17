@@ -24,7 +24,9 @@ from mapi_spec.endpoints import (
     EndpointSchemaSnapshot,
     EndpointScoreCall,
     EndpointValidation,
+    example_actuals_call,
     example_score_call,
+    input_table,
 )
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, ValidationFailed
 from mapi_spec.executor import RunKind
@@ -55,6 +57,7 @@ from mapi_server.services.audit import write_audit
 from mapi_server.services.endpoints import (
     endpoint_dto,
     endpoint_schema_issues,
+    live_snapshot,
     load_endpoint,
     promote,
     revision_dto,
@@ -179,7 +182,8 @@ async def get_endpoint_schema(ctx: Ctx, session: Session, alias: Alias) -> Endpo
     validates against it."""
     row = await load_endpoint(session, ctx.scope, alias)
     dto = await endpoint_dto(session, row)
-    snapshot = dto.schema_snapshot
+    snapshot = await live_snapshot(session, ctx.catalogs, row)
+    actuals = example_actuals_call(snapshot)
     return EndpointSchema(
         alias=alias,
         ref=dto.ref,
@@ -187,6 +191,12 @@ async def get_endpoint_schema(ctx: Ctx, session: Session, alias: Alias) -> Endpo
         revision=dto.revision,
         snapshot=snapshot,
         example=_example(snapshot),
+        actuals_example=(
+            actuals.model_dump(mode="json", by_alias=True, exclude_defaults=True)
+            if actuals is not None
+            else None
+        ),
+        input_table=input_table(snapshot),
         max_inline_bytes=MAX_XRJSON_BYTES,
     )
 
@@ -211,15 +221,20 @@ async def list_endpoint_snippets(
     ] = None,
 ) -> SnippetSet:
     """Ready-to-run code that scores the endpoint with its example payload. The API token is
-    read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret."""
+    read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.
+
+    With the endpoint's input table the Apps Script reads an "Input" sheet of actuals and
+    dates to forecast, and the other snippets add a forecast over the periods after the fit
+    to fill with actuals."""
     row = await load_endpoint(session, ctx.scope, alias)
-    snapshot = EndpointSchemaSnapshot.model_validate(row.schema_snapshot)
+    snapshot = await live_snapshot(session, ctx.catalogs, row)
     try:
         sctx = SnippetContext(
             base_url=base_url or ctx.settings.api_url,
             project=f"{ctx.scope.tenant_id}/{ctx.scope.project_id}",
             alias=alias,
             payload=_example(snapshot),
+            input_table=input_table(snapshot),
         )
     except ValueError as exc:
         raise MapiError(
@@ -323,7 +338,9 @@ async def _static_checks(
             code=ErrorCode.CONFLICT,
         )
     await _check_dataset_refs(session, ctx, mv, body)
-    await check_score_request(session, ctx.scope, request, mv, issues, inline=summary)
+    await check_score_request(
+        session, ctx.scope, request, mv, issues, inline=summary, catalogs=ctx.catalogs
+    )
     return issues, request, summary
 
 
