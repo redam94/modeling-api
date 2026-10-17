@@ -197,3 +197,144 @@ def test_permutation_check_on_statsmodels_and_on_drivers_end_to_end() -> None:
     only_trend = env_of(trend + rng.normal(scale=0.5, size=104))
     r = measure(only_trend, PolicyCheck(check="null.permutation_target", params=params))
     assert r.status is not CheckStatus.PASS, (r.value, r.message_plain)
+
+
+# ============================================================== null.noise_regressors
+
+
+def test_placebo_channels_get_the_default_prior_not_the_source_channels() -> None:
+    """Regression: per-channel priors (business priors, calibrated ROI) were copied to the
+    placebo channels, so pure noise got a tight informative ROI prior and a calibrated MMM
+    failed because of the prior, not the data. Structural settings are still copied."""
+    from mapi_runner.worker.governance import _walk_settings
+
+    settings = {
+        "priors": {"roi": {"tv": {"mu": 1.0986, "sigma": 0.1}, "search": {"mu": 0, "sigma": 1}}},
+        "calibration": {"lift_tests": {"tv": {"roi": 2.0}, "search": {"roi": 1.0}}},
+        "channels": {"tv": {"adstock": {"kind": "geometric", "l_max": 8}}, "search": {}},
+        "media": ["tv", "search"],
+    }
+    out = _walk_settings(settings, {"tv", "search"}, ["noise_1", "noise_2"], "tv")
+    assert set(out["priors"]["roi"]) == {"tv", "search"}
+    assert set(out["calibration"]["lift_tests"]) == {"tv", "search"}
+    assert out["channels"]["noise_1"] == {"adstock": {"kind": "geometric", "l_max": 8}}
+    assert out["media"] == ["tv", "search", "noise_1", "noise_2"]
+
+
+def test_noise_p_values_are_corrected_for_the_number_of_placebos() -> None:
+    """Regression: each placebo's p-value was compared with 0.05 on its own, so with three
+    placebos a good model was flagged 14% of the time under the null. Holm's correction
+    keeps the family-wise rate at 5%."""
+    from mapi_runner.worker.governance import _holm_significant
+
+    assert _holm_significant({"noise_1": 0.03, "noise_2": 0.2, "noise_3": 0.5}) == []
+    assert _holm_significant({"noise_1": 0.01, "noise_2": 0.2, "noise_3": 0.5}) == ["noise_1"]
+    assert _holm_significant({"a": 0.01, "b": 0.02, "c": 0.04}) == ["a", "b", "c"]
+    assert _holm_significant({}) == []
+    rng = np.random.default_rng(0)
+    flagged = sum(
+        bool(_holm_significant({f"n{i}": float(rng.uniform()) for i in range(3)}))
+        for _ in range(4000)
+    )
+    assert flagged / 4000 <= 0.06
+
+
+def _positive_channel_registry() -> Any:
+    from typing import ClassVar
+
+    import pymc as pm
+    from mapi_pymc.context import BuildContext
+    from mapi_pymc.model import PyMCModel
+    from mapi_sdk.models import ModelSettings
+
+    class PosSettings(ModelSettings):
+        beta_sigma: float = 1.0
+
+    class PositiveChannels(PyMCModel[PosSettings]):
+        """``y ~ Normal(a + sum_c beta_c spend_c, sigma)`` with ``beta_c >= 0`` (as an MMM's
+        channel effects: every posterior draw of an effect is positive)."""
+
+        id = "test.positive_channels"
+        version = "1.0.0"
+        Settings = PosSettings
+        schema_template: ClassVar[dict[str, Any]] = {
+            "template": {
+                "dims": {
+                    "time": {"kind": "time", "policy": "extend"},
+                    "channel": {"kind": "categorical"},
+                },
+                "vars": {
+                    "y": {"dims": ["time"], "dtype": "float64", "role": "target"},
+                    "spend": {"dims": ["time", "channel"], "dtype": "float64", "role": "spend"},
+                },
+            }
+        }
+        outputs: ClassVar[dict[str, Any]] = {"y": {"dims": ["time"], "units_of": "y"}}
+        expected: ClassVar[dict[str, str]] = {"y": "mu"}
+        pad_extend = False
+
+        def build(self, ds: xr.Dataset, s: PosSettings, ctx: BuildContext) -> pm.Model:
+            with pm.Model(coords=ctx.coords()) as model:
+                a = pm.Normal("a", 0.0, 20.0)
+                beta = pm.HalfNormal("beta", s.beta_sigma, dims="channel")
+                sigma = pm.HalfNormal("sigma", 2.0)
+                media = (ctx.data("spend") * beta[None, :]).sum(axis=1)
+                mu = pm.Deterministic("mu", a + media, dims="time")
+                pm.Normal("y", mu, sigma, observed=ctx.observed("y", dims=["time"]), dims="time")
+            return model
+
+    reg = default_registry()
+    reg.register_model(PositiveChannels)
+    return reg
+
+
+@pytest.mark.slow
+def test_placebo_channels_of_a_sign_constrained_bayesian_model_can_pass() -> None:
+    """Regression: every posterior draw of a positive-only effect is above 0, so a placebo
+    channel's 90% interval never covered 0 and the check could never pass for a Bayesian
+    MMM ("clearly not zero" at a 0.5% share). The Bayesian rule is now practical: is the
+    placebo's share of the real channels' effect above the warn threshold with high
+    posterior probability?"""
+    rng = np.random.default_rng(0)
+    n = 104
+    t = pd.date_range("2022-01-02", periods=n, freq="W-SUN")
+    spend = np.abs(rng.normal(size=(n, 2))) * 10
+    y = 50 + spend @ np.array([1.0, 0.5]) + rng.normal(scale=1.0, size=n)
+    data = xr.Dataset(
+        {"y": ("time", y), "spend": (("time", "channel"), spend)},
+        coords={"time": t, "channel": ["tv", "search"]},
+    )
+    schema = DataSchema.model_validate(
+        {
+            "dims": {
+                "time": {"kind": "time", "policy": "extend", "freq": "W-SUN"},
+                "channel": {"kind": "categorical"},
+            },
+            "vars": {
+                "y": {"dims": ["time"], "dtype": "float64", "role": "target"},
+                "spend": {"dims": ["time", "channel"], "dtype": "float64", "role": "spend"},
+            },
+        }
+    )
+    reg = _positive_channel_registry()
+    spec = {
+        "apiVersion": "mapi/v1",
+        "kind": "ModelSpec",
+        "metadata": {"name": "pos", "project": "p"},
+        "data": {"dataset": "dataset://p/sales@latest"},
+        "model": {
+            "use": "test.positive_channels@^1",
+            "settings": {"beta_sigma": 1.0},
+            "fit": {"seed": 1, "draws": 100, "tune": 100, "chains": 2, "engine": "pymc"},
+        },
+    }
+    b = fit(spec, data, reg, schema)
+    env = GovernanceEnv(
+        b, data, reg, Refitter(b, reg, RefitBudget(max_refits=5, draws=100, tune=100, chains=2))
+    )
+    assert env.kind == "bayesian"
+    r = measure(env, PolicyCheck(check="null.noise_regressors", params={"kind": "gaussian"}))
+    assert r.status is CheckStatus.PASS, (r.value, r.message_plain)
+    assert "clearly not zero" not in r.message_plain
+    probs = next(e for e in r.evidence if e.name == "noise_share_prob_material").inline
+    assert all(v < 0.9 for v in probs.values())  # type: ignore[union-attr]

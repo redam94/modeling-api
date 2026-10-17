@@ -495,6 +495,19 @@ milestone releases are tagged on `main`.
   random walks and rejects real dynamics far more often; data without a time order keep the
   classic row permutation of the result. The evidence names the null and the statistic, and
   the web's null-distribution chart labels its axis from it.
+- **runner, spec** (statistics): the governance check `null.noise_regressors` could never
+  pass for a Bayesian marketing mix model: mmm-framework's channel effects are positive, so
+  every posterior draw of a placebo channel's effect is above 0, its 90% interval never
+  covers 0, and the check reported "clearly not zero" and WARN or FAIL even at a 0.5%
+  share. A Bayesian model is now flagged when a placebo's share is above the warn limit
+  with at least 90% posterior probability (practical equivalence); the share is taken of
+  the real drivers' total effect (of the result only when that cannot be measured), so the
+  limit does not depend on the size of the baseline. Placebo channels also inherited the
+  source channel's per-channel priors and calibration (a tight business-prior or lift-test
+  ROI), so a calibrated model failed because of the prior: they now get the model's
+  default prior (carry-over and saturation shapes are still copied). Frequentist
+  placebo p-values are judged with Holm's correction for the number of placebos (the
+  uncorrected 5% rule flagged a good model 14% of the time with three placebos).
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

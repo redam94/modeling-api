@@ -666,11 +666,26 @@ class _Placebo:
     how: str
     ablate: Callable[[xr.Dataset, str], xr.Dataset]
     params_like: Callable[[str], bool]
+    ablate_real: Callable[[xr.Dataset], xr.Dataset] | None = None
+    """Every real driver switched off (the denominator of the placebo's share)."""
 
 
-def _walk_settings(settings: Any, existing: set[str], extra: Sequence[str], source: str) -> Any:
+_PRIOR_KEYS: Final = frozenset(
+    {"priors", "prior", "business_priors", "calibration", "lift_tests", "experiments"}
+)
+"""Settings subtrees that hold beliefs about the real channels (priors, calibration): never
+copied to a placebo, which gets the platform's default (weakly informative) prior."""
+
+
+def _walk_settings(
+    settings: Any, existing: set[str], extra: Sequence[str], source: str, *, beliefs: bool = False
+) -> Any:
     """Append ``extra`` names to lists that enumerate ``existing`` names, and copy the
-    ``source`` entry of mappings keyed by them (per-channel priors)."""
+    ``source`` entry of mappings keyed by them (per-channel carry-over and saturation
+    shapes) - except under :data:`_PRIOR_KEYS`: a placebo must not inherit a real channel's
+    informative prior or calibration."""
+    if beliefs:
+        return settings
     if isinstance(settings, list):
         if (
             settings
@@ -682,12 +697,31 @@ def _walk_settings(settings: Any, existing: set[str], extra: Sequence[str], sour
         return [_walk_settings(x, existing, extra, source) for x in settings]
     if isinstance(settings, dict):
         keys = set(settings)
-        out = {k: _walk_settings(v, existing, extra, source) for k, v in settings.items()}
+        out = {
+            k: _walk_settings(v, existing, extra, source, beliefs=str(k).lower() in _PRIOR_KEYS)
+            for k, v in settings.items()
+        }
         if keys and keys <= existing and source in settings:
             for e in extra:
                 out[e] = settings[source]
         return out
     return settings
+
+
+def _holm_significant(p_values: Mapping[str, float | None], alpha: float = 0.05) -> list[str]:
+    """The placebos whose p-value is significant at ``alpha`` after Holm's step-down
+    correction for the number of placebos (family-wise error rate ``alpha``)."""
+    ranked = sorted(
+        ((n, float(p)) for n, p in p_values.items() if p is not None and math.isfinite(p)),
+        key=lambda x: x[1],
+    )
+    m = len(ranked)
+    out: list[str] = []
+    for i, (name, p) in enumerate(ranked):
+        if p * (m - i) >= alpha:
+            break
+        out.append(name)
+    return out
 
 
 def _placebo_drivers(
@@ -743,6 +777,12 @@ def _placebo_drivers(
                 out = _ablate(env, out, var, {dim: name})
             return out
 
+        def ablate_channels(ds: xr.Dataset) -> xr.Dataset:
+            out = ds
+            for label in labels:
+                out = ablate(out, label)
+            return out
+
         return _Placebo(
             extended,
             schema,
@@ -751,6 +791,7 @@ def _placebo_drivers(
             f"channels on {dim!r}",
             ablate,
             lambda s: any(n in s for n in names),
+            ablate_channels,
         )
     drivers = env.drivers()
     if not drivers:
@@ -788,6 +829,12 @@ def _placebo_drivers(
     def ablate_var(ds: xr.Dataset, name: str) -> xr.Dataset:
         return _ablate(env, ds, name)
 
+    def ablate_real(ds: xr.Dataset) -> xr.Dataset:
+        out = ds
+        for v in drivers:
+            out = _ablate(env, out, v)
+        return out
+
     return _Placebo(
         data.assign(added),
         new_schema,
@@ -796,6 +843,7 @@ def _placebo_drivers(
         "variables",
         ablate_var,
         lambda s: any(s == n or s.startswith(n + "[") for n in names),
+        ablate_real,
     )
 
 
@@ -813,18 +861,42 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     full = _first(
         predict(b, placebo.data, env.registry, side_tables=env.side_tables), env.targets[0]
     )
+    warn_at = check.thresholds.warn if check.thresholds else GOVERNANCE_CHECKS[check.check].warn
+    # the share is taken of the real drivers' total effect (so the limit does not depend on
+    # how large the baseline is); of the whole result when the drivers' effect is unknown
+    real_num, real_draws = 0.0, None
+    if placebo.ablate_real is not None:
+        abl_real = _first(
+            predict(b, placebo.ablate_real(placebo.data), env.registry,
+                    side_tables=env.side_tables),
+            env.targets[0],
+        )  # fmt: skip
+        real_num, _d, real_draws = _total_effect(full, abl_real)
+    of_drivers = real_num > 0
     shares: dict[str, float] = {}
     intervals: dict[str, list[float | None]] = {}
+    material: dict[str, float] = {}
     for nm in placebo.names:
         abl = _first(
             predict(b, placebo.ablate(placebo.data, nm), env.registry, side_tables=env.side_tables),
             env.targets[0],
         )
         num, den, per_draw = _total_effect(full, abl)
-        shares[nm] = num / den if den > 0 else 0.0
+        ref = real_num if of_drivers else den
+        shares[nm] = num / ref if ref > 0 else 0.0
         if per_draw is not None and per_draw.size > 1:
             lo, hi = np.quantile(per_draw, [0.05, 0.95])
             intervals[nm] = [_fv(lo), _fv(hi)]
+            # practical equivalence, per posterior draw: an effect with a sign constraint
+            # (an MMM's positive channel effects) never has an interval covering 0, so the
+            # question is whether the placebo's share is above the limit, not above 0
+            if of_drivers and real_draws is not None and real_draws.size == per_draw.size:
+                ref_d = np.abs(real_draws)
+            else:
+                ref_d = np.full(per_draw.size, ref)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                share_d = np.where(ref_d > 0, np.abs(per_draw) / ref_d, 0.0)
+            material[nm] = float(np.mean(share_d > warn_at))
     ignored = all(v < 1e-12 for v in shares.values()) and all(
         (iv[0] or 0.0) == 0.0 and (iv[1] or 0.0) == 0.0 for iv in intervals.values()
     )
@@ -849,30 +921,53 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     }
     value = max(shares.values()) if shares else 0.0
     worst = max(shares, key=lambda n: shares[n]) if shares else ""
-    clear = [
-        n
-        for n, iv in intervals.items()
-        if iv[0] is not None and iv[1] is not None and (iv[0] > 0 or iv[1] < 0)
-    ]
-    sig = [n for n, pv in p_values.items() if pv is not None and pv < 0.05]
+    # Bayesian: the placebo's share is above the limit with 90% posterior probability
+    clear = [n for n, pr in material.items() if pr >= 0.9]
+    # frequentist: significant after Holm's correction for the number of placebos
+    sig = _holm_significant(p_values)
+    of_what = "the real drivers' effect" if of_drivers else "the result"
     ev = [
         _table(
             "noise_effect_share",
             {k_: round(v, 6) for k_, v in shares.items()},
-            "Share of the result each fake driver was credited with",
+            f"Share of {of_what} each fake driver was credited with",
         ),
-        _table("placebo", {"how": placebo.how, "kind": kind, "names": placebo.names}),
+        _table(
+            "placebo",
+            {
+                "how": placebo.how,
+                "kind": kind,
+                "names": placebo.names,
+                "share_of": "real drivers' effect" if of_drivers else "result",
+                "prior": "the model's default prior (real channels' priors and calibration "
+                "are not copied)",
+            },
+        ),
     ]
     if intervals:
         ev.append(
             _table(
                 "noise_effect_interval_90",
                 intervals,
-                "90% interval of each fake driver's total effect (should cover 0)",
+                "90% interval of each fake driver's total effect",
+            )
+        )
+    if material:
+        ev.append(
+            _table(
+                "noise_share_prob_material",
+                {k_: round(v, 4) for k_, v in material.items()},
+                f"Posterior probability that a fake driver's share is above {_pct(warn_at)}",
             )
         )
     if p_values:
-        ev.append(_table("noise_p_values", p_values, "p-values of the fake drivers' estimates"))
+        ev.append(
+            _table(
+                "noise_p_values",
+                p_values,
+                "p-values of the fake drivers' estimates (judged with Holm's correction)",
+            )
+        )
     status = None
     if clear or sig:
         status = (
@@ -880,21 +975,21 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             if check_status(check.check, value, check.thresholds) is CheckStatus.FAIL
             else CheckStatus.WARN
         )
-    if value <= (
-        check.thresholds.warn if check.thresholds else GOVERNANCE_CHECKS[check.check].warn
-    ) and not (clear or sig):
+    if value <= warn_at and not (clear or sig):
         msg = (
-            f"{len(shares)} fake drivers made of pure noise got at most {_pct(value)} of the "
-            "result: the model does not credit drivers that carry no signal."
+            f"{len(shares)} fake drivers made of pure noise got at most {_pct(value)} of "
+            f"{of_what}: the model does not credit drivers that carry no signal."
         )
     else:
         extra = ""
         if clear:
-            extra = f" The effect of {', '.join(clear)} is clearly not zero."
+            extra = (
+                f" {', '.join(clear)} got more than {_pct(warn_at)} with at least 90% probability."
+            )
         elif sig:
             extra = f" {', '.join(sig)} came out statistically significant."
         msg = (
-            f"A fake driver made of pure noise ({worst}) got {_pct(value)} of the result: the "
+            f"A fake driver made of pure noise ({worst}) got {_pct(value)} of {of_what}: the "
             f"model credits drivers too easily.{extra}"
         )
     return result(
@@ -902,8 +997,12 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         value,
         msg,
         status=status,
-        expert=f"{len(shares)} placebo {placebo.how} ({kind}); effect share = sum|y(full) - "
-        "y(placebo off)| / sum|y(full)| through the score path; max over placebos.",
+        expert=f"{len(shares)} placebo {placebo.how} ({kind}) with the model's default prior; "
+        "effect share = sum|y(full) - y(placebo off)| / sum|y(full) - y(real drivers off)| "
+        "through the score path (of sum|y(full)| when the drivers' effect is unknown); max "
+        "over placebos. Bayesian: flagged when P(share > warn limit) >= 0.9 per posterior "
+        "draw (practical equivalence; sign-constrained effects never cover 0). "
+        "Frequentist: placebo p-values Holm-corrected.",
         action="Use stronger regularisation or priors, fewer drivers, or more data before "
         "trusting how the result is split between drivers.",
         evidence=ev,

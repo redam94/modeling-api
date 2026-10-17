@@ -268,14 +268,18 @@ _CHECKS: list[GovernanceCheckDef] = [
             ["Pure forecasting models without drivers"],
             ["The model's data and settings"],
             ["The fake drivers look like real ones but carry no signal"],
-            ["The largest share of the result given to a fake driver",
-             "Whether any fake driver came out clearly non-zero"],
+            ["The largest share of the real drivers' effect given to a fake driver",
+             "Whether any fake driver came out clearly above the limit"],
             _I, _LONG,
-            "Three fake channels get 0.4%, 0.1% and 0.9% of sales: pass.",
+            "Three fake channels get 0.4%, 0.1% and 0.9% of the media effect: pass.",
             related=["null.permutation_target", "plausibility.signs"],
             expert="Placebo regressors drawn as Gaussian noise or as a driver shuffled in "
-            "blocks; the statistic is the largest absolute contribution share (or the "
-            "posterior probability that the effect exceeds a practical threshold).",
+            "blocks, with the model's default prior (never a real channel's prior or "
+            "calibration); the statistic is the largest placebo share of the real drivers' "
+            "total effect (by ablation through the score path). Bayesian: flagged when "
+            "P(share > warn limit) >= 0.9 over the posterior (practical equivalence, valid "
+            "for sign-constrained effects); frequentist: placebo p-values with Holm's "
+            "correction.",
         ),
     ),
     GovernanceCheckDef(

@@ -60,7 +60,7 @@ an endpoint can refuse to serve a model that is not validated.
 | Check | What it asks | Measured as (pass / warn / fail) |
 |---|---|---|
 | `null.permutation_target` | Does the model beat refits on the same data with the result **shuffled**? | p-value: share of shuffled fits at least as good (≤ 0.05 / ≤ 0.10 / more) |
-| `null.noise_regressors` | Do **fake drivers made of noise** get (almost) no effect? | largest share given to a fake driver (≤ 2% / ≤ 5% / more) |
+| `null.noise_regressors` | Do **fake drivers made of noise** get (almost) no effect? | largest share of the real drivers' effect given to a fake driver (≤ 2% / ≤ 5% / more) |
 | `null.placebo_time_shift` | Do effects **vanish when the drivers are moved** months away? | placebo effect / real effect (≤ 0.25 / ≤ 0.5 / more) |
 | `baseline.beats_naive` | Is the forecast better than "same as last week/year"? | relative skill vs the strongest benchmark (≥ 5% / ≥ 0 / below) |
 | `residuals.whiteness` | Do the errors look like random noise over time? | Ljung-Box p-value (≥ 0.05 / ≥ 0.01 / below) |
