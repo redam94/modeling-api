@@ -1,42 +1,42 @@
 # HTTP API (v1) <span class="mapi-badge">v0.2</span>
 
-The platform API that ships with v0.2 (milestone M1, the local vertical slice). Every request
-and response body is a Pydantic model in [`mapi_spec.api`](api/spec.md#rest-dtos). The server
-serves an OpenAPI 3.1 document generated from those models, and each model carries examples.
-The endpoint table on this page matches `mapi_spec.api.M1_ENDPOINTS`, and a test fails if the
-two drift apart.
+This page describes the platform API of v0.2 (milestone M1, the local vertical slice). Each
+request body and each response body is a Pydantic model in
+[`mapi_spec.api`](api/spec.md#rest-dtos). The server serves an OpenAPI 3.1 document that it
+makes from those models. Each model has examples. The endpoint table on this page agrees with
+`mapi_spec.api.M1_ENDPOINTS`. If the two are different, a test fails.
 
 | See also | |
 |---|---|
-| [OpenAPI explorer](openapi.md) | The OpenAPI 3.1 document, browsable, with every schema and example ([full screen](openapi-viewer.html)) |
+| [OpenAPI explorer](openapi.md) | The OpenAPI 3.1 document, which you can browse, with all schemas and examples ([full screen](openapi-viewer.html)) |
 | [HTTP API guide](../guides/http-api.md) | The main flow with `curl` and `jq`: upload, validate, fit, follow, score |
 | [Python client](../guides/python-client.md) | The same flow with `mapi_client` |
 
 !!! info "M1 is single-tenant"
-    A local install has one tenant and one project, both called `default`. Every resource
-    still carries `tenant_id` and `project_id`, and every storage key starts with
-    `t/{tenant}/`, so multi-tenancy in v0.3 adds row-level security without changing the
-    schema. There is no authentication in M1. The API listens on `127.0.0.1` only.
-    The tenants, sign-in, tokens and quotas that v0.3 adds are described in
-    [Multi-tenant API](#multi-tenant-api).
+    A local installation has one tenant and one project. Their names are `default`. Each
+    resource has a `tenant_id` and a `project_id`, and each storage key starts with
+    `t/{tenant}/`. Thus, the multi-tenancy of v0.3 adds row-level security and does not change
+    the schema. M1 has no authentication. The API listens only on `127.0.0.1`.
+    [Multi-tenant API](#multi-tenant-api) describes the tenants, sign-in, tokens and quotas
+    that v0.3 adds.
 
 ## Conventions
 
 | Topic | Rule |
 |---|---|
 | Base URL | `http://127.0.0.1:8000` locally. Resource paths start with `/v1`. |
-| Bodies | `application/json` (UTF-8). Spec text travels as a string field (`yaml`) inside JSON. |
-| Unknown fields | Request bodies **reject** unknown fields (`SCHEMA_INVALID`). Clients **ignore** unknown response fields, so the server can add fields without a new version. |
-| Timestamps | RFC 3339, timezone-aware, UTC (`2026-10-15T09:30:00Z`). |
-| Ids | `<prefix>_<26 lowercase Crockford base32>`, ULID layout, sortable by creation time (`run_01jaf3q2x8m9v7k5h4g3f2e1d0`). Prefixes: `ds`, `upl`, `spc`, `run`, `mdl`, `mv`. Projects and tenants use slugs (`default`). |
+| Bodies | `application/json` (UTF-8). The spec text is a string field (`yaml`) in the JSON. |
+| Unknown fields | Request bodies **reject** unknown fields (`SCHEMA_INVALID`). Clients **ignore** unknown response fields. Thus, the server can add fields and not make a new version. |
+| Timestamps | RFC 3339, with a timezone, in UTC (`2026-10-15T09:30:00Z`). |
+| Ids | `<prefix>_<26 lowercase Crockford base32>`, with the ULID layout. You can sort them by the time of creation (`run_01jaf3q2x8m9v7k5h4g3f2e1d0`). The prefixes are `ds`, `upl`, `spc`, `run`, `mdl` and `mv`. Projects and tenants use slugs (`default`). |
 | Durations | `"45m"`, `"1h30m"`, `"90s"`. |
-| Actions | Non-CRUD actions use a colon suffix: `POST /v1/runs/{run_id}:cancel`. |
-| Untrusted text | Log lines, tracebacks and plugin messages only ever appear in `untrusted_text` or `LogLine.line`. Render them as text, never as HTML or markdown. |
+| Actions | Actions that are not CRUD use a colon suffix: `POST /v1/runs/{run_id}:cancel`. |
+| Untrusted text | Log lines, tracebacks and plugin messages occur only in `untrusted_text` or `LogLine.line`. Render them as text. Do not render them as HTML or markdown. |
 
 ### Errors
 
-Every error is an [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) problem document
-(`application/problem+json`, model `mapi_spec.Problem`) with a stable `code`:
+Each error is an [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) problem document
+(`application/problem+json`, model `mapi_spec.Problem`). It has a stable `code`:
 
 ```json
 {
@@ -52,12 +52,12 @@ Every error is an [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) problem doc
 }
 ```
 
-- Malformed request bodies, path parameters and query parameters return **422
-  `SCHEMA_INVALID`**. Each problem goes in `errors[]` with an RFC 6901 `pointer` into the
+- Incorrect request bodies, path parameters and query parameters return **422
+  `SCHEMA_INVALID`**. Each problem goes in `errors[]`, with an RFC 6901 `pointer` into the
   request (`/body/kind`, `/query/limit`).
-- Every endpoint can also return `RATE_LIMITED` (429), `INTERNAL_ERROR` (500) and
-  `INFRA_ERROR` (503). These are not repeated in the table.
-- The full list of codes and their HTTP statuses is in [Error codes](generated/error-codes.md).
+- All endpoints can also return `RATE_LIMITED` (429), `INTERNAL_ERROR` (500) and
+  `INFRA_ERROR` (503). The table does not show these codes again.
+- [Error codes](generated/error-codes.md) has the full list of codes and their HTTP statuses.
 
 ### Pagination
 
@@ -67,101 +67,112 @@ List endpoints return `Page[T]`:
 {"items": [ … ], "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"}
 ```
 
-- Pass `?limit=` (default 50, maximum 200) and `?cursor=<next_cursor>` to fetch the next
-  page. A `null` cursor means the current page is the last one.
-- Cursors are opaque and only valid for the same list and filters.
-- Items are ordered newest first by id.
+- To get the next page, send `?limit=` (default 50, maximum 200) and `?cursor=<next_cursor>`.
+  A `null` cursor tells you that the current page is the last page.
+- Cursors are opaque. A cursor is valid only for the same list and the same filters.
+- The items are in order of id, with the newest item first.
 
 ### Idempotency
 
 `POST /v1/runs`, `…:score`, `…:retry`, `…:dry-run` and `POST …/versions` (ingest) accept an
-`Idempotency-Key` header (1–255 printable ASCII characters, scoped to the project and kept for
-24 hours):
+`Idempotency-Key` header. The key has 1–255 printable ASCII characters. Its scope is the
+project, and the server keeps it for 24 hours:
 
 | Situation | Response |
 |---|---|
-| First request with the key | The normal response, for example `201 Created` with the `Run` |
-| Same key, same body (byte-equal after canonical JSON) | **`200 OK`** with the originally created resource. No second run is created. |
+| First request with the key | The usual response, for example `201 Created` with the `Run` |
+| Same key, same body (the bytes are equal after canonical JSON) | **`200 OK`** with the resource that the first request made. The server does not make a second run. |
 | Same key, different body | **`409 IDEMPOTENCY_CONFLICT`** |
-| Same key while the first request is still in flight | `409 CONFLICT`. Retry later. |
+| Same key while the first request is in progress | `409 CONFLICT`. Try again later. |
 
-Clients should generate one key per user intent, for example a UUIDv4 when the user clicks
-**Fit**, and reuse it on every network retry.
+Clients must make one key for each user intent, for example a UUIDv4 when the user clicks
+**Fit**. They must use that key again on each network retry.
 
 ### Long-running work and `Prefer: wait`
 
-Runs are asynchronous. Creating one returns the `Run` at once in state `created` or `queued`.
-`POST /v1/models/{model_id}/versions/{version}:score` also honours
-[RFC 7240](https://www.rfc-editor.org/rfc/rfc7240) `Prefer: wait=N`, with N capped at 60
-seconds:
+Runs are asynchronous. When you make a run, the response gives the `Run` immediately, in the
+state `created` or `queued`. `POST /v1/models/{model_id}/versions/{version}:score` also
+obeys the [RFC 7240](https://www.rfc-editor.org/rfc/rfc7240) header `Prefer: wait=N`. The
+maximum value of N is 60 seconds:
 
-- If the score run reaches a terminal state within N seconds, the response is **200** with
+- If the score run gets to a terminal state in N seconds, the response is **200** with
   `ScoreCallResult{done: true, run, outputs: [ArtifactLink…]}`.
-- Otherwise the response is **202** with `done: false` and the run. Follow the run with
-  `GET /v1/runs/{run_id}` or its event stream.
-- The `Preference-Applied: wait=N` response header echoes the wait the server actually used.
+- If not, the response is **202** with `done: false` and the run. Follow the run with
+  `GET /v1/runs/{run_id}` or with its event stream.
+- The response header `Preference-Applied: wait=N` gives the wait time that the server used.
 
 ### Forecasts with actuals
 
-A `forecast` request (on a model version or an endpoint) may send **actuals** - target values
-for periods after the fit, or revising its last periods - and the **periods to forecast** (the
-target empty). The model updates its state with the actuals using its fitted parameters and
-forecasts from the last one; nothing is re-estimated. The rules, the plugin hook and examples
-are in [Forecasts with actuals](../concepts/forecasting-with-actuals.md).
+A `forecast` request (on a model version or on an endpoint) can send **actuals**. Actuals are
+target values for periods after the fit, or new values for the last periods of the fit. The
+request can also send the **periods to forecast**, with an empty target. The model uses its
+fitted parameters to update its state with the actuals. Then it forecasts from the last
+actual. The model does not estimate its parameters again.
+[Forecasts with actuals](../concepts/forecasting-with-actuals.md) gives the rules, the plugin
+hook and examples.
 
-- Periods after the last actual with an empty target are forecast exactly; when the payload
-  ends with an actual, `horizon.periods` periods are appended after it.
-- `ScoreCallResult.summary.conditioning` (`ForecastConditioning`) says what every forecast was
-  conditioned on: `fit_end`, `conditioned`, `n_actuals`, `actuals_through`, `revised`,
-  `horizon_source` (`rows` or `horizon`), per-series details and a plain `message`.
+- The model forecasts exactly the periods after the last actual that have an empty target.
+  When the payload ends with an actual, the model adds `horizon.periods` periods after it.
+- `ScoreCallResult.summary.conditioning` (`ForecastConditioning`) tells what the model used
+  to condition each forecast. It has `fit_end`, `conditioned`, `n_actuals`,
+  `actuals_through`, `revised`, `horizon_source` (`rows` or `horizon`), details for each
+  series and a plain `message`.
 - A model without `capabilities.conditions_on_actuals` refuses actuals with
-  **422 `ACTUALS_NOT_SUPPORTED`** (suggested action: refit with the new data, or leave the
-  target empty); gaps the model cannot filter and actuals without their drivers are
+  **422 `ACTUALS_NOT_SUPPORTED`**. The suggested action is to fit again with the new data, or
+  to keep the target empty.
+- Gaps that the model cannot filter, and actuals without their drivers, give
   **422 `ACTUALS_INVALID`**.
-- `EndpointSchema.actuals_example` is a ready forecast call with inline data over the periods
-  after the fit, every value empty, for endpoints whose model conditions on actuals.
+- `EndpointSchema.actuals_example` is a forecast call that you can use immediately. It has
+  inline data for the periods after the fit, and all values are empty. Endpoints have this
+  example only when their model conditions on actuals.
 
 ## Run events (server-sent events)
 
 `GET /v1/runs/{run_id}/events` has two representations:
 
 - **`Accept: text/event-stream`**: a live SSE stream.
-- **Any other `Accept`**: a JSON `Page[RunEventView]` of persisted events. Pass `?after=<id>`
-  to read events after a given id.
+- **All other `Accept` values**: a JSON `Page[RunEventView]` of the persisted events. To read
+  the events after a given id, send `?after=<id>`.
 
 The stream sends these frames, in this order:
 
-1. `event: snapshot` with the full `Run` JSON. It is the first frame on every connection and
+1. `event: snapshot` with the full `Run` JSON. It is the first frame on each connection. It
    has no `id:`.
-2. A replay of the persisted events whose `id` is greater than the `Last-Event-ID` request
-   header. Without the header the replay starts from the beginning. Every replayed frame
-   carries `id: <RunEventView.id>`. The ids increase per run, so a reconnecting client
-   resumes exactly where it stopped, including across the 60-minute request cut on Cloud
-   Run.
-3. Live frames as events arrive: `state`, `progress`, `log`, `diagnostic`, `warning`,
+2. A replay of the persisted events that have an `id` greater than the request header
+   `Last-Event-ID`. If the request has no header, the replay starts from the start. Each
+   replayed frame has `id: <RunEventView.id>`. The ids increase for each run. Thus, a client
+   that connects again continues exactly where it stopped. This is also true after the
+   60-minute request limit on Cloud Run.
+3. Live frames when the events occur: `state`, `progress`, `log`, `diagnostic`, `warning`,
    `checkpoint`, `metric`, `complete` and `error`. The `data:` of each frame is one line of
    compact JSON (`RunEventView`).
-4. `event: end` once the run is terminal (data: the final `Run`). The server then closes the
-   stream. A client that sees `end` must not reconnect.
+4. `event: end` when the run is terminal (data: the final `Run`). Then the server closes the
+   stream. A client that gets `end` must not connect again.
 
-The server also sends a fresh `event: snapshot` (no `id:`) whenever the run's state changes,
-so a client can re-render from the latest `Run` without reassembling it from events. `progress`
-and `log` frames are *not* persisted: they are sent live without an `id:` (data: `{run_id,
-attempt, seq, ts, type, payload}`) and are never replayed; `Last-Event-ID` only covers
+When the state of the run changes, the server also sends a new `event: snapshot` (no `id:`).
+Thus, a client can show the latest `Run` again and does not have to assemble it from events.
+The server does *not* persist `progress` and `log` frames. It sends them live without an
+`id:` (data: `{run_id,
+attempt, seq, ts, type, payload}`) and does not replay them. `Last-Event-ID` applies only to
 persisted events.
 
-Between events the server writes a heartbeat comment (`: keepalive`) every 15 seconds. The
-first frame also carries `retry: 3000`.
+Between events, the server writes a heartbeat comment (`: keepalive`) each 15 seconds. The
+first frame also has `retry: 3000`.
 
-An open stream checks its caller's credential again every minute (`MAPI_SSE_REAUTH_S`). Once
-the token is revoked or expired, the session has ended, or the caller has lost access to the
-project, the server closes the stream without `end`. The reconnect then answers `401` or
-`403`, and clients should stop there rather than retry.
+An open stream does a check of the credential of its caller again each minute
+(`MAPI_SSE_REAUTH_S`). The server closes the stream without `end` in these conditions:
 
-Progress frames are coalesced to at most one every 2–5 seconds. Only state changes,
-warnings, diagnostics, checkpoints, metrics and terminal events are persisted and replayable.
-A reconnecting client gets the latest progress from the `snapshot` frame. Log lines are paged
-from `GET /v1/runs/{run_id}/logs`.
+- The token is revoked or expired.
+- The session has ended.
+- The caller does not have access to the project now.
+
+Then the new connection gets `401` or `403`. Clients must stop at that point and not try
+again.
+
+The server combines progress frames into a maximum of one frame each 2–5 seconds. The server
+persists only state changes, warnings, diagnostics, checkpoints, metrics and terminal events.
+Only these events can replay. A client that connects again gets the latest progress from the
+`snapshot` frame. To get the log lines in pages, use `GET /v1/runs/{run_id}/logs`.
 
 ```text
 retry: 3000
@@ -178,186 +189,199 @@ data: {"id":17,"run_id":"run_01jaf3q2x8m9v7k5h4g3f2e1d0","attempt":1,"seq":3,"ty
 
 ## Endpoints
 
-Columns: **Request** and **Response** are DTO names in `mapi_spec.api`, unless they are
-catalog or plot models from `mapi_spec`. **Errors** lists the endpoint-specific codes. The
-common ones from the [Errors](#errors) section are not repeated.
+The columns: **Request** and **Response** are DTO names in `mapi_spec.api`, but some are
+catalog or plot models from `mapi_spec`. **Errors** lists the codes that are special to the
+endpoint. This table does not show the common codes from the [Errors](#errors) section again.
 
 ### Health
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /healthz` | Process liveness | — | `Health` | 200 | — |
-| `GET /readyz` | Postgres and the object store are reachable (503 with the same body if not) | — | `Health` | 200 | — |
+| `GET /healthz` | The process is live | — | `Health` | 200 | — |
+| `GET /readyz` | The API can connect to Postgres and the object store. If not, it sends 503 with the same body | — | `Health` | 200 | — |
 
 ### Projects and catalog
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /v1/projects` | List projects | — | `Page[Project]` | 200 | — |
+| `GET /v1/projects` | List the projects | — | `Page[Project]` | 200 | — |
 | `GET /v1/projects/{project_id}` | Get a project | — | `Project` | 200 | `NOT_FOUND` |
-| `GET /v1/catalog` | The whole catalog with its digest | — | `CatalogResponse` | 200 | — |
+| `GET /v1/catalog` | The full catalog with its digest | — | `CatalogResponse` | 200 | — |
 | `GET /v1/catalog/models` | Model plugins | — | `Page[ModelCatalogEntry]` | 200 | — |
 | `GET /v1/catalog/models/{model_id}/{version}` | One plugin version (manifest, sanitized schemas, schema template) | — | `ModelCatalogEntry` | 200 | `NOT_FOUND` |
 | `GET /v1/catalog/steps` | Steps | — | `Page[StepCatalogEntry]` | 200 | — |
 | `GET /v1/catalog/plots` | Plot recipes | — | `Page[PlotCatalogEntry]` | 200 | — |
-| `GET /v1/schemas/{name}` | An exported JSON Schema, for example `modelspec.json` (drives Monaco and JSON Forms) | — | JSON Schema | 200 | `NOT_FOUND` |
+| `GET /v1/schemas/{name}` | An exported JSON Schema, for example `modelspec.json`. Monaco and JSON Forms use it | — | JSON Schema | 200 | `NOT_FOUND` |
 
 ### Datasets
 
-Data reaches the platform in three steps:
+Data goes into the platform in three steps:
 
 1. Create the dataset.
 2. `PUT` the file to the signed URL from an upload session. The URL points into the
-   quarantine bucket and the API never sees the bytes.
-3. Create a version. A **sandboxed ingest run** parses the upload, validates it, and writes
-   the content-addressed `data.zarr.zip` with its schema, profile and preview.
+   quarantine bucket. The API does not see the bytes.
+3. Create a version. A **sandboxed ingest run** parses the upload and validates it. Then it
+   writes the content-addressed `data.zarr.zip` with its schema, profile and preview.
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `POST /v1/datasets` | Create a dataset | `DatasetCreate` | `Dataset` | 201 | `CONFLICT` (name taken) |
-| `GET /v1/datasets` | List datasets | — | `Page[Dataset]` | 200 | — |
+| `POST /v1/datasets` | Create a dataset | `DatasetCreate` | `Dataset` | 201 | `CONFLICT` (the name is in use) |
+| `GET /v1/datasets` | List the datasets | — | `Page[Dataset]` | 200 | — |
 | `GET /v1/datasets/{dataset_id}` | Get a dataset | — | `Dataset` | 200 | `NOT_FOUND` |
-| `POST /v1/datasets/{dataset_id}/uploads` | Signed PUT URL into quarantine | `UploadCreate` | `UploadSession` | 201 | `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `QUOTA_EXCEEDED` |
-| `POST /v1/datasets/{dataset_id}/versions` | Ingest an upload as a new version; starts an `ingest` run. Accepts `Idempotency-Key`. | `DatasetVersionCreate` | `DatasetVersion` (status `ingesting`) | 202 | `NOT_FOUND`, `CONFLICT` (upload not finished or already consumed) |
-| `GET /v1/datasets/{dataset_id}/versions` | List versions | — | `Page[DatasetVersion]` | 200 | `NOT_FOUND` |
-| `GET /v1/datasets/{dataset_id}/versions/{version}` | Schema, summary, profile and preview refs | — | `DatasetVersion` | 200 | `NOT_FOUND` |
+| `POST /v1/datasets/{dataset_id}/uploads` | Get a signed PUT URL into quarantine | `UploadCreate` | `UploadSession` | 201 | `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `QUOTA_EXCEEDED` |
+| `POST /v1/datasets/{dataset_id}/versions` | Ingest an upload as a new version. This starts an `ingest` run. Accepts `Idempotency-Key`. | `DatasetVersionCreate` | `DatasetVersion` (status `ingesting`) | 202 | `NOT_FOUND`, `CONFLICT` (the upload is not complete, or a version already uses it) |
+| `GET /v1/datasets/{dataset_id}/versions` | List the versions | — | `Page[DatasetVersion]` | 200 | `NOT_FOUND` |
+| `GET /v1/datasets/{dataset_id}/versions/{version}` | Schema, summary, and references to the profile and the preview | — | `DatasetVersion` | 200 | `NOT_FOUND` |
 | `GET /v1/datasets/{dataset_id}/versions/{version}/artifacts/{name}` | Signed URL for `data.zarr.zip`, `schema.json`, `profile.json` or `preview.json` | — | `ArtifactLink` | 200 | `NOT_FOUND` |
 
 ### Specs
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `POST /v1/specs:validate` | Synchronous static validation. Returns every issue at once with JSON pointers, plus the schema at each pipeline stage. | `ValidateRequest` | `ValidateResponse` | 200 | `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE`, `SCHEMA_INVALID` |
+| `POST /v1/specs:validate` | Synchronous static validation. It returns all issues at one time with JSON pointers. It also returns the schema at each pipeline stage. | `ValidateRequest` | `ValidateResponse` | 200 | `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE`, `SCHEMA_INVALID` |
 | `POST /v1/specs` | Create a spec and its revision 1 | `SpecCreate` | `SpecDoc` | 201 | `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE`, `SCHEMA_INVALID`, `CONFLICT` |
-| `GET /v1/specs` | List specs | — | `Page[SpecDoc]` | 200 | — |
+| `GET /v1/specs` | List the specs | — | `Page[SpecDoc]` | 200 | — |
 | `GET /v1/specs/{spec_id}` | Get a spec with its latest revision | — | `SpecDoc` | 200 | `NOT_FOUND` |
-| `POST /v1/specs/{spec_id}/revisions` | Add an immutable revision | `SpecRevisionCreate` | `SpecRevision` | 201 | `NOT_FOUND`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE`, `SCHEMA_INVALID`, `CONFLICT` (stale `parent_revision`) |
-| `GET /v1/specs/{spec_id}/revisions` | List revisions | — | `Page[SpecRevision]` | 200 | `NOT_FOUND` |
+| `POST /v1/specs/{spec_id}/revisions` | Add an immutable revision | `SpecRevisionCreate` | `SpecRevision` | 201 | `NOT_FOUND`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE`, `SCHEMA_INVALID`, `CONFLICT` (the `parent_revision` is not the latest) |
+| `GET /v1/specs/{spec_id}/revisions` | List the revisions | — | `Page[SpecRevision]` | 200 | `NOT_FOUND` |
 | `GET /v1/specs/{spec_id}/revisions/{revision}` | Get one revision | — | `SpecRevision` | 200 | `NOT_FOUND` |
-| `POST /v1/specs/{spec_id}/revisions/{revision}:dry-run` | Explicit sandboxed dry-run, the same as `POST /v1/runs` with `kind: validate`. Accepts `Idempotency-Key`. | — | `Run` | 202 | `NOT_FOUND`, `QUOTA_EXCEEDED` |
+| `POST /v1/specs/{spec_id}/revisions/{revision}:dry-run` | An explicit sandboxed dry run. It is the same as `POST /v1/runs` with `kind: validate`. Accepts `Idempotency-Key`. | — | `Run` | 202 | `NOT_FOUND`, `QUOTA_EXCEEDED` |
 
-How validation reports results:
+How validation gives its results:
 
-- `POST /v1/specs:validate` returns **200 even when the document is invalid**. The verdict is
-  in `ValidateResponse.valid` and `issues`.
-- The non-2xx statuses are kept for requests that cannot be validated at all: unparseable
-  YAML, an oversized document, or a malformed request body.
-- Creating a spec or a revision stores invalid revisions too, with `valid: false` and their
-  `issues`, so the editor can save work in progress.
-- `POST /v1/runs` refuses invalid revisions with the first error's code. Examples:
-  `LEAKAGE_RISK`, `UNSEEN_LEVELS`.
+- `POST /v1/specs:validate` returns **200 also when the document is not valid**. The result
+  is in `ValidateResponse.valid` and `issues`.
+- The API uses the statuses that are not 2xx only for requests that it cannot validate. These
+  are YAML that it cannot parse, a document that is too large, and a request body that is not
+  correct.
+- When you create a spec or a revision, the API also stores revisions that are not valid. They
+  have `valid: false` and their `issues`. Thus, the editor can save work that is not complete.
+- `POST /v1/runs` refuses revisions that are not valid. It uses the code of the first error.
+  Examples: `LEAKAGE_RISK`, `UNSEEN_LEVELS`.
 
 ### Runs
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `POST /v1/runs` | Submit a run (200 on an idempotent replay). Accepts `Idempotency-Key`. | `RunCreate` | `Run` | 201 | `NOT_FOUND`, `IDEMPOTENCY_CONFLICT`, `QUOTA_EXCEEDED`, `MODE_NOT_SUPPORTED`, `LEAKAGE_RISK`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `RECURSIVE_UNSUPPORTED` |
-| `GET /v1/runs` | List runs (filters: `kind`, `state`, `spec_id`) | — | `Page[Run]` | 200 | — |
-| `GET /v1/runs/{run_id}` | Get a run (state, failure class and problem, attempt, progress snapshot, cost: placeholders in v0.2, metered from v0.3) | — | `Run` | 200 | `NOT_FOUND` |
-| `GET /v1/runs/{run_id}/events` | SSE stream or JSON page of persisted events (see [Run events](#run-events-server-sent-events)). Accepts `Last-Event-ID`. | — | `Page[RunEventView]` | 200 | `NOT_FOUND` |
-| `GET /v1/runs/{run_id}/logs` | Captured log lines; filters `attempt`, `stream` | — | `Page[LogLine]` | 200 | `NOT_FOUND` |
-| `GET /v1/runs/{run_id}/plots` | Plots a succeeded run rendered (`plots.json`: forecast fans, counterfactual bands), passed through the plot sanitizer on every read; rejected plots are left out. Empty until the run succeeds. | — | `Page[PlotSpec]` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
-| `POST /v1/runs/{run_id}:cancel` | Request cancellation. Idempotent: it returns the run in `cancelling`, or in its terminal state if the run had already finished. A `finalizing` run is left alone and returned as it is: its execution is already over. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` |
-| `POST /v1/runs/{run_id}:resume` | Resume a `partial` run from its checkpoints (new attempt) | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (not `partial`) |
-| `POST /v1/runs/{run_id}:retry` | Start a **new** run from a failed one, for example one resource class up after `RESOURCE_EXHAUSTED`. Accepts `Idempotency-Key`. | `RunRetry` | `Run` | 201 | `NOT_FOUND`, `CONFLICT` (not failed; a workflow, workflow node or governance run - start the workflow again or resubmit the validation) |
+| `POST /v1/runs` | Submit a run. It returns 200 on an idempotent replay. Accepts `Idempotency-Key`. | `RunCreate` | `Run` | 201 | `NOT_FOUND`, `IDEMPOTENCY_CONFLICT`, `QUOTA_EXCEEDED`, `MODE_NOT_SUPPORTED`, `LEAKAGE_RISK`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `RECURSIVE_UNSUPPORTED` |
+| `GET /v1/runs` | List the runs (filters: `kind`, `state`, `spec_id`) | — | `Page[Run]` | 200 | — |
+| `GET /v1/runs/{run_id}` | Get a run: state, failure class and problem, attempt, progress snapshot and cost. The cost has placeholders in v0.2. From v0.3, the platform meters it | — | `Run` | 200 | `NOT_FOUND` |
+| `GET /v1/runs/{run_id}/events` | An SSE stream or a JSON page of the persisted events (see [Run events](#run-events-server-sent-events)). Accepts `Last-Event-ID`. | — | `Page[RunEventView]` | 200 | `NOT_FOUND` |
+| `GET /v1/runs/{run_id}/logs` | The captured log lines. Filters: `attempt`, `stream` | — | `Page[LogLine]` | 200 | `NOT_FOUND` |
+| `GET /v1/runs/{run_id}/plots` | The plots that a succeeded run rendered (`plots.json`: forecast fans, counterfactual bands). The plot sanitizer does a check of them at each read. The response does not include rejected plots. The list is empty until the run succeeds. | — | `Page[PlotSpec]` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
+| `POST /v1/runs/{run_id}:cancel` | Request cancellation. It is idempotent. It returns the run in `cancelling`, or in its terminal state if the run is already complete. The API does not change a `finalizing` run and returns it as it is, because its execution is already complete. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` |
+| `POST /v1/runs/{run_id}:resume` | Resume a `partial` run from its checkpoints (new attempt) | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (the run is not `partial`) |
+| `POST /v1/runs/{run_id}:retry` | Start a **new** run from a failed run. For example, use the next larger resource class after `RESOURCE_EXHAUSTED`. Accepts `Idempotency-Key`. | `RunRetry` | `Run` | 201 | `NOT_FOUND`, `CONFLICT` (the run did not fail, or it is a workflow, workflow node or governance run. For these, start the workflow again or submit the validation again) |
 
-What `RunCreate` needs depends on `kind`:
+The fields that `RunCreate` needs change with `kind`:
 
-| `kind` | Required | Not allowed |
+| `kind` | Required | Not permitted |
 |---|---|---|
-| `fit`, `validate` (sandboxed dry-run) | `spec_id`, `revision` | `model_version_id`, `request` |
+| `fit`, `validate` (sandboxed dry run) | `spec_id`, `revision` | `model_version_id`, `request` |
 | `score` | `model_version_id`, `request` (a `ScoreRequest` document) | `spec_id`, `revision` |
-| `evaluate`, `derive`, `render` | `model_version_id` (optional `params`) | `spec_id`, `revision`, `request` |
+| `evaluate`, `derive`, `render` | `model_version_id` (`params` is optional) | `spec_id`, `revision`, `request` |
 
-`ingest` runs are created by `POST /v1/datasets/{dataset_id}/versions`. `describe`,
-`optimize` and the fan-out parents (`sweep`, `backtest`, `sbc`, `campaign`) cannot be created
-in v0.2. Run states and the transitions between them are listed in
-[Run protocol](run-protocol.md#run-states).
+`POST /v1/datasets/{dataset_id}/versions` creates the `ingest` runs. In v0.2, you cannot
+create `describe` runs, `optimize` runs or the fan-out parents (`sweep`, `backtest`, `sbc`,
+`campaign`). [Run protocol](run-protocol.md#run-states) lists the run states and the
+transitions between them.
 
 ### Models and scoring
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /v1/models` | List models | — | `Page[Model]` | 200 | — |
+| `GET /v1/models` | List the models | — | `Page[Model]` | 200 | — |
 | `GET /v1/models/{model_id}` | Get a model | — | `Model` | 200 | `NOT_FOUND` |
-| `GET /v1/models/{model_id}/versions` | List versions | — | `Page[ModelVersion]` | 200 | `NOT_FOUND` |
+| `GET /v1/models/{model_id}/versions` | List the versions | — | `Page[ModelVersion]` | 200 | `NOT_FOUND` |
 | `GET /v1/models/{model_id}/versions/{version}` | Signed bundle manifest, diagnostics, scorecard, lineage, metrics | — | `ModelVersion` | 200 | `NOT_FOUND` |
-| `GET /v1/models/{model_id}/versions/{version}/artifacts/{name}` | Signed URL for a bundle object or a `ui/…` view; `name` may contain `/` | — | `ArtifactLink` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
-| `POST /v1/models/{model_id}/versions/{version}:score` | Score with replayed preprocessing. Accepts `Prefer: wait=N` (200 if done, else 202) and `Idempotency-Key`. `inline` carries typed-in `data`/`scenario` (XrJSON, up to 5 MB each) checked against the version's inputs. | `ScoreCall` | `ScoreCallResult` | 200 | `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `ACTUALS_NOT_SUPPORTED`, `ACTUALS_INVALID`, `PAYLOAD_TOO_LARGE` |
-| `GET /v1/models/{model_id}/versions/{version}/inputs` | What a score call can send: the input contract (canonical names, future-required variables, fitted coordinates) and the input table with `?periods=N` (1-200) periods after the fit | — | `ModelInputSchema` | 200 | `NOT_FOUND`, `CAPABILITY_UNSUPPORTED` |
+| `GET /v1/models/{model_id}/versions/{version}/artifacts/{name}` | Signed URL for a bundle object or a `ui/…` view. `name` can contain `/` | — | `ArtifactLink` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
+| `POST /v1/models/{model_id}/versions/{version}:score` | Score with replayed preprocessing. Accepts `Prefer: wait=N` (200 if the run is complete, if not 202) and `Idempotency-Key`. `inline` holds `data`/`scenario` that you type in (XrJSON, maximum 5 MB each). The API does a check of them against the inputs of the version. | `ScoreCall` | `ScoreCallResult` | 200 | `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `ACTUALS_NOT_SUPPORTED`, `ACTUALS_INVALID`, `PAYLOAD_TOO_LARGE` |
+| `GET /v1/models/{model_id}/versions/{version}/inputs` | The data that a score call can send. This is the input contract (canonical names, variables that the future needs, fitted coordinates) and the input table. Use `?periods=N` (1-200) for the number of periods after the fit | — | `ModelInputSchema` | 200 | `NOT_FOUND`, `CAPABILITY_UNSUPPORTED` |
 
-Artifact links are minted only after two checks pass:
+The API makes artifact links only after two checks are satisfactory:
 
 1. The authorization check.
-2. Verification of the model version's **signed bundle manifest**: tenant, model version,
-   digests and object generations must all match.
+2. The verification of the **signed bundle manifest** of the model version. The tenant, model
+   version, digests and object generations must all agree.
 
-If the second check fails, the response is `INTEGRITY_FAILURE` and no URL is issued. Each
-link is pinned to an object generation, expires after 15 minutes, and supports HTTP `Range`
+If the second check fails, the response is `INTEGRITY_FAILURE` and the API gives no URL. Each
+link is pinned to an object generation. It expires after 15 minutes. It supports HTTP `Range`
 requests.
 
 ### Plots
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /v1/models/{model_id}/versions/{version}/plots` | Plots of a model version | — | `Page[PlotListItem]` | 200 | `NOT_FOUND` |
-| `GET /v1/models/{model_id}/versions/{version}/plots/{plot_id}` | A sanitized `PlotSpec`. Render it only inside the plot-sandbox iframe, which has its own origin. | — | `PlotSpec` | 200 | `NOT_FOUND` |
-| `POST /v1/plots:validate` | Run the server-side plot sanitizer on a user-authored spec | `PlotSpec` | `PlotValidateResponse` | 200 | `SCHEMA_INVALID` |
+| `GET /v1/models/{model_id}/versions/{version}/plots` | The plots of a model version | — | `Page[PlotListItem]` | 200 | `NOT_FOUND` |
+| `GET /v1/models/{model_id}/versions/{version}/plots/{plot_id}` | A sanitized `PlotSpec`. Render it only in the plot-sandbox iframe, which has its own origin. | — | `PlotSpec` | 200 | `NOT_FOUND` |
+| `POST /v1/plots:validate` | Run the server-side plot sanitizer on a spec that a user wrote | `PlotSpec` | `PlotValidateResponse` | 200 | `SCHEMA_INVALID` |
 
 ## Multi-tenant API <span class="mapi-badge">v0.3</span> { #multi-tenant-api }
 
 v0.3 (milestone M2) adds tenants, projects, members, API tokens, quotas, cost and an operator
-console. The models are in `mapi_spec.api`, `mapi_spec.tenancy`, `mapi_spec.tokens`,
-`mapi_spec.quotas`, `mapi_spec.cost`, `mapi_spec.audit`, `mapi_spec.admin` and
-`mapi_spec.auth`. The endpoint table below matches `mapi_spec.api.M2_ENDPOINTS`, and
-`mapi_spec.api.ROUTE_ACCESS` gives every operation (v0.2 ones included) its scope and the
-permission it checks. Tests fail if the code, this page and the server drift apart. Roles,
-tokens and scopes are explained in [Tenancy and authentication](../concepts/tenancy-and-auth.md),
-limits and prices in [Quotas and cost](../concepts/quotas-and-cost.md).
+console. The models are in these modules:
+
+- `mapi_spec.api`
+- `mapi_spec.tenancy`
+- `mapi_spec.tokens`
+- `mapi_spec.quotas`
+- `mapi_spec.cost`
+- `mapi_spec.audit`
+- `mapi_spec.admin`
+- `mapi_spec.auth`
+
+The endpoint table below agrees with `mapi_spec.api.M2_ENDPOINTS`. `mapi_spec.api.ROUTE_ACCESS`
+gives each operation its scope and the permission that it checks. This includes the v0.2
+operations. If the code, this page and the server are different, tests fail.
+[Tenancy and authentication](../concepts/tenancy-and-auth.md) explains roles, tokens and
+scopes. [Quotas and cost](../concepts/quotas-and-cost.md) explains limits and prices.
 
 ### Authentication
 
 | Caller | Credential | Notes |
 |---|---|---|
-| Browser (the web app) | Session cookie `__Host-mapi_session` (`HttpOnly; Secure; SameSite=Strict; Path=/`), set by `GET /auth/callback` | OpenID Connect Authorization Code flow with PKCE (S256) and a `nonce`, run by the API as a backend-for-frontend. The browser never holds an OAuth token. |
-| Programs, SDKs, CLI | `Authorization: Bearer mapi_<prefix>_<secret><checksum>` | An API token. It acts as its owner, narrowed by its scopes, in the one project it is bound to. |
-| Google Pub/Sub | A Google-signed OIDC ID token on `POST /internal/events` | Audience, issuer and the push service account are checked. Nothing in the body authenticates. |
+| Browser (the web app) | Session cookie `__Host-mapi_session` (`HttpOnly; Secure; SameSite=Strict; Path=/`). `GET /auth/callback` sets it | OpenID Connect Authorization Code flow with PKCE (S256) and a `nonce`. The API runs the flow as a backend-for-frontend. The browser does not hold an OAuth token. |
+| Programs, SDKs, CLI | `Authorization: Bearer mapi_<prefix>_<secret><checksum>` | An API token. It acts as its owner, with only its scopes, in the one project that it is bound to. |
+| Google Pub/Sub | A Google-signed OIDC ID token on `POST /internal/events` | The API does a check of the audience, the issuer and the push service account. No data in the body gives authentication. |
 
 Responses for authentication and authorization:
 
 | Situation | Response |
 |---|---|
-| No credential, or an expired session, on a non-public route | `401 UNAUTHENTICATED` |
-| A malformed token, or one whose checksum fails | `401 UNAUTHENTICATED`. The presented value is never echoed. |
+| No credential, or an expired session, on a route that is not public | `401 UNAUTHENTICATED` |
+| A token that is not correctly formed, or a token with a bad checksum | `401 UNAUTHENTICATED`. The API does not show the value in the response. |
 | A revoked or expired token | `401 UNAUTHENTICATED` |
-| A resource in a project or tenant the caller cannot see | `404 NOT_FOUND`, the same as a missing one, so ids cannot be probed |
-| A visible resource, but the role or the token's scopes do not allow the action | `403 FORBIDDEN` |
-| A token used outside the project it is bound to | `403 FORBIDDEN` |
-| The tenant is `suspended` | Reads work. Everything else returns `403 FORBIDDEN`. |
+| A resource in a project or tenant that the caller cannot see | `404 NOT_FOUND`, the same as for a resource that does not exist. Thus, callers cannot find ids by tests |
+| The caller can see the resource, but the role or the token scopes do not permit the action | `403 FORBIDDEN` |
+| A token used outside the project that it is bound to | `403 FORBIDDEN` |
+| The tenant is `suspended` | Reads work. All other requests return `403 FORBIDDEN`. |
 
 ### Selecting the project
 
-Every v0.2 resource (datasets, specs, runs, models, plots) belongs to a project. From v0.3 a
-request names its project in one of these ways, in this order of precedence:
+Each v0.2 resource (datasets, specs, runs, models, plots) is part of a project. From v0.3, a
+request identifies its project in one of these ways. The list order is the order of
+precedence:
 
 1. **Path parameters**, on routes under `/v1/tenants/{tenant_id}/projects/{project_id}`.
 2. **The `X-Mapi-Project` header**: `X-Mapi-Project: <tenant_id>/<project_id>`, for example
-   `X-Mapi-Project: acme/growth`. A bare `X-Mapi-Project: growth` is accepted when the tenant
-   is unambiguous: the caller belongs to one tenant, or uses a token.
-3. **The token's binding.** A token always acts in its own project, so token clients may omit
-   the header. A header that names another project returns `403 FORBIDDEN`.
-4. **The deployment default**, in the single-tenant local profile only (`default/default`, as
+   `X-Mapi-Project: acme/growth`. The API also accepts only the project, for example
+   `X-Mapi-Project: growth`, when the tenant is clear. This is when the caller is a member of
+   one tenant, or uses a token.
+3. **The token binding.** A token always acts in its own project. Thus, token clients do not
+   have to send the header. A header that identifies a different project returns
+   `403 FORBIDDEN`.
+4. **The deployment default**, only in the single-tenant local profile (`default/default`, as
    in v0.2).
 
-If none applies, or path and header disagree, the request fails with `422 SCHEMA_INVALID`.
-`mapi_spec.tenancy.resolve_project_scope` implements these rules.
+If no rule applies, or the path and the header are different, the request fails with
+`422 SCHEMA_INVALID`. `mapi_spec.tenancy.resolve_project_scope` implements these rules.
 
-The scope of each v0.2 endpoint (by operation id) and the permission checked:
+The scope of each v0.2 endpoint (by operation id) and the permission that the API checks:
 
 | Scope | Operations | Permission |
 |---|---|---|
 | Public | `health`, `ready`, `get_schema` | None |
-| Authenticated | `list_projects`, `get_catalog`, `list_catalog_models`, `get_catalog_model`, `list_catalog_steps`, `list_catalog_plots` | Any signed-in caller. Lists are filtered to what the caller can see. |
+| Authenticated | `list_projects`, `get_catalog`, `list_catalog_models`, `get_catalog_model`, `list_catalog_steps`, `list_catalog_plots` | All signed-in callers. The lists show only what the caller can see. |
 | Project | `get_project` | `read` `project` |
 | Project | `create_dataset` / `create_upload`, `create_dataset_version` | `create` / `update` `dataset` (editor) |
 | Project | `list_datasets`, `get_dataset`, `list_dataset_versions`, `get_dataset_version`, `get_dataset_artifact` | `read` `dataset` |
@@ -370,9 +394,9 @@ The scope of each v0.2 endpoint (by operation id) and the permission checked:
 | Project | `score_model` | `run` `model` (runner) |
 | Project | `list_plots`, `get_plot`, `validate_plot` | `read` `plot` |
 
-Storage keys and rows were already tenant- and project-qualified in v0.2 (`t/{tenant}/…`), so
-the switch needs no data migration. Postgres enforces the boundary with row-level security
-on `tenant_id` in every table.
+In v0.2, the storage keys and rows already had the tenant and the project (`t/{tenant}/…`).
+Thus, the change needs no data migration. Postgres enforces the boundary with row-level
+security on `tenant_id` in all tables.
 
 ### Endpoints
 
@@ -380,111 +404,120 @@ on `tenant_id` in every table.
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /v1/me` | The caller (`Principal`), their tenants, projects and roles; for a token, the token too | — | `Me` | 200 | `UNAUTHENTICATED` |
-| `GET /v1/tenants` | Tenants the caller belongs to | — | `Page[Tenant]` | 200 | — |
+| `GET /v1/me` | The caller (`Principal`), with their tenants, projects and roles. For a token, the response also includes the token | — | `Me` | 200 | `UNAUTHENTICATED` |
+| `GET /v1/tenants` | The tenants that the caller is a member of | — | `Page[Tenant]` | 200 | — |
 | `GET /v1/tenants/{tenant_id}` | Get a tenant | — | `Tenant` | 200 | `NOT_FOUND` |
-| `PATCH /v1/tenants/{tenant_id}` | Rename a tenant (tenant admin) | `TenantUpdate` | `Tenant` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `GET /v1/tenants/{tenant_id}/projects` | Projects of the tenant that the caller can see | — | `Page[Project]` | 200 | `NOT_FOUND` |
-| `POST /v1/tenants/{tenant_id}/projects` | Create a project (tenant admin) | `ProjectCreate` | `Project` | 201 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` (id taken) |
-| `PATCH /v1/tenants/{tenant_id}/projects/{project_id}` | Rename or describe a project (project admin) | `ProjectUpdate` | `Project` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `DELETE /v1/tenants/{tenant_id}/projects/{project_id}` | Delete an empty project (tenant admin) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` (it still holds data) |
+| `PATCH /v1/tenants/{tenant_id}` | Change the name of a tenant (tenant admin) | `TenantUpdate` | `Tenant` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/tenants/{tenant_id}/projects` | The projects of the tenant that the caller can see | — | `Page[Project]` | 200 | `NOT_FOUND` |
+| `POST /v1/tenants/{tenant_id}/projects` | Create a project (tenant admin) | `ProjectCreate` | `Project` | 201 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` (the id is in use) |
+| `PATCH /v1/tenants/{tenant_id}/projects/{project_id}` | Change the name or the description of a project (project admin) | `ProjectUpdate` | `Project` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `DELETE /v1/tenants/{tenant_id}/projects/{project_id}` | Delete an empty project (tenant admin) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` (the project still has data) |
 
 #### Members
 
-A membership grants one role. A tenant-wide membership grants it on the tenant and on every
-project in it; a project membership grants it on that project only. The effective role in a
-project is the higher of the two. Add a member by `principal_id`, or by `email` to invite
-someone who has not signed in yet (the invitation is claimed at first sign-in with that
-verified e-mail). Removing or demoting the last admin returns `409 CONFLICT`.
+A membership gives one role. A tenant-wide membership gives the role on the tenant and on all
+projects in it. A project membership gives the role only on that project. The effective role
+in a project is the higher of the two. Add a member by `principal_id`. To invite a person who
+did not sign in before, add the member by `email`. At the first sign-in with that verified
+e-mail, the person gets the invitation. If you remove or demote the last admin, the API
+returns `409 CONFLICT`.
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
 | `GET /v1/tenants/{tenant_id}/members` | Tenant-wide members | — | `Page[Membership]` | 200 | `NOT_FOUND` |
-| `POST /v1/tenants/{tenant_id}/members` | Grant a tenant-wide role (tenant admin) | `MembershipCreate` | `Membership` | 201 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `POST /v1/tenants/{tenant_id}/members` | Give a tenant-wide role (tenant admin) | `MembershipCreate` | `Membership` | 201 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 | `PATCH /v1/tenants/{tenant_id}/members/{principal_id}` | Change a tenant-wide role | `MembershipUpdate` | `Membership` | 200 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 | `DELETE /v1/tenants/{tenant_id}/members/{principal_id}` | Remove a tenant-wide role | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
-| `GET /v1/tenants/{tenant_id}/projects/{project_id}/members` | Project members, tenant-wide grants included | — | `Page[Membership]` | 200 | `NOT_FOUND` |
-| `POST /v1/tenants/{tenant_id}/projects/{project_id}/members` | Grant a project role (project admin) | `MembershipCreate` | `Membership` | 201 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `GET /v1/tenants/{tenant_id}/projects/{project_id}/members` | Project members, with the tenant-wide grants | — | `Page[Membership]` | 200 | `NOT_FOUND` |
+| `POST /v1/tenants/{tenant_id}/projects/{project_id}/members` | Give a project role (project admin) | `MembershipCreate` | `Membership` | 201 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 | `PATCH /v1/tenants/{tenant_id}/projects/{project_id}/members/{principal_id}` | Change a project role | `MembershipUpdate` | `Membership` | 200 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 | `DELETE /v1/tenants/{tenant_id}/projects/{project_id}/members/{principal_id}` | Remove a project role | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 
 #### API tokens
 
-Tokens belong to the project selected by `X-Mapi-Project`. `POST /v1/tokens` returns the full
-token **once**, in `TokenCreated.secret`; it cannot be shown again. Listings show the redacted
-form `mapi_<prefix>_…`. Any member may mint, list and revoke their own tokens; listing
-everyone's tokens (`?all=true`) or revoking someone else's needs `manage` on `token` (project
-admin).
+Tokens are part of the project that `X-Mapi-Project` selects. `POST /v1/tokens` returns the
+full token **one time**, in `TokenCreated.secret`. The API cannot show it again. Lists show
+the redacted form `mapi_<prefix>_…`. Each member can mint, list and revoke their own tokens.
+To list the tokens of all members (`?all=true`) or to revoke the token of a different person,
+you need `manage` on `token` (project admin).
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /v1/tokens` | The caller's tokens; filters `all`, `status` | — | `Page[ApiToken]` | 200 | — |
-| `POST /v1/tokens` | Mint a token with scopes, an expiry, and an optional rate limit and vCPU-second budget | `TokenCreate` | `TokenCreated` | 201 | `FORBIDDEN` |
-| `GET /v1/tokens/{token_id}` | Get a token (never its secret) | — | `ApiToken` | 200 | `NOT_FOUND` |
-| `DELETE /v1/tokens/{token_id}` | Revoke a token. Idempotent. | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/tokens` | The tokens of the caller. Filters: `all`, `status` | — | `Page[ApiToken]` | 200 | — |
+| `POST /v1/tokens` | Mint a token with scopes and an expiry. A rate limit and a vCPU-second budget are optional | `TokenCreate` | `TokenCreated` | 201 | `FORBIDDEN` |
+| `GET /v1/tokens/{token_id}` | Get a token (the response never includes its secret) | — | `ApiToken` | 200 | `NOT_FOUND` |
+| `DELETE /v1/tokens/{token_id}` | Revoke a token. It is idempotent. | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
 
 #### Usage
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /v1/usage` | Cost and quota of the selected project for a UTC `period` (`day` or `month`), optionally grouped (`group_by`: `resource_class`, `project`, `day`, `token`, `run`) | — | `UsageReport` | 200 | — |
-| `GET /v1/tenants/{tenant_id}/usage` | The same for the whole tenant (tenant admin) | — | `UsageReport` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `GET /v1/tenants/{tenant_id}/audit` | The tenant's audit log (tenant admin); filters `project_id`, `actor_id`, `action`, `outcome`, `since`, `until` | — | `Page[AuditEvent]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/usage` | The cost and the quota of the selected project for a UTC `period` (`day` or `month`). You can also put them in groups (`group_by`: `resource_class`, `project`, `day`, `token`, `run`) | — | `UsageReport` | 200 | — |
+| `GET /v1/tenants/{tenant_id}/usage` | The same data for the full tenant (tenant admin) | — | `UsageReport` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/tenants/{tenant_id}/audit` | The audit log of the tenant (tenant admin). Filters: `project_id`, `actor_id`, `action`, `outcome`, `since`, `until` | — | `Page[AuditEvent]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
 
-Every `Run` now carries a filled-in `cost` (`RunCost`): `estimated` is `true` until the run's
-first attempt has been metered, `amount_micros` is in `currency` (1 USD = 1,000,000 micros) and
-`price_version` names the price table used. The v0.2 fields `vcpu_seconds`, `gib_seconds` and
-`usd` keep their meaning.
+Each `Run` now has a `cost` with values (`RunCost`):
+
+- `estimated` is `true` until the platform meters the first attempt of the run.
+- `amount_micros` is in `currency` (1 USD = 1,000,000 micros).
+- `price_version` identifies the price table that the platform used.
+
+The v0.2 fields `vcpu_seconds`, `gib_seconds` and `usd` keep their meaning.
 
 #### Operators
 
 Operator endpoints need a platform operator. Tenant admins get `403 FORBIDDEN`. Operators see
-tenant metadata, usage and audit logs, but no tenant content (datasets, specs, models, plots).
-Every change is written to the audit log.
+tenant metadata, usage and audit logs. They do not see tenant content (datasets, specs,
+models, plots). The API writes each change to the audit log.
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /v1/admin/tenants` | All tenants; filters `status`, `trust_tier` | — | `Page[Tenant]` | 200 | `FORBIDDEN` |
-| `POST /v1/admin/tenants` | Create a tenant, optionally inviting its first admin | `TenantCreate` | `Tenant` | 201 | `FORBIDDEN`, `CONFLICT` |
-| `GET /v1/admin/tenants/{tenant_id}` | Get any tenant | — | `Tenant` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `PATCH /v1/admin/tenants/{tenant_id}` | Change trust tier, status (`suspended` and `deleting` need a reason) or data residency | `TenantAdminUpdate` | `Tenant` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `GET /v1/admin/quotas` | Quota policies; filters `scope`, `subject_id` | — | `Page[QuotaPolicy]` | 200 | `FORBIDDEN` |
+| `GET /v1/admin/tenants` | All tenants. Filters: `status`, `trust_tier` | — | `Page[Tenant]` | 200 | `FORBIDDEN` |
+| `POST /v1/admin/tenants` | Create a tenant. You can also invite its first admin | `TenantCreate` | `Tenant` | 201 | `FORBIDDEN`, `CONFLICT` |
+| `GET /v1/admin/tenants/{tenant_id}` | Get a tenant | — | `Tenant` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PATCH /v1/admin/tenants/{tenant_id}` | Change the trust tier, the status or the data residency. The statuses `suspended` and `deleting` need a reason | `TenantAdminUpdate` | `Tenant` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/quotas` | Quota policies. Filters: `scope`, `subject_id` | — | `Page[QuotaPolicy]` | 200 | `FORBIDDEN` |
 | `PUT /v1/admin/quotas` | Create or replace the policy for one `(scope, subject_id)` | `QuotaPolicyUpsert` | `QuotaPolicy` | 200 | `FORBIDDEN` |
-| `DELETE /v1/admin/quotas/{scope}/{subject_id}` | Remove a policy; the tier default applies again (`subject_id` is `*` for the global policy) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `DELETE /v1/admin/quotas/{scope}/{subject_id}` | Remove a policy. The tier default then applies again. For the global policy, `subject_id` is `*` | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
 | `GET /v1/admin/kill-switches` | The kill switches | — | `KillSwitches` | 200 | `FORBIDDEN` |
-| `PUT /v1/admin/kill-switches` | Change them; omitted fields keep their value, `reason` is required. `cancel_untrusted_runs` (with `untrusted_execution_enabled=false`) also cancels every unfinished run of uploaded code; without it in-flight runs continue | `KillSwitchUpdate` | `KillSwitches` | 200 | `FORBIDDEN` |
-| `GET /v1/admin/executors` | Every executor: caps, health, submit rate, 429s, conformance report | — | `Page[ExecutorHealth]` | 200 | `FORBIDDEN` |
+| `PUT /v1/admin/kill-switches` | Change the kill switches. Fields that you do not send keep their value. `reason` is necessary. `cancel_untrusted_runs` (with `untrusted_execution_enabled=false`) also cancels all runs of uploaded code that are not complete. Without it, the runs that are in progress continue | `KillSwitchUpdate` | `KillSwitches` | 200 | `FORBIDDEN` |
+| `GET /v1/admin/executors` | All executors: caps, health, submit rate, 429s, conformance report | — | `Page[ExecutorHealth]` | 200 | `FORBIDDEN` |
 | `GET /v1/admin/executors/{name}` | One executor | — | `ExecutorHealth` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `GET /v1/admin/executors/{name}/evidence` | The conformance and security-suite reports recorded for an executor | — | `ExecutorEvidence` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `PUT /v1/admin/executors/{name}/evidence` | Record suite results (audited); shared tiers need both, passing, for the current caps | `ExecutorEvidenceUpdate` | `ExecutorEvidence` | 200 | `SCHEMA_INVALID`, `FORBIDDEN` |
-| `GET /v1/admin/usage` | Cost by tenant for a UTC `period` (`day` or `month`, `start` inside it), biggest spender first, and the current spend against the global spend cap (`spend_cap`: always the cap's current window, with `fraction` = spent / cap) | — | `AdminUsageReport` | 200 | `FORBIDDEN` |
-| `PUT /v1/admin/executors/{name}` | Enable or disable an executor (audited, `reason` required). Nothing new is leased onto a disabled one; orchestrator reports never re-enable it | `ExecutorUpdate` | `ExecutorHealth` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
-| `GET /v1/admin/audit` | The platform audit log; filters `tenant_id`, `project_id`, `actor_id`, `action`, `outcome`, `since`, `until` | — | `Page[AuditEvent]` | 200 | `FORBIDDEN` |
+| `GET /v1/admin/executors/{name}/evidence` | The reports of the conformance suite and the security suite for an executor | — | `ExecutorEvidence` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PUT /v1/admin/executors/{name}/evidence` | Record the suite results (audited). Shared tiers need the two reports, with a pass, for the current caps | `ExecutorEvidenceUpdate` | `ExecutorEvidence` | 200 | `SCHEMA_INVALID`, `FORBIDDEN` |
+| `GET /v1/admin/usage` | The cost for each tenant for a UTC `period` (`day` or `month`, with `start` in it). The tenant that spends most is first. The response also has the current spend against the global spend cap (`spend_cap`). This is always the current window of the cap, with `fraction` = spent / cap | — | `AdminUsageReport` | 200 | `FORBIDDEN` |
+| `PUT /v1/admin/executors/{name}` | Enable or disable an executor (audited, `reason` is necessary). The platform does not lease new work to a disabled executor. Orchestrator reports never enable it again | `ExecutorUpdate` | `ExecutorHealth` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/audit` | The platform audit log. Filters: `tenant_id`, `project_id`, `actor_id`, `action`, `outcome`, `since`, `until` | — | `Page[AuditEvent]` | 200 | `FORBIDDEN` |
 
 #### Browser session (backend-for-frontend)
 
-These routes are not versioned and live at the root, next to the web app.
+These routes have no version. They are at the root, next to the web app.
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /auth/login` | Start sign-in. Redirects to the identity provider with `response_type=code`, a PKCE `code_challenge` (S256), `state` and `nonce`. `?return_to=` must be a same-origin path; anything else becomes `/`. | — | — | 302 | — |
-| `GET /auth/callback` | Check `state`, exchange the code with the PKCE verifier, verify the ID token (issuer, audience, `nonce`, expiry), set the session cookie and redirect to `return_to` | — | — | 302 | `UNAUTHENTICATED` |
-| `POST /auth/logout` | End the session and clear the cookies. Works without a valid session; with one it needs `X-CSRF-Token`. | — | — | 204 | — |
-| `GET /auth/session` | Whether the browser is signed in, as whom and until when. `authenticated: false` is a 200, not a 401. | — | `SessionInfo` | 200 | — |
+| `GET /auth/login` | Start the sign-in. It redirects to the identity provider with `response_type=code`, a PKCE `code_challenge` (S256), `state` and `nonce`. `?return_to=` must be a path on the same origin. If it is not, the API uses `/`. | — | — | 302 | — |
+| `GET /auth/callback` | Do a check of `state`. Exchange the code with the PKCE verifier. Verify the ID token (issuer, audience, `nonce`, expiry). Set the session cookie and redirect to `return_to` | — | — | 302 | `UNAUTHENTICATED` |
+| `POST /auth/logout` | End the session and clear the cookies. It works without a valid session. With a valid session, it needs `X-CSRF-Token`. | — | — | 204 | — |
+| `GET /auth/session` | Tells if the browser is signed in, the identity, and the expiry time. `authenticated: false` is a 200, not a 401. | — | `SessionInfo` | 200 | — |
 
-The login transaction (state, nonce, PKCE verifier) is held by the server for 10 minutes and
-referenced by a `__Host-mapi_login` cookie with `SameSite=Lax`, because the identity
-provider's redirect back is a cross-site navigation that would drop a `Strict` cookie. Sessions
-expire after 2 hours idle or 12 hours in total. Every state-changing API route takes JSON,
-which a cross-site form cannot send without a CORS preflight, and the session cookie is
-`SameSite=Strict`, so cross-site requests never carry it.
+The server keeps the login transaction (state, nonce, PKCE verifier) for 10 minutes. A
+`__Host-mapi_login` cookie with `SameSite=Lax` refers to it. The cookie uses this setting because the
+redirect back from the identity provider is a cross-site navigation, and that navigation does
+not send a `Strict` cookie. Sessions expire after 2 hours with no activity or after 12 hours
+in total. Each API route that changes state accepts only JSON. A cross-site form cannot send
+JSON without a CORS preflight. The session cookie is `SameSite=Strict`, thus cross-site
+requests never send it.
 
-On top of that, every **cookie-authenticated** `POST`, `PUT`, `PATCH` and `DELETE` (including
-`POST /auth/logout` when a session is live) must echo the session's CSRF token in an
-`X-CSRF-Token` header, and is refused (`403 FORBIDDEN`) when its `Origin` is neither the web
-app nor the API or it says `Sec-Fetch-Site: cross-site`. The web app reads the token from the
-`__Host-mapi_csrf` cookie (readable, `SameSite=Strict`) or from the `X-CSRF-Token` header of
-`GET /auth/session`. Requests with an API token need no CSRF token.
+Also, each **cookie-authenticated** `POST`, `PUT`, `PATCH` and `DELETE` must send the CSRF
+token of the session in an `X-CSRF-Token` header. This includes `POST /auth/logout` when a
+session is live. The API refuses the request (`403 FORBIDDEN`) in these conditions:
+
+- Its `Origin` is not the web app or the API.
+- It has `Sec-Fetch-Site: cross-site`.
+
+The web app reads the token from the `__Host-mapi_csrf` cookie (readable, `SameSite=Strict`)
+or from the `X-CSRF-Token` header of `GET /auth/session`. Requests with an API token do not
+need a CSRF token.
 
 #### Internal
 
@@ -493,208 +526,261 @@ app nor the API or it says `Sec-Fetch-Site: cross-site`. The web app reads the t
 | `POST /internal/events` | Pub/Sub push of run events from the Cloud Logging sink | `PubSubPushEnvelope` | Ingest result | 200 | `UNAUTHENTICATED`, `SCHEMA_INVALID` |
 
 The push envelope is `{message: {data, attributes, messageId, publishTime}, subscription,
-deliveryAttempt}`. `message.data` is a base64 Cloud Logging entry whose `jsonPayload.mapi_event`
-is one HMAC-signed run event (see [Run protocol](run-protocol.md)). The request must carry
-`Authorization: Bearer <Google-signed ID token>`; after verifying the signature, the server
-checks the claims with `mapi_spec.auth.check_push_claims`: issuer `https://accounts.google.com`,
-the configured audience, the push service account's verified e-mail, and expiry. Events that
-fail their HMAC are acknowledged with 200 (redelivery would not help) and audited as
-`event.rejected`.
+deliveryAttempt}`. `message.data` is a base64 Cloud Logging entry. Its `jsonPayload.mapi_event`
+is one HMAC-signed run event (see [Run protocol](run-protocol.md)). The request must have
+`Authorization: Bearer <Google-signed ID token>`. After the server verifies the signature, it
+does a check of the claims with `mapi_spec.auth.check_push_claims`:
+
+- The issuer is `https://accounts.google.com`.
+- The audience is the configured audience.
+- The verified e-mail is the e-mail of the push service account.
+- The token is not expired.
+
+If an event fails its HMAC, the server acknowledges it with 200, because a new delivery
+cannot help. The server records it in the audit log as `event.rejected`.
 
 ### Quotas and rate limits on every endpoint
 
-Requests and submissions are checked against three levels of quota: token, tenant and global
-(see [Quotas and cost](../concepts/quotas-and-cost.md)).
+The platform does a check of requests and submissions against three levels of quota: token,
+tenant and global (see [Quotas and cost](../concepts/quotas-and-cost.md)).
 
-- A request over a requests-per-minute limit returns **`429 RATE_LIMITED`** with a
-  `Retry-After` header. Retry after that many seconds.
-- A submission that would exceed a compute, concurrency, fan-out, resource-class, storage or
-  egress limit returns **`429 QUOTA_EXCEEDED`**. `Retry-After` is set when the limit resets with
-  a window (the UTC day or month). The problem's `detail` names the level and the limit.
+- If a request goes above a requests-per-minute limit, the API returns
+  **`429 RATE_LIMITED`** with a `Retry-After` header. Try again after that number of seconds.
+- If a submission goes above a compute, concurrency, fan-out, resource-class, storage or
+  egress limit, the API returns **`429 QUOTA_EXCEEDED`**. The API sets `Retry-After` when the
+  limit resets with a window (the UTC day or month). The `detail` of the problem gives the
+  level and the limit.
 - The platform kill switches (uploaded code paused, global spend cap reached) also return
   `QUOTA_EXCEEDED`, at the global level.
 
 ## Guided mode and integrations <span class="mapi-badge">v0.4</span> { #guided-and-integrations }
 
-v0.4 (milestone M3) adds the contracts for Guided mode and for connecting other applications:
-guided templates and drafts, business priors and lift tests, what-if scenarios, endpoints and
-aliases, code snippets, webhooks, saved and rendered plots with embed links, and the trust
-lifecycle (sign-up, verification, tenant deletion and export). The endpoint table matches
-`mapi_spec.api.M3_ENDPOINTS`; `mapi_spec.api.ROUTE_ACCESS` gives each operation its scope and
-permission, and `mapi_spec.api.ENDPOINTS` is the whole v0.4 surface (M1, M2 and M3; the
-server's route-table test checks that it serves every row). The ideas behind them are
-explained in [Guided mode](../concepts/guided-mode.md) and
-[Integrations](../concepts/integrations.md).
+v0.4 (milestone M3) adds the contracts for Guided mode and for the connection of other
+applications. These contracts are:
 
-Project-scoped M3 routes take the project from `X-Mapi-Project`, like every v0.3 route.
+- Guided templates and drafts.
+- Business priors and lift tests.
+- What-if scenarios.
+- Endpoints and aliases.
+- Code snippets.
+- Webhooks.
+- Saved and rendered plots, with embed links.
+- The trust lifecycle (sign-up, verification, tenant deletion and export).
+
+The endpoint table agrees with `mapi_spec.api.M3_ENDPOINTS`. `mapi_spec.api.ROUTE_ACCESS`
+gives the scope and the permission of each operation. `mapi_spec.api.ENDPOINTS` is the full
+v0.4 surface (M1, M2 and M3). The route-table test of the server makes sure that the server
+serves each row. [Guided mode](../concepts/guided-mode.md) and
+[Integrations](../concepts/integrations.md) explain the ideas.
+
+Project-scoped M3 routes get the project from `X-Mapi-Project`, as all v0.3 routes do.
 
 ### Guided mode
 
-`GET /v1/guided/templates` lists the built-in templates (`GuidedTemplate`): plain-language
-questions, the built-in plugin they target, a `ModelSpec` template with `{{placeholder}}`
-strings, default settings, the scorecard checks that apply and `x-ui-level` hints. Role
-detection (`POST /v1/guided/detect-roles`) ranks the columns of an upload for every question
-from `ColumnProfile`s computed in the browser (or from a stored dataset version: its ingest's
-`columns.json`, else its schema and summary) and returns `RoleSuggestions`, each candidate
-with a confidence and a `reason_plain`. A draft (`POST /v1/guided/drafts`) turns
-`GuidedAnswers` into an `IngestMapping` for the upload, a `ModelSpec` document and its YAML
-("View as YAML") without storing anything, with the static validator's findings in `issues`;
-save it with `POST /v1/specs`.
-Business priors become
-model-space priors in a sandboxed `translate_priors` run (`PriorTranslationRequest` →
-`PriorTranslation`, whose `result` is a `PriorTranslationResult` with a prior-predictive
-preview in business units). `POST /v1/guided/requests:compile` turns a what-if scenario, a
-forecast or an intervention preset (`GuidedCompile`) into the `ScoreRequest` it stands for, so
-"Run exact" submits a real score run. The persona lock is `Project.guided_locked`, changed
-with `PATCH /v1/tenants/{tenant_id}/projects/{project_id}` (`ProjectUpdate.guided_locked`);
-in a locked project, `POST /v1/specs` and `POST /v1/specs/{spec_id}/revisions` by members
-below admin answer `403 FORBIDDEN` for anything but Guided specs that keep their template's
-advanced and hidden fields. Served in this release: the templates, role detection, drafts
-and the lock (see
+`GET /v1/guided/templates` lists the built-in templates (`GuidedTemplate`). Each template has
+these items:
+
+- Questions in plain language.
+- The built-in plugin that the questions are for.
+- A `ModelSpec` template with `{{placeholder}}` strings.
+- Default settings.
+- The scorecard checks that apply.
+- `x-ui-level` hints.
+
+Role detection (`POST /v1/guided/detect-roles`) ranks the columns of an upload for each
+question. It uses `ColumnProfile`s that the browser calculates. It can also use a stored
+dataset version: the `columns.json` of its ingest, or else its schema and summary. It returns
+`RoleSuggestions`. Each candidate has a confidence and a `reason_plain`.
+
+A draft (`POST /v1/guided/drafts`) changes `GuidedAnswers` into an `IngestMapping` for the
+upload, a `ModelSpec` document and its YAML ("View as YAML"). It does not store anything. The
+findings of the static validator are in `issues`. To save the draft, use `POST /v1/specs`.
+
+A sandboxed `translate_priors` run changes business priors into model-space priors
+(`PriorTranslationRequest` → `PriorTranslation`). The `result` of the translation is a
+`PriorTranslationResult`, with a prior-predictive preview in business units.
+
+`POST /v1/guided/requests:compile` changes a what-if scenario, a forecast or an intervention
+preset (`GuidedCompile`) into the equivalent `ScoreRequest`. Thus, "Run exact" sends a real
+score run.
+
+The persona lock is `Project.guided_locked`. To change it, use
+`PATCH /v1/tenants/{tenant_id}/projects/{project_id}` (`ProjectUpdate.guided_locked`). In a
+locked project, members below admin get `403 FORBIDDEN` from `POST /v1/specs` and
+`POST /v1/specs/{spec_id}/revisions`. The only exception is Guided specs that keep the
+advanced and hidden fields of their template.
+
+This release serves the templates, role detection, drafts and the lock (see
 [From a spreadsheet to a Guided draft](../guides/guided-data.md)).
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
 | `GET /v1/guided/templates` | Guided templates (geo marketing mix, weekly forecast, demand by store, choice) | — | `Page[GuidedTemplate]` | 200 | — |
 | `GET /v1/guided/templates/{template_id}` | One template: questions, spec template, scorecard checks, UI levels | — | `GuidedTemplate` | 200 | `NOT_FOUND` |
-| `POST /v1/guided/detect-roles` | Suggest a column for every question from column profiles | `DetectRolesRequest` | `RoleSuggestions` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
-| `POST /v1/guided/drafts` | Answers → ingest mapping + ModelSpec draft (+ YAML); stores nothing | `GuidedAnswers` | `GuidedDraft` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `GUIDED_ANSWERS_INVALID` |
-| `POST /v1/guided/requests:compile` | What-if scenario, forecast or preset → the ScoreRequest it stands for ('Run exact') | `GuidedCompile` | `ScoreRequest` | 200 | `SCHEMA_INVALID`, `MISSING_FUTURE_COVARIATE` |
+| `POST /v1/guided/detect-roles` | Suggest a column for each question from column profiles | `DetectRolesRequest` | `RoleSuggestions` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
+| `POST /v1/guided/drafts` | Answers → ingest mapping + ModelSpec draft (+ YAML). It stores nothing | `GuidedAnswers` | `GuidedDraft` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `GUIDED_ANSWERS_INVALID` |
+| `POST /v1/guided/requests:compile` | What-if scenario, forecast or preset → the equivalent ScoreRequest ('Run exact') | `GuidedCompile` | `ScoreRequest` | 200 | `SCHEMA_INVALID`, `MISSING_FUTURE_COVARIATE` |
 | `POST /v1/guided/prior-translations` | Business priors → model-space priors + prior predictive (a translate_priors run) | `PriorTranslationRequest` | `PriorTranslation` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `BUSINESS_PRIORS_INVALID`, `CALIBRATION_UNSUPPORTED`, `QUOTA_EXCEEDED` |
-| `GET /v1/guided/prior-translations/{run_id}` | The translation run and, once done, its priors and preview | — | `PriorTranslation` | 200 | `NOT_FOUND` |
+| `GET /v1/guided/prior-translations/{run_id}` | The translation run. When it is done, also its priors and preview | — | `PriorTranslation` | 200 | `NOT_FOUND` |
 
 ### Endpoints and aliases
 
 An endpoint is a stable alias (`endpoint://<project>/<alias>`) for one model version. `PUT`
-promotes a version: the promotion gate (`PromotionGateDecision`) allows a passing scorecard,
-asks for `override: true` with a `reason` from a signed-in project admin when it warns
-(`409 OVERRIDE_REQUIRED`; the override is audited as `endpoint.promote_override`), and blocks
-a failing one (`409 PROMOTION_BLOCKED`). The endpoint's `EvaluationPolicy` requires
-`evaluate_then_refit` fits by default and blocks input-schema changes that would break callers.
-`POST …/score` takes an `EndpointScoreCall` (a score request without `model`, whose `data` and
-`scenario` may be inline XrJSON datasets up to 5 MB) and answers like `…:score` on a model
-version: `Prefer: wait=60` gives `200` with the result when it is done in time, otherwise
-`202` with the run. A `score:<alias>` token may read the endpoint, its schema, history and
-snippets, and score it; `endpoints:promote` tokens may promote and roll back but never
-override the gate.
+promotes a version. The promotion gate (`PromotionGateDecision`) does a check of the
+scorecard:
+
+- If the scorecard passes, the gate permits the promotion.
+- If the scorecard has a warning, the gate asks for `override: true` with a `reason` from a
+  signed-in project admin (`409 OVERRIDE_REQUIRED`). The audit log records the override as
+  `endpoint.promote_override`.
+- If the scorecard fails, the gate blocks the promotion (`409 PROMOTION_BLOCKED`).
+
+By default, the `EvaluationPolicy` of the endpoint needs `evaluate_then_refit` fits. It also
+blocks changes to the input schema that would break callers.
+
+`POST …/score` takes an `EndpointScoreCall`. This is a score request without `model`. Its
+`data` and `scenario` can be inline XrJSON datasets of up to 5 MB. The answer is the same as
+for `…:score` on a model version. With `Prefer: wait=60`, you get `200` with the result if the
+run completes in time. If not, you get `202` with the run.
+
+A `score:<alias>` token can read the endpoint, its schema, history and snippets, and can score
+it. `endpoints:promote` tokens can promote and roll back, but they cannot override the gate.
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
 | `GET /v1/endpoints` | Endpoints of the project | — | `Page[Endpoint]` | 200 | — |
-| `GET /v1/endpoints/{alias}` | An endpoint and the version it serves | — | `Endpoint` | 200 | `NOT_FOUND` |
-| `PUT /v1/endpoints/{alias}` | Create or promote (gated on the scorecard; override = admin + reason, audited) | `EndpointPromote` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `PROMOTION_BLOCKED`, `OVERRIDE_REQUIRED`, `NOT_VALIDATED` |
-| `DELETE /v1/endpoints/{alias}` | Delete the alias (model versions stay) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/endpoints/{alias}` | An endpoint and the version that it serves | — | `Endpoint` | 200 | `NOT_FOUND` |
+| `PUT /v1/endpoints/{alias}` | Create or promote. The scorecard is the gate. An override needs an admin and a reason, and goes into the audit log | `EndpointPromote` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `PROMOTION_BLOCKED`, `OVERRIDE_REQUIRED`, `NOT_VALIDATED` |
+| `DELETE /v1/endpoints/{alias}` | Delete the alias (the model versions stay) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
 | `GET /v1/endpoints/{alias}/history` | Promotions and rollbacks, newest first | — | `Page[EndpointRevision]` | 200 | `NOT_FOUND` |
 | `POST /v1/endpoints/{alias}/score` | Score the current version (Prefer: wait=N → 200 if done, else 202 with the run) | `EndpointScoreCall` | `ScoreCallResult` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `PAYLOAD_TOO_LARGE`, `ACTUALS_NOT_SUPPORTED`, `ACTUALS_INVALID` |
 | `GET /v1/endpoints/{alias}/schema` | Input schema of the current version and an example payload | — | `EndpointSchema` | 200 | `NOT_FOUND` |
-| `POST /v1/endpoints/{alias}/validate` | Static checks of a score call without running it | `EndpointScoreCall` | `EndpointValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE` |
-| `POST /v1/endpoints/{alias}/rollback` | Point the alias back at an earlier revision's version (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `NOT_VALIDATED` |
+| `POST /v1/endpoints/{alias}/validate` | Static checks of a score call. It does not run the call | `EndpointScoreCall` | `EndpointValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE` |
+| `POST /v1/endpoints/{alias}/rollback` | Set the alias back to the version of an earlier revision (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `NOT_VALIDATED` |
 | `GET /v1/endpoints/{alias}/snippets` | Python, TypeScript, curl, R, Apps Script and notebook code for the endpoint | — | `SnippetSet` | 200 | `NOT_FOUND` |
 
 ### Webhooks
 
-`POST /v1/webhooks` returns the signing secret once (`WebhookCreated`). Deliveries carry a
-`WebhookEnvelope` and the header `Mapi-Signature: t=<unix>,v1=<hex>`; see
-[Integrations](../concepts/integrations.md#webhooks) for verification and the SSRF policy.
-Managing webhooks needs a project admin or a `webhooks:manage` token.
+`POST /v1/webhooks` returns the signing secret one time only (`WebhookCreated`). Each delivery
+has a `WebhookEnvelope` and the header `Mapi-Signature: t=<unix>,v1=<hex>`. For verification
+and the SSRF policy, see [Integrations](../concepts/integrations.md#webhooks). To manage
+webhooks, you must be a project admin or have a `webhooks:manage` token.
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
 | `GET /v1/webhooks` | Webhooks of the project | — | `Page[Webhook]` | 200 | `FORBIDDEN` |
-| `POST /v1/webhooks` | Add a webhook (the secret is shown once) | `WebhookCreate` | `WebhookCreated` | 201 | `SCHEMA_INVALID`, `FORBIDDEN`, `WEBHOOK_URL_BLOCKED` |
+| `POST /v1/webhooks` | Add a webhook (the API shows the secret one time only) | `WebhookCreate` | `WebhookCreated` | 201 | `SCHEMA_INVALID`, `FORBIDDEN`, `WEBHOOK_URL_BLOCKED` |
 | `GET /v1/webhooks/{webhook_id}` | A webhook (never its secret) | — | `Webhook` | 200 | `NOT_FOUND`, `FORBIDDEN` |
 | `PATCH /v1/webhooks/{webhook_id}` | Change URL, events or active | `WebhookUpdate` | `Webhook` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `WEBHOOK_URL_BLOCKED` |
 | `DELETE /v1/webhooks/{webhook_id}` | Delete a webhook and its delivery log | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
-| `POST /v1/webhooks/{webhook_id}:rotate-secret` | New secret (shown once); the old one signs too for 24 h | — | `WebhookCreated` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `POST /v1/webhooks/{webhook_id}:rotate-secret` | New secret (shown one time only). The old secret also signs for 24 h | — | `WebhookCreated` | 200 | `NOT_FOUND`, `FORBIDDEN` |
 | `GET /v1/webhooks/{webhook_id}/deliveries` | Delivery log, newest first (filter: status) | — | `Page[WebhookDelivery]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `POST /v1/webhooks/{webhook_id}/deliveries/{delivery_id}:replay` | Send an event again (a new delivery, replay_of set) | — | `WebhookDelivery` | 202 | `NOT_FOUND`, `FORBIDDEN`, `WEBHOOK_URL_BLOCKED` |
+| `POST /v1/webhooks/{webhook_id}/deliveries/{delivery_id}:replay` | Send an event again (a new delivery, with replay_of set) | — | `WebhookDelivery` | 202 | `NOT_FOUND`, `FORBIDDEN`, `WEBHOOK_URL_BLOCKED` |
 
 ### Saved plots, rendering and embeds
 
-A `SavedPlot` keeps a model version's plot or a user-authored `PlotSpec`. Rendering
-(`PlotRenderRequest` → `PlotRender`) produces PNG, SVG or PDF in the sandbox. Embed links
-(`PlotEmbedCreate` → `PlotEmbedCreated`, listed as `PlotEmbed`) are tokenised, read-only and
-expire; only plots of platform recipes can be embedded (`422 EMBED_NOT_ALLOWED`). The public
-`GET /v1/embeds/{embed_token}` returns an `EmbedView` with every dataset inline, or
-`410 LINK_EXPIRED`; it reads no credential and answers cross-origin reads from the plot
-sandbox origin only. See [Sharing plots](../guides/sharing-plots.md).
+A `SavedPlot` keeps a plot of a model version or a `PlotSpec` that a user wrote. Rendering
+(`PlotRenderRequest` → `PlotRender`) makes PNG, SVG or PDF in the sandbox. Embed links
+(`PlotEmbedCreate` → `PlotEmbedCreated`, listed as `PlotEmbed`) have tokens, are read-only and
+expire. You can embed only plots of platform recipes (`422 EMBED_NOT_ALLOWED`).
+
+The public `GET /v1/embeds/{embed_token}` returns an `EmbedView` with all datasets inline, or
+`410 LINK_EXPIRED`. It does not read credentials. It answers cross-origin reads only from the
+plot sandbox origin. See [Sharing plots](../guides/sharing-plots.md).
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `POST /v1/plots` | Save a model version's plot or a user-authored PlotSpec | `SavedPlotCreate` | `SavedPlot` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `PLOT_UNSAFE` |
+| `POST /v1/plots` | Save a plot of a model version or a PlotSpec that a user wrote | `SavedPlotCreate` | `SavedPlot` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `PLOT_UNSAFE` |
 | `GET /v1/plots` | Saved plots | — | `Page[SavedPlot]` | 200 | — |
 | `GET /v1/plots/{plot_id}` | A saved plot with its sanitized spec | — | `SavedPlot` | 200 | `NOT_FOUND` |
-| `DELETE /v1/plots/{plot_id}` | Delete a saved plot (revokes its embeds) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `DELETE /v1/plots/{plot_id}` | Delete a saved plot (this revokes its embeds) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
 | `POST /v1/plots:render` | PNG, SVG or PDF in the sandbox (Prefer: wait=N → 200 if done, else 202) | `PlotRenderRequest` | `PlotRender` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PLOT_UNSAFE`, `MODE_NOT_SUPPORTED`, `QUOTA_EXCEEDED` |
 | `GET /v1/plots/renders/{run_id}` | A render run and links to its files | — | `PlotRender` | 200 | `NOT_FOUND` |
-| `POST /v1/plots/{plot_id}/embeds` | Tokenised read-only link (platform recipes only; shown once) | `PlotEmbedCreate` | `PlotEmbedCreated` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `EMBED_NOT_ALLOWED` |
+| `POST /v1/plots/{plot_id}/embeds` | Read-only link with a token (platform recipes only, shown one time only) | `PlotEmbedCreate` | `PlotEmbedCreated` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `EMBED_NOT_ALLOWED` |
 | `GET /v1/plots/{plot_id}/embeds` | Embed links of a plot | — | `Page[PlotEmbed]` | 200 | `NOT_FOUND` |
 | `DELETE /v1/plots/{plot_id}/embeds/{embed_id}` | Revoke an embed link (idempotent) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
 | `GET /v1/embeds/{embed_token}` | Public: the embedded plot with inline data (410 when expired or revoked) | — | `EmbedView` | 200 | `NOT_FOUND`, `LINK_EXPIRED`, `RATE_LIMITED` |
 
 ### Sign-up, verification, deletion and export
 
-Self-service sign-up (`SignupRequest` → `SignupAccepted`) answers the same for new and known
-addresses. Verifying the e-mail (`EmailVerify` → `VerificationResult`) creates a
-`public`-tier tenant. `VerificationStatus` says whether the tenant may upload code: never for
-public tenants before cut line B, and only after identity verification (operators record it
-with `VerificationUpdate`). Deletion is scheduled with a grace period during which the tenant
-is suspended and can cancel (`TenantDeletionRequest` → `TenantDeletion`, with progress per
-store); a GDPR export (`GdprExportRequest` → `GdprExport`) packages everything the tenant
-stored.
+Self-service sign-up (`SignupRequest` → `SignupAccepted`) gives the same answer for new and
+known addresses. Verification of the e-mail (`EmailVerify` → `VerificationResult`) creates a
+`public`-tier tenant.
+
+`VerificationStatus` tells if the tenant can upload code. Public tenants cannot upload code
+before cut line B. After cut line B, they can upload code only after identity verification.
+Operators record the identity verification with `VerificationUpdate`.
+
+Deletion starts after a grace period (`TenantDeletionRequest` → `TenantDeletion`, with the
+progress for each store). During the grace period, the tenant is suspended and can cancel the
+deletion. A GDPR export (`GdprExportRequest` → `GdprExport`) puts all the data that the tenant
+stored into a package.
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
 | `POST /auth/signup` | Self-service sign-up (same answer for new and known addresses) | `SignupRequest` | `SignupAccepted` | 202 | `SCHEMA_INVALID`, `EMAIL_NOT_ALLOWED`, `TERMS_NOT_ACCEPTED`, `RATE_LIMITED` |
-| `POST /auth/verify-email` | Verify the address; creates a public-tier tenant | `EmailVerify` | `VerificationResult` | 200 | `SCHEMA_INVALID`, `LINK_EXPIRED`, `RATE_LIMITED` |
-| `GET /v1/tenants/{tenant_id}/verification` | E-mail and identity verification, and whether code upload is allowed | — | `VerificationStatus` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `PUT /v1/admin/tenants/{tenant_id}/verification` | Record identity verification (operators; audited) | `VerificationUpdate` | `VerificationStatus` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
-| `POST /v1/tenants/{tenant_id}/deletion` | Schedule deletion of the whole tenant (grace period, then purge) | `TenantDeletionRequest` | `TenantDeletion` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
-| `GET /v1/tenants/{tenant_id}/deletion` | Deletion state and progress per store | — | `TenantDeletion` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `DELETE /v1/tenants/{tenant_id}/deletion` | Cancel a scheduled deletion (within the grace period) | — | `TenantDeletion` | 200 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
-| `POST /v1/tenants/{tenant_id}/exports` | GDPR export of everything the tenant stored | `GdprExportRequest` | `GdprExport` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `QUOTA_EXCEEDED` |
-| `GET /v1/tenants/{tenant_id}/exports` | The tenant's GDPR exports, newest first (`GET` one for its download link) | — | `Page[GdprExport]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `GET /v1/tenants/{tenant_id}/exports/{export_id}` | An export and, once ready, its download link | — | `GdprExport` | 200 | `NOT_FOUND`, `FORBIDDEN` |
-| `GET /v1/admin/signups` | Sign-ups, newest first; filter by `review` state (the Sybil review queue) or `tenant_id` | — | `Page[SignupReview]` | 200 | `FORBIDDEN` |
-| `POST /v1/admin/signups/{signup_id}/review` | Approve or reject a sign-up (a rejection suspends its tenant; audited) | `SignupReviewDecision` | `SignupReview` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
-| `POST /v1/admin/tenants/{tenant_id}/deletion/retry` | Restart a failed tenant purge (operators; audited) | — | `TenantDeletion` | 202 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `POST /auth/verify-email` | Verify the address. This creates a public-tier tenant | `EmailVerify` | `VerificationResult` | 200 | `SCHEMA_INVALID`, `LINK_EXPIRED`, `RATE_LIMITED` |
+| `GET /v1/tenants/{tenant_id}/verification` | E-mail and identity verification, and if code upload is permitted | — | `VerificationStatus` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PUT /v1/admin/tenants/{tenant_id}/verification` | Record identity verification (operators, audited) | `VerificationUpdate` | `VerificationStatus` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
+| `POST /v1/tenants/{tenant_id}/deletion` | Schedule deletion of the full tenant (grace period, then purge) | `TenantDeletionRequest` | `TenantDeletion` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `GET /v1/tenants/{tenant_id}/deletion` | Deletion state and progress for each store | — | `TenantDeletion` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `DELETE /v1/tenants/{tenant_id}/deletion` | Cancel a scheduled deletion (during the grace period) | — | `TenantDeletion` | 200 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `POST /v1/tenants/{tenant_id}/exports` | GDPR export of all the data that the tenant stored | `GdprExportRequest` | `GdprExport` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `QUOTA_EXCEEDED` |
+| `GET /v1/tenants/{tenant_id}/exports` | The GDPR exports of the tenant, newest first (`GET` one export to get its download link) | — | `Page[GdprExport]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/tenants/{tenant_id}/exports/{export_id}` | An export. When it is ready, also its download link | — | `GdprExport` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/signups` | Sign-ups, newest first. Filter by `review` state (the Sybil review queue) or `tenant_id` | — | `Page[SignupReview]` | 200 | `FORBIDDEN` |
+| `POST /v1/admin/signups/{signup_id}/review` | Approve or reject a sign-up (a rejection suspends its tenant, audited) | `SignupReviewDecision` | `SignupReview` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `POST /v1/admin/tenants/{tenant_id}/deletion/retry` | Start a failed tenant purge again (operators, audited) | — | `TenantDeletion` | 202 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 
 ## Workflows, governance, explorers and About cards <span class="mapi-badge">v0.5</span> { #m35 }
 
-v0.5 (milestone M3.5) adds the contracts for automated **workflows** (statistical tests, data
-processing, splits, searches and models nested in one versioned DAG), model **governance**
-(policies, checks with evidence, validation and approval), the **Data Explorer** and
-**Model Explorer**, **budget optimisation** with mmm-framework, and the plain-language
-**About cards** with the **Help me choose** chooser. The endpoint table matches
-`mapi_spec.api.M35_ENDPOINTS`; `mapi_spec.api.ENDPOINTS` is the whole v0.5 surface
-(`V04_ENDPOINTS` + `M35_ENDPOINTS`) and `ROUTE_ACCESS` gives each operation its scope and
-permission. The ideas are explained in [Workflows](../concepts/workflows.md),
+v0.5 (milestone M3.5) adds the contracts for these items:
+
+- Automated **workflows**: statistical tests, data processing, splits, searches and models in
+  one versioned DAG.
+- Model **governance**: policies, checks with evidence, validation and approval.
+- The **Data Explorer** and the **Model Explorer**.
+- **Budget optimisation** with mmm-framework.
+- The plain-language **About cards**, with the **Help me choose** chooser.
+
+The endpoint table agrees with `mapi_spec.api.M35_ENDPOINTS`. `mapi_spec.api.ENDPOINTS` is the
+full v0.5 surface (`V04_ENDPOINTS` + `M35_ENDPOINTS`). `ROUTE_ACCESS` gives the scope and the
+permission of each operation. [Workflows](../concepts/workflows.md),
 [Governance](../concepts/governance.md) and
-[About cards and choosing](../concepts/about-and-choosing.md).
+[About cards and choosing](../concepts/about-and-choosing.md) explain the ideas.
 
 v0.5 also **removes** an importer route of v0.4, its ingest preset and one snippet language
-(see the CHANGELOG): mmm-framework is the only MMM engine. The contract version is `0.2`.
+(see the CHANGELOG). Thus, mmm-framework is the only MMM engine. The contract version is `0.2`.
 
-**Permissions.** Workflows are read by viewers, written by editors, run (and scheduled) by
-runners and deleted by admins. Project policies are managed by project admins, tenant-wide
-policies by tenant admins; everyone in the project reads them. Submitting a model version for
-validation needs `run` rights (`validate` on `model`); approving or rejecting needs the
-**reviewer** capability (`Membership.capabilities`, granted with `MembershipUpdate`; project
-admins hold it implicitly) and is refused to the person who submitted it
-(`403 SELF_APPROVAL_FORBIDDEN`). No API token can approve. New token scopes:
-`workflows:write`, `workflows:run`, `models:validate` and `policies:manage`.
+**Permissions.** These rules apply:
 
-**Long-running work.** A workflow run, an explore run and an optimize run are runs like any
-other (`Idempotency-Key`, the quota checks, cost). `POST …:optimize` honours
+- Viewers read workflows. Editors write them. Runners run and schedule them. Admins delete
+  them.
+- Project admins manage project policies. Tenant admins manage tenant-wide policies. All
+  members of the project can read the policies.
+- To submit a model version for validation, you need `run` rights (`validate` on `model`).
+- To approve or reject, you need the **reviewer** capability (`Membership.capabilities`, given
+  with `MembershipUpdate`). Project admins have this capability automatically.
+- The person who submitted a model version cannot approve or reject it
+  (`403 SELF_APPROVAL_FORBIDDEN`).
+- No API token can approve.
+
+The new token scopes are `workflows:write`, `workflows:run`, `models:validate` and
+`policies:manage`.
+
+**Long-running work.** A workflow run, an explore run and an optimize run are the same as
+other runs (`Idempotency-Key`, the quota checks, cost). `POST …:optimize` obeys
 `Prefer: wait=N`. Workflow runs stream their node events on
 `GET /v1/workflow-runs/{run_id}/events` (SSE with `Last-Event-ID`, event types in
-`WorkflowEventType`), and the terminal ones also go to webhooks (`workflow.run.succeeded`,
-`workflow.run.failed`), as do validation transitions (`model.validated`, `model.rejected`,
-...), `dataset.version.created` and `optimize.completed`.
+`WorkflowEventType`). The terminal events also go to webhooks (`workflow.run.succeeded`,
+`workflow.run.failed`). These events also go to webhooks: validation transitions
+(`model.validated`, `model.rejected`, ...), `dataset.version.created` and
+`optimize.completed`.
 
-**Promotion.** When a governance policy that applies to a model says
-`require_validated_for_promotion`, `PUT /v1/endpoints/{alias}` refuses a version whose
-validation status is not `validated` with `409 NOT_VALIDATED` (no override can pass it).
+**Promotion.** A governance policy that applies to a model can set
+`require_validated_for_promotion`. In this case, `PUT /v1/endpoints/{alias}` refuses a version
+if its validation status is not `validated` (`409 NOT_VALIDATED`). No override can pass this
+check.
 
 ### Endpoints { #m35-endpoints }
 
@@ -704,7 +790,7 @@ validation status is not `validated` with `409 NOT_VALIDATED` (no override can p
 |---|---|---|---|---|---|
 | `GET /v1/catalog/abouts` | About cards of catalog items (filter: kind) | — | `Page[CatalogAbout]` | 200 | — |
 | `GET /v1/catalog/chooser` | The Help-me-choose questions | — | `ChooserQuestionnaire` | 200 | — |
-| `GET /v1/catalog/recommendations` | Ranked recommendations for chooser answers (query: one parameter per question) | — | `ChooserResult` | 200 | `CHOOSER_ANSWER_INVALID` |
+| `GET /v1/catalog/recommendations` | Ranked recommendations for chooser answers (query: one parameter for each question) | — | `ChooserResult` | 200 | `CHOOSER_ANSWER_INVALID` |
 | `GET /v1/catalog/workflow-nodes` | Workflow node implementations with ports, parameters and About cards | — | `Page[NodeImplementation]` | 200 | — |
 | `GET /v1/catalog/workflow-nodes/{node_id}` | One node implementation | — | `NodeImplementation` | 200 | `NOT_FOUND` |
 | `GET /v1/catalog/governance-checks` | The governance check catalog | — | `Page[GovernanceCheckDef]` | 200 | — |
@@ -713,19 +799,19 @@ validation status is not `validated` with `409 NOT_VALIDATED` (no override can p
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /v1/datasets/{dataset_id}/about` | The owner's description and the generated summary of the latest version | — | `DatasetAbout` | 200 | `NOT_FOUND` |
-| `PATCH /v1/datasets/{dataset_id}/about` | Change the owner's description | `DatasetAboutUpdate` | `DatasetAbout` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
-| `POST /v1/datasets/{dataset_id}/versions/{version}/explore` | Compute Data Explorer sections (an explore run) | `DataExploreRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `QUOTA_EXCEEDED` |
-| `GET /v1/explorations/{run_id}` | An explore run and, once done, links to its views | — | `Exploration` | 200 | `NOT_FOUND` |
+| `GET /v1/datasets/{dataset_id}/about` | The description of the owner and the generated summary of the latest version | — | `DatasetAbout` | 200 | `NOT_FOUND` |
+| `PATCH /v1/datasets/{dataset_id}/about` | Change the description of the owner | `DatasetAboutUpdate` | `DatasetAbout` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
+| `POST /v1/datasets/{dataset_id}/versions/{version}/explore` | Calculate Data Explorer sections (an explore run) | `DataExploreRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `QUOTA_EXCEEDED` |
+| `GET /v1/explorations/{run_id}` | An explore run. When it is done, also links to its views | — | `Exploration` | 200 | `NOT_FOUND` |
 
 #### Models: the Model Explorer and budget optimisation
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `POST /v1/models/{model_id}/versions/{version}/explore` | Compute Model Explorer sections (an explore run) | `ModelExploreRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `CAPABILITY_UNSUPPORTED`, `QUOTA_EXCEEDED` |
-| `POST /v1/models:compare` | Compare several model versions side by side (an explore run: metrics, ranking, Diebold-Mariano tests) | `ModelCompareRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `QUOTA_EXCEEDED` |
+| `POST /v1/models/{model_id}/versions/{version}/explore` | Calculate Model Explorer sections (an explore run) | `ModelExploreRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `CAPABILITY_UNSUPPORTED`, `QUOTA_EXCEEDED` |
+| `POST /v1/models:compare` | Compare two or more model versions side by side (an explore run: metrics, ranking, Diebold-Mariano tests) | `ModelCompareRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `QUOTA_EXCEEDED` |
 | `POST /v1/models/{model_id}/versions/{version}:optimize` | Optimise a budget across channels (Prefer: wait=N -> 200 if done, else 202) | `OptimizeRequest` | `Optimization` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `OPTIMIZE_INFEASIBLE`, `CAPABILITY_UNSUPPORTED`, `QUOTA_EXCEEDED` |
-| `GET /v1/optimizations/{run_id}` | An optimize run and, once done, its plan | — | `Optimization` | 200 | `NOT_FOUND` |
+| `GET /v1/optimizations/{run_id}` | An optimize run. When it is done, also its plan | — | `Optimization` | 200 | `NOT_FOUND` |
 
 #### Workflows
 
@@ -733,21 +819,21 @@ validation status is not `validated` with `409 NOT_VALIDATED` (no override can p
 |---|---|---|---|---|---|
 | `GET /v1/workflows` | Workflows of the project | — | `Page[Workflow]` | 200 | — |
 | `POST /v1/workflows` | Create a workflow from a document, YAML text or a gallery template | `WorkflowCreate` | `Workflow` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `WORKFLOW_INVALID`, `CONFLICT`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE` |
-| `POST /v1/workflows:validate` | Static checks of a workflow document (JSON pointers); stores nothing | `WorkflowValidateRequest` | `WorkflowValidation` | 200 | `SCHEMA_INVALID`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE` |
+| `POST /v1/workflows:validate` | Static checks of a workflow document (JSON pointers). It stores nothing | `WorkflowValidateRequest` | `WorkflowValidation` | 200 | `SCHEMA_INVALID`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE` |
 | `GET /v1/workflows/{workflow_id}` | A workflow | — | `Workflow` | 200 | `NOT_FOUND` |
-| `PATCH /v1/workflows/{workflow_id}` | Change the description or archive it | `WorkflowUpdate` | `Workflow` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
-| `DELETE /v1/workflows/{workflow_id}` | Delete a workflow (its runs, schedules and triggers go with it) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `PATCH /v1/workflows/{workflow_id}` | Change the description or archive the workflow | `WorkflowUpdate` | `Workflow` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
+| `DELETE /v1/workflows/{workflow_id}` | Delete a workflow (this also deletes its runs, schedules and triggers) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 | `GET /v1/workflows/{workflow_id}/revisions` | Revisions, newest first | — | `Page[WorkflowRevision]` | 200 | `NOT_FOUND` |
-| `POST /v1/workflows/{workflow_id}/revisions` | Save a new revision (validated; errors make it unrunnable) | `WorkflowRevisionCreate` | `WorkflowRevision` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `CONFLICT`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE` |
+| `POST /v1/workflows/{workflow_id}/revisions` | Save a new revision (validated. If it has errors, you cannot run it) | `WorkflowRevisionCreate` | `WorkflowRevision` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `CONFLICT`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE` |
 | `GET /v1/workflows/{workflow_id}/revisions/{revision}` | A revision with its validation | — | `WorkflowRevision` | 200 | `NOT_FOUND` |
 | `POST /v1/workflows/{workflow_id}/runs` | Run a revision (a workflow parent run) | `WorkflowRunCreate` | `WorkflowRun` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `WORKFLOW_INVALID`, `WORKFLOW_NOT_RUNNABLE`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT` |
 | `GET /v1/workflows/{workflow_id}/runs` | Runs of a workflow, newest first | — | `Page[WorkflowRun]` | 200 | `NOT_FOUND` |
-| `GET /v1/workflow-runs/{run_id}` | A workflow run with every node, decision and output | — | `WorkflowRun` | 200 | `NOT_FOUND` |
-| `POST /v1/workflow-runs/{run_id}:cancel` | Cancel a workflow run and its running children | — | `WorkflowRun` | 202 | `NOT_FOUND`, `CONFLICT` |
+| `GET /v1/workflow-runs/{run_id}` | A workflow run with all its nodes, decisions and outputs | — | `WorkflowRun` | 200 | `NOT_FOUND` |
+| `POST /v1/workflow-runs/{run_id}:cancel` | Cancel a workflow run and its child runs that are in progress | — | `WorkflowRun` | 202 | `NOT_FOUND`, `CONFLICT` |
 | `GET /v1/workflow-runs/{run_id}/events` | Workflow run events (SSE, Last-Event-ID) | — | SSE stream | 200 | `NOT_FOUND` |
 | `GET /v1/workflow-runs/{run_id}/nodes` | The node runs of a workflow run | — | `Page[NodeRun]` | 200 | `NOT_FOUND` |
-| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}` | One node's status, result and outputs | — | `NodeRun` | 200 | `NOT_FOUND` |
-| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}` | A signed link to a node output's object | — | `ArtifactLink` | 200 | `NOT_FOUND` |
+| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}` | The status, result and outputs of one node | — | `NodeRun` | 200 | `NOT_FOUND` |
+| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}` | A signed link to the object of a node output | — | `ArtifactLink` | 200 | `NOT_FOUND` |
 | `GET /v1/workflows/{workflow_id}/schedules` | Cron schedules | — | `Page[WorkflowSchedule]` | 200 | `NOT_FOUND` |
 | `POST /v1/workflows/{workflow_id}/schedules` | Run the workflow on a cron schedule | `ScheduleCreate` | `WorkflowSchedule` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `SCHEDULE_INVALID` |
 | `PATCH /v1/workflows/{workflow_id}/schedules/{schedule_id}` | Change or pause a schedule | `ScheduleUpdate` | `WorkflowSchedule` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `SCHEDULE_INVALID` |
@@ -762,13 +848,13 @@ validation status is not `validated` with `409 NOT_VALIDATED` (no override can p
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `GET /v1/governance/policies` | Policies in force in the project (its own and the tenant's) | — | `Page[GovernancePolicy]` | 200 | — |
+| `GET /v1/governance/policies` | Policies that apply in the project (its own policies and the policies of the tenant) | — | `Page[GovernancePolicy]` | 200 | — |
 | `POST /v1/governance/policies` | Add a project policy (version 1) | `GovernancePolicyCreate` | `GovernancePolicy` | 201 | `SCHEMA_INVALID`, `FORBIDDEN`, `POLICY_INVALID` |
 | `GET /v1/governance/policies/{policy_id}` | The latest version of a policy | — | `GovernancePolicy` | 200 | `NOT_FOUND` |
-| `PUT /v1/governance/policies/{policy_id}` | Save a new version (expected_version guards concurrent edits) | `GovernancePolicyUpdate` | `GovernancePolicy` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `POLICY_INVALID` |
+| `PUT /v1/governance/policies/{policy_id}` | Save a new version (expected_version prevents conflicts between concurrent edits) | `GovernancePolicyUpdate` | `GovernancePolicy` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `POLICY_INVALID` |
 | `DELETE /v1/governance/policies/{policy_id}` | Retire a policy (its versions stay for audit) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
-| `GET /v1/governance/policies/{policy_id}/versions` | Every version of a policy, newest first | — | `Page[GovernancePolicy]` | 200 | `NOT_FOUND` |
-| `GET /v1/tenants/{tenant_id}/governance/policies` | Tenant-wide policies (every project's floor) | — | `Page[GovernancePolicy]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/governance/policies/{policy_id}/versions` | All versions of a policy, newest first | — | `Page[GovernancePolicy]` | 200 | `NOT_FOUND` |
+| `GET /v1/tenants/{tenant_id}/governance/policies` | Tenant-wide policies (the minimum for each project) | — | `Page[GovernancePolicy]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
 | `POST /v1/tenants/{tenant_id}/governance/policies` | Add a tenant-wide policy | `GovernancePolicyCreate` | `GovernancePolicy` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `POLICY_INVALID` |
 | `GET /v1/tenants/{tenant_id}/governance/policies/{policy_id}` | A tenant-wide policy | — | `GovernancePolicy` | 200 | `NOT_FOUND`, `FORBIDDEN` |
 | `PUT /v1/tenants/{tenant_id}/governance/policies/{policy_id}` | Save a new version of a tenant-wide policy | `GovernancePolicyUpdate` | `GovernancePolicy` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `POLICY_INVALID` |
@@ -778,21 +864,21 @@ validation status is not `validated` with `409 NOT_VALIDATED` (no override can p
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `POST /v1/models/{model_id}/versions/{version}/validations` | Submit a model version: runs the policy checks as a governance workflow | `ValidationRequest` | `ModelValidation` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `VALIDATION_TRANSITION_INVALID`, `POLICY_INVALID`, `QUOTA_EXCEEDED` |
+| `POST /v1/models/{model_id}/versions/{version}/validations` | Submit a model version. This runs the policy checks as a governance workflow | `ValidationRequest` | `ModelValidation` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `VALIDATION_TRANSITION_INVALID`, `POLICY_INVALID`, `QUOTA_EXCEEDED` |
 | `GET /v1/models/{model_id}/versions/{version}/validations` | Validations of a model version, newest first | — | `Page[ModelValidation]` | 200 | `NOT_FOUND` |
-| `GET /v1/validations` | Validations of the project (filter: status, e.g. the reviewers' queue) | — | `Page[ModelValidation]` | 200 | — |
+| `GET /v1/validations` | Validations of the project (filter: status, for example the queue of the reviewers) | — | `Page[ModelValidation]` | 200 | — |
 | `GET /v1/validations/{validation_id}` | A validation: status, results, approvals, history | — | `ModelValidation` | 200 | `NOT_FOUND` |
-| `GET /v1/validations/{validation_id}/evidence` | Every check result with its evidence | — | `Page[CheckResult]` | 200 | `NOT_FOUND` |
-| `POST /v1/validations/{validation_id}:cancel` | Stop running checks (back to draft) | `ValidationNote` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `VALIDATION_TRANSITION_INVALID` |
+| `GET /v1/validations/{validation_id}/evidence` | All check results with their evidence | — | `Page[CheckResult]` | 200 | `NOT_FOUND` |
+| `POST /v1/validations/{validation_id}:cancel` | Stop the checks that are in progress (back to draft) | `ValidationNote` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `VALIDATION_TRANSITION_INVALID` |
 | `POST /v1/validations/{validation_id}:resubmit` | Run the checks again after a failure or a rejection | `ValidationNote` | `ModelValidation` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `VALIDATION_TRANSITION_INVALID`, `QUOTA_EXCEEDED` |
-| `POST /v1/validations/{validation_id}/approvals` | A reviewer approves or rejects (never the submitter; audited) | `ApprovalCreate` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `SELF_APPROVAL_FORBIDDEN`, `VALIDATION_TRANSITION_INVALID`, `CONFLICT` |
+| `POST /v1/validations/{validation_id}/approvals` | A reviewer approves or rejects (never the submitter, audited) | `ApprovalCreate` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `SELF_APPROVAL_FORBIDDEN`, `VALIDATION_TRANSITION_INVALID`, `CONFLICT` |
 | `POST /v1/validations/{validation_id}:deprecate` | Retire a validated model version (audited with the reason) | `ValidationNote` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `VALIDATION_TRANSITION_INVALID` |
-| `POST /v1/validations/{validation_id}/evidence-pack` | The audit export (JSON, and a signed link to the HTML rendering) | `EvidencePackRequest` | `EvidencePack` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
+| `POST /v1/validations/{validation_id}/evidence-pack` | The audit export (JSON, and a signed link to the HTML version) | `EvidencePackRequest` | `EvidencePack` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
 
 ## DTO index
 
-All of these models live in `mapi_spec.api` unless noted. Each one has a schema in the
-OpenAPI document and in `export_schemas()` as `api-<Name>.json`.
+All of these models are in `mapi_spec.api`, unless the table gives a different module. Each
+model has a schema in the OpenAPI document and in `export_schemas()` as `api-<Name>.json`.
 
 | Area | Models |
 |---|---|

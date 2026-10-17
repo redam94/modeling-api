@@ -1,17 +1,19 @@
 # CLI and Python client <span class="mapi-badge">v0.5</span>
 
-Two Apache-2.0 packages talk to the `/v1` [HTTP API](http-api.md):
+Two Apache-2.0 packages send requests to the `/v1` [HTTP API](http-api.md):
 
-- **`mapi-client`** (`mapi_client`): a typed Python client, sync and async, built on `httpx`;
-- **`mapi-cli`** (`mapi`): the command line, built on the client and on the SDK for local runs.
+- **`mapi-client`** (`mapi_client`): a typed Python client. It has a sync and an async
+  version. It uses `httpx`.
+- **`mapi-cli`** (`mapi`): the command line. It uses the client, and the SDK for local runs.
 
-Both use the Pydantic DTOs from `mapi_spec.api` for every request and response, and raise
-`mapi_spec.errors.MapiError` subclasses rebuilt from RFC 7807 problem documents.
+The two packages use the Pydantic DTOs from `mapi_spec.api` for each request and response.
+For errors, they raise `mapi_spec.errors.MapiError` subclasses. They make these subclasses from
+RFC 7807 problem documents.
 
-This page is a compact summary. The guides walk through each with tested examples
-([command line](../guides/cli.md), [Python client](../guides/python-client.md)), and the
-[CLI reference](generated/cli-reference.md) lists every command's `--help`, generated from the
-installed CLI.
+This page is a short summary. The guides give tested examples for each package
+([command line](../guides/cli.md), [Python client](../guides/python-client.md)). The
+[CLI reference](generated/cli-reference.md) shows the `--help` text of each command. The
+installed CLI makes that page.
 
 ## Python client
 
@@ -64,69 +66,91 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 | `validations` (v0.5) | `request`, `list`, `for_model`, `get`, `wait`, `evidence`, `cancel`, `resubmit`, `decide`, `approve`, `reject`, `deprecate`, `evidence_pack`, `download_evidence_pack` |
 
 **v0.4.** `api.endpoint(alias)` is a `RemoteEndpoint` (`schema()`, `validate(ds)`,
-`score(ds) -> xr.Dataset` with inline XrJSON); `api.signup()` and `api.verify_email()` are
-public calls sent without credentials. `mapi_client.webhooks.verify(headers, body, secret)`
-checks a delivery's `Mapi-Signature` ([Receiving webhooks](../guides/webhook-receivers.md));
-`mapi_client.xrjson` encodes and decodes inline payloads; budgets are optimised by the
-platform ([Optimise a budget](../tutorials/optimise-a-budget.md)).
-Every operation of the endpoint table has a request builder, checked against the
-contract by the client's tests.
+`score(ds) -> xr.Dataset` with inline XrJSON). `api.signup()` and `api.verify_email()` are
+public calls. The client sends them without credentials.
+`mapi_client.webhooks.verify(headers, body, secret)` does a check of the `Mapi-Signature` of a
+delivery ([Receiving webhooks](../guides/webhook-receivers.md)). `mapi_client.xrjson` encodes
+and decodes inline payloads. The platform optimises budgets
+([Optimise a budget](../tutorials/optimise-a-budget.md)).
+Each operation in the endpoint table has a request builder. The tests of the client do a check
+of each builder against the contract.
 
-**v0.5.** `api.workflows.stream_events(run_id)` follows a workflow run's server-sent events:
-`WorkflowSnapshot` (the run with every node, first on each connection),
-`WorkflowEventFrame` (`workflow.node.*`, `workflow.branch.decided`, ...; its `id` is the
-event's `seq`) and `WorkflowEnd`; a dropped connection resumes with `Last-Event-ID` and no
-event is yielded twice. Workflow documents are accepted as a `WorkflowSpec`, a mapping, YAML
-text or a file path (`api.workflows.validate(Path("wf.yaml"))`); `upsert` adds a revision only
-when the document's hash changed. `models.optimize` repeats a keyed `Prefer: wait` request
-until the plan is ready; `datasets.explore`, `models.explore` and `models.compare` wait for
-the explore run and `explorations.view(exploration, section)` downloads one view.
-`catalog.recommend(goal=..., data_shape=[...])` checks the answers against the chooser's
-questions before sending. `validations.decide` (and `approve`, `reject`) is never resent
-after a lost response; reviewers sign in (`mapi login`), since no API token can approve.
-Failed workflow runs raise the failing node's error from `wait` and `run(wait=True)`
-(`raise_on_failure=False` returns the run instead).
+**v0.5.** `api.workflows.stream_events(run_id)` follows the server-sent events of a workflow
+run. It gives these items:
+
+- `WorkflowSnapshot`: the run with all its nodes. It is the first item on each connection.
+- `WorkflowEventFrame`: `workflow.node.*`, `workflow.branch.decided` and other events. Its `id`
+  is the `seq` of the event.
+- `WorkflowEnd`.
+
+If the connection stops, the client continues with `Last-Event-ID`. It does not give an event
+two times.
+
+The client accepts a workflow document as a `WorkflowSpec`, a mapping, YAML text or a file
+path (`api.workflows.validate(Path("wf.yaml"))`). `upsert` adds a revision only when the hash
+of the document changed. `models.optimize` sends a keyed `Prefer: wait` request again until
+the plan is ready. `datasets.explore`, `models.explore` and `models.compare` wait for the
+explore run. `explorations.view(exploration, section)` downloads one view.
+
+`catalog.recommend(goal=..., data_shape=[...])` does a check of the answers against the
+questions of the chooser before it sends them. The client does not send
+`validations.decide` (and `approve`, `reject`) again after a lost response. Reviewers sign in
+(`mapi login`), because an API token cannot approve. If a workflow run fails, `wait` and
+`run(wait=True)` raise the error of the node that failed. With `raise_on_failure=False`, they
+return the run.
 
 - `AsyncClient` has the same resources with `await` and `async for`.
 - List calls return lazy paginators that follow `next_cursor`.
-- Calls that accept an `Idempotency-Key` get a fresh UUID unless you pass one. Idempotent
-  calls are retried on 502, 503, 504 and connection errors, honouring `Retry-After`.
-- `429 RATE_LIMITED` is waited out (`Retry-After`, then exponential back-off) and resent for
-  every method, because the server refused it before acting; `RateLimited` is raised after
-  `RetryPolicy.rate_limit_retries` attempts. `429 QUOTA_EXCEEDED` raises `QuotaExceeded` at
-  once, and `retry_after_of(exc)` gives the seconds until the quota resets (v0.3).
-- `api.tokens.create` returns the token's secret once (`TokenCreated.secret`, kept out of
-  `repr`) and is never resent after a lost response, so it cannot mint two tokens.
+- If a call accepts an `Idempotency-Key` and you do not give one, the client makes a new
+  UUID. The client tries idempotent calls again after 502, 503, 504 and connection errors. It
+  obeys `Retry-After`.
+- For `429 RATE_LIMITED`, the client waits (`Retry-After`, then exponential back-off). Then it
+  sends the request again, for all methods. This is safe because the server refused the
+  request before it did an action. After `RetryPolicy.rate_limit_retries` attempts, the client
+  raises `RateLimited`.
+- `429 QUOTA_EXCEEDED` raises `QuotaExceeded` immediately. `retry_after_of(exc)` gives the
+  number of seconds until the quota resets (v0.3).
+- `api.tokens.create` returns the secret of the token one time (`TokenCreated.secret`). The
+  secret is not in the `repr`. The client does not send the call again after a lost response.
+  Thus it cannot make two tokens.
 - `datasets.upload` accepts a path, bytes or an `xr.Dataset` (with the `xarray` extra). It
-  creates the dataset if needed, PUTs the file to the signed URL, starts the ingest run and
-  waits for the version to be ready. A dataset that carries its raw schema in the
-  `mapi_schema` attribute keeps its dim policies and roles.
-- `runs.stream_events` yields `RunSnapshot`, `RunEventFrame` (persisted events, with an id),
-  `RunLiveFrame` (live `progress` and `log` frames, without an id) and finally `RunEnd`.
-- `models.score` sends `Prefer: wait=N`. While the run is still going it repeats the same
-  request with the same `Idempotency-Key`; the server's idempotent replay returns the finished
-  `ScoreCallResult` with fresh output links.
-- Signed storage URLs are fetched without the API's `Authorization` header, and every
-  transfer is checked against the storage-computed CRC32C and size.
+  makes the dataset if necessary. Then it PUTs the file to the signed URL and starts the ingest
+  run. Then it waits until the version is ready. If a dataset has its raw schema in the
+  `mapi_schema` attribute, the dataset keeps its dim policies and roles.
+- `runs.stream_events` gives `RunSnapshot`, `RunEventFrame` (persisted events, with an id),
+  `RunLiveFrame` (live `progress` and `log` frames, without an id) and at the end `RunEnd`.
+- `models.score` sends `Prefer: wait=N`. While the run continues, the client sends the same
+  request again with the same `Idempotency-Key`. The idempotent replay of the server returns
+  the completed `ScoreCallResult` with new output links.
+- The client gets signed storage URLs without the `Authorization` header of the API. It does a
+  check of each transfer against the CRC32C and size that the storage calculated.
 
-**Configuration.** Arguments beat `MAPI_URL` (fallback `MAPI_API_URL`), `MAPI_TOKEN`,
-`MAPI_PROJECT` and `MAPI_PROFILE`, which beat a profile in `~/.config/mapi/config.toml`
-(`$MAPI_CONFIG`, `$XDG_CONFIG_HOME`), which beats `http://127.0.0.1:8000`. A token is never
-sent over plain HTTP to a non-loopback host. v0.2 has no authentication.
+**Configuration.** The client uses the first value that it finds in this sequence:
+
+1. Arguments.
+2. `MAPI_URL` (fallback `MAPI_API_URL`), `MAPI_TOKEN`, `MAPI_PROJECT` and `MAPI_PROFILE`.
+3. A profile in `~/.config/mapi/config.toml` (`$MAPI_CONFIG`, `$XDG_CONFIG_HOME`).
+4. `http://127.0.0.1:8000`.
+
+The client does not send a token over plain HTTP to a host that is not a loopback host. v0.2
+has no authentication.
 
 **Credentials and project (v0.3).** The client authenticates with an API token (argument,
-`MAPI_TOKEN` or the profile's `token`) or, when none is set, with the OpenID Connect sign-in
-`mapi login` stored for the profile in `credentials.json` (mode `0600`, next to the config
-file, or `$MAPI_CREDENTIALS`). A stored sign-in is used only for the API URL it was made for;
-its ID token is renewed with the refresh token shortly before it expires and after a `401`.
-`project` (`Client(project=…)`, `MAPI_PROJECT`, the profile's `project`) is sent as
-`X-Mapi-Project: <tenant>/<project>` on project-scoped requests only: not on identity, tenant
-and operator routes, nor where the path already names the project.
+`MAPI_TOKEN` or the `token` of the profile). If there is no token, the client uses the OpenID
+Connect sign-in from `mapi login`. `mapi login` keeps this sign-in for the profile in
+`credentials.json` (mode `0600`, next to the config file, or `$MAPI_CREDENTIALS`). The client
+uses a stored sign-in only for the API URL of that sign-in. The client renews the ID token with
+the refresh token a short time before it expires, and after a `401`.
+
+The client sends `project` (`Client(project=…)`, `MAPI_PROJECT`, the `project` of the profile)
+as `X-Mapi-Project: <tenant>/<project>`. It sends this header only on project-scoped requests.
+It does not send it on identity, tenant and operator routes, or when the path names the
+project.
 
 | File | Mode | Holds |
 |---|---|---|
-| `~/.config/mapi/config.toml` | `0600` when written by `mapi` | Profiles: `url`, `project`, `token`, `timeout`, `max_retries`, `verify`, `oidc_issuer`, `oidc_client_id`, `oidc_client_secret` |
-| `~/.config/mapi/credentials.json` | `0600` | Per profile: the API URL, issuer, client id, ID token, refresh token and expiry of a `mapi login` sign-in |
+| `~/.config/mapi/config.toml` | `0600` when `mapi` writes it | Profiles: `url`, `project`, `token`, `timeout`, `max_retries`, `verify`, `oidc_issuer`, `oidc_client_id`, `oidc_client_secret` |
+| `~/.config/mapi/credentials.json` | `0600` | For each profile: the API URL, issuer, client id, ID token, refresh token and expiry of a `mapi login` sign-in |
 
 ## Command line
 
@@ -149,8 +173,9 @@ mapi spec upgrade spec.yaml --check
 mapi config show | path | set KEY VALUE | unset KEY
 ```
 
-Multi-tenant commands (v0.3; walked through in [Authentication](../guides/authentication.md#the-command-line)
-and [Administration](../guides/administration.md), both run by the test suite):
+Multi-tenant commands (v0.3). [Authentication](../guides/authentication.md#the-command-line)
+and [Administration](../guides/administration.md) show these commands step by step. The test
+suite runs the two guides:
 
 ```bash
 mapi login [--device | --no-browser | --with-token] [--issuer URL --client-id ID]
@@ -169,17 +194,18 @@ mapi admin audit [--tenant] [--action] [--since] ...
 
 | Command | Notes |
 |---|---|
-| `login` | Browser sign-in: authorization code + PKCE (S256) with a loopback redirect to `127.0.0.1:<port>/callback`, `state` and `nonce` checked. `--device`: the device authorization grant. `--with-token`: an API token from stdin, checksum-checked and verified with `GET /v1/me`. `--url`, `--issuer` and `--client-id` are saved in the profile |
-| `whoami` | `GET /v1/me`: principal, how you signed in, operator flag, tenants and projects with roles |
-| `use` | Checks membership with `GET /v1/me` (a bare project id is qualified when one tenant has it) and saves `project` in the profile; a token only acts in its own project |
-| `logout` | Forgets the profile's sign-in (revoking its refresh token at the identity provider) and token; `--revoke` also revokes the token on the server |
-| `tokens create` | Prints the secret once, alone on stdout (or `--save` stores it in the profile); `--json` includes it, as requested |
-| `usage` | Exact cost (micro-units, price table named), vCPU- and GiB-seconds, groups, and each quota's use and reset time |
-| `runs get`, `runs ls` | Show the run's metered cost (`~` while estimated) |
-| `admin ...` | Every change prints a before/after table on stderr and asks for confirmation; `--yes` skips it. `quotas set` replaces the whole policy |
+| `login` | Browser sign-in: authorization code + PKCE (S256) with a loopback redirect to `127.0.0.1:<port>/callback`. The CLI does a check of `state` and `nonce`. `--device`: the device authorization grant. `--with-token`: an API token from stdin. The CLI does a check of its checksum and verifies it with `GET /v1/me`. The CLI saves `--url`, `--issuer` and `--client-id` in the profile |
+| `whoami` | `GET /v1/me`: the principal, how you signed in, the operator flag, and the tenants and projects with roles |
+| `use` | Does a check of membership with `GET /v1/me`. If only one tenant has a bare project id, the CLI adds the tenant to it. The CLI saves `project` in the profile. A token acts only in its own project |
+| `logout` | Removes the sign-in and token of the profile. It also revokes the refresh token at the identity provider. `--revoke` also revokes the token on the server |
+| `tokens create` | Prints the secret one time, alone on stdout. With `--save`, the CLI keeps it in the profile. `--json` includes it, because you asked for it |
+| `usage` | The exact cost (micro-units, with the name of the price table), vCPU-seconds and GiB-seconds, groups, and the use and reset time of each quota |
+| `runs get`, `runs ls` | Show the metered cost of the run (`~` while it is an estimate) |
+| `admin ...` | Each change prints a before/after table on stderr and asks you to confirm. `--yes` skips this step. `quotas set` replaces the full policy |
 
-Guided mode and integrations (v0.4; walked through in the
-[command-line guide](../guides/cli.md#endpoints-webhooks-and-sharing)):
+Guided mode and integrations (v0.4). The
+[command-line guide](../guides/cli.md#endpoints-webhooks-and-sharing) shows these commands step
+by step:
 
 ```bash
 mapi endpoints ls | get ALIAS | history ALIAS | schema ALIAS [--example] | snippets ALIAS [-l LANG]
@@ -199,17 +225,17 @@ mapi tenant status | export [-o FILE] | delete [--confirm TENANT] [--cancel]
 
 | Command | Notes |
 |---|---|
-| `endpoints promote`, `endpoints rollback` | Show the current version and ask first (`--yes` skips); `--override` needs `--reason` |
-| `webhooks create`, `webhooks rotate` | Print the signing secret once, alone on stdout; `rotate` and `rm` ask first |
-| `webhooks update` | `--enable` switches a paused or automatically disabled webhook back on and resets its failure count; `-e` replaces the event list |
-| `plots embed` | Prints the embed URL (it carries the token) once; `revoke` asks first |
-| `guided detect`, `guided draft --csv` | Profile the CSV locally and send only column summaries |
-| `signup`, `verify-email` | Public calls: no credentials are sent |
-| `tenant delete` | Lists what is purged and kept and asks you to type the tenant id (`--confirm TENANT` in scripts) |
+| `endpoints promote`, `endpoints rollback` | Show the current version and ask you first (`--yes` skips this step). `--override` needs `--reason` |
+| `webhooks create`, `webhooks rotate` | Print the signing secret one time, alone on stdout. `rotate` and `rm` ask you first |
+| `webhooks update` | `--enable` turns on a webhook that is paused or that the server disabled. It also sets the failure count to zero. `-e` replaces the event list |
+| `plots embed` | Prints the embed URL one time. The URL contains the token. `revoke` asks you first |
+| `guided detect`, `guided draft --csv` | Profile the CSV file locally and send only summaries of the columns |
+| `signup`, `verify-email` | Public calls. The CLI sends no credentials |
+| `tenant delete` | Shows the data that the server purges and the data that it keeps. Then it asks you to type the tenant id (`--confirm TENANT` in scripts) |
 
-Workflows, governance, explorers and choosing (v0.5; walked through in the
+Workflows, governance, explorers and the chooser (v0.5). The
 [command-line guide](../guides/cli.md#workflows-governance-and-explorers) and the
-[workflow cookbook](../guides/workflow-cookbook.md)):
+[workflow cookbook](../guides/workflow-cookbook.md) show these commands step by step:
 
 ```bash
 mapi workflows templates | template ID [--expert] | init ID [--name N] [--into PROJECT] [-o FILE] [--offline]
@@ -238,20 +264,20 @@ mapi about ID [--kind K] [--expert]
 
 | Command | Notes |
 |---|---|
-| `workflows run --watch`, `workflows watch` | A live node board fed by the SSE stream (redrawn on a terminal, one line per change otherwise), then the summary; exit status 1 when the run failed or was cancelled. `--json`: one JSON event per line |
-| `workflows apply` | Creates the workflow named by `metadata.name`, or saves the file as the next revision; an unchanged file adds nothing |
-| `workflows init` | Writes a gallery template as YAML under your name and project (`--offline` uses the templates bundled with the CLI) |
-| `-i`, `-p` | `name=value`; `-p` values are JSON when they parse (`-p 'horizons=[1,4]'`) |
-| `validate model` | `MODEL_REF` is `model://project/name@vN`, `name@vN`, `name` with `-v N` or a model id; waits for the checks and prints each result with its plain message and suggested action; exit status 1 on `checks_failed` or `rejected` |
-| `approve` | Shows the validation and asks first (`--yes` skips); `--reject` needs `--comment`; refused for the submitter (`SELF_APPROVAL_FORBIDDEN`) and for API tokens |
-| `governance policies retire`, `validations deprecate`, `workflows rm` | Ask first (`--yes` skips) |
-| `explore …` | Waits for the explore run; `--out DIR` writes every view as JSON, `--show SECTION` prints one |
-| `optimize` | Prints the plan (current vs recommended spend, the next unit's return, notes), the uplift and its probability, and the frontier |
-| `choose` | Asks the chooser's questions (or takes `-a` answers and asks nothing) and prints the ranking with reasons, cautions and the top About cards |
+| `workflows run --watch`, `workflows watch` | Shows a live board of the nodes. The SSE stream supplies the data. On a terminal, the CLI draws the board again for each change. Otherwise, it prints one line for each change. Then it prints the summary. The exit status is 1 if the run failed or was cancelled. `--json`: one JSON event on each line |
+| `workflows apply` | Makes the workflow that `metadata.name` names, or saves the file as the next revision. If the file did not change, the CLI adds nothing |
+| `workflows init` | Writes a gallery template as YAML with your name and project. `--offline` uses the templates that come with the CLI |
+| `-i`, `-p` | `name=value`. If a `-p` value parses as JSON, the CLI uses it as JSON (`-p 'horizons=[1,4]'`) |
+| `validate model` | `MODEL_REF` is `model://project/name@vN`, `name@vN`, `name` with `-v N`, or a model id. The CLI waits for the checks. Then it prints each result with its plain message and suggested action. The exit status is 1 on `checks_failed` or `rejected` |
+| `approve` | Shows the validation and asks you first (`--yes` skips this step). `--reject` needs `--comment`. The server refuses the submitter (`SELF_APPROVAL_FORBIDDEN`) and API tokens |
+| `governance policies retire`, `validations deprecate`, `workflows rm` | Ask you first (`--yes` skips this step) |
+| `explore …` | Waits for the explore run. `--out DIR` writes each view as JSON. `--show SECTION` prints one view |
+| `optimize` | Prints the plan (the current spend and the recommended spend, the return of the next unit, notes), the uplift and its probability, and the frontier |
+| `choose` | Asks the questions of the chooser, or uses the `-a` answers and asks nothing. Then it prints the ranking with reasons, cautions and the top About cards |
 
-Errors: `QUOTA_EXCEEDED` and `RATE_LIMITED` print when to retry (`retry after 1h 30m`); with
-`--json` the error document carries `retry_after_seconds`. No command prints a token: they
-appear as `mapi_<prefix>_…`.
+Errors: for `QUOTA_EXCEEDED` and `RATE_LIMITED`, the CLI prints when to try again
+(`retry after 1h 30m`). With `--json`, the error document contains `retry_after_seconds`. No
+command prints a token. Tokens show as `mapi_<prefix>_…`.
 
 | Template (`mapi new`) | What it is | Conformance fixture |
 |---|---|---|
@@ -260,18 +286,20 @@ appear as `mapi_<prefix>_…`.
 | `tabular` | XGBoost demand with quantile uncertainty | `xgb_store_demand` |
 | `glm` | Hierarchical GLM, long layout | E02 |
 
-- `--remote @` means "the configured API"; `--remote URL` overrides it for one command.
-- `--json` prints one JSON document on stdout (`runs watch --json` prints one JSON event per
-  line). Errors become `{"error": {...}}` with exit status 1; usage errors exit 2.
-- Local `fit` and `score` run plugins in-process (isolation `NONE`): use them only with code
-  and data you trust. Server, plugin and log text is printed with ANSI and control sequences
-  and bidi overrides removed.
+- `--remote @` means "the configured API". `--remote URL` overrides it for one command.
+- `--json` prints one JSON document on stdout. `runs watch --json` prints one JSON event on
+  each line. Errors become `{"error": {...}}` with exit status 1. Usage errors have exit
+  status 2.
+- Local `fit` and `score` run plugins in the same process (isolation `NONE`). Use them only
+  with code and data that you trust.
+- The CLI removes ANSI sequences, control sequences and bidi overrides from server, plugin and
+  log text before it prints the text.
 
 ### `mapi serve`
 
-`mapi serve` runs `mapi-server dev`: database migrations, then the API and the orchestrator
-(dispatcher, reconciler, finalizer and event pump) in one process. Postgres is the embedded
-`pgserver` unless `DATABASE_URL` is set, and the [GCS shim](gcs-shim.md) is started in-process
-when nothing listens at `MAPI_GCS_ENDPOINT`. Runs execute through the `local-process`
-executor with the real `mapi-runner`. For the web app as well, use `make dev`
-([Local development](../operations/local-development.md)).
+`mapi serve` runs `mapi-server dev`. This command runs the database migrations. Then it runs
+the API and the orchestrator (dispatcher, reconciler, finalizer and event pump) in one process.
+If `DATABASE_URL` is not set, Postgres is the embedded `pgserver`. If nothing listens at
+`MAPI_GCS_ENDPOINT`, the command starts the [GCS shim](gcs-shim.md) in the same process. Runs
+use the `local-process` executor with the real `mapi-runner`. To also run the web app, use
+`make dev` ([Local development](../operations/local-development.md)).

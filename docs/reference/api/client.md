@@ -1,8 +1,9 @@
 # `mapi_client`
 
-The Python client for the `/v1` HTTP API (see the [Python client guide](../../guides/python-client.md)
-for tested walkthroughs and [CLI and Python client](../cli.md) for a summary of every
-resource). Generated from the docstrings; `AsyncClient` has the same resources, awaited.
+This page shows the Python client for the `/v1` HTTP API. For tested procedures, read the
+[Python client guide](../../guides/python-client.md). For a summary of each resource, read
+[CLI and Python client](../cli.md). The text on this page comes from the docstrings.
+`AsyncClient` has the same resources, but you use `await` with them.
 
 ## Clients
 
