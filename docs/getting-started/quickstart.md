@@ -151,12 +151,16 @@ shows the signed manifest, every stored object with its generation, and the line
 
 ## 6. Score a forecast
 
-Press **Score** (top right). The form only offers the modes this model supports.
+Press **Score** (top right). **What this model needs** lists the inputs the model reads and
+what it was fitted on; the form only offers the modes this model supports.
 
-1. Keep mode **forecast**, horizon dim `time` and **8** periods.
-2. Set **Input data** to `dataset://default/eu_media_future@v1`.
-3. Leave the `fx` side table at the version the fit used; it covers the forecast weeks.
-4. Press **Score**.
+1. Keep **Forecast** and **8** periods.
+2. Under **Values to score**, choose **Use a dataset** and enter
+   `dataset://default/eu_media_future@v1` (or keep **Type values** and type the planned spend
+   into the grid: no upload needed).
+3. Leave the `fx` side table (under **Advanced**) at the version the fit used; it covers the
+   forecast weeks.
+4. Press **Forecast**.
 
 ![An 8-week forecast per market, in weekly EUR](../assets/screenshots/score-forecast.png){ .mapi-shot }
 

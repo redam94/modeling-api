@@ -230,25 +230,41 @@ omitted). The full state is also browsable under `preprocess/` in **Data tree**.
 
 ![The score form](../assets/screenshots/score-form.png){ .mapi-shot }
 
-Pick a model and version (or arrive from a model page). The form is built from the model's
-capabilities, so it only offers what the model can do, and the server checks the request
-statically before any run starts.
+Pick a model and version (or arrive from a model page). The page is built from the version's
+inputs (`GET /v1/models/{id}/versions/{v}/inputs`), so it only offers what the model can do,
+and the server checks the request statically before any run starts.
+
+**What this model needs** says what the model predicts, the inputs it reads (marking those it
+needs on future periods, such as planned spend) and what it was fitted on: the fitted date
+range and every level of the other dims. The names are the spec's canonical names (its
+`data.bind`).
+
+Then the form goes step by step:
+
+| Step | Meaning |
+|---|---|
+| **What do you want to do?** | The modes the plugin declares, in plain words: **Forecast**, **Predict**, **What if** (counterfactual), **Simulate**, **Evaluate** and, for state-space models, **Update with new data** (filter) |
+| **How far ahead?** | For a forecast: how many periods past the fitted end (the model's own time dim) |
+| **Values to score** | **Type values** into a grid that starts with the periods to score and every fitted level (paste rows from a spreadsheet, or **Fill blanks** of a column with one value); **Use a dataset** (**Upload** creates one); or **No new data**. Typed values are sent inline (`ScoreCall.inline`, up to 5 MB) and checked against the model's inputs; nothing is uploaded. Evaluate and filter need a dataset. |
+| **Future values … not given** | For a forecast: what blank future inputs become: repeat the last value, the same period a year earlier, zero, or none (every value must be given) |
+| **Changes** | Change a variable on some levels before scoring: `spend` where `channel=tv`, multiply by `1.2`. **What if** compares the result with and without them. |
+
+**Advanced** holds the rest:
 
 | Field | Meaning |
 |---|---|
-| **Mode** | `predict`, `forecast`, `counterfactual`, `simulate`, `evaluate` (and `filter` for state-space models), as the plugin declares |
-| **Horizon dim**, **Periods** | For `forecast`: how far to extend the time-like dim past the fitted range |
-| **Inputs enter at stage** | Where the request's data enters the pipeline: `raw` (the dataset's own units), or a later stage such as `weekly`, to send weekly EUR spend directly. Steps before the stage are skipped, and so are their side tables. |
-| **Input data** | A `dataset://` reference (**Upload** creates one): future spend for a forecast, a new market, or a window of past data for a counterfactual |
-| **Scenario data** | A changed copy of the input data; counterfactuals compare it with the input |
+| **Inputs enter at stage** | Where a dataset's data enters the pipeline: `raw` (the dataset's own units), or a later stage such as `weekly`, to send weekly EUR spend directly. Steps before the stage are skipped, and so are their side tables. Typed values enter at `raw`. |
+| **Scenario dataset** | A changed copy of the input data; what-if compares it with the input |
 | **Side tables** | Tables with `score_policy: supplied` (here `fx`) default to the version the fit used and must cover the scored dates; `pinned` tables are replayed from the fit |
-| **Interventions** | Change a variable on selected coordinates: `spend_local` where `channel=tv`, multiply by `1.2` |
 | **Quantity** | **Expected** (the mean response) or **Predictive** (with observation noise) |
 | **Units**, **Names** | Original units (inverted back through the pipeline) or model space; your dataset's names or the plugin's canonical names |
 | **Summaries**, **Draws** | Which summaries to return (`mean`, `median`, `sd`, `hdi_50`, `hdi_90`, quantiles), and how many joint draws (0 returns summaries only; counterfactual deltas need draws to show their uncertainty) |
 | **Variables**, **Seed** | Restrict the outputs; fix the seed for reproducible draws |
 
-**Score** sends `POST /v1/models/{id}/versions/{v}:score` with `Prefer: wait=30` and an
+A checklist above the button says what will be sent and what is still missing. The button
+names the mode (**Forecast**, **Predict**, …).
+
+The button sends `POST /v1/models/{id}/versions/{v}:score` with `Prefer: wait=30` and an
 idempotency key, then follows the run.
 
 ![A forecast for the fitted markets plus FR, a market the model has never seen](../assets/screenshots/score-new-market.png){ .mapi-shot }
