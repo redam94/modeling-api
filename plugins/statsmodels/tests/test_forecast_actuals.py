@@ -403,7 +403,8 @@ def test_a_gap_needs_its_drivers(registry: Registry, sales: xr.Dataset) -> None:
     with pytest.raises(MapiError) as info:
         forecast(registry, b, new, periods=2, future_covariates="carry_last")
     assert info.value.code is ErrorCode.ACTUALS_INVALID
-    assert "price" in str(info.value.untrusted_text)
+    # the platform's own check, so the message (not only untrusted text) names the driver
+    assert "empty periods among them need the drivers ['price']" in info.value.detail
 
 
 # ======================================================================================= ETS

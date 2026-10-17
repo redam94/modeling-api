@@ -264,19 +264,25 @@ def model_actuals(
                     )
                 ],
             )
-    lacking = _empty_on(canon, drivers, observed & after_fit)
+    # the filter runs over every period up to the last actual, empty ones (filtered as
+    # missing) included, so each of them needs its drivers
+    lacking = _empty_on(canon, drivers, (observed | gap) & after_fit)
     if lacking:
+        among = " and the empty periods among them" if bool(gap.any()) else ""
+        text = (
+            f"the actuals after the fitted history{among} need the drivers {sorted(lacking)} "
+            "observed with them"
+        )
         raise ActualsInvalid(
-            f"the actuals after the fitted history need the drivers {sorted(lacking)} observed "
-            "with them",
+            text,
             pointer="/data",
             issues=[
                 Issue(
                     code=ErrorCode.ACTUALS_INVALID,
                     pointer="/data",
-                    message=f"the actuals after the fitted history need the drivers "
-                    f"{sorted(lacking)} observed with them",
-                    suggested_action="Send the drivers for the periods with actuals.",
+                    message=text,
+                    suggested_action="Send the drivers for the periods with actuals and for "
+                    "any empty period between them.",
                 )
             ],
         )
