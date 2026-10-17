@@ -25,6 +25,7 @@ ever importing the plugin.
 | `owns` | Preprocessing the model does itself: `scaling`, `carryover`, `inverse_units`, `recursion`. The platform steps aside and labels outputs accordingly |
 | `deterministic_given_seed` | Whether the same seed gives the same fit (nutpie: no). The contract kit checks it when claimed |
 | `checkpointable` | Long fits can be checkpointed and resumed |
+| `conditions_on_actuals` | Forecasts can carry actuals: the model updates its state with them using its fitted parameters and forecasts from the last one ([Forecasts with actuals](forecasting-with-actuals.md)). Without it, a forecast payload with target values is `ACTUALS_NOT_SUPPORTED` |
 
 ## The manifest
 

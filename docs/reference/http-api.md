@@ -101,6 +101,26 @@ seconds:
   `GET /v1/runs/{run_id}` or its event stream.
 - The `Preference-Applied: wait=N` response header echoes the wait the server actually used.
 
+### Forecasts with actuals
+
+A `forecast` request (on a model version or an endpoint) may send **actuals** - target values
+for periods after the fit, or revising its last periods - and the **periods to forecast** (the
+target empty). The model updates its state with the actuals using its fitted parameters and
+forecasts from the last one; nothing is re-estimated. The rules, the plugin hook and examples
+are in [Forecasts with actuals](../concepts/forecasting-with-actuals.md).
+
+- Periods after the last actual with an empty target are forecast exactly; when the payload
+  ends with an actual, `horizon.periods` periods are appended after it.
+- `ScoreCallResult.summary.conditioning` (`ForecastConditioning`) says what every forecast was
+  conditioned on: `fit_end`, `conditioned`, `n_actuals`, `actuals_through`, `revised`,
+  `horizon_source` (`rows` or `horizon`), per-series details and a plain `message`.
+- A model without `capabilities.conditions_on_actuals` refuses actuals with
+  **422 `ACTUALS_NOT_SUPPORTED`** (suggested action: refit with the new data, or leave the
+  target empty); gaps the model cannot filter and actuals without their drivers are
+  **422 `ACTUALS_INVALID`**.
+- `EndpointSchema.actuals_example` is a ready forecast call with inline data over the periods
+  after the fit, every value empty, for endpoints whose model conditions on actuals.
+
 ## Run events (server-sent events)
 
 `GET /v1/runs/{run_id}/events` has two representations:
@@ -263,7 +283,7 @@ in v0.2. Run states and the transitions between them are listed in
 | `GET /v1/models/{model_id}/versions` | List versions | — | `Page[ModelVersion]` | 200 | `NOT_FOUND` |
 | `GET /v1/models/{model_id}/versions/{version}` | Signed bundle manifest, diagnostics, scorecard, lineage, metrics | — | `ModelVersion` | 200 | `NOT_FOUND` |
 | `GET /v1/models/{model_id}/versions/{version}/artifacts/{name}` | Signed URL for a bundle object or a `ui/…` view; `name` may contain `/` | — | `ArtifactLink` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
-| `POST /v1/models/{model_id}/versions/{version}:score` | Score with replayed preprocessing. Accepts `Prefer: wait=N` (200 if done, else 202) and `Idempotency-Key`. | `ScoreCall` | `ScoreCallResult` | 200 | `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED` |
+| `POST /v1/models/{model_id}/versions/{version}:score` | Score with replayed preprocessing. Accepts `Prefer: wait=N` (200 if done, else 202) and `Idempotency-Key`. | `ScoreCall` | `ScoreCallResult` | 200 | `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `ACTUALS_NOT_SUPPORTED`, `ACTUALS_INVALID` |
 
 Artifact links are minted only after two checks pass:
 
@@ -564,7 +584,7 @@ override the gate.
 | `PUT /v1/endpoints/{alias}` | Create or promote (gated on the scorecard; override = admin + reason, audited) | `EndpointPromote` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `PROMOTION_BLOCKED`, `OVERRIDE_REQUIRED`, `NOT_VALIDATED` |
 | `DELETE /v1/endpoints/{alias}` | Delete the alias (model versions stay) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
 | `GET /v1/endpoints/{alias}/history` | Promotions and rollbacks, newest first | — | `Page[EndpointRevision]` | 200 | `NOT_FOUND` |
-| `POST /v1/endpoints/{alias}/score` | Score the current version (Prefer: wait=N → 200 if done, else 202 with the run) | `EndpointScoreCall` | `ScoreCallResult` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `PAYLOAD_TOO_LARGE` |
+| `POST /v1/endpoints/{alias}/score` | Score the current version (Prefer: wait=N → 200 if done, else 202 with the run) | `EndpointScoreCall` | `ScoreCallResult` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `PAYLOAD_TOO_LARGE`, `ACTUALS_NOT_SUPPORTED`, `ACTUALS_INVALID` |
 | `GET /v1/endpoints/{alias}/schema` | Input schema of the current version and an example payload | — | `EndpointSchema` | 200 | `NOT_FOUND` |
 | `POST /v1/endpoints/{alias}/validate` | Static checks of a score call without running it | `EndpointScoreCall` | `EndpointValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE` |
 | `POST /v1/endpoints/{alias}/rollback` | Point the alias back at an earlier revision's version (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `NOT_VALIDATED` |
