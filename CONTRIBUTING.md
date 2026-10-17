@@ -1,14 +1,14 @@
 # Contributing
 
-All contributions are subject to the [Contributor Licence Agreement](CONTRIBUTOR-LICENSE.md).
+The [Contributor Licence Agreement](CONTRIBUTOR-LICENSE.md) applies to all contributions.
 
 ## Branching model
 
 | Branch | Purpose |
 |---|---|
-| `main` | Releases only. Each milestone is merged from `develop` and tagged `vX.Y.Z`. |
-| `develop` | Integration branch. Feature branches merge here with `--no-ff`. |
-| `feat/<milestone>-<topic>` | One unit of work, branched from `develop`. |
+| `main` | Releases only. Each milestone comes from `develop` with a merge and gets the tag `vX.Y.Z`. |
+| `develop` | The integration branch. Feature branches merge into it with `--no-ff`. |
+| `feat/<milestone>-<topic>` | One unit of work. Make the branch from `develop`. |
 
 ```bash
 git checkout -b feat/m1-my-change develop
@@ -17,6 +17,8 @@ git checkout develop && git merge --no-ff feat/m1-my-change
 ```
 
 ## Before you commit
+
+Run these checks:
 
 ```bash
 make fmt lint typecheck test
@@ -30,10 +32,13 @@ the web app, and the messages that the server sends for the app to show. The rul
 
 ## Commit messages
 
-Conventional commits: `feat(sdk): …`, `fix(server): …`, `docs: …`, `test: …`, `chore: …`, `refactor: …`.
+Use conventional commits: `feat(sdk): …`, `fix(server): …`, `docs: …`, `test: …`, `chore: …`,
+`refactor: …`.
 
 ## Code style
 
-- Python 3.12, ruff (line length 100), type hints everywhere, mypy-strict for core packages.
-- Tests live next to each package in `tests/`. PyMC fits in tests must use tiny draw counts.
-- Docstrings are concise (Google style); contract tests are the executable documentation.
+- Use Python 3.12 and ruff (line length 100). Add type hints to all code. The core packages
+  use mypy in strict mode.
+- Put the tests of each package in its `tests/` folder. PyMC fits in tests must use very
+  small draw counts.
+- Keep docstrings short (Google style). The contract tests are the executable documentation.
