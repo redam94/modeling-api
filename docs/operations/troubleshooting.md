@@ -94,8 +94,8 @@ Validation says the catalog is unavailable
 
 The server refuses `MAPI_PROFILE`
 :   `MAPI_PROFILE` is also the config-profile variable of the CLI. If you exported a client
-    profile name, unset it in the shell that runs `make dev` (the server accepts only
-    `single-tenant` or `multi-tenant`).
+    profile name, unset it in the shell that runs `make dev`. The server accepts only
+    `single-tenant`, `multi-tenant` or `dev`.
 
 Leftover processes after a crash
 :   Each service runs in its own process group. You can find it with
