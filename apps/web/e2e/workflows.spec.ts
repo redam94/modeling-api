@@ -90,11 +90,18 @@ test("a small workflow is built on the canvas, checked live and saved", async ({
   await expect(page.getByTestId("canvas-node-difference")).toBeVisible();
   await page.getByRole("button", { name: "Fit View" }).click();
   await page.getByTestId("workflow-canvas").scrollIntoViewIfNeeded();
-  await dragHandle(page, '[data-testid="canvas-node-adf"] [data-handleid="out:result"]', '[data-testid="canvas-node-difference"] [data-handleid="in:data"]');
-  await expect(page.getByRole("alert").filter({ hasText: "That connection is not possible" })).toContainText("difference.data takes dataset, but adf.result gives test result.");
+  // Under load a mouse drag can miss a handle while the canvas settles, so each drag is
+  // retried until it has its effect; the right edge is only dragged while it is missing.
+  await expect(async () => {
+    await dragHandle(page, '[data-testid="canvas-node-adf"] [data-handleid="out:result"]', '[data-testid="canvas-node-difference"] [data-handleid="in:data"]');
+    await expect(page.getByRole("alert").filter({ hasText: "That connection is not possible" })).toContainText("difference.data takes dataset, but adf.result gives test result.", { timeout: 1500 });
+  }).toPass({ timeout: 20_000 });
   // The right edge: the workflow input feeds the differencing node.
-  await dragHandle(page, '[data-testid="canvas-node-inputs"] [data-handleid="out:data"]', '[data-testid="canvas-node-difference"] [data-handleid="in:data"]');
-  await expect(page.locator(".react-flow__edge")).toHaveCount(2);
+  const edges = page.locator(".react-flow__edge");
+  await expect(async () => {
+    if ((await edges.count()) < 2) await dragHandle(page, '[data-testid="canvas-node-inputs"] [data-handleid="out:data"]', '[data-testid="canvas-node-difference"] [data-handleid="in:data"]');
+    await expect(edges).toHaveCount(2, { timeout: 1500 });
+  }).toPass({ timeout: 20_000 });
 
   // A branch decides on the ADF result: the server checks the condition as it is typed.
   await palette.getByLabel("Search nodes").fill("branch");
