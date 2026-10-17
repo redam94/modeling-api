@@ -283,7 +283,7 @@ def _positive_channel_registry() -> Any:
                 pm.Normal("y", mu, sigma, observed=ctx.observed("y", dims=["time"]), dims="time")
             return model
 
-    reg = default_registry()
+    reg = default_registry().copy()  # never leak test models into the shared registry
     reg.register_model(PositiveChannels)
     return reg
 
