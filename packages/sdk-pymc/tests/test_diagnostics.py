@@ -44,7 +44,7 @@ def test_disagreeing_chains_and_divergences_are_flagged() -> None:
     )
     d = _by_code(convergence_diagnostics(_posterior(shift=3.0), stats, var_names=["a", "zzz"]))
     assert d["RHAT"].severity == "error" and d["RHAT"].var == "a"
-    assert "disagree about 'a'" in d["RHAT"].message_plain
+    assert "do not agree about 'a'" in d["RHAT"].message_plain
     assert d["DIVERGENCES"].severity == "warning" and d["DIVERGENCES"].value == 30
     assert "target_accept" in (d["DIVERGENCES"].suggested_action or "")
     assert d["TREE_DEPTH"].severity == "warning"

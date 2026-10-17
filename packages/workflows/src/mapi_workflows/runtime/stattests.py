@@ -139,7 +139,7 @@ def _run_univariate(
         ctx.check()
         v, lab = s.clean()
         if s.gaps:
-            warnings_plain.append(f"{s.name}: {s.gaps} missing value(s) were interpolated")
+            warnings_plain.append(f"{s.name}: the test interpolated {s.gaps} missing value(s)")
         if len(v) < min_n:
             results.append((s, f"needs at least {min_n} observations (has {len(v)})"))
             continue
@@ -148,7 +148,7 @@ def _run_univariate(
                 warnings.simplefilter("ignore")
                 results.append((s, compute(v, lab)))
         except (ValueError, np.linalg.LinAlgError, ZeroDivisionError) as exc:
-            results.append((s, f"could not be computed ({str(exc)[:200]})"))
+            results.append((s, f"the calculation failed ({str(exc)[:200]})"))
     defn = TEST_DEFINITIONS.get(test_id)
     ok = [(s, o) for s, o in results if isinstance(o, SeriesOutcome)]
     if not ok:

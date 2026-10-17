@@ -454,9 +454,9 @@ def _bounds_verdict(p_lower: float, p_upper: float, alpha: float) -> str:
 
 def _bounds_diagnostic(cell: Cell, verdict: str, p_upper: float, alpha: float) -> Diagnostic:
     plain = {
-        "levels_relationship": "The result and the drivers are tied together in the long run.",
-        "none": "No long-run relationship was found: the long-run effects are not reliable.",
-        "inconclusive": "The test cannot tell whether a long-run relationship exists.",
+        "levels_relationship": "The result and the drivers have a long-run relationship.",
+        "none": "The test found no long-run relationship. The long-run effects are not reliable.",
+        "inconclusive": "The test cannot tell if a long-run relationship exists.",
     }[verdict]
     return Diagnostic(
         code="ECM_BOUNDS_TEST",
@@ -469,6 +469,6 @@ def _bounds_diagnostic(cell: Cell, verdict: str, p_upper: float, alpha: float) -
         message_plain=plain,
         suggested_action=None
         if verdict == "levels_relationship"
-        else "Model the changes with ts.ardl on differenced data, or check the drivers.",
+        else "Model the changes with ts.ardl on differenced data, or do a check of the drivers.",
         coords={k: v for k, v in cell.key.items()},
     )

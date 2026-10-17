@@ -58,7 +58,7 @@ describe("Integrations hub", () => {
     const dialog = await screen.findByRole("dialog", { name: "Promote a model to an endpoint" });
     await user.type(within(dialog).getByLabelText("Endpoint name"), "geo-mmm-staging");
     // The version's scorecard warns: the preview says an override will be needed.
-    expect(await within(dialog).findByText("Forecasts were off by 14% on the last 8 weeks.")).toBeInTheDocument();
+    expect(await within(dialog).findByText("The forecast error on the last 8 weeks was 14%.")).toBeInTheDocument();
     expect(within(dialog).getByText("Expected gate")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Promote" }));
     expect(await within(dialog).findByText("The gate needs an admin override")).toBeInTheDocument();

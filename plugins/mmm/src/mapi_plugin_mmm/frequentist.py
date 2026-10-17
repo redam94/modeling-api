@@ -130,8 +130,8 @@ class MMMFrequentist(FrameworkMMM[FrequentistSettings]):
             Diagnostic(
                 code="FREQUENTIST_FIT",
                 severity="info",
-                message_plain="A fast first estimate: ranges are bootstrap confidence "
-                "intervals, not Bayesian ones, and convergence checks do not apply.",
+                message_plain="This is a fast first estimate. The ranges are bootstrap "
+                "confidence intervals, not Bayesian intervals. Convergence checks do not apply.",
                 message_expert=f"estimator={diag.get('estimator')}, "
                 f"n_boot={diag.get('n_boot_effective')}, "
                 f"selection={diag.get('selection_criterion')}",
