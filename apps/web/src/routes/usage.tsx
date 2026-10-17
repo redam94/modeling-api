@@ -92,8 +92,8 @@ function QuotaRow({ q }: { q: QuotaLimitStatus }) {
       <Meter label={`${label} (${SCOPE_LABEL[q.scope]})`} fraction={fraction} valueText={`${value}${fraction != null ? `, ${Math.round(fraction * 100)} percent` : ""}`} />
       {tone !== "ok" || resetIn ? (
         <p className="text-xs text-muted-foreground">
-          {tone === "critical" ? "Almost used up: new work may be refused. " : tone === "warn" ? "Over 70% used. " : ""}
-          {resetIn && resetIn > 0 ? `Resets in ${humanWait(resetIn)}.` : ""}
+          {tone === "critical" ? "This limit is almost at its maximum. The platform can refuse new work. " : tone === "warn" ? "You used more than 70%. " : ""}
+          {resetIn && resetIn > 0 ? `The limit resets in ${humanWait(resetIn)}.` : ""}
         </p>
       ) : null}
     </li>
@@ -109,7 +109,7 @@ function QuotaCard({ quotas }: { quotas: QuotaLimitStatus[] }) {
         <div>
           <CardTitle>Quotas</CardTitle>
           <CardDescription>
-            {near ? `${near} limit${near === 1 ? " is" : "s are"} above 70%.` : "Every limit has room. Warnings start at 70% and 90%."}
+            {near ? `${near} limit${near === 1 ? " is" : "s are"} above 70%.` : "All limits are below 70%. Warnings start at 70% and at 90%."}
           </CardDescription>
         </div>
       </CardHeader>
@@ -240,7 +240,7 @@ export function UsagePage() {
       {series.isPending ? (
         <LoadingRows rows={5} />
       ) : series.isError ? (
-        <ErrorNotice error={series.error} title="Usage could not be loaded" onRetry={() => void series.refetch()} />
+        <ErrorNotice error={series.error} title="The app could not load the usage" onRetry={() => void series.refetch()} />
       ) : report ? (
         <div className="grid gap-5">
           {totalsKpis(report.totals, currency)}
@@ -281,7 +281,7 @@ export function UsagePage() {
               <CardHeader>
                 <div>
                   <CardTitle>{tenantScope ? "By project" : "By token"}</CardTitle>
-                  <CardDescription>{tenantScope ? "Every project in the organisation." : "Runs started with an API token; browser and CLI sessions are listed as “Signed-in users”."}</CardDescription>
+                  <CardDescription>{tenantScope ? "All the projects in the organisation." : "Runs that an API token started. The list shows browser and CLI sessions as “Signed-in users”."}</CardDescription>
                 </div>
                 {!tenantScope ? (
                   <Link to="/tokens" className="shrink-0 text-xs whitespace-nowrap text-muted-foreground hover:text-foreground">
@@ -313,7 +313,7 @@ export function UsagePage() {
           </div>
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
-            Amounts come from the platform&apos;s cost ledger: metered vCPU- and GiB-seconds at list prices. They are an estimate of compute cost, not an invoice.
+            The amounts come from the cost ledger of the platform. The ledger records metered vCPU-seconds and GiB-seconds at list prices. The amounts are an estimate of the compute cost. They are not an invoice.
           </p>
         </div>
       ) : null}

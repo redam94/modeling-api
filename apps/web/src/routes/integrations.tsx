@@ -38,7 +38,7 @@ export function IntegrationsPage() {
   const sharePick = search.model ? { model: search.model, version: search.version, plot: search.plot } : undefined;
   return (
     <>
-      <PageHeader title="Integrations" description="Use your models outside the platform: spreadsheets, dashboards, notebooks and your own services." />
+      <PageHeader title="Integrations" description="Use your models outside the platform. You can use them in spreadsheets, dashboards, notebooks and your own services." />
       <Tabs value={tab} onValueChange={(v) => goTo(v as HubTab)}>
         <TabsList aria-label="Integrations sections">
           {INTEGRATION_TABS.map((t) => (
@@ -193,18 +193,18 @@ function EndpointView({ endpoint }: { endpoint: Endpoint }) {
                   ],
                   ["Promoted by", endpoint.promoted_by ? <PersonName key="by" id={endpoint.promoted_by} /> : "—"],
                   ["Scorecard", endpoint.gate.scorecard_overall ?? "none"],
-                  ["Accepted fits", endpoint.evaluation_policy?.fit_mode === "train_only" ? "Exploration fits too (train only)" : "Evaluated, then refitted on all data"],
+                  ["Accepted fits", endpoint.evaluation_policy?.fit_mode === "train_only" ? "Exploration fits too (train only)" : "Evaluated, then fitted again on all the data"],
                   ["Input changes", { block: "Blocked", warn: "Need an override", allow: "Allowed" }[endpoint.evaluation_policy?.schema_change ?? "block"]],
                 ]}
               />
-              <GateReasons decision={endpoint.gate} empty="The version passed every check when it was promoted." />
+              <GateReasons decision={endpoint.gate} empty="The version passed all the checks at promotion." />
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <div>
                 <CardTitle>History</CardTitle>
-                <CardDescription>Every promotion and rollback, newest first, with who did it and why.</CardDescription>
+                <CardDescription>All the promotions and rollbacks, with the newest first. The table shows who did each change and why.</CardDescription>
               </div>
               <Button variant="ghost" size="sm" disabled={!canDelete} onClick={() => setDeleting(true)}>
                 <Trash2 /> Delete endpoint
@@ -235,7 +235,7 @@ export function EndpointPage() {
   return (
     <>
       <BackToHub tab="endpoints" />
-      <QueryView query={endpoint} errorTitle="The endpoint could not be loaded">
+      <QueryView query={endpoint} errorTitle="The app could not load the endpoint">
         {(ep) => <EndpointView endpoint={ep} />}
       </QueryView>
     </>
@@ -254,7 +254,7 @@ export function WebhookPage() {
   return (
     <>
       <BackToHub tab="webhooks" />
-      <QueryView query={webhook} errorTitle="The webhook could not be loaded">
+      <QueryView query={webhook} errorTitle="The app could not load the webhook">
         {(wh) => (
           <>
             <PageHeader

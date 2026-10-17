@@ -46,7 +46,7 @@ export function ChoosePage() {
     <div className="mx-auto grid w-full max-w-6xl gap-6">
       <PageHeader
         title="Help me choose"
-        description="Answer a few questions about what you want to find out and what your data looks like. You get the models, analyses and workflows that fit best, with the reasons, and can start with one in a click."
+        description="Answer some questions about what you want to know and about your data. The page shows the best models, analyses and workflows for you, with the reasons. Click one to start it."
         actions={<SegmentedControl label="What to suggest" value={kind ?? "start"} options={KINDS} onValueChange={(v) => void navigate({ search: searchFromAnswers(answers, v === "start" ? undefined : v), replace: true })} />}
       />
       <HelpMeChoose answers={answers} onAnswersChange={(a) => void navigate({ search: searchFromAnswers(a, kind ?? undefined), replace: true })} kind={kind} limit={6} layout="page" />

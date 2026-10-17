@@ -297,7 +297,7 @@ test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingeste
   await expect(page.getByRole("combobox", { name: "Use date as" })).toHaveValue("dim");
   await expect(page.getByRole("combobox", { name: "Use revenue as" })).toHaveValue("var");
   await page.getByRole("button", { name: "Upload and ingest" }).click();
-  await expect(page.getByText("Ingesting v2")).toBeVisible();
+  await expect(page.getByText("The ingest of v2 started")).toBeVisible();
   await expect(page).toHaveURL(/version=2/);
   await expect(page.getByText("ingesting").first()).toBeVisible();
 });

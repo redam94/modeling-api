@@ -98,7 +98,7 @@ describe("the Guided lock", () => {
       await user.click(lock);
       await waitFor(() => expect(lock).toBeChecked());
       expect(patches).toEqual([{ guided_locked: true }]);
-      expect(screen.getByText(/Members below admin see Guided screens only/)).toBeInTheDocument();
+      expect(screen.getByText(/Members below admin see only Guided screens/)).toBeInTheDocument();
       await user.click(lock);
       await waitFor(() => expect(lock).not.toBeChecked());
       expect(patches).toEqual([{ guided_locked: true }, { guided_locked: false }]);

@@ -70,7 +70,7 @@ export function RunsPage() {
     <>
       <PageHeader
         title="Runs"
-        description="Every fit, dry-run, ingest and score. Active runs update live."
+        description="All the fit, dry-run, ingest and score runs. The page updates active runs live."
         actions={
           <div className="flex gap-2">
             <NativeSelect
@@ -106,7 +106,7 @@ export function RunsPage() {
         {(page) =>
           page.items.length === 0 && !search.state && !search.kind ? (
             <EmptyState icon={<Activity />} title="No runs yet">
-              Fit a spec from Build, or upload data to start an ingest run.
+              Fit a spec on the Build page. Or upload a dataset to start an ingest run.
             </EmptyState>
           ) : (
             <DataTable
@@ -115,7 +115,7 @@ export function RunsPage() {
               columns={runColumns}
               getRowId={(r) => r.id}
               onRowClick={(r) => void navigate({ to: "/runs/$runId", params: { runId: r.id } })}
-              empty="No runs match these filters."
+              empty="No runs match these filters. Change the filters."
             />
           )
         }

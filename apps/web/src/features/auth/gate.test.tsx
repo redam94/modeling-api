@@ -134,7 +134,7 @@ describe("Tokens page", () => {
     const dialog = await screen.findByRole("dialog", { name: "New API token" });
     await userEvent.type(within(dialog).getByLabelText("Name"), "nightly");
     await userEvent.click(within(dialog).getByRole("checkbox", { name: /Full access/ }));
-    expect(within(dialog).getByText(/Full access acts with your whole role/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Full access gives the token all of your role/)).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole("button", { name: "Create token" }));
 
     const secret = await screen.findByRole("dialog", { name: "Copy your new token now" });
@@ -167,7 +167,7 @@ describe("Members page", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add a member to Growth" });
     await userEvent.type(within(dialog).getByLabelText("E-mail or user id"), "not-an-address");
     await userEvent.click(within(dialog).getByRole("button", { name: "Add member" }));
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("Use an e-mail address");
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Type an e-mail address");
     await userEvent.clear(within(dialog).getByLabelText("E-mail or user id"));
     await userEvent.type(within(dialog).getByLabelText("E-mail or user id"), "Lee@Acme.example");
     await userEvent.click(within(dialog).getByRole("radio", { name: /^Editor/ }));
@@ -178,7 +178,7 @@ describe("Members page", () => {
     await userEvent.click(screen.getByRole("radio", { name: "Organisation" }));
     const org = await screen.findByRole("table", { name: "Members of Acme Retail" });
     await userEvent.selectOptions(within(org).getByRole("combobox", { name: "Role of Ana Analyst" }), "runner");
-    expect(await screen.findByText("The role could not be changed")).toBeInTheDocument();
+    expect(await screen.findByText("The app could not change the role")).toBeInTheDocument();
   });
 });
 

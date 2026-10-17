@@ -26,7 +26,7 @@ function ActiveRun({ run }: { run: Run }) {
       </span>
       <span className="col-span-2 grid gap-1 sm:col-span-1">
         <Progress value={p?.fraction ?? null} label={`Progress of ${run.id}`} />
-        <span className="truncate text-xs text-muted-foreground">{p ? phaseLabel(p.phase) : "waiting to start"}</span>
+        <span className="truncate text-xs text-muted-foreground">{p ? phaseLabel(p.phase) : "not started"}</span>
       </span>
       <span className="hidden text-right text-xs text-muted-foreground sm:block">{relativeTime(run.started_at ?? run.created_at)}</span>
     </Link>
@@ -52,10 +52,10 @@ export function HomePage() {
             </h1>
             <p className="text-muted-foreground">
               {ready.isError
-                ? "The API is not reachable. Start the server, then reload."
+                ? "The app cannot connect to the API. Start the server, then reload the page."
                 : active.length
-                  ? "Progress updates live; open a run for chains, logs and events."
-                  : "Write a spec and fit it, or upload data to start an ingest."}
+                  ? "The progress updates live. Open a run to see its chains, logs and events."
+                  : "Write a spec and fit it. Or upload a dataset to start an ingest run."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -70,7 +70,7 @@ export function HomePage() {
         {runs.isPending ? (
           <LoadingRows rows={3} />
         ) : runs.isError ? (
-          <ErrorNotice error={runs.error} title="Runs could not be loaded" />
+          <ErrorNotice error={runs.error} title="The app could not load the runs" />
         ) : active.length ? (
           <div className="grid divide-y rounded-lg border bg-card p-1">{active.map((r) => <ActiveRun key={r.id} run={r} />)}</div>
         ) : null}
@@ -98,7 +98,7 @@ export function HomePage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground">No failed, stalled or partial runs among the latest 50.</p>
+              <p className="text-muted-foreground">The latest 50 runs have no failed, stalled or partial runs.</p>
             )}
           </CardContent>
         </Card>
@@ -122,7 +122,7 @@ export function HomePage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground">No finished runs yet.</p>
+              <p className="text-muted-foreground">There are no finished runs.</p>
             )}
           </CardContent>
         </Card>
@@ -148,7 +148,7 @@ export function HomePage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground">Successful fits register model versions here.</p>
+              <p className="text-muted-foreground">When a fit is successful, its model version shows here.</p>
             )}
           </CardContent>
         </Card>
@@ -159,15 +159,15 @@ export function HomePage() {
           <CardContent className="grid gap-2">
             <Link to="/guided" className="flex items-start gap-3 rounded-md p-2 hover:bg-accent/60">
               <Sparkles className="mt-0.5 size-4 text-primary" />
-              <span><span className="font-medium">Start a guided analysis</span><span className="block text-muted-foreground">Answer questions in business terms: a marketing mix, a forecast, demand or customer choice.</span></span>
+              <span><span className="font-medium">Start a guided analysis</span><span className="block text-muted-foreground">Answer questions in business terms about a marketing mix, a forecast, demand or customer choice.</span></span>
             </Link>
             <Link to="/build/new" className="flex items-start gap-3 rounded-md p-2 hover:bg-accent/60">
               <FileCode2 className="mt-0.5 size-4 text-primary" />
-              <span><span className="font-medium">Write a spec</span><span className="block text-muted-foreground">Starts from the geo MMM template with live validation.</span></span>
+              <span><span className="font-medium">Write a spec</span><span className="block text-muted-foreground">Start from the geo MMM template. The app does a check of the spec while you type.</span></span>
             </Link>
             <Link to="/datasets" className="flex items-start gap-3 rounded-md p-2 hover:bg-accent/60">
               <Database className="mt-0.5 size-4 text-primary" />
-              <span><span className="font-medium">Upload a dataset</span><span className="block text-muted-foreground">CSV with a column mapping, or zarr / netCDF as is.</span></span>
+              <span><span className="font-medium">Upload a dataset</span><span className="block text-muted-foreground">Upload a CSV file with a column mapping. Or upload a zarr or netCDF dataset as it is.</span></span>
             </Link>
             <Link to="/catalog" className="flex items-start gap-3 rounded-md p-2 hover:bg-accent/60">
               <Library className="mt-0.5 size-4 text-primary" />

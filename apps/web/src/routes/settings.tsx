@@ -35,7 +35,7 @@ function GuidedLockSwitch({ locked }: { locked: boolean }) {
             { guided_locked: on },
             {
               onSuccess: () => toast.success(on ? "Locked to Guided mode" : "Guided lock removed", current.project.name),
-              onError: (err) => toast.error("The lock could not be changed", errorMessage(err)),
+              onError: (err) => toast.error("The app could not change the lock", errorMessage(err)),
             },
           )
         }
@@ -45,8 +45,8 @@ function GuidedLockSwitch({ locked }: { locked: boolean }) {
           Lock {current.project.name} to Guided mode
         </label>
         <p id="guided-lock-hint" className="text-xs text-muted-foreground">
-          Members below admin see Guided screens only: they answer the questions, state beliefs, run and share, but cannot switch to Expert or change advanced
-          settings. Project admins keep both modes. Every change is audited.
+          Members below admin see only Guided screens. They can answer the questions, give their beliefs, run analyses and share them. They cannot change to
+          Expert mode or change advanced settings. Project admins keep both modes. The audit log records each change.
         </p>
       </div>
     </div>
@@ -64,14 +64,14 @@ export function SettingsPage() {
   const signOut = useSignOut();
   return (
     <>
-      <PageHeader title="Settings" description="Preferences are stored in this browser." />
+      <PageHeader title="Settings" description="This browser keeps your preferences." />
       <div className="grid max-w-3xl gap-5">
         {ws.mode === "session" ? (
           <Card>
             <CardHeader>
               <div>
                 <CardTitle>Account</CardTitle>
-                <CardDescription>Signed in through your organisation; the session cookie is HTTP-only.</CardDescription>
+                <CardDescription>You signed in through your organisation. The session cookie is HTTP-only.</CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={() => void signOut()}>
                 <LogOut /> Sign out
@@ -104,7 +104,7 @@ export function SettingsPage() {
           <CardHeader>
             <div>
               <CardTitle>Appearance</CardTitle>
-              <CardDescription>System follows your operating system setting.</CardDescription>
+              <CardDescription>The System theme uses the setting of your operating system.</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
@@ -125,13 +125,13 @@ export function SettingsPage() {
             <div>
               <CardTitle>Mode</CardTitle>
               <CardDescription>
-                Expert mode edits specs directly. Guided mode walks analysts through tasks in business terms; both edit the same spec. The choice is remembered for your account on this browser.
+                In Expert mode, you edit specs directly. In Guided mode, the app takes analysts through tasks in business terms. The two modes edit the same spec. This browser keeps your choice for your account.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             {lock.locked ? (
-              <p className="text-[13px] text-muted-foreground">A project admin has locked this project to Guided mode.</p>
+              <p className="text-[13px] text-muted-foreground">A project admin locked this project to Guided mode.</p>
             ) : (
               <SegmentedControl<Persona>
                 label="Mode"
@@ -150,7 +150,7 @@ export function SettingsPage() {
           <CardHeader>
             <div>
               <CardTitle>Connection</CardTitle>
-              <CardDescription>Set at build time with VITE_API_BASE and VITE_PLOTS_ORIGIN.</CardDescription>
+              <CardDescription>You set these values at build time with VITE_API_BASE and VITE_PLOTS_ORIGIN.</CardDescription>
             </div>
             {ready.data ? (
               <Badge variant={ready.data.status === "ok" ? "success" : ready.data.status === "degraded" ? "warning" : "danger"}>{ready.data.status}</Badge>

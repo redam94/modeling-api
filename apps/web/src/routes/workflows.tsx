@@ -72,8 +72,8 @@ export function WorkflowsPage() {
         title="Workflows"
         description={
           guided
-            ? "Ready-made recipes that check your data, fit a model and explain every decision. Pick one and run it on your data."
-            : "Tests, data processing, train/test plans, models, governance checks and reports in one versioned graph that runs the same way every time."
+            ? "Ready-made recipes do a check of your data, fit a model and explain each decision. Select one and run it on your data."
+            : "A workflow puts tests, data processing, train/test plans, models, governance checks and reports in one versioned graph. The graph runs the same way each time."
         }
         actions={
           !guided && mayCreate ? (
@@ -108,7 +108,7 @@ export function WorkflowsPage() {
                     </Button>
                   }
                 >
-                  Start from a template: the readiness-to-ARIMAX recipe is a good first one.
+                  Start from a template. The readiness-to-ARIMAX recipe is a good first template.
                 </EmptyState>
               )
             }
@@ -130,7 +130,7 @@ function BlankWorkflow() {
   const [name, setName] = useState("");
   const [started, setStarted] = useState<WorkflowDoc | null>(null);
   const taken = workflows.data?.items.some((w) => w.name === name) ?? false;
-  const nameError = name && !NAME_RE.test(name) ? "Lowercase letters, digits and -, starting and ending with a letter or digit." : taken ? "The project already has a workflow with this name." : null;
+  const nameError = name && !NAME_RE.test(name) ? "Use only lowercase letters, digits and -. Start and end with a letter or a digit." : taken ? "The project already has a workflow with this name." : null;
   const onSave = useCallback(
     async ({ doc, message }: SaveRequest) => {
       try {
@@ -154,7 +154,7 @@ function BlankWorkflow() {
           setStarted(emptyWorkflow(name, ws.current?.project.project_id ?? "default"));
         }}
       >
-        <Field label="Workflow name" htmlFor="new-wf-name" error={nameError} hint="Used in references: workflow://<project>/<name>. It cannot be changed later.">
+        <Field label="Workflow name" htmlFor="new-wf-name" error={nameError} hint="References use this name: workflow://<project>/<name>. You cannot change it later.">
           <Input id="new-wf-name" autoFocus className="font-mono" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} placeholder="weekly-readiness" />
         </Field>
         <div className="flex gap-2">
@@ -178,7 +178,7 @@ export function NewWorkflowPage() {
   const { template, data } = newRoute.useSearch();
   return (
     <>
-      <PageHeader title={template ? "New workflow from a template" : "New workflow"} description={template ? "Name it, set its defaults and bind your data." : "Name it, then add nodes from the palette."} />
+      <PageHeader title={template ? "New workflow from a template" : "New workflow"} description={template ? "Give it a name. Then set its defaults and bind your data." : "Give it a name. Then add nodes from the palette."} />
       {template ? <TemplateWizard templateId={template} initialData={data} /> : <BlankWorkflow />}
     </>
   );
@@ -188,7 +188,7 @@ export function RecipePage() {
   const { template, data } = recipeRoute.useSearch();
   return (
     <>
-      <PageHeader title="Run a recipe on your data" description="Pick your data and press Run: every step is explained as it happens." />
+      <PageHeader title="Run a recipe on your data" description="Select your data and click Run. The app explains each step while it runs." />
       {template ? <RecipeRunner templateId={template} initialData={data} /> : <RecipePicker />}
     </>
   );
@@ -218,7 +218,7 @@ function RunsTable({ runs }: { runs: WorkflowRun[] }) {
     ],
     [],
   );
-  return <DataTable label="Runs" data={runs} columns={columns} getRowId={(r) => r.run_id} onRowClick={(r) => void navigate({ to: "/workflow-runs/$runId", params: { runId: r.run_id } })} empty="No runs yet." />;
+  return <DataTable label="Runs" data={runs} columns={columns} getRowId={(r) => r.run_id} onRowClick={(r) => void navigate({ to: "/workflow-runs/$runId", params: { runId: r.run_id } })} empty="This workflow has no runs." />;
 }
 
 export function WorkflowPage() {
@@ -254,7 +254,7 @@ export function WorkflowPage() {
     async ({ doc, message }: SaveRequest) => {
       try {
         const r = await save.mutateAsync({ document: doc as unknown as Record<string, never>, message, expected_revision: latest ?? null });
-        toast.success(`Saved revision ${r.revision}`, r.validation.valid ? "It is ready to run." : "It has problems to fix before it can run.");
+        toast.success(`Saved revision ${r.revision}`, r.validation.valid ? "It is ready to run." : "It has problems. Correct them before you run it.");
         void navigate({ search: (s) => ({ ...s, tab: "editor", rev: r.revision }), replace: true });
         return true;
       } catch {
@@ -265,7 +265,7 @@ export function WorkflowPage() {
   );
 
   if (wf.isPending) return <LoadingRows rows={6} />;
-  if (wf.isError || !wf.data) return <ErrorNotice error={wf.error} title="The workflow could not be loaded" />;
+  if (wf.isError || !wf.data) return <ErrorNotice error={wf.error} title="The app could not load the workflow" />;
   const w = wf.data;
   return (
     <>
@@ -298,7 +298,7 @@ export function WorkflowPage() {
       />
       {latestRev.data && !latestRev.data.validation.valid ? (
         <p role="status" className="mb-4 rounded-md border border-warning/40 bg-warning/8 px-3 py-2 text-[13px]">
-          The latest revision has problems and cannot run. Open the editor to see them next to the nodes they concern.
+          The latest revision has problems and cannot run. Open the editor to see each problem next to its node.
         </p>
       ) : null}
       <Tabs
@@ -317,7 +317,7 @@ export function WorkflowPage() {
         <TabsContent value="editor">
           {search.rev && latest && search.rev !== latest ? (
             <p className="mb-3 text-[13px] text-muted-foreground">
-              You are looking at revision {search.rev}; saving makes revision {latest + 1} from it.{" "}
+              You see revision {search.rev}. When you save, the app makes revision {latest + 1} from it.{" "}
               <Link to="/workflows/$workflowId" params={{ workflowId }} search={{ tab: "editor" }} className="text-primary hover:underline">
                 Open the latest
               </Link>
@@ -336,7 +336,7 @@ export function WorkflowPage() {
               onDirtyChange={setDirty}
             />
           ) : rev.isError ? (
-            <ErrorNotice error={rev.error} title="The revision could not be loaded" />
+            <ErrorNotice error={rev.error} title="The app could not load the revision" />
           ) : (
             <LoadingRows rows={6} />
           )}
@@ -358,7 +358,7 @@ export function WorkflowPage() {
                     ) : null
                   }
                 >
-                  A run binds your data, and every step's result, decision and cost is recorded.
+                  A run binds your data. The run records the result, the decision and the cost of each step.
                 </EmptyState>
               )
             }

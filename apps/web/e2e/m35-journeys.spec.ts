@@ -49,7 +49,7 @@ test("Guided: from the Data Explorer to a recipe run, the fitted model and its v
   const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: /Recipes/ }) });
   await expect(nav.getByRole("link", { name: /Help me choose/ })).toBeVisible();
 
-  await page.getByRole("link", { name: "Check it is ready to forecast" }).click();
+  await page.getByRole("link", { name: "Test if it is ready to forecast" }).click();
   await expect(page).toHaveURL(/\/workflows\/recipe\?template=ts_readiness_arimax&data=/);
   const runner = page.getByTestId("recipe-runner");
   await expect(runner.getByLabel("Dataset")).toHaveValue("dataset://default/eu_media_daily");
