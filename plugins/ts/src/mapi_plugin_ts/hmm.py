@@ -364,7 +364,7 @@ class GaussianHMMModel(CustomModel[GaussianHMMSettings]):
                     value=moved / max(total, 1),
                     message_expert=f"{moved} of {total} draws were relabelled so that the state "
                     "means increase (label switching between or within chains)",
-                    message_plain="The hidden states were put in a consistent order "
+                    message_plain="The model sorted the hidden states in one order "
                     "(from the lowest to the highest average value).",
                 )
             )

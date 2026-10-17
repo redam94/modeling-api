@@ -347,4 +347,4 @@ def test_holdout_mape_in_percent_is_judged_as_a_fraction() -> None:
         assert f"mape {pct:.4g}% over 8" in expert
         item = evaluate_check("holdout.mape", value, message_expert=expert)
         assert item.status == status
-        assert f"off by {words}" in item.message_plain
+        assert f"was {words}" in item.message_plain

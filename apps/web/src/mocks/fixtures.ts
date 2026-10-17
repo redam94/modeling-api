@@ -363,13 +363,13 @@ export const modelVersion: ModelVersion = {
   },
   diagnostics: [
     { code: "RHAT_OK", severity: "info", metric: "r_hat_max", value: 1.004, threshold: 1.01, message_expert: "max r-hat 1.004", message_plain: "All chains agree.", var: "beta_channel" },
-    { code: "ESS_LOW", severity: "warning", metric: "ess_bulk_min", value: 310, threshold: 400, message_expert: "bulk ESS 310 for lam[tv]", message_plain: "Some estimates are noisy.", var: "lam", coords: { channel: "tv" } },
+    { code: "ESS_LOW", severity: "warning", metric: "ess_bulk_min", value: 310, threshold: 400, message_expert: "bulk ESS 310 for lam[tv]", message_plain: "Some estimates have noise.", var: "lam", coords: { channel: "tv" } },
   ],
   scorecard: {
     overall: "warn",
     items: [
-      { code: "RHAT_OK", status: "pass", title: "Chains agree", message_plain: "All chains converged to the same answer.", metric: "r_hat_max", value: 1.004, threshold: 1.01 },
-      { code: "HOLDOUT_MAPE", status: "warn", title: "Holdout error", message_plain: "Forecasts were off by 14% on the last 8 weeks.", metric: "mape", value: 0.14, threshold: 0.1, suggested_action: "Add holidays or check the last weeks of data." },
+      { code: "RHAT_OK", status: "pass", title: "Chains agree", message_plain: "All chains got the same answer.", metric: "r_hat_max", value: 1.004, threshold: 1.01 },
+      { code: "HOLDOUT_MAPE", status: "warn", title: "Holdout error", message_plain: "The forecast error on the last 8 weeks was 14%.", metric: "mape", value: 0.14, threshold: 0.1, suggested_action: "Add holidays, or look at the data for the last weeks." },
     ],
   },
   lineage: {

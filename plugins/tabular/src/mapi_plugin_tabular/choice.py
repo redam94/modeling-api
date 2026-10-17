@@ -492,8 +492,8 @@ class MultinomialLogit(CustomModel[MultinomialLogitSettings]):
                 value=round(hit, 6),
                 message_expert=f"in-sample hit rate {hit:.3f} over {n_cells} trips "
                 f"({len(products)} products, {len(covariates)} covariates)",
-                message_plain=f"The model's most likely product was the one bought on "
-                f"{hit:.0%} of the trips it learned from.",
+                message_plain=f"The most probable product of the model was the product that "
+                f"the customer bought on {hit:.0%} of the training trips.",
             )
         ]
         if failed:
@@ -504,10 +504,10 @@ class MultinomialLogit(CustomModel[MultinomialLogitSettings]):
                     value=float(failed),
                     message_expert=f"L-BFGS-B stopped before convergence in {failed} of "
                     f"{draws + 1} fits",
-                    message_plain="Some refits did not settle fully; results may be a little "
-                    "noisier than shown.",
-                    suggested_action="Raise model.settings.max_iter, or check for products "
-                    "that are almost never chosen.",
+                    message_plain="Some refits did not converge fully. The results can have a "
+                    "little more noise than they show.",
+                    suggested_action="Increase model.settings.max_iter, or look for products "
+                    "that customers almost never select.",
                 )
             )
         ctx.progress(1.0, "fit complete")

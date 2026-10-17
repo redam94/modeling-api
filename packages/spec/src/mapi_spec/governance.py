@@ -160,7 +160,7 @@ class GovernanceCheckDef(ResponseModel):
     model_config = dto_examples(
         {
             "id": "baseline.beats_naive",
-            "title": "Beats simple benchmarks",
+            "title": "Better than simple benchmarks",
             "category": "baseline",
             "metric": "relative_skill",
             "direction": "min",
@@ -210,7 +210,7 @@ _SEC, _MINS, _LONG = TypicalRuntime.SECONDS, TypicalRuntime.MINUTES, TypicalRunt
 
 _CHECKS: list[GovernanceCheckDef] = [
     GovernanceCheckDef(
-        id="null.permutation_target", title="Beats a shuffled result", category="null_test",
+        id="null.permutation_target", title="Better than shuffled data", category="null_test",
         metric="permutation_p_value", direction=_MAX, warn=0.05, fail=0.10,
         requires=["holdout"],
         params_schema=_obj({
@@ -222,17 +222,18 @@ _CHECKS: list[GovernanceCheckDef] = [
                       "twentieth of the series)"},
         }),
         about=_a(
-            "Beats a shuffled result",
-            "Refits the model on copies of the data where the drivers are shuffled in time "
-            "(for a model without drivers, the result's ups and downs); a real model must do "
-            "clearly better on the true data than on the shuffled copies.",
-            ["Every model whose accuracy is used to make decisions"],
+            "Better than shuffled data",
+            "Fits the model again on copies of the data where the drivers have a random time "
+            "order. A real model must be clearly better on the true data than on the shuffled "
+            "copies.",
+            ["Each model whose accuracy you use to make decisions"],
             ["Models without a test period (there is nothing to compare)"],
-            ["The model's data, its settings and a test period"],
-            ["Shuffling the drivers breaks any real link between them and the result, while "
-             "trend, season and the result itself stay as they are"],
-            ["The share of shuffled fits that did as well as the real one (a p-value)",
-             "The distribution of shuffled scores"],
+            ["The data and the settings of the model, and a test period"],
+            ["A random order of the drivers removes each real link between the drivers and the "
+             "result", "The trend, the season and the result stay as they are",
+             "For a model without drivers, the check shuffles the ups and downs of the result"],
+            ["The fraction of shuffled fits that were as good as the real fit (a p-value)",
+             "The distribution of the shuffled scores"],
             _I, _LONG,
             "The real model forecasts better than all 19 shuffled fits: p = 0.05, pass.",
             related=["null.noise_regressors", "baseline.beats_naive"],
@@ -252,7 +253,7 @@ _CHECKS: list[GovernanceCheckDef] = [
         ),
     ),
     GovernanceCheckDef(
-        id="null.noise_regressors", title="Ignores fake drivers", category="null_test",
+        id="null.noise_regressors", title="No effect from false drivers", category="null_test",
         metric="noise_effect_share", direction=_MAX, warn=0.02, fail=0.05,
         params_schema=_obj({
             "n_noise": {"type": "integer", "minimum": 1, "maximum": 10, "default": 3},
@@ -261,17 +262,17 @@ _CHECKS: list[GovernanceCheckDef] = [
             "seed": {"type": "integer", "minimum": 0, "default": 0},
         }),
         about=_a(
-            "Ignores fake drivers",
-            "Adds a few made-up drivers that are pure noise and refits; a trustworthy model "
-            "gives them almost no effect.",
-            ["Marketing mix and other models that split a result between drivers"],
-            ["Pure forecasting models without drivers"],
-            ["The model's data and settings"],
-            ["The fake drivers look like real ones but carry no signal"],
-            ["The largest share of the real drivers' effect given to a fake driver",
-             "Whether any fake driver came out clearly above the limit"],
+            "No effect from false drivers",
+            "Adds some false drivers that are only noise and fits the model again. A model that "
+            "you can trust gives them almost no effect.",
+            ["Marketing mix models and other models that divide a result between drivers"],
+            ["Forecast models that have no drivers"],
+            ["The data and the settings of the model"],
+            ["The false drivers look like real drivers, but they have no signal"],
+            ["The largest share of the effect of the real drivers that goes to a false driver",
+             "If a false driver is clearly above the limit"],
             _I, _LONG,
-            "Three fake channels get 0.4%, 0.1% and 0.9% of the media effect: pass.",
+            "Three false channels get 0.4%, 0.1% and 0.9% of the media effect: pass.",
             related=["null.permutation_target", "plausibility.signs"],
             expert="Placebo regressors drawn as Gaussian noise or as a driver shuffled in "
             "blocks, with the model's default prior (never a real channel's prior or "
@@ -283,7 +284,7 @@ _CHECKS: list[GovernanceCheckDef] = [
         ),
     ),
     GovernanceCheckDef(
-        id="null.placebo_time_shift", title="Effects vanish when shifted in time",
+        id="null.placebo_time_shift", title="No effect after a time shift",
         category="null_test", metric="placebo_effect_ratio", direction=_MAX, warn=0.25,
         fail=0.5, requires=["time_series"],
         params_schema=_obj({
@@ -291,24 +292,24 @@ _CHECKS: list[GovernanceCheckDef] = [
                        "maxItems": 6, "default": [-26, 26]},
         }),
         about=_a(
-            "Effects vanish when shifted in time",
-            "Moves the drivers months away from when they really happened and refits; the "
-            "effects should mostly disappear, otherwise the model picks up timing patterns "
-            "rather than real effects.",
-            ["Models that credit results to drivers over time (marketing mix, regressions)"],
-            ["Very short series (the shift leaves too little overlap)"],
-            ["The model's data and settings over time"],
-            ["A real effect is tied to when the driver happened"],
-            ["Placebo effect as a share of the real effect, per shift"],
+            "No effect after a time shift",
+            "Moves the drivers some months away from their real dates and fits the model again. "
+            "The effects must become much smaller, or else the model finds time patterns, not real "
+            "effects.",
+            ["Models that divide results between drivers over time (marketing mix, regressions)"],
+            ["Very short series (after the shift, the overlap is too small)"],
+            ["The data and the settings of the model over time"],
+            ["A real effect has a connection to the date of the driver"],
+            ["The placebo effect as a share of the real effect, for each shift"],
             _X, _LONG,
-            "Shifting spend by half a year keeps only 8% of the effect: pass.",
+            "A shift of the spend by half a year keeps only 8% of the effect: pass.",
             related=["null.noise_regressors"],
             expert="Time-shift placebo (leads/lags beyond any plausible carry-over); ratio of "
             "the placebo total effect to the real one, maximised over shifts.",
         ),
     ),
     GovernanceCheckDef(
-        id="baseline.beats_naive", title="Beats simple benchmarks", category="baseline",
+        id="baseline.beats_naive", title="Better than simple benchmarks", category="baseline",
         metric="relative_skill", direction=_MIN, warn=0.05, fail=0.0,
         requires=["holdout", "time_series"],
         params_schema=_obj({
@@ -318,15 +319,15 @@ _CHECKS: list[GovernanceCheckDef] = [
             "metric": {"type": "string", "default": "mae"},
         }),
         about=_a(
-            "Beats simple benchmarks",
-            "Compares the model's error on the test periods with very simple forecasts such "
-            "as 'same as last week' or 'same as last year'; the model must be better.",
-            ["Every forecasting model"], ["Models that do not forecast over time"],
-            ["The model's test periods and the history before them"],
-            ["Benchmarks are scored on exactly the same periods"],
-            ["Skill against the strongest benchmark (1 - model error / benchmark error)"],
+            "Better than simple benchmarks",
+            "Compares the error of the model on the test periods with very simple forecasts, for "
+            "example 'same as last week' or 'same as last year'. The model must be better.",
+            ["Each forecast model"], ["Models that do not forecast over time"],
+            ["The test periods of the model and the history before them"],
+            ["The check scores the benchmarks on the same periods"],
+            ["The skill against the best benchmark (1 - model error / benchmark error)"],
             _B, _SEC,
-            "The model's error is 30% lower than 'same as last year': skill 0.30, pass.",
+            "The error of the model is 30% lower than 'same as last year': skill 0.30, pass.",
             related=["evaluate.baseline", "holdout.accuracy"],
             expert="Relative skill 1 - L(model)/min_b L(b) on the holdout or backtest folds; "
             "MASE-style scaling by the in-sample seasonal-naive error is reported as well.",
@@ -335,18 +336,19 @@ _CHECKS: list[GovernanceCheckDef] = [
         ),
     ),
     GovernanceCheckDef(
-        id="residuals.whiteness", title="No pattern left in the errors", category="residuals",
+        id="residuals.whiteness", title="No pattern in the errors", category="residuals",
         metric="ljung_box_p_value", direction=_MIN, warn=0.05, fail=0.01,
         requires=["residuals", "time_series"],
         params_schema=_obj({"lags": {"type": "integer", "minimum": 1, "maximum": 200,
                                      "default": 10}}),
         about=_a(
-            "No pattern left in the errors",
-            "Checks that the model's errors look like random noise over time; a leftover "
-            "pattern means the model misses something it could have learned.",
+            "No pattern in the errors",
+            "Makes sure that the errors of the model look like random noise over time. If a "
+            "pattern stays in the errors, the model does not use all of the information in the "
+            "data.",
             ["Time-series and regression models"], ["Models without residuals"],
-            ["The model's in-sample errors"], ["Regular time steps"],
-            ["The Ljung-Box p-value and the errors' autocorrelations"],
+            ["The in-sample errors of the model"], ["The time steps are regular"],
+            ["The Ljung-Box p-value and the autocorrelations of the errors"],
             _I, _SEC, "Ljung-Box p = 0.38 at 10 lags: pass.",
             related=["test.ljung_box", "evaluate.residuals"],
             expert="Ljung-Box Q on residuals (model_df adjusted for ARMA terms); the minimum "
@@ -365,14 +367,14 @@ _CHECKS: list[GovernanceCheckDef] = [
         }),
         about=_a(
             "Estimates are stable over time",
-            "Refits the model on rolling windows of history and checks that its key "
-            "estimates do not swing wildly from one window to the next.",
-            ["Models whose estimates drive decisions (effects, returns)"],
-            ["Short histories (windows would be too small)"],
-            ["The model's data over time and settings"],
+            "Fits the model again on rolling windows of history. Then it makes sure that the key "
+            "estimates do not change much from one window to the next.",
+            ["Models with estimates that you use for decisions (effects, returns)"],
+            ["Short histories (the windows are then too small)"],
+            ["The data over time and the settings of the model"],
             ["The true effects change slowly"],
-            ["How much each key estimate varies across windows"],
-            _X, _LONG, "TV's return varies by 12% across windows: pass.",
+            ["How much each key estimate changes between windows"],
+            _X, _LONG, "The return of TV changes by 12% between windows: pass.",
             related=["test.cusum"],
             expert="Coefficient of variation (or max relative deviation from the full-sample "
             "estimate) of each watched parameter across rolling-window refits; maximum over "
@@ -380,7 +382,8 @@ _CHECKS: list[GovernanceCheckDef] = [
         ),
     ),
     GovernanceCheckDef(
-        id="plausibility.signs", title="Effects point the right way", category="plausibility",
+        id="plausibility.signs", title="Effects have the correct direction",
+        category="plausibility",
         metric="wrong_sign_share", direction=_MAX, warn=0.1, fail=0.25,
         params_schema=_obj({
             "expected": {"type": "object", "additionalProperties": {
@@ -388,20 +391,21 @@ _CHECKS: list[GovernanceCheckDef] = [
                 "description": "Parameter -> expected sign (default: media positive)"},
         }),
         about=_a(
-            "Effects point the right way",
-            "Checks that effects have the direction business sense expects, for example "
-            "that advertising does not reduce sales and that higher prices do not raise "
+            "Effects have the correct direction",
+            "Makes sure that each effect has the direction that business sense expects. For "
+            "example, advertising must not decrease sales, and higher prices must not increase "
             "demand.",
-            ["Any model with interpretable effects"], ["Pure forecasting models"],
-            ["The model's estimates and the expected directions"],
-            ["The expected directions are right"],
-            ["The share of the estimate (or of the uncertainty) on the wrong side, per effect"],
-            _B, _SEC, "Radio's effect is negative with 40% probability: fail.",
+            ["Each model with effects that you can explain"], ["Models that only forecast"],
+            ["The estimates of the model and the expected directions"],
+            ["The expected directions are correct"],
+            ["The share of the estimate (or of the uncertainty) on the wrong side, for each "
+             "effect"],
+            _B, _SEC, "The effect of radio is negative with a probability of 40%: fail.",
             related=["null.noise_regressors", "test.vif"],
         ),
     ),
     GovernanceCheckDef(
-        id="sensitivity.prior", title="Not driven by assumptions", category="sensitivity",
+        id="sensitivity.prior", title="The results come from the data", category="sensitivity",
         metric="prior_sensitivity", direction=_MAX, warn=0.2, fail=0.5,
         requires=["bayesian"],
         params_schema=_obj({
@@ -409,15 +413,15 @@ _CHECKS: list[GovernanceCheckDef] = [
                        "default": [0.5, 2.0], "description": "Prior widths tried"},
         }),
         about=_a(
-            "Not driven by assumptions",
-            "Refits a Bayesian model with wider and narrower starting assumptions and "
-            "checks the key answers barely move, so they come from the data.",
-            ["Bayesian models, especially with business priors"],
+            "The results come from the data",
+            "Fits a Bayesian model again with wider and narrower starting assumptions. The key "
+            "answers must change very little, so that you know that they come from the data.",
+            ["Bayesian models, mainly models with business priors"],
             ["Models that are not Bayesian"],
-            ["The model's data, settings and priors"],
-            ["Reasonable prior changes are covered by the scales tried"],
+            ["The data, the settings and the priors of the model"],
+            ["The scales that the check tries include all reasonable prior changes"],
             ["The largest relative change of a key estimate"],
-            _X, _LONG, "Doubling prior widths moves TV's return by 6%: pass.",
+            _X, _LONG, "Prior widths that are two times larger move the return of TV by 6%: pass.",
             related=["plausibility.signs", "recovery.simulated"],
             expert="Power-scaling or refit-based prior sensitivity: relative change of "
             "posterior means of key quantities under scaled prior widths.",
@@ -426,22 +430,24 @@ _CHECKS: list[GovernanceCheckDef] = [
         ),
     ),
     GovernanceCheckDef(
-        id="recovery.simulated", title="Finds known answers", category="recovery",
+        id="recovery.simulated", title="Finds known values", category="recovery",
         metric="recovery_coverage", direction=_BAND, warn=0.1, fail=0.25, target=0.9,
         params_schema=_obj({
             "n_sims": {"type": "integer", "minimum": 5, "maximum": 100, "default": 20},
             "params": {"type": "array", "items": {"type": "string"}},
         }),
         about=_a(
-            "Finds known answers",
-            "Simulates data from the model with known true values, refits, and checks that "
-            "the model's ranges contain the true values about as often as they should.",
-            ["New or heavily customised models", "Before trusting a complex Bayesian model"],
+            "Finds known values",
+            "Simulates data from the model with known true values and fits the model again. Then "
+            "it makes sure that the 90% ranges of the model contain the true values about 90% of "
+            "the time.",
+            ["New models, or models with many changes",
+             "Before you trust a complex Bayesian model"],
             ["Models that cannot simulate data"],
-            ["The model's settings and data shape"],
-            ["The simulated data resembles the real data"],
-            ["How often the 90% ranges contained the truth"],
-            _X, _LONG, "True values fell inside the 90% ranges 88% of the time: pass.",
+            ["The settings of the model and the shape of the data"],
+            ["The simulated data is similar to the real data"],
+            ["How often the 90% ranges contained the true values"],
+            _X, _LONG, "The true values were in the 90% ranges 88% of the time: pass.",
             related=["sensitivity.prior", "convergence"],
             expert="Simulation-based calibration lite: N simulate-fit cycles; coverage of "
             "central 90% intervals and rank uniformity per parameter.",
@@ -450,15 +456,15 @@ _CHECKS: list[GovernanceCheckDef] = [
         ),
     ),
     GovernanceCheckDef(
-        id="convergence", title="The fit finished properly", category="convergence",
+        id="convergence", title="The fit is complete and stable", category="convergence",
         metric="r_hat_max", direction=_MAX, warn=1.01, fail=1.05,
         params_schema=_obj({}),
         about=_a(
-            "The fit finished properly",
-            "Checks that the fitting procedure settled on a stable answer, so running it "
-            "again would give the same result.",
-            ["Every model"], ["Models fitted outside the platform without diagnostics"],
-            ["The fit's diagnostics"], ["Diagnostics were recorded by the fit"],
+            "The fit is complete and stable",
+            "Makes sure that the fit procedure found a stable answer. If you fit the model again, "
+            "you get the same result.",
+            ["Every model"], ["Models that you fit outside the platform, without diagnostics"],
+            ["The diagnostics of the fit"], ["The fit recorded its diagnostics"],
             ["R-hat, effective draws and divergences (Bayesian) or the optimiser status"],
             _B, _SEC, "All chains agree (R-hat 1.003): pass.",
             related=["recovery.simulated"],
@@ -468,38 +474,38 @@ _CHECKS: list[GovernanceCheckDef] = [
         ),
     ),
     GovernanceCheckDef(
-        id="holdout.accuracy", title="Accurate on unseen data", category="holdout",
+        id="holdout.accuracy", title="Accurate on test data", category="holdout",
         metric="holdout_error", direction=_MAX, warn=0.15, fail=0.30, requires=["holdout"],
         params_schema=_obj({"metric": {"type": "string", "default": "mape",
                                        "enum": ["mape", "smape", "mase", "rmse", "mae"]}}),
         about=_a(
-            "Accurate on unseen data",
-            "Checks the model's error on periods it was not fitted on stays below the "
-            "limit your organisation sets.",
-            ["Every model used for forecasts or what-ifs"],
+            "Accurate on test data",
+            "Makes sure that the error of the model on periods that the fit did not use stays "
+            "below the limit of your organisation.",
+            ["Each model that you use for forecasts or what-ifs"],
             ["Models without a test period"],
-            ["A test period or backtest"],
-            ["The test periods resemble future use"],
-            ["The chosen error metric on the test data"],
+            ["A test period or a backtest"],
+            ["The test periods are similar to future use"],
+            ["The selected error metric on the test data"],
             _B, _SEC, "MAPE 9% against a limit of 15%: pass.",
             related=["baseline.beats_naive", "evaluate.metrics"],
         ),
     ),
     GovernanceCheckDef(
-        id="data.quality", title="Data is good enough", category="data",
+        id="data.quality", title="The data is good enough", category="data",
         metric="data_issue_count", direction=_MAX, warn=0, fail=2,
         params_schema=_obj({
             "max_missing": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.05},
             "min_history_periods": {"type": "integer", "minimum": 1, "default": 52},
         }),
         about=_a(
-            "Data is good enough",
-            "Checks the data before trusting the model: few gaps, enough history, no "
-            "constant columns and no impossible values.",
-            ["Every model"], ["Synthetic data you generated yourself"],
-            ["The dataset the model was fitted on"], ["The limits fit your data"],
-            ["Data problems found, each in plain words"],
-            _B, _SEC, "No gaps, 3 years of history, every driver varies: pass.",
+            "The data is good enough",
+            "Makes sure that the data is good before you trust the model. The data must have few "
+            "gaps, enough history, no constant columns and no impossible values.",
+            ["Every model"], ["Synthetic data that you made yourself"],
+            ["The dataset that the model fit used"], ["The limits are correct for your data"],
+            ["The data problems that the check found, each in plain words"],
+            _B, _SEC, "No gaps, 3 years of history, each driver changes: pass.",
             related=["convergence"],
         ),
         default_severity=CheckSeverity.BLOCKING,
@@ -813,8 +819,8 @@ class CheckResult(ResponseModel):
             "metric": "permutation_p_value",
             "value": 0.048,
             "threshold": 0.05,
-            "message_plain": "The model did better than all but 1 of 20 fits on shuffled "
-            "results.",
+            "message_plain": "The model was better than 19 of the 20 fits on shuffled "
+            "data.",
             "evidence": [{"kind": "table", "name": "permutation_scores",
                           "inline": {"real": 0.081, "shuffled_min": 0.079}}],
             "computed_at": EXAMPLE_TS,
@@ -1143,9 +1149,9 @@ def model_kind(
 
 
 _REQUIREMENT_PLAIN: Final[dict[str, str]] = {
-    "bayesian": "only Bayesian models have priors to vary",
-    "holdout": "the model has no test period (add a data split and refit)",
-    "time_series": "the model's data has no time dimension",
+    "bayesian": "only Bayesian models have priors that the check can change",
+    "holdout": "the model has no test period (add a data split and fit the model again)",
+    "time_series": "the data of the model has no time dimension",
     "channels": "the model has no marketing channels",
     "residuals": "the model has no residuals",
 }
@@ -1163,7 +1169,7 @@ def check_applies(
     ``time_series``, ``channels``, ``residuals``); ``bayesian`` comes from ``kind``."""
     c = GOVERNANCE_CHECKS[check] if isinstance(check, str) else check
     if c.families is not None and family not in c.families:
-        return f"this check is for {', '.join(c.families)} models, not {family}"
+        return f"this check is only for {', '.join(c.families)} models, not for {family} models"
     held = set(has) | ({"bayesian"} if kind == "bayesian" else set())
     for req in c.requires:
         if req not in held:
@@ -1256,9 +1262,10 @@ _W, _INFO = CheckSeverity.WARNING, CheckSeverity.INFO
 DEFAULT_POLICIES: Final[tuple[GovernancePolicyCreate, ...]] = (
     GovernancePolicyCreate(
         name="Marketing mix models (platform default)",
-        description="Marketing mix models split results between channels, so they must "
-        "beat shuffled results, give fake channels no credit and point effects the right "
-        "way. Seeded for every tenant; edit it or add stricter project policies.",
+        description="Marketing mix models divide results between channels. Thus they must "
+        "be better than shuffled data, give no credit to false channels and give effects the "
+        "correct direction. The platform adds this policy for each tenant. Edit it, or add "
+        "stricter project policies.",
         applies_to=PolicyMatch(families=["mmm"]),
         checks=[
             _pc("data.quality"),
@@ -1277,8 +1284,9 @@ DEFAULT_POLICIES: Final[tuple[GovernancePolicyCreate, ...]] = (
     ),
     GovernancePolicyCreate(
         name="Forecasting models (platform default)",
-        description="Forecasts must beat simple benchmarks out of sample, stay accurate on "
-        "unseen periods and leave no pattern in their errors. Seeded for every tenant.",
+        description="Forecasts must be better than simple benchmarks out of sample, stay "
+        "accurate on test periods and leave no pattern in their errors. The platform adds "
+        "this policy for each tenant.",
         applies_to=PolicyMatch(families=["ts", "forecast", "ts_multivariate", "regime"]),
         checks=[
             _pc("data.quality"),
@@ -1294,8 +1302,9 @@ DEFAULT_POLICIES: Final[tuple[GovernancePolicyCreate, ...]] = (
     ),
     GovernancePolicyCreate(
         name="Regression and machine-learning models (platform default)",
-        description="Tabular and choice models must beat shuffled results and stay accurate "
-        "on unseen data; fake drivers should get no credit. Seeded for every tenant.",
+        description="Tabular and choice models must be better than shuffled data and stay "
+        "accurate on test data. False drivers must get no credit. The platform adds this "
+        "policy for each tenant.",
         applies_to=PolicyMatch(families=["tabular", "choice", "sklearn"]),
         checks=[
             _pc("data.quality"),

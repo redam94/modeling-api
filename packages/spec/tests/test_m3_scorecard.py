@@ -85,14 +85,14 @@ def test_directions_and_bands(check: str, value: float, status: str) -> None:
 
 def test_messages_are_plain_and_formatted() -> None:
     item = evaluate_check("holdout.mape", 0.14)
-    assert item.message_plain == "Forecasts were off by 14% on the held-out periods."
+    assert item.message_plain == "The forecast error on the holdout periods was 14%."
     assert item.threshold == 0.10 and item.metric == "mape"
     assert "4" in evaluate_check("convergence.ess", 3.6).message_plain
     assert "1.2" in evaluate_check("convergence.rhat", 1.2).message_plain
     hit = evaluate_check("holdout.hit_rate", 0.12)
     assert hit.message_plain == (
-        "On held-out trips the model's top pick beat always guessing the most popular "
-        "product by 12%."
+        "On the holdout trips, the top choice of the model was correct 12% more often than "
+        "a guess of the most popular product."
     )
     assert hit.metric == "accuracy_lift" and hit.category == "holdout"
     assert "-15%" in evaluate_check("holdout.hit_rate", -0.15).message_plain
@@ -109,7 +109,9 @@ def test_history_is_measured_in_years_whatever_the_frequency() -> None:
     assert evaluate_check("data.history", 104 / 52).status == "pass"
     item = evaluate_check("data.history", 1.5)
     assert item.status == "warn"
-    assert item.message_plain == "Only 1.5 years of history: seasonal effects are uncertain."
+    assert item.message_plain == (
+        "There are only 1.5 years of history. The seasonal effects are not certain."
+    )
     forecast = GUIDED_TEMPLATES["weekly_forecast"].scorecard_thresholds["data.history"]
     assert evaluate_check("data.history", 105 / 365, thresholds=forecast).status == "fail"
     assert evaluate_check("data.history", 30 / 52, thresholds=forecast).status == "warn"

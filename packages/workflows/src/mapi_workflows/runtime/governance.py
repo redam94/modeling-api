@@ -148,7 +148,7 @@ def run_checks(
                     severity=c.severity,
                     metric=definition.metric if definition else None,
                     message_plain=f"The check {c.check!r} is not installed on this platform, so it "
-                    "could not run.",
+                    "did not run.",
                     params=dict(c.params),
                     computed_at=_now(),
                 )
@@ -176,7 +176,7 @@ def run_checks(
                     status=CheckStatus.ERROR,
                     severity=c.severity,
                     metric=definition.metric if definition else None,
-                    message_plain=f"The check could not be computed: {exc.detail[:500]}",
+                    message_plain=f"The check did not get a result: {exc.detail[:500]}",
                     params=dict(c.params),
                     computed_at=_now(),
                 )
@@ -188,7 +188,7 @@ def run_checks(
                     status=CheckStatus.ERROR,
                     severity=c.severity,
                     metric=definition.metric if definition else None,
-                    message_plain="The check could not be computed.",
+                    message_plain="The check did not get a result.",
                     message_expert=f"{type(exc).__name__}: {str(exc)[:500]}",
                     params=dict(c.params),
                     computed_at=_now(),
@@ -207,11 +207,11 @@ def _evidence(
 ) -> EvidencePayload:
     passed, failing = rollup_results(results, required)
     if none_apply:
-        msg = "No governance policy covers this model, so no check was required."
+        msg = "No governance policy applies to this model, so no check was necessary."
     elif passed:
         warn = [r.check for r in results if r.status in (CheckStatus.WARN, CheckStatus.FAIL)]
-        msg = f"Every blocking check passed ({len(results)} check(s) ran)" + (
-            f"; warnings on {', '.join(warn)}." if warn else "."
+        msg = f"All blocking checks passed ({len(results)} check(s) ran)" + (
+            f". There are warnings on {', '.join(warn)}." if warn else "."
         )
     else:
         msg = f"{len(failing)} blocking check(s) did not pass: {', '.join(failing)}."

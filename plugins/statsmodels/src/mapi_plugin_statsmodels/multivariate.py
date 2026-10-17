@@ -466,9 +466,10 @@ def _stability(res: Any, cell: Cell) -> list[Any]:
             code="VAR_NOT_STABLE",
             severity="warning",
             message_expert=f"the VAR on {cell.label} has roots outside the unit circle",
-            message_plain="The series keep drifting apart in this model, so long forecasts "
-            "explode.",
-            suggested_action="Difference the series (or use ts.vecm when they trend together).",
+            message_plain="In this model, the series continue to move apart. Thus long "
+            "forecasts become very large.",
+            suggested_action="Use the differences of the series (or use ts.vecm if they have "
+            "the same trend).",
             coords=dict(cell.key),
         )
     ]

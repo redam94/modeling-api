@@ -424,7 +424,7 @@ async def update_policy(
     _check_policy(body)
     current = await load_policy(session, tenant_id, project_id, policy_id, for_update=True)
     if current.retired_at is not None:
-        raise Conflict(f"policy {policy_id} is retired; create a new one")
+        raise Conflict(f"policy {policy_id} is retired. Create a new policy")
     if body.expected_version is not None and body.expected_version != current.version:
         raise Conflict(
             f"policy {policy_id} is at version {current.version}, not {body.expected_version}"
@@ -828,8 +828,8 @@ async def _resolve_policies(
                 have.add(pid)
     if not pols:
         raise MapiError(
-            "no governance policy applies to this model; add a policy for its family "
-            "or name one in policy_ids",
+            "no governance policy applies to this model. Add a policy for its family, "
+            "or give one in policy_ids",
             code=ErrorCode.POLICY_INVALID,
             pointer="/policy_ids",
         )
@@ -956,13 +956,15 @@ async def request_validation(
     (:func:`_resolve_policies`); concurrent requests for one version are serialised on
     the version row, so only one of them creates a validation."""
     if mv.status != "ready":
-        raise Conflict(f"model version {mv.id} is {mv.status}; only ready versions are validated")
+        raise Conflict(
+            f"model version {mv.id} is {mv.status}. Only ready versions can get validation"
+        )
     await _lock_version(session, mv)
     latest = await _latest_validation(session, mv.id)
     if latest is not None and await _blocks_new_validation(session, ctx, mv, latest):
         raise MapiError(
             f"model version v{mv.version} already has a validation that is {latest.status} "
-            f"({latest.id}); resubmit or deprecate that one",
+            f"({latest.id}). Submit that validation again, or deprecate it",
             code=ErrorCode.VALIDATION_TRANSITION_INVALID,
         )
     pols = await _resolve_policies(session, ctx, mv, body.policy_ids)
@@ -1109,8 +1111,8 @@ async def decide(
     if body.decision == "approve" and v.submitted_by in (None, "", SYSTEM_ACTOR):
         # a second-person approval needs a first person: reject it and resubmit instead
         raise MapiError(
-            "no person submitted this validation, so it cannot get a second person's "
-            "approval; reject it and resubmit",
+            "no person submitted this validation, so it cannot get the approval of a second "
+            "person. Reject it and submit it again",
             code=ErrorCode.FORBIDDEN,
         )
     previous = await _approvals(session, v)
@@ -1212,7 +1214,7 @@ async def governance_run_finished(session: AsyncSession, run: m.Run, state: RunS
     actor = _Actor(None, SYSTEM_ACTOR)
     if state is RunState.CANCELLED:
         await _apply(
-            session, v, ValidationEvent.CANCEL, actor, note="the governance run was cancelled"
+            session, v, ValidationEvent.CANCEL, actor, note="the governance run is cancelled"
         )
         return
     required = [PolicyCheck.model_validate(c) for c in v.required_checks or []]
@@ -1227,8 +1229,9 @@ async def governance_run_finished(session: AsyncSession, run: m.Run, state: RunS
                 status=CheckStatus.ERROR,
                 severity=c.severity,
                 metric=GOVERNANCE_CHECKS[c.check].metric,
-                message_plain=f"The check could not run: {why}"[:2000],
-                suggested_action="Look at the governance run's logs, fix the problem and resubmit.",
+                message_plain=f"The check did not run: {why}"[:2000],
+                suggested_action="Look at the logs of the governance run. Correct the problem, "
+                "then submit again.",
                 run_id=run.id,
                 computed_at=ts,
             )
@@ -1324,7 +1327,7 @@ async def workflow_validation_submitter(
         approvals_required=approvals_required,
         history=[],
         run_id=workflow_run_id,
-        note="Checks run by a workflow's governance node.",
+        note="A governance node of a workflow ran the checks.",
         submitted_by=submitter,
         submitted_at=ts,
         created_at=ts,
@@ -1351,7 +1354,7 @@ async def workflow_validation_submitter(
             )
         ],
     )
-    await _apply(session, v, ValidationEvent.SUBMIT, actor, note="submitted by a workflow")
+    await _apply(session, v, ValidationEvent.SUBMIT, actor, note="a workflow submitted it")
     platform = _Actor(None, SYSTEM_ACTOR)
     for event in after_checks(passed, require_approval=v.require_approval):
         await _apply(session, v, event, platform)
@@ -1463,7 +1466,8 @@ def evidence_pack_html(pack: EvidencePack) -> str:
     ]
     if v.failing_checks:
         parts.append(
-            f"<p><strong>Blocking checks not passed:</strong> {_e(', '.join(v.failing_checks))}</p>"
+            "<p><strong>Blocking checks that did not pass:</strong> "
+            f"{_e(', '.join(v.failing_checks))}</p>"
         )
     parts.append("<h2>Evidence</h2>")
     for r in v.results:
@@ -1494,7 +1498,7 @@ def evidence_pack_html(pack: EvidencePack) -> str:
             ],
         )
         if v.approvals
-        else "<p>No approvals recorded.</p>",
+        else "<p>There are no approvals.</p>",
         "<h2>History</h2>",
         _table(
             ["When", "From", "To", "Event", "By", "Note"],

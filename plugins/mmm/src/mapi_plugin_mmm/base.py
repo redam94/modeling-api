@@ -676,8 +676,8 @@ def diagnostics_from(raw: Mapping[str, Any]) -> list[Diagnostic]:
             Diagnostic(
                 code="APPROXIMATE_FIT",
                 severity="warning",
-                message_plain="This fit used a fast approximation; its ranges are not "
-                "reliable. Refit with full sampling before making decisions.",
+                message_plain="This fit used a fast approximation. Its ranges are not "
+                "reliable. Before you make decisions, fit again with full sampling.",
                 message_expert=f"fit_method={raw.get('fit_method')}: uncertainty is not "
                 "calibrated (mmm-framework approximate inference)",
             )

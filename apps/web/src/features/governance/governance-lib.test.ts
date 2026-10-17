@@ -51,7 +51,7 @@ describe("governance helpers", () => {
   });
 
   it("read NOT_VALIDATED refusals as a blocked gate", () => {
-    const message = "The governance policy requires a validated model; this version is awaiting approval. Submit it for validation first.";
+    const message = "The governance policy accepts only a validated model. This version is awaiting approval. Submit it for validation first.";
     const decision = gateFromProblem({
       type: "urn:mapi:error:NOT_VALIDATED",
       title: "Conflict",
