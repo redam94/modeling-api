@@ -4,7 +4,9 @@ Outputs:
 
 * score - ``score.zarr.zip`` (the result ``DataTree``), ``result.json`` (representation, units,
   output space, issues, metrics), ``summary.json`` (the summary as plain tables, which the API
-  inlines in its answer), ``ui/summary.arrow`` and ``plots.json``; forecasts add
+  inlines in its answer; forecasts add ``conditioning``, what the forecast was conditioned on -
+  :mod:`mapi_spec.actuals` - also in ``result.json``), ``ui/summary.arrow`` and
+  ``plots.json``; forecasts add
   ``ui/guided/forecast.json`` and counterfactuals ``ui/guided/counterfactual.json`` (M3,
   :mod:`mapi_runner.worker.guided`), and a forecast's fan chart shows the fitted history
   with the split line;
@@ -28,6 +30,7 @@ from mapi_sdk.errors import PayloadLimitError
 from mapi_sdk.harness import _to_original, score_bundle
 from mapi_sdk.models import ScoreContext
 from mapi_sdk.wire import to_arrow_table, write_arrow_ipc, write_datatree_zip
+from mapi_spec.actuals import CONDITIONING_ATTR
 from mapi_spec.api import SCORE_SUMMARY_MAX_CELLS, SCORE_SUMMARY_OUTPUT
 from mapi_spec.capabilities import REPRESENTATION_RULES
 from mapi_spec.endpoints import INPUT_INLINE_DATA, INPUT_INLINE_SCENARIO
@@ -75,7 +78,9 @@ def _result_json(tree: xr.DataTree) -> dict[str, Any]:
     attrs = {str(k): v for k, v in tree.attrs.items()}
     out: dict[str, Any] = {"groups": sorted(n.path for n in tree.subtree if n.path != "/")}
     for key, value in attrs.items():
-        if key in ("output_space", "retransform", "issues", "metrics") and isinstance(value, str):
+        if key in ("output_space", "retransform", "issues", "metrics", CONDITIONING_ATTR) and (
+            isinstance(value, str)
+        ):
             out[key] = json.loads(value)
         elif isinstance(value, np.generic):
             out[key] = value.item()
@@ -133,6 +138,21 @@ def summary_tables(ds: xr.Dataset, *, max_cells: int = SCORE_SUMMARY_MAX_CELLS) 
     return {"tables": tables, "truncated": truncated}
 
 
+def summary_document(tree: xr.DataTree) -> dict[str, Any] | None:
+    """``summary.json`` (a :class:`~mapi_spec.api.ScoreSummary`) of a score result: the
+    summary tables and, for forecasts, what the forecast was conditioned on
+    (:mod:`mapi_spec.actuals`). ``None`` when the result has no summary group."""
+    if "summary" not in tree:
+        return None
+    node = tree["summary"]
+    assert isinstance(node, xr.DataTree)
+    out = summary_tables(node.to_dataset())
+    conditioning = tree.attrs.get(CONDITIONING_ATTR)
+    if isinstance(conditioning, str):
+        out["conditioning"] = json.loads(conditioning)
+    return out
+
+
 _FULL_GROUPS = ("/predictions", "/baseline/predictions", "/delta/predictions")
 
 
@@ -185,10 +205,11 @@ def _write_tree(
     assert raw is not None
     ctx.write_output("score.zarr.zip", raw)
     ctx.write_json("result.json", _result_json(tree))
-    if "summary" in tree:
+    summary = summary_document(tree)
+    if summary is not None:
         node = tree["summary"]
         assert isinstance(node, xr.DataTree)
-        ctx.write_json(SCORE_SUMMARY_OUTPUT, summary_tables(node.to_dataset()))
+        ctx.write_json(SCORE_SUMMARY_OUTPUT, summary)
         try:
             ctx.write_output("ui/summary.arrow", write_arrow_ipc(to_arrow_table(node.to_dataset())))
         except PayloadLimitError as exc:
