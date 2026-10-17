@@ -1,20 +1,21 @@
 # Your first model in the web app <span class="mapi-badge">v0.2</span>
 
-This guide fits a hierarchical geo marketing-mix model (the corpus' E33 example) on the
-local stack and then uses it, entirely from the browser:
+This guide fits a hierarchical geo marketing-mix model on the local stack. The model is the
+E33 example of the corpus. Then the guide uses the model. You do all the work in the browser:
 
-1. upload daily spend and revenue per market and channel, an FX table and a holiday table;
-2. paste the model spec into the editor and let it validate as you type;
-3. fit it and follow the sampler live;
-4. read the sanity scorecard, the posterior predictive check and the channel decomposition;
-5. score an 8-week forecast, a market the model has never seen, and a weekly budget in EUR.
+1. Upload these datasets: daily spend and revenue for each market and channel, an FX table and
+   a holiday table.
+2. Paste the model spec into the editor. The editor validates the spec while you type.
+3. Fit the model and monitor the sampler live.
+4. Read the sanity scorecard, the posterior predictive check and the channel decomposition.
+5. Score an 8-week forecast, a market that the model did not see, and a weekly budget in EUR.
 
-It takes about ten minutes, most of it reading. The fit itself uses tiny sampler settings
-and finishes in under a minute on a laptop.
+The guide takes about ten minutes. You use most of this time to read. The fit uses very small
+sampler settings. It finishes in less than one minute on a laptop.
 
 ## Before you start
 
-Start the stack and leave it running ([Local development](../operations/local-development.md)):
+Start the stack and let it continue to run ([Local development](../operations/local-development.md)):
 
 ```bash
 make install
@@ -23,15 +24,15 @@ open http://127.0.0.1:5173
 ```
 
 !!! tip "Port 8000 taken?"
-    Move the API with `export MAPI_API_URL=http://127.0.0.1:8010` before `make dev`. Every
-    other command in this guide (`make seed`, `make e2e`) reads the same variable. The other
-    three ports move the same way; see [Port conflicts](../operations/troubleshooting.md#port-conflicts).
+    You can move the API with `export MAPI_API_URL=http://127.0.0.1:8010` before `make dev`.
+    All the other commands in this guide (`make seed`, `make e2e`) read the same variable. You
+    can move the other three ports in the same way. See [Port conflicts](../operations/troubleshooting.md#port-conflicts).
 
-This guide clicks through every step, including the uploads. For the short path (`make seed`
-loads the data and the spec for you) see the [quickstart](../getting-started/quickstart.md);
-for every page of the app, [The Expert web app](web-ui.md).
+This guide clicks through all the steps, and the uploads too. For the short path, see the
+[quickstart](../getting-started/quickstart.md). In the short path, `make seed` loads the data
+and the spec for you. For all the pages of the app, see [The Expert web app](web-ui.md).
 
-Then write the demo files to a folder. Nothing is uploaded yet:
+Then write the demo files to a folder. This command does not upload the files:
 
 ```bash
 uv run python scripts/seed.py --export demo/
@@ -40,150 +41,197 @@ uv run python scripts/seed.py --export demo/
 | File | What it is | Upload it as |
 |---|---|---|
 | `eu_media_daily.zarr.zip` | 30 weeks of daily `spend_local(market, channel, date)` and `revenue_local(market, date)` for NL, DE and UK (UK in GBP) | `eu_media_daily` |
-| `fx_daily.zarr.zip` | Daily EUR per GBP, covering the fit window and the forecast horizon | `fx_daily` |
+| `fx_daily.zarr.zip` | Daily EUR for each GBP, for the fit window and the forecast horizon | `fx_daily` |
 | `holidays_eu.zarr.zip` | A daily holiday indicator | `holidays_eu` |
 | `eu_media_future.zarr.zip` | Planned daily spend for the 8 weeks after the data (no revenue) | `eu_media_future` |
-| `eu_media_future_fr.zarr.zip` | The same weeks plus FR, a market the model has not seen | `eu_media_future_fr` |
-| `eu_media_weekly_plan.zarr.zip` | A planner's budget: weekly spend in EUR | `eu_media_weekly_plan` |
+| `eu_media_future_fr.zarr.zip` | The same weeks and FR, a market that the model did not see | `eu_media_future_fr` |
+| `eu_media_weekly_plan.zarr.zip` | A budget from a planner: weekly spend in EUR | `eu_media_weekly_plan` |
 | `eu_media_window.zarr.zip` | The last four weeks of the data, for counterfactuals | `eu_media_window` |
-| `eu-geo-mmm.yaml` | The model spec, pointing at `dataset://default/<name>@latest` | (paste it) |
+| `eu-geo-mmm.yaml` | The model spec. It points at `dataset://default/<name>@latest` | (paste it) |
 
 `make seed` does steps 1 and 2 for you through the HTTP API. This guide clicks through them.
 
 ## 1. Upload the data
 
-Open **Datasets → New dataset**, name it `eu_media_daily` and create it. The upload panel
-opens: choose `eu_media_daily.zarr.zip` and press **Upload and ingest**. The browser sends
-the file straight to object storage through a signed URL; a sandboxed *ingest* run then
-opens it, checks it and stores an immutable, content-addressed version. The page refreshes
-on its own until the version is `ready`.
+1. Open **Datasets → New dataset**.
+2. Name the dataset `eu_media_daily` and make it. The upload panel opens.
+3. Select `eu_media_daily.zarr.zip`.
+4. Click **Upload and ingest**.
+
+The browser sends the file directly to object storage through a signed URL. Then a sandboxed
+*ingest* run opens the file and checks it. The run keeps an immutable, content-addressed
+version. The page refreshes automatically until the version is `ready`.
 
 ![A ready dataset version with its schema](../assets/first-model/dataset-ready.png)
 
-The schema came with the file: `market` allows **new levels** at score time (with a
-hyperprior), `channel` is **fixed**, and `date` may be **extended** into the future.
-`revenue_local` is the target, `spend_local` is spend, both in local currency. A CSV upload
-would ask you for the same mapping column by column.
+The schema came with the file:
 
-Repeat for the other six files, using the names in the table above.
+- `market` allows **new levels** at score time, with a hyperprior.
+- `channel` is **fixed**.
+- `date` can be **extended** into the future.
+- `revenue_local` is the target and `spend_local` is spend. Both are in local currency.
+
+A CSV upload asks you for the same mapping, one column at a time.
+
+Do the upload steps again for the other six files. Use the names in the table above.
 
 ## 2. Write and validate the spec
 
-Open **Build → New spec**, select everything in the editor and paste `eu-geo-mmm.yaml`.
-The editor validates as you type: the server resolves every `dataset://` reference and step,
-checks the settings and propagates the schema through the pipeline without running
-anything. Problems appear as squiggles at the exact YAML path.
+1. Open **Build → New spec**.
+2. Select all the text in the editor.
+3. Paste `eu-geo-mmm.yaml`.
+
+The editor validates the spec while you type. The server resolves each `dataset://` reference
+and each step. It checks the settings. It moves the schema through the pipeline, but it does
+not run anything. Problems show as wavy lines at the exact YAML path.
 
 ![The spec editor with a valid E33 spec and its pipeline](../assets/first-model/editor-valid.png)
 
-The pipeline panel shows what each step does to the data. `to_eur` converts both spend and
-revenue to EUR with the `fx` side table, `weekly` resamples days to weeks (only from this
-stage on does a week exist, so the train/holdout split sits right after it), and
-`scale_spend`, `scale_y` and `lags` learn state from the training weeks only. Open
-**Schema after this step** on any card to see the variables and dims at that stage.
+The pipeline panel shows what each step does to the data:
 
-Press **Save spec**. The spec becomes revision `r1` of `spec://default/eu-geo-mmm`. (If you
-ran `make seed` before, that name is taken: change `metadata.name` first, or open the
-seeded spec under **Build** instead.)
+- `to_eur` changes spend and revenue to EUR with the `fx` side table.
+- `weekly` resamples days to weeks. A week exists only from this stage. Thus the
+  train/holdout split is immediately after this step.
+- `scale_spend`, `scale_y` and `lags` learn state from the training weeks only.
+
+To see the variables and dims at a stage, open **Schema after this step** on the card.
+
+When the spec is valid, click **Save spec**. The spec becomes revision `r1` of
+`spec://default/eu-geo-mmm`.
+
+If you ran `make seed` before, the name is not available. In this case, change
+`metadata.name` first. Or open the seeded spec under **Build**.
 
 ## 3. Fit it
 
-Press **Fit**. The run page follows the run over server-sent events:
+Click **Fit**. The run page monitors the run through server-sent events.
 
 ![A fit run while the sampler is drawing](../assets/first-model/run-progress.png)
 
-- **Starting the sandbox**: the run's supervisor read its one-time bootstrap object and
-  deleted it, so the credentials it held are gone before any model code runs.
-- `DEV_MODE_ISOLATION` is expected on a laptop: the local executor cannot drop to a separate
-  user for the model code. Containers and Cloud Run do.
-- The progress bar and message come straight from the sampler (`chain 1/2: sampling
+- **Starting the sandbox**: The supervisor of the run read its one-time bootstrap object and
+  deleted it. Thus the credentials of the object are gone before model code runs.
+- `DEV_MODE_ISOLATION` is usual on a laptop. The local executor cannot change to a different
+  user for the model code. Containers and Cloud Run can.
+- The progress bar and the message come directly from the sampler (`chain 1/2: sampling
   39/100`).
 
-`fit.mode: evaluate_then_refit` makes the run fit the training weeks, score the 8 holdout
-weeks through the normal scoring path, then refit on all the data, so the model you use
-has seen the latest weeks while its metrics are honest. When the run succeeds, the
-platform checks every file the run claims to have written against the storage's own
-checksums, copies them where the run cannot reach, and signs a manifest. Press
-**Inspect model://default/eu-geo-mmm@v1**.
+`fit.mode: evaluate_then_refit` makes the run do three things:
+
+1. The run fits the training weeks.
+2. It scores the 8 holdout weeks through the usual score path.
+3. It fits again on all the data.
+
+Thus the model that you use has seen the latest weeks, and its metrics are honest. When the run
+succeeds, the platform does three things:
+
+- It checks each file that the run wrote against the checksums of the storage.
+- It copies the files to a location that the run cannot get to.
+- It signs a manifest.
+
+When the run succeeds, click **Inspect model://default/eu-geo-mmm@v1**.
 
 ## 4. Inspect the model
 
-The **Overview** tab opens on the sanity scorecard, the holdout metrics and what the model
-can do.
+The **Overview** tab opens on the sanity scorecard, the holdout metrics and the things that the
+model can do.
 
 ![The scorecard of a tiny fit](../assets/first-model/scorecard.png)
 
-With 2 chains of 100 draws the sampler has not converged: R-hat above 1.01 and fewer than
-200 effective samples are flagged as warnings, each with a suggested action. That is the
-point of the tiny settings; raise `tune` and `draws` (and use more chains) for a model you
-mean to use. **Diagnostics** lists the same checks per variable.
+With 2 chains of 100 draws, the sampler did not converge. The scorecard shows warnings for
+R-hat above 1.01 and for fewer than 200 effective samples. Each warning has a suggested action.
+The very small settings have this result on purpose. For a model that you will use, increase
+`tune` and `draws`, and use more chains. **Diagnostics** lists the same checks for each
+variable.
 
-**Plots** has the recipes the spec asked for. Every plot renders inside an
-`<iframe sandbox="allow-scripts">` served from a separate origin (port 5174), so even a
-malicious plot spec could not read the app, its cookies or your data.
+**Plots** has the recipes that the spec asked for. Each plot renders in an
+`<iframe sandbox="allow-scripts">` from a separate origin (port 5174). Thus a malicious plot
+spec cannot read the app, its cookies or your data.
 
 ![Posterior predictive check: the 8 holdout weeks per market](../assets/first-model/plot-ppc.png)
 
-**Fit and forecast** compares the model's predictions for the holdout weeks with what
-happened: the line is the median, the bands are the 50% and 90% intervals, the dots are the
-actual weekly EUR revenue.
+**Fit and forecast** compares the predictions of the model for the holdout weeks with the
+actual results:
+
+- The line is the median.
+- The bands are the 50% and 90% intervals.
+- The dots are the actual weekly EUR revenue.
 
 ![Decomposition of revenue into baseline and channels](../assets/first-model/plot-decomposition.png)
 
-**Contribution by component** splits revenue over time into the baseline, each channel,
-seasonality and holidays, in EUR, with the totals and their uncertainty below.
-**Response curves** shows what an extra euro of spend returns per channel, and **Sampler
-convergence** has the trace and rank plots behind the scorecard. **Provenance** shows the
-signed manifest, every stored object with its generation, and the lineage: data and side
-table versions, spec hash, plugin, seed and library versions.
+**Contribution by component** divides revenue over time into the baseline, each channel,
+seasonality and holidays, in EUR. The totals and their uncertainty are below. **Response
+curves** shows the return of one more euro of spend for each channel. **Sampler convergence**
+has the trace and rank plots for the scorecard. **Provenance** shows these items:
+
+- The signed manifest.
+- Each stored object with its generation.
+- The lineage: the versions of the data and the side tables, the spec hash, the plugin, the
+  seed and the library versions.
 
 ## 5. Score it
 
-Press **Score**. The form only offers what this model supports, and the fitted
-preprocessing is replayed exactly: nothing is refitted.
+Click **Score**. The form shows only the modes that the model can do. The server uses the same
+preprocessing as the fit. It does not fit the model again.
 
-**An 8-week forecast.** Keep **Forecast** with 8 periods, choose **Use a dataset** under
-**Values to score**, enter `dataset://default/eu_media_future@v1` and press **Forecast**. (For a
-quick plan you can instead keep **Type values** and type the spend into the grid, which starts
-with the periods after the fit for every market and channel.) The `fx` side table defaults
-to the one the fit used; it covers the horizon, so the planned local-currency spend can be
-converted to EUR. The result shows a fan per market, then the outputs: the result tree
-(`score.zarr.zip`), its summary as a table, and a quick chart you can re-plot by any column.
+**An 8-week forecast.**
 
-**A new market.** Score again with `dataset://default/eu_media_future_fr@v1`. FR was never
-seen in training; its effects are drawn from the hierarchical prior over markets, so its
-band is visibly wider than the others'. The result's `issues` record an `UNSEEN_LEVELS`
-note saying so.
+1. Keep **Forecast** with 8 periods.
+2. Under **Values to score**, select **Use a dataset**.
+3. Type `dataset://default/eu_media_future@v1`.
+4. Click **Forecast**.
+
+For a quick plan, you can keep **Type values** and type the spend into the grid. The grid
+starts with the periods after the fit for each market and channel. By default, the `fx` side
+table is the table that the fit used. This table includes the horizon. Thus the server can
+change the planned spend from local currency to EUR. The result shows a fan for each market.
+Then it shows the outputs: the result tree (`score.zarr.zip`) and its summary as a table. It
+also shows a quick chart that you can plot again by any column.
+
+**A new market.** Score again with `dataset://default/eu_media_future_fr@v1`. The training data did not have FR. The model draws the effects of FR from the hierarchical
+prior over markets. Thus the band of FR is clearly wider than the bands of the other markets.
+The `issues` of the result have an `UNSEEN_LEVELS` note that tells this.
 
 ![Forecast for the fitted markets plus FR](../assets/first-model/score-new-market.png)
 
-**A weekly plan in EUR.** Planners think in weekly euros, not daily local currency. Under
-**Advanced** set **Inputs enter at stage** to `weekly`, and use the dataset
-`dataset://default/eu_media_weekly_plan@v1`. The request enters the pipeline after `to_eur`
-and `weekly`, so no FX table is needed. Because this plan is the same spend as the daily
-file, the forecast is identical to the first one, which is exactly what replaying the
-preprocessing promises.
+**A weekly plan in EUR.** Planners use weekly euros, not daily local currency.
 
-**A counterfactual.** Choose **What if**, use the dataset
-`dataset://default/eu_media_window@v1`, add a change `spend_local` where `channel=tv`,
-multiply by `1.2`, and under **Advanced** choose **Predictive** output and set **Draws** to `100` (with
-0 draws you get the means, but not the uncertainty of the change). The result holds the
-baseline, the scenario and their difference, computed with common random numbers so the
-delta is not drowned in sampling noise.
+1. Under **Advanced**, set **Inputs enter at stage** to `weekly`.
+2. Use the dataset `dataset://default/eu_media_weekly_plan@v1`.
+
+The request goes into the pipeline after `to_eur` and `weekly`. Thus you do not need an FX
+table. This plan has the same spend as the daily file. Thus the forecast is the same as the
+first forecast. This is the result that the server promises when it uses the same
+preprocessing again.
+
+**A counterfactual.**
+
+1. Select **What if**.
+2. Use the dataset `dataset://default/eu_media_window@v1`.
+3. Add a change to `spend_local` where `channel=tv`, and multiply by `1.2`.
+4. Under **Advanced**, select **Predictive** output.
+5. Set **Draws** to `100`.
+
+With 0 draws, you get the means, but not the uncertainty of the change. The result has the
+baseline, the scenario and their difference. The server calculates them with common random
+numbers. Thus the sampling noise does not hide the difference.
 
 ## What was checked along the way
 
-The same flow runs as two automated suites against the running stack (`make e2e`):
+Two automatic suites run the same flow against the running stack (`make e2e`):
 
-- `tests/e2e/test_m1_stack.py` drives it through the Python client. It also verifies the
-  manifest signature, that every bundle object sits in the bundles bucket at its signed
-  generation, that the bundle reads back with all hashes intact, that the bootstrap object
-  is gone, and that forged run events are refused.
-- `apps/web/e2e/m1-flow.e2e.spec.ts` clicks through the pages above with Playwright and
-  checks that the plot frame is an opaque origin with no access to its parent.
+- `tests/e2e/test_m1_stack.py` runs the flow through the Python client. It also verifies these
+  items:
+
+    - The manifest signature.
+    - Each bundle object is in the bundles bucket at its signed generation.
+    - The bundle reads back with all hashes correct.
+    - The bootstrap object is gone.
+    - The server refuses forged run events.
+- `apps/web/e2e/m1-flow.e2e.spec.ts` clicks through the pages above with Playwright. It checks
+  that the plot frame is an opaque origin with no access to its parent.
 
 ## Next steps
 
 - [Marketing-mix models](mmm.md): the model, its priors, derived quantities and budget plots.
-- [Spec format](../reference/spec-format.md) and the [steps](../reference/steps.md) used here.
-- [Web app and plot sandbox](../reference/web-app.md): every page and how plots are isolated.
+- [Spec format](../reference/spec-format.md) and the [steps](../reference/steps.md) that this guide uses.
+- [Web app and plot sandbox](../reference/web-app.md): all the pages, and how the app isolates plots.

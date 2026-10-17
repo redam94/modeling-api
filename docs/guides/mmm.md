@@ -1,24 +1,29 @@
 # Marketing-mix models
 
-`mapi-plugin-mmm` ships the platform's marketing-mix models (MMMs), both on
-[mmm-framework](../models/mmm-framework.md):
+`mapi-plugin-mmm` contains the marketing-mix models (MMMs) of the platform. The two models
+use [mmm-framework](../models/mmm-framework.md):
 
 | Plugin | What it is | Use it when |
 |---|---|---|
-| `mmm.bayesian` | mmm-framework's Bayesian MMM, national or hierarchical over geos and products | You want each channel's contribution and return with honest ranges, business priors and lift tests, what-if answers and budget plans |
-| `mmm.frequentist` | mmm-framework's ridge estimator with bootstrap intervals | You need a first read in seconds, or want to compare many set-ups quickly |
+| `mmm.bayesian` | The Bayesian MMM of mmm-framework, national or hierarchical over geos and products | You want the contribution and the return of each channel with honest ranges. You also want business priors and lift tests, what-if answers and budget plans |
+| `mmm.frequentist` | The ridge estimator of mmm-framework with bootstrap intervals | You need a first result in seconds, or you want to compare many set-ups quickly |
 
-Both are registered through the `mapi.models` entry point, so a spec only names them:
-`use: mmm.bayesian@^1`. This guide walks through a complete analysis; the
-[model reference](../models/mmm-framework.md) has every setting and how it maps onto
-mmm-framework.
+The two plugins register through the `mapi.models` entry point. Thus a spec only gives their
+names: `use: mmm.bayesian@^1`. This guide shows a complete analysis. The
+[model reference](../models/mmm-framework.md) gives all the settings, and how each setting
+maps onto mmm-framework.
 
 ## From daily spend in local currency to weekly EUR decisions
 
-A typical European media dataset is daily, per market and channel, in each market's own
-currency. mmm-framework owns scaling, carry-over and seasonality, so the platform's
-pipeline only converts currencies, aggregates to weeks and adds a holiday control - and
-remembers every learned step so scoring replays exactly the same work:
+A typical European media dataset is daily, for each market and channel, in the currency of
+each market. mmm-framework does the scaling, the carry-over and the seasonality. Thus the
+pipeline of the platform only does these steps:
+
+- It changes the currencies.
+- It aggregates the data to weeks.
+- It adds a holiday control.
+
+The pipeline keeps each learned step. Thus a score does exactly the same work again:
 
 ```yaml
 apiVersion: mapi/v1
@@ -55,51 +60,51 @@ outputs:
 evaluate: {metrics: [elpd_loo, coverage_90, mape]}
 ```
 
-What the platform does with this, without a line of model code:
+The platform does these things with this spec. You do not write model code:
 
-- **Binding.** Your names (`market`, `revenue_local`) become the model's canonical names
-  (`geo`, `y`) and are reversed on every output.
-- **Split at the right stage.** The holdout is the last 8 *weeks*, cut after resampling,
-  so no partial week leaks into training.
-- **Evaluate, then refit.** The model is fitted on the training weeks, scored on the
-  holdout *through the scoring path* (the same code a forecast uses), then refitted on all
-  weeks so forecasts start from the latest data.
-- **Owned scaling and carry-over.** mmm-framework scales the data itself and carries
-  spend over with its own adstock kernel; a scoring window is replayed on top of the
-  stored fit history, so carry-over from last month's TV burst reaches next month's sales.
-  A scaling or lag step on `y` or `spend` is refused at validation (`CAPABILITY_UNSUPPORTED`).
-- **Weekly EUR.** Predictions and contributions come back in the model stage's units -
-  weekly EUR here - and say so in their `output_space` (`model-owned`) and `units`.
+- **Binding.** Your names (`market`, `revenue_local`) become the canonical names of the model
+  (`geo`, `y`). The platform changes them back on each output.
+- **Split at the right stage.** The holdout is the last 8 *weeks*. The platform cuts the
+  holdout after the resample. Thus no partial week goes into the training data.
+- **Evaluate, then refit.** The platform fits the model on the training weeks. It scores the
+  holdout *through the score path*, which is the same code that a forecast uses. Then it fits
+  the model again on all the weeks. Thus forecasts start from the latest data.
+- **Owned scaling and carry-over.** mmm-framework scales the data itself. It carries spend
+  over with its own adstock kernel. The platform puts a score window on top of the stored fit
+  history. Thus carry-over from the TV burst of last month gets to the sales of next month.
+  Validation refuses a scaling or lag step on `y` or `spend` (`CAPABILITY_UNSUPPORTED`).
+- **Weekly EUR.** Predictions and contributions come back in the units of the model stage.
+  Here, these are weekly EUR. The outputs tell this in their `output_space` (`model-owned`) and
+  `units`.
 
-A runnable version of this spec, scaled down, ships as
-`mapi_plugin_mmm.examples.E33_SPEC_YAML`, together with a simulator (`e33_dataset`) whose
-true contributions are known.
+`mapi_plugin_mmm.examples.E33_SPEC_YAML` is a smaller version of this spec that you can run.
+It comes with a simulator (`e33_dataset`) with known true contributions.
 
 ## Settings at a glance
 
 | Setting | Level | Default | Meaning |
 |---|---|---|---|
-| `hierarchy.pool_over` | basic | `[]` | Panel dims of the data (`geo`, `product`); each level gets its own baseline, partially pooled |
+| `hierarchy.pool_over` | basic | `[]` | Panel dims of the data (`geo`, `product`). Each level gets its own baseline, partially pooled |
 | `adstock.kind` / `l_max` | basic | `geometric`, 8 | Carry-over shape (`geometric`, `delayed`, `weibull`, `none`) and length |
 | `saturation.kind` | basic | `logistic` | Diminishing returns (`logistic`, `hill`, `michaelis_menten`, `tanh`, `root`, `none`) |
 | `trend.kind` | basic | `linear` | `none`, `linear`, `piecewise`, `spline` or `gp` |
 | `seasonality.yearly_order` | basic | 2 | Yearly Fourier pairs |
-| `channels.<c>` | advanced | - | Per-channel adstock/saturation overrides |
-| `hierarchy.media_by_geo` | advanced | `false` | Channel effects per geo, partially pooled |
-| `media_prior` | advanced | `roi` | Channel effects stated as returns on spend |
+| `channels.<c>` | advanced | - | Adstock/saturation overrides for each channel |
+| `hierarchy.media_by_geo` | advanced | `false` | Channel effects for each geo, partially pooled |
+| `media_prior` | advanced | `roi` | Channel effects given as returns on spend |
 | `priors` | advanced | - | `roi.<c>: {mu, sigma}`, `roi_default`, `intercept` |
 | `likelihood` | advanced | `normal` | `student_t` for heavy-tailed outliers |
-| `new_levels` | advanced | `pooled` | How unseen geos/products are scored |
-| `controls` | advanced | auto | Control variables (default: every other numeric variable over time) |
-| `grid` | advanced | 0-2.5x in 26 steps | The response curves' spend-multiplier grid |
+| `new_levels` | advanced | `pooled` | How the model scores unseen geos/products |
+| `controls` | advanced | auto | Control variables (default: all other numeric variables over time) |
+| `grid` | advanced | 0-2.5x in 26 steps | The spend-multiplier grid of the response curves |
 
-Guided mode shows the **basic** settings only; every field carries `x-ui-level` in the
-manifest's JSON Schema. The [models catalog](../reference/generated/models-catalog.md)
-lists them all with their defaults.
+Guided mode shows only the **basic** settings. Each field has `x-ui-level` in the JSON Schema
+of the manifest. The [models catalog](../reference/generated/models-catalog.md) lists all the
+settings with their defaults.
 
 ## Scoring
 
-Score requests work like for every other model; these are the ones MMM users need most.
+Score requests for MMMs work as for all other models. MMM users need these requests most.
 
 === "Forecast"
 
@@ -113,14 +118,14 @@ Score requests work like for every other model; these are the ones MMM users nee
     output: {kind: expected, summary: [mean, hdi_90], draws: 200}
     ```
 
-    Send daily spend in local currency for the next 8 weeks; get weekly EUR revenue.
+    Send daily spend in local currency for the next 8 weeks. You get weekly EUR revenue.
 
 === "A new market"
 
-    Add a market the model has never seen (`FR`). With `new_levels: hyperprior` its
-    baseline is drawn from the fitted spread for every posterior draw, so its forecast is
-    honest about what the model does not know: wider than a fitted market's. The response
-    carries an `UNSEEN_LEVELS` notice.
+    Add a market that the model did not see (`FR`). With `new_levels: hyperprior`, the model
+    draws the baseline of the market from the fitted spread for each posterior draw. Thus its
+    forecast is honest about what the model does not know. The forecast is wider than the
+    forecast of a fitted market. The response has an `UNSEEN_LEVELS` notice.
 
 === "A weekly EUR plan"
 
@@ -130,9 +135,9 @@ Score requests work like for every other model; these are the ones MMM users nee
     inputs_stage: weekly          # enter after fx conversion and resampling
     ```
 
-    Planners send weekly EUR budgets instead of inventing daily local-currency spend. No
-    FX table is needed: the steps that use it are skipped. The forecast equals the
-    raw-data path for the same spend.
+    Planners send weekly EUR budgets. They do not need to invent daily spend in local
+    currency. You do not need an FX table, because the platform skips the steps that use it.
+    The forecast is the same as the forecast from the raw data for the same spend.
 
 === "What if"
 
@@ -142,28 +147,34 @@ Score requests work like for every other model; these are the ones MMM users nee
     output: {kind: predictive, draws: 200}
     ```
 
-    The scenario and the baseline share their noise (common random numbers), so the
-    `delta` group shows the effect of the change, not sampling noise. Only the treated
-    channel's contribution moves.
+    The scenario and the baseline share their noise (common random numbers). Thus the
+    `delta` group shows the effect of the change, not sampling noise. Only the contribution
+    of the changed channel moves.
 
-Every score returns `y_hat` and `contributions(component, geo, time)`: one component per
-channel, `baseline`, `trend`, `seasonality` and one per control. They add up to `y_hat`.
+Each score gives `y_hat` and `contributions(component, geo, time)`. There is one component for
+each channel, `baseline`, `trend`, `seasonality`, and one component for each control. The
+components add up to `y_hat`.
 
 ## What a Guided report reads
 
-`contributions`, `response_curves` and `marginal_cost` (in `outputs.derived`) are computed
-once, at fit, over the first `outputs.ui_draws` posterior draws. `mmm.decomposition`,
-`mmm.response_curves` and `mmm.marginal_cost` plot them; Guided-mode what-if sliders
-interpolate the response curves per draw (instant, with joint uncertainty bands); the
-scorecard's plausibility checks (negative or absurd ROI, a channel's share, the baseline
-share) read them too. Business priors (ROI or share ranges) and lift tests calibrate the
-model through the spec's `calibration` block: see
-[Guided modelling](guided-modelling.md) and [the model reference](../models/mmm-framework.md#priors-in-business-terms).
+The fit calculates `contributions`, `response_curves` and `marginal_cost` (in
+`outputs.derived`) one time. It uses the first `outputs.ui_draws` posterior draws. These items
+read the values:
+
+- `mmm.decomposition`, `mmm.response_curves` and `mmm.marginal_cost` plot them.
+- The what-if sliders of Guided mode interpolate the response curves for each draw. The answer
+  is instant, with joint uncertainty bands.
+- The plausibility checks of the scorecard read them: negative or absurd ROI, the share of a
+  channel, and the baseline share.
+
+Business priors (ROI or share ranges) and lift tests calibrate the model through the
+`calibration` block of the spec. See [Guided modelling](guided-modelling.md) and
+[the model reference](../models/mmm-framework.md#priors-in-business-terms).
 
 ## Optimising budgets
 
-The platform optimises budgets with mmm-framework's planning module - no external
-optimiser needed:
+The platform optimises budgets with the planning module of mmm-framework. You do not need an
+external optimiser:
 
 ```python
 import httpx
@@ -181,23 +192,35 @@ for a in plan["allocation"]:
 print("uplift", plan["uplift"]["mean"], "chance it helps", plan["prob_positive_uplift"])
 ```
 
-See [Optimise a budget](../tutorials/optimise-a-budget.md) for a walk-through and
-[the model reference](../models/mmm-framework.md#budget-optimisation) for every option.
-In Python, a fitted bundle's decision objective is also available directly:
-`MMMBayesian().objective(bundle.model, budget, ScoreContext())` values a per-period budget
-`spend(channel)` (or `spend(geo, channel)`) at steady state, per posterior draw.
+See [Optimise a budget](../tutorials/optimise-a-budget.md) for a walk-through. See
+[the model reference](../models/mmm-framework.md#budget-optimisation) for all the options. In
+Python, you can also use the decision objective of a fitted bundle directly.
+`MMMBayesian().objective(bundle.model, budget, ScoreContext())` gives the value of a budget for
+each period, `spend(channel)` or `spend(geo, channel)`. It gives this value at steady state,
+for each posterior draw.
 
 ## The fast frequentist model
 
-`mmm.frequentist` takes the same data and settings and answers in seconds: transforms are
-searched out of sample, the model is solved by ridge regression with non-negative channel
-effects, and the ranges are bootstrap confidence intervals. Use it for a first look, then
-fit `mmm.bayesian` before making decisions.
+`mmm.frequentist` takes the same data and settings, and answers in seconds:
+
+- It searches the transforms out of sample.
+- It solves the model with ridge regression, with non-negative channel effects.
+- The ranges are bootstrap confidence intervals.
+
+Use it for a first look. Then fit `mmm.bayesian` before you make decisions.
 
 ## Trust, but verify
 
-Both plugins pass the SDK contract kit (`mapi_sdk.testing.check_model`): bundle round
-trips, shuffled and subset markets, new levels, typed errors, the holdout scored through
-the same path as a forecast, additive contributions. The conformance corpus runs them
-through the whole spec -> fit -> score path (`e33`, `guided_mmm`, `mmm_frequentist`), and
-the plugin's tests check the forward pass against mmm-framework's own forecaster and graph.
+The two plugins pass the SDK contract kit (`mapi_sdk.testing.check_model`). The kit tests
+these items:
+
+- Bundle round trips.
+- Shuffled and subset markets.
+- New levels.
+- Typed errors.
+- The holdout scored through the same path as a forecast.
+- Additive contributions.
+
+The conformance corpus runs the plugins through the full spec -> fit -> score path (`e33`,
+`guided_mmm`, `mmm_frequentist`). The tests of the plugin check the forward pass against the
+forecaster and the graph of mmm-framework.
