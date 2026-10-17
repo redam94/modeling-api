@@ -127,8 +127,10 @@ the fitted history it started from.
 A model declares it with `capabilities.conditions_on_actuals` (see
 [Capabilities](capabilities.md)); `GET …/schema` shows it as `snapshot.conditions_on_actuals`.
 The check uses the plugin build that scores, so a model fitted before its plugin learned to
-condition can do so without a refit. Every other model refuses a forecast whose payload holds a
-target value:
+condition can do so without a refit. Promoting a version that cannot onto an endpoint whose
+version can is a breaking change for the endpoint's callers: the promotion gate counts it with
+the input-schema changes under the endpoint's `schema_change` policy (blocked by default).
+Every other model refuses a forecast whose payload holds a target value:
 
 ```json
 {
