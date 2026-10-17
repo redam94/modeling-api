@@ -337,16 +337,22 @@ def set_parent_state(run: m.Run, status: WorkflowRunStatus, error: NodeError | N
         ).model_dump(mode="json", exclude_none=True)
 
 
-async def request_cancel(session: AsyncSession, wr: m.WorkflowRunRow) -> None:
-    """Flag a run for cancellation (the orchestrator stops its children)."""
+async def request_cancel(session: AsyncSession, wr: m.WorkflowRunRow) -> bool:
+    """Flag a run for cancellation (the orchestrator stops its children).
+
+    The row is re-read under ``FOR UPDATE`` first: a run the orchestrator finished since the
+    caller loaded it stays finished (no ``cancelling`` over ``succeeded``, no second
+    terminal event). Returns whether this call flagged it."""
+    await session.refresh(wr, with_for_update=True)
     status = WorkflowRunStatus(wr.status)
     if status.terminal or wr.cancel_requested:
-        return
+        return False
     wr.cancel_requested = True
     wr.status = WorkflowRunStatus.CANCELLING.value
     wr.updated_at = now()
     await session.flush()
     await notify_run(session, wr.run_id, "run")
+    return True
 
 
 def node_run_dto(row: m.WorkflowNodeRunRow) -> NodeRun:

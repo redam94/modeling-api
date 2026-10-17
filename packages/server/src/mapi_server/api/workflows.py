@@ -488,8 +488,7 @@ async def cancel_workflow_run(ctx: Ctx, session: Session, run_id: RunId) -> JSON
     """Idempotent: ``cancelling`` until every running child stopped, then ``cancelled``
     (a finished run is returned as it is)."""
     wr = await _load_run(ctx, session, run_id)
-    if not WorkflowRunStatus(wr.status).terminal and not wr.cancel_requested:
-        await request_cancel(session, wr)
+    if await request_cancel(session, wr):  # locks the row: a run finished meanwhile stays so
         await _audit(
             ctx,
             session,

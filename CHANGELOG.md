@@ -447,6 +447,10 @@ milestone releases are tagged on `main`.
 - **server**: a workflow run's `cost` left out everything its sub-workflows ran (a
   `subworkflow.run` node's child is a workflow run with no attempts of its own); the roll-up
   now follows sub-workflow runs down to their node runs.
+- **server**: `POST /v1/workflow-runs/{id}:cancel` racing the run's completion reopened a
+  finished run as `cancelling`; the next pass flipped it back and sent `workflow.run.succeeded`
+  (event and webhook) a second time. The cancel now locks the run and leaves a finished run
+  as it is.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

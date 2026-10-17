@@ -457,3 +457,32 @@ async def test_the_cost_roll_up_includes_sub_workflow_children(
     inner = (await client.get(f"/v1/workflow-runs/{inner_id}")).json()
     assert inner["cost"] and inner["cost"]["vcpu_seconds"] > 0
     assert view["cost"]["vcpu_seconds"] == pytest.approx(2 * inner["cost"]["vcpu_seconds"])
+
+
+# ================================================================================= races
+
+
+async def test_a_cancel_racing_completion_does_not_reopen_the_run(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    from mapi_server.services.workflows.runs import request_cancel
+
+    await put_dataset(ctx, "sales", weekly_series(80))
+    rid = await _start(client, await _create(client, _doc([ADF])))
+    await WorkflowOrchestrator(ctx).tick(rid)
+    async with ctx.db.session() as api:
+        wr = await api.get(m.WorkflowRunRow, rid)  # the cancel route read it (running) ...
+        assert wr is not None and wr.status == "running"
+        assert await drive(ctx, rid) is WorkflowRunStatus.SUCCEEDED  # ... the run finished ...
+        await request_cancel(api, wr)  # ... and the route's cancel lands afterwards
+    await WorkflowOrchestrator(ctx).tick(rid)
+    view = (await client.get(f"/v1/workflow-runs/{rid}")).json()
+    assert view["status"] == "succeeded"
+    assert (await client.get(f"/v1/runs/{rid}")).json()["state"] == "succeeded"
+    events = (await client.get(f"/v1/workflow-runs/{rid}/events")).json()["items"]
+    assert [e["type"] for e in events].count("workflow.run.succeeded") == 1
+    async with ctx.db.session() as s:
+        row = await s.get(m.WorkflowRunRow, rid)
+        assert row is not None and row.cancel_requested is False
+    again = await client.post(f"/v1/workflow-runs/{rid}:cancel")
+    assert again.status_code == 202 and again.json()["status"] == "succeeded"
