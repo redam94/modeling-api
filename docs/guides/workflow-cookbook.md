@@ -198,26 +198,26 @@ convergence                  pass    The fit reported no convergence problems.
 baseline.beats_naive         pass    On the 13 held-out periods the model's error is 25% lower than 'same as last period' (the strongest simple benchmark).
 holdout.accuracy             pass    On data it was not fitted on, the model's average percentage error is 1.8% (limit 15%).
 residuals.whiteness          pass    No pattern is left in the errors (Ljung-Box p = 0.39 at 10 lags).
-null.permutation_target      fail    2 of 20 fits on shuffled results did as well as the real model (p = 0.143): it may be fitting noise rather than signal.
+null.permutation_target      pass    The model did better on held-out data (skill 0.236) than all 20 fits with the drivers price shuffled in blocks of 7 (the result untouched) (p = 0.048).
 stability.rolling_params     fail    ar.L1 changes a lot across windows of history (variation 1205%): the relationship may not be stable over time.
 ```
 
-Read it like a reviewer would: the model beats naive by 25% on unseen weeks and leaves no
-pattern in its errors, but two shuffled fits in twenty did as well, and the AR coefficient is
-not stable across windows. Two checks *failed* and the version is still `validated`, because
-a check's status and its severity are different things: the default forecasting policy holds
-the shuffled-result test at *warning* and stability at *information*, so neither blocks; both
-are on the record for the reviewer and in the evidence pack. A stricter policy (see
-[governance](governance.md)) makes them blocking, and this model would then need more history
+Read it like a reviewer would: the model beats naive by 25% on unseen weeks, leaves no
+pattern in its errors, and forecasts better than every fit with the price driver shuffled in
+time, but the AR coefficient is not stable across windows. That check *failed* and the version
+is still `validated`, because a check's status and its severity are different things: the
+default forecasting policy holds stability at *information*, so it does not block; it is on
+the record for the reviewer and in the evidence pack. A stricter policy (see
+[governance](governance.md)) makes it blocking, and this model would then need more history
 or a simpler specification. That is the point: the evidence is written down, and the decision
 is explicit.
 
-!!! note "Why a random walk is hard for the shuffle test"
-    The shuffled-result test permutes the series in blocks of about a twentieth of its
-    history. For a model that differences the series, those blocks keep most of the
-    persistence the model exploits, so shuffled fits forecast nearly as well, and most of the
-    skill on a random walk *is* persistence. The test is right to warn; to measure what the
-    drivers add, require `null.placebo_time_shift` or `null.noise_regressors` as well
+!!! note "What the shuffle test measures on a random walk"
+    The model has a driver, so the test shuffles the driver in blocks and leaves the result
+    untouched, and it scores each fit by its skill against the null forecast on the held-out
+    weeks. Persistence ("next week is like this week") helps the shuffled fits exactly as much
+    as the real one, so the test measures what the driver adds beyond it. A model without
+    drivers is tested on shuffled changes of the series instead
     ([null tests explained](null-tests.md)).
 
 Finally, keep it current:

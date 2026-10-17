@@ -127,7 +127,7 @@ class BayesLin(PyMCModel[BayesLinSettings]):
 
 
 def bayes_registry() -> Registry:
-    reg = default_registry()
+    reg = default_registry().copy()  # never leak test models into the shared registry
     reg.register_model(BayesLin)
     return reg
 

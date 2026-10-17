@@ -683,6 +683,19 @@ milestone releases are tagged on `main`.
   images. A node run now goes to the image of its `model` parameter, or of the plugin of the
   model version bound to it.
 
+### Fixed (M3.5 integration)
+
+- **web, spec**: requesting a validation still offered "Policies it is held to" as
+  checkboxes, all ticked, as if unticking one left it out. Since the review the server holds
+  every validation to every policy in force (`policy_ids` can only add policies), so an
+  unticked policy applied anyway. The form now says every policy in force always applies and
+  its checkboxes, unticked by default, add a policy; the mock and the `ValidationRequest`
+  description say the same.
+- **docs**: the governance outputs in What's new, the workflow cookbook and the null-tests
+  guide were captured again on the integrated stack: the shuffled-driver test now passes on
+  the cookbook's ARIMAX (p = 0.048) instead of failing it, and the note about the old null's
+  weakness on random walks is gone.
+
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
 Analysts who do not write code can now build a model from a spreadsheet, read it and try

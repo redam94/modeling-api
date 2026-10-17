@@ -137,7 +137,10 @@ def test_the_canonical_workflow_on_a_series_with_a_unit_root(op: Client, world: 
     # the branch chose differencing, with the values its condition read; no seasonal diff
     decisions = {d.node_id: d for d in run.decisions}
     assert decisions["wanders"].arm == "then" and decisions["seasonal"].arm == "else"
-    assert decisions["wanders"].inputs == {
+    read = dict(decisions["wanders"].inputs)
+    # the over-differencing guard: the trial difference is not over-differenced
+    assert read.pop("nodes.overdiff.acf[1]") > -0.5
+    assert read == {
         "nodes.adf.reject": False,
         "nodes.kpss.reject": True,
         "nodes.pp.reject": False,

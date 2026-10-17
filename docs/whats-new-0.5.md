@@ -172,7 +172,7 @@ seasonal else {'nodes.seas.seasonal': False}
 trusted then {'nodes.governance.passed': True}
 ARIMA(1, 1, 1)
 The difference between backtest and naive at horizon 1 may be luck.
-ARIMAX has the best average error (1.83) and beats every benchmark (the strongest, Naive forecast, scored 1.87).
+backtest has the best average error (1.83) and beats every benchmark (the strongest, naive, scored 1.87).
 passed
 validated
 data.quality                 pass    No data problems found (156 periods of history).
@@ -180,19 +180,19 @@ convergence                  pass    The fit reported no convergence problems.
 baseline.beats_naive         pass    On the 13 held-out periods the model's error is 25% lower than 'same as last period' (the strongest simple benchmark).
 holdout.accuracy             pass    On data it was not fitted on, the model's average percentage error is 1.8% (limit 15%).
 residuals.whiteness          pass    No pattern is left in the errors (Ljung-Box p = 0.39 at 10 lags).
-null.permutation_target      fail    2 of 20 fits on shuffled results did as well as the real model (p = 0.143): it may be fitting noise rather than signal.
+null.permutation_target      pass    The model did better on held-out data (skill 0.236) than all 20 fits with the drivers price shuffled in blocks of 7 (the result untouched) (p = 0.048).
 stability.rolling_params     fail    ar.L1 changes a lot across windows of history (variation 1205%): the relationship may not be stable over time.
 ```
 
 This is the platform being honest rather than flattering. All four unit-root tests agree the
 series wanders, so it is differenced once; ARIMAX beats "same as last week" by 25% on weeks
-it never saw, yet Diebold-Mariano says the one-week-ahead edge over naive *may be luck*, two
-shuffled fits in twenty did as well, and the AR coefficient moves across windows of history.
-The default forecasting policy treats the shuffled-result test as a warning and stability as
-information, so the version is `validated` - with every warning on the record for the
-reviewer. A stricter policy makes either one blocking. (Every validation draws its own
-random shuffles, so the number of shuffled fits that tie the real one varies between
-validations.)
+it never saw, and it forecasts better than all twenty fits with the price driver shuffled
+in time, so the driver carries real information. Yet Diebold-Mariano says the one-week-ahead
+edge over naive *may be luck*, and the AR coefficient moves across windows of history. The
+default forecasting policy treats stability as information, so the version is `validated` -
+with that failure on the record for the reviewer. A stricter policy makes it blocking.
+(Every validation draws its own random shuffles, so the p-value of the shuffled-driver test
+varies a little between validations.)
 
 The documentation's tests run this walkthrough, unchanged, against a real server.
 

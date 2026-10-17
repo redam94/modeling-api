@@ -14672,7 +14672,7 @@ export interface components {
             note?: string | null;
             /**
              * Policy Ids
-             * @description Default: every policy that applies
+             * @description Policies to add: every policy in force always applies, and these can only add to it
              */
             policy_ids?: string[];
         };

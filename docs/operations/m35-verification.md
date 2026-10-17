@@ -65,18 +65,17 @@ units, so the budget plan is checked by its KPI's name; and the M3 webhook recei
 deliveries minutes after they arrived, against the 5-minute signature tolerance (it now
 verifies each delivery at its arrival, as a real receiver does).
 
-### An observation, not changed
+### An observation, since fixed
 
-Under a project policy that makes the shuffled-target test blocking, the cookbook's ARIMA(1,
-1, 1) on the random walk fails it: 4 of 19 shuffled refits did as well (p = 0.25), although
-the model beats the naive forecast by 25 % on the held-out weeks. The null shuffles the
-target in blocks of about a twentieth of the history; for a model that differences the
-series (d = 1) the blocks keep most of the persistence the model exploits, so the shuffled
-fits forecast nearly as well. The test is right to warn that most of the skill is
-persistence, but for integrated series a null that shuffles the differences, or a
-time-shift placebo of the drivers, measures the drivers' contribution more directly. The
-default forecasting policy keeps this test at *warning*, which is why the canonical
-workflow passes it.
+Under a project policy that made the shuffled-target test blocking, the cookbook's ARIMA(1,
+1, 1) on the random walk failed it: 4 of 19 shuffled refits did as well (p = 0.25), although
+the model beat the naive forecast by 25 % on the held-out weeks. The null shuffled the
+target in blocks, which kept most of the persistence a differenced model exploits. The M3.5
+review replaced it before the release: a model with drivers now has its drivers shuffled in
+blocks with the result untouched, a model without drivers has its differences shuffled and
+re-integrated, and every fit is scored by its holdout skill against the null forecast (see
+[null tests explained](../guides/null-tests.md)). On the same data the cookbook's model now
+beats all 20 shuffled fits (p = 0.048).
 
 ## How to rerun
 
@@ -159,3 +158,23 @@ On the final tree of `fix/m35-e2e`:
   sub-workflows, the `workflow.run.*` and validation webhooks, tenant-wide policies,
   deprecation and resubmission, the visual workflow editor and the policy editor (their
   mocked Playwright specs only).
+
+## Final integration (v0.5.0)
+
+After the M3.5 review fixes were merged (modeling and statistics, platform server, web,
+client/CLI/docs, and the v0.5 documentation site), the whole set above was run again on the
+integrated `develop`, on the same laptop and ports, with a fresh `MAPI_DATA_DIR`:
+
+| Check | Result |
+|---|---|
+| `uv run pytest -q -n 6`, twice | 7116 passed, 12 skipped; the first run also had one order-dependent failure (two runner tests left their test models in the shared plugin registry), fixed |
+| `make conformance` | 11 of 11 fixtures |
+| `make lint`, `make typecheck`, `mkdocs build --strict`, `make tf-validate` | clean |
+| `pnpm -r lint`, `typecheck`, `build`; Vitest | clean; web 384, plot sandbox 97 |
+| Playwright smoke (mock mode, ports 15173/15174) | 79 passed, 4 skipped (the opt-in screenshot specs) |
+| `uv run pytest -m e2e tests/e2e` (M1, M2, M3, M3.5) | 46 passed, 3 skipped (opt-in burst, two purge checks that need a zero grace period) after two stale M3.5 assertions were updated (the readiness branch now also reads the over-differencing guard) |
+| Browser `@e2e` specs (M1, M2, M3, M3.5, stack) | 23 passed after the M3.5 spec followed the seasonal-first readiness order |
+
+The outputs of the governance walkthrough in [What's new](../whats-new-0.5.md), the
+[cookbook](../guides/workflow-cookbook.md) and [null tests explained](../guides/null-tests.md)
+were captured again from this stack.

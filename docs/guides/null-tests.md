@@ -47,13 +47,12 @@ well on the shuffled copies, and fails the check.
 
 ![The evidence a reviewer sees: the real model's error (left, marked) against the errors of 19 fits on shuffled results](../assets/screenshots/governance-evidence.png){ .mapi-shot }
 
-Persistence is the honest limit of this test. On a series that wanders (a random walk), a
-model that differences it gets most of its skill from "next week is like this week", and
-blocks of shuffled weeks keep much of that, so shuffled fits can forecast nearly as well. The
-cookbook's ARIMAX on such a series beats naive by 25% on unseen weeks and still sees 2 of 20
-shuffled fits tie it ([the output](workflow-cookbook.md#run-it-with-the-python-client)): the
-test is right that most of the skill is persistence. To measure what the *drivers* add on
-such series, require the fake-driver and shifted-driver tests below as well.
+Persistence does not fool this test. On a series that wanders (a random walk), a model that
+differences it gets much of its skill from "next week is like this week", but the shuffled
+fits keep that persistence too (the result is not shuffled), and skill is measured against the
+null forecast, so only what the drivers add counts. The cookbook's ARIMAX on such a series,
+with a price driver that really matters, forecasts better than all 20 shuffled fits (p = 0.048,
+[the output](workflow-cookbook.md#run-it-with-the-python-client)).
 
 ### Fake drivers: does the model credit anything it is given?
 
