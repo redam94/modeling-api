@@ -69,6 +69,9 @@ LABEL org.opencontainers.image.title="mapi/web" \
       io.mapi.image.user="101"
 COPY --from=build --chown=0:0 /src/apps/web/dist /usr/share/nginx/html/web
 COPY --from=build --chown=0:0 /src/apps/plot-sandbox/dist /usr/share/nginx/html/plots
+# The licences, and the third-party licence texts the minified bundles no longer carry.
+COPY --chown=0:0 --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 COPY --chown=0:0 images/web/nginx.conf /etc/nginx/nginx.conf
 COPY --chown=0:0 images/web/templates/web/ /etc/nginx/templates/web/
 COPY --chown=0:0 images/web/templates/plots/ /etc/nginx/templates/plots/

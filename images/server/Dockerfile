@@ -101,6 +101,8 @@ ENV PATH=/opt/mapi/venv/bin:${PATH} \
     HOME=/tmp/mapi-home \
     MAPI_UV_LOCK_PATH=/opt/mapi/uv.lock
 COPY --from=builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 COPY --chmod=0644 images/common/healthcheck.py images/common/assert_dists.py /opt/mapi/bin/
 COPY --chmod=0644 uv.lock /opt/mapi/uv.lock
 # Referencing the contracts stage makes BuildKit run it; the marker itself is informational.

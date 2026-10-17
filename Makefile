@@ -8,7 +8,7 @@ DOCKER ?= docker
 COMPOSE ?= $(DOCKER) compose
 PY_DIRS := packages plugins conformance scripts images tests
 DEVOPS_PY := scripts/dev.py scripts/seed.py scripts/image_pins.py scripts/lock_closure.py \
-	scripts/release_check.py
+	scripts/release_check.py scripts/third_party_notices.py
 CORPUS_SIZE ?= tiny
 
 VERSION := $(shell sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -n 1)
@@ -306,9 +306,14 @@ docs-screenshots-explorers: ## Recapture the v0.5 explorer, About-card, chooser 
 
 ## ---------------------------------------------------------------- release
 .PHONY: release-check
-release-check: ## One version everywhere, a dated CHANGELOG entry, no plan files tracked, pinned images
+release-check: ## One version everywhere, a dated CHANGELOG entry, no plan files tracked, pinned images, current notices
 	$(UV) run python scripts/release_check.py
 	$(UV) run python scripts/image_pins.py check
+	$(UV) run python scripts/third_party_notices.py --check
+
+.PHONY: notices
+notices: ## Regenerate THIRD-PARTY-NOTICES.md from uv.lock and pnpm-lock.yaml (after a lock change)
+	$(UV) run python scripts/third_party_notices.py
 
 ## ---------------------------------------------------------------- housekeeping
 .PHONY: clean

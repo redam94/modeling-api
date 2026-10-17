@@ -362,6 +362,15 @@ milestone releases are tagged on `main`.
   (`tabular.regressor` → store demand, `mmm.bayesian` → geo marketing mix, ...); a model with
   none says it needs Expert mode and switches only on a click (never in a project locked to
   Guided mode).
+- **licensing, images**: `LICENSE.md` and the licensing page now list `packages/workflows`
+  (Apache-2.0) with the other Apache-2.0 components. The licensing page now names the
+  third-party libraries v0.5 added: statsmodels (BSD-3-Clause), NumPyro and JAX (Apache-2.0)
+  and nutpie (MIT), which mmm-framework brings in, and @xyflow/react (MIT). A new
+  `THIRD-PARTY-NOTICES.md`, generated from `uv.lock` and `pnpm-lock.yaml` by
+  `make notices`, lists every Python and JavaScript package the images ship with its version
+  and licence. It reproduces the NOTICE files and the licence texts of the JavaScript
+  packages compiled into the web app. Every image now carries it, with the licence files,
+  in `/usr/share/doc/mapi/`. `make release-check` and the test suite fail when it is stale.
 - **spec, server** (found by the M3.5 live-stack verification): a governance policy with
   `applies_to: {families: [ts]}` - the example of every governance page - covered none of
   the statsmodels models, which declare the family `forecast`, `ts_multivariate` or
