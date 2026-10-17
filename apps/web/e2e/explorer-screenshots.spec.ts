@@ -106,7 +106,7 @@ test("explorer screenshots", async ({ page }) => {
   // comparison
   await page.goto("/models/compare?refs=%5B%22model%3A%2F%2Fdefault%2Fsales-arimax%40v2%22%2C%22model%3A%2F%2Fdefault%2Fsales-arimax%40v1%22%2C%22model%3A%2F%2Fdefault%2Fsales-ets%40v1%22%5D");
   await page.getByRole("button", { name: /^Compare 3 versions/ }).click();
-  await expect(page.getByRole("table", { name: "Diebold-Mariano tests" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("table", { name: "Holdout metrics" })).toBeVisible({ timeout: 15_000 });
   await shot(page, "model-compare");
 
   // budget optimisation

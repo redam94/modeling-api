@@ -90,7 +90,9 @@ describe("Workflows", () => {
     renderApp(`/workflow-runs/${CANONICAL_RUN_ID}`);
     const monitor = await screen.findByTestId("run-monitor");
     expect(within(monitor).getByTestId("run-status")).toHaveTextContent("Succeeded");
-    expect(within(monitor).getByTestId("run-summary")).toHaveTextContent("Decisions: Difference? -> then");
+    // the seasonal decision comes first (the unit-root tests run after it, M3.5 review)
+    expect(within(monitor).getByTestId("run-summary")).toHaveTextContent("Seasonal difference? -> else");
+    expect(within(monitor).getByTestId("run-summary")).toHaveTextContent("Difference? -> then");
     await user.click(screen.getByRole("tab", { name: "Steps" }));
     const steps = screen.getByRole("table", { name: "Steps" });
     expect(within(steps).getByText("branch 'seasonal' took the else path")).toBeInTheDocument();
@@ -100,7 +102,7 @@ describe("Workflows", () => {
     expect(within(drawer).getByText("unit root")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("tab", { name: /Decisions/ }));
-    const decision = screen.getAllByTestId("branch-decision")[0]!;
+    const decision = screen.getAllByTestId("branch-decision").find((d) => d.textContent?.includes("nodes.kpss.reject"))!;
     expect(decision).toHaveTextContent("The condition was true, so the then arm was taken; diff ran.");
     expect(decision).toHaveTextContent("nodes.kpss.reject");
     await user.click(screen.getByRole("tab", { name: "Outputs" }));

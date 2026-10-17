@@ -3395,8 +3395,8 @@
             "title": "Period"
           },
           "prewhiten": {
-            "default": false,
-            "description": "Prewhiten before cross-correlations",
+            "default": true,
+            "description": "Prewhiten before cross-correlations (filter both series with the driver's AR model, so a peak is not just two smooth series moving together)",
             "title": "Prewhiten",
             "type": "boolean"
           },
@@ -11375,8 +11375,20 @@
       },
       "MffOptions": {
         "additionalProperties": false,
-        "description": "The MFF (\"model feature format\") long-table preset.\n\nOne row per ``(period, geography, product, campaign, outlet, creative, variable)`` with\nthe value in ``value_column``. ``Period`` becomes the time dim; the other key columns\nbecome dims only when they hold more than one distinct value; ``VariableName`` values\nbecome data variables.\n\n``combine`` joins several key columns into one dim (``{\"geo\": [\"Geography\", \"Product\"]}``\ngives labels such as ``US|Watches``) - a model with one panel dim can then fit a\ngeography x product panel. A combined dim is created even when it has a single label,\nso ``{\"geo\": [\"Geography\"]}`` keeps a national table's geo dim.",
+        "description": "The MFF (\"model feature format\") long-table preset.\n\nOne row per ``(period, geography, product, campaign, outlet, creative, variable)`` with\nthe value in ``value_column``. ``Period`` becomes the time dim; ``VariableName`` values\nbecome data variables. The rest follows mmm-framework's MFF semantics (its\n``MFFLoader``), so both read a file the same way:\n\n* ``Geography`` and ``Product`` become dims when they hold more than one level. A blank\n  label (or ``National``, ``Total``, ``All``) is the coarser level: a variable given\n  only there (national TV) is spread across the levels - equal weights, or the KPI's\n  share of each level (``allocation``; mmm-framework's defaults: geographies equally,\n  products by sales). A variable may not mix the two levels.\n* ``Campaign``, ``Outlet`` and ``Creative`` are breakdowns: rows that differ only there\n  are summed, unless the column is listed in ``split`` (then it becomes a dim).\n\n``combine`` joins several key columns into one dim (``{\"geo\": [\"Geography\", \"Product\"]}``\ngives labels such as ``US|Watches``) - a model with one panel dim can then fit a\ngeography x product panel. A combined dim is created even when it has a single label,\nso ``{\"geo\": [\"Geography\"]}`` keeps a national table's geo dim.",
         "properties": {
+          "allocation": {
+            "additionalProperties": {
+              "enum": [
+                "equal",
+                "kpi"
+              ],
+              "type": "string"
+            },
+            "description": "v0.5: how a variable given only at the coarser level (a blank or 'National' label) is spread across the levels of a key column: equally, or by the KPI's share of each level (the variable with role 'target', or 'kpi')",
+            "title": "Allocation",
+            "type": "object"
+          },
           "combine": {
             "description": "M3: dim -> key columns whose labels are joined ('|') into that one dim",
             "maxProperties": 4,
@@ -11411,6 +11423,19 @@
             "title": "Key Columns",
             "type": "object"
           },
+          "kpi": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.5: the KPI variable of 'kpi' allocation",
+            "title": "Kpi"
+          },
           "missing": {
             "default": "allow",
             "enum": [
@@ -11433,6 +11458,15 @@
             "description": "Variable -> role",
             "title": "Roles",
             "type": "object"
+          },
+          "split": {
+            "description": "v0.5: breakdown key columns (Campaign, Outlet, Creative) kept as dims instead of summed",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Split",
+            "type": "array"
           },
           "time_dim": {
             "default": "date",

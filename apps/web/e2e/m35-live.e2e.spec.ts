@@ -153,7 +153,7 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
       await expect(monitor).toHaveAttribute("data-status", "succeeded", { timeout: WORKFLOW_TIMEOUT });
     });
     const summary = page.getByTestId("run-summary");
-    await expect(summary).toContainText("Decisions: Difference? -> then; Seasonal difference? -> else");
+    await expect(summary).toContainText("Decisions: Seasonal difference? -> else; Difference? -> then");
     await expect(summary).toContainText("beats every benchmark");
     await shot(page, "run-monitor");
 

@@ -4796,8 +4796,8 @@ export interface components {
             period?: number | null;
             /**
              * Prewhiten
-             * @description Prewhiten before cross-correlations
-             * @default false
+             * @description Prewhiten before cross-correlations (filter both series with the driver's AR model, so a peak is not just two smooth series moving together)
+             * @default true
              */
             prewhiten?: boolean;
             /** Sections */
@@ -8990,9 +8990,17 @@ export interface components {
          * @description The MFF ("model feature format") long-table preset.
          *
          *     One row per ``(period, geography, product, campaign, outlet, creative, variable)`` with
-         *     the value in ``value_column``. ``Period`` becomes the time dim; the other key columns
-         *     become dims only when they hold more than one distinct value; ``VariableName`` values
-         *     become data variables.
+         *     the value in ``value_column``. ``Period`` becomes the time dim; ``VariableName`` values
+         *     become data variables. The rest follows mmm-framework's MFF semantics (its
+         *     ``MFFLoader``), so both read a file the same way:
+         *
+         *     * ``Geography`` and ``Product`` become dims when they hold more than one level. A blank
+         *       label (or ``National``, ``Total``, ``All``) is the coarser level: a variable given
+         *       only there (national TV) is spread across the levels - equal weights, or the KPI's
+         *       share of each level (``allocation``; mmm-framework's defaults: geographies equally,
+         *       products by sales). A variable may not mix the two levels.
+         *     * ``Campaign``, ``Outlet`` and ``Creative`` are breakdowns: rows that differ only there
+         *       are summed, unless the column is listed in ``split`` (then it becomes a dim).
          *
          *     ``combine`` joins several key columns into one dim (``{"geo": ["Geography", "Product"]}``
          *     gives labels such as ``US|Watches``) - a model with one panel dim can then fit a
@@ -9000,6 +9008,13 @@ export interface components {
          *     so ``{"geo": ["Geography"]}`` keeps a national table's geo dim.
          */
         MffOptions: {
+            /**
+             * Allocation
+             * @description v0.5: how a variable given only at the coarser level (a blank or 'National' label) is spread across the levels of a key column: equally, or by the KPI's share of each level (the variable with role 'target', or 'kpi')
+             */
+            allocation?: {
+                [key: string]: "equal" | "kpi";
+            };
             /**
              * Combine
              * @description M3: dim -> key columns whose labels are joined ('|') into that one dim
@@ -9020,6 +9035,11 @@ export interface components {
                 [key: string]: string;
             };
             /**
+             * Kpi
+             * @description v0.5: the KPI variable of 'kpi' allocation
+             */
+            kpi?: string | null;
+            /**
              * Missing
              * @default allow
              * @enum {string}
@@ -9037,6 +9057,11 @@ export interface components {
             roles?: {
                 [key: string]: string;
             };
+            /**
+             * Split
+             * @description v0.5: breakdown key columns (Campaign, Outlet, Creative) kept as dims instead of summed
+             */
+            split?: string[];
             /**
              * Time Dim
              * @default date

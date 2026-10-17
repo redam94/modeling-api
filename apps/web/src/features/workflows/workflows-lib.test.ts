@@ -30,11 +30,11 @@ const doc = () => structuredClone(canonical);
 describe("workflow documents", () => {
   it("reads dependencies from bindings, gates and expressions", () => {
     const deps = nodeDependencies(doc());
-    expect([...deps.get("wanders")!].sort()).toEqual(["adf", "kpss", "pp", "za"]);
+    expect([...deps.get("wanders")!].sort()).toEqual(["adf", "kpss", "overdiff", "pp", "za"]);
     expect([...deps.get("diff")!].sort()).toEqual(["sdiff", "wanders"]);
     // `order` reads the branch through `{$expr: if(nodes.wanders.value, 1, 0)}`
     expect(deps.get("order")!.has("wanders")).toBe(true);
-    expect(expressionTexts(doc().nodes.find((n) => n.id === "order")!).map((e) => e.path.join("/"))).toEqual(["d"]);
+    expect(expressionTexts(doc().nodes.find((n) => n.id === "order")!).map((e) => e.path.join("/"))).toEqual(["d", "D"]);
     expect(topologicalOrder(doc())).toHaveLength(canonical.nodes.length);
   });
 
@@ -69,7 +69,7 @@ describe("workflow documents", () => {
   });
 
   it("pins issue pointers to nodes", () => {
-    expect(nodeOfPointer(canonical, "/nodes/5/with/condition")).toEqual({ id: "wanders", rest: ["with", "condition"] });
+    expect(nodeOfPointer(canonical, "/nodes/9/with/condition")).toEqual({ id: "wanders", rest: ["with", "condition"] });
     expect(nodeOfPointer(canonical, "/params/alpha")).toBeNull();
   });
 
@@ -107,7 +107,7 @@ describe("typed ports", () => {
     expect(sources).toEqual(["fit.model", "select.model"]);
     expect(unboundRequired(added.doc.nodes.at(-1)!, catalog)).toEqual([]);
     expect(unboundRequired({ id: "x", use: "model.backtest" }, catalog)).toEqual(["data", "split"]);
-    expect(gateCandidates(d, "diff")).toEqual(["wanders", "seasonal"]);
+    expect(gateCandidates(d, "diff")).toEqual(["seasonal", "wanders"]);
   });
 
   it("derives a sub-workflow's ports from the child document", () => {

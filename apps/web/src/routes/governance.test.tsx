@@ -80,7 +80,7 @@ describe("Governance", () => {
     renderApp(`/validations/${VALIDATION_AWAITING}`);
     const view = await screen.findByTestId("validation-view");
     expect(within(view).getByRole("list", { name: "Validation progress" })).toHaveTextContent("Awaiting approval");
-    expect(view.querySelector('article[data-check="null.permutation_target"]')).toHaveTextContent("lower than all 19 fits on shuffled results");
+    expect(view.querySelector('article[data-check="null.permutation_target"]')).toHaveTextContent("than all 19 fits with the drivers price shuffled");
     const form = within(view).getByTestId("decision-form");
     await user.click(within(form).getByRole("button", { name: "Reject" }));
     expect(within(form).getByText("Say why you reject it.")).toBeInTheDocument();

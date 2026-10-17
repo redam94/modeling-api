@@ -28,7 +28,7 @@ describe("the canvas graph", () => {
     // `order` reads the branch through `{$expr: if(nodes.wanders.value, 1, 0)}` without a binding.
     expect(edges.find((e) => e.id === "r:wanders:order")).toMatchObject({ kind: "reads" });
     // A condition reads its tests: they are drawn as reads edges into the branch.
-    expect(edges.filter((e) => e.target === "wanders").map((e) => e.source).sort()).toEqual(["adf", "kpss", "pp", "za"]);
+    expect(edges.filter((e) => e.target === "wanders").map((e) => e.source).sort()).toEqual(["adf", "kpss", "overdiff", "pp", "za"]);
   });
 
   it("describes nodes with their ports, gate and issues", () => {

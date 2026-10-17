@@ -100,7 +100,7 @@ describe("plain readings (data)", () => {
     const infoOnly = qualityReading({ items: [{ code: "MISSING", severity: "info", message_plain: "0.3% missing" }, { code: "OUTLIERS", severity: "info", message_plain: "16.5% extreme" }] } as never);
     expect(infoOnly).toMatchObject({ tone: "good" });
     expect(infoOnly.text).toBe("No problems to fix; 2 things to know.");
-    expect(qualityReading({ items: [] } as never).text).toBe("No data problems found.");
+    expect(qualityReading({ items: [] }).text).toBe("No data problems found.");
     expect(missingnessReading(view("missingness", ds.ingest.views.missingness)).text).toMatch(/^spend \(0\.\d%\) has missing values; spend the most\. The longest gap is 4 periods in spend\./);
   });
 
@@ -112,7 +112,9 @@ describe("plain readings (data)", () => {
     expect(correlationReading(corr)).toMatchObject({ tone: "warn" });
     const ccf = view("ccf", ds.explore.views.ccf);
     expect(ccfReading(ccf).text).toContain("lead");
-    expect(leadReading(ccf.items![0]!, "revenue", "week")).toMatch(/^spend\[tv\] leads: revenue falls 7 weeks after it moves/);
+    // prewhitened by default (M3.5 review): the raw view's spurious "falls 7 weeks after" peak is gone
+    expect(ccf.prewhitened).toBe(true);
+    expect(leadReading(ccf.items![0]!, "revenue", "week")).toMatch(/^spend\[tv\]: no clear link with revenue/);
     expect(stationarityReading(view("stationarity", ds.explore.views.stationarity)).text).toMatch(/series return to a stable level/);
     expect(stlReading(view("stl", ds.explore.views.stl).items![0]!).text).toContain("is strong (0.82): model the season explicitly");
     expect(vifReading(view("vif", ds.explore.views.vif)).tone).toMatch(/good|warn/);
@@ -134,8 +136,11 @@ describe("plain readings (models)", () => {
     const forecast = view("forecast", mmm.explore.views.forecast);
     expect(endOfHorizon(forecast.forecasts![0]!)).toMatch(/^By .+, revenue is most likely about .+ \(90% likely between/);
     const comparison = view("comparison", arimax2.explore.views.comparison);
-    expect(comparisonReading(comparison).text).toBe("model://default/sales-arimax@v2 has the lowest MAPE. But the differences in accuracy could be chance (Diebold-Mariano).");
-    expect(dmPair(comparison.tests![0]!)).toEqual(["model://default/sales-arimax@v2", "model://default/sales-arimax@v1"]);
+    // forecasters scored from one origin get no Diebold-Mariano verdict (M3.5 review)
+    expect(comparisonReading(comparison).text).toBe("model://default/sales-arimax@v2 has the lowest MAPE.");
+    expect(comparison.tests ?? []).toEqual([]);
+    expect((comparison.warnings_plain ?? []).join(" ")).toContain("one forecast origin");
+    expect(dmPair({ test: "test.diebold_mariano", statistic: -2, p_value: 0.01, alpha: 0.05, reject: true, decision: "different", verdict_plain: "x", details: { model_a: "a", model_b: "b" } } as never)).toEqual(["a", "b"]);
     expect(bestByMetric(comparison)).toMatchObject({ mape: "model://default/sales-arimax@v2", n_params: null });
     expect(parseModelRef("model://default/sales-arimax@v2")).toEqual({ project: "default", name: "sales-arimax", version: 2 });
     expect(paramLabel({ name: "beta", coords: { channel: "tv" } })).toBe("beta[tv]");

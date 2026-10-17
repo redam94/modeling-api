@@ -150,7 +150,7 @@ export function EvidenceItemView({ item, check }: { item: EvidenceItem; check: s
     return (
       <figure className="grid gap-2">
         {plot ? <PlotFrame kind="vega-lite" spec={plot.spec} datasets={plot.datasets} title={`Shuffled-result scores (${check})`} height={220} exportName={`${check}-null-distribution`} /> : null}
-        <figcaption className="text-xs text-muted-foreground">{caption ?? "Scores of the fits on shuffled results"}. The real model should sit clearly to the better side of the bars.</figcaption>
+        <figcaption className="text-xs text-muted-foreground">{caption ?? "Scores of the fits on shuffled data"}. The real model should sit clearly to the better side of the bars.</figcaption>
         <details>
           <summary className="cursor-pointer text-xs text-muted-foreground">The numbers</summary>
           <InlineTable value={item.inline} />
