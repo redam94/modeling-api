@@ -26836,7 +26836,7 @@
     "description": "Contract version 0.2. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
     "summary": "Typed xarray modelling runtime: control plane API (v1)",
     "title": "modeling-api",
-    "version": "0.5.1"
+    "version": "0.6.0"
   },
   "openapi": "3.1.0",
   "paths": {

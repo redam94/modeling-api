@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from mapi_gcs_shim.gcs import GcsObjectStore
     from mapi_gcs_shim.server import ShimServer
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"
 
 __all__ = [
     "PRINCIPAL_CONTROL",

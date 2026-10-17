@@ -5,6 +5,25 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.6.0] — Spec builder — 2026-10-17
+
+Building a spec no longer means knowing every id and column by heart. The YAML editor now
+suggests the tenant's real models, steps, datasets, columns and plots as you type, checks each
+step's and the model's settings against that plugin's own schema, and has an Insert panel to
+search for anything and add it. Next to the YAML there is a Visual view: the same spec as
+blocks, with a palette to drag steps, models, datasets and plots from, steps reordered by
+dragging, and a form for every block. Both views edit the same document, so comments and
+formatting survive switching between them. Web app only: the API, the spec contract and the
+runners are unchanged from 0.5.1. Verified with the unit and Playwright smoke suites against
+the mock API, which now serves the real ModelSpec schema and plugin catalog.
+
+### Known gaps
+- Inside a flow mapping (`with: {...}`) completion offers setting names once part of a key is
+  typed; on a line of its own it offers them straight away.
+- The Visual view edits settings it cannot draw as fields (unions of several shapes, maps of
+  per-channel overrides) as JSON text.
+- `evaluate.metrics` has no suggestions: the catalog does not list metrics yet.
+
 ### Added
 - Spec editor hints: completions and hover text now come from what the tenant actually has.
   `model.use` and `pipeline[].use` list the catalog's models and steps; `data.dataset` lists
