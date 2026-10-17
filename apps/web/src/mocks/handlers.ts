@@ -8,6 +8,7 @@ import { delay, http, HttpResponse, type HttpHandler } from "msw";
 import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSession } from "@/api/types";
 import { env } from "@/env";
 
+import editorGen from "./editor.gen.json";
 import * as fx from "./fixtures";
 import { createExploreHandlers, createExploreState, explorerValidations } from "./explore";
 import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } from "./governance";
@@ -162,11 +163,10 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
       HttpResponse.json({ status: "ok", version: "0.5.1-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
     http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.5.1-mock", contract_version: "0.2" })),
-    http.get(`${API}/v1/catalog`, () => HttpResponse.json(fx.catalog)),
+    // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real.
+    http.get(`${API}/v1/catalog`, () => HttpResponse.json(editorGen.catalog)),
     http.get(`${API}/v1/schemas/:name`, ({ params }) =>
-      params.name === "modelspec.json"
-        ? HttpResponse.json({ $schema: "https://json-schema.org/draft/2020-12/schema", type: "object", properties: { apiVersion: { const: "mapi/v1" }, kind: { const: "ModelSpec" } }, required: ["apiVersion", "kind"] })
-        : problem(404, "NOT_FOUND", "Not found"),
+      params.name === "modelspec.json" ? HttpResponse.json(editorGen.modelspec_schema) : problem(404, "NOT_FOUND", "Not found"),
     ),
 
     // datasets
