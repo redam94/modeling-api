@@ -445,6 +445,13 @@ milestone releases are tagged on `main`.
   ceil(h / step) - 1 folds; the node now reads the spacing from the folds (backtest and
   benchmark metrics carry each fold's origin, `origins`) or a `step` parameter, and uses
   that many autocovariances with the matching correction (`details.variance_lags`).
+- **runner** (statistics): the Model Explorer's comparison ran Diebold-Mariano tests with
+  horizon 1 on the held-out errors of time-series forecasters, which are 1..H-step errors
+  from one forecast origin (a single, strongly dependent path): equally accurate forecasts
+  were called different in 74% of simulated cases. For such models (statsmodels and the
+  other `ts` forecasters) the comparison now shows the metrics and rankings without a
+  significance test and says to compare backtests instead; for models that predict from
+  each period's observed drivers the test uses a Newey-West number of autocovariances.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
