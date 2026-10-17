@@ -398,3 +398,39 @@ async def test_a_removed_members_trigger_stops_firing(
     assert trg.active is False and "no longer" in (trg.last_error or "")
     assert (await client.get(f"/v1/workflows/{wf}/triggers")).json()["items"][0]["active"] is False
     assert (await client.get(f"/v1/workflows/{wf}/runs")).json()["items"] == []
+
+
+async def test_a_version_ready_while_its_trigger_fires_is_not_lost(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    from datetime import timedelta
+
+    from mapi_server.services.runs import now
+    from mapi_server.services.workflows import dataset_version_ready, fire_due_triggers
+
+    await put_dataset(ctx, "sales", weekly_series(80))
+    wf = await _create(client, _doc([ADF], name="ontrigger"))
+    r = await client.post(
+        f"/v1/workflows/{wf}/triggers",
+        json={"dataset": "dataset://default/sales", "input": "data", "debounce_seconds": 60},
+    )
+    assert r.status_code == 201, r.text
+
+    async def ready(session: Any, version: tuple[m.Dataset, m.DatasetVersion]) -> None:
+        ds, dv = version
+        d, v = (
+            await session.get(m.Dataset, ds.id),
+            await session.get(m.DatasetVersion, (ds.id, dv.version)),
+        )
+        await dataset_version_ready(session, d, v)
+
+    v2 = await put_dataset(ctx, "sales", weekly_series(90))
+    async with ctx.db.session() as s:
+        await ready(s, v2)
+    v3 = await put_dataset(ctx, "sales", weekly_series(100))
+    async with ctx.db.session() as fin:
+        await ready(fin, v3)  # the finalizer of v3, its transaction still open ...
+        during = await fire_due_triggers(ctx, at=now() + timedelta(seconds=61))  # ... the loop
+    after = await fire_due_triggers(ctx, at=now() + timedelta(days=1))
+    runs = (await client.get(f"/v1/workflows/{wf}/runs")).json()["items"]
+    assert any(x["inputs"]["data"].endswith("@v3") for x in runs), (during, after, runs)

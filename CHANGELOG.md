@@ -439,6 +439,11 @@ milestone releases are tagged on `main`.
   (`active: false`, audited as `workflow.schedule_update`/`workflow.update`) when the creator
   may no longer run workflows there, and their runs are created by the person (a token's
   owner, with the token recorded) rather than by the token id.
+- **server**: a dataset version that became ready while its trigger was firing could be lost
+  for good: the finalizer wrote the new `pending_version` over the fired row without its
+  `pending_since`, so no pass ever selected the trigger again until another version arrived.
+  The pending version and its time are now set together in one atomic update that waits for
+  a firing pass holding the trigger.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

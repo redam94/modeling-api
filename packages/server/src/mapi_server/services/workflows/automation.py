@@ -47,7 +47,7 @@ from mapi_spec.tenancy import (
 from mapi_spec.tokens import scope_allows
 from mapi_spec.webhooks import WebhookEventType
 from mapi_spec.workflow import WorkflowRunCreate, WorkflowTriggerEvent
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.auth.identity import LOCAL_USER_ID, memberships_of
@@ -239,25 +239,26 @@ async def dataset_version_ready(session: AsyncSession, ds: m.Dataset, dv: m.Data
     )
     if "workflow" in labels:
         return 0  # written by a workflow node: never re-trigger workflows
-    triggers = list(
-        (
-            await session.execute(
-                select(m.WorkflowTriggerRow).where(
-                    m.WorkflowTriggerRow.tenant_id == ds.tenant_id,
-                    m.WorkflowTriggerRow.project_id == ds.project_id,
-                    m.WorkflowTriggerRow.dataset_name == ds.name,
-                    m.WorkflowTriggerRow.active.is_(True),
-                )
-            )
-        ).scalars()
+    # one atomic UPDATE per trigger row: it waits for a firing loop holding the row and then
+    # sees the row it committed (pending cleared), so the version and its pending_since are
+    # always written together and a version arriving while the trigger fires is never lost
+    t = m.WorkflowTriggerRow.__table__.c
+    stmt = (
+        update(m.WorkflowTriggerRow)
+        .where(
+            t.tenant_id == ds.tenant_id,
+            t.project_id == ds.project_id,
+            t.dataset_name == ds.name,
+            t.active.is_(True),
+        )
+        .values(
+            pending_version=func.greatest(func.coalesce(t.pending_version, 0), dv.version),
+            pending_since=func.coalesce(t.pending_since, now()),
+        )
+        .returning(t.id)
+        .execution_options(synchronize_session=False)
     )
-    ts = now()
-    for trg in triggers:
-        if trg.pending_version is None or dv.version > trg.pending_version:
-            trg.pending_version = dv.version
-        if trg.pending_since is None:
-            trg.pending_since = ts
-    return len(triggers)
+    return len(list((await session.execute(stmt)).scalars()))
 
 
 async def fire_due_triggers(ctx: ServerContext, *, at: datetime | None = None) -> int:
