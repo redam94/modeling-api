@@ -542,6 +542,18 @@ milestone releases are tagged on `main`.
   and the quality section also said "No data problems found." above a list of good-to-know
   items (a little missing spend, extreme values); they now say "No problems to fix; 2
   things to know."
+- **runner, spec** (conformance): MFF ingest disagreed with mmm-framework's MFF semantics,
+  although the two are documented to give the same model. National rows (a blank
+  `Geography`) became a phantom `''` geo - national TV only there, sales missing there -
+  where mmm-framework's `MFFLoader` spreads a national variable across the geos; and rows
+  that differ only by `Campaign`, `Outlet` or `Creative` became their own dims where
+  mmm-framework sums them. The `mff` preset now follows mmm-framework: a blank (or
+  `National`, `Total`, `All`) label is the coarser level, and a variable given only there
+  is spread across the levels (geographies equally, products by the KPI's share, as
+  mmm-framework's defaults; new `MffOptions.allocation` and `kpi`), a variable may not mix
+  the two levels, and the breakdown columns are summed unless `MffOptions.split` keeps them
+  as dims. Ingest notes say what was spread. A parity test compares the panel with
+  `mmm_framework.load_mff` on national media and campaign rows.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

@@ -79,12 +79,19 @@ national example.
 
 mmm-framework's native format is the **Master Flat File** (MFF): one row per `Period`,
 `Geography`, `Product`, `Campaign`, `Outlet`, `Creative` and `VariableName`, the value in
-`VariableValue`. Upload it with the `mff` ingest preset (or as a Guided upload): the key
-columns that vary become dims and every variable its own data variable, and the Guided geo
-template stacks the media variables you pick into `spend(channel)`. The plugin hands the
-panel to mmm-framework in exactly the layout its own `MFFLoader` builds - observations
-period-major, then geography, then product - and a test checks that an MFF file ingested by
-the platform and the same file loaded with `mmm_framework.load_mff` give the same panel.
+`VariableValue`. Upload it with the `mff` ingest preset (or as a Guided upload): every
+variable becomes its own data variable, and the key columns follow mmm-framework's MFF
+semantics. `Geography` and `Product` become dims when they have more than one level; a
+variable given only in total (a blank, `National` or `Total` label - national TV next to
+regional sales) is spread across the levels like `MFFLoader` disaggregates it (geographies
+equally, products by the KPI's share; `MffOptions.allocation` changes it), and a variable
+may not mix per-level and total rows. `Campaign`, `Outlet` and `Creative` are summed up to
+the modelled dims unless `MffOptions.split` keeps them. The Guided geo template stacks the
+media variables you pick into `spend(channel)`. The plugin hands the panel to mmm-framework
+in exactly the layout its own `MFFLoader` builds - observations period-major, then
+geography, then product - and tests check that an MFF file ingested by the platform and the
+same file loaded with `mmm_framework.load_mff` give the same panel, national media and
+campaign rows included.
 
 ## How the spec maps onto mmm-framework
 
