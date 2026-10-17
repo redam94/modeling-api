@@ -455,6 +455,12 @@ milestone releases are tagged on `main`.
   (`NotImplementedError`), and on a failed workflow node or governance run created a run that
   nothing collected. These are now refused with `409 CONFLICT` naming what to do instead:
   start the workflow again (unchanged nodes come from the cache) or resubmit the validation.
+- **server**: workflow node runs carried no plugin label, so the Docker and Cloud Run
+  executors ran every node in the default `base-bayes` image, which does not ship the
+  statsmodels plugin: backtests, forecasts, evaluations and governance checks of `ts.*`
+  models (the readiness-to-ARIMAX template) could not resolve their model in production
+  images. A node run now goes to the image of its `model` parameter, or of the plugin of the
+  model version bound to it.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

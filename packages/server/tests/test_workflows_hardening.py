@@ -506,3 +506,48 @@ async def test_workflow_runs_and_their_node_runs_are_not_retried_one_by_one(
             await s.execute(select(func.count()).where(m.Run.retry_of.is_not(None)))
         ).scalar_one()
     assert retried == 0
+
+
+# ================================================================================ routing
+
+
+async def test_workflow_node_runs_go_to_the_image_of_their_model(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A node that runs a statsmodels model (by catalog ref or through a fitted version)
+    carries the plugin label, so the Docker and Cloud Run executors pick the forecasting
+    base; a node without a model keeps the default base."""
+    from mapi_server.executors.cloudrun import Base, JobInventory
+    from mapi_server.services.dispatcher import Dispatcher
+    from mapi_server_testkit.fake_executor import FakeExecutor
+    from mapi_spec.executor import PLUGIN_LABEL, RunSubmit
+
+    await put_dataset(ctx, "sales", weekly_series(120))
+    fit = {
+        "id": "fit",
+        "use": "model.fit",
+        "inputs": {"data": "inputs.data"},
+        "with": {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
+    }
+    fc = {
+        "id": "fc",
+        "use": "model.forecast",
+        "inputs": {"model": "fit.model"},
+        "with": {"horizon": 4},
+    }
+    rid = await _start(client, await _create(client, _doc([ADF, HOLD, GRID, fit, fc])))
+    assert await drive(ctx, rid) is WorkflowRunStatus.SUCCEEDED, (
+        await client.get(f"/v1/workflow-runs/{rid}")
+    ).json()["error"]
+    view = (await client.get(f"/v1/workflow-runs/{rid}")).json()
+    runs = {n["node_id"]: n["child_runs"][0] for n in view["nodes"] if n["child_runs"]}
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    inventory = JobInventory(project="mapi-exec-test", region="europe-west1")
+    async with ctx.db.session() as s:
+        plugin = {
+            nid: await dispatcher._plugin(await s.get(m.Run, rid_)) for nid, rid_ in runs.items()
+        }
+    assert plugin == {"adf": None, "hold": None, "grid": "ts", "fit": "ts", "fc": "ts"}
+    for nid, label in plugin.items():
+        rs = RunSubmit.model_construct(labels={PLUGIN_LABEL: label} if label else {})
+        assert inventory.base_for(rs) is (Base.FORECAST if label else inventory.default_base), nid
