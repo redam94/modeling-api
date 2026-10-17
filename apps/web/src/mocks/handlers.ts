@@ -316,6 +316,10 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     http.get(`${API}/v1/models/:id`, ({ params }) => (params.id === fx.MODEL_ID ? HttpResponse.json(fx.model) : problem(404, "NOT_FOUND", "Not found"))),
     http.get(`${API}/v1/models/:id/versions`, () => page([fx.modelVersion])),
     http.get(`${API}/v1/models/:id/versions/:v`, ({ params }) => (params.v === "1" ? HttpResponse.json(fx.modelVersion) : problem(404, "NOT_FOUND", "Not found"))),
+    // The input contract of eu-geo-mmm v1, as the server builds it (editor.gen.json).
+    http.get(`${API}/v1/models/:id/versions/:v/inputs`, ({ params }) =>
+      params.v === "1" ? HttpResponse.json(editorGen.model_inputs) : problem(404, "NOT_FOUND", "Not found"),
+    ),
     http.get(`${API}/v1/models/:id/versions/:v/plots`, () => page(fx.plotItems)),
     http.get(`${API}/v1/models/:id/versions/:v/plots/:plotId`, () => HttpResponse.json(fx.plotSpec)),
     http.get(new RegExp(`^${API_RE}/v1/models/[^/]+/versions/\\d+/artifacts/(.+)$`), ({ request }) => {

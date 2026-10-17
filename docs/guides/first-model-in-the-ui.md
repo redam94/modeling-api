@@ -142,8 +142,10 @@ table versions, spec hash, plugin, seed and library versions.
 Press **Score**. The form only offers what this model supports, and the fitted
 preprocessing is replayed exactly: nothing is refitted.
 
-**An 8-week forecast.** Keep mode `forecast` with 8 periods along `time`, set **Input data**
-to `dataset://default/eu_media_future@v1` and press **Score**. The `fx` side table defaults
+**An 8-week forecast.** Keep **Forecast** with 8 periods, choose **Use a dataset** under
+**Values to score**, enter `dataset://default/eu_media_future@v1` and press **Forecast**. (For a
+quick plan you can instead keep **Type values** and type the spend into the grid, which starts
+with the periods after the fit for every market and channel.) The `fx` side table defaults
 to the one the fit used; it covers the horizon, so the planned local-currency spend can be
 converted to EUR. The result shows a fan per market, then the outputs: the result tree
 (`score.zarr.zip`), its summary as a table, and a quick chart you can re-plot by any column.
@@ -155,16 +157,16 @@ note saying so.
 
 ![Forecast for the fitted markets plus FR](../assets/first-model/score-new-market.png)
 
-**A weekly plan in EUR.** Planners think in weekly euros, not daily local currency. Set
-**Inputs enter at stage** to `weekly` and **Input data** to
+**A weekly plan in EUR.** Planners think in weekly euros, not daily local currency. Under
+**Advanced** set **Inputs enter at stage** to `weekly`, and use the dataset
 `dataset://default/eu_media_weekly_plan@v1`. The request enters the pipeline after `to_eur`
 and `weekly`, so no FX table is needed. Because this plan is the same spend as the daily
 file, the forecast is identical to the first one, which is exactly what replaying the
 preprocessing promises.
 
-**A counterfactual.** Choose mode `counterfactual`, set **Input data** to
-`dataset://default/eu_media_window@v1`, add an intervention `spend_local` where
-`channel=tv`, multiply by `1.2`, choose **Predictive** output and set **Draws** to `100` (with
+**A counterfactual.** Choose **What if**, use the dataset
+`dataset://default/eu_media_window@v1`, add a change `spend_local` where `channel=tv`,
+multiply by `1.2`, and under **Advanced** choose **Predictive** output and set **Draws** to `100` (with
 0 draws you get the means, but not the uncertainty of the change). The result holds the
 baseline, the scenario and their difference, computed with common random numbers so the
 delta is not drowned in sampling noise.

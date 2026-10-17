@@ -3,6 +3,10 @@ import type { OutputSelector, ScoreRequest } from "@/api/types";
 
 export type ScoreMode = NonNullable<ScoreRequest["mode"]>;
 export type InterventionOp = "multiply" | "add" | "set";
+/** Where the values to score come from: typed into the grid, a dataset, or nothing new. */
+export type InputSource = "typed" | "dataset" | "none";
+/** How a forecast fills future values of inputs it needs (`FutureCovariates`); "" = server default. */
+export type FutureCovariates = "" | "supplied" | "carry_last" | "seasonal_naive" | "zero";
 
 export interface InterventionRow {
   var: string;
@@ -17,8 +21,10 @@ export interface ScoreForm {
   horizonDim: string;
   horizonPeriods: string;
   inputsStage: string;
+  source: InputSource;
   /** Payload dataset (future inputs, new levels, the window to score); empty = none. */
   data: string;
+  futureCovariates: FutureCovariates;
   scenario: string;
   /** Side-table name → dataset reference; empty values are not sent. */
   sideTables: Record<string, string>;
@@ -42,7 +48,9 @@ export function defaultScoreForm(): ScoreForm {
     horizonDim: "time",
     horizonPeriods: "8",
     inputsStage: "raw",
+    source: "typed",
     data: "",
+    futureCovariates: "carry_last",
     scenario: "",
     sideTables: {},
     interventions: [],
@@ -101,7 +109,8 @@ export function buildScoreRequest(form: ScoreForm, modelRef: string): { request:
     if (!Number.isInteger(n) || n < 1 || n > 100_000) problems.push({ field: "horizonPeriods", message: "Periods must be a whole number from 1." });
     else request.horizon = { dim: form.horizonDim, periods: n };
   }
-  if (form.data.trim()) {
+  if (form.mode === "forecast" && form.futureCovariates) request.future_covariates = form.futureCovariates;
+  if (form.source === "dataset" && form.data.trim()) {
     if (!DATASET_REF_RE.test(form.data.trim())) problems.push({ field: "data", message: "Use a dataset reference like dataset://default/eu_media_future@v1." });
     else request.data = form.data.trim();
   }

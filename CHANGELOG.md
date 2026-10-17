@@ -5,6 +5,27 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Added
+- **Score page: type values instead of uploading a dataset.** The page now explains what the
+  chosen model version needs (what it predicts, the inputs it reads and which of them it needs
+  on future periods, the fitted date range and every fitted level) and guides the request in
+  steps: what to do (the version's modes in plain words), how far ahead, the values to score
+  and what-if changes. Values are typed into a grid that starts with the periods to score
+  crossed with every fitted level, with paste from a spreadsheet and "fill blanks" for a
+  column; a forecast says what blank future inputs become. A dataset or no new data are still
+  there, and the rarely changed settings moved under **Advanced**. A checklist says what will
+  be sent and what is missing.
+- `GET /v1/models/{model_id}/versions/{version}/inputs` (`ModelInputSchema`): the input contract
+  of a version - the one an endpoint serving it would freeze - and its input table with
+  `?periods=N` periods after the fit.
+- `ScoreCall.inline` (`ScoreInline`): `data`/`scenario` as inline XrJSON (up to 5 MB each) on
+  `POST …/versions/{version}:score`, checked against the version's inputs and stored as run
+  inputs exactly like an endpoint's inline payloads. The route gets the endpoint score body cap.
+
+### Known gaps
+- The docs' Score screenshots still show the previous form; regenerate them against a live
+  stack (`scripts/docs_screenshots.mjs`).
+
 ## [0.6.0] — Spec builder — 2026-10-17
 
 Building a spec no longer means knowing every id and column by heart. The YAML editor now

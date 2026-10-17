@@ -1421,6 +1421,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/models/{model_id}/versions/{version}/inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What a score call can send: the input contract and the input table
+         * @description The input contract of the version (the one an endpoint serving it would freeze): the
+         *     input dims and variables under the spec's canonical names, which are needed on future
+         *     periods, the fitted coordinates, and the input table with ``periods`` periods after the
+         *     fit (1-200) for a model that forecasts.
+         */
+        get: operations["get_model_inputs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/models/{model_id}/versions/{version}/plots": {
         parameters: {
             query?: never;
@@ -1557,7 +1580,9 @@ export interface paths {
         /**
          * Score Model
          * @description Score with replayed preprocessing. ``Prefer: wait=N`` (≤ 60) waits up to N s:
-         *     200 with output links if the run finished, else 202 with the run.
+         *     200 with output links if the run finished, else 202 with the run. ``inline`` data is
+         *     checked against the version's input contract (``GET …/inputs``) and stored as a run
+         *     input, as an endpoint's inline payloads are.
          */
         post: operations["score_model"];
         delete?: never;
@@ -9481,6 +9506,148 @@ export interface components {
             sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "forecast" | "backtest" | "comparison")[];
         };
         /**
+         * ModelInputSchema
+         * @description ``GET /v1/models/{model_id}/versions/{version}/inputs``: what a score call of one model
+         *     version can send - the same input contract an endpoint serving the version would freeze
+         *     (:func:`~mapi_server.services.endpoints.snapshot_for`) and its input table.
+         *
+         *     The names are the spec's canonical ones (``data.bind`` applied), which inline payloads
+         *     (``ScoreCall.inline``) use. ``fit_coords`` tell a caller what the model saw: the fitted
+         *     periods and every level of the other dims.
+         * @example {
+         *       "input_table": {
+         *         "columns": [
+         *           {
+         *             "description": "The period (yyyy-MM-dd)",
+         *             "freq": "MS",
+         *             "name": "t",
+         *             "role": "coord"
+         *           },
+         *           {
+         *             "description": "The actual; leave empty for the periods to forecast",
+         *             "dims": [
+         *               "t"
+         *             ],
+         *             "name": "y",
+         *             "role": "target"
+         *           },
+         *           {
+         *             "description": "Needed on every period, the periods to forecast included",
+         *             "dims": [
+         *               "t"
+         *             ],
+         *             "name": "price",
+         *             "role": "driver"
+         *           }
+         *         ],
+         *         "conditions_on_actuals": true,
+         *         "horizon_dim": "t",
+         *         "rows": [
+         *           [
+         *             "1961-01-01",
+         *             null,
+         *             null
+         *           ],
+         *           [
+         *             "1961-02-01",
+         *             null,
+         *             null
+         *           ]
+         *         ]
+         *       },
+         *       "model_ref": "model://growth/eu-geo-mmm@v3",
+         *       "snapshot": {
+         *         "fit_coords": {
+         *           "channel": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "search",
+         *               "tv"
+         *             ]
+         *           },
+         *           "date": {
+         *             "end": "2025-12-30",
+         *             "freq": "D",
+         *             "kind": "time",
+         *             "size": 730,
+         *             "start": "2024-01-01"
+         *           },
+         *           "market": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "de",
+         *               "fr"
+         *             ]
+         *           }
+         *         },
+         *         "future_required": [
+         *           "spend_local"
+         *         ],
+         *         "horizon_dim": "time",
+         *         "input_schema": {
+         *           "dims": {
+         *             "channel": {
+         *               "kind": "categorical"
+         *             },
+         *             "date": {
+         *               "freq": "D",
+         *               "kind": "time",
+         *               "policy": "extend"
+         *             },
+         *             "market": {
+         *               "kind": "categorical",
+         *               "new_level_strategy": "pooled",
+         *               "policy": "new_levels"
+         *             }
+         *           },
+         *           "vars": {
+         *             "revenue_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "role": "target"
+         *             },
+         *             "spend_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "channel",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "future_required": true,
+         *               "role": "spend"
+         *             }
+         *           }
+         *         },
+         *         "inputs_stage": "raw",
+         *         "representation": "draws",
+         *         "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *         "score_modes": [
+         *           "counterfactual",
+         *           "evaluate",
+         *           "forecast",
+         *           "predict"
+         *         ]
+         *       }
+         *     }
+         */
+        ModelInputSchema: {
+            /** @description The inline input as a long table, with the periods after the fit */
+            input_table?: components["schemas"]["InputTable"] | null;
+            /**
+             * Max Inline Bytes
+             * @default 5242880
+             */
+            max_inline_bytes?: number;
+            /** Model Ref */
+            model_ref: string;
+            snapshot: components["schemas"]["EndpointSchemaSnapshot"];
+        };
+        /**
          * ModelManifest
          * @description Everything the control plane knows about a model plugin version (static JSON).
          */
@@ -13071,6 +13238,8 @@ export interface components {
          *
          *     Send ``Prefer: wait=N`` (N ≤ 60) to wait for the result: the response is 200 with
          *     outputs if the run finished in time, else 202 with the run (poll it or follow its SSE).
+         *     ``inline`` carries ``data``/``scenario`` typed in instead of named as datasets; the
+         *     request then names neither.
          * @example {
          *       "request": {
          *         "apiVersion": "mapi/v1",
@@ -13092,6 +13261,7 @@ export interface components {
          *     }
          */
         ScoreCall: {
+            inline?: components["schemas"]["ScoreInline"] | null;
             /** Labels */
             labels?: {
                 [key: string]: string;
@@ -13148,6 +13318,53 @@ export interface components {
             outputs?: components["schemas"]["ArtifactLink"][];
             run: components["schemas"]["Run"];
             summary?: components["schemas"]["ScoreSummary"] | null;
+        };
+        /**
+         * ScoreInline
+         * @description Values typed in rather than uploaded: small XrJSON datasets (up to 5 MB each) under
+         *     the spec's canonical names, checked against the version's input contract
+         *     (``GET …/inputs``) and stored as run inputs, as an endpoint's inline payloads are.
+         * @example {
+         *       "data": {
+         *         "coords": {
+         *           "market": {
+         *             "data": [
+         *               "de"
+         *             ],
+         *             "dims": [
+         *               "market"
+         *             ]
+         *           },
+         *           "time": {
+         *             "data": [
+         *               "2026-01-04",
+         *               "2026-01-11"
+         *             ],
+         *             "dims": [
+         *               "time"
+         *             ]
+         *           }
+         *         },
+         *         "data_vars": {
+         *           "spend": {
+         *             "data": [
+         *               [
+         *                 1200,
+         *                 1350
+         *               ]
+         *             ],
+         *             "dims": [
+         *               "market",
+         *               "time"
+         *             ]
+         *           }
+         *         }
+         *       }
+         *     }
+         */
+        ScoreInline: {
+            data?: components["schemas"]["XrJsonDataset"] | null;
+            scenario?: components["schemas"]["XrJsonDataset"] | null;
         };
         /**
          * ScorePolicy
@@ -20261,6 +20478,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_model_inputs: {
+        parameters: {
+            query?: {
+                periods?: number;
+            };
+            header?: never;
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelInputSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

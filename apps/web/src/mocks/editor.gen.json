@@ -20757,6 +20757,375 @@
    }
   ]
  },
+ "model_inputs": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "D",
+     "name": "time",
+     "role": "coord"
+    },
+    {
+     "description": "A level of geo",
+     "dims": [],
+     "name": "geo",
+     "role": "coord"
+    },
+    {
+     "description": "A level of channel",
+     "dims": [],
+     "name": "channel",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty: this model forecasts from the end of its fitted history",
+     "dims": [
+      "geo",
+      "time"
+     ],
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "Needed on every period, the periods to forecast included",
+     "dims": [
+      "geo",
+      "channel",
+      "time"
+     ],
+     "name": "spend",
+     "role": "driver"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "time",
+   "rows": [
+    [
+     "2026-10-01",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-01",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-01",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-01",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-02",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-02",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-02",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-02",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-03",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-03",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-03",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-03",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-04",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-04",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-04",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-04",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-05",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-05",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-05",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-05",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-06",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-06",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-06",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-06",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-07",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-07",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-07",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-07",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-08",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-08",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-08",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-08",
+     "fr",
+     "tv",
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/eu-geo-mmm@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "channel": {
+     "contiguous": true,
+     "kind": "categorical",
+     "size": 2,
+     "values": [
+      "search",
+      "tv"
+     ]
+    },
+    "geo": {
+     "contiguous": true,
+     "kind": "categorical",
+     "size": 3,
+     "values": [
+      "de",
+      "fr",
+      "it"
+     ]
+    },
+    "time": {
+     "contiguous": true,
+     "end": "2026-09-30",
+     "freq": "D",
+     "kind": "time",
+     "size": 730,
+     "start": "2024-10-01"
+    }
+   },
+   "future_required": [
+    "spend"
+   ],
+   "horizon_dim": "time",
+   "input_schema": {
+    "dims": {
+     "channel": {
+      "kind": "categorical",
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "geo": {
+      "kind": "categorical",
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "time": {
+      "freq": "D",
+      "kind": "time",
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "spend": {
+      "dims": [
+       "geo",
+       "channel",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "missing": "forbid",
+      "role": "spend",
+      "units": "EUR"
+     },
+     "y": {
+      "dims": [
+       "geo",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "missing": "forbid",
+      "role": "target",
+      "units": "EUR"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:abababababababababababababababababababababababababababababababab",
+   "score_modes": [
+    "counterfactual",
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
  "modelspec_schema": {
   "$defs": {
    "About": {

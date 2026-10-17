@@ -60,6 +60,7 @@ __all__ = [
     "InputColumnRole",
     "InputTable",
     "InputTableColumn",
+    "ModelInputSchema",
     "capability_breaks",
     "endpoint_ref",
     "example_actuals_call",
@@ -429,6 +430,31 @@ class InputTable(ResponseModel):
     def variables(self) -> dict[str, list[str]]:
         """Value columns and their dims (the input of ``xrjson_from_rows``)."""
         return {c.name: list(c.dims) for c in self.columns if c.role != "coord"}
+
+
+class ModelInputSchema(ResponseModel):
+    """``GET /v1/models/{model_id}/versions/{version}/inputs``: what a score call of one model
+    version can send - the same input contract an endpoint serving the version would freeze
+    (:func:`~mapi_server.services.endpoints.snapshot_for`) and its input table.
+
+    The names are the spec's canonical ones (``data.bind`` applied), which inline payloads
+    (``ScoreCall.inline``) use. ``fit_coords`` tell a caller what the model saw: the fitted
+    periods and every level of the other dims."""
+
+    model_ref: str
+    snapshot: EndpointSchemaSnapshot
+    input_table: InputTable | None = Field(
+        None, description="The inline input as a long table, with the periods after the fit"
+    )
+    max_inline_bytes: int = 5 * 1024 * 1024
+
+    model_config = _examples(
+        {
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "snapshot": EndpointSchemaSnapshot.model_json_schema()["examples"][0],
+            "input_table": InputTable.model_json_schema()["examples"][0],
+        }
+    )
 
 
 class EndpointSchema(ResponseModel):

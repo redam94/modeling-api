@@ -86,6 +86,7 @@ from mapi_spec.endpoints import (
     EndpointScoreCall,
     EndpointValidation,
     EvaluationPolicy,
+    ModelInputSchema,
 )
 from mapi_spec.errors import ErrorCode, Issue, Problem
 from mapi_spec.executor import RunEventType, RunKind
@@ -196,6 +197,7 @@ from mapi_spec.workflow import (
 )
 from mapi_spec.workflow_nodes import NodeImplementation
 from mapi_spec.workflow_templates import WorkflowTemplate
+from mapi_spec.xrjson import XrJsonDataset
 
 __all__ = [
     "ALL_ENDPOINTS",
@@ -299,6 +301,7 @@ __all__ = [
     "Model",
     "ModelCompareRequest",
     "ModelExploreRequest",
+    "ModelInputSchema",
     "ModelValidation",
     "ModelVersion",
     "NodeImplementation",
@@ -341,6 +344,7 @@ __all__ = [
     "ScheduleUpdate",
     "ScoreCall",
     "ScoreCallResult",
+    "ScoreInline",
     "ScoreSummary",
     "ScoreSummaryTable",
     "Scorecard",
@@ -1285,17 +1289,56 @@ class ModelVersion(_Response):
     )
 
 
+class ScoreInline(_Request):
+    """Values typed in rather than uploaded: small XrJSON datasets (up to 5 MB each) under
+    the spec's canonical names, checked against the version's input contract
+    (``GET …/inputs``) and stored as run inputs, as an endpoint's inline payloads are."""
+
+    data: XrJsonDataset | None = None
+    scenario: XrJsonDataset | None = None
+
+    model_config = _examples(
+        {
+            "data": {
+                "coords": {
+                    "market": {"dims": ["market"], "data": ["de"]},
+                    "time": {"dims": ["time"], "data": ["2026-01-04", "2026-01-11"]},
+                },
+                "data_vars": {
+                    "spend": {"dims": ["market", "time"], "data": [[1200.0, 1350.0]]},
+                },
+            }
+        }
+    )
+
+
 class ScoreCall(_Request):
     """Body of ``POST /v1/models/{model_id}/versions/{version}:score``.
 
     Send ``Prefer: wait=N`` (N ≤ 60) to wait for the result: the response is 200 with
     outputs if the run finished in time, else 202 with the run (poll it or follow its SSE).
+    ``inline`` carries ``data``/``scenario`` typed in instead of named as datasets; the
+    request then names neither.
     """
 
     request: ScoreRequest
+    inline: ScoreInline | None = None
     resource_class: ResourceClass | None = None
     timeout: Duration | None = None
     labels: dict[LabelKey, LabelValue] = Field(default_factory=dict, max_length=64)
+
+    @model_validator(mode="after")
+    def _inline(self) -> ScoreCall:
+        if self.inline is None:
+            return self
+        for name in ("data", "scenario"):
+            if getattr(self.inline, name) is not None and getattr(self.request, name) is not None:
+                raise ValueError(f"{name} is both inline and a dataset reference: send one")
+        if self.request.mode in ("filter", "evaluate") and self.inline.data is not None:
+            raise ValueError(
+                f"mode {self.request.mode!r} needs data as a dataset:// reference (upload it)"
+            )
+        return self
 
     model_config = _examples(
         {
@@ -1694,8 +1737,13 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
                 _E.HORIZON_EXCEEDS_FIT, _E.MISSING_FUTURE_COVARIATE,
                 _E.NON_CONTIGUOUS_EXTENSION, _E.CAPABILITY_UNSUPPORTED,
                 _E.RECURSIVE_UNSUPPORTED, _E.QUOTA_EXCEEDED, _E.ACTUALS_NOT_SUPPORTED,
-                _E.ACTUALS_INVALID),
+                _E.ACTUALS_INVALID, _E.PAYLOAD_TOO_LARGE),
         headers=("Prefer", "Idempotency-Key"),
+    ),
+    EndpointDecl(
+        "GET", "/v1/models/{model_id}/versions/{version}/inputs", "get_model_inputs",
+        "What a score call can send: the input contract, the fitted coordinates and the input "
+        "table", "ModelInputSchema", 200, errors=(*_NF, _E.CAPABILITY_UNSUPPORTED),
     ),
     # plots
     EndpointDecl(
@@ -3218,6 +3266,7 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "get_model_version": _p(_RK.MODEL, _AC.READ),
     "get_model_artifact": _p(_RK.MODEL, _AC.READ),
     "score_model": RouteAccess(RouteScope.PROJECT, _RK.MODEL, _AC.RUN, name_param="model_id"),
+    "get_model_inputs": _p(_RK.MODEL, _AC.READ),
     "list_plots": _p(_RK.PLOT, _AC.READ),
     "get_plot": _p(_RK.PLOT, _AC.READ),
     "validate_plot": _p(_RK.PLOT, _AC.READ),

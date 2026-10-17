@@ -47,6 +47,7 @@ describe("score request", () => {
       mode: "forecast",
       inputs_stage: "scale_spend",
       horizon: { dim: "time", periods: 8 },
+      future_covariates: "carry_last",
       scenario: "dataset://default/plan_2027h1@v1",
       interventions: [{ var: "spend", sel: { channel: "meta", geo: ["de", "fr"] }, multiply: 1.2 }],
       output: { kind: "expected", summary: ["mean", "hdi_90"], draws: 0, units: "original", names: "dataset", vars: ["y_hat"] },
@@ -54,8 +55,10 @@ describe("score request", () => {
     });
   });
 
-  it("sends the payload dataset and the non-empty side tables", () => {
-    const form = { ...defaultScoreForm(), data: " dataset://default/e33_future@v1 ", sideTables: { fx: "dataset://default/fx_daily@v1", holidays: " " } };
+  it("sends the payload dataset (only when it is the source) and the non-empty side tables", () => {
+    const typed = buildScoreRequest({ ...defaultScoreForm(), data: "dataset://default/e33_future@v1" }, "model://default/m@v1");
+    expect("request" in typed && typed.request.data).toBeUndefined();
+    const form = { ...defaultScoreForm(), source: "dataset" as const, data: " dataset://default/e33_future@v1 ", sideTables: { fx: "dataset://default/fx_daily@v1", holidays: " " } };
     const out = buildScoreRequest(form, "model://default/eu-geo-mmm@v1");
     expect("request" in out && out.request.data).toBe("dataset://default/e33_future@v1");
     expect("request" in out && out.request.side_tables).toEqual({ fx: "dataset://default/fx_daily@v1" });
