@@ -444,6 +444,9 @@ milestone releases are tagged on `main`.
   `pending_since`, so no pass ever selected the trigger again until another version arrived.
   The pending version and its time are now set together in one atomic update that waits for
   a firing pass holding the trigger.
+- **server**: a workflow run's `cost` left out everything its sub-workflows ran (a
+  `subworkflow.run` node's child is a workflow run with no attempts of its own); the roll-up
+  now follows sub-workflow runs down to their node runs.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

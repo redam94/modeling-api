@@ -394,6 +394,44 @@ def sum_costs(costs: Sequence[RunCost]) -> RunCost | None:
     )
 
 
+_MAX_COST_DEPTH = 16
+"""How deep the cost roll-up follows sub-workflows (nesting is capped at 8 when started)."""
+
+
+async def _descendant_runs(
+    session: AsyncSession, run_id: str, nodes: Sequence[m.WorkflowNodeRunRow]
+) -> set[str]:
+    """Every child run of a workflow run, through its sub-workflow runs: a sub-workflow's
+    own run has no attempts, its nodes' children carry the cost."""
+    out: set[str] = set()
+    seen = {run_id}
+    level = list(nodes)
+    for _ in range(_MAX_COST_DEPTH):
+        children = {str(c) for n in level for c in n.child_runs} - out
+        out |= children
+        subs = sorted(children - seen)
+        if not subs:
+            break
+        sub_ids = list(
+            (
+                await session.execute(
+                    select(m.WorkflowRunRow.run_id).where(m.WorkflowRunRow.run_id.in_(subs))
+                )
+            ).scalars()
+        )
+        seen.update(subs)
+        if not sub_ids:
+            break
+        level = list(
+            (
+                await session.execute(
+                    select(m.WorkflowNodeRunRow).where(m.WorkflowNodeRunRow.run_id.in_(sub_ids))
+                )
+            ).scalars()
+        )
+    return out
+
+
 async def workflow_run_dto(
     session: AsyncSession, wr: m.WorkflowRunRow, *, with_cost: bool = True
 ) -> WorkflowRun:
@@ -408,7 +446,7 @@ async def workflow_run_dto(
     )
     cost: RunCost | None = None
     if with_cost:
-        child_ids = sorted({str(c) for n in nodes for c in n.child_runs})
+        child_ids = sorted(await _descendant_runs(session, wr.run_id, nodes))
         if child_ids:
             rows = list(
                 (await session.execute(select(m.Run).where(m.Run.id.in_(child_ids)))).scalars()

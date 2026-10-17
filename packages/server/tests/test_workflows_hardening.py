@@ -434,3 +434,26 @@ async def test_a_version_ready_while_its_trigger_fires_is_not_lost(
     after = await fire_due_triggers(ctx, at=now() + timedelta(days=1))
     runs = (await client.get(f"/v1/workflows/{wf}/runs")).json()["items"]
     assert any(x["inputs"]["data"].endswith("@v3") for x in runs), (during, after, runs)
+
+
+# ================================================================================== views
+
+
+async def test_the_cost_roll_up_includes_sub_workflow_children(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await put_dataset(ctx, "sales", weekly_series(100))
+    await _create(client, _doc([ADF], name="inner", outputs={"adf": "adf.result"}))
+    sub = {
+        "id": "sub",
+        "use": "subworkflow.run",
+        "inputs": {"data": "inputs.data"},
+        "with": {"workflow": "workflow://default/inner@latest"},
+    }
+    rid = await _start(client, await _create(client, _doc([sub, {**ADF, "id": "own"}])))
+    assert await drive(ctx, rid) is WorkflowRunStatus.SUCCEEDED
+    view = (await client.get(f"/v1/workflow-runs/{rid}")).json()
+    inner_id = next(n for n in view["nodes"] if n["node_id"] == "sub")["run_id"]
+    inner = (await client.get(f"/v1/workflow-runs/{inner_id}")).json()
+    assert inner["cost"] and inner["cost"]["vcpu_seconds"] > 0
+    assert view["cost"]["vcpu_seconds"] == pytest.approx(2 * inner["cost"]["vcpu_seconds"])
