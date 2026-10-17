@@ -236,5 +236,5 @@ def weekly_total(inp, s: Settings) -> Figure:
 | `ml.feature_importance` | `top` (20), `feature_dim` (feature), `source` (auto \| importance \| coefficients) |
 
 The convergence diagnostics are rank-normalised split R-hat and bulk/tail ESS (Vehtari et al.
-2021). The package calculates them with numpy. Tests make sure that the values agree with
-ArviZ.
+2021). The package calculates them with numpy. Tests make sure that the values agree exactly
+with ArviZ.
