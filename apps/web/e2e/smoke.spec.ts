@@ -235,6 +235,38 @@ test("the Insert panel adds a pipeline step and a plot from a search", async ({ 
   expect(yaml).toContain("dims: {geo: market, channel: channel, time: date}");
 });
 
+test("the visual builder adds, reorders and edits steps by drag and drop", async ({ page }) => {
+  await page.goto("/build/new");
+  await expect(page.getByTestId("yaml-editor").locator(".view-lines")).toContainText("apiVersion: mapi/v1", { timeout: 20_000 });
+  await page.getByRole("radio", { name: "Visual" }).click();
+  const builder = page.getByTestId("visual-builder");
+  const stepIds = () => builder.locator('[data-block^="step:"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-block")));
+  await expect.poll(stepIds).toEqual(["step:weekly", "step:fill", "step:cal"]);
+
+  // Drag a step from the palette between weekly and fill.
+  await builder.getByRole("textbox", { name: "Search the palette" }).fill("mean_scale");
+  await builder.locator('[data-palette="step:core.mean_scale@^1"]').dragTo(builder.locator('[data-drop-index="1"]'));
+  await expect.poll(stepIds).toEqual(["step:weekly", "step:mean_scale", "step:fill", "step:cal"]);
+
+  // Drag cal by its handle to the start.
+  await builder.locator('[data-block="step:cal"] [data-drag-step]').dragTo(builder.locator('[data-drop-index="0"]'));
+  await expect.poll(stepIds).toEqual(["step:cal", "step:weekly", "step:mean_scale", "step:fill"]);
+
+  // Edit a setting in the step's form, with a suggested name.
+  await builder.locator('[data-block="step:fill"] header button[aria-expanded]').click();
+  const fill = builder.locator('[data-block="step:fill"]');
+  await fill.getByRole("combobox", { name: "Method" }).selectOption("mean");
+  await fill.getByRole("group", { name: "Add to Vars" }).getByRole("button", { name: "spend_local" }).click();
+
+  // The YAML view shows the same document.
+  await page.getByRole("radio", { name: "YAML" }).click();
+  const saved = page.waitForRequest((r) => r.method() === "POST" && /\/v1\/specs$/.test(r.url()));
+  await page.getByRole("button", { name: "Save spec" }).click();
+  const yaml = ((await saved).postDataJSON() as { yaml: string }).yaml;
+  expect(yaml).toMatch(/- \{id: cal, use: core\.calendar@\^1[^\n]*\n\s+- \{id: weekly,[^\n]*\n\s+- \{id: mean_scale, use: core\.mean_scale@\^1/);
+  expect(yaml).toContain("- {id: fill, use: core.impute@^1, with: {vars: [spend, spend_local], method: mean, over: [time]}}");
+});
+
 test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingested", async ({ page }) => {
   await page.goto("/datasets/ds_01jaf3a1b2c3d4e5f6g7h8j9k0?upload=true");
   const csv = "date,market,revenue,spend\n2026-01-01,de,10.5,3\n2026-01-02,de,11,4\n";
