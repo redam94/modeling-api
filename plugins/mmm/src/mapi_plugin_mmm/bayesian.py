@@ -87,6 +87,11 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
         "budget optimisation with mmm-framework planning."
     )
     default_engine = "nutpie"
+    prior_scale_defaults: ClassVar[dict[str, Any]] = {
+        "priors": {"roi_default": {"mu": 0.0, "sigma": 1.0}}
+    }
+    """The priors mmm-framework applies when the settings leave them out (governance's
+    prior-sensitivity check scales them): ``roi ~ LogNormal(0, 1)`` for every channel."""
 
     # ------------------------------------------------------------------ fit
     def fit(

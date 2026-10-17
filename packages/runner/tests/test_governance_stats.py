@@ -338,3 +338,39 @@ def test_placebo_channels_of_a_sign_constrained_bayesian_model_can_pass() -> Non
     assert "clearly not zero" not in r.message_plain
     probs = next(e for e in r.evidence if e.name == "noise_share_prob_material").inline
     assert all(v < 0.9 for v in probs.values())  # type: ignore[union-attr]
+
+
+# ================================================================== sensitivity.prior
+
+
+def test_prior_sensitivity_sees_the_default_mmm_priors() -> None:
+    """Regression: a default mmm.bayesian spec has no ``priors`` block, so the check was
+    always skipped ("the model's priors are not set in its settings"); the scale-key rule
+    also missed ``seasonality.prior_sigma``/``trend.growth_prior_sigma`` and multiplied
+    Beta/Gamma ``beta``/``b`` parameters (a location shift, not a width). The plugin's
+    defaults (and its declared ROI default) are now materialised before scaling, and
+    business priors translated at fit time are included."""
+    from mapi_plugin_mmm.bayesian import MMMBayesian
+    from mapi_runner.worker.governance import _prior_settings, _scale_priors
+
+    base = _prior_settings(MMMBayesian, {"channels": {}}, {})
+    scaled, found = _scale_priors(base, 2.0)
+    assert found >= 4
+    assert scaled["priors"]["roi_default"]["sigma"] == pytest.approx(
+        2 * base["priors"]["roi_default"]["sigma"]
+    )
+    assert scaled["priors"]["roi_default"]["mu"] == base["priors"]["roi_default"]["mu"]
+    assert scaled["seasonality"]["prior_sigma"] == pytest.approx(
+        2 * base["seasonality"]["prior_sigma"]
+    )
+    assert scaled["trend"]["growth_prior_sigma"] == pytest.approx(
+        2 * base["trend"]["growth_prior_sigma"]
+    )
+    # Beta(a, b) / Gamma rate parameters are not widths
+    beta_like, n = _scale_priors({"priors": {"share": {"a": 2.0, "b": 5.0, "beta": 1.0}}}, 2.0)
+    assert n == 0 and beta_like["priors"]["share"] == {"a": 2.0, "b": 5.0, "beta": 1.0}
+    # priors translated from business beliefs at fit time are part of the model's priors
+    learned = {"calibration": {"translated_priors": {"roi": {"tv": {"mu": 1.1, "sigma": 0.2}}}}}
+    with_beliefs = _prior_settings(MMMBayesian, {}, learned)
+    assert with_beliefs["priors"]["roi"]["tv"] == {"mu": 1.1, "sigma": 0.2}
+    assert _scale_priors(with_beliefs, 2.0)[0]["priors"]["roi"]["tv"]["sigma"] == 0.4

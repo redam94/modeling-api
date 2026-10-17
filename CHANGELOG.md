@@ -508,6 +508,15 @@ milestone releases are tagged on `main`.
   default prior (carry-over and saturation shapes are still copied). Frequentist
   placebo p-values are judged with Holm's correction for the number of placebos (the
   uncorrected 5% rule flagged a good model 14% of the time with three placebos).
+- **runner, mmm plugin** (statistics): the governance check `sensitivity.prior` was always
+  skipped for a default `mmm.bayesian` model ("the model's priors are not set in its
+  settings"), although the default MMM policy lists it: mmm-framework's default priors
+  are not in the spec's settings. The check now writes out every prior the model uses
+  before scaling - the plugin's settings defaults (`seasonality.prior_sigma`,
+  `trend.growth_prior_sigma`, `hierarchy.media_geo_sigma`), the defaults a plugin declares
+  for values its engine fills in (`mmm.bayesian`: `priors.roi_default`, LogNormal(0, 1))
+  and business priors translated at fit time - and no longer multiplies Beta/Gamma `beta`
+  or `b` parameters, which moved the prior instead of widening it.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

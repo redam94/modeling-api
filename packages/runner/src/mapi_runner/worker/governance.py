@@ -33,9 +33,10 @@ check                      how it is measured
 ``plausibility.signs``     media/spend effects must raise the KPI (ablation per draw) or the
                            listed ``expected`` signs hold (share of the posterior, or of the
                            sampling distribution, on the wrong side)
-``sensitivity.prior``      Bayesian only: refit with every prior scale in the settings
-                           multiplied by each of ``scales``; the largest relative move of a
-                           key posterior mean
+``sensitivity.prior``      Bayesian only: refit with every prior width the model uses (its
+                           settings with the plugin's defaults and translated business
+                           priors written out) multiplied by each of ``scales``; the largest
+                           relative move of a key posterior mean
 ``recovery.simulated``     simulate targets from the fit (expected value + block-bootstrapped
                            residuals), refit, and count how often the 90% intervals contain
                            the fitted values (SBC-lite; ``n_sims`` refits)
@@ -108,7 +109,12 @@ _NOT_KEY: Final = re.compile(
     r"chol|corr|^z_|_z$|log_lik|^mu$)",
     re.IGNORECASE,
 )
-_PRIOR_SCALE_KEYS: Final = frozenset({"sigma", "scale", "sd", "tau", "beta", "b"})
+_PRIOR_SCALE_KEYS: Final = frozenset({"sigma", "scale", "sd", "tau"})
+"""Width parameters inside a prior subtree (``beta``/``b`` are Beta and Gamma rate or shape
+parameters: scaling them moves the prior instead of widening it)."""
+_PRIOR_WIDTH_KEY: Final = re.compile(r"(?:^|_)prior_(?:sigma|scale|sd)$|_sigma$")
+"""Prior widths named as such anywhere in the settings (``seasonality.prior_sigma``,
+``trend.growth_prior_sigma``, ``hierarchy.media_geo_sigma``)."""
 _DRIVER_ROLES: Final = (Role.MEDIA, Role.SPEND)
 _COVARIATE_ROLES: Final = (Role.COVARIATE, Role.CONTROL, Role.EXPOSURE)
 
@@ -1487,20 +1493,18 @@ def _signs(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
 
 
 def _scale_priors(node: Any, factor: float, under_prior: bool = False) -> tuple[Any, int]:
-    """Multiply prior scale parameters (``sigma``, ``scale``, ``sd``, ``tau``, ``beta``,
-    ``b``) inside any settings subtree whose key mentions ``prior``."""
+    """Multiply prior widths: ``sigma``, ``scale``, ``sd`` and ``tau`` inside any settings
+    subtree whose key mentions ``prior``, and keys named as prior widths anywhere
+    (:data:`_PRIOR_WIDTH_KEY`)."""
     if isinstance(node, dict):
         out: dict[str, Any] = {}
         n = 0
         for k, v in node.items():
             inside = under_prior or "prior" in str(k).lower()
-            if (
-                inside
-                and str(k) in _PRIOR_SCALE_KEYS
-                and isinstance(v, int | float)
-                and not isinstance(v, bool)
-                and v > 0
-            ):
+            width = (inside and str(k) in _PRIOR_SCALE_KEYS) or bool(
+                _PRIOR_WIDTH_KEY.search(str(k))
+            )
+            if width and isinstance(v, int | float) and not isinstance(v, bool) and v > 0:
                 out[k] = float(v) * factor
                 n += 1
             else:
@@ -1513,6 +1517,48 @@ def _scale_priors(node: Any, factor: float, under_prior: bool = False) -> tuple[
     return node, 0
 
 
+def _deep_fill(base: dict[str, Any], defaults: Mapping[str, Any]) -> dict[str, Any]:
+    """``base`` with ``defaults`` filled in where ``base`` has no value."""
+    out = dict(base)
+    for k, v in defaults.items():
+        if out.get(k) is None:
+            out[k] = v
+        elif isinstance(out[k], dict) and isinstance(v, Mapping):
+            out[k] = _deep_fill(out[k], v)
+    return out
+
+
+def _prior_settings(
+    model_cls: Any, plugin_settings: Mapping[str, Any], learned: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The model's settings with every prior it uses written out: the plugin's ``Settings``
+    defaults (``seasonality.prior_sigma``, ``trend.growth_prior_sigma``, ...), the priors it
+    declares in ``prior_scale_defaults`` for values its engine fills in itself (mmm's
+    ``priors.roi_default``), and business priors the fit translated into ``priors``
+    (``learned.calibration.translated_priors``)."""
+    base: dict[str, Any] = dict(plugin_settings)
+    settings_cls = getattr(model_cls, "Settings", None)
+    if settings_cls is not None and hasattr(settings_cls, "model_validate"):
+        try:
+            base = settings_cls.model_validate(base).model_dump(mode="json", exclude_none=True)
+        except Exception:
+            base = dict(plugin_settings)
+    defaults = getattr(model_cls, "prior_scale_defaults", None)
+    if isinstance(defaults, Mapping):
+        base = _deep_fill(base, defaults)
+    cal = learned.get("calibration")
+    translated = cal.get("translated_priors") if isinstance(cal, Mapping) else None
+    if isinstance(translated, Mapping) and translated:
+        priors = dict(base.get("priors") or {})
+        for k, v in translated.items():
+            if k == "roi" and isinstance(v, Mapping) and isinstance(priors.get("roi"), Mapping):
+                priors["roi"] = {**priors["roi"], **v}
+            else:
+                priors[k] = v
+        base["priors"] = priors
+    return base
+
+
 def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     raw = check.params.get("scales", [0.5, 2.0])
     scales = (
@@ -1520,7 +1566,13 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         if isinstance(raw, list)
         else [0.5, 2.0]
     )
-    settings = dict(env.bundle.spec.model.plugin_settings)
+    man = env.bundle.model.manifest
+    try:
+        model_cls: Any = env.registry.model(f"{man.id}@{man.version}")
+    except Exception:
+        model_cls = None
+    learned = env.bundle.model.learned or {}
+    settings = _prior_settings(model_cls, env.bundle.spec.model.plugin_settings, learned)
     _probe, found = _scale_priors(settings, 1.0)
     if found == 0:
         return _skip(
@@ -1528,7 +1580,23 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             "the model's priors are not set in its settings, so they cannot "
             "be varied automatically",
         )
-    spec0 = env.refitter.spec(split=None)
+    # business priors translated at fit time are written out above: refit without
+    # translating them again, or the translation would overwrite the scaled priors
+    cal = env.bundle.spec.calibration
+    drop_beliefs = (
+        cal is not None
+        and cal.business_priors is not None
+        and isinstance(learned.get("calibration"), Mapping)
+    )
+
+    def refit_spec(s: Mapping[str, Any]) -> ModelSpec:
+        spec = env.refitter.spec(split=None, settings=s)
+        if drop_beliefs and spec.calibration is not None:
+            plain = spec.calibration.model_copy(update={"business_priors": None})
+            spec = spec.model_copy(update={"calibration": plain})
+        return spec
+
+    spec0 = refit_spec(settings)
     b0 = env.refitter.fit(env.data, spec0)
     base = {e.name: e for e in _key_params(_estimates(b0), None)}
     if not base:
@@ -1537,7 +1605,7 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     for s in scales:
         scaled, _n = _scale_priors(settings, s)
         try:
-            b = env.refitter.fit(env.data, env.refitter.spec(split=None, settings=scaled))
+            b = env.refitter.fit(env.data, refit_spec(scaled))
         except BudgetExhausted:
             break
         got = {e.name: e for _v, _c, e in _estimates(b)}
