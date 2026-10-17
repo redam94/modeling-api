@@ -296,8 +296,15 @@ def catalog_abouts(catalog: Catalog) -> list[CatalogAbout]:
         kind = builtin_about_kind(item_id)
         if kind in _BUILTIN_KINDS and kind is not None:
             found.setdefault((kind, item_id), about)
+    # related items must be items a user can open: drop models that are not installed
+    served = {i for _, i in found}
+
+    def _related(a: About) -> About:
+        keep = [r for r in a.related if r in served]
+        return a if keep == a.related else a.model_copy(update={"related": keep})
+
     return [
-        CatalogAbout(kind=k, id=i, about=a)
+        CatalogAbout(kind=k, id=i, about=_related(a))
         for (k, i), a in sorted(found.items(), key=lambda kv: (kv[0][0].value, kv[0][1]))
     ]
 

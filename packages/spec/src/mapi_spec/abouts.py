@@ -886,14 +886,14 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
     ),
     "mmm.frequentist": _a(
         "Fast marketing mix model",
-        "Gives a quick first estimate of each channel's contribution in seconds, without the "
-        "ranges a full Bayesian model provides.",
+        "Gives a quick first estimate of each channel's contribution in seconds, with simpler "
+        "ranges (from resampling the data) instead of a full Bayesian model's uncertainty.",
         [
             "You need a fast first look before a full model",
             "You want to compare many set-ups quickly",
         ],
         [
-            "Decisions depend on how certain the answer is",
+            "Decisions depend on the full uncertainty of the answer (use the Bayesian model)",
             "You want to bring in business beliefs or lift tests",
         ],
         ["Weekly sales and spend per channel"],
@@ -901,13 +901,14 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "Carry-over and saturation settings are searched over a grid",
             "Channel effects are not negative",
         ],
-        ["Contribution and return per channel (bootstrap ranges optional)"],
+        ["Contribution and return per channel, with bootstrap ranges"],
         _B,
         _SEC,
         "A first read in 5 seconds: TV 28% of sales, search 12%.",
         related=["mmm.bayesian"],
         expert="mmm-framework frequentist ridge / constrained least squares with a grid "
-        "search over transform parameters; optional bootstrap.",
+        "search over transform parameters; block-bootstrap replicates (at least 20) are the "
+        "draws of every output, so its ranges are confidence intervals, not posteriors.",
         refs=[("mmm-framework documentation", "https://redam94.github.io/mmm-framework/")],
         fits={
             "goal": ["explain_marketing"],

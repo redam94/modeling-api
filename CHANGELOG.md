@@ -406,6 +406,13 @@ milestone releases are tagged on `main`.
   time-series readiness workflow template is now offered for "Check or prepare my data";
   and the web app only calls an item the best match when it fits more answers than it
   misses.
+- **spec, server**: the About card of `mmm.frequentist` said it gives estimates "without
+  the ranges a full Bayesian model provides" and "bootstrap ranges optional", although its
+  bootstrap (at least 20 replicates) always produces ranges; it now says it gives simpler
+  bootstrap ranges instead of full Bayesian uncertainty. The main MMM card listed the
+  models `mmm.nested` and `mmm.multivariate`, which are not installed, as related items
+  (shown as bare ids); `GET /v1/catalog/abouts` now leaves out related items that are not
+  in the catalog.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

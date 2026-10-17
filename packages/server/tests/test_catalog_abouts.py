@@ -74,6 +74,16 @@ async def test_every_selectable_item_has_a_complete_about(client: httpx.AsyncCli
         assert about["summary_plain"] and about["use_when"] and about["example"]
         assert about["difficulty"] in ("beginner", "intermediate", "expert")
 
+    # related items are items a user can open: never a model that is not installed
+    # (regression: mmm.bayesian listed mmm.nested and mmm.multivariate as bare ids)
+    served = {it["id"] for it in items}
+    dangling = {
+        f"{it['kind']}:{it['id']}": sorted(set(it["about"].get("related", [])) - served)
+        for it in items
+        if set(it["about"].get("related", [])) - served
+    }
+    assert not dangling, dangling
+
     only_models = await _all(client, kind="model")
     assert {i["kind"] for i in only_models} == {"model"}
 

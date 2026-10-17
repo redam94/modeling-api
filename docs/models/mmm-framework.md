@@ -8,7 +8,7 @@ platform contract as two built-in models:
 | Model | In plain words | Engine |
 |---|---|---|
 | `mmm.bayesian` | Measures how much each marketing channel adds to your sales, in total or per market, and what would happen if you moved budget between channels. | mmm-framework `BayesianMMM`: NUTS (nutpie, PyMC or NumPyro), or fast approximations (MAP, ADVI, Pathfinder) |
-| `mmm.frequentist` | A first estimate in seconds, without the ranges a full Bayesian model gives. | mmm-framework's ridge estimator with bootstrap intervals |
+| `mmm.frequentist` | A first estimate in seconds, with simpler ranges from resampling the data instead of a full Bayesian model's uncertainty. | mmm-framework's ridge estimator with bootstrap intervals |
 
 Both carry a plain-language **About card** (what the model is for, when not to use it,
 what data it needs, what you get out); the web app's *Help me choose* recommends them
