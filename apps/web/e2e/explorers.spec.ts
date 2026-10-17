@@ -231,7 +231,7 @@ test("budget optimisation: bounds explained before the run, then the plan and it
   const plan = page.getByTestId("plan-result");
   await expect(plan).toBeVisible({ timeout: 15_000 });
   await expect(plan.getByRole("table", { name: "Allocation" })).toContainText("search");
-  await expect(plan).toContainText("chance it beats today's plan");
+  await expect(plan).toContainText("The chance that it is better than today's plan");
   await expect(page).toHaveURL(/run=run_/);
   await plotsRendered(page);
 });
