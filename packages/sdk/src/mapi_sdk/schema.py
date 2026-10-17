@@ -630,12 +630,20 @@ def summarize_coords(ds: xr.Dataset, schema: DataSchema | None = None) -> dict[s
 def data_summary(ds: xr.Dataset, schema: DataSchema | None = None) -> DataSummary:
     """:class:`~mapi_spec.coords.DataSummary` of ``ds`` (variables plus coord summaries).
 
-    With a ``schema``, ``observed`` says where each target holds values along every ordered
-    dim (time, ``extend`` or ``ordered``): the actuals of a forecast payload.
+    With a ``schema``, ``observed`` says where each target - and each driver a forecast needs
+    (``future_required``) - holds values along every ordered dim (time, ``extend`` or
+    ``ordered``): the actuals of a forecast payload and the drivers on its rows.
     """
     coords = summarize_coords(ds, schema)
     observed: dict[str, dict[str, CoordSummary]] = {}
-    for name in schema.targets if schema is not None else ():
+    names: list[str] = []
+    if schema is not None:
+        names = list(schema.targets) + [
+            n
+            for n, v in schema.vars.items()
+            if v.future_required and v.role is not Role.TARGET and n not in schema.targets
+        ]
+    for name in names:
         if name not in ds.data_vars:
             continue
         da = ds[name]

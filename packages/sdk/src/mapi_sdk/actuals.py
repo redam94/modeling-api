@@ -41,6 +41,7 @@ __all__ = [
     "drivers_along",
     "entry_fit_end",
     "future_mask",
+    "keep_sent_targets",
     "label_text",
     "model_actuals",
     "observed_mask",
@@ -122,6 +123,74 @@ def observed_mask(ds: xr.Dataset, targets: Sequence[str], dim: str) -> xr.DataAr
     for m in masks[1:]:
         out = out | m
     return out
+
+
+def keep_sent_targets(
+    canon: xr.Dataset, sent: xr.DataArray | None, targets: Sequence[str], dim: str
+) -> xr.Dataset:
+    """``canon`` (the model-stage payload) with its targets empty wherever the caller left
+    them empty at the entry stage (``sent``, from :func:`observed_mask` before the pipeline).
+
+    A step that fills the target - ``core.impute`` with ``ffill`` or ``mean`` - would otherwise
+    turn the periods to forecast into actuals, and empty fitted periods into revisions.
+    Labels the caller did not send (context rows a step prepended from the fitted history,
+    padding) keep their values. When the pipeline changed the coordinates so that the two
+    cannot be aligned, filled values are refused (``ACTUALS_INVALID``) instead.
+    """
+    if sent is None:
+        return canon
+    for name in targets:
+        if name not in canon or dim not in canon[name].dims:
+            continue
+        da = canon[name]
+        mask = sent
+        extra = [d for d in mask.dims if d not in da.dims]
+        if extra:
+            mask = mask.any(extra)
+        try:
+            for d in mask.dims:
+                if d in mask.coords and d in da.coords:
+                    mask = mask.reindex({d: da[d].values}, fill_value=True)
+                elif mask.sizes[d] != da.sizes[d]:
+                    raise ValueError(f"dim {d!r} changed size")
+            mask = mask.astype(bool).broadcast_like(da)
+        except (TypeError, ValueError, KeyError):
+            _refuse_filled(da, sent, dim)
+            continue
+        if bool((da.notnull() & ~mask).any()):
+            canon = canon.assign({name: da.where(mask)})
+    return canon
+
+
+def _refuse_filled(da: xr.DataArray, sent: xr.DataArray, dim: str) -> None:
+    """``ACTUALS_INVALID`` when ``da`` holds values on more requested periods than the caller
+    sent (a step filled them), judged per label of ``dim``."""
+    others = [d for d in da.dims if d != dim]
+    has = np.asarray((da.notnull().any(others) if others else da.notnull()).values, dtype=bool)
+    sent_others = [d for d in sent.dims if d != dim]
+    had = sent.any(sent_others) if sent_others else sent
+    labels = np.asarray(da[dim].values) if dim in da.coords else np.asarray([])
+    asked = np.asarray(had[dim].values) if dim in had.coords else np.asarray([])
+    given = asked[np.asarray(had.values, dtype=bool)]
+    filled = np.isin(labels, asked) & ~np.isin(labels, given) & has
+    if bool(filled.any()):
+        text = (
+            f"a pipeline step filled the target on {int(filled.sum())} period(s) the payload "
+            "left empty; they cannot be told apart from actuals"
+        )
+        raise ActualsInvalid(
+            text,
+            pointer="/data",
+            issues=[
+                Issue(
+                    code=ErrorCode.ACTUALS_INVALID,
+                    pointer="/data",
+                    message=text,
+                    suggested_action="Fill the target yourself where you have values, or "
+                    "refit without a step that fills the target.",
+                )
+            ],
+        )
 
 
 def future_mask(observed: xr.DataArray, dim: str, fit_end: Any) -> xr.DataArray:

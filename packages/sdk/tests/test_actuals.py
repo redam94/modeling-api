@@ -464,3 +464,55 @@ def test_a_template_with_every_value_empty_forecasts_from_the_fit(
     last_x = float(data["price"].sel(region="north").values[-1])
     expected = _recursion(bundle, "north", float(data["sales"].values[0, -1]), [last_x] * 3)
     np.testing.assert_allclose(_point(tree).sel(region="north").values, expected)
+
+
+# --------------------------------------------------------------------------- review fixes
+
+
+def test_a_model_fitted_in_a_transformed_space_refuses_actuals_and_warns(
+    data: xr.Dataset,
+) -> None:
+    from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
+
+    labelled = SPEC.replace(
+        "metadata: {name: sales-ar, project: test}",
+        f"metadata: {{name: sales-ar, project: test, labels: {{{DATA_SPACE_LABEL}: "
+        f"{TRANSFORMED_SPACE}}}}}",
+    )
+    b = fit_spec(labelled.replace("__MODEL__", "toy.ar1"), data, registry=toy.toy_registry(),
+                 raw_schema=RAW)  # fmt: skip
+    ds = _payload("2023-01-01", [[120.0], [60.0]], [[11.0], [9.0]])
+    with pytest.raises(MapiError) as err:
+        _score(b, _req(2), ds, data)
+    assert err.value.code is ErrorCode.ACTUALS_NOT_SUPPORTED
+    issue = err.value.to_problem().errors[0]
+    assert "transform" in issue.message
+    plain = _score(b, _req(2), None, data)
+    assert any("transformed space" in i["message"] for i in _issues(plain))
+    assert not _record(plain).conditioned
+
+
+def test_drivers_of_a_payload_are_summarised_where_they_hold_values() -> None:
+    from mapi_sdk.schema import data_summary
+
+    ds = _payload("2023-01-01", [[1.0, np.nan], [2.0, np.nan]], [[np.nan, 3.0], [np.nan, 4.0]])
+    summary = data_summary(ds, RAW)
+    assert summary.observed["sales"]["month"].end == "2023-01-01T00:00:00"
+    assert summary.observed["price"]["month"].start == "2023-02-01T00:00:00"
+
+
+def test_keep_sent_targets_blanks_values_a_step_filled() -> None:
+    from mapi_sdk.actuals import keep_sent_targets
+
+    t = _months("2023-01-01", 4)
+    canon = xr.Dataset({"y": (("time",), [1.0, 2.0, 3.0, 4.0])}, coords={"time": t})
+    sent = xr.DataArray([True, True, False, False], dims=["time"], coords={"time": t[:4]})
+    out = keep_sent_targets(canon, sent, ["y"], "time")
+    np.testing.assert_array_equal(np.isnan(out["y"].values), [False, False, True, True])
+    # context rows a step prepended (labels the caller did not send) keep their values
+    early = _months("2022-11-01", 6)
+    ctx = xr.Dataset({"y": (("time",), np.arange(6.0))}, coords={"time": early})
+    kept = keep_sent_targets(ctx, sent, ["y"], "time")
+    np.testing.assert_array_equal(np.isnan(kept["y"].values), [False] * 4 + [True] * 2)
+    # nothing sent along the dim: unchanged
+    assert keep_sent_targets(canon, None, ["y"], "time") is canon

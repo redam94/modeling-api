@@ -1703,8 +1703,13 @@ def _check_future_rows(
     hdim = req.horizon.dim
     cs = next((c for d, c in inputs.coords.items() if canon(d) == hdim), None)
     fit = meta.fit_coords.get(req.inputs_stage, {}).get(hdim)
+    model_fit = meta.fit_coords.get(meta.resolved.model_stage, {}).get(hdim)
     if cs is None or fit is None or cs.end is None or fit.end is None:
         return
+    if (model_fit is not None and model_fit.freq != fit.freq) or (
+        cs.kind == "time" and cs.freq != fit.freq
+    ):
+        return  # another frequency at the input stage; checked in the sandbox
     pe, fe = cs.ordinal(cs.end), fit.ordinal(fit.end)
     if pe is None or fe is None:
         return
@@ -1926,8 +1931,7 @@ def _check_coord(
                 code=ErrorCode.NON_CONTIGUOUS_EXTENSION,
                 severity=Severity.WARNING,
                 pointer=ptr,
-                message=f"forecast input along {dim!r} does not extend past the fitted "
-                "range: the horizon's periods after the fit are forecast",
+                message=f"forecast input along {dim!r} does not extend past the fitted range",
             )
         )
     return issues
