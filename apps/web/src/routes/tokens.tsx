@@ -36,11 +36,11 @@ interface ScopeOption {
 
 /** `mapi_spec.tokens.scope_allows`, in words. */
 export const SCOPE_OPTIONS: ScopeOption[] = [
-  { value: "models:read", label: "Read", description: "Datasets, specs, runs, models, plots and usage.", needs: "viewer" },
-  { value: "runs:create", label: "Run", description: "Read, plus start and cancel runs and score models.", needs: "runner" },
+  { value: "models:read", label: "Read", description: "Read datasets, specs, runs, models, plots and usage.", needs: "viewer" },
+  { value: "runs:create", label: "Run", description: "The Read scope, and also start runs, cancel runs and score models.", needs: "runner" },
   { value: "datasets:write", label: "Write datasets", description: "Upload data and create dataset versions.", needs: "editor" },
   { value: "plugins:publish", label: "Publish plugins", description: "Publish and yank plugin versions.", needs: "admin" },
-  { value: "admin", label: "Full access", description: "Everything your role allows in this project.", needs: "viewer" },
+  { value: "admin", label: "Full access", description: "All that your role lets you do in this project.", needs: "viewer" },
 ];
 
 const EXPIRY_CHOICES = [7, 30, 90, 180, 365].filter((d) => d <= MAX_TOKEN_TTL_DAYS);
@@ -164,7 +164,7 @@ export function TokensPage() {
         title="API tokens"
         description={
           <>
-            Tokens let programs, notebooks and integrations act as you in <span className="font-medium text-foreground">{project?.project.name ?? "this project"}</span>, limited to the scopes you choose. The secret is shown once.
+            With a token, programs, notebooks and integrations can act as you in <span className="font-medium text-foreground">{project?.project.name ?? "this project"}</span>. The token can do only what its scopes let it do. The app shows the secret one time only.
           </>
         }
         actions={
@@ -210,10 +210,10 @@ export function TokensPage() {
                 ) : null
               }
             >
-              Create a token to call the API from a notebook, the <Mono>mapi</Mono> CLI or another service. Use the narrowest scopes that work, and give it an expiry.
+              Create a token to call the API from a notebook, the <Mono>mapi</Mono> CLI or another service. Use the narrowest scopes that work. Give the token an expiry date.
             </EmptyState>
           ) : (
-            <DataTable label="API tokens" data={page.items} columns={columns} getRowId={(t) => t.id} empty="No tokens match these filters." filterPlaceholder="Filter tokens" />
+            <DataTable label="API tokens" data={page.items} columns={columns} getRowId={(t) => t.id} empty="No tokens match these filters. Change the filters." filterPlaceholder="Filter tokens" />
           )
         }
       </QueryView>
@@ -251,28 +251,28 @@ interface TokenForm {
 export function validateTokenForm(f: TokenForm): { body: TokenCreate | null; errors: Partial<Record<keyof TokenForm, string>> } {
   const errors: Partial<Record<keyof TokenForm, string>> = {};
   const name = f.name.trim();
-  if (!name) errors.name = "Give the token a name you will recognise later.";
-  else if (name.length > 100 || !NAME_RE.test(name)) errors.name = "Up to 100 characters, no control characters.";
+  if (!name) errors.name = "Type a name for the token. Use a name that you will recognise later.";
+  else if (name.length > 100 || !NAME_RE.test(name)) errors.name = "The name is not correct. Use 100 characters or fewer, with no control characters.";
   const aliases = f.aliases
     .split(/[\s,]+/)
     .map((a) => a.trim())
     .filter(Boolean);
   const badAlias = aliases.find((a) => !ALIAS_RE.test(a));
-  if (badAlias) errors.aliases = `“${badAlias.slice(0, 40)}” is not a model id or endpoint alias (lowercase letters, digits, - and _, or *).`;
+  if (badAlias) errors.aliases = `“${badAlias.slice(0, 40)}” is not a model id or an endpoint alias. Use lowercase letters, digits, - and _, or use *.`;
   const scopes = [...new Set([...f.scopes, ...aliases.map((a) => `score:${a}`)])];
-  if (!scopes.length) errors.scopes = "Pick at least one scope.";
-  if (scopes.length > 32) errors.scopes = "At most 32 scopes.";
+  if (!scopes.length) errors.scopes = "Select one or more scopes.";
+  if (scopes.length > 32) errors.scopes = "Select 32 scopes or fewer.";
   let rate: number | null = null;
   if (f.rate.trim()) {
     rate = Number(f.rate);
-    if (!Number.isInteger(rate) || rate < 1 || rate > 100_000) errors.rate = "A whole number from 1 to 100,000.";
+    if (!Number.isInteger(rate) || rate < 1 || rate > 100_000) errors.rate = "Type a whole number from 1 to 100,000.";
   }
   let budget: number | null = null;
   if (f.budget.trim()) {
     budget = Number(f.budget);
-    if (!Number.isFinite(budget) || budget <= 0) errors.budget = "A positive number of vCPU-seconds.";
+    if (!Number.isFinite(budget) || budget <= 0) errors.budget = "Type a positive number of vCPU-seconds.";
   }
-  if (!Number.isInteger(f.expires) || f.expires < 1 || f.expires > MAX_TOKEN_TTL_DAYS) errors.expires = `From 1 to ${MAX_TOKEN_TTL_DAYS} days.`;
+  if (!Number.isInteger(f.expires) || f.expires < 1 || f.expires > MAX_TOKEN_TTL_DAYS) errors.expires = `Select from 1 to ${MAX_TOKEN_TTL_DAYS} days.`;
   if (Object.keys(errors).length) return { body: null, errors };
   return {
     body: {
@@ -322,11 +322,11 @@ function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: Project
       <DialogContent wide>
         <DialogTitle>New API token</DialogTitle>
         <DialogDescription>
-          The token can never do more than your role{role ? ` (${role})` : ""} allows; scopes narrow it further.
-          {preset ? ` This one may only read and score the endpoint ${preset.slice("score:".length)}.` : ""}
+          The token cannot do more than your role{role ? ` (${role})` : ""} lets you do. The scopes limit it more.
+          {preset ? ` This token can only read and score the endpoint ${preset.slice("score:".length)}.` : ""}
         </DialogDescription>
         <form className="grid gap-5" onSubmit={submit} noValidate>
-          <Field label="Name" htmlFor="tok-name" error={shown.name} hint="For example the program that will use it: budget-planner, nightly-refit.">
+          <Field label="Name" htmlFor="tok-name" error={shown.name} hint="Type the name of the program that will use it. For example: budget-planner, nightly-refit.">
             <Input id="tok-name" autoFocus maxLength={100} value={form.name} onChange={(e) => set("name", e.target.value)} />
           </Field>
           <fieldset className="grid gap-2" aria-describedby={shown.scopes ? "tok-scopes-error" : undefined}>
@@ -348,7 +348,7 @@ function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: Project
                         {o.label} <Mono className="text-muted-foreground">{o.value}</Mono>
                       </span>
                       <span className="text-xs text-muted-foreground">{o.description}</span>
-                      {ineffective ? <span className="text-xs text-warning">Needs the {o.needs} role; it has no effect for you.</span> : null}
+                      {ineffective ? <span className="text-xs text-warning">This scope needs the {o.needs} role. It has no effect for you.</span> : null}
                     </span>
                   </label>
                 );
@@ -356,7 +356,7 @@ function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: Project
             </div>
             {form.scopes.includes("admin") ? (
               <p className="flex items-start gap-2 text-xs text-warning">
-                <ShieldAlert className="mt-0.5 size-3.5 shrink-0" /> Full access acts with your whole role. Prefer narrower scopes for programs.
+                <ShieldAlert className="mt-0.5 size-3.5 shrink-0" /> Full access gives the token all of your role. For programs, use narrower scopes.
               </p>
             ) : null}
             {shown.scopes ? (
@@ -369,7 +369,7 @@ function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: Project
             label="Score models (optional)"
             htmlFor="tok-aliases"
             error={shown.aliases}
-            hint="Endpoint aliases or model ids (mdl_…) this token may score, separated by spaces or commas; * means every endpoint and model of the project."
+            hint="Type the endpoint aliases or model ids (mdl_…) that this token can score. Put spaces or commas between them. * means all endpoints and models of the project."
           >
             <Input id="tok-aliases" className="font-mono" placeholder="mdl_01jaf3r1s2t3v4w5x6y7z8a9b0" value={form.aliases} onChange={(e) => set("aliases", e.target.value)} />
           </Field>
@@ -387,7 +387,7 @@ function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: Project
               <Input id="tok-rate" inputMode="numeric" placeholder="120" value={form.rate} onChange={(e) => set("rate", e.target.value)} />
             </Field>
             <div className="grid gap-1.5">
-              <Field label="Compute budget (optional)" htmlFor="tok-budget" error={shown.budget} hint="vCPU-seconds; runs stop starting once spent.">
+              <Field label="Compute budget (optional)" htmlFor="tok-budget" error={shown.budget} hint="Type the vCPU-seconds. When the token uses all of the budget, it cannot start new runs.">
                 <div className="flex gap-2">
                   <Input id="tok-budget" className="flex-1" inputMode="decimal" placeholder="36000" value={form.budget} onChange={(e) => set("budget", e.target.value)} />
                   <NativeSelect aria-label="Budget period" className="w-32" value={form.period} onChange={(e) => set("period", e.target.value as BudgetPeriod)}>
@@ -398,7 +398,7 @@ function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: Project
               </Field>
             </div>
           </div>
-          {create.isError ? <ErrorNotice error={create.error} title="The token could not be created" /> : null}
+          {create.isError ? <ErrorNotice error={create.error} title="The app could not create the token" /> : null}
           <DialogFooter>
             <Button variant="ghost" onClick={onClose}>
               Cancel
@@ -417,14 +417,14 @@ function SecretDialog({ created, onClose }: { created: TokenCreated; onClose: ()
   const [acknowledged, setAcknowledged] = useState(false);
   const { secret, token } = created;
   const close = () => {
-    if (acknowledged || window.confirm("Close without copying? The token cannot be shown again; you would have to revoke it and create a new one.")) onClose();
+    if (acknowledged || window.confirm("Close without a copy of the token? The app cannot show the token again. You must then revoke it and create a new one.")) onClose();
   };
   return (
     <Dialog open onOpenChange={(o) => !o && close()}>
       <DialogContent wide onInteractOutside={(e) => e.preventDefault()}>
         <DialogTitle>Copy your new token now</DialogTitle>
         <DialogDescription>
-          This is the only time the full token for <span className="font-medium text-foreground">{token.name}</span> is shown. Store it in a secret manager; the API keeps only a hash.
+          The app shows the full token for <span className="font-medium text-foreground">{token.name}</span> only this time. Keep it in a secret manager. The API keeps only a hash.
         </DialogDescription>
         <div className="grid gap-2">
           <Label htmlFor="tok-secret">Token</Label>
@@ -441,7 +441,7 @@ function SecretDialog({ created, onClose }: { created: TokenCreated; onClose: ()
             <CopyButton value={secret} label="Copy token" onCopied={() => setAcknowledged(true)} />
           </div>
           <p className="text-xs text-muted-foreground">
-            Send it as <Mono>Authorization: Bearer mapi_…</Mono>; it works in {token.tenant_id}/{token.project_id} until {absoluteTime(token.expires_at)}.
+            Send it as <Mono>Authorization: Bearer mapi_…</Mono>. It works in {token.tenant_id}/{token.project_id} until {absoluteTime(token.expires_at)}.
           </p>
         </div>
         <details className="rounded-md border p-3 text-[13px]">
@@ -470,7 +470,7 @@ function RevokeDialog({ token, onClose }: { token: ApiToken; onClose: () => void
       <DialogContent>
         <DialogTitle>Revoke “{token.name}”?</DialogTitle>
         <DialogDescription>
-          Programs using <Mono>{token.display}</Mono> get 401 Unauthenticated from their next request. This cannot be undone.
+          Programs that use <Mono>{token.display}</Mono> get 401 Unauthenticated from their next request. You cannot undo this.
         </DialogDescription>
         {revoke.isError ? <ErrorNotice error={revoke.error} /> : null}
         <DialogFooter>
@@ -486,7 +486,7 @@ function RevokeDialog({ token, onClose }: { token: ApiToken; onClose: () => void
                   toast.success("Token revoked", token.name);
                   onClose();
                 },
-                onError: (e) => toast.error("Revoke failed", errorMessage(e)),
+                onError: (e) => toast.error("The app could not revoke the token", errorMessage(e)),
               })
             }
           >

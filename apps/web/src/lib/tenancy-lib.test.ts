@@ -261,7 +261,7 @@ describe("forms", () => {
     });
     const bad = validateTokenForm({ ...base, name: " ", scopes: [], aliases: "Bad Alias", rate: "1.5", budget: "-1", expires: 999 });
     expect(Object.keys(bad.errors).sort()).toEqual(["aliases", "budget", "expires", "name", "rate"]);
-    expect(validateTokenForm({ ...base, scopes: [] }).errors.scopes).toBe("Pick at least one scope.");
+    expect(validateTokenForm({ ...base, scopes: [] }).errors.scopes).toBe("Select one or more scopes.");
   });
 
   it("tells e-mail invitations from user ids", () => {

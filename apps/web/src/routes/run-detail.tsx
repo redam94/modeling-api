@@ -86,7 +86,7 @@ function EventRow({ event }: { event: RunEventView }) {
       break;
     case "complete":
       icon = <Flag className="size-3.5 text-success" />;
-      title = p.status === "partial" ? "Finished with a partial result" : "Finished; outputs uploaded";
+      title = p.status === "partial" ? "Finished with a partial result" : "Finished. The run uploaded its outputs.";
       detail = `${typeof p.objects === "number" ? p.objects : "?"} objects, ${formatBytes(typeof p.total_bytes === "number" ? p.total_bytes : null)}`;
       break;
     case "error":
@@ -160,7 +160,7 @@ export function RunDetailPage() {
   const stream = useRunEvents(run.data);
 
   if (run.isPending) return <LoadingRows rows={6} />;
-  if (run.isError) return <ErrorNotice error={run.error} title="This run could not be loaded" />;
+  if (run.isError) return <ErrorNotice error={run.error} title="The app could not load this run" />;
   const r = run.data;
   const terminal = isTerminal(r.state);
   const meta = STATE_META[r.state];
@@ -198,7 +198,7 @@ export function RunDetailPage() {
         <div role="status" className="mb-5 flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/8 p-4">
           <AlertTriangle className="animate-stall mt-0.5 size-4 text-warning" />
           <div>
-            <p className="font-semibold">No progress reported recently</p>
+            <p className="font-semibold">The run did not report progress recently</p>
             <p className="text-muted-foreground">{meta.description}</p>
           </div>
         </div>
@@ -283,7 +283,7 @@ export function RunDetailPage() {
               {stream.events.length ? (
                 <ol className="divide-y">{stream.events.map((e) => <EventRow key={e.id} event={e} />)}</ol>
               ) : (
-                <p className="text-muted-foreground">No events yet.</p>
+                <p className="text-muted-foreground">The run has no events.</p>
               )}
             </CardContent>
           </Card>

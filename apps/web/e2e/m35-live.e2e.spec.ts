@@ -204,7 +204,7 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
       await page.goto(`/datasets/${seeded.datasets.weekly_sales}/versions/1/explore`);
       const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: /Recipes/ }) });
       await expect(nav.getByRole("link", { name: /Help me choose/ })).toBeVisible();
-      await page.getByRole("link", { name: "Check it is ready to forecast" }).click();
+      await page.getByRole("link", { name: "Test if it is ready to forecast" }).click();
       await expect(page).toHaveURL(/\/workflows\/recipe\?template=ts_readiness_arimax&data=/);
       const runner = page.getByTestId("recipe-runner");
       await expect(runner.getByTestId("about-card")).toContainText("Time-series readiness to ARIMAX");

@@ -229,7 +229,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
           setBase(text);
           void navigate({ to: "/build/$specId", params: { specId: doc.id } });
         },
-        onError: (e) => toast.error("Save failed", errorMessage(e)),
+        onError: (e) => toast.error("The app could not save the spec", errorMessage(e)),
       });
       return;
     }
@@ -239,8 +239,8 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
     if (
       overwrites !== null &&
       !window.confirm(
-        `Restore r${baseRev} as a new revision?\n\nYou are editing r${baseRev}, but the latest revision is r${overwrites}. ` +
-          `Saving makes r${overwrites + 1} from this text, without the changes made in r${baseRev + 1}–r${overwrites}.`,
+        `Restore r${baseRev} as a new revision?\n\nYou edit r${baseRev}, but the latest revision is r${overwrites}. ` +
+          `When you save, the app makes r${overwrites + 1} from this text. It does not include the changes in r${baseRev + 1}–r${overwrites}.`,
       )
     ) {
       return;
@@ -249,7 +249,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
       { ...body, parent_revision: parent },
       {
         onSuccess: (r: SpecRevision) => {
-          toast.success(`Saved revision ${r.revision}`, r.valid ? "Static validation passed." : "Saved with validation issues.");
+          toast.success(`Saved revision ${r.revision}`, r.valid ? "The static validation passed." : "The app saved the revision, but it has validation issues.");
           loadedKey.current = `${r.spec_id}@${r.revision}`;
           setBase(text);
           setBaseRev(r.revision);
@@ -258,8 +258,8 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
         },
         onError: (e) =>
           toast.error(
-            e instanceof ApiError && e.code === "CONFLICT" ? "Someone saved a newer revision" : "Save failed",
-            e instanceof ApiError && e.code === "CONFLICT" ? "Reload the latest revision and re-apply your change." : errorMessage(e),
+            e instanceof ApiError && e.code === "CONFLICT" ? "Another person saved a newer revision" : "The app could not save the revision",
+            e instanceof ApiError && e.code === "CONFLICT" ? "Load the latest revision again. Then make your change again." : errorMessage(e),
           ),
       },
     );
@@ -286,7 +286,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
   const canRun = specId !== null && runRev !== undefined;
 
   if (specId && (spec.isError || loaded.isError)) {
-    return <ErrorNotice error={spec.error ?? loaded.error} title="This spec could not be loaded" />;
+    return <ErrorNotice error={spec.error ?? loaded.error} title="The app could not load this spec" />;
   }
 
   return (
@@ -295,7 +295,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
         title={spec.data?.name ?? (specId ? <Spinner /> : "New spec")}
         meta={
           <>
-            {spec.data ? <Mono>{spec.data.ref}</Mono> : <span>Not saved yet</span>}
+            {spec.data ? <Mono>{spec.data.ref}</Mono> : <span>Not saved</span>}
             {editingRev ? <Badge variant="outline">r{editingRev}{viewingOld ? ` of ${latest}` : ""}</Badge> : null}
             {dirty ? <Badge variant="warning">unsaved changes</Badge> : null}
             {validating ? (
@@ -309,7 +309,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
             ) : validation.problem ? (
               <span className="inline-flex items-center gap-1 text-destructive"><XCircle className="size-3.5" /> {validation.problem.code ?? "invalid"}</span>
             ) : null}
-            {schema.isError ? <span className="text-warning">Schema hints unavailable</span> : null}
+            {schema.isError ? <span className="text-warning">The schema hints are not available</span> : null}
             <GuidedReturnLink specId={specId} document={document} />
           </>
         }
@@ -322,7 +322,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
               onChange={(e) => setMessage(e.target.value)}
               className="h-9 w-56"
             />
-            <Button variant="outline" onClick={openInsert} disabled={compare !== null || view !== "yaml"} title="Search models, steps, datasets and columns to insert">
+            <Button variant="outline" onClick={openInsert} disabled={compare !== null || view !== "yaml"} title="Find models, steps, datasets and columns to insert">
               <Plus /> Insert
             </Button>
             <Button variant="outline" onClick={validateNow} title="Validate now (⌘Enter)">
@@ -334,7 +334,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
             <Button
               variant="outline"
               disabled={!canRun || dryRun.isPending}
-              title={canRun ? "Run a sandboxed dry-run of this revision" : "Save first"}
+              title={canRun ? "Run a sandboxed dry-run of this revision" : "Save the spec first"}
               onClick={() =>
                 specId &&
                 runRev !== undefined &&
@@ -342,7 +342,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
                   { specId, revision: runRev },
                   {
                     onSuccess: (r) => void navigate({ to: "/runs/$runId", params: { runId: r.id } }),
-                    onError: (e) => toast.error("Dry-run failed to start", errorMessage(e)),
+                    onError: (e) => toast.error("The dry-run did not start", errorMessage(e)),
                   },
                 )
               }
@@ -351,7 +351,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
             </Button>
             <Button
               disabled={!canRun || !valid || createRun.isPending}
-              title={!canRun ? "Save first" : !valid ? "Fix the errors first" : "Fit this revision"}
+              title={!canRun ? "Save the spec first" : !valid ? "Correct the errors first" : "Fit this revision"}
               onClick={() =>
                 specId &&
                 runRev !== undefined &&
@@ -362,7 +362,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
                       fitKey.current = newIdempotencyKey();
                       void navigate({ to: "/runs/$runId", params: { runId: r.id } });
                     },
-                    onError: (e) => toast.error("Fit failed to start", errorMessage(e)),
+                    onError: (e) => toast.error("The fit did not start", errorMessage(e)),
                   },
                 )
               }
@@ -384,7 +384,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
                 setView(v);
               }}
               options={[
-                { value: "visual", label: <><Blocks /> Visual</>, title: "Build the spec from blocks: drag steps, models and datasets in" },
+                { value: "visual", label: <><Blocks /> Visual</>, title: "Make the spec from blocks. Drag steps, models and datasets into it." },
                 { value: "yaml", label: <><Code2 /> YAML</>, title: "Edit the YAML text" },
               ]}
               className="justify-self-start"
@@ -392,7 +392,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
           ) : null}
           {specId && !compare && heldBack && loaded.data ? (
             <RevisionBanner
-              text={`r${loaded.data.revision} is selected, but the editor still holds your unsaved changes to r${baseRev}.`}
+              text={`You selected r${loaded.data.revision}, but the editor still has your unsaved changes to r${baseRev}.`}
               action={`Load r${loaded.data.revision}`}
               onAction={() => loaded.data && openRevision(loaded.data.revision)}
             />
@@ -400,8 +400,8 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
             <RevisionBanner
               text={
                 dirty
-                  ? `A newer revision r${latest} exists. Your unsaved changes are based on r${baseRev}; keep editing, or load r${latest}.`
-                  : `You are viewing r${baseRev}. The latest revision is r${latest}.`
+                  ? `A newer revision r${latest} exists. Your unsaved changes start from r${baseRev}. Continue to edit, or load r${latest}.`
+                  : `You see r${baseRev}. The latest revision is r${latest}.`
               }
               action={`Load r${latest}`}
               onAction={() => openRevision(latest)}
@@ -435,7 +435,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
               height="calc(100svh - 15rem)"
             />
           )}
-          {validation.problem && !validation.response ? <ErrorNotice error={validation.problem} title="The document could not be validated" /> : null}
+          {validation.problem && !validation.response ? <ErrorNotice error={validation.problem} title="The app could not validate the document" /> : null}
         </div>
 
         <aside className="min-w-0">
@@ -469,7 +469,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
               {allIssues.length ? (
                 <IssueList issues={allIssues} onSelect={reveal} />
               ) : (
-                <p className="text-muted-foreground">{validation.response ? "No issues. The spec passes static validation." : "Waiting for validation."}</p>
+                <p className="text-muted-foreground">{validation.response ? "No issues. The spec passes static validation." : "The validation is not complete."}</p>
               )}
             </TabsContent>
             <TabsContent value="about" className="max-h-[calc(100svh-17rem)] overflow-y-auto pr-1">

@@ -30,10 +30,10 @@ const PRINCIPAL_RE = /^(?:usr|sa)_[0-9a-z]{26}$/;
 /** Turn the invite field into a `MembershipCreate` target, or an error message. */
 export function parseInvitee(value: string): { principal_id: string } | { email: string } | { error: string } {
   const v = value.trim();
-  if (!v) return { error: "Enter an e-mail address or a user id." };
+  if (!v) return { error: "Type an e-mail address or a user id." };
   if (PRINCIPAL_RE.test(v)) return { principal_id: v };
   if (v.length <= 320 && EMAIL_RE.test(v)) return { email: v.toLowerCase() };
-  return { error: "Use an e-mail address (ana@example.com) or a user id (usr_…)." };
+  return { error: "The value is not correct. Type an e-mail address (ana@example.com) or a user id (usr_…)." };
 }
 
 function personLabel(m: Membership): { primary: string; secondary: string | null } {
@@ -94,7 +94,7 @@ export function MembersPage() {
               <span className="inline-flex items-center gap-1.5">
                 <Badge variant={m.role === "admin" ? "default" : "secondary"}>{ROLE_META[m.role].label}</Badge>
                 {inherited ? (
-                  <Badge variant="outline" title="Granted organisation-wide; change it under Organisation">
+                  <Badge variant="outline" title="The organisation gives this role. Change it on the Organisation tab.">
                     <Building2 /> organisation
                   </Badge>
                 ) : null}
@@ -113,7 +113,7 @@ export function MembersPage() {
                   { principalId: m.principal_id, role },
                   {
                     onSuccess: () => toast.success("Role changed", `${personLabel(m).primary} is now ${ROLE_META[role].label.toLowerCase()}`),
-                    onError: (err) => toast.error("The role could not be changed", errorMessage(err)),
+                    onError: (err) => toast.error("The app could not change the role", errorMessage(err)),
                   },
                 );
               }}
@@ -204,8 +204,8 @@ export function MembersPage() {
         <QueryView query={members}>
           {(page) =>
             page.items.length === 0 ? (
-              <EmptyState icon={<Users />} title={`Nobody has a role in ${where} yet`}>
-                {canAdd ? "Add people by e-mail; they get access the next time they sign in." : "Ask an admin to add members."}
+              <EmptyState icon={<Users />} title={`No person has a role in ${where}`}>
+                {canAdd ? "Add people by e-mail. They get access the next time that they sign in." : "Ask an admin to add members."}
               </EmptyState>
             ) : (
               <DataTable
@@ -263,7 +263,7 @@ function InviteDialog({ tenantId, projectId, where, onClose }: { tenantId: strin
       { ...target, role },
       {
         onSuccess: () => {
-          toast.success("Member added", "email" in target ? `${target.email} gets access at their next sign-in.` : undefined);
+          toast.success("Member added", "email" in target ? `${target.email} gets access the next time that they sign in.` : undefined);
           onClose();
         },
       },
@@ -273,7 +273,7 @@ function InviteDialog({ tenantId, projectId, where, onClose }: { tenantId: strin
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogTitle>Add a member to {where}</DialogTitle>
-        <DialogDescription>Invite by e-mail (claimed when they first sign in with that verified address) or add a known user id.</DialogDescription>
+        <DialogDescription>Invite a person by e-mail, or add a known user id. The invitation becomes active when the person first signs in with that verified address.</DialogDescription>
         <form className="grid gap-4" onSubmit={submit} noValidate>
           <Field label="E-mail or user id" htmlFor="inv-who" error={error}>
             <Input id="inv-who" autoFocus autoComplete="off" placeholder="ana@example.com" value={who} onChange={(e) => setWho(e.target.value)} />
@@ -290,7 +290,7 @@ function InviteDialog({ tenantId, projectId, where, onClose }: { tenantId: strin
               </label>
             ))}
           </fieldset>
-          {add.isError ? <ErrorNotice error={add.error} title="The member could not be added" /> : null}
+          {add.isError ? <ErrorNotice error={add.error} title="The app could not add the member" /> : null}
           <DialogFooter>
             <Button variant="ghost" onClick={onClose}>
               Cancel
@@ -313,9 +313,9 @@ function RemoveDialog({ member, tenantId, projectId, where, onClose }: { member:
       <DialogContent>
         <DialogTitle>Remove {primary} from {where}?</DialogTitle>
         <DialogDescription>
-          Their {member.role} role ends now, and their API tokens for {where} stop working. Their runs and models stay. <Mono>{member.principal_id}</Mono>
+          Their {member.role} role stops now. Their API tokens for {where} stop working. Their runs and models stay. <Mono>{member.principal_id}</Mono>
         </DialogDescription>
-        {remove.isError ? <ErrorNotice error={remove.error} title="The member could not be removed" /> : null}
+        {remove.isError ? <ErrorNotice error={remove.error} title="The app could not remove the member" /> : null}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Cancel

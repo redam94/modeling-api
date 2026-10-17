@@ -96,8 +96,8 @@ const RESIDENCIES = ["us", "eu", "asia"];
 
 const TIER_META: Record<TrustTier, { label: string; description: string }> = {
   internal: { label: "Internal", description: "Our own teams. Process isolation is enough." },
-  verified: { label: "Verified", description: "Known customers. gVisor or stronger, egress and DNS locked." },
-  public: { label: "Public", description: "Self-serve sign-ups. Strongest isolation, small default quotas." },
+  verified: { label: "Verified", description: "Known customers. Runs use gVisor or stronger isolation, with locked egress and DNS." },
+  public: { label: "Public", description: "Self-serve sign-ups. Runs use the strongest isolation and small default quotas." },
   "self-hosted-trusted": { label: "Self-hosted", description: "A trusted single-tenant installation." },
 };
 
@@ -122,8 +122,8 @@ export function AdminPage() {
   if (!ws.operator) {
     return (
       <EmptyState icon={<ShieldOff />} title="The admin console is for platform operators">
-        Your account is not a platform operator, so tenants, quotas and kill switches are not available to you. Organisation admins manage members and see usage from the
-        Members and Usage pages.
+        Your account is not a platform operator. Thus you cannot use tenants, quotas and kill switches. Organisation admins manage members on the Members page and
+        see usage on the Usage page.
       </EmptyState>
     );
   }
@@ -131,7 +131,7 @@ export function AdminPage() {
     <>
       <PageHeader
         title="Admin console"
-        description="Platform operations. You see tenant metadata, usage and audit records, never tenant data; every change here is audited."
+        description="Platform operations. You see tenant metadata, usage and audit records. You do not see tenant data. The audit log records each change on this page."
         meta={
           <Badge variant="info">
             <ShieldCheck /> Operator
@@ -265,7 +265,7 @@ function TenantsTab() {
         </Button>
       </div>
       <QueryView query={tenants}>
-        {(page) => <DataTable label="Tenants" data={page.items} columns={columns} getRowId={(t) => t.id} filterPlaceholder="Filter tenants" empty="No tenants match." />}
+        {(page) => <DataTable label="Tenants" data={page.items} columns={columns} getRowId={(t) => t.id} filterPlaceholder="Filter tenants" empty="No tenants match these filters." />}
       </QueryView>
       {creating ? <CreateTenantDialog onClose={() => setCreating(false)} /> : null}
       {editing ? <EditTenantDialog tenant={editing} onClose={() => setEditing(null)} /> : null}
@@ -286,9 +286,9 @@ function CreateTenantDialog({ onClose }: { onClose: () => void }) {
   const [admin, setAdmin] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const errors = {
-    id: SLUG_RE.test(id) ? undefined : "Lowercase letters, digits, - and _ (start and end with a letter or digit).",
-    name: name.trim() ? undefined : "Give the tenant a name.",
-    admin: !admin.trim() || EMAIL_RE.test(admin.trim()) ? undefined : "Use an e-mail address.",
+    id: SLUG_RE.test(id) ? undefined : "Use only lowercase letters, digits, - and _. Start and end with a letter or a digit.",
+    name: name.trim() ? undefined : "Type a name for the tenant.",
+    admin: !admin.trim() || EMAIL_RE.test(admin.trim()) ? undefined : "Type an e-mail address.",
   };
   const valid = !errors.id && !errors.name && !errors.admin;
   const submit = (e: FormEvent) => {
@@ -309,13 +309,13 @@ function CreateTenantDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogTitle>New tenant</DialogTitle>
-        <DialogDescription>A tenant is the billing, isolation and quota boundary. Its trust tier decides where its runs may be placed.</DialogDescription>
+        <DialogDescription>A tenant is the boundary for billing, isolation and quotas. Its trust tier sets where its runs can go.</DialogDescription>
         <form className="grid gap-4" onSubmit={submit} noValidate>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Name" htmlFor="tn-name" error={submitted ? errors.name : undefined}>
               <Input id="tn-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
             </Field>
-            <Field label="Id" htmlFor="tn-id" error={submitted ? errors.id : undefined} hint="Permanent; appears in storage paths.">
+            <Field label="Id" htmlFor="tn-id" error={submitted ? errors.id : undefined} hint="You cannot change the id later. It shows in storage paths.">
               <Input id="tn-id" className="font-mono" value={id} onChange={(e) => setId(e.target.value)} />
             </Field>
           </div>
@@ -338,11 +338,11 @@ function CreateTenantDialog({ onClose }: { onClose: () => void }) {
                 ))}
               </NativeSelect>
             </Field>
-            <Field label="First admin (optional)" htmlFor="tn-admin" error={submitted ? errors.admin : undefined} hint="Invited by e-mail.">
+            <Field label="First admin (optional)" htmlFor="tn-admin" error={submitted ? errors.admin : undefined} hint="The app sends an invitation by e-mail.">
               <Input id="tn-admin" type="email" value={admin} onChange={(e) => setAdmin(e.target.value)} />
             </Field>
           </div>
-          {create.isError ? <ErrorNotice error={create.error} title="The tenant could not be created" /> : null}
+          {create.isError ? <ErrorNotice error={create.error} title="The app could not create the tenant" /> : null}
           <DialogFooter>
             <Button variant="ghost" onClick={onClose}>
               Cancel
@@ -426,7 +426,7 @@ function EditTenantDialog({ tenant, onClose }: { tenant: Tenant; onClose: () => 
                 ))}
               </NativeSelect>
             </Field>
-            <Field label="Residency" htmlFor="te-res" hint="New runs only.">
+            <Field label="Residency" htmlFor="te-res" hint="The change applies only to new runs.">
               <NativeSelect id="te-res" value={residency} onChange={(e) => setResidency(e.target.value)}>
                 {RESIDENCIES.map((r) => (
                   <option key={r} value={r}>
@@ -436,7 +436,7 @@ function EditTenantDialog({ tenant, onClose }: { tenant: Tenant; onClose: () => 
               </NativeSelect>
             </Field>
           </div>
-          {changes.trust_tier ? <p className="text-xs text-muted-foreground">{TIER_META[tier].description} Running work keeps its placement.</p> : null}
+          {changes.trust_tier ? <p className="text-xs text-muted-foreground">{TIER_META[tier].description} Work that runs now keeps its placement.</p> : null}
           {needsReason || status !== (tenant.status ?? "active") ? (
             <Field label={needsReason ? "Reason (required, shown to the tenant)" : "Reason (optional)"} htmlFor="te-reason">
               <Textarea id="te-reason" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -446,14 +446,14 @@ function EditTenantDialog({ tenant, onClose }: { tenant: Tenant; onClose: () => 
             <div className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-3">
               <p className="text-[13px]">
                 {changes.status === "deleting"
-                  ? "Deleting stops all access to this tenant and schedules its data for removal."
-                  : "Suspending makes the tenant read-only: no runs, uploads or changes."}{" "}
+                  ? "Deletion stops all access to this tenant. It also schedules the removal of its data."
+                  : "Suspension makes the tenant read-only. The tenant cannot run, upload or change items."}{" "}
                 Type <Mono>{tenant.id}</Mono> to confirm.
               </p>
               <Input aria-label="Type the tenant id to confirm" className="font-mono" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
             </div>
           ) : null}
-          {update.isError ? <ErrorNotice error={update.error} title="The tenant could not be updated" /> : null}
+          {update.isError ? <ErrorNotice error={update.error} title="The app could not update the tenant" /> : null}
           <DialogFooter>
             <Button variant="ghost" onClick={onClose}>
               Cancel
@@ -505,7 +505,7 @@ function QuotasTab() {
           <option value="tenant">Tenant</option>
           <option value="token">Token</option>
         </NativeSelect>
-        <p className="text-xs text-muted-foreground">Checked token → tenant → global; the first limit hit wins. Without a policy the tier default applies.</p>
+        <p className="text-xs text-muted-foreground">The order of the checks is token → tenant → global. The first limit that a request reaches applies. If there is no policy, the tier default applies.</p>
         <Button className="ml-auto" onClick={() => setEditing("new")}>
           <Plus /> New policy
         </Button>
@@ -574,7 +574,7 @@ export function parseLimits(values: Record<string, string>, maxClass: string): {
     const n = Number(raw);
     const min = f.key === "max_fanout_tasks" || f.key === "requests_per_minute" ? 1 : 0;
     if (!Number.isFinite(n) || n < min || (f.integer && !Number.isInteger(n)) || (f.key === "max_fanout_tasks" && n > 10_000)) {
-      errors[f.key] = f.integer ? `A whole number of at least ${min}.` : "A number of at least 0.";
+      errors[f.key] = f.integer ? `Type a whole number of ${min} or more.` : "Type a number of 0 or more.";
       continue;
     }
     (limits as Record<string, number>)[f.key] = n;
@@ -594,13 +594,13 @@ function QuotaDialog({ policy, onClose }: { policy: QuotaPolicy | null; onClose:
   );
   const { limits, errors } = parseLimits(values, maxClass);
   const subjectId = scope === "global" ? "*" : subject.trim();
-  const subjectError = scope === "global" ? undefined : scope === "token" ? (/^tok_[0-9a-z]{26}$/.test(subjectId) ? undefined : "A token id (tok_…).") : SLUG_RE.test(subjectId) ? undefined : "A tenant id.";
+  const subjectError = scope === "global" ? undefined : scope === "token" ? (/^tok_[0-9a-z]{26}$/.test(subjectId) ? undefined : "Type a token id (tok_…).") : SLUG_RE.test(subjectId) ? undefined : "Type a tenant id.";
   const blocked = Object.keys(errors).length > 0 || Boolean(subjectError);
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent wide>
         <DialogTitle>{policy ? "Edit quota policy" : "New quota policy"}</DialogTitle>
-        <DialogDescription>Saving replaces the whole policy for this scope and subject. Leave a field blank for no limit at this level.</DialogDescription>
+        <DialogDescription>When you save, the app replaces all of the policy for this scope and subject. To set no limit at this level, leave the field empty.</DialogDescription>
         <form
           className="grid gap-4"
           onSubmit={(e) => {
@@ -642,7 +642,7 @@ function QuotaDialog({ policy, onClose }: { policy: QuotaPolicy | null; onClose:
                 <Input id={`qp-${f.key}`} inputMode="decimal" value={values[f.key] ?? ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} />
               </Field>
             ))}
-            <Field label="Largest class" htmlFor="qp-class" hint="Runs above are refused.">
+            <Field label="Largest class" htmlFor="qp-class" hint="The platform refuses runs in a larger class.">
               <NativeSelect id="qp-class" value={maxClass} onChange={(e) => setMaxClass(e.target.value)}>
                 <option value="">No limit</option>
                 {CLASSES.map((c) => (
@@ -656,7 +656,7 @@ function QuotaDialog({ policy, onClose }: { policy: QuotaPolicy | null; onClose:
           <Field label="Note (optional)" htmlFor="qp-note">
             <Input id="qp-note" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why this policy exists" />
           </Field>
-          {put.isError ? <ErrorNotice error={put.error} title="The policy could not be saved" /> : null}
+          {put.isError ? <ErrorNotice error={put.error} title="The app could not save the policy" /> : null}
           <DialogFooter>
             <Button variant="ghost" onClick={onClose}>
               Cancel
@@ -746,7 +746,7 @@ function KillSwitchesTab() {
                       Uploaded code
                       <Badge variant={enabled ? "success" : "danger"}>{enabled ? "running" : "paused"}</Badge>
                     </CardTitle>
-                    <CardDescription>Runs of tenant-uploaded plugin code (T2/T3). Built-in models are never affected.</CardDescription>
+                    <CardDescription>Runs of plugin code that tenants upload (T2/T3). This switch has no effect on built-in models.</CardDescription>
                   </div>
                   <Switch
                     checked={enabled}
@@ -754,10 +754,10 @@ function KillSwitchesTab() {
                     onCheckedChange={(on) =>
                       setPending(
                         on
-                          ? { title: "Resume uploaded code?", description: "Queued runs of uploaded plugins become eligible again.", body: { untrusted_execution_enabled: true }, danger: false }
+                          ? { title: "Resume uploaded code?", description: "Queued runs of uploaded plugins can start again.", body: { untrusted_execution_enabled: true }, danger: false }
                           : {
                               title: "Pause all uploaded code?",
-                              description: "No new run of tenant-uploaded plugin code is accepted or leased, on every tenant. Runs already executing continue: use “Cancel running uploaded code” to stop them too.",
+                              description: "The platform does not accept or lease new runs of uploaded plugin code, for all tenants. Runs that started before continue. To stop them also, use “Cancel runs of uploaded code”.",
                               body: { untrusted_execution_enabled: false },
                               danger: true,
                               confirmWord: "PAUSE",
@@ -772,16 +772,16 @@ function KillSwitchesTab() {
                     className="text-destructive"
                     onClick={() =>
                       setPending({
-                        title: "Cancel all running uploaded code?",
+                        title: "Cancel all runs of uploaded code?",
                         description:
-                          "Pauses uploaded code and cancels every unfinished run of it on every tenant, including runs already executing. Use it to contain a suspected sandbox escape.",
+                          "This pauses uploaded code. It also cancels all unfinished runs of uploaded code for all tenants, including the runs that started. Use it to contain a possible sandbox escape.",
                         body: { untrusted_execution_enabled: false, cancel_untrusted_runs: true },
                         danger: true,
                         confirmWord: "CANCEL",
                       })
                     }
                   >
-                    <ShieldOff /> Cancel running uploaded code
+                    <ShieldOff /> Cancel runs of uploaded code
                   </Button>
                 </CardContent>
               </Card>
@@ -792,7 +792,7 @@ function KillSwitchesTab() {
                       Global spend cap
                       <Badge variant={capMicros == null ? "outline" : "info"}>{capMicros == null ? "none" : `${formatMicros(capMicros, currency)} per ${ks.spend_cap_period ?? "day"}`}</Badge>
                     </CardTitle>
-                    <CardDescription>When platform spend in the window reaches the cap, non-internal tenants cannot start runs until it resets.</CardDescription>
+                    <CardDescription>When the platform spend in the window reaches the cap, non-internal tenants cannot start runs until the window resets.</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-3">
@@ -811,7 +811,7 @@ function KillSwitchesTab() {
                       onClick={() =>
                         setPending({
                           title: `Set the spend cap to ${formatMicros(Math.round(capValue * MICROS_PER_UNIT), currency)} per ${period}?`,
-                          description: "Applies from the next run submission.",
+                          description: "The cap applies from the next run that a tenant submits.",
                           body: { global_spend_cap_micros: Math.round(capValue * MICROS_PER_UNIT), spend_cap_period: period },
                           danger: false,
                         })
@@ -822,7 +822,7 @@ function KillSwitchesTab() {
                     {capMicros != null ? (
                       <Button
                         variant="ghost"
-                        onClick={() => setPending({ title: "Remove the spend cap?", description: "Spend is then limited only by per-tenant quotas.", body: { clear_spend_cap: true }, danger: true, confirmWord: "REMOVE" })}
+                        onClick={() => setPending({ title: "Remove the spend cap?", description: "Then only the quotas of each tenant limit the spend.", body: { clear_spend_cap: true }, danger: true, confirmWord: "REMOVE" })}
                       >
                         <CircleSlash /> Remove cap
                       </Button>
@@ -845,7 +845,7 @@ const WINDOW_WORD: Record<"day" | "month", string> = { day: "today", month: "thi
 function SpendAgainstCap({ period }: { period: "day" | "month" }) {
   const usage = useAdminUsage({ period });
   if (usage.isPending) return <LoadingRows rows={1} />;
-  if (usage.isError) return <ErrorNotice error={usage.error} title="Current spend could not be loaded" />;
+  if (usage.isError) return <ErrorNotice error={usage.error} title="The app could not load the current spend" />;
   return <SpendMeter spend={usage.data.spend_cap} />;
 }
 
@@ -875,10 +875,10 @@ function SpendMeter({ spend }: { spend: GlobalSpend }) {
       {tone !== "ok" ? (
         <p className={cn("text-xs", tone === "critical" ? "text-destructive" : "text-warning")}>
           {fraction >= 1
-            ? "The cap is reached: non-internal tenants cannot start runs until the window resets."
+            ? "The spend is at the cap. Non-internal tenants cannot start runs until the window resets."
             : tone === "critical"
-              ? "Over 90% of the cap is used: non-internal tenants will soon be unable to start runs."
-              : "Over 70% of the cap is used."}{" "}
+              ? "The spend is more than 90% of the cap. Soon, non-internal tenants will not be able to start runs."
+              : "The spend is more than 70% of the cap."}{" "}
           The window resets {relativeTime(spend.end)}.
         </p>
       ) : null}
@@ -908,12 +908,12 @@ function KillSwitchConfirm({ pending, onClose }: { pending: PendingSwitch; onClo
                   toast.success("Kill switches updated");
                   onClose();
                 },
-                onError: (err) => toast.error("The change was not applied", errorMessage(err)),
+                onError: (err) => toast.error("The app could not apply the change", errorMessage(err)),
               },
             );
           }}
         >
-          <Field label="Reason (recorded in the audit log)" htmlFor="ks-reason" hint="At least 3 characters, e.g. an incident id.">
+          <Field label="Reason (recorded in the audit log)" htmlFor="ks-reason" hint="Type 3 or more characters, for example an incident id.">
             <Textarea id="ks-reason" autoFocus maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
           {pending.confirmWord ? (
@@ -1012,8 +1012,8 @@ function CostTab() {
                     ? totals
                         .map((t) => `${formatMicros(t.amount_micros ?? 0, t.currency ?? currency)} over ${(t.runs ?? 0).toLocaleString("en")} run${t.runs === 1 ? "" : "s"}`)
                         .join(" · ")
-                    : "No spend recorded in this period."}{" "}
-                  Tenants without spend in the period are not listed.
+                    : "There is no spend in this period."}{" "}
+                  The list does not show tenants without spend in the period.
                 </p>
                 <DataTable
                   label="Cost by tenant"
@@ -1029,7 +1029,7 @@ function CostTab() {
                 <CardHeader>
                   <div>
                     <CardTitle>Share of spend</CardTitle>
-                    <CardDescription>Where the period's cost went, by tenant.</CardDescription>
+                    <CardDescription>The cost of the period for each tenant.</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -1126,7 +1126,7 @@ function ExecutorCard({ e }: { e: ExecutorHealth }) {
         ) : null}
         {failed.length ? (
           <details>
-            <summary className="cursor-pointer text-xs text-destructive">{failed.length} conformance case(s) failing</summary>
+            <summary className="cursor-pointer text-xs text-destructive">{failed.length} conformance case(s) failed</summary>
             <ul className="mt-1 grid gap-1 text-xs">
               {failed.map((r) => (
                 <li key={r.case_id}>
@@ -1157,7 +1157,7 @@ function ExecutorToggleConfirm({ e, onClose }: { e: ExecutorHealth; onClose: () 
         <DialogTitle>{disabling ? `Disable ${e.name}?` : `Enable ${e.name}?`}</DialogTitle>
         <DialogDescription>
           {disabling
-            ? "No new run is placed on this executor. Runs already on it keep running: cancel them from the kill switches if needed."
+            ? "The dispatcher does not put new runs on this executor. Runs that are on it now continue. If necessary, cancel them from the kill switches."
             : "The dispatcher places runs on this executor again."}
         </DialogDescription>
         <form
@@ -1172,12 +1172,12 @@ function ExecutorToggleConfirm({ e, onClose }: { e: ExecutorHealth; onClose: () 
                   toast.success(disabling ? `${e.name} disabled` : `${e.name} enabled`);
                   onClose();
                 },
-                onError: (err) => toast.error("The change was not applied", errorMessage(err)),
+                onError: (err) => toast.error("The app could not apply the change", errorMessage(err)),
               },
             );
           }}
         >
-          <Field label="Reason (recorded in the audit log)" htmlFor="ex-reason" hint="At least 3 characters, e.g. an incident id.">
+          <Field label="Reason (recorded in the audit log)" htmlFor="ex-reason" hint="Type 3 or more characters, for example an incident id.">
             <Textarea id="ex-reason" autoFocus maxLength={500} value={reason} onChange={(ev) => setReason(ev.target.value)} />
           </Field>
           {disabling ? (
@@ -1205,7 +1205,7 @@ function ExecutorsTab() {
     <QueryView query={executors}>
       {(page) =>
         page.items.length === 0 ? (
-          <EmptyState icon={<Activity />} title="No executors registered" />
+          <EmptyState icon={<Activity />} title="There are no registered executors" />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
             {page.items.map((e) => (
@@ -1330,7 +1330,7 @@ function AuditTab() {
       {audit.isPending ? (
         <LoadingRows rows={6} />
       ) : audit.isError ? (
-        <ErrorNotice error={audit.error} title="The audit log could not be loaded" />
+        <ErrorNotice error={audit.error} title="The app could not load the audit log" />
       ) : rows.length === 0 ? (
         <EmptyState icon={<ScrollText />} title="No audit events match" />
       ) : (
@@ -1412,16 +1412,17 @@ function PromotionsTab() {
   return (
     <div className="grid gap-4">
       <p className="max-w-[80ch] text-[13px] text-muted-foreground">
-        The sanity-scorecard gate decides each endpoint promotion at once, so nothing waits here: a passing version goes live, a warning needs a project admin&apos;s
-        audited override with a reason, a failure is blocked. These are the overrides and refusals across tenants, newest first.
+        The sanity-scorecard gate makes the decision for each endpoint promotion immediately. Thus no promotions wait here. If a version passes, it goes live. If a
+        version has a warning, a project admin must give an audited override with a reason. If a version fails, the gate blocks it. This table shows the overrides
+        and refusals for all tenants, with the newest first.
       </p>
       {overrides.isPending || refusals.isPending ? (
         <LoadingRows rows={4} />
       ) : overrides.isError || refusals.isError ? (
-        <ErrorNotice error={overrides.error ?? refusals.error} title="The promotion decisions could not be loaded" />
+        <ErrorNotice error={overrides.error ?? refusals.error} title="The app could not load the promotion decisions" />
       ) : rows.length === 0 ? (
         <EmptyState icon={<ListChecks />} title="No overrides or refused promotions">
-          Every endpoint promotion so far passed the scorecard gate.
+          All endpoint promotions until now passed the scorecard gate.
         </EmptyState>
       ) : (
         <div className="max-h-[70vh] overflow-auto rounded-lg border bg-card [contain:inline-size]">
@@ -1432,7 +1433,7 @@ function PromotionsTab() {
                 <th scope="col" className="px-3 font-medium">Tenant / project</th>
                 <th scope="col" className="px-3 font-medium">Endpoint</th>
                 <th scope="col" className="px-3 font-medium">Decision</th>
-                <th scope="col" className="px-3 font-medium">Failing checks</th>
+                <th scope="col" className="px-3 font-medium">Failed checks</th>
                 <th scope="col" className="px-3 font-medium">Reason</th>
                 <th scope="col" className="px-3 font-medium">By</th>
               </tr>

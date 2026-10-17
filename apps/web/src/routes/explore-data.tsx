@@ -34,8 +34,8 @@ export function DataExplorerPage() {
   const persona = useEffectivePersona();
   const expert = persona === "expert";
   if (!valid) return <ErrorNotice error={new Error("The version must be a positive integer.")} />;
-  if (dataset.isError) return <ErrorNotice error={dataset.error} title="This dataset could not be loaded" />;
-  if (dv.isError) return <ErrorNotice error={dv.error} title="This dataset version could not be loaded" />;
+  if (dataset.isError) return <ErrorNotice error={dataset.error} title="The app could not load this dataset" />;
+  if (dv.isError) return <ErrorNotice error={dv.error} title="The app could not load this dataset version" />;
   return (
     <div className="grid gap-6">
       <PageHeader
@@ -45,7 +45,7 @@ export function DataExplorerPage() {
             <Mono className="text-[15px] text-muted-foreground">v{v}</Mono>
           </span>
         }
-        description={expert ? "Every view of the data, with its statistics. Views are computed in the sandbox; the control plane never reads your data." : "What is in your data and what to fix before modelling, in plain words. Open “Show the statistics” for the numbers."}
+        description={expert ? "All the views of the data, with their statistics. The sandbox calculates the views. The control plane does not read your data." : "This page tells you, in plain words, what is in your data and what to correct before you make a model. Open “Show the statistics” to see the numbers."}
         meta={
           <>
             {dv.data ? <Mono>{dv.data.ref}</Mono> : null}
@@ -63,7 +63,7 @@ export function DataExplorerPage() {
               // M3.5: the readiness workflow (unit roots, differencing, order search, backtest, ARIMAX).
               <Button asChild variant="outline">
                 <Link to={expert ? "/workflows/new" : "/workflows/recipe"} search={{ template: READINESS_TEMPLATE, data: dv.data.ref }}>
-                  <Workflow /> {expert ? "Readiness workflow" : "Check it is ready to forecast"}
+                  <Workflow /> {expert ? "Readiness workflow" : "Test if it is ready to forecast"}
                 </Link>
               </Button>
             ) : null}
@@ -74,7 +74,7 @@ export function DataExplorerPage() {
       {dv.isPending ? (
         <LoadingRows rows={6} />
       ) : dv.data.status !== "ready" ? (
-        <ErrorNotice error={new Error(dv.data.status === "ingesting" ? "This version is still being ingested. The explorer opens once it is ready." : "This version failed to ingest, so there is nothing to explore.")} />
+        <ErrorNotice error={new Error(dv.data.status === "ingesting" ? "The ingest of this version is not complete. The explorer opens when the version is ready." : "The ingest of this version failed. There is no data to explore. Upload the data again.")} />
       ) : (
         <DataExplorer
           datasetId={datasetId}

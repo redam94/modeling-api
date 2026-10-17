@@ -44,7 +44,7 @@ function CreateDatasetDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogTitle>New dataset</DialogTitle>
-        <DialogDescription>A dataset collects immutable versions. You upload the first version next.</DialogDescription>
+        <DialogDescription>A dataset contains versions that you cannot change. In the next step, you upload the first version.</DialogDescription>
         <form
           className="grid gap-4"
           onSubmit={(e) => {
@@ -57,12 +57,12 @@ function CreateDatasetDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                   onOpenChange(false);
                   void navigate({ to: "/datasets/$datasetId", params: { datasetId: ds.id }, search: { upload: true } });
                 },
-                onError: (err) => toast.error("Could not create the dataset", errorMessage(err)),
+                onError: (err) => toast.error("The app could not create the dataset", errorMessage(err)),
               },
             );
           }}
         >
-          <Field label="Name" htmlFor="ds-name" hint={name && !nameOk ? "Lowercase letters, digits, - and _." : "Used in references: dataset://default/<name>"}>
+          <Field label="Name" htmlFor="ds-name" hint={name && !nameOk ? "Use only lowercase letters, digits, - and _." : "References use this name: dataset://default/<name>"}>
             <Input id="ds-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="eu_media_daily" aria-invalid={Boolean(name) && !nameOk} autoFocus />
           </Field>
           <Field label="Description" htmlFor="ds-desc">
@@ -87,7 +87,7 @@ export function DatasetsPage() {
     <>
       <PageHeader
         title="Datasets"
-        description="Labelled data with a schema. Files are parsed only inside a sandboxed ingest run."
+        description="Labelled data with a schema. Only a sandboxed ingest run reads the files."
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus /> New dataset
@@ -107,7 +107,7 @@ export function DatasetsPage() {
             />
           ) : (
             <EmptyState icon={<Database />} title="No datasets yet" action={<Button onClick={() => setOpen(true)}><Plus /> New dataset</Button>}>
-              Create a dataset, then upload a CSV, Parquet, zarr zip or netCDF file as its first version.
+              Create a dataset. Then upload a CSV, Parquet, zarr zip or netCDF file as its first version.
             </EmptyState>
           )
         }
@@ -145,7 +145,7 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
       {version.issues?.length ? (
         <Card>
           <CardHeader>
-            <CardTitle>Issues found during ingest</CardTitle>
+            <CardTitle>Issues that the ingest found</CardTitle>
           </CardHeader>
           <CardContent>
             <IssueList issues={version.issues} />
@@ -153,7 +153,7 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
         </Card>
       ) : null}
       {version.status === "ingesting" ? (
-        <p className="text-muted-foreground">The ingest run is parsing and validating the upload. This page refreshes on its own.</p>
+        <p className="text-muted-foreground">The ingest run reads the upload and does a check of it. This page refreshes automatically.</p>
       ) : null}
       {version.status === "ready" ? (
         <Tabs defaultValue="schema">
@@ -164,7 +164,7 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
             <TabsTrigger value="preview">Preview</TabsTrigger>
             <TabsTrigger value="about">About</TabsTrigger>
           </TabsList>
-          <TabsContent value="schema">{version.data_schema ? <SchemaTable schema={version.data_schema} /> : <p className="text-muted-foreground">No schema stored.</p>}</TabsContent>
+          <TabsContent value="schema">{version.data_schema ? <SchemaTable schema={version.data_schema} /> : <p className="text-muted-foreground">This version has no schema.</p>}</TabsContent>
           <TabsContent value="coords"><CoordBrowser version={version} /></TabsContent>
           <TabsContent value="missing"><MissingnessPanel version={version} /></TabsContent>
           <TabsContent value="preview"><PreviewPanel version={version} /></TabsContent>
@@ -196,7 +196,7 @@ export function DatasetDetailPage() {
   const version = useDatasetVersion(datasetId, selected);
   const uploading = search.upload === true;
 
-  if (dataset.isError) return <ErrorNotice error={dataset.error} title="This dataset could not be loaded" />;
+  if (dataset.isError) return <ErrorNotice error={dataset.error} title="The app could not load this dataset" />;
   return (
     <>
       <PageHeader
@@ -224,7 +224,7 @@ export function DatasetDetailPage() {
             <UploadWizard
               datasetId={datasetId}
               onDone={(v) => {
-                toast.success(`Ingesting v${v.version}`, "A sandboxed ingest run is validating the file.");
+                toast.success(`The ingest of v${v.version} started`, "A sandboxed ingest run does a check of the file.");
                 void navigate({ search: { version: v.version } });
               }}
             />
@@ -247,13 +247,13 @@ export function DatasetDetailPage() {
               <span className="text-xs text-muted-foreground">{v.status === "ready" ? relativeTime(v.created_at) : v.status}</span>
             </button>
           ))}
-          {versions.data && !sorted.length ? <p className="px-2 text-muted-foreground">No versions yet.</p> : null}
+          {versions.data && !sorted.length ? <p className="px-2 text-muted-foreground">This dataset has no versions.</p> : null}
         </nav>
         <div className="min-w-0">
           {selected === undefined ? (
             versions.isPending ? null : (
               <EmptyState icon={<Upload />} title="Upload the first version" action={<Button onClick={() => void navigate({ search: { upload: true } })}><Upload /> Upload</Button>}>
-                Map columns to dims and variables; the ingest run builds the labelled dataset.
+                Map the columns to dims and variables. Then the ingest run makes the labelled dataset.
               </EmptyState>
             )
           ) : version.isPending ? (

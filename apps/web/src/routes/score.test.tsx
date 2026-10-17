@@ -61,7 +61,7 @@ describe("ScorePage", () => {
     await waitFor(() => expect(screen.getByText(/@v2$/)).toBeInTheDocument());
     const fresh = screen.getByRole("region", { name: "Results" });
     expect(within(fresh).queryByText("ui/plotdata/ppc_fan.arrow")).toBeNull();
-    expect(within(fresh).getByText(/Results appear here/)).toBeInTheDocument();
+    expect(within(fresh).getByText(/The results show here/)).toBeInTheDocument();
   });
 
   it("explains what the model needs and scores typed-in values without a dataset", async () => {

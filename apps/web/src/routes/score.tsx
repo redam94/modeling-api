@@ -112,7 +112,7 @@ function PendingScore({
         </Link>
       </div>
       <ProgressPanel run={current} progress={stream.progress} />
-      {error ? <ErrorNotice error={error} title="The finished result could not be fetched" /> : null}
+      {error ? <ErrorNotice error={error} title="The app could not get the finished result" /> : null}
     </div>
   );
 }
@@ -123,10 +123,10 @@ export function ScorePage() {
 
   return (
     <>
-      <PageHeader title="Score" description="Forecasts, scenarios and counterfactuals with the fitted preprocessing replayed exactly." actions={<ModelPicker modelId={model} version={version} />} />
+      <PageHeader title="Score" description="Make forecasts, scenarios and counterfactuals. The server uses the same preprocessing as the fit." actions={<ModelPicker modelId={model} version={version} />} />
       {!model || !version ? (
         <EmptyState icon={<Gauge />} title="Choose a model version">
-          Scoring needs a fitted model version. Pick one above, or open a version under Models and press Score.
+          To score, you need a fitted model version. Select one above. Or open a version on the Models page and click Score.
         </EmptyState>
       ) : mv.isError ? (
         <ErrorNotice error={mv.error} />
@@ -206,7 +206,7 @@ function ScoreWorkspace({ mv }: { mv: ModelVersion }) {
                   }}
                 />
               ) : (
-                <p className="text-muted-foreground">Results appear here. Short requests return within 30 seconds; longer ones keep running and show progress.</p>
+                <p className="text-muted-foreground">The results show here. A short request gives its results in 30 seconds or less. A longer request continues to run and shows its progress.</p>
               )}
             </CardContent>
           </Card>

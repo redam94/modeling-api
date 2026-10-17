@@ -34,7 +34,7 @@ export function ModelsPage() {
   const navigate = useNavigate();
   return (
     <>
-      <PageHeader title="Models" description="Each successful fit registers a verified, signed model version." />
+      <PageHeader title="Models" description="Each successful fit makes a verified, signed model version." />
       <QueryView query={models}>
         {(page) =>
           page.items.length ? (
@@ -48,7 +48,7 @@ export function ModelsPage() {
             />
           ) : (
             <EmptyState icon={<Boxes />} title="No models yet">
-              Fit a spec from Build. When the fit succeeds and its outputs verify, the model version appears here.
+              Fit a spec on the Build page. When the fit is successful and the server verifies its outputs, the model version shows here.
             </EmptyState>
           )
         }
@@ -84,7 +84,7 @@ export function ModelPage() {
   const model = useModel(modelId);
   const versions = useModelVersions(modelId);
   const navigate = useNavigate();
-  if (model.isError) return <ErrorNotice error={model.error} title="This model could not be loaded" />;
+  if (model.isError) return <ErrorNotice error={model.error} title="The app could not load this model" />;
   return (
     <>
       <PageHeader title={model.data?.name ?? "Model"} meta={model.data ? <Mono>{model.data.ref}</Mono> : null} />
@@ -97,7 +97,7 @@ export function ModelPage() {
             getRowId={(v) => v.id}
             initialSorting={[{ id: "version", desc: true }]}
             onRowClick={(v) => void navigate({ to: "/models/$modelId/versions/$version", params: { modelId, version: String(v.version) } })}
-            empty="No versions yet."
+            empty="This model has no versions."
           />
         )}
       </QueryView>
@@ -115,7 +115,7 @@ export function ModelVersionPage() {
   const mv = useModelVersion(modelId, Number.isInteger(v) && v > 0 ? v : undefined);
   if (!Number.isInteger(v) || v < 1) return <ErrorNotice error={new Error("The version must be a positive integer.")} />;
   if (mv.isPending) return <LoadingRows rows={6} />;
-  if (mv.isError) return <ErrorNotice error={mv.error} title="This model version could not be loaded" />;
+  if (mv.isError) return <ErrorNotice error={mv.error} title="The app could not load this model version" />;
   const d = mv.data;
   const caps = d.capabilities;
   return (
@@ -199,7 +199,7 @@ export function ModelVersionPage() {
                   {Object.keys(d.metrics ?? {}).length ? (
                     <KeyValues items={Object.entries(d.metrics ?? {}).map(([k, x]) => [<Mono key={k}>{k}</Mono>, <span key="v" className="tabular">{formatNumber(x)}</span>])} />
                   ) : (
-                    <p className="text-muted-foreground">No holdout metrics recorded.</p>
+                    <p className="text-muted-foreground">This version has no holdout metrics.</p>
                   )}
                 </CardContent>
               </Card>
