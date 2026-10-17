@@ -49,7 +49,7 @@ test("a policy is edited and then gates promotion with NOT_VALIDATED", async ({ 
   // Add a check from the catalog: its About card shows before it is added.
   await editor.getByLabel("Add a check").selectOption("null.noise_regressors");
   // (Other checks' cards name it among their related items, so pick the card by its title.)
-  await expect(editor.getByRole("article", { name: "Ignores fake drivers" })).toContainText("Use it when");
+  await expect(editor.getByRole("article", { name: "No effect from false drivers" })).toContainText("Use it when");
   await editor.getByRole("button", { name: "Add check" }).click();
   await expect(editor.locator('li[data-check="null.noise_regressors"]')).toBeVisible();
 
@@ -150,7 +150,7 @@ test.describe("phone layout (375 px)", () => {
     ["/workflow-runs/run_01jaf3w1x2y3z4a5b6c7d8e9f0", "21 of 21 steps finished"],
     ["/governance", "Forecasts we publish"],
     ["/governance/policies/pol_01jaf3h1j2k3m4n5p6q7r8s9t1", "Required checks"],
-    [`/validations/${AWAITING}`, "Beats a shuffled result"],
+    [`/validations/${AWAITING}`, "Better than shuffled data"],
   ];
   for (const [path, marker] of pages) {
     test(`${path} does not scroll horizontally`, async ({ page }) => {

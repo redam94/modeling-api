@@ -431,7 +431,7 @@ def check_lift_tests(spec: ModelSpec, data: xr.Dataset) -> None:
                     code=ErrorCode.SCHEMA_INVALID,
                     pointer=here + "/channel",
                     message=f"the data has no channel {test.channel!r}",
-                    suggested_action="Use the channel name exactly as it appears in the data.",
+                    suggested_action="Use the channel name exactly as it is in the data.",
                 )
             )
         if test.geo is not None and geos is not None and test.geo not in geos:
@@ -447,9 +447,10 @@ def check_lift_tests(spec: ModelSpec, data: xr.Dataset) -> None:
                 Issue(
                     code=ErrorCode.SCHEMA_INVALID,
                     pointer=here + "/start",
-                    message=f"the test runs {test.start} to {test.end} but the data covers "
+                    message=f"the test is from {test.start} to {test.end}, but the data is from "
                     f"{first} to {last}",
-                    suggested_action="Only enter tests that ran inside the data's dates.",
+                    suggested_action="Enter only the tests that occurred in the date range "
+                    "of the data.",
                 )
             )
     if issues:

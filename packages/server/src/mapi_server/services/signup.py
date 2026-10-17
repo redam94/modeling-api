@@ -124,7 +124,7 @@ async def _free_tenant_id(s: AsyncSession, label: str) -> str:
         if await s.get(m.Tenant, candidate) is None:
             return candidate
         candidate = f"{base[: _SLUG_MAX - 5]}-{secrets.token_hex(2)}"
-    raise MapiError("could not allocate a workspace id; try again", code=ErrorCode.CONFLICT)
+    raise MapiError("the server could not get a workspace id. Try again", code=ErrorCode.CONFLICT)
 
 
 def _retry_after(oldest: datetime | None, window: timedelta, at: datetime) -> str:
@@ -208,7 +208,7 @@ async def _check_rate(
         count, oldest = (await s.execute(stmt)).one()
         if int(count) >= limit:
             raise ProblemWithHeaders(
-                f"too many sign-ups {what}; try again later",
+                f"too many sign-ups {what}. Try again later",
                 code=ErrorCode.RATE_LIMITED,
                 headers={"Retry-After": _retry_after(oldest, window, at)},
             )
@@ -219,11 +219,14 @@ def _verification_mail(ctx: ServerContext, to: str, name: str, token: str) -> Ma
     hours = int(EMAIL_VERIFICATION_TTL.total_seconds() // 3600)
     body = (
         f"Hello {name},\n\n"
-        "Someone (hopefully you) asked to create a modeling-api workspace with this address.\n"
-        f"Open this link within {hours} hours to confirm it and create the workspace:\n\n"
+        "A person (we hope that it was you) asked for a modeling-api workspace with this "
+        "address.\n"
+        f"Open this link in {hours} hours or less to confirm the address and make the "
+        "workspace:\n\n"
         f"{link}\n\n"
         "If you already have an account, the link adds a new workspace to it.\n"
-        "If this was not you, ignore this e-mail: nothing is created without the link.\n"
+        "If this was not you, ignore this e-mail. Without the link, the server makes no "
+        "workspace.\n"
     )
     return MailMessage(
         to=to,
@@ -247,7 +250,7 @@ async def request_signup(
         domain = check_signup(body, trust.email_policy)
         if not await trust.challenge.verify(body.challenge, client_ip=auth.client_ip):
             raise MapiError(
-                "the bot check failed; reload the page and try again",
+                "the bot check failed. Load the page again and try again",
                 code=ErrorCode.SCHEMA_INVALID,
                 pointer="/challenge",
             )
@@ -313,7 +316,7 @@ async def request_signup(
 
 def _link_expired() -> MapiError:
     return MapiError(
-        "this link is invalid, expired or was already used; sign up again for a new one",
+        "this link is not correct, is expired or was already used. Sign up again to get a new link",
         code=ErrorCode.LINK_EXPIRED,
     )
 
@@ -367,7 +370,7 @@ async def verify_email(ctx: ServerContext, auth: RequestAuth, token: str) -> Ver
             before = await count_requests(s, f"verify:{ip}"[:96], now=at)
         if before >= ctx.settings.verify_per_ip_per_minute:
             raise ProblemWithHeaders(
-                "too many verification attempts; try again in a minute",
+                "too many verification attempts. Try again after one minute",
                 code=ErrorCode.RATE_LIMITED,
                 headers={"Retry-After": "60"},
             )

@@ -3,16 +3,16 @@
   {
    "about": {
     "assumptions": [
-     "Customers weigh price and promotions when they choose"
+     "Customers think about price and promotions when they select a product"
     ],
     "avoid_when": [
      "You only have total sales"
     ],
     "data_needs": [
-     "A table with customer, trip number, the product chosen and each product's price"
+     "A table with customer, trip number, the product chosen and the price of each product"
     ],
     "difficulty": "intermediate",
-    "example": "See how a 10% price cut on one brand changes its share.",
+    "example": "See how a 10% price decrease on one brand changes its share.",
     "expert_notes": null,
     "fits": {
      "data_shape": [
@@ -31,7 +31,7 @@
     "related": [
      "choice.multinomial_logit"
     ],
-    "summary_plain": "Understand which product customers pick on each shopping trip, and how price and promotions shift the choice.",
+    "summary_plain": "Understand which product customers select on each shopping trip, and how price and promotions change the choice.",
     "title": "Customer choice",
     "typical_runtime": "minutes",
     "use_when": [
@@ -39,7 +39,7 @@
     ]
    },
    "defaults": {},
-   "description_plain": "Understand which product customers pick on each shopping trip, and how price and promotions shift the choice.",
+   "description_plain": "Find which product customers select on each shopping trip. See how price and promotions change the choice.",
    "family": "choice",
    "id": "customer_choice",
    "lookups": {},
@@ -56,7 +56,7 @@
      "default": null,
      "dim": null,
      "dim_spec": null,
-     "help_plain": "Each value must name a product the same way as the price columns do (a column price_coke goes with the choice coke).",
+     "help_plain": "Each value must name a product as the price columns do. For example, the column price_coke goes with the choice coke.",
      "id": "choice",
      "keywords": [
       "choice",
@@ -70,7 +70,7 @@
      "maximum": null,
      "minimum": null,
      "missing": "allow",
-     "prompt_plain": "Which column says which product was chosen?",
+     "prompt_plain": "Which column shows the product that the customer chose?",
      "required": true,
      "role": "target",
      "ui_level": "basic",
@@ -130,7 +130,7 @@
       "ordered": false,
       "policy": "extend"
      },
-     "help_plain": "Number every customer's trips 1, 2, 3, ... in the order they happened.",
+     "help_plain": "Give the trips of each customer the numbers 1, 2, 3 and so on, in the sequence that they occurred.",
      "id": "occasion",
      "keywords": [
       "trip",
@@ -199,7 +199,7 @@
      "maximum": null,
      "minimum": null,
      "missing": "allow",
-     "prompt_plain": "Which columns flag a promotion for each product?",
+     "prompt_plain": "Which columns show a promotion for each product?",
      "required": false,
      "role": "covariate",
      "ui_level": "basic",
@@ -290,15 +290,15 @@
   {
    "about": {
     "assumptions": [
-     "Advertising lingers and has diminishing returns",
-     "Other drivers (price, promotions) are included if they matter"
+     "The effect of advertising continues for some time and has diminishing returns",
+     "If other drivers (price, promotions) are important, the table includes them"
     ],
     "avoid_when": [
      "You have less than a year of data",
      "Spend never changes"
     ],
     "data_needs": [
-     "A table with date, market, the result (sales) and one spend column per channel"
+     "A table with date, market, the result (sales) and one spend column for each channel"
     ],
     "difficulty": "beginner",
     "example": "Upload 2 years of weekly sales and TV, search and social spend for 10 markets.",
@@ -328,7 +328,7 @@
      ]
     },
     "outputs": [
-     "Return and contribution per channel",
+     "Return and contribution for each channel",
      "What-if sliders",
      "A budget plan",
      "A scorecard"
@@ -338,19 +338,19 @@
      "mmm.bayesian",
      "core.resample"
     ],
-    "summary_plain": "Find out how much each marketing channel adds to your results in each market, and what happens if you move budget between channels.",
+    "summary_plain": "Find how much each marketing channel adds to your results in each market. See what occurs if you move budget between channels.",
     "title": "Geo marketing mix",
     "typical_runtime": "long",
     "use_when": [
-     "You have weekly sales and spend per channel, by market",
-     "You want returns per channel and a budget plan"
+     "You have weekly sales and spend for each channel, by market",
+     "You want the return of each channel and a budget plan"
     ]
    },
    "defaults": {
     "frequency": "weekly",
     "holdout_periods": 8
    },
-   "description_plain": "Find out how much each marketing channel adds to your results in each market, and what happens if you move budget between channels.",
+   "description_plain": "Find how much each marketing channel adds to your results in each market. See what occurs when you move budget from one channel to a different channel.",
    "family": "mmm",
    "id": "geo_mmm",
    "lookups": {},
@@ -481,7 +481,7 @@
      "default": null,
      "dim": null,
      "dim_spec": null,
-     "help_plain": "Pick every column that holds money spent on a channel.",
+     "help_plain": "Select each column that shows the money spent on a channel.",
      "id": "spend",
      "keywords": [
       "spend",
@@ -525,7 +525,7 @@
      "kind": "columns",
      "maximum": null,
      "minimum": null,
-     "prompt_plain": "Which other columns might move the result (price, promotions)?",
+     "prompt_plain": "Which other columns can change the result (price, promotions)?",
      "required": false,
      "role": "control",
      "ui_level": "basic",
@@ -566,7 +566,7 @@
      "default": 8,
      "dim": null,
      "dim_spec": null,
-     "help_plain": "The model is fitted without them first, to measure its forecast error, then refitted on everything.",
+     "help_plain": "The server first fits the model without these periods to measure its forecast error. Then it fits the model again on all the periods.",
      "id": "holdout_periods",
      "keywords": [],
      "kind": "number",
@@ -716,7 +716,7 @@
   {
    "about": {
     "assumptions": [
-     "Planned drivers are known for the weeks you forecast"
+     "You know the planned drivers for the weeks that you forecast"
     ],
     "avoid_when": [
      "You only have one total series"
@@ -725,7 +725,7 @@
      "A table with store, week, units sold and optional drivers"
     ],
     "difficulty": "beginner",
-    "example": "Predict next month's units for 300 stores.",
+    "example": "Predict the units of next month for 300 stores.",
     "expert_notes": null,
     "fits": {
      "data_shape": [
@@ -744,24 +744,24 @@
      ]
     },
     "outputs": [
-     "A forecast per store with low and high values",
+     "A forecast for each store with low and high values",
      "A scorecard"
     ],
     "references": [],
     "related": [
      "tabular.regressor"
     ],
-    "summary_plain": "Predict how much each store will sell each week, with a low and a high estimate, from prices, promotions and the calendar.",
+    "summary_plain": "Predict how much each store will sell each week from prices, promotions and the calendar. Get a low and a high estimate.",
     "title": "Demand by store",
     "typical_runtime": "seconds",
     "use_when": [
-     "You have sales per store and week and know planned prices or promotions"
+     "You have sales for each store and week, and you know the planned prices or promotions"
     ]
    },
    "defaults": {
     "holdout_periods": 12
    },
-   "description_plain": "Predict how much each store will sell each week, with a low and a high estimate, from prices, promotions and the calendar.",
+   "description_plain": "Predict the sales of each store for each week from prices, promotions and the calendar. You get a low and a high estimate.",
    "family": "tabular",
    "id": "store_demand",
    "lookups": {},
@@ -909,7 +909,7 @@
      "default": 12,
      "dim": null,
      "dim_spec": null,
-     "help_plain": "The model is fitted without them first, to measure its forecast error, then refitted on everything.",
+     "help_plain": "The server first fits the model without these periods to measure its forecast error. Then it fits the model again on all the periods.",
      "id": "holdout_periods",
      "keywords": [],
      "kind": "number",
@@ -1020,7 +1020,7 @@
      "The trend changes gradually and the season repeats"
     ],
     "avoid_when": [
-     "You need a forecast for every store (use Demand by store)"
+     "You need a forecast for each store (use Demand by store)"
     ],
     "data_needs": [
      "A table with a date and the number to forecast"
@@ -1056,7 +1056,7 @@
     "related": [
      "ts.hsgp_trend"
     ],
-    "summary_plain": "Forecast one series, such as sales, visits or demand, a few weeks or months ahead, with a range of likely values.",
+    "summary_plain": "Forecast one series, such as sales, visits or demand, some weeks or months ahead. Get a range of probable values.",
     "title": "Weekly forecast",
     "typical_runtime": "minutes",
     "use_when": [
@@ -1068,7 +1068,7 @@
     "holdout_periods": 8,
     "horizon": 26
    },
-   "description_plain": "Forecast one series - sales, visits, demand - a few weeks or months ahead, with a range of likely values.",
+   "description_plain": "Forecast one series (for example sales, visits or demand) some weeks or months ahead. The forecast also gives a range of probable values.",
    "family": "forecast",
    "id": "weekly_forecast",
    "lookups": {
@@ -1208,7 +1208,7 @@
      "default": 8,
      "dim": null,
      "dim_spec": null,
-     "help_plain": "The model is fitted without them first, to measure its forecast error, then refitted on everything.",
+     "help_plain": "The server first fits the model without these periods to measure its forecast error. Then it fits the model again on all the periods.",
      "id": "holdout_periods",
      "keywords": [],
      "kind": "number",

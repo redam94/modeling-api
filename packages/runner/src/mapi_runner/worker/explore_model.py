@@ -163,7 +163,7 @@ class ModelContext:
                 self.bundle, self.data, self.registry, side_tables=self.side_tables
             )
             if not self._pred:
-                raise SectionSkipped("the model's predictions do not line up with its target")
+                raise SectionSkipped("the predictions of the model do not align with its target")
         return self._pred
 
 
@@ -216,14 +216,14 @@ def params(c: ModelContext) -> ParamTableView:
     )
     if not rows:
         raise SectionSkipped(
-            "this model stores no parameter estimates (machine-learning models "
-            "have no interpretable parameters)"
+            "this model keeps no parameter estimates (machine-learning models "
+            "have no parameters that you can interpret)"
         )
     kind = bundle_kind(c.bundle)
     cap = {
-        "bayesian": "Each estimate's posterior mean with its highest-density interval.",
-        "frequentist": "Each estimate with its confidence interval and p-value.",
-        "ml": "The fitted coefficients or importances (no uncertainty).",
+        "bayesian": "Shows the posterior mean of each estimate with its highest-density interval.",
+        "frequentist": "Shows each estimate with its confidence interval and p-value.",
+        "ml": "Shows the fitted coefficients or importances (no uncertainty).",
     }[kind]
     return ParamTableView(interval=label, rows=rows, omitted=omitted, caption_plain=cap)
 
@@ -237,18 +237,21 @@ def diagnostics(c: ModelContext) -> ModelDiagnosticsView:
     warn: list[str] = []
     r = stats_.get("r_hat_max")
     if r is not None and r > 1.01:
-        warn.append(f"The chains disagree (R-hat {r:.3f} > 1.01): run longer or reparameterise.")
+        warn.append(
+            f"The chains do not agree (R-hat {r:.3f} > 1.01). Sample for longer, or "
+            "reparameterise the model."
+        )
     div = stats_.get("divergences")
     if div:
-        warn.append(f"{int(div)} divergent transitions: estimates may be biased.")
+        warn.append(f"{int(div)} divergent transitions. The estimates can possibly have bias.")
     if stats_.get("converged") == 0.0:
-        warn.append("The optimiser did not converge: estimates are unreliable.")
+        warn.append("The optimiser did not converge. The estimates are not reliable.")
     return ModelDiagnosticsView(
         inference=b.model.manifest.capabilities.inference,
         stats=stats_,
         items=items,
         warnings_plain=warn,
-        caption_plain="Whether the fit finished properly, and how well it does on held-out data.",
+        caption_plain="Shows if the fit finished correctly, and its accuracy on held-out data.",
     )
 
 
@@ -300,8 +303,9 @@ def fit(c: ModelContext) -> FitVsActualView:
         series=series,
         fitted=fitted,
         facets=facets,
-        caption_plain="Actual values against the model's fit; the shaded band is where the "
-        "model expects 90% of values. Periods right of the line were held out.",
+        caption_plain="Shows the actual values against the fit of the model. The model expects "
+        "90% of the values in the shaded band. The fit did not use the periods at the right of "
+        "the line.",
     )
 
 
@@ -374,8 +378,8 @@ def residuals(c: ModelContext) -> ResidualDiagnosticsView:
         histogram=hist,
         qq=QQPoints(theoretical=theo, sample=samp) if theo else None,
         warnings_plain=warn,
-        caption_plain="What the model got wrong over time. Good residuals look like noise: "
-        "no pattern, no growing spread.",
+        caption_plain="Shows the errors of the model over time. Good residuals look like noise. "
+        "They have no pattern, and their spread does not increase.",
     )
 
 
@@ -384,10 +388,10 @@ def decomposition(c: ModelContext) -> DecompositionView:
     preds = c.predictions()
     p = next((x for x in preds if x.contributions is not None), None)
     if p is None or p.contributions is None:
-        raise SectionSkipped("this model does not split its predictions into parts")
+        raise SectionSkipped("this model does not divide its predictions into parts")
     da = p.contributions
     if "component" not in da.dims or t not in da.dims:
-        raise SectionSkipped("the model's contributions have no time dimension")
+        raise SectionSkipped("the contributions of the model have no time dimension")
     other = [d for d in da.dims if d not in ("component", t)]
     total = da.sum(other) if other else da
     total = total.transpose("component", t)
@@ -408,7 +412,7 @@ def decomposition(c: ModelContext) -> DecompositionView:
         components=comps,
         shares=shares,
         scale="multiplicative" if scale == "multiplicative" else "additive",
-        caption_plain="How much each part of the model adds to the prediction over time.",
+        caption_plain="Shows how much each part of the model adds to the prediction over time.",
     )
 
 
@@ -419,7 +423,7 @@ def response_curves(c: ModelContext) -> ResponseCurvesView:
     if grid is None:
         raise SectionSkipped(
             "this model has no response curves (marketing mix models keep them when the "
-            "spec asks for the derived response_curves)"
+            "spec asks for the derived quantity response_curves)"
         )
     contrib = np.asarray(grid.contribution, dtype=float)  # draw, channel, multiplier
     mean = contrib.mean(axis=0)
@@ -432,8 +436,8 @@ def response_curves(c: ModelContext) -> ResponseCurvesView:
         lower=[[float(v) for v in row] for row in lo] if lo is not None else None,
         upper=[[float(v) for v in row] for row in hi] if hi is not None else None,
         current_spend=list(grid.current_spend),
-        caption_plain="What each channel adds at different spend levels (diminishing returns "
-        "flatten the curve).",
+        caption_plain="Shows what each channel adds at different levels of spend. When the "
+        "returns decrease, the curve becomes flatter.",
     )
 
 
@@ -470,8 +474,8 @@ def irf(c: ModelContext) -> IrfView:
         values=arr(da),
         lower=lower,
         upper=upper,
-        caption_plain="How each series reacts over the following periods to a one-off shock "
-        "in another.",
+        caption_plain="Shows how each series changes in the next periods after one shock in a "
+        "different series.",
     )
 
 
@@ -494,7 +498,8 @@ def fevd(c: ModelContext) -> FevdView:
         variables=names[:20],
         horizons=int(a.shape[1]),
         shares=[[[float(v) for v in row] for row in per_h] for per_h in a],
-        caption_plain="Which shocks explain each series' forecast errors at each horizon.",
+        caption_plain="Shows which shocks explain the forecast errors of each series at each "
+        "horizon.",
     )
 
 
@@ -602,7 +607,7 @@ def forecast(c: ModelContext) -> ModelForecastView:
         raise SectionSkipped("the forecast has no target series over time")
     return ModelForecastView(
         forecasts=out,
-        caption_plain=f"The next {horizon} periods, with drivers held at their last values.",
+        caption_plain=f"Shows the next {horizon} periods. The drivers keep their last values.",
     )
 
 
@@ -645,18 +650,20 @@ def backtest(c: ModelContext) -> BacktestView:
     t = _need_time(c)
     plan = c.req.backtest
     if plan is None:
-        raise SectionSkipped("pass a split plan (backtest) to run a backtest")
+        raise SectionSkipped("give a split plan (backtest) to run a backtest")
     if not isinstance(plan, RollingOriginPlan | ExpandingWindowPlan):
         raise SectionSkipped(
-            "backtests refit on contiguous windows: use rolling_origin or expanding_window"
+            "backtests fit again on windows without gaps. Use rolling_origin or expanding_window"
         )
     if c.refitter is None:
-        raise SectionSkipped("refits are not available in this run")
+        raise SectionSkipped("this run cannot fit the model again")
     dim = plan.dim if plan.dim in c.data.dims else c.bundle.binding.to_dataset(plan.dim)
     if dim not in c.data.dims:
         dim = t  # window plans run along time: the default dim name means the data's time
     if dim != t:
-        raise SectionSkipped(f"the plan's dim {plan.dim!r} is not the data's time dimension")
+        raise SectionSkipped(
+            f"the dim {plan.dim!r} of the plan is not the time dimension of the data"
+        )
     n = int(c.data.sizes[t])
     try:
         folds = plan_folds(plan, n)[-MAX_BACKTEST_FOLDS:]
@@ -710,7 +717,9 @@ def backtest(c: ModelContext) -> BacktestView:
             model_acc.append(m["mae"])
         results.append(BacktestFoldResult(fold=f, metrics=m, by_horizon=by_h))
     if not results:
-        raise SectionSkipped("no fold could be refitted: " + "; ".join(warn[:3]))
+        raise SectionSkipped(
+            "the server could not fit the model again on a fold: " + "; ".join(warn[:3])
+        )
     summary: dict[str, float | None] = {}
     for key in ("rmse", "mae", "mape", "smape", "mase"):
         vals = [r.metrics.get(key) for r in results]
@@ -729,8 +738,8 @@ def backtest(c: ModelContext) -> BacktestView:
         summary=summary,
         benchmarks=benchmarks,
         warnings_plain=warn[:50],
-        caption_plain="The model refitted on past data and scored on the periods after, "
-        "compared with 'same as last period' and 'same as last season'.",
+        caption_plain="Shows the model fitted again on past data and scored on the next "
+        "periods. It compares the model with 'same as last period' and 'same as last season'.",
     )
 
 
@@ -742,7 +751,7 @@ def _tot(da: xr.DataArray, t: str) -> np.ndarray:
 
 def comparison(c: ModelContext) -> ComparisonView:
     if not c.compare:
-        raise SectionSkipped("pass compare_with to compare model versions")
+        raise SectionSkipped("give compare_with to compare model versions")
     models = [(c.ref, c.bundle), *c.compare]
     table: dict[str, dict[str, float | None]] = {}
     names: set[str] = set()
@@ -768,8 +777,8 @@ def comparison(c: ModelContext) -> ComparisonView:
         # on it, and an h = 1 Diebold-Mariano test rejects most of the time
         warn.append(
             f"No significance test: {', '.join(path[:3])} forecast the held-out periods from "
-            "one forecast origin, so their errors form a single path. Compare the models' "
-            "backtests (rolling-origin errors at a fixed horizon), e.g. with a "
+            "one forecast origin. Thus their errors make a single path. Compare the backtests of "
+            "the models (rolling-origin errors at a fixed horizon), for example with a "
             "compare.diebold_mariano workflow node."
         )
     elif mask is not None:
@@ -799,7 +808,7 @@ def comparison(c: ModelContext) -> ComparisonView:
             stat, pval = dm
             tests.append(_dm_result(ra, rb, stat, pval, n=n_pairs, lags=lags))
     else:
-        warn.append("No shared held-out period: Diebold-Mariano tests need a time holdout.")
+        warn.append("No shared held-out period. Diebold-Mariano tests need a time holdout.")
     return ComparisonView(
         models=[r for r, _b in models][:20],
         metrics=metrics[:32],
@@ -807,7 +816,7 @@ def comparison(c: ModelContext) -> ComparisonView:
         ranking=ranking,
         tests=tests[:50],
         warnings_plain=warn[:50],
-        caption_plain="Several model versions side by side on held-out data (lower errors "
+        caption_plain="Shows some model versions side by side on held-out data (lower errors "
         "are better).",
     )
 

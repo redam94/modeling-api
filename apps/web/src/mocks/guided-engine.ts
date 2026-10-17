@@ -114,7 +114,7 @@ export function suggestRoles(template: GuidedTemplate, columns: ColumnProfile[])
   const issues: Issue[] = template.questions
     .map((q, i) => [q, out[i]] as const)
     .filter(([q, s]) => q.required !== false && (q.kind === "column" || q.kind === "columns") && (!s?.answer || (Array.isArray(s.answer) && !s.answer.length)))
-    .map(([q]) => ({ code: "GUIDED_ANSWERS_INVALID", severity: "warning", pointer: `/answers/${q.id}`, message: "no column looks like an answer to this question; please pick one" }));
+    .map(([q]) => ({ code: "GUIDED_ANSWERS_INVALID", severity: "warning", pointer: `/answers/${q.id}`, message: "no column looks like an answer to this question. Select a column." }));
   return { template_id: template.id, questions: out, unassigned: columns.map((c) => c.name).filter((c) => !used.has(c)), issues };
 }
 
@@ -186,11 +186,11 @@ export function buildDraft(template: GuidedTemplate, body: GuidedAnswers, projec
       const cols = q.kind === "column" ? (typeof value === "string" ? [value] : null) : Array.isArray(value) && value.every((v) => typeof v === "string") ? (value) : null;
       if (!cols) throw new DraftError(`/answers/${q.id}`, q.kind === "column" ? "answer with one column name" : "answer with a list of column names");
       for (const c of cols) {
-        if (used.has(c)) throw new DraftError(`/answers/${q.id}`, `column '${c}' already answers '${used.get(c)}'`);
+        if (used.has(c)) throw new DraftError(`/answers/${q.id}`, `column '${c}' is already the answer to '${used.get(c)}'`);
         used.set(c, q.id);
         const p = profiles.get(c);
         if (p && q.accepts?.length && !q.accepts.includes(p.dtype)) {
-          issues.push({ code: "GUIDED_ANSWERS_INVALID", severity: "warning", pointer: `/answers/${q.id}`, message: `column '${c}' looks like ${p.dtype}, expected ${q.accepts.join(" or ")}` });
+          issues.push({ code: "GUIDED_ANSWERS_INVALID", severity: "warning", pointer: `/answers/${q.id}`, message: `column '${c}' looks like ${p.dtype}. The question accepts ${q.accepts.join(" or ")}.` });
         }
       }
       if (q.dim) {
@@ -213,11 +213,11 @@ export function buildDraft(template: GuidedTemplate, body: GuidedAnswers, projec
         values[q.id] = q.kind === "column" ? names[0] : names;
       }
     } else if (q.kind === "choice") {
-      if (!(q.choices ?? []).some((c) => c.value === value)) throw new DraftError(`/answers/${q.id}`, `choose one of ${(q.choices ?? []).map((c) => c.value).join(", ")}`);
+      if (!(q.choices ?? []).some((c) => c.value === value)) throw new DraftError(`/answers/${q.id}`, `select one of ${(q.choices ?? []).map((c) => c.value).join(", ")}`);
       values[q.id] = value;
     } else if (q.kind === "number") {
-      if (typeof value !== "number") throw new DraftError(`/answers/${q.id}`, "answer with a number");
-      if ((q.minimum != null && value < q.minimum) || (q.maximum != null && value > q.maximum)) throw new DraftError(`/answers/${q.id}`, `answer between ${q.minimum} and ${q.maximum}`);
+      if (typeof value !== "number") throw new DraftError(`/answers/${q.id}`, "give a number");
+      if ((q.minimum != null && value < q.minimum) || (q.maximum != null && value > q.maximum)) throw new DraftError(`/answers/${q.id}`, `give a number from ${q.minimum} to ${q.maximum}`);
       values[q.id] = value;
     } else values[q.id] = typeof value === "string" ? value : JSON.stringify(value);
   }
@@ -371,9 +371,9 @@ function mediaChecks(grid: ResponseGrid | null): Record<string, ScorecardItem> {
   const topStatus = grade(top, 0.6, 0.9);
   const roiStatus = grade(roiMax, 20, 100);
   return {
-    "plausibility.roi_absurd": { code: "ROI_ABSURD", check: "plausibility.roi_absurd", category: "plausibility", status: roiStatus, title: "Returns are believable", message_plain: roiStatus === "pass" ? `The best channel returns ${roiMax.toFixed(1)} per unit spent, which is believable.` : `A channel returns ${roiMax.toFixed(1)} per unit spent, which is unusually high.`, metric: "roi_max", value: roiMax, threshold: 20, docs_anchor: "check-plausibility-roi-absurd" },
-    "plausibility.share_outlier": { code: "SHARE_OUTLIER", check: "plausibility.share_outlier", category: "plausibility", status: topStatus, title: "No channel dominates", message_plain: topStatus === "pass" ? `No single channel explains most of your results (the largest explains ${pct(top)}).` : `One channel explains ${pct(top)} of your results, more than usual.`, metric: "max_channel_share", value: top, threshold: 0.6, docs_anchor: "check-plausibility-share-outlier" },
-    "plausibility.baseline_share": { code: "BASELINE_SHARE", check: "plausibility.baseline_share", category: "plausibility", status: bStatus, title: "Baseline is plausible", message_plain: `About ${pct(b)} of results would happen without any media, which is ${bStatus === "pass" ? "plausible" : "unusual"}.`, suggested_action: bStatus === "pass" ? null : "State a baseline share in business priors, or review the controls.", metric: "baseline_share", value: b, threshold: 0.4, docs_anchor: "check-plausibility-baseline-share" },
+    "plausibility.roi_absurd": { code: "ROI_ABSURD", check: "plausibility.roi_absurd", category: "plausibility", status: roiStatus, title: "Returns are not too high", message_plain: roiStatus === "pass" ? `The highest return of a channel (${roiMax.toFixed(1)} for each unit of spend) is in the usual range.` : `A channel returns ${roiMax.toFixed(1)} for each unit of spend. This is higher than usual.`, metric: "roi_max", value: roiMax, threshold: 20, docs_anchor: "check-plausibility-roi-absurd" },
+    "plausibility.share_outlier": { code: "SHARE_OUTLIER", check: "plausibility.share_outlier", category: "plausibility", status: topStatus, title: "No channel is too large", message_plain: topStatus === "pass" ? "No single channel explains most of the KPI." : `One channel explains ${pct(top)} of the KPI. This is more than usual.`, metric: "max_channel_share", value: top, threshold: 0.6, docs_anchor: "check-plausibility-share-outlier" },
+    "plausibility.baseline_share": { code: "BASELINE_SHARE", check: "plausibility.baseline_share", category: "plausibility", status: bStatus, title: "The baseline is in the usual range", message_plain: `The baseline (the KPI without media) is ${pct(b)}. This share is ${bStatus === "pass" ? "in the usual range" : "unusual"}.`, suggested_action: bStatus === "pass" ? null : "Give a baseline share in the business priors. Or do a check of the controls.", metric: "baseline_share", value: b, threshold: 0.4, docs_anchor: "check-plausibility-baseline-share" },
   };
 }
 
@@ -384,16 +384,16 @@ function mediaChecks(grid: ResponseGrid | null): Record<string, ScorecardItem> {
  */
 export function synthScorecard(template: GuidedTemplate, history: number, grid: ResponseGrid | null = null): Scorecard {
   const all: Record<string, NonNullable<Scorecard["items"]>[number]> = {
-    "convergence.rhat": { code: "RHAT_OK", check: "convergence.rhat", category: "convergence", status: "pass", title: "Chains agree", message_plain: "All four sampling chains arrived at the same answer.", metric: "r_hat_max", value: 1.004, threshold: 1.01, docs_anchor: "check-convergence-rhat" },
-    "convergence.ess": { code: "ESS_OK", check: "convergence.ess", category: "convergence", status: "pass", title: "Enough independent draws", message_plain: "There are enough independent draws for stable numbers.", metric: "ess_bulk_min", value: 812, threshold: 400, docs_anchor: "check-convergence-ess" },
-    "convergence.divergences": { code: "DIVERGENCES_OK", check: "convergence.divergences", category: "convergence", status: "pass", title: "Sampler stayed on track", message_plain: "The sampler never lost its way.", metric: "divergence_rate", value: 0, threshold: 0, docs_anchor: "check-convergence-divergences" },
-    "holdout.mape": { code: "HOLDOUT_MAPE", check: "holdout.mape", category: "holdout", status: "warn", title: "Holdout error", message_plain: "On the 8 weeks held back, forecasts were off by 12% on average.", suggested_action: "Check the last periods of data for gaps or one-off events, and add holidays or controls that explain them.", metric: "mape", value: 0.12, threshold: 0.1, docs_anchor: "check-holdout-mape" },
-    "holdout.coverage_90": { code: "HOLDOUT_COVERAGE", check: "holdout.coverage_90", category: "holdout", status: "pass", title: "Uncertainty is honest", message_plain: "86% of held-back weeks fell inside the 90% range - close to what it promises.", metric: "coverage_90", value: 0.86, threshold: 0.1, docs_anchor: "check-holdout-coverage-90" },
-    "plausibility.negative_roi": { code: "NEGATIVE_ROI_OK", check: "plausibility.negative_roi", category: "plausibility", status: "pass", title: "No channel loses money", message_plain: "No channel is likely to return less than it costs.", metric: "negative_roi_share", value: 0.01, threshold: 0.1, docs_anchor: "check-plausibility-negative-roi" },
+    "convergence.rhat": { code: "RHAT_OK", check: "convergence.rhat", category: "convergence", status: "pass", title: "Chains agree", message_plain: "All chains got the same answer (R-hat 1.004).", metric: "r_hat_max", value: 1.004, threshold: 1.01, docs_anchor: "check-convergence-rhat" },
+    "convergence.ess": { code: "ESS_OK", check: "convergence.ess", category: "convergence", status: "pass", title: "Enough independent draws", message_plain: "There are enough independent draws (812) for stable results.", metric: "ess_bulk_min", value: 812, threshold: 400, docs_anchor: "check-convergence-ess" },
+    "convergence.divergences": { code: "DIVERGENCES_OK", check: "convergence.divergences", category: "convergence", status: "pass", title: "The sampler had no problems", message_plain: "The sampler had no problems with the model.", metric: "divergence_rate", value: 0, threshold: 0, docs_anchor: "check-convergence-divergences" },
+    "holdout.mape": { code: "HOLDOUT_MAPE", check: "holdout.mape", category: "holdout", status: "warn", title: "Holdout error", message_plain: "The forecast error on the holdout periods was 12%.", suggested_action: "Look for gaps or one-time events in the last periods of data. Add holidays or controls that explain them.", metric: "mape", value: 0.12, threshold: 0.1, docs_anchor: "check-holdout-mape" },
+    "holdout.coverage_90": { code: "HOLDOUT_COVERAGE", check: "holdout.coverage_90", category: "holdout", status: "pass", title: "The uncertainty is correct", message_plain: "86% of the holdout values were in the 90% range. This is correct.", metric: "coverage_90", value: 0.86, threshold: 0.1, docs_anchor: "check-holdout-coverage-90" },
+    "plausibility.negative_roi": { code: "NEGATIVE_ROI_OK", check: "plausibility.negative_roi", category: "plausibility", status: "pass", title: "No channel loses money", message_plain: "No channel has a high probability of a negative return.", metric: "negative_roi_share", value: 0.01, threshold: 0.1, docs_anchor: "check-plausibility-negative-roi" },
     ...mediaChecks(grid),
-    "data.missing": { code: "MISSING_OK", check: "data.missing", category: "data", status: "pass", title: "Few missing values", message_plain: "No values are missing.", metric: "missing_fraction", value: 0, threshold: 0.05, docs_anchor: "check-data-missing" },
-    "data.history": { code: "DATA_HISTORY", check: "data.history", category: "data", status: history >= 104 ? "pass" : "warn", title: "Enough history", message_plain: history >= 104 ? `There are ${(history / 52).toFixed(1)} years of history, enough to learn seasonality.` : `Only ${(history / 52).toFixed(1)} years of history: seasonal effects are uncertain.`, suggested_action: history >= 104 ? null : "Add more history if you have it.", metric: "history_years", value: history / 52, threshold: 2, docs_anchor: "check-data-history" },
-    "data.spend_variation": { code: "SPEND_VARIATION_OK", check: "data.spend_variation", category: "data", status: "pass", title: "Spend varies enough", message_plain: "Every channel's spend moves enough to learn from.", metric: "spend_cv_min", value: 0.24, threshold: 0.1, docs_anchor: "check-data-spend-variation" },
+    "data.missing": { code: "MISSING_OK", check: "data.missing", category: "data", status: "pass", title: "Few missing values", message_plain: "Only 0% of the values are missing.", metric: "missing_fraction", value: 0, threshold: 0.05, docs_anchor: "check-data-missing" },
+    "data.history": { code: "DATA_HISTORY", check: "data.history", category: "data", status: history >= 104 ? "pass" : "warn", title: "Enough history", message_plain: history >= 104 ? `There are ${(history / 52).toFixed(1)} years of history. This is enough to find the seasonality.` : `There are only ${(history / 52).toFixed(1)} years of history. The seasonal effects are not certain.`, suggested_action: history >= 104 ? null : "If you have more history, add it.", metric: "history_years", value: history / 52, threshold: 2, docs_anchor: "check-data-history" },
+    "data.spend_variation": { code: "SPEND_VARIATION_OK", check: "data.spend_variation", category: "data", status: "pass", title: "Spend changes enough", message_plain: "The spend of each channel changes sufficiently to measure its effect.", metric: "spend_cv_min", value: 0.24, threshold: 0.1, docs_anchor: "check-data-spend-variation" },
   };
   const checks = template.scorecard_checks ?? [];
   const items = checks.map((c) => all[c]).filter((x): x is NonNullable<typeof x> => Boolean(x));

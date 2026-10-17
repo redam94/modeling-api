@@ -271,7 +271,7 @@ def test_items_not_made_for_the_goal_are_never_recommended() -> None:
     steps = [(AboutKind.STEP, k, v) for k, v in STEP_ABOUTS.items()]
     broadened = recommend(answers, _models(), fallback=steps, limit=5)
     assert broadened.items and all(r.kind is AboutKind.STEP for r in broadened.items)
-    assert all("Suits: check or prepare my data" in r.reasons_plain for r in broadened.items)
+    assert all("Suits: examine or prepare my data" in r.reasons_plain for r in broadened.items)
     assert not any("Not made for" in c for r in broadened.items for c in r.cautions_plain)
     # when a starting point fits, the fallback is not used
     fc = chooser_answers_from_query({"goal": ["forecast"]})

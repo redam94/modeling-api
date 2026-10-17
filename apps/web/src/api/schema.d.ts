@@ -3714,7 +3714,7 @@ export interface components {
          *       "arm": "then",
          *       "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
          *       "decided_at": "2026-10-15T09:30:00Z",
-         *       "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+         *       "explain_plain": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference.",
          *       "inputs": {
          *         "nodes.adf.p_value": 0.57,
          *         "nodes.kpss.reject": true,
@@ -4277,7 +4277,7 @@ export interface components {
          *           "name": "permutation_scores"
          *         }
          *       ],
-         *       "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *       "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
          *       "metric": "permutation_p_value",
          *       "severity": "blocking",
          *       "status": "pass",
@@ -4444,8 +4444,8 @@ export interface components {
          *           "id": "weekly_forecast",
          *           "kind": "template",
          *           "reasons_plain": [
-         *             "Made for forecasting",
-         *             "Works on one series"
+         *             "Suits: forecast the future",
+         *             "Suits: one number over time"
          *           ],
          *           "score": 0.92,
          *           "summary_plain": "Forecasts one weekly number a few months ahead, with a range of likely values.",
@@ -5744,7 +5744,7 @@ export interface components {
          *           {
          *             "check": "holdout.mape",
          *             "code": "SCORECARD_WARN",
-         *             "message_plain": "Holdout error: forecasts were off by 14%.",
+         *             "message_plain": "Holdout error: the forecast error was 14%.",
          *             "outcome": "needs_override"
          *           }
          *         ],
@@ -6184,10 +6184,10 @@ export interface components {
          *       "issues": [
          *         {
          *           "code": "MISSING_FUTURE_COVARIATE",
-         *           "message": "forecasting needs future values of ['spend'] at stage 'raw'",
+         *           "message": "the forecast needs future values of ['spend'] at stage 'raw'",
          *           "pointer": "/scenario",
          *           "severity": "error",
-         *           "suggested_action": "Provide them in a scenario dataset."
+         *           "suggested_action": "Supply them in a scenario dataset."
          *         }
          *       ],
          *       "valid": false
@@ -6336,7 +6336,7 @@ export interface components {
          *                 "name": "permutation_scores"
          *               }
          *             ],
-         *             "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *             "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
          *             "metric": "permutation_p_value",
          *             "severity": "blocking",
          *             "status": "pass",
@@ -7525,7 +7525,7 @@ export interface components {
          *         "holdout",
          *         "time_series"
          *       ],
-         *       "title": "Beats simple benchmarks",
+         *       "title": "Better than simple benchmarks",
          *       "warn": 0.05
          *     }
          */
@@ -8426,7 +8426,7 @@ export interface components {
          *           "role": "coord"
          *         },
          *         {
-         *           "description": "The actual; leave empty for the periods to forecast",
+         *           "description": "The actual (leave empty for the periods to forecast)",
          *           "dims": [
          *             "t"
          *           ],
@@ -8434,7 +8434,7 @@ export interface components {
          *           "role": "target"
          *         },
          *         {
-         *           "description": "Needed on every period, the periods to forecast included",
+         *           "description": "Necessary on each period, also on the periods to forecast",
          *           "dims": [
          *             "t"
          *           ],
@@ -9524,7 +9524,7 @@ export interface components {
          *             "role": "coord"
          *           },
          *           {
-         *             "description": "The actual; leave empty for the periods to forecast",
+         *             "description": "The actual (leave empty for the periods to forecast)",
          *             "dims": [
          *               "t"
          *             ],
@@ -9532,7 +9532,7 @@ export interface components {
          *             "role": "target"
          *           },
          *           {
-         *             "description": "Needed on every period, the periods to forecast included",
+         *             "description": "Necessary on each period, also on the periods to forecast",
          *             "dims": [
          *               "t"
          *             ],
@@ -9730,7 +9730,7 @@ export interface components {
          *               "name": "permutation_scores"
          *             }
          *           ],
-         *           "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *           "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
          *           "metric": "permutation_p_value",
          *           "severity": "blocking",
          *           "status": "pass",
@@ -9888,7 +9888,7 @@ export interface components {
          *         "items": [
          *           {
          *             "code": "RHAT_OK",
-         *             "message_plain": "All chains converged to the same answer.",
+         *             "message_plain": "All chains got the same answer.",
          *             "metric": "r_hat_max",
          *             "status": "pass",
          *             "threshold": 1.01,
@@ -9897,10 +9897,10 @@ export interface components {
          *           },
          *           {
          *             "code": "HOLDOUT_MAPE",
-         *             "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+         *             "message_plain": "The forecast error on the last 8 weeks was 14%.",
          *             "metric": "mape",
          *             "status": "warn",
-         *             "suggested_action": "Add holidays or check data for the last weeks.",
+         *             "suggested_action": "Add holidays, or look at the data for the last weeks.",
          *             "threshold": 0.1,
          *             "title": "Holdout error",
          *             "value": 0.14
@@ -12293,7 +12293,7 @@ export interface components {
          *         {
          *           "check": "holdout.mape",
          *           "code": "SCORECARD_WARN",
-         *           "message_plain": "Holdout error: forecasts were off by 14%.",
+         *           "message_plain": "Holdout error: the forecast error was 14%.",
          *           "outcome": "needs_override"
          *         }
          *       ],
@@ -13569,7 +13569,7 @@ export interface components {
          *       "items": [
          *         {
          *           "code": "RHAT_OK",
-         *           "message_plain": "All chains converged to the same answer.",
+         *           "message_plain": "All chains got the same answer.",
          *           "metric": "r_hat_max",
          *           "status": "pass",
          *           "threshold": 1.01,
@@ -13578,10 +13578,10 @@ export interface components {
          *         },
          *         {
          *           "code": "HOLDOUT_MAPE",
-         *           "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+         *           "message_plain": "The forecast error on the last 8 weeks was 14%.",
          *           "metric": "mape",
          *           "status": "warn",
-         *           "suggested_action": "Add holidays or check data for the last weeks.",
+         *           "suggested_action": "Add holidays, or look at the data for the last weeks.",
          *           "threshold": 0.1,
          *           "title": "Holdout error",
          *           "value": 0.14
@@ -13610,7 +13610,7 @@ export interface components {
          * ScorecardItem
          * @example {
          *       "code": "RHAT_OK",
-         *       "message_plain": "All chains converged to the same answer.",
+         *       "message_plain": "All chains got the same answer.",
          *       "metric": "r_hat_max",
          *       "status": "pass",
          *       "threshold": 1.01,
@@ -13622,10 +13622,10 @@ export interface components {
          *       "check": "holdout.mape",
          *       "code": "HOLDOUT_MAPE",
          *       "docs_anchor": "check-holdout-mape",
-         *       "message_plain": "Forecasts were off by 14% on the held-out periods.",
+         *       "message_plain": "The forecast error on the holdout periods was 14%.",
          *       "metric": "mape",
          *       "status": "warn",
-         *       "suggested_action": "Check the last weeks of data for gaps or one-off events.",
+         *       "suggested_action": "Look for gaps or one-time events in the last weeks of data.",
          *       "threshold": 0.1,
          *       "title": "Holdout error",
          *       "value": 0.14
@@ -16176,7 +16176,7 @@ export interface components {
          *           "arm": "then",
          *           "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
          *           "decided_at": "2026-10-15T09:30:00Z",
-         *           "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+         *           "explain_plain": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference.",
          *           "inputs": {
          *             "nodes.adf.p_value": 0.57,
          *             "nodes.kpss.reject": true,

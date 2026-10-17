@@ -84,7 +84,7 @@ week.
 We captured the canonical run on a laptop, with a weekly KPI that wanders. All four tests
 say "difference once". The search selects ARIMA(1, 1, 1). On 13 held-out weeks, the model is
 25% better than "same as last week". But the record also tells that the one-week advantage
-over naive *may be luck*. It also tells that two of twenty shuffled fits were equally good.
+over naive *is possibly luck*. It also tells that two of twenty shuffled fits were equally good.
 An approval needs this type of honesty
 ([the full output](whats-new-0.5.md#the-canonical-example-three-ways)).
 

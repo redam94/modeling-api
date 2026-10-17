@@ -270,7 +270,7 @@ def test_row_column_and_cell_caps(tmp_path: Path) -> None:
         read_table(long, "csv", IngestLimits(max_cell_chars=100))
     assert "500 characters (row 2)" in _refused(exc, ErrorCode.SCHEMA_INVALID)
     header = _write(tmp_path, "header", "a," + "h" * 300 + "\n1,2\n")
-    with pytest.raises(MapiError, match="column name is 300"):
+    with pytest.raises(MapiError, match="column name has 300"):
         read_table(header, "csv", IngestLimits())
 
 

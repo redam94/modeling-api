@@ -75,7 +75,7 @@ def check_lift_tests(
                     code=ErrorCode.SCHEMA_INVALID,
                     pointer=here + "/channel",
                     message=f"the data has no channel {test.channel!r}",
-                    suggested_action="Use the channel name exactly as it appears in the data.",
+                    suggested_action="Use the channel name exactly as it is in the data.",
                 )
             )
         if test.geo is not None and known_geo is not None and test.geo not in known_geo:

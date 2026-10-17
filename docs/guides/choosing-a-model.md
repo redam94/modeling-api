@@ -20,11 +20,11 @@ There are eight questions. All are optional. The goal has the most weight:
 |---|---|
 | What do you want to do? | measure what marketing adds · plan a budget · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model |
 | What does your data look like? | one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time |
-| How often is it recorded? | daily · weekly · monthly or less often · not over time |
+| How often do you record the data? | daily · weekly · monthly or less often · not over time |
 | How much history? | under a year · one to three years · more |
 | Other columns that could explain it? | yes (prices, promotions, weather, spend) · no |
-| Do you need a range? | essential · nice to have · one number is enough |
-| How comfortable with statistics? | new to it · the basics · expert |
+| Do you need a range? | essential · it would be good · one number is enough |
+| How much do you know about statistics? | new to it · the basics · expert |
 | How quickly do you need results? | seconds · minutes · can wait |
 
 === "Terminal"

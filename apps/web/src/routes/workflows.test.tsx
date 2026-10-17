@@ -106,7 +106,7 @@ describe("Workflows", () => {
     expect(steps).not.toHaveTextContent(/\b(then|else) (arm|path)\b/);
     await user.click(within(steps).getByRole("button", { name: /Does it wander\? \(ADF\)/ }));
     const drawer = await screen.findByTestId("node-drawer");
-    expect(within(drawer).getByTestId("test-verdict")).toHaveTextContent("The series wanders: consider differencing it.");
+    expect(within(drawer).getByTestId("test-verdict")).toHaveTextContent("The series does not return to a stable level. Use the differences of the series.");
     expect(within(drawer).getByText("unit root")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("tab", { name: /Decisions/ }));
@@ -116,7 +116,7 @@ describe("Workflows", () => {
     expect(decision).toHaveTextContent("The condition was met. Ran: Change from the previous period.");
     // what decided it: the tests the condition read, in their own plain verdicts
     const evidence = within(decision).getByRole("list", { name: "What decided it" });
-    expect(evidence).toHaveTextContent("The series wanders: consider differencing it.");
+    expect(evidence).toHaveTextContent("The series does not return to a stable level. Use the differences of the series.");
     // the expression and the raw values stay, under "For experts"
     const experts = within(decision).getByText("For experts: the condition").closest("details")!;
     expect(experts).toHaveTextContent("nodes.kpss.reject");

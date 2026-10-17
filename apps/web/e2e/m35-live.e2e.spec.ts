@@ -165,12 +165,12 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
     const steps = page.getByRole("table", { name: "Steps" });
     await steps.getByRole("button", { name: /Does it wander\? \(ADF\)/ }).click();
     const drawer = page.getByTestId("node-drawer");
-    await expect(drawer.getByTestId("test-verdict")).toContainText("The series wanders");
+    await expect(drawer.getByTestId("test-verdict")).toContainText("The series does not return to a stable level");
     await expect(drawer.getByText("Sandbox run")).toBeVisible();
     await shot(page, "adf-drawer");
     await page.keyboard.press("Escape");
     await steps.getByRole("button", { name: /Is it stable\? \(KPSS\)/ }).click();
-    await expect(page.getByTestId("node-drawer").getByTestId("test-verdict")).toContainText("The series wanders");
+    await expect(page.getByTestId("node-drawer").getByTestId("test-verdict")).toContainText("The series does not return to a stable level");
     await page.keyboard.press("Escape");
     await steps.getByRole("button", { name: /AR and MA orders/ }).click();
     await expect(page.getByTestId("node-drawer")).toContainText(/best_p|AR order|p =/);

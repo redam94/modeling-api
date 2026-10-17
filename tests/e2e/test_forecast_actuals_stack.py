@@ -465,7 +465,7 @@ def test_a_model_that_cannot_use_actuals_refuses_them(stack: Stack, refusing: st
     issue = problem.issues[0]
     assert "cannot update a forecast with actuals" in issue.message
     assert "3 periods (1961-01-01 to 1961-03-01)" in issue.message
-    assert issue.suggested_action is not None and "Refit" in issue.suggested_action
+    assert issue.suggested_action is not None and "Fit the model again" in issue.suggested_action
     # dates alone (no actuals) are still forecast from the end of the fit
     dates = _forecast(stack, [None] * FUTURE, alias=refusing)
     assert dates.conditioning is not None and not dates.conditioning.conditioned

@@ -40,6 +40,7 @@ from mapi_spec.api import (
     MembershipCreate,
     MembershipUpdate,
     Model,
+    ModelInputSchema,
     ModelVersion,
     Page,
     PlotListItem,
@@ -786,6 +787,13 @@ class AsyncModels(_Resource, AsyncModelInsightMixin):
 
     async def artifact(self, model_id: str, version: int, name: str) -> ArtifactLink:
         return await self._c.send(calls.get_model_artifact(model_id, version, name))
+
+    async def inputs(
+        self, model_id: str, version: int, *, periods: int | None = None
+    ) -> ModelInputSchema:
+        """What a score call of the version can send (``GET …/inputs``): the input contract
+        and the input table with ``periods`` periods after the fit."""
+        return await self._c.send(calls.get_model_inputs(model_id, version, periods))
 
     async def download(
         self,

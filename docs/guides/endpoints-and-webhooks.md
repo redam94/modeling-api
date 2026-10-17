@@ -78,7 +78,7 @@ scorecard check that caused it:
   "status": 409,
   "errors": [
     {"code": "OVERRIDE_REQUIRED", "severity": "warning",
-     "message": "Holdout error: Forecasts were off by 14%.",
+     "message": "Holdout error: The forecast error on the holdout periods was 14%.",
      "context": {"gate_code": "SCORECARD_WARN", "check": "holdout.mape"}}
   ]
 }

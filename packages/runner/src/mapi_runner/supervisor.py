@@ -270,7 +270,7 @@ class Supervisor:
             return self._finish_failure(
                 _Failure(
                     FailureClass.SANDBOX,
-                    "worker isolation is required by the executor but unavailable: "
+                    "the executor needs worker isolation, but it is not available: "
                     + str(self.isolation.reason),
                 )
             )
@@ -294,7 +294,7 @@ class Supervisor:
                 _Failure(FailureClass.TIMEOUT, "the run deadline passed before the run started")
             )
         if self._signals:
-            self._emit_error(_Failure(FailureClass.TIMEOUT, "terminated before the run started"))
+            self._emit_error(_Failure(FailureClass.TIMEOUT, "the run stopped before it started"))
             return RunnerExit.TERMINATED
         self._prepare_scratch()
         self._spawn_worker(rs)
@@ -562,7 +562,8 @@ class Supervisor:
         if used > rs.limits.scratch_bytes and self.failure is None:
             self.failure = _Failure(
                 FailureClass.RESOURCE_EXHAUSTED,
-                f"scratch usage {used} bytes exceeds the {rs.limits.scratch_bytes}-byte budget",
+                f"the scratch space uses {used} bytes. This is more than the "
+                f"{rs.limits.scratch_bytes}-byte budget",
             )
             self._kill_worker()
 
@@ -651,7 +652,7 @@ class Supervisor:
             self._emit(
                 WarningPayload(
                     code="CHECKPOINT_UPLOAD_FAILED",
-                    message="a checkpoint could not be uploaded; the run continues",
+                    message="the server could not upload a checkpoint. The run continues",
                     untrusted_text=exc.untrusted_text,
                 )
             )
@@ -688,13 +689,14 @@ class Supervisor:
             return self._finish_failure(
                 _Failure(
                     FailureClass.RESOURCE_EXHAUSTED,
-                    "the worker was killed (SIGKILL), most likely out of memory",
+                    "the system stopped the worker (SIGKILL). Possibly the worker did not have "
+                    "sufficient memory",
                 )
             )
         return self._finish_failure(
             _Failure(
                 FailureClass.USER,
-                f"the worker exited with status {rc} without reporting a result",
+                f"the worker stopped with status {rc} and did not send a result",
             )
         )
 
@@ -716,7 +718,7 @@ class Supervisor:
         detail = err.message if not err.untrusted_text else f"{err.message}\n{err.untrusted_text}"
         return _Failure(
             fc,
-            f"the run failed with {err.code.value} (reported by the worker)",
+            f"the run failed with {err.code.value} (as reported by the worker)",
             untrusted_text=detail[:65536],
         )
 
@@ -729,7 +731,7 @@ class Supervisor:
             return self._write_manifest("partial", objects)
         if why is Termination.SIGTERM:
             self._emit_error(
-                _Failure(FailureClass.TIMEOUT, "the run was terminated before any checkpoint")
+                _Failure(FailureClass.TIMEOUT, "the run stopped before the first checkpoint")
             )
             return RunnerExit.TERMINATED
         return self._finish_failure(
@@ -763,7 +765,8 @@ class Supervisor:
                 return self._finish_failure(
                     _Failure(
                         FailureClass.SANDBOX,
-                        f"outputs total {total} bytes; the run may write {limits.max_output_bytes}",
+                        f"the outputs have a total of {total} bytes. The run can write a "
+                        f"maximum of {limits.max_output_bytes}",
                     )
                 )
             for f in files:

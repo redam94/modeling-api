@@ -113,7 +113,7 @@ def write_sections(
                 raise
             ctx.warning(
                 "EXPLORE_SECTION_FAILED",
-                f"the {section} view could not be computed",
+                f"the server cannot calculate the {section} view",
                 f"{type(exc).__name__}: {exc}"[:8000],
             )
             refs.append(
@@ -121,7 +121,7 @@ def write_sections(
                     section=section,
                     view=name,
                     status="error",
-                    message_plain="This view could not be computed for this data or model.",
+                    message_plain="The server cannot calculate this view for this data or model.",
                 )
             )
     index = ExplorerIndex.model_validate({"target": target, "ref": ref[:512], "sections": refs})

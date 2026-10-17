@@ -68,7 +68,7 @@ def test_table_to_dense_dataset_with_inferred_frequency() -> None:
     [
         (lambda df: df.drop(columns="Rev"), "not in the upload"),
         (lambda df: pd.concat([df, df.iloc[:1]]), "repeat a"),
-        (lambda df: df.assign(Date=["not a date"] * len(df)), "cannot be read as a time"),
+        (lambda df: df.assign(Date=["not a date"] * len(df)), "as a time dim"),
         (lambda df: df.assign(Market=[None] * len(df)), "empty labels"),
     ],
 )

@@ -168,7 +168,7 @@ class StepContext:
             return self.side_tables[name]
         except KeyError:
             raise MapiError(
-                f"step {self.step_id!r} needs side table {name!r}, which was not provided",
+                f"step {self.step_id!r} needs side table {name!r}, but the run did not get it",
                 code=ErrorCode.SIDE_TABLE_COVERAGE,
             ) from None
 
@@ -213,8 +213,9 @@ class StepContext:
                 if policy == "error":
                     preview = ", ".join(str(py_scalar(v)) for v in unseen[:10])
                     raise CoordPlanError(
-                        f"step {self.step_id!r}: {unseen.size} level(s) of {d!r} were not seen "
-                        "at fit and its unseen-level policy is 'error'",
+                        f"step {self.step_id!r}: the fit did not see {unseen.size} level(s) of "
+                        f"{d!r}, "
+                        "and its unseen-level policy is 'error'",
                         code=ErrorCode.UNSEEN_LEVELS,
                         untrusted_text=preview,
                     )

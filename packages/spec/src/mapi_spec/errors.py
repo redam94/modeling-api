@@ -139,7 +139,7 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.BINDING_INVALID: ErrorInfo(422, "The data binding is invalid", "spec"),
     ErrorCode.SPLIT_INVALID: ErrorInfo(422, "The train/holdout split is invalid", "spec"),
     ErrorCode.LEAKAGE_RISK: ErrorInfo(422, "A stateful step runs before the split", "spec"),
-    ErrorCode.DIM_POLICY_LOOSENED: ErrorInfo(422, "A dim policy may only be tightened", "spec"),
+    ErrorCode.DIM_POLICY_LOOSENED: ErrorInfo(422, "A dim policy can only become stricter", "spec"),
     ErrorCode.SCHEMA_DYNAMIC: ErrorInfo(422, "Schema needs a dry-run to resolve", "spec"),
     ErrorCode.SIDE_TABLE_COVERAGE: ErrorInfo(422, "A side table is not available", "spec"),
     ErrorCode.PLOT_UNSAFE: ErrorInfo(422, "The plot spec violates the plot safety policy", "spec"),
@@ -183,12 +183,12 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.SCENARIO_OUT_OF_RANGE: ErrorInfo(
         422, "The scenario is outside the precomputed grid", "capability"
     ),
-    ErrorCode.PROMOTION_BLOCKED: ErrorInfo(409, "Promotion blocked by the scorecard", "api"),
+    ErrorCode.PROMOTION_BLOCKED: ErrorInfo(409, "The scorecard blocks the promotion", "api"),
     ErrorCode.OVERRIDE_REQUIRED: ErrorInfo(
         409, "Promotion needs an administrator override with a reason", "api"
     ),
     ErrorCode.WEBHOOK_URL_BLOCKED: ErrorInfo(
-        422, "The webhook URL is not allowed by the egress policy", "api"
+        422, "The egress policy does not allow the webhook URL", "api"
     ),
     ErrorCode.WEBHOOK_SIGNATURE_INVALID: ErrorInfo(401, "Webhook signature invalid", "api"),
     ErrorCode.EMBED_NOT_ALLOWED: ErrorInfo(
@@ -199,7 +199,7 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.TERMS_NOT_ACCEPTED: ErrorInfo(422, "The terms of service were not accepted", "api"),
     ErrorCode.EMAIL_NOT_VERIFIED: ErrorInfo(403, "The e-mail address is not verified", "api"),
     ErrorCode.IDENTITY_VERIFICATION_REQUIRED: ErrorInfo(
-        403, "Identity verification is required", "api"
+        403, "Identity verification is necessary", "api"
     ),
     # M3.5 (additive)
     ErrorCode.ABOUT_INCOMPLETE: ErrorInfo(422, "A catalog item has no complete About card", "spec"),
@@ -223,9 +223,7 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.SELF_APPROVAL_FORBIDDEN: ErrorInfo(
         403, "Approver and submitter must be different people", "api"
     ),
-    ErrorCode.NOT_VALIDATED: ErrorInfo(
-        409, "The governance policy requires a validated model", "api"
-    ),
+    ErrorCode.NOT_VALIDATED: ErrorInfo(409, "The governance policy needs a validated model", "api"),
     ErrorCode.EXPLORE_INVALID: ErrorInfo(422, "The explorer request is not valid", "spec"),
     ErrorCode.OPTIMIZE_INFEASIBLE: ErrorInfo(
         422, "The budget constraints cannot all be met", "capability"
@@ -426,7 +424,7 @@ class ValidationFailed(SpecError):
         n = len(errors)
         summary = f"validation failed with {n} error{'s' if n != 1 else ''}"
         if errors:
-            summary += f"; first at {errors[0].pointer or '/'}: {errors[0].message}"
+            summary += f". The first error is at {errors[0].pointer or '/'}: {errors[0].message}"
         super().__init__(
             detail or summary[:2000],
             code=code,

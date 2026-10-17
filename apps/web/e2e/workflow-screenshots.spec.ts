@@ -87,7 +87,7 @@ test("workflow screenshots", async ({ page }) => {
 
   await page.getByRole("tab", { name: "Steps" }).click();
   await page.getByRole("table", { name: "Steps" }).getByRole("button", { name: /Does it wander\? \(ADF\)/ }).click();
-  await expect(page.getByTestId("node-drawer").getByTestId("test-verdict")).toContainText("The series wanders");
+  await expect(page.getByTestId("node-drawer").getByTestId("test-verdict")).toContainText("The series does not return to a stable level");
   await shot(page, "workflows-node-drawer");
   await page.keyboard.press("Escape");
 
@@ -114,7 +114,7 @@ test("workflow screenshots", async ({ page }) => {
   const editor = page.getByTestId("policy-editor");
   await expect(editor.getByText("Required checks").first()).toBeVisible();
   await editor.getByLabel("Add a check").selectOption("null.noise_regressors");
-  const card = editor.getByRole("article", { name: "Ignores fake drivers" });
+  const card = editor.getByRole("article", { name: "No effect from false drivers" });
   await expect(card).toBeVisible();
   await shot(page, "governance-policy", 900, true);
   await card.evaluate((el) => el.scrollIntoView({ block: "center" }));

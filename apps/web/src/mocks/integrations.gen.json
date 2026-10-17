@@ -320,7 +320,7 @@
       "month"
      ],
      "freq": null,
-     "description": "The actual; leave empty for the periods to forecast"
+     "description": "The actual (leave empty for the periods to forecast)"
     },
     {
      "name": "price",
@@ -329,7 +329,7 @@
       "month"
      ],
      "freq": null,
-     "description": "Needed on every period, the periods to forecast included"
+     "description": "Necessary on each period, also on the periods to forecast"
     }
    ],
    "rows": [

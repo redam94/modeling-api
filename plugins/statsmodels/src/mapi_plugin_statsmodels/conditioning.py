@@ -102,11 +102,11 @@ def extend_cell(
             first = int(np.flatnonzero(partial)[0])
             lacking = [v for v, seen in zip(fit.variables, obs[first], strict=True) if not seen]
             raise _invalid(
-                f"the series {fit.variables} are modelled jointly, so an actual after the "
-                f"fitted history needs a value for every one of them: {lacking} have none "
+                f"the model uses the series {fit.variables} together. Thus an actual after the "
+                f"fitted history needs a value for each of them. {lacking} have no value "
                 f"on {_label(labels[first])} ({fit.label})",
-                "Send the values of every series for the periods with actuals, or leave "
-                "the period empty for all of them to forecast it.",
+                "Send the values of all the series for the periods with actuals. Or, to "
+                "forecast a period, leave it empty for all the series.",
             )
     after_rows = np.flatnonzero(after)
     seen_after = np.flatnonzero(obs_any[after_rows])
@@ -129,7 +129,7 @@ def extend_cell(
         raise _invalid(
             f"{fit.label}: the target is empty on {_label(labels[new_rows][gaps][0])}, between "
             "the fitted history and the last actual, and the model needs a complete history",
-            "Fill the empty periods, or send only the actuals up to the first empty period.",
+            "Fill the empty periods, or send only the actuals before the first empty period.",
         )
 
     x_ext = None
@@ -179,13 +179,13 @@ def _require(
     first = _label(labels[int(np.flatnonzero(missing.any(axis=1))[0])])
     if future:
         raise MapiError(
-            f"{where}: the forecast needs future values of the drivers {lacking} (first "
-            f"missing on {first})",
+            f"{where}: the forecast needs future values of the drivers {lacking} (the first "
+            f"missing value is on {first})",
             code=ErrorCode.MISSING_FUTURE_COVARIATE,
             pointer="/data",
         )
     raise _invalid(
-        f"{where}: the drivers {lacking} are needed on every period up to the last actual "
-        f"(first missing on {first})",
-        "Send the drivers for the periods with actuals and for any empty period between them.",
+        f"{where}: the drivers {lacking} are necessary on each period up to the last actual "
+        f"(the first missing value is on {first})",
+        "Send the drivers for the periods with actuals and for each empty period between them.",
     )
