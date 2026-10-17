@@ -1,20 +1,23 @@
 # Conformance corpus
 
-The corpus is how the platform defines "supported": a set of small, realistic modelling
-problems (ports of pymc-challenges and of the plan's examples) that must keep working, end to
-end, on every change. Each fixture goes through exactly what a user's model goes through:
+The corpus is how the platform defines "supported". It is a set of small, realistic
+modelling problems. These problems are ports of pymc-challenges and of the examples of the
+plan. They must continue to work, from start to end, after each change. Each fixture goes
+through exactly the same process as the model of a user:
 
-1. **validate** – the spec is checked statically against the step, model and plot catalogs,
-   as the API does before accepting a run;
-2. **fit** – a `fit` run on the in-process executor, honouring `fit.mode`
-   (`evaluate_then_refit` included);
-3. **score** – every request in `score_requests.yaml` as a `score` run; requests that must
-   fail are checked for their typed error code (`HORIZON_EXCEEDS_FIT`, `UNSEEN_LEVELS`, ...);
-4. **evaluate** – the holdout scored through the score path; the metrics must equal the
-   ones computed at fit time;
-5. **contract** – the full `check_model` contract kit;
-6. **plots** – the spec's `outputs.plots` rendered from real outputs;
-7. **expectations** – the fixture's own checks (recovered effects, terminal state, ...).
+1. **validate**: The runner checks the spec statically against the step, model and plot
+   catalogs. The API does the same before it accepts a run.
+2. **fit**: The runner does a `fit` run on the in-process executor. It obeys `fit.mode`
+   (also `evaluate_then_refit`).
+3. **score**: The runner does each request in `score_requests.yaml` as a `score` run. For
+   requests that must fail, it checks the typed error code (for example
+   `HORIZON_EXCEEDS_FIT` or `UNSEEN_LEVELS`).
+4. **evaluate**: The runner scores the holdout through the score path. The metrics must be
+   equal to the metrics that the fit calculated.
+5. **contract**: The runner does the full `check_model` contract kit.
+6. **plots**: The runner renders the `outputs.plots` of the spec from real outputs.
+7. **expectations**: The runner does the own checks of the fixture (for example, recovered
+   effects or the terminal state).
 
 ## Run it
 
@@ -29,7 +32,7 @@ make conformance-full                                  # every fixture at size f
 python -m mapi_conformance list --deferred             # plus the plan fixtures not ported yet
 ```
 
-The runner prints one row per fixture and exits non-zero if any step failed:
+The runner shows one row for each fixture. If a step failed, the exit status is not zero:
 
 ```text
 fixture           model                           validate  fit  score   evaluate  contract  plots   expectations  ...  result
@@ -42,64 +45,66 @@ e33               mmm.bayesian@1.0.0              ok        ok   ok 5/5  ok     
 mmm_frequentist   mmm.frequentist@1.0.0           ok        ok   ok 4/4  ok        ok 18/18  ok 1/1  ok                 PASS
 ```
 
-`--size tiny` (the default, used by `pytest -m conformance`) keeps data small and MCMC
-short; `--size full` uses the spec's own fit settings and larger data.
+`--size tiny` is the default, and `pytest -m conformance` uses it. It keeps the data small
+and the MCMC short. `--size full` uses the own fit settings of the spec and larger data.
 
-### Through a running stack
+### Through a stack that runs
 
-The default runner skips the control plane. `--stack` drives the same fixtures through the
-API of a running stack (`make dev`), as a user does: spec → **ingest** → fit → score.
+The default runner does not use the control plane. `--stack` sends the same fixtures through
+the API of a stack that runs (`make dev`), as a user does: spec → **ingest** → fit → score.
 
-1. The data, side tables and score payloads are uploaded as dataset versions (signed PUT,
-   then a sandboxed ingest run).
-2. The spec, pointed at the uploads, is validated, created and fitted through the
-   dispatcher, the runner and FINALIZING.
-3. Every score request runs against the registered model. An expected typed error may come
-   from the failed run or from the API refusing the request up front.
-4. The holdout metrics and stored plots are checked on the model version.
-5. The bundle is downloaded through signed URLs with every hash verified, and goes through
-   the fixture's `check_fit`.
+1. The runner uploads the data, the side tables and the score payloads as dataset versions.
+   It uses a signed PUT, and then a sandboxed ingest run.
+2. The spec points at the uploads. The platform validates it, creates it and fits it through
+   the dispatcher, the runner and FINALIZING.
+3. Each score request runs against the registered model. An expected typed error can come
+   from the failed run. It can also come from the API, if the API refuses the request at the
+   start.
+4. The runner checks the holdout metrics and the stored plots on the model version.
+5. The runner downloads the bundle through signed URLs and verifies each hash. Then the
+   bundle goes through the `check_fit` of the fixture.
 
 ```bash
 python -m mapi_conformance run --stack http://127.0.0.1:8000 --fixture e33 --fixture xgb_store_demand
 uv run pytest -m e2e tests/e2e/test_corpus_stack.py   # E33, xgboost and sklearn (`make e2e`)
 ```
 
-The contract kit does not run in this mode; it needs the plugin in-process.
+The contract kit does not run in this mode. It needs the plugin in-process.
 
 ## The fixtures
 
 | Fixture | Model | Exercises |
 |---|---|---|
-| `e02` | `tabular.hierarchical_glm` | long layout, shuffled county labels, hyperprior new counties, LOO, CRN counterfactual |
-| `c08` | `ts.hsgp_trend` | sentinel codes, `max_extension` from anticipated coords, `HORIZON_EXCEEDS_FIT`, contiguity |
-| `e24` | `ts.gaussian_hmm` | padded + mask, terminal state, forecast and filter, relabelling, invalid LOO |
-| `xgb_store_demand` | `tabular.regressor` | pooled new stores, quantile aggregation refused, future-required covariates |
-| `sklearn_store_demand` | `sklearn.tabular_conformal` | the same panel with plain scikit-learn (histogram boosting, skops): split-conformal intervals, interval aggregation refused, pooled new stores |
-| `e33` | `mmm.bayesian` | FX (`supplied`) and holiday (`pinned`) side tables, split after `resample`, mmm-framework owning scaling and carry-over (history prepended at score time), new market from the hyperprior, weekly EUR plan via `inputs_stage`, CRN counterfactual (intervention and baseline-vs-scenario), derived quantities in EUR |
-| `mmm_frequentist` | `mmm.frequentist` | mmm-framework's ridge estimator with bootstrap draws; a model that `owns` scaling, carry-over and units; a scoring window equals the same weeks of the full series |
-| `e84_lite` | `choice.multinomial_logit` | a ragged household × trip panel with a text target, `last_per_group` split, products off the shelf, new households from the fitted spread, a price-rise counterfactual, next trips, categorical holdout metrics (hit rate against the naive guess, log score, Brier) |
-| `guided_mmm` | `mmm.bayesian` | the `geo_mmm` Guided template's draft with business priors (ROI, contribution share, baseline share) translated at fit time and a lift test in the likelihood, both true to the simulation; ROI, baseline share and lift checked against the truth; a forecast and the channel-off preset |
+| `e02` | `tabular.hierarchical_glm` | Long layout, shuffled county labels, new counties from the hyperprior, LOO, CRN counterfactual |
+| `c08` | `ts.hsgp_trend` | Sentinel codes, `max_extension` from anticipated coords, `HORIZON_EXCEEDS_FIT`, contiguity |
+| `e24` | `ts.gaussian_hmm` | Padded data with a mask, terminal state, forecast and filter, relabelling, LOO that is not valid |
+| `xgb_store_demand` | `tabular.regressor` | Pooled new stores, refused quantile aggregation, covariates that must have future values |
+| `sklearn_store_demand` | `sklearn.tabular_conformal` | The same panel with plain scikit-learn (histogram boosting, skops): split-conformal intervals, refused interval aggregation, pooled new stores |
+| `e33` | `mmm.bayesian` | FX (`supplied`) and holiday (`pinned`) side tables. Split after `resample`. mmm-framework owns scaling and carry-over (history added before the data at score time). New market from the hyperprior. Weekly EUR plan through `inputs_stage`. CRN counterfactual (intervention and baseline-vs-scenario). Derived quantities in EUR. |
+| `mmm_frequentist` | `mmm.frequentist` | The ridge estimator of mmm-framework with bootstrap draws. A model that `owns` scaling, carry-over and units. A score window is equal to the same weeks of the full series. |
+| `e84_lite` | `choice.multinomial_logit` | A ragged household × trip panel with a text target. `last_per_group` split. Products off the shelf. New households from the fitted spread. A price-rise counterfactual. Next trips. Categorical holdout metrics (hit rate against the naive guess, log score, Brier). |
+| `guided_mmm` | `mmm.bayesian` | The draft of the `geo_mmm` Guided template with business priors (ROI, contribution share, baseline share). The fit translates the priors, and a lift test is in the likelihood. Both agree with the simulation. ROI, baseline share and lift are checked against the truth. A forecast and the channel-off preset. |
 
 ### Deferred
 
-The plan's corpus also lists fixtures that need plugins or run kinds that do not exist yet.
-They are listed in `mapi_conformance.fixtures.DEFERRED` with the reason, and a test keeps the
-plan's list, the fixtures and the deferrals in step:
+The corpus of the plan also lists fixtures that need plugins or run kinds that do not exist
+yet. `mapi_conformance.fixtures.DEFERRED` lists them with the reason. A test makes sure that
+the list of the plan, the fixtures and the deferrals agree:
 
 | Plan fixture | Waits for |
 |---|---|
-| E13 state-space | a state-space plugin with the `filter` mode (vetted plugins, M4) |
-| E82-slim GP Bayesian optimisation | the `recommend` mode and Campaign runs (M6) |
-| E45 | a plugin for its model (vetted plugins, M4) |
+| E13 state-space | A state-space plugin with the `filter` mode (vetted plugins, M4) |
+| E82-slim GP Bayesian optimisation | The `recommend` mode and Campaign runs (M6) |
+| E45 | A plugin for its model (vetted plugins, M4) |
 
-## Porting time
+## Time to port
 
-The M0 exit criteria ask for the porting time of every fixture (target: under one day each,
-model plugin plus fixture). It measures human effort, so it cannot be derived from the code or
-from commit timestamps; record it here when a fixture is ported or re-ported.
+The M0 exit criteria ask for the time to port each fixture. The target is less than one day
+for each fixture, for the model plugin and the fixture. This time is a measure of human
+effort. Thus you cannot get it from the code or from commit timestamps. Record it here when
+you port a fixture, or port it again.
 
-| Fixture | Porting time | Recorded |
+| Fixture | Time to port | Recorded |
 |---|---|---|
 | `e02` | not measured yet | – |
 | `c08` | not measured yet | – |
@@ -111,10 +116,11 @@ from commit timestamps; record it here when a fixture is ported or re-ported.
 
 ## Add a fixture
 
-Create a package `conformance/src/mapi_conformance/fixtures/<id>/` and list `<id>` in
-`fixtures/__init__.py`.
+1. Create a package `conformance/src/mapi_conformance/fixtures/<id>/`.
+2. Put `<id>` in the list in `fixtures/__init__.py`.
+3. Add the files below to the package.
 
-**`data.py`** generates the data:
+**`data.py`** makes the data:
 
 ```python
 def generate(seed: int = 0, size: str = "tiny") -> tuple[xr.Dataset, dict[str, xr.Dataset]]:
@@ -127,10 +133,10 @@ def payload_new_store(data, seed, size) -> xr.Dataset:   # optional payload buil
     ...
 ```
 
-**`spec.yaml`** is an ordinary ModelSpec with the fit settings of a full run.
+**`spec.yaml`** is a usual ModelSpec with the fit settings of a full run.
 
-**`score_requests.yaml`** lists the requests to score. `apiVersion`, `kind` and `model` are
-filled in for you:
+**`score_requests.yaml`** lists the requests to score. The runner fills in `apiVersion`,
+`kind` and `model` for you:
 
 ```yaml
 - name: forecast_with_new_store
@@ -145,8 +151,8 @@ filled in for you:
   expect_error: CAPABILITY_UNSUPPORTED
 ```
 
-**`expectations.py`** (optional) adds fixture-specific checks; raise `AssertionError` to
-fail:
+**`expectations.py`** (optional) adds checks for the fixture. To make a check fail, raise
+`AssertionError`:
 
 ```python
 TINY_FIT = {"tune": 150, "draws": 100, "chains": 2}       # fit overrides at size tiny
@@ -158,10 +164,10 @@ def check_score(name, tree, bundle, data): ...
 def check_evaluate(tree, bundle, data): ...
 ```
 
-A hook that declares a keyword `ctx` parameter also receives a `FixtureContext`: the seed,
-size, registry, side tables and `results`, the trees of the score requests that succeeded
-before this one. Use it to compare requests, as E33 does when it checks that a weekly EUR
-plan forecasts exactly what the raw daily path forecasts:
+A hook that declares a keyword `ctx` parameter also receives a `FixtureContext`. The context
+holds the seed, the size, the registry, the side tables and `results`. `results` holds the
+trees of the score requests that succeeded before this one. Use it to compare requests. E33
+does this. It checks that a weekly EUR plan forecasts exactly the same as the raw daily path:
 
 ```python
 def check_score(name, tree, bundle, data, *, ctx):
@@ -169,8 +175,9 @@ def check_score(name, tree, bundle, data, *, ctx):
         ...
 ```
 
-A side table with `score_policy: supplied` must be named in each score request that
-replays its step (`request.side_tables`); the runner supplies the data under that name.
+A side table can have `score_policy: supplied`. Then each score request that replays its
+step must name the side table (`request.side_tables`). The runner supplies the data with
+that name.
 
-From Python, `mapi_conformance.run_fixture("e24")` returns a `FixtureReport` and
-`run_corpus()` a `CorpusReport` with `.table()` and `.to_json()`.
+From Python, `mapi_conformance.run_fixture("e24")` returns a `FixtureReport`.
+`run_corpus()` returns a `CorpusReport` with `.table()` and `.to_json()`.
