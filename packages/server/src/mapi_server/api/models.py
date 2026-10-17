@@ -31,12 +31,14 @@ from mapi_spec.api import (
 )
 from mapi_spec.audit import AuditAction
 from mapi_spec.capabilities import Capabilities, Diagnostic
-from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.endpoints import EndpointScoreCall, ModelInputSchema, input_table
+from mapi_spec.errors import ErrorCode, MapiError, Severity, ValidationFailed
 from mapi_spec.executor import RunKind
 from mapi_spec.plots import PlotSpec
 from mapi_spec.refs import ModelVersionRef
 from mapi_spec.run import RunState
 from mapi_spec.tenancy import ResourceKind
+from mapi_spec.xrjson import MAX_XRJSON_BYTES
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,6 +63,11 @@ from mapi_server.services.bundles import (
     artifact_link,
     verified_bundle_object,
     verified_manifest,
+)
+from mapi_server.services.endpoints import (
+    endpoint_schema_issues,
+    live_capabilities_snapshot,
+    store_inline_inputs,
 )
 from mapi_server.services.quotas import charge_egress
 from mapi_server.services.runs import load_run
@@ -307,6 +314,50 @@ async def score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
     return ScoreCallResult(done=done, run=view, outputs=outputs, summary=summary)
 
 
+@router.get(
+    "/{model_id}/versions/{version}/inputs",
+    response_model=ModelInputSchema,
+    operation_id="get_model_inputs",
+    summary="What a score call can send: the input contract and the input table",
+)
+async def get_model_inputs(
+    ctx: Ctx, session: Session, model_id: ModelId, version: VersionNo, periods: int = 8
+) -> ModelInputSchema:
+    """The input contract of the version (the one an endpoint serving it would freeze): the
+    input dims and variables under the spec's canonical names, which are needed on future
+    periods, the fitted coordinates, and the input table with ``periods`` periods after the
+    fit (1-200) for a model that forecasts."""
+    model, mv = await _mv(ctx, session, model_id, version)
+    snapshot = await live_capabilities_snapshot(session, ctx.catalogs, mv)
+    return ModelInputSchema(
+        model_ref=str(ModelVersionRef(model.project_id, model.name, f"v{mv.version}")),
+        snapshot=snapshot,
+        input_table=input_table(snapshot, periods=max(1, min(periods, 200))),
+        max_inline_bytes=MAX_XRJSON_BYTES,
+    )
+
+
+def _inline_call(body: ScoreCall) -> EndpointScoreCall:
+    """The call as an endpoint call with its inline payloads, for the envelope checks and the
+    storage endpoints use (:func:`endpoint_schema_issues`, :func:`store_inline_inputs`)."""
+    req = body.request.model_dump(mode="json", by_alias=True, exclude_none=True)
+    for key in ("apiVersion", "kind", "model"):
+        req.pop(key, None)
+    assert body.inline is not None
+    for name in ("data", "scenario"):
+        payload = getattr(body.inline, name)
+        if payload is not None:
+            req[name] = payload.model_dump(mode="json", by_alias=True)
+    try:
+        return EndpointScoreCall.model_validate(req)
+    except ValidationError as exc:
+        raise MapiError(
+            f"the call is not a valid score request: {exc}"[:2000],
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/body/inline",
+        ) from None
+
+
 @router.post(
     "/{model_id}/versions/{version}:score",
     response_model=ScoreCallResult,
@@ -323,7 +374,9 @@ async def score_model(
     idempotency_key: IdempotencyKeyHeader = None,
 ) -> JSONResponse:
     """Score with replayed preprocessing. ``Prefer: wait=N`` (≤ 60) waits up to N s:
-    200 with output links if the run finished, else 202 with the run."""
+    200 with output links if the run finished, else 202 with the run. ``inline`` data is
+    checked against the version's input contract (``GET …/inputs``) and stored as a run
+    input, as an endpoint's inline payloads are."""
     raw = await request.json()
     async with ctx.data_session() as session:
         model, mv = await _mv(ctx, session, model_id, version)
@@ -347,6 +400,18 @@ async def score_model(
         if replay is not None:
             run_id = replay.resource_id
         else:
+            inputs: dict[str, Any] = {}
+            summary = None
+            if body.inline is not None and (body.inline.data or body.inline.scenario):
+                call = _inline_call(body)
+                snapshot = await live_capabilities_snapshot(session, ctx.catalogs, mv)
+                issues, summary = endpoint_schema_issues(call, snapshot)
+                errors = [i for i in issues if i.severity is Severity.ERROR]
+                if errors:
+                    raise ValidationFailed(
+                        [i.model_copy(update={"pointer": f"/inline{i.pointer}"}) for i in errors]
+                    )
+                inputs = await store_inline_inputs(ctx, ctx.scope, call)
             run = await submit_model_run(
                 session,
                 ctx,
@@ -356,6 +421,8 @@ async def score_model(
                 resource_class=body.resource_class,
                 timeout=body.timeout,
                 labels=dict(body.labels),
+                extra_inputs=inputs,
+                inline_summary=summary,
             )
             run_id = run.id
             await idem.complete("run", run.id, 202)

@@ -283,7 +283,8 @@ in v0.2. Run states and the transitions between them are listed in
 | `GET /v1/models/{model_id}/versions` | List versions | — | `Page[ModelVersion]` | 200 | `NOT_FOUND` |
 | `GET /v1/models/{model_id}/versions/{version}` | Signed bundle manifest, diagnostics, scorecard, lineage, metrics | — | `ModelVersion` | 200 | `NOT_FOUND` |
 | `GET /v1/models/{model_id}/versions/{version}/artifacts/{name}` | Signed URL for a bundle object or a `ui/…` view; `name` may contain `/` | — | `ArtifactLink` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
-| `POST /v1/models/{model_id}/versions/{version}:score` | Score with replayed preprocessing. Accepts `Prefer: wait=N` (200 if done, else 202) and `Idempotency-Key`. | `ScoreCall` | `ScoreCallResult` | 200 | `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `ACTUALS_NOT_SUPPORTED`, `ACTUALS_INVALID` |
+| `POST /v1/models/{model_id}/versions/{version}:score` | Score with replayed preprocessing. Accepts `Prefer: wait=N` (200 if done, else 202) and `Idempotency-Key`. `inline` carries typed-in `data`/`scenario` (XrJSON, up to 5 MB each) checked against the version's inputs. | `ScoreCall` | `ScoreCallResult` | 200 | `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `ACTUALS_NOT_SUPPORTED`, `ACTUALS_INVALID`, `PAYLOAD_TOO_LARGE` |
+| `GET /v1/models/{model_id}/versions/{version}/inputs` | What a score call can send: the input contract (canonical names, future-required variables, fitted coordinates) and the input table with `?periods=N` (1-200) periods after the fit | — | `ModelInputSchema` | 200 | `NOT_FOUND`, `CAPABILITY_UNSUPPORTED` |
 
 Artifact links are minted only after two checks pass:
 
@@ -800,7 +801,7 @@ OpenAPI document and in `export_schemas()` as `api-<Name>.json`.
 | Datasets | `DatasetCreate`, `Dataset`, `UploadCreate`, `UploadSession`, `IngestMapping`, `DimMapping`, `VarMapping`, `DatasetVersionCreate`, `DatasetVersion`, `DatasetVersionStatus` |
 | Specs | `SpecCreate`, `SpecDoc`, `SpecRevisionCreate`, `SpecRevision`, `ValidateRequest`, `ValidateResponse`, `StageSchema` |
 | Runs | `RunCreate`, `RunRetry`, `Run`, `RunCost`, `ProgressSnapshot`, `RunEventView`, `LogLine`, `SseEventName` |
-| Models | `Model`, `ModelVersion`, `Scorecard`, `ScorecardItem`, `Lineage`, `ScoreCall`, `ScoreCallResult`, `BundleManifest` (`mapi_spec.run`) |
+| Models | `Model`, `ModelVersion`, `Scorecard`, `ScorecardItem`, `Lineage`, `ScoreCall`, `ScoreInline`, `ScoreCallResult`, `ModelInputSchema`, `BundleManifest` (`mapi_spec.run`) |
 | Plots and catalog | `PlotListItem`, `PlotSpec` (`mapi_spec`), `PlotValidateResponse`, `CatalogResponse`, `ModelCatalogEntry`, `StepCatalogEntry`, `PlotCatalogEntry` (`mapi_spec`) |
 | Identity (v0.3) | `Me`, `MeTenant`, `MeProject`, `Tenant`, `TenantCreate`, `TenantUpdate`, `TenantAdminUpdate`, `ProjectCreate`, `ProjectUpdate`, `Membership`, `MembershipCreate`, `MembershipUpdate`, `Principal` (`mapi_spec.tenancy`) |
 | Tokens (v0.3) | `TokenCreate`, `TokenCreated`, `ApiToken` (`mapi_spec.tokens`) |

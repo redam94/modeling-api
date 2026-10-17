@@ -239,6 +239,20 @@ async def live_snapshot(
     return snapshot.model_copy(update={"conditions_on_actuals": conditions})
 
 
+async def live_capabilities_snapshot(
+    session: AsyncSession, catalogs: CatalogService | None, mv: m.ModelVersion
+) -> EndpointSchemaSnapshot:
+    """The input contract of ``mv`` (:func:`snapshot_for`) with ``conditions_on_actuals`` as
+    the plugin build that scores it now has it: what a score call of the version can send
+    (``GET /v1/models/{id}/versions/{v}/inputs``, inline ``ScoreCall`` data)."""
+    snapshot = snapshot_for(mv)
+    meta = ScoreMetadata.model_validate(mv.score_meta)
+    live = await live_capabilities(session, catalogs, meta)
+    if live is None:
+        return snapshot
+    return snapshot.model_copy(update={"conditions_on_actuals": _conditions(live, meta)})
+
+
 async def evaluate_gate(
     session: AsyncSession,
     mv: m.ModelVersion,
