@@ -239,9 +239,10 @@ class DataSummary(StrictModel):
     """Summary of a dataset (or score payload): variable names and coordinate summaries.
 
     ``observed`` (forecasts conditioned on actuals, :mod:`mapi_spec.actuals`) maps a target
-    variable to, per ordered dim, the summary of the labels at which it holds at least one
-    value. Only summarisers that read the values set it (the sandbox, and the control plane
-    for inline JSON payloads, where it is a null check); empty means unknown.
+    variable - and a driver the forecast needs (``future_required``) - to, per ordered dim,
+    the summary of the labels at which it holds at least one value. Only summarisers that
+    read the values set it (the sandbox, and the control plane for inline JSON payloads,
+    where it is a null check); a variable left out is unknown.
     """
 
     vars: list[str] = Field(default_factory=list)

@@ -517,3 +517,96 @@ def test_an_unused_horizon_is_never_silent() -> None:
     assert not any(
         i.pointer == "/horizon/periods" for i in validate_score_request(_req(8), meta, exact)
     )
+
+
+# ----------------------------------------------------------- review fixes (static rules)
+
+
+def _summary(
+    payload: tuple[str, str, int], observed: dict[str, tuple[str, str, int, bool]]
+) -> DataSummary:
+    """A payload summary with ``observed`` per variable: (start, end, size, contiguous)."""
+    doc: dict[str, Any] = {"vars": ["y", *(v for v in observed if v != "y")],
+                           "coords": {"t": _months(*payload)}, "observed": {}}  # fmt: skip
+    for var, (start, end, size, contiguous) in observed.items():
+        doc["observed"][var] = {"t": _months(start, end, size, contiguous=contiguous)}
+    return DataSummary.model_validate(doc)
+
+
+def test_empty_targets_inside_the_fit_are_not_gaps() -> None:
+    """A revision of 1960-06 plus actuals for 1961-01..03, with 1960-07..12 left empty: the
+    empty fitted months keep their fitted values, so nothing is refused."""
+    meta = _meta()
+    sent = _inputs(("1960-06-01", "1961-03-01", 10), ("1960-06-01", "1961-03-01", 4),
+                   contiguous=False)  # fmt: skip
+    assert _codes(validate_score_request(_req(), meta, sent)) == []
+    # two separate revisions inside the fit, nothing after it
+    revisions = _inputs(("1960-03-01", "1960-09-01", 7), ("1960-03-01", "1960-09-01", 2),
+                        contiguous=False)  # fmt: skip
+    assert _codes(validate_score_request(_req(), meta, revisions)) == []
+    # gaps after the fit are still refused
+    after = _inputs(("1961-01-01", "1961-04-01", 4), ("1961-01-01", "1961-04-01", 3),
+                    contiguous=False)  # fmt: skip
+    assert _codes(validate_score_request(_req(), meta, after)) == ["ACTUALS_INVALID"]
+
+
+def test_listed_future_rows_without_actuals_need_drivers_only_on_those_rows() -> None:
+    meta = _meta(exog=True)
+    rows = _summary(("1961-01-01", "1961-02-01", 2),
+                    {"y": ("1961-01-01", "1961-01-01", 0, True),
+                     "x": ("1961-01-01", "1961-02-01", 2, True)})  # fmt: skip
+    issues = validate_score_request(_req(4), meta, rows)
+    assert _codes(issues) == []  # exactly the two listed rows are forecast
+    assert any(i.pointer == "/horizon/periods" for i in issues)  # and horizon.periods is unused
+
+
+def test_drivers_must_hold_values_on_actual_rows_and_supplied_future_rows() -> None:
+    meta = _meta(exog=True)
+    # y on 1961-01..02, x only on 1961-02..03: the first actual has no driver
+    lacking = _summary(("1961-01-01", "1961-03-01", 3),
+                       {"y": ("1961-01-01", "1961-02-01", 2, True),
+                        "x": ("1961-02-01", "1961-03-01", 2, True)})  # fmt: skip
+    errs = [i for i in validate_score_request(_req(), meta, lacking)
+            if i.severity is Severity.ERROR]  # fmt: skip
+    assert [i.code for i in errs] == [ErrorCode.ACTUALS_INVALID]
+    assert "['x']" in errs[0].message
+    # future rows (target empty) with an empty driver under `supplied`
+    future = _summary(("1961-01-01", "1961-02-01", 2),
+                      {"y": ("1961-01-01", "1961-01-01", 0, True),
+                       "x": ("1961-02-01", "1961-02-01", 1, True)})  # fmt: skip
+    codes = _codes(validate_score_request(_req(2, future_covariates="supplied"), meta, future))
+    assert codes == ["MISSING_FUTURE_COVARIATE"]
+    filled = validate_score_request(_req(2, future_covariates="carry_last"), meta, future)
+    assert _codes(filled) == []  # the sandbox fills them
+    # a driver with no value at all on the rows after the last actual
+    after = _summary(("1961-01-01", "1961-03-01", 3),
+                     {"y": ("1961-01-01", "1961-01-01", 1, True),
+                      "x": ("1961-01-01", "1961-01-01", 1, True)})  # fmt: skip
+    codes = _codes(validate_score_request(_req(2, future_covariates="supplied"), meta, after))
+    assert codes == ["MISSING_FUTURE_COVARIATE"]
+
+
+def test_predict_mode_says_target_values_after_the_fit_are_not_used() -> None:
+    meta = _meta()
+    sent = _inputs(("1961-01-01", "1961-06-01", 6), ("1961-01-01", "1961-03-01", 3))
+    predict = _req(mode="predict", horizon=None)
+    issues = validate_score_request(predict, meta, sent)
+    assert _codes(issues) == []
+    warn = [i for i in issues if i.severity is Severity.WARNING and "not used" in i.message]
+    assert warn and "mode: forecast" in (warn[0].suggested_action or "")
+    inside = _inputs(("1960-01-01", "1960-06-01", 6), ("1960-01-01", "1960-06-01", 6))
+    assert not any("not used" in i.message for i in validate_score_request(predict, meta, inside))
+
+
+def test_a_model_fitted_in_a_transformed_space_refuses_actuals_and_warns() -> None:
+    meta = _meta().model_copy(update={"data_space": "transformed"})
+    sent = _inputs(("1961-01-01", "1961-03-01", 3), ("1961-01-01", "1961-03-01", 3))
+    issues = validate_score_request(_req(), meta, sent)
+    err = next(i for i in issues if i.code is ErrorCode.ACTUALS_NOT_SUPPORTED)
+    assert "transform" in err.message and err.suggested_action is not None
+    plain = validate_score_request(_req(), meta, None)
+    assert _codes(plain) == []
+    assert any("transformed" in i.message for i in plain if i.severity is Severity.WARNING)
+    # old metadata (no field) still parses
+    doc = _meta().model_dump(mode="json")
+    assert ScoreMetadata.model_validate(doc).data_space is None

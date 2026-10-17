@@ -30,7 +30,13 @@ The rules, per series (a cell of the target's other dims) along the horizon dim:
   the drivers of the actual rows.
 * **Refusal.** A model without the capability refuses a forecast whose payload carries an
   actual with ``ACTUALS_NOT_SUPPORTED`` (HTTP 422) and a suggested action (refit with the
-  new data, or leave the target empty to forecast from the end of the fit).
+  new data, or leave the target empty to forecast from the end of the fit). So does a model
+  fitted on data a workflow transform changed without a preprocessing-step equivalent
+  (``transform.log``, ``transform.box_cox``, ``transform.difference``; the spec label
+  :data:`DATA_SPACE_LABEL` says so): its actuals and forecasts would be in that transformed
+  space, which the caller's values are not. Every score of such a model carries a warning.
+* **Other modes.** ``predict`` never reads targets as actuals; target values after the
+  fitted history are reported as not used (a warning) instead of being ignored silently.
 
 The score result says what the forecast was conditioned on: a :class:`ForecastConditioning`
 in the result tree's root attribute :data:`CONDITIONING_ATTR` (JSON), in ``result.json`` and
@@ -40,30 +46,52 @@ false when no actuals were sent.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Final, Literal
 
 from pydantic import Field
 
 from mapi_spec._dto import ResponseModel, dto_examples
 from mapi_spec._types import Name, Scalar
-from mapi_spec.errors import ActualsNotSupported, ErrorCode, Issue
+from mapi_spec.errors import ActualsNotSupported, ErrorCode, Issue, Severity
 
 __all__ = [
     "CONDITIONING_ATTR",
+    "DATA_SPACE_LABEL",
     "MAX_CONDITIONING_SERIES",
+    "TRANSFORMED_SPACE",
+    "DataSpace",
     "ForecastConditioning",
     "HorizonSource",
     "SeriesConditioning",
     "actuals_not_supported",
     "actuals_not_supported_issue",
     "build_conditioning",
+    "data_space_of",
     "format_label",
+    "transformed_space_issue",
 ]
 
 CONDITIONING_ATTR: Final = "conditioning"
 """Root attribute of a forecast's result ``DataTree``: the :class:`ForecastConditioning` as
 JSON (the runner copies it into ``result.json`` and ``summary.json``)."""
+
+DATA_SPACE_LABEL: Final = "mapi.io/data-space"
+"""Spec label (``metadata.labels``) a workflow sets on a model fitted on data a transform
+changed without a preprocessing-step equivalent; its value is :data:`TRANSFORMED_SPACE`."""
+
+TRANSFORMED_SPACE: Final = "transformed"
+
+DataSpace = Literal["transformed"]
+
+
+def data_space_of(labels: Mapping[str, str] | None) -> DataSpace | None:
+    """``"transformed"`` when a spec's labels say its data space is a non-replayable transform
+    (:data:`DATA_SPACE_LABEL`), else ``None``."""
+    if labels and labels.get(DATA_SPACE_LABEL) == TRANSFORMED_SPACE:
+        return "transformed"
+    return None
+
 
 MAX_CONDITIONING_SERIES: Final = 1000
 """Series listed in :attr:`ForecastConditioning.series` at most (``truncated`` beyond)."""
@@ -286,29 +314,62 @@ def actuals_not_supported_issue(
     last: Scalar | None = None,
     fit_end: Scalar | None = None,
     pointer: str = "/data",
+    data_space: DataSpace | None = None,
 ) -> Issue:
-    """The ``ACTUALS_NOT_SUPPORTED`` issue (the static check and the sandbox share it)."""
+    """The ``ACTUALS_NOT_SUPPORTED`` issue (the static check and the sandbox share it).
+    ``data_space="transformed"``: the model was fitted in a transformed space
+    (:data:`DATA_SPACE_LABEL`)."""
     where = []
     if n is not None:
         where.append(_plural(n, "period"))
     if first is not None:
         where.append(f"({_span(first, last)})")
     end = f" ({format_label(fit_end)})" if fit_end is not None else ""
-    message = (
-        f"model {model!r} cannot update a forecast with actuals: the payload has values of "
-        f"the target {var!r}"
-        + (f" for {' '.join(where)}" if where else "")
-        + f". It would forecast from the end of its fitted history{end} without them."
+    sent = f"the payload has values of the target {var!r}" + (
+        f" for {' '.join(where)}" if where else ""
     )
+    if data_space == "transformed":
+        message = (
+            f"model {model!r} cannot update a forecast with actuals: it was fitted on data "
+            "changed by a workflow transform without a preprocessing-step equivalent (log, "
+            "Box-Cox or differencing), so it would read the actuals as transformed values, "
+            f"and {sent}."
+        )
+        action = (
+            "Refit with the transform inside the model or its pipeline (an ARIMA order d, "
+            "or a step such as core.log1p) so actuals are transformed and forecasts come back "
+            f"in the data's units, or leave the target empty (null) to forecast from the end "
+            f"of the fitted history{end}."
+        )
+    else:
+        message = (
+            f"model {model!r} cannot update a forecast with actuals: {sent}. It would "
+            f"forecast from the end of its fitted history{end} without them."
+        )
+        action = (
+            "Refit the model with the new data to forecast from it, or leave the target "
+            f"empty (null) to forecast from the end of the fitted history{end}."
+        )
     return Issue(
         code=ErrorCode.ACTUALS_NOT_SUPPORTED,
         pointer=pointer,
         message=message[:2000],
-        suggested_action=(
-            "Refit the model with the new data to forecast from it, or leave the target "
-            f"empty (null) to forecast from the end of the fitted history{end}."
-        ),
+        suggested_action=action,
         context={"target": var, "actuals": n, "fit_end": format_label(fit_end)},
+    )
+
+
+def transformed_space_issue(pointer: str = "/model") -> Issue:
+    """The warning every score of a model fitted in a transformed space carries."""
+    return Issue(
+        code=ErrorCode.CAPABILITY_UNSUPPORTED,
+        severity=Severity.WARNING,
+        pointer=pointer,
+        message="the model was fitted on data changed by a workflow transform without a "
+        "preprocessing-step equivalent (log, Box-Cox or differencing): its predictions are "
+        "in that transformed space, not in the data's units",
+        suggested_action="Transform the predictions back yourself, or refit with the transform "
+        "inside the model or its pipeline (an ARIMA order d, or a step such as core.log1p).",
     )
 
 
@@ -321,9 +382,17 @@ def actuals_not_supported(
     last: Scalar | None = None,
     fit_end: Scalar | None = None,
     pointer: str = "/data",
+    data_space: DataSpace | None = None,
 ) -> ActualsNotSupported:
     """:func:`actuals_not_supported_issue` as an exception (HTTP 422)."""
     issue = actuals_not_supported_issue(
-        model, var=var, n=n, first=first, last=last, fit_end=fit_end, pointer=pointer
+        model,
+        var=var,
+        n=n,
+        first=first,
+        last=last,
+        fit_end=fit_end,
+        pointer=pointer,
+        data_space=data_space,
     )
     return ActualsNotSupported(issue.message, pointer=issue.pointer, issues=[issue])
