@@ -21,6 +21,8 @@ import { freqUnit, gridColumns, gridToInline, inputVars, plural, seedRows, summa
 import {
   buildScoreRequest,
   defaultScoreForm,
+  asRepresentation,
+  REPRESENTATIONS,
   SUMMARY_OPTIONS,
   type FormProblem,
   type FutureCovariates,
@@ -33,6 +35,9 @@ import {
 import { ValuesGrid } from "./values-grid";
 
 const ALL_MODES: ScoreMode[] = ["predict", "forecast", "counterfactual", "simulate", "filter", "evaluate"];
+
+/** Problems in fields under Advanced (it opens to show them). */
+const ADVANCED_FIELDS = /^(inputsStage|scenario|sideTables\.|summary|draws|vars|seed)/;
 
 /** Modes that read a dataset only (the server refuses inline data for them). */
 const DATASET_ONLY: ScoreMode[] = ["filter", "evaluate"];
@@ -141,6 +146,22 @@ export function ScoreFormView({
     if (!modes.includes(form.mode) && modes[0]) setForm((f) => ({ ...f, mode: modes.includes("forecast") ? "forecast" : (modes[0] as ScoreMode) }));
   }, [modes, form.mode]);
 
+  // Summaries and draws follow how the model represents its output (quantile models have no
+  // mean; only draw-based models return draws).
+  const representation = asRepresentation(inputs?.snapshot.representation ?? mv.capabilities?.representation);
+  useEffect(() => {
+    if (!representation) return;
+    const rules = REPRESENTATIONS[representation];
+    setForm((f) => ({
+      ...f,
+      output: {
+        ...f.output,
+        summary: f.output.summary.every((x) => rules.options.includes(x)) && f.output.summary.length ? f.output.summary : rules.defaults,
+        draws: rules.draws ? f.output.draws : "0",
+      },
+    }));
+  }, [representation]);
+
   // The forecast extends the model's own horizon dim.
   const hdim = inputs?.snapshot.horizon_dim ?? null;
   useEffect(() => {
@@ -205,7 +226,7 @@ export function ScoreFormView({
   })();
 
   const submit = async () => {
-    const built = buildScoreRequest(form, mv.ref);
+    const built = buildScoreRequest(form, mv.ref, representation);
     const extra: FormProblem[] = [];
     let inline: ScoreCall["inline"] = null;
     if (form.source === "typed" && canType) {
@@ -396,7 +417,7 @@ export function ScoreFormView({
         <InterventionRows form={form} set={set} problems={problems} vars={vars.filter((v) => v.role !== "target").map((v) => v.name)} levelHint={levelHint} />
       </Step>
 
-      <details className="rounded-lg border p-3">
+      <details className="rounded-lg border p-3" open={problems.some((p) => ADVANCED_FIELDS.test(p.field)) || undefined}>
         <summary className="cursor-pointer text-[13px] font-medium">Advanced</summary>
         <div className="mt-4 grid gap-5">
           <Field label="Inputs enter at stage" htmlFor="inputs-stage" error={problemFor(problems, "inputsStage")} hint="Send data in the units of this stage. Typed values use the raw stage.">
@@ -433,7 +454,7 @@ export function ScoreFormView({
               )}
             </fieldset>
           ) : null}
-          <OutputSettings form={form} setOut={setOut} set={set} problems={problems} />
+          <OutputSettings form={form} setOut={setOut} set={set} problems={problems} representation={representation} />
         </div>
       </details>
 
@@ -538,12 +559,17 @@ function OutputSettings({
   set,
   setOut,
   problems,
+  representation,
 }: {
   form: ScoreForm;
   set: <K extends keyof ScoreForm>(k: K, v: ScoreForm[K]) => void;
   setOut: <K extends keyof ScoreForm["output"]>(k: K, v: ScoreForm["output"][K]) => void;
   problems: FormProblem[];
+  representation: ReturnType<typeof asRepresentation>;
 }) {
+  const rules = representation ? REPRESENTATIONS[representation] : null;
+  const options = rules?.options ?? SUMMARY_OPTIONS;
+  const summaryProblem = problemFor(problems, "summary");
   return (
     <fieldset className="grid gap-4 rounded-lg border p-4">
       <legend className="px-1 text-[13px] font-medium">Output</legend>
@@ -571,8 +597,9 @@ function OutputSettings({
       </div>
       <div className="grid gap-1.5">
         <span className="text-[13px] font-medium">Summaries</span>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Summaries">
-          {SUMMARY_OPTIONS.map((s) => {
+        {representation ? <p className="text-xs text-muted-foreground">This model returns {representation}, so these are the summaries it can give.</p> : null}
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Summaries" aria-invalid={summaryProblem ? true : undefined}>
+          {options.map((s) => {
             const on = form.output.summary.includes(s);
             return (
               <button
@@ -587,10 +614,20 @@ function OutputSettings({
             );
           })}
         </div>
+        {summaryProblem ? (
+          <p role="alert" className="text-xs font-medium text-destructive">
+            {summaryProblem}
+          </p>
+        ) : null}
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Draws" htmlFor="out-draws" error={problemFor(problems, "draws")} hint="0 returns summaries only.">
-          <Input id="out-draws" inputMode="numeric" value={form.output.draws} onChange={(e) => setOut("draws", e.target.value)} />
+        <Field
+          label="Draws"
+          htmlFor="out-draws"
+          error={problemFor(problems, "draws")}
+          hint={rules && !rules.draws ? `Not available: this model returns ${representation}.` : "0 returns summaries only."}
+        >
+          <Input id="out-draws" inputMode="numeric" value={form.output.draws} disabled={Boolean(rules && !rules.draws)} onChange={(e) => setOut("draws", e.target.value)} />
         </Field>
         <Field label="Variables (optional)" htmlFor="out-vars" error={problemFor(problems, "vars")} hint="Comma-separated; empty means all outputs.">
           <Input id="out-vars" value={form.output.vars} onChange={(e) => setOut("vars", e.target.value)} className="font-mono" placeholder="y_hat" />
