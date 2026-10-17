@@ -56,8 +56,12 @@ kernel jointly (``BayesianMMM.add_experiment_calibration``):
   spend_delta``;
 * a holdout that removes (nearly) all of the channel's spend in the window
   (``-spend_delta >= 95%`` of it): a ``CONTRIBUTION`` measurement of ``-kpi_delta``;
-* a partial cut of at most 25%: an ``MROAS`` measurement of the same size (the symmetric
-  finite difference); a larger partial cut cannot be expressed and is skipped with a note.
+* a partial cut: skipped with a note. It measures the slope of the response curve *below*
+  today's spend, ``(f(S) - f((1 - c) S)) / (c S)``, while mmm-framework's ``MROAS``
+  estimand is the slope *above* it, ``(f((1 + l) S) - f(S)) / (l S)`` with ``l > 0`` only
+  (and off-panel calibration has no marginal estimand). Under diminishing returns the two
+  differ - by ``e^(c lam)`` for ``1 - exp(-lam x)`` at a 20% cut - so mapping one onto the
+  other would push the fitted curve away from what the experiment measured.
 
 ``geo`` restricts the measurement to that geo (``holdout_regions``). Tests after the data
 or cut by the fit window (a holdout fit ending inside the test) are skipped and listed.
@@ -113,7 +117,6 @@ SIGMA_MAX: Final = 4.0
 _ZERO_LOW_RATIO: Final = 20.0
 _BISECT_ITERS: Final = 60
 _HOLDOUT_SHARE: Final = 0.95
-_MAX_PARTIAL_CUT: Final = 0.25
 _INTERCEPT_SD_MIN: Final = 1e-3
 _INTERCEPT_SD_MAX: Final = 50.0
 
@@ -779,18 +782,11 @@ def lift_measurements(
                     estimand=ExperimentEstimand.CONTRIBUTION,
                     **common,
                 )
-            elif cut <= _MAX_PARTIAL_CUT * window_spend:
-                m = ExperimentMeasurement(
-                    value=float(test.kpi_delta / kf) / (delta / scales.spend_factor),
-                    se=float(sigma / (cut / scales.spend_factor)),
-                    estimand=ExperimentEstimand.MROAS,
-                    spend_lift_pct=100.0 * cut / window_spend,
-                    **common,
-                )
             else:
                 skipped[tid] = (
-                    f"a partial cut of {cut / window_spend:.0%} of the window's spend cannot be "
-                    "expressed (use a full holdout or a change of at most 25%)"
+                    f"a partial cut of {cut / window_spend:.0%} of the window's spend measures "
+                    "the return below today's spend, and the model can only be calibrated "
+                    "on the return above it (an increase in spend) or on a full holdout"
                 )
                 continue
         out.append(m)

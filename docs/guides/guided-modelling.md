@@ -145,8 +145,7 @@ jointly:
 |---|---|
 | extra spend (`spend_delta > 0`) | marginal ROAS: the lift from scaling the window's spend by `100 x spend_delta / window spend` percent, per extra unit of spend, against `kpi_delta / spend_delta` |
 | a holdout removing (nearly) all of the channel's spend in the window | the channel's contribution over the window, against `-kpi_delta` |
-| a partial cut of at most 25% | marginal ROAS of the same size (the symmetric finite difference) |
-| a larger partial cut | skipped (it cannot be expressed), with the reason |
+| a partial cut (less than a full holdout) | skipped, with the reason: it measures the return *below* today's spend, and mmm-framework can only be calibrated on the return above it (an increase) or on a full holdout; under diminishing returns the two differ, so mapping one onto the other would bias the curve |
 
 `geo` restricts the measurement to that geo's observations; `se` (or the half-width of
 `ci` over the normal quantile) is the measurement's standard error. Carry-over after the

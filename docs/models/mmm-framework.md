@@ -177,8 +177,7 @@ jointly.
 |---|---|
 | extra spend (`spend_delta > 0`) | `MROAS`, `spend_lift_pct = 100 x spend_delta / window spend`, value `kpi_delta / spend_delta` |
 | a holdout removing (nearly) all the channel's spend (`-spend_delta >= 95%` of it) | `CONTRIBUTION` of `-kpi_delta` |
-| a partial cut of at most 25% | `MROAS` of that size (the symmetric finite difference) |
-| a larger partial cut | skipped, with the reason in `learned.calibration.lift_tests.skipped` |
+| a partial cut (less than 95% of the spend) | skipped, with the reason in `learned.calibration.lift_tests.skipped`: it measures the slope below today's spend, `(f(S) - f((1-c)S)) / cS`, while `MROAS` is the slope above it (`spend_lift_pct > 0` only); under diminishing returns they differ (by `e^(c lam)` for `1 - exp(-lam x)`), so the mapping would bias the curve |
 
 `geo` restricts the measurement to that geo. A test after the data, or cut by the fit
 window (a holdout fit that ends inside the test), is skipped and listed.

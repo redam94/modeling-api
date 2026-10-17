@@ -526,6 +526,16 @@ milestone releases are tagged on `main`.
   and scores it on the outer test window: `best_score` is that honest estimate (new results
   `nested`, `outer_scores`, `selected_per_fold`), and the outer plan's kind decides how
   folds are scored.
+- **mmm plugin** (statistics): a lift test that cut a channel's spend by up to 25% was
+  mapped to mmm-framework's marginal-ROAS estimand for a spend *increase* of the same
+  size: the experiment measured the slope below today's spend, the model was fitted to
+  the slope above it, and under diminishing returns the backward slope is larger (1.49
+  times for `1 - exp(-2x)` at a 20% cut), so the calibration pushed the saturation curve
+  (and the budget optimiser) away from what the experiment measured. mmm-framework's
+  `MROAS` takes only increases and its off-panel route has no marginal estimand, so
+  partial cuts are now skipped with the reason (listed in
+  `learned.calibration.lift_tests.skipped`); increases and full holdouts calibrate as
+  before.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
