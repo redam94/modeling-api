@@ -1487,8 +1487,9 @@ export interface paths {
         put?: never;
         /**
          * Submit a model version: runs the policy checks as a governance run
-         * @description The policies in force for the model's family (or ``policy_ids``) decide the checks;
-         *     they run in the sandbox and the validation advances when they finish.
+         * @description Every policy in force for the model's family (plus any ``policy_ids``, which can only
+         *     add policies) decides the checks; they run in the sandbox and the validation advances
+         *     when they finish.
          */
         post: operations["request_model_validation"];
         delete?: never;
