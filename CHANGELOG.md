@@ -413,6 +413,12 @@ milestone releases are tagged on `main`.
   models `mmm.nested` and `mmm.multivariate`, which are not installed, as related items
   (shown as bare ids); `GET /v1/catalog/abouts` now leaves out related items that are not
   in the catalog.
+- **spec**: the gallery template *Series that move together (VAR or VECM)* failed on
+  stationary series (growth rates, changes): Johansen rejects every null, the rank equals
+  the number of series, and the template sent that rank to `ts.vecm`, which refuses it.
+  Stationary series now get a VAR on their levels (a new `stationary` branch), and the
+  VECM's rank is kept between 1 and one less than the number of series. The cookbook
+  example and the workflows guide show the same three paths.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

@@ -312,14 +312,22 @@ the rows of a comparison table within limits (`max`, `min`) when there is no sin
 
 ```yaml
 - {id: joh, use: test.johansen, inputs: {data: inputs.data}}
-- {id: tied, use: branch.if, with: {condition: "nodes.joh.rank > 0"}}
+- {id: tied, use: branch.if,
+   with: {condition: "nodes.joh.rank > 0 and nodes.joh.rank < len(nodes.joh.trace_stats)"}}
 - {id: vecm, use: model.fit, inputs: {data: inputs.data}, when: tied.then,
    with: {model: ts.vecm@^1, settings: {coint_rank: {$expr: "nodes.joh.rank"}}}}
-- {id: d, use: transform.difference, inputs: {data: inputs.data}, when: tied.else}
-- {id: lags, use: search.var_lag_order, inputs: {data: d.data}}
-- {id: var, use: model.fit, inputs: {data: d.data},
+- {id: stable, use: branch.if, when: tied.else,
+   with: {condition: "nodes.joh.rank >= len(nodes.joh.trace_stats)"}}
+- {id: d, use: transform.difference, inputs: {data: inputs.data}, when: stable.else}
+- {id: lags, use: search.var_lag_order, inputs: {data: [d.data, inputs.data]}, when: tied.else}
+- {id: var, use: model.fit, inputs: {data: [d.data, inputs.data]}, when: tied.else,
    with: {model: ts.var@^1, settings: {lags: {$expr: "nodes.lags.best_lag"}}}}
 ```
+
+A Johansen rank equal to the number of series means every series is already stable (growth
+rates, changes): there is nothing to error-correct, and `ts.vecm` refuses that rank, so the
+VAR is fitted on the levels; rank 0 means separate random walks, and the VAR is fitted on
+the changes.
 
 The data holds the series along one dimension, one value per series and period
 (`value(series, quarter)`: the layout of the statsmodels multivariate models; ingest a wide

@@ -58,6 +58,29 @@ def test_var_vecm_template_takes_the_var_path_for_independent_series() -> None:
     assert runs["var"].params["settings"]["lags"] == runs["lags"].result["best_lag"]  # type: ignore[index]
 
 
+def test_var_vecm_template_fits_a_var_on_the_levels_of_stationary_series() -> None:
+    """Regression: for stationary series Johansen rejects every null (rank = number of
+    series); the template sent that full rank to ts.vecm, which refused it, and the run
+    failed. Stationary series are modelled by a VAR on their levels."""
+    spec = instantiate_template(VAR_VECM, name="rates", project="growth")
+    res = LocalRunner(registry=registry()).run(
+        spec,
+        inputs={"data": multi_series(220, stationary=True, seed=5)},
+        params={"target": "a", "driver": "b", "maxlags": 4},
+    )
+    assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
+    runs = {n.node_id: n for n in res.nodes}
+    assert runs["johansen"].result is not None and runs["johansen"].result["rank"] == 3
+    assert runs["tied"].result == {"value": False, "arm": "else"}
+    assert runs["stationary"].result == {"value": True, "arm": "then"}
+    for nid in ("rank", "vecm", "diff"):
+        assert runs[nid].status is NodeRunStatus.SKIPPED
+    assert runs["lags"].status is NodeRunStatus.SUCCEEDED  # on the levels (no diff)
+    assert runs["var"].status is NodeRunStatus.SUCCEEDED
+    assert runs["granger"].status is NodeRunStatus.SUCCEEDED
+    assert runs["report"].status is NodeRunStatus.SUCCEEDED
+
+
 def _bakeoff_without_the_bayesian_model() -> WorkflowSpec:
     doc = copy.deepcopy(FORECAST_BAKEOFF.document)
     nodes = [n for n in doc["nodes"] if n["id"] != "smooth"]  # type: ignore[union-attr]
