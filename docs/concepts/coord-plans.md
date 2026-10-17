@@ -18,6 +18,8 @@ why the API can reject a bad request in milliseconds, without starting a sandbox
 | `RECURSIVE_UNSUPPORTED` | 422 | A target lag shorter than the horizon | Use longer lags or a model that owns recursion |
 | `MODE_NOT_SUPPORTED` | 422 | The model does not declare the requested mode | See the model's capabilities |
 | `SIDE_TABLE_COVERAGE` | 422 | A side table does not cover the periods a step needs | Supply a table that covers them |
+| `ACTUALS_NOT_SUPPORTED` | 422 | A forecast payload holds target values (actuals) and the model cannot condition on them | Refit with the new data, or leave the target empty. See [Forecasts with actuals](forecasting-with-actuals.md) |
+| `ACTUALS_INVALID` | 422 | Actuals leave a gap after the fit, or actuals after the fit lack their drivers | Fill the gap, or send the drivers |
 
 `HORIZON_EXCEEDS_FIT` is a 409, not a 422: the request is fine, the *model* is not ready for it.
 The fix is a refit, not a different request.

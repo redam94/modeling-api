@@ -238,11 +238,22 @@ class Capabilities(StrictModel):
         description="Calibration data the model uses from a spec's calibration block (M3)",
         exclude_if=lambda v: not v,
     )
+    conditions_on_actuals: bool = Field(
+        False,
+        description="A forecast can be conditioned on actuals sent with the request (target "
+        "values for periods after, or at the end of, the fitted history): the model updates "
+        "its state with them without re-estimating its parameters and forecasts from the last "
+        "actual (mapi_spec.actuals). Models without it refuse such requests with "
+        "ACTUALS_NOT_SUPPORTED instead of ignoring the actuals",
+        exclude_if=lambda v: not v,
+    )
 
     @model_validator(mode="after")
     def _check(self) -> Capabilities:
         if not self.loo_valid and not self.loo_invalid_reason:
             raise ValueError("loo_valid=false requires loo_invalid_reason")
+        if self.conditions_on_actuals and "forecast" not in self.score_modes:
+            raise ValueError("conditions_on_actuals needs the 'forecast' score mode")
         return self
 
 

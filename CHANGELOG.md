@@ -5,6 +5,39 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Added
+- **Forecasts with actuals** (contract and score harness): a forecast request can carry the
+  actuals that arrived since the fit (target values for periods after the fitted history, or
+  revising its last periods) and the dates to forecast (target empty). The model updates its
+  state with the actuals using its fitted parameters - nothing is re-estimated - and forecasts
+  from the last actual; when the payload ends with an actual, `horizon.periods` periods are
+  appended after it. See the new "Forecasts with actuals" concept page.
+  - **spec**: `mapi_spec.actuals` (the rules, `ForecastConditioning` and
+    `SeriesConditioning`); `Capabilities.conditions_on_actuals`; problem codes
+    `ACTUALS_NOT_SUPPORTED` and `ACTUALS_INVALID` (both 422) with `ActualsNotSupported` and
+    `ActualsInvalid`; `ScoreSummary.conditioning`; `DataSummary.observed` (where targets hold
+    values) and the static checks in `validate_score_request` (with `live_capabilities`, the
+    plugin build that scores); `xrjson.observed_labels` (the JSON null check of inline
+    payloads); `EndpointSchemaSnapshot.conditions_on_actuals`,
+    `EndpointSchema.actuals_example` and `example_actuals_call`; `Freq.label`.
+  - **sdk**: `score_bundle` refuses actuals for models that cannot use them, appends the
+    horizon, fills empty future drivers by `future_covariates` from the fitted history and the
+    actual periods (`mapi_sdk.future.fill_future_rows`), checks every series (gaps, drivers)
+    and calls the new `CustomModel.forecast_with_actuals` hook with a typed
+    `mapi_sdk.actuals.ForecastActuals` (its default refuses). Every forecast result carries
+    the conditioning record (root attribute `conditioning`). `toy.ar1` is the reference
+    plugin and the contract kit checks `forecast_actuals`.
+  - **runner**: the record is in a score run's `summary.json` (so the API answer carries it
+    inline) and `result.json`.
+
+### Changed
+- A `forecast` request whose payload holds target values is refused with
+  `ACTUALS_NOT_SUPPORTED` by models that cannot condition on them; such values used to be
+  silently ignored (the forecast came from the end of the fit and the horizon was dropped).
+- Empty values of supplied drivers on the periods to forecast are now filled by a
+  `future_covariates` policy other than `supplied`; before, only drivers missing from the
+  payload altogether were.
+
 ## [0.5.0] — M3.5: Workflows, governance, explorers, mmm-framework — 2026-10-16
 
 Analyses can now be automated and models held to written rules before anyone relies on

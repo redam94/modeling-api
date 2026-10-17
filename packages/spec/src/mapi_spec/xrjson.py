@@ -32,6 +32,7 @@ __all__ = [
     "XrJsonDataset",
     "XrJsonVariable",
     "check_xrjson_size",
+    "observed_labels",
 ]
 
 MAX_XRJSON_BYTES: Final = 5 * 1024 * 1024
@@ -141,3 +142,46 @@ def check_xrjson_size(payload: Any) -> int:
             code=ErrorCode.PAYLOAD_TOO_LARGE,
         )
     return size
+
+
+def _any_value(node: Any) -> bool:
+    if isinstance(node, list):
+        return any(_any_value(x) for x in node)
+    if isinstance(node, float):
+        return node == node  # NaN is not a value (strict JSON has none, but stay safe)
+    return node is not None and node != ""
+
+
+def observed_labels(payload: XrJsonDataset, var: str, dim: str) -> list[Leaf] | None:
+    """The labels of ``dim`` at which data variable ``var`` holds at least one value (not
+    ``null``) - the periods with actuals of a forecast payload (:mod:`mapi_spec.actuals`).
+
+    A null check over JSON leaves; the values themselves are never decoded. ``None`` when
+    ``var`` is not a data variable, does not run along ``dim``, or ``dim`` has no 1-D coord.
+    """
+    spec = payload.data_vars.get(var)
+    coord = payload.coords.get(dim)
+    if spec is None or dim not in spec.dims or coord is None or list(coord.dims) != [dim]:
+        return None
+    labels = coord.data if isinstance(coord.data, list) else None
+    if labels is None:
+        return None
+    axis = list(spec.dims).index(dim)
+    hit: set[int] = set()
+
+    def walk(node: Any, depth: int) -> None:
+        children = node if isinstance(node, list) else []
+        if depth == axis:
+            hit.update(k for k, child in enumerate(children) if k not in hit and _any_value(child))
+            return
+        for child in children:
+            walk(child, depth + 1)
+
+    walk(spec.data, 0)
+    out: list[Leaf] = []
+    for k in sorted(hit):
+        if k < len(labels):
+            label = labels[k]
+            if isinstance(label, str | int | float | bool) or label is None:
+                out.append(label)
+    return out

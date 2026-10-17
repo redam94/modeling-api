@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import ClassVar, Literal
 
 from pydantic import Field, model_validator
@@ -109,6 +109,36 @@ class Freq:
             case "YE":
                 return d.year if is_end and d.month == 12 else None
         return None  # pragma: no cover
+
+    def label(self, ordinal: int) -> datetime:
+        """The inverse of :meth:`ordinal`: the (naive UTC) start of period ``ordinal``."""
+        idx = ordinal * self.n
+        match self.unit:
+            case "s":
+                return datetime(1970, 1, 1) + timedelta(seconds=idx)
+            case "min":
+                return datetime(1970, 1, 1) + timedelta(minutes=idx)
+            case "h":
+                return datetime(1970, 1, 1) + timedelta(hours=idx)
+            case "D":
+                return datetime(1970, 1, 1) + timedelta(days=idx)
+            case "W":
+                assert self.anchor is not None
+                offset = (self.anchor - _EPOCH.weekday()) % 7
+                return datetime(1970, 1, 1) + timedelta(days=7 * idx + offset)
+            case "MS" | "ME" | "QS" | "QE":
+                months = idx * 3 if self.unit in ("QS", "QE") else idx
+                if self.unit in ("ME", "QE"):
+                    months += 2 if self.unit == "QE" else 0
+                    year, month = divmod(months + 1, 12)
+                    return datetime(year, month + 1, 1) - timedelta(days=1)
+                year, month = divmod(months, 12)
+                return datetime(year, month + 1, 1)
+            case "YS":
+                return datetime(idx, 1, 1)
+            case "YE":
+                return datetime(idx, 12, 31)
+        raise ValueError(f"unsupported frequency unit {self.unit!r}")  # pragma: no cover
 
     def __str__(self) -> str:
         n = "" if self.n == 1 else str(self.n)
@@ -206,7 +236,16 @@ class CoordSummary(StrictModel):
 
 
 class DataSummary(StrictModel):
-    """Summary of a dataset (or score payload): variable names and coordinate summaries."""
+    """Summary of a dataset (or score payload): variable names and coordinate summaries.
+
+    ``observed`` (forecasts conditioned on actuals, :mod:`mapi_spec.actuals`) maps a target
+    variable to, per ordered dim, the summary of the labels at which it holds at least one
+    value. Only summarisers that read the values set it (the sandbox, and the control plane
+    for inline JSON payloads, where it is a null check); empty means unknown.
+    """
 
     vars: list[str] = Field(default_factory=list)
     coords: dict[str, CoordSummary] = Field(default_factory=dict)
+    observed: dict[str, dict[str, CoordSummary]] = Field(
+        default_factory=dict, exclude_if=lambda v: not v
+    )

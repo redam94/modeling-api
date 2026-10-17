@@ -25,6 +25,7 @@ from mapi_spec.about import (
     recommend,
 )
 from mapi_spec.abouts import builtin_about, builtin_abouts
+from mapi_spec.actuals import ForecastConditioning
 from mapi_spec.admin import ExecutorHealth, KillSwitches, kill_switch_decision
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome
 from mapi_spec.calibration import (
@@ -325,6 +326,7 @@ __all__ = [
     "Expression",
     "FitConfig",
     "Fold",
+    "ForecastConditioning",
     "FutureCovariates",
     "GateOutcome",
     "GovernancePolicy",

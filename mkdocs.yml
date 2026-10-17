@@ -146,6 +146,7 @@ nav:
       - Representations and summaries: concepts/representations.md
       - Bundles: concepts/bundles.md
       - Coord plans and typed errors: concepts/coord-plans.md
+      - Forecasts with actuals: concepts/forecasting-with-actuals.md
       - Capabilities and manifests: concepts/capabilities.md
       - Tenancy and authentication: concepts/tenancy-and-auth.md
       - Quotas and cost: concepts/quotas-and-cost.md

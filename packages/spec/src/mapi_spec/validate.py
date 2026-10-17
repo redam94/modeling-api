@@ -1029,12 +1029,16 @@ def validate_score_request(
     inputs: DataSummary | None = None,
     *,
     max_draws: int | None = None,
+    live_capabilities: Capabilities | None = None,
 ) -> list[Issue]:
     """Static CoordPlan checks for ``req`` against a fitted model's metadata.
 
     ``inputs`` summarises the payload (``data`` or ``scenario``) as it enters at
     ``req.inputs_stage``; dataset names are mapped through the binding at every stage, as
-    the runtime does.
+    the runtime does. When it says where the targets hold values (``inputs.observed``), a
+    forecast's actuals are checked (:mod:`mapi_spec.actuals`). ``live_capabilities`` are
+    those of the plugin build that will score, which may have gained score-time features
+    (``conditions_on_actuals``) since the fit; the fitted ones are used otherwise.
     """
     issues: list[Issue] = []
     rs = meta.resolved
@@ -1191,8 +1195,47 @@ def validate_score_request(
                     )
                 )
 
-    # future covariates ----------------------------------------------------------------
+    # actuals: target values in a forecast payload (mapi_spec.actuals) ----------------
     supplied = {canon(v) for v in inputs.vars} if inputs is not None else set()
+    actuals: _Actuals | None = None
+    if (
+        req.mode == "forecast"
+        and req.horizon is not None
+        and inputs is not None
+        and stage_schema is not None
+    ):
+        live = live_capabilities.conditions_on_actuals if live_capabilities else False
+        actuals = _check_actuals(
+            req,
+            meta,
+            inputs,
+            stage_schema,
+            model_schema,
+            canon,
+            supplied=supplied,
+            supported=caps.conditions_on_actuals or live,
+            pointer=inputs_ptr,
+            issues=issues,
+        )
+    if (
+        actuals is None
+        and req.mode == "forecast"
+        and req.horizon is not None
+        and extension.get(req.horizon.dim, 0) not in (0, req.horizon.periods)
+        and _same_freq(stage_schema, model_schema, req.horizon.dim)
+    ):
+        listed = extension[req.horizon.dim]
+        issues.append(
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                severity=Severity.WARNING,
+                pointer="/horizon/periods",
+                message=f"horizon.periods ({req.horizon.periods}) is not used: the payload "
+                f"lists {listed} period(s) after the fit, and exactly those are forecast",
+            )
+        )
+
+    # future covariates ----------------------------------------------------------------
     extends = req.horizon is not None or any(v > 0 for v in extension.values())
     if (
         extends
@@ -1218,7 +1261,21 @@ def validate_score_request(
                 )
             )
         elif required and inputs is not None and req.horizon is not None:
-            _check_horizon_coverage(req, meta, inputs, canon, inputs_ptr, issues)
+            if actuals is None:
+                _check_horizon_coverage(req, meta, inputs, canon, inputs_ptr, issues)
+            elif actuals.appended:
+                issues.append(
+                    _issue(
+                        ErrorCode.MISSING_FUTURE_COVARIATE,
+                        inputs_ptr,
+                        f"the payload ends with an actual ({actuals.through}), so the "
+                        f"{req.horizon.periods} horizon periods are appended after it without "
+                        f"values of {sorted(required)}",
+                        suggested_action="List the periods to forecast in the payload (target "
+                        "empty) with their driver values, or set future_covariates "
+                        "(carry_last, seasonal_naive or zero).",
+                    )
+                )
 
     # input coords ---------------------------------------------------------------------
     if inputs is not None and stage_schema is not None:
@@ -1251,7 +1308,10 @@ def validate_score_request(
             fit = fit_stage.get(dim)
             if fit is None:
                 continue
-            issues += _check_coord(dim, cs, fit, policy, strategy, max_ext, ptr, req.mode)
+            mode: str = req.mode
+            if actuals is not None and req.horizon is not None and dim == req.horizon.dim:
+                mode = "forecast_actuals"  # the forecast starts after the last actual
+            issues += _check_coord(dim, cs, fit, policy, strategy, max_ext, ptr, mode)
 
     # select ---------------------------------------------------------------------------
     model_fit = meta.fit_coords.get(rs.model_stage, {})
@@ -1408,6 +1468,152 @@ def validate_score_request(
                     )
                 )
     return issues
+
+
+def _same_freq(a: DataSchema | None, b: DataSchema | None, dim: str) -> bool:
+    """Whether ``dim`` has the same frequency in both schemas (periods compare)."""
+    da = a.dims.get(dim) if a is not None else None
+    db = b.dims.get(dim) if b is not None else None
+    return da is not None and db is not None and da.freq == db.freq
+
+
+@dataclass(frozen=True, slots=True)
+class _Actuals:
+    """What the static check learned about a forecast's actuals."""
+
+    through: Scalar | None
+    appended: bool
+
+
+def _check_actuals(
+    req: ScoreRequest,
+    meta: ScoreMetadata,
+    inputs: DataSummary,
+    stage_schema: DataSchema,
+    model_schema: DataSchema | None,
+    canon: Any,
+    *,
+    supplied: set[str],
+    supported: bool,
+    pointer: str,
+    issues: list[Issue],
+) -> _Actuals | None:
+    """The static rules of :mod:`mapi_spec.actuals` from ``inputs.observed`` (the union over
+    series; the sandbox checks every series). ``None`` when the payload has no actuals (or
+    the summary does not say)."""
+    from mapi_spec.actuals import actuals_not_supported_issue, format_label
+
+    assert req.horizon is not None
+    hdim, periods = req.horizon.dim, req.horizon.periods
+    targets = set(stage_schema.targets)
+    found: list[tuple[str, CoordSummary]] = []
+    for raw_var, per_dim in inputs.observed.items():
+        var = canon(raw_var)
+        cs = next((c for d, c in per_dim.items() if canon(d) == hdim), None)
+        if var in targets and cs is not None and cs.size > 0:
+            found.append((var, cs))
+    if not found:
+        return None
+    var, obs = max(found, key=lambda vc: vc[1].size)
+    fit = meta.fit_coords.get(req.inputs_stage, {}).get(hdim)
+    if not supported:
+        issues.append(
+            actuals_not_supported_issue(
+                meta.resolved.model.resolved,
+                var=var,
+                n=obs.size,
+                first=obs.start,
+                last=obs.end,
+                fit_end=fit.end if fit is not None else None,
+                pointer=pointer,
+            )
+        )
+        return None
+    through = format_label(obs.end)
+    payload = next((c for d, c in inputs.coords.items() if canon(d) == hdim), None)
+    pe = payload.ordinal(payload.end) if payload is not None and payload.end is not None else None
+    if fit is None or fit.end is None or obs.start is None or obs.end is None:
+        return _Actuals(through, appended=pe is None)
+    s, e, fe = obs.ordinal(obs.start), obs.ordinal(obs.end), fit.ordinal(fit.end)
+    if s is None or e is None or fe is None:
+        return _Actuals(through, appended=pe is None)
+    mvar = model_schema.vars.get(var) if model_schema is not None else None
+    missing_ok = mvar is not None and mvar.missing == "allow"
+    if not missing_ok and s > fe + 1:
+        issues.append(
+            _issue(
+                ErrorCode.ACTUALS_INVALID,
+                pointer,
+                f"the actuals of {var!r} start {s - fe - 1} period(s) after the fitted history "
+                f"ends ({format_label(fit.end)}); they must continue it",
+                suggested_action="Send the target for the periods in between, or refit "
+                "with the new data.",
+                untrusted_text=f"first actual {obs.start}",
+            )
+        )
+    if not missing_ok and (not obs.contiguous or e - s + 1 != obs.size):
+        issues.append(
+            _issue(
+                ErrorCode.ACTUALS_INVALID,
+                pointer,
+                f"the target {var!r} is empty for {e - s + 1 - obs.size} period(s) between "
+                "its first and last actual, and the model needs a complete history",
+                suggested_action="Fill the empty periods, or send only the actuals up to "
+                "the first empty period.",
+            )
+        )
+    if e > fe:
+        required = {n for n, v in stage_schema.vars.items() if v.future_required}
+        if model_schema is not None:
+            required |= {
+                n
+                for n, v in model_schema.vars.items()
+                if v.future_required and n in stage_schema.vars
+            }
+        lacking = sorted(required - targets - supplied)
+        if lacking:
+            issues.append(
+                _issue(
+                    ErrorCode.ACTUALS_INVALID,
+                    pointer,
+                    f"the actuals after the fitted history need the drivers {lacking} observed "
+                    "with them",
+                    suggested_action="Send the drivers for the periods with actuals.",
+                )
+            )
+    future = periods if pe is None or pe <= e else pe - e
+    appended = pe is None or pe <= e
+    total = max(e - fe, 0) + future
+    same = _same_freq(stage_schema, model_schema, hdim)  # else periods do not compare
+    dspec = model_schema.dims.get(hdim) if model_schema is not None else None
+    if (
+        same
+        and dspec is not None
+        and dspec.max_extension is not None
+        and total > dspec.max_extension
+    ):
+        issues.append(
+            _issue(
+                ErrorCode.HORIZON_EXCEEDS_FIT,
+                "/horizon/periods" if appended else pointer,
+                f"the forecast reaches {total} period(s) past the fit along {hdim!r} "
+                f"(actuals included); at most {dspec.max_extension} are supported without a "
+                "refit",
+                suggested_action="Refit with the new data.",
+            )
+        )
+    if not appended and future != periods and same:
+        issues.append(
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                severity=Severity.WARNING,
+                pointer="/horizon/periods",
+                message=f"horizon.periods ({periods}) is not used: the payload lists {future} "
+                f"period(s) after the last actual ({through}), and exactly those are "
+                "forecast",
+            )
+        )
+    return _Actuals(through, appended=appended)
 
 
 def _payload_extension(

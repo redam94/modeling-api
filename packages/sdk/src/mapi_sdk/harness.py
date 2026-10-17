@@ -30,14 +30,29 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 import xarray as xr
+from mapi_spec.actuals import (
+    CONDITIONING_ATTR,
+    ForecastConditioning,
+    HorizonSource,
+    actuals_not_supported,
+)
 from mapi_spec.calibration import Calibration
 from mapi_spec.capabilities import (
     REPRESENTATION_RULES,
+    Capabilities,
     ModelManifest,
     OutputSelector,
     Representation,
 )
-from mapi_spec.errors import CoordPlanError, ErrorCode, Issue, MapiError, Severity
+from mapi_spec.errors import (
+    ActualsInvalid,
+    ActualsNotSupported,
+    CoordPlanError,
+    ErrorCode,
+    Issue,
+    MapiError,
+    Severity,
+)
 from mapi_spec.loader import load_model_spec, load_score_request
 from mapi_spec.schema import DataSchema, DimPolicy, Role
 from mapi_spec.spec import (
@@ -51,6 +66,17 @@ from mapi_spec.spec import (
 from mapi_spec.validate import ResolvedSpec, apply_defaults, validate_spec
 
 from mapi_sdk._util import json_safe, normalise_dataset
+from mapi_sdk.actuals import (
+    ForecastActuals,
+    append_horizon,
+    drivers_along,
+    entry_fit_end,
+    future_mask,
+    label_text,
+    model_actuals,
+    observed_mask,
+    required_drivers,
+)
 from mapi_sdk.binding import BindingMap
 from mapi_sdk.bundle import Bundle, MetricsReport, assert_no_pickle, new_manifest
 from mapi_sdk.context import drop_context
@@ -62,7 +88,7 @@ from mapi_sdk.coords import (
     next_label,
 )
 from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error
-from mapi_sdk.future import fill_future_covariates
+from mapi_sdk.future import fill_future_covariates, fill_future_rows
 from mapi_sdk.metrics import categorical_dim, compute_metrics, elpd
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
 from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
@@ -911,6 +937,126 @@ def _horizon_payload(bundle: Bundle, req: ScoreRequest) -> xr.Dataset:
     return horizon_frame(stage_coords, hdim, until=end, freq=sfreq)
 
 
+def _forecast_payload(
+    bundle: Bundle,
+    req: ScoreRequest,
+    data: xr.Dataset,
+    hist: xr.Dataset | None,
+    live_caps: Capabilities,
+    entry_schema: DataSchema | None,
+    *,
+    payload_given: bool,
+) -> tuple[xr.Dataset, list[Issue], HorizonSource, bool]:
+    """A forecast payload at the entry stage, ready for the pipeline (:mod:`mapi_spec.actuals`):
+    actuals found (and refused when the model cannot condition on them), the horizon
+    appended after a payload that ends with an actual, empty future drivers filled.
+
+    Returns the payload, the fill issues, where the forecast periods come from and whether
+    the payload carries actuals.
+    """
+    assert req.horizon is not None
+    hdim = req.horizon.dim
+    stage = req.inputs_stage
+    entry_targets = list(entry_schema.targets) if entry_schema is not None else []
+    fit_end = entry_fit_end(bundle.fit_coords, stage, hdim)
+    drivers = drivers_along(entry_schema, hdim, entry_targets)
+    mask = observed_mask(data, entry_targets, hdim) if payload_given else None
+    if mask is None or not bool(mask.any()):
+        data, filled = fill_future_covariates(
+            data,
+            req.future_covariates,
+            dim=hdim,
+            schema=entry_schema,
+            history=hist,
+            targets=entry_targets,
+        )
+        source: HorizonSource = "rows" if payload_given else "horizon"
+        if payload_given and fit_end is not None and hdim in data.dims:
+            blank = xr.zeros_like(data[hdim], dtype=bool)
+            data, extra = fill_future_rows(
+                data,
+                req.future_covariates,
+                dim=hdim,
+                future=future_mask(blank, hdim, fit_end),
+                names=[n for n in drivers if n in data],
+                history=hist,
+                schema=entry_schema,
+            )
+            filled = filled + extra
+        return data, filled, source, False
+    if not live_caps.conditions_on_actuals:
+        others = [d for d in mask.dims if d != hdim]
+        rows = np.asarray((mask.any(others) if others else mask).values, dtype=bool)
+        seen = np.asarray(mask[hdim].values)[rows]
+        raise actuals_not_supported(
+            f"{bundle.model.manifest.id}@{bundle.model.manifest.version}",
+            var=next(t for t in entry_targets if t in data),
+            n=int(seen.size),
+            first=label_text(seen.min()),
+            last=label_text(seen.max()),
+            fit_end=label_text(fit_end) if fit_end is not None else None,
+        )
+    source = "rows"
+    if bool(mask.isel({hdim: -1}).any()):  # the payload ends with an actual
+        sfreq = None
+        if entry_schema is not None and hdim in entry_schema.dims:
+            sfreq = entry_schema.dims[hdim].freq
+        labels = np.asarray(data[hdim].values)
+        step: Any = 1
+        if labels.dtype.kind in "iu" and labels.size > 1:
+            step = int(np.diff(np.sort(labels)).min())
+        data = append_horizon(data, hdim, req.horizon.periods, freq=sfreq, step=step)
+        appended = observed_mask(data, entry_targets, hdim)
+        assert appended is not None
+        mask = appended
+        source = "horizon"
+    filled = []
+    if fit_end is not None:
+        data, filled = fill_future_rows(
+            data,
+            req.future_covariates,
+            dim=hdim,
+            future=future_mask(mask, hdim, fit_end),
+            names=drivers,
+            history=hist,
+            schema=entry_schema,
+        )
+    return data, filled, source, True
+
+
+def _model_actuals(
+    bundle: Bundle,
+    req: ScoreRequest,
+    canon: xr.Dataset,
+    trace: ReplayTrace,
+    horizon_source: HorizonSource,
+) -> tuple[ForecastActuals | None, ForecastConditioning | None]:
+    """The actuals of a forecast at the model stage, checked per series, and the record
+    (``None`` when the model-stage data has no labelled horizon dim to describe)."""
+    assert req.horizon is not None
+    rs = bundle.resolved
+    hdim = req.horizon.dim
+    schema = rs.model.input_schema
+    fit_end = entry_fit_end(bundle.fit_coords, rs.model_stage, hdim)
+    if fit_end is None or hdim not in canon.dims or hdim not in canon.coords:
+        return None, None
+    labels = np.asarray(canon[hdim].values)
+    context = np.zeros(labels.size, dtype=bool)
+    for mark in trace.marks:
+        if mark.dim == hdim:
+            context |= np.isin(labels, mark.labels)
+    return model_actuals(
+        canon,
+        dim=hdim,
+        targets=list(schema.targets) if schema is not None else [],
+        fit_end=fit_end,
+        schema=schema,
+        horizon_source=horizon_source,
+        drivers=required_drivers(schema),
+        skip=context,
+    )
+
+
 def _order_payload(ds: xr.Dataset, schema: DataSchema | None) -> xr.Dataset:
     """Sort a score payload along its ordered dims before any step runs.
 
@@ -1011,6 +1157,7 @@ def score_bundle(
         )
     if not counterfactual and scenario is not None:
         data, scenario = scenario, None  # the scenario is the payload
+    payload_given = data is not None
     if data is None:
         if req.horizon is None:
             raise MapiError(
@@ -1032,7 +1179,12 @@ def score_bundle(
     }
     seed = req.seed if req.seed is not None else (bundle.model.fit_config.seed or 0)
     filled: list[Issue] = []
-    if req.mode == "forecast" and req.horizon is not None:
+    live_caps = plugin_cls.manifest().capabilities  # the build that scores (may be newer)
+    forecast = req.mode == "forecast" and req.horizon is not None
+    horizon_source: HorizonSource = "horizon"
+    has_actuals = False
+    if forecast:
+        assert req.horizon is not None
         hist = None
         if history is not None:
             hist = _order_payload(
@@ -1049,16 +1201,11 @@ def score_bundle(
                     cancel=hooks.cancel,
                     log=hooks.log,
                 ).data
-        data, filled = fill_future_covariates(
-            data,
-            req.future_covariates,
-            dim=req.horizon.dim,
-            schema=entry_schema,
-            history=hist,
-            targets=entry_schema.targets if entry_schema is not None else (),
+        data, filled, horizon_source, has_actuals = _forecast_payload(
+            bundle, req, data, hist, live_caps, entry_schema, payload_given=payload_given
         )
 
-    plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws)
+    plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws, live_capabilities=live_caps)
     issues = filled + plan.check(data)
     derived = _requested_derived(bundle, req)
     if scenario is not None:
@@ -1074,6 +1221,7 @@ def score_bundle(
                 pointer=f"/side_tables/{t}",
             )
     targets = rs.model.input_schema.targets if rs.model.input_schema is not None else []
+    conditioning: list[ForecastConditioning] = []
 
     def prepare(ds: xr.Dataset) -> tuple[ReplayTrace, xr.Dataset, CanonicalPlan]:
         hooks.check()
@@ -1115,8 +1263,28 @@ def score_bundle(
             log=hooks.log,
             cancel=hooks.cancel,
         )
+        actuals: ForecastActuals | None = None
+        if forecast:
+            actuals, record = _model_actuals(bundle, req, canon, trace, horizon_source)
+            if record is not None:
+                conditioning.append(record)
+            if has_actuals and actuals is None:
+                raise ActualsInvalid(
+                    "the actuals did not reach the model: the pipeline left no target values "
+                    "at the model stage",
+                    pointer="/data",
+                )
         try:
-            tree = plugin.score(bundle.model, canon, req, ctx)
+            if actuals is not None:
+                hook = getattr(plugin, "forecast_with_actuals", None)
+                if not callable(hook):
+                    raise ActualsNotSupported(
+                        f"model {bundle.model.manifest.id!r} cannot update a forecast with actuals",
+                        pointer="/data",
+                    )
+                tree = hook(bundle.model, canon, actuals, req, ctx)
+            else:
+                tree = plugin.score(bundle.model, canon, req, ctx)
         except MapiError as exc:
             err = plugin_error(exc, f"model {bundle.model.manifest.id!r} failed during score")
             if err is exc:
@@ -1256,6 +1424,8 @@ def score_bundle(
             [i.model_dump(mode="json") for i in issues if i.severity is not Severity.ERROR]
         ),
     }
+    if conditioning:
+        attrs[CONDITIONING_ATTR] = conditioning[0].model_dump_json(exclude_none=True)
     if req.mode == "evaluate" or metrics is not None:
         report = _score_metrics(bundle, pipeline, main, rep, metrics, metric_mask, tables)
         attrs["metrics"] = report.model_dump_json()

@@ -27,6 +27,7 @@ import pandas as pd
 import xarray as xr
 from jsonschema import Draft202012Validator
 from mapi_spec.about import About, about_issues
+from mapi_spec.actuals import CONDITIONING_ATTR
 from mapi_spec.capabilities import (
     REPRESENTATION_RULES,
     SCORE_MODES,
@@ -39,7 +40,14 @@ from mapi_spec.effects import StepKind, apply_effect
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.loader import load_model_spec
 from mapi_spec.schema import DataSchema, DimPolicy, DimSpec
-from mapi_spec.spec import AsOfSplit, ModelSpec, ScorePolicy, ScoreRequest, TimeHoldoutSplit
+from mapi_spec.spec import (
+    AsOfSplit,
+    FutureCovariates,
+    ModelSpec,
+    ScorePolicy,
+    ScoreRequest,
+    TimeHoldoutSplit,
+)
 
 from mapi_sdk._util import dtype_family, normalise_dataset
 from mapi_sdk.bundle import Bundle, assert_no_pickle
@@ -581,7 +589,9 @@ def check_model(
     """Run the model contract checks: fit, bundle round trip, coordinate handling, typed
     errors for every dim policy (unseen levels; gaps and out-of-range coords on datetime and
     integer extend dims; horizons past ``max_extension``; forecasts missing a future-required
-    covariate; horizons longer than a target lag), unsupported modes, context-window
+    covariate; horizons longer than a target lag), forecasts with actuals (refused without
+    ``conditions_on_actuals``; with it, the fitted values as actuals reproduce the plain
+    forecast and a new actual moves it), unsupported modes, context-window
     equivalence, evaluate path == score path, output space, aggregation legality, additive
     contributions, no pickle, seed determinism, fast scoring == exact scoring within MCSE
     (via the plugin's ``check_fast_score`` hook) and that the manifest's plots sanitize."""
@@ -918,6 +928,71 @@ def check_model(
         )
         return f"forecast without {names[0]!r}: {note}"
 
+    def c_actuals() -> str:
+        """Forecasts with actuals (mapi_spec.actuals): refused without the capability; with
+        it, the fit data's own last values as actuals reproduce the plain forecast, and a
+        new actual after the fit moves the forecast (it is never ignored)."""
+        hdim, _ = horizon_dim()
+        tdim, coords = extend_labels()
+        b = fit_once()
+        raw = b.resolved.stages.get("raw")
+        targets = [binding_dim(t) for t in (raw.targets if raw is not None else [])]
+        targets = [t for t in targets if t in data and tdim in data[t].dims]
+        if not targets:
+            raise _Skip("no target along the extend dim in the fixture data")
+
+        def forecast_req(periods: int) -> ScoreRequest:
+            return _request("forecast", horizon_dim=hdim, periods=periods).model_copy(
+                update={"future_covariates": FutureCovariates.CARRY_LAST}
+            )
+
+        req = forecast_req(3)
+        tail = data.isel({tdim: slice(len(coords) - 3, None)})
+        if not caps.conditions_on_actuals:
+            note = _expect_code(
+                ErrorCode.ACTUALS_NOT_SUPPORTED, lambda: score(req, tail, history=data)
+            )
+            return f"actuals refused: {note}"
+        p_sum = _summary(score(req, None, history=data))
+        same = score(req, tail, history=data)
+        record = json.loads(str(same.attrs.get(CONDITIONING_ATTR, "{}")))
+        if not record.get("conditioned"):
+            raise AssertionError("a forecast with actuals does not report them (conditioning)")
+        sdim = next((d for d in (tdim, hdim) if d in p_sum.dims), None)
+        if sdim is None:
+            raise _Skip(f"the summary has no {tdim!r} dim to compare")
+        s_sum = _summary(same).sel({sdim: p_sum[sdim].values})
+        for v in p_sum.data_vars:
+            np.testing.assert_allclose(
+                np.asarray(s_sum[v].values, dtype=float),
+                np.asarray(p_sum[v].values, dtype=float),
+                rtol=1e-6,
+                atol=1e-9,
+                err_msg=f"conditioning on the fitted values changed the forecast of {v!r}",
+            )
+        nxt = data.isel({tdim: [len(coords) - 1]}).assign_coords(
+            {tdim: shift_labels(tdim, coords[-1:], 1)}
+        )
+        for t in targets:
+            nxt[t] = nxt[t] + 10.0 * float(np.nanstd(data[t].values) or 1.0)
+        m_sum = _summary(score(req, nxt, history=data))
+        later = np.asarray(m_sum[sdim].values)[1:]  # after the new actual
+        p_sum2 = _summary(score(forecast_req(4), None, history=data))
+        changed = any(
+            not np.allclose(
+                np.asarray(m_sum[v].sel({sdim: later}).values, dtype=float),
+                np.asarray(p_sum2[v].sel({sdim: later}).values, dtype=float),
+                equal_nan=True,
+            )
+            for v in m_sum.data_vars
+        )
+        if not changed:
+            raise AssertionError("a new actual after the fit did not change the forecast")
+        return (
+            f"fitted values as actuals reproduce the plain forecast; a new actual moves it "
+            f"({record.get('n_actuals')} actuals reported)"
+        )
+
     def c_recursive() -> str:
         hdim, _ = horizon_dim()
         if "recursion" in caps.owns:
@@ -1212,6 +1287,7 @@ def check_model(
         ("extend_typed_errors", c_extend_errors),
         ("horizon_exceeds_fit", c_horizon),
         ("missing_future_covariate", c_future_covariates),
+        ("forecast_actuals", c_actuals),
         ("recursive_unsupported", c_recursive),
         ("unsupported_mode", c_modes),
         ("context_window_equivalence", c_context_window),

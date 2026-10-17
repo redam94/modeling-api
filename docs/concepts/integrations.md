@@ -48,7 +48,9 @@ values are decoded in the sandbox. Send `Prefer: wait=60` to get the result in t
 when the run finishes in time (`200`), otherwise `202` with the run to follow.
 `GET …/schema` describes what to send (`EndpointSchema`: the input schema frozen at promotion,
 score modes, dims and an example payload) and `POST …/validate` checks a call without
-running it.
+running it. A forecast call can also carry the actuals that arrived since the fit and the dates
+to forecast; see [Forecasts with actuals](forecasting-with-actuals.md) and the schema's
+`actuals_example`.
 
 A `score:<alias>` token can read the endpoint, its schema and snippets, and score it - and
 nothing else.

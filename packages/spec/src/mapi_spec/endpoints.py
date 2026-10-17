@@ -27,7 +27,7 @@ from mapi_spec._dto import EXAMPLE_TS, Id, RequestModel, ResponseModel, Sha256, 
 from mapi_spec._dto import dto_examples as _examples
 from mapi_spec._types import Duration, LabelKey, LabelValue, Name, Scalar, Slug
 from mapi_spec.capabilities import OutputSelector, Representation, ScoreMode, default_summary
-from mapi_spec.coords import CoordSummary
+from mapi_spec.coords import CoordSummary, parse_freq
 from mapi_spec.errors import Issue
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
@@ -56,6 +56,7 @@ __all__ = [
     "EndpointValidation",
     "EvaluationPolicy",
     "endpoint_ref",
+    "example_actuals_call",
     "example_score_call",
     "policy_relaxations",
     "schema_breaks",
@@ -97,7 +98,10 @@ class EndpointSchemaSnapshot(ResponseModel):
     ``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names
     (``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames
     them to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of
-    the dim a forecast extends.
+    the dim a forecast extends. ``conditions_on_actuals``: forecasts can carry actuals
+    (target values for periods after the fit) that the model updates its state with
+    (:mod:`mapi_spec.actuals`); the server sets it from the capabilities of the plugin
+    build that serves the endpoint now, not only from those at fit.
     """
 
     inputs_stage: str = "raw"
@@ -108,6 +112,7 @@ class EndpointSchemaSnapshot(ResponseModel):
     horizon_dim: Name | None = None
     future_required: list[str] = Field(default_factory=list)
     fit_coords: dict[str, CoordSummary] = Field(default_factory=dict)
+    conditions_on_actuals: bool = False
 
     model_config = _examples(
         {
@@ -370,6 +375,13 @@ class EndpointSchema(ResponseModel):
     example: dict[str, JsonValue] = Field(
         ..., description="An EndpointScoreCall body that validates against this endpoint"
     )
+    actuals_example: dict[str, JsonValue] | None = Field(
+        None,
+        description="For endpoints whose model conditions forecasts on actuals: a forecast "
+        "call with inline data over the periods after the fit, the target empty (null). Fill "
+        "the target with the actuals you have and leave it empty for the periods to forecast "
+        "(example_actuals_call)",
+    )
     max_inline_bytes: int = 5 * 1024 * 1024
 
     model_config = _examples(
@@ -510,6 +522,93 @@ def example_score_call(snapshot: EndpointSchemaSnapshot, *, periods: int = 8) ->
         return EndpointScoreCall(mode="predict", output=output)
     payload = XrJsonDataset.model_validate({"coords": coords, "data_vars": data_vars})
     return EndpointScoreCall(mode="predict", data=payload, output=output)
+
+
+def example_actuals_call(
+    snapshot: EndpointSchemaSnapshot, *, periods: int = 8
+) -> EndpointScoreCall | None:
+    """A forecast call that shows how to send actuals (``EndpointSchema.actuals_example``):
+    inline data over the ``periods`` periods after the fit with every input variable empty
+    (``null``) - the target and the drivers - and ``future_covariates: carry_last``.
+
+    As it stands it forecasts those periods from the end of the fit (no actuals). A caller
+    (a spreadsheet's Input sheet, a script) fills the target for the periods it has actuals
+    for and leaves it empty for the periods to forecast; driver values it leaves empty on the
+    future periods are carried forward (:mod:`mapi_spec.actuals`). ``None`` unless the
+    endpoint forecasts with a model that conditions on actuals.
+    """
+    hdim = snapshot.horizon_dim
+    schema = snapshot.input_schema
+    if (
+        not snapshot.conditions_on_actuals
+        or "forecast" not in snapshot.score_modes
+        or hdim is None
+        or hdim not in schema.dims
+        or not schema.targets
+    ):
+        return None
+    fit = snapshot.fit_coords.get(hdim)
+    labels = _future_labels(fit, periods) if fit is not None else None
+    if labels is None:
+        return None
+    coords: dict[str, dict[str, object]] = {hdim: {"dims": [hdim], "data": labels}}
+    sizes: dict[str, int] = {hdim: len(labels)}
+    data_vars: dict[str, dict[str, object]] = {}
+    for name, var in schema.vars.items():
+        if var.role in (Role.INDEX, Role.CONSTANT) or hdim not in var.dims:
+            continue
+        for d in var.dims:
+            if d in sizes:
+                continue
+            cs = snapshot.fit_coords.get(d)
+            values: list[Scalar] = list(cs.values[:2]) if cs is not None and cs.values else []
+            if not values:
+                return None  # a dim whose levels are unknown: no honest example
+            coords[d] = {"dims": [d], "data": values}
+            sizes[d] = len(values)
+        data_vars[name] = {"dims": list(var.dims), "data": _nulls([sizes[d] for d in var.dims])}
+    rep = snapshot.representation
+    output = OutputSelector(
+        kind="expected",
+        summary=default_summary(rep) if rep is not None else ["mean", "hdi_90"],
+    )
+    payload = XrJsonDataset.model_validate({"coords": coords, "data_vars": data_vars})
+    return EndpointScoreCall(
+        mode="forecast",
+        horizon=Horizon(dim=hdim, periods=periods),
+        data=payload,
+        future_covariates=FutureCovariates.CARRY_LAST,
+        output=output,
+    )
+
+
+def _future_labels(fit: CoordSummary, periods: int) -> list[Scalar] | None:
+    """The ``periods`` labels after the end of ``fit`` (ISO dates or integers)."""
+    if fit.end is None:
+        return None
+    if fit.kind == "time":
+        if fit.freq is None:
+            return None
+        freq = parse_freq(fit.freq)
+        last = fit.ordinal(fit.end)
+        if last is None:
+            return None
+        out: list[Scalar] = []
+        for k in range(1, periods + 1):
+            dt = freq.label(last + k)
+            midnight = dt.hour == dt.minute == dt.second == 0
+            out.append(dt.date().isoformat() if midnight else dt.isoformat())
+        return out
+    if fit.kind in ("integer", "index") and isinstance(fit.end, int):
+        step = int(fit.step or 1)
+        return [fit.end + k * step for k in range(1, periods + 1)]
+    return None
+
+
+def _nulls(shape: list[int]) -> object:
+    if not shape:
+        return None
+    return [_nulls(shape[1:]) for _ in range(shape[0])]
 
 
 def _zeros(shape: list[int]) -> object:

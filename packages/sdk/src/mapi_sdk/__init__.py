@@ -23,6 +23,7 @@ from importlib import metadata as _metadata
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from mapi_sdk.actuals import ForecastActuals
     from mapi_sdk.binding import BindingMap
     from mapi_sdk.bundle import Bundle, BundleManifest, MetricsReport
     from mapi_sdk.context import ContextMark, drop_context, extract_context, prepend_context
@@ -83,6 +84,7 @@ _LAZY: dict[str, str] = {
     "CustomModel": "mapi_sdk.models",
     "FitContext": "mapi_sdk.models",
     "FitHooks": "mapi_sdk.harness",
+    "ForecastActuals": "mapi_sdk.actuals",
     "FitOutput": "mapi_sdk.models",
     "Fitted": "mapi_sdk.models",
     "InprocExecutor": "mapi_sdk.executors",
@@ -167,6 +169,7 @@ __all__ = [
     "FitHooks",
     "FitOutput",
     "Fitted",
+    "ForecastActuals",
     "InprocExecutor",
     "MetricsReport",
     "ModelPlugin",
