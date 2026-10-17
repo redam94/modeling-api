@@ -46,6 +46,7 @@ from mapi_spec.jobs import (
     MetricsSidecar,
 )
 from mapi_spec.loader import canonical_json, spec_hash
+from mapi_spec.optimize import OPTIMIZE_OUTPUT
 from mapi_spec.plots import PlotSpec
 from mapi_spec.run import (
     MANIFEST_OBJECT_NAME,
@@ -73,6 +74,7 @@ from mapi_spec.storage import (
     run_prefix,
 )
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata
+from mapi_spec.views import EXPLORE_PREFIX
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -83,6 +85,7 @@ from mapi_server.db import models as m
 from mapi_server.jsonlimits import JsonTooDeep, loads_limited
 from mapi_server.observability import metrics as obs_metrics
 from mapi_server.observability.tracing import run_span
+from mapi_server.services.optimize import parse_optimize_result
 from mapi_server.services.prior_translations import parse_prior_translation
 from mapi_server.services.runs import append_event, apply_transition, now
 from mapi_server.services.runspec import EMPTY_CATALOG_DIGEST, MANIFEST_MAX_BYTES
@@ -334,7 +337,44 @@ class Finalizer:
             return await self._describe(v)
         if kind is RunKind.TRANSLATE_PRIORS:
             return await self._translate_priors(v)
+        if kind is RunKind.OPTIMIZE:
+            return await self._optimize(v)
+        if kind is RunKind.GOVERNANCE:
+            return await self._governance(v)
         return await self._outputs_only(v)
+
+    # ....................................................................... governance
+    async def _governance(self, v: _Verified) -> RunState | None:
+        """A governance run must upload a valid ``governance.json``; its results are stored
+        on the validation in the transaction that marks the run succeeded (M3.5)."""
+        from mapi_spec.governance import GOVERNANCE_OUTPUT
+
+        from mapi_server.services.governance import (
+            REPORT_MAX_BYTES,
+            parse_report,
+            record_report,
+        )
+
+        meta = v.objects.get(GOVERNANCE_OUTPUT)
+        if meta is None:
+            if v.partial:
+                return await self._commit(v)
+            raise IntegrityError(f"a governance run must upload {GOVERNANCE_OUTPUT}")
+        cap = min(self.ctx.settings.max_sidecar_bytes, REPORT_MAX_BYTES)
+        if meta.size > cap:
+            raise IntegrityError(f"{GOVERNANCE_OUTPUT} exceeds the {cap}-byte limit")
+        raw = await self.ctx.store.get(
+            meta.bucket, meta.name, generation=meta.generation, max_bytes=cap
+        )
+        try:
+            report = parse_report(raw)
+        except MapiError as exc:
+            raise IntegrityError(exc.detail, untrusted_text=exc.untrusted_text) from None
+
+        async def apply(session: AsyncSession, row: m.Run) -> None:
+            await record_report(session, row, report)
+
+        return await self._commit(v, apply)
 
     async def _commit(
         self,
@@ -366,6 +406,8 @@ class Finalizer:
         return await self._commit(v)
 
     async def _copy(self, src: ObjectMeta, dst_bucket: str, dst_name: str) -> ObjectMeta:
+        """Copy once (``if_generation_match=0``); an existing destination must hold the same
+        content."""
         store = self.ctx.store
         try:
             return await store.copy(
@@ -753,7 +795,12 @@ class Finalizer:
         data_bucket = self.ctx.buckets.data
         stored: dict[str, Any] = {}
         for name, meta in sorted(v.objects.items()):
-            copied = await self._copy(meta, data_bucket, prefix + name)
+            # The prefix is the data's content hash: identical data uploaded again (the next
+            # version, another dataset or project) lands on the objects already there, which
+            # it must match exactly. The Data Explorer views are this ingest's own (computed
+            # by its runner, with timestamps): they live under the run, beside the data.
+            dst = prefix + (f"runs/{run.id}/{name}" if name.startswith(EXPLORE_PREFIX) else name)
+            copied = await self._copy(meta, data_bucket, dst)
             stored[name] = {
                 "bucket": data_bucket,
                 "name": copied.name,
@@ -793,6 +840,10 @@ class Finalizer:
             dv.ready_at = now()
             ds.latest_version = max(ds.latest_version or 0, dv.version)
             ds.updated_at = now()
+            # M3.5: dataset.version.created webhooks and workflow triggers
+            from mapi_server.services.workflows.automation import dataset_version_ready
+
+            await dataset_version_ready(session, ds, dv)
 
         return await self._commit(v, apply)
 
@@ -821,6 +872,26 @@ class Finalizer:
         )
         try:
             parse_prior_translation(raw)
+        except MapiError as exc:
+            raise IntegrityError(exc.detail, untrusted_text=exc.untrusted_text) from None
+        return await self._commit(v)
+
+    # ......................................................................... optimize
+    async def _optimize(self, v: _Verified) -> RunState | None:
+        """An optimize run must upload a valid ``optimize.json`` (size-capped JSON)."""
+        meta = v.objects.get(OPTIMIZE_OUTPUT)
+        if meta is None:
+            if v.partial:
+                return await self._commit(v)
+            raise IntegrityError(f"an optimize run must upload {OPTIMIZE_OUTPUT}")
+        cap = self.ctx.settings.max_sidecar_bytes
+        if meta.size > cap:
+            raise IntegrityError(f"{OPTIMIZE_OUTPUT} exceeds the {cap}-byte limit")
+        raw = await self.ctx.store.get(
+            meta.bucket, meta.name, generation=meta.generation, max_bytes=cap
+        )
+        try:
+            parse_optimize_result(raw)
         except MapiError as exc:
             raise IntegrityError(exc.detail, untrusted_text=exc.untrusted_text) from None
         return await self._commit(v)

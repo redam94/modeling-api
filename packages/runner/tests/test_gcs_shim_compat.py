@@ -157,7 +157,9 @@ def test_csv_ingest_fit_and_score_through_the_shim(shim: Any) -> None:
     )
     ingest = run_supervisor(run)
     outputs = _run(_verify(shim, ingest))
-    assert set(outputs) == set(DATASET_OUTPUTS)
+    # M3.5: plus the cheap Data Explorer sections under ui/explore/
+    assert {o for o in outputs if not o.startswith("ui/explore/")} == set(DATASET_OUTPUTS)
+    assert "ui/explore/index.json" in outputs
 
     text = (Path(xgb.__file__).parent / "spec.yaml").read_text()
     spec = json.loads(canonical_json(load_model_spec(text)))

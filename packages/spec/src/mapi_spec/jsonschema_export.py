@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, TypeAdapter
 
 from mapi_spec import api
+from mapi_spec.about import About, ChooserResult, DatasetAbout
 from mapi_spec.calibration import Calibration, PriorTranslationResult
 from mapi_spec.capabilities import Diagnostic, ModelManifest, OutputSelector
 from mapi_spec.catalog import Catalog, ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
@@ -20,6 +21,8 @@ from mapi_spec.coords import DataSummary
 from mapi_spec.effects import SchemaEffect
 from mapi_spec.errors import Problem
 from mapi_spec.executor import RunEvent
+from mapi_spec.governance import CheckResult, EvidencePack, GovernancePolicy, ModelValidation
+from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import PlotSpec
 from mapi_spec.run import BundleManifest, OutputManifest, RunSpec
 from mapi_spec.schema import DataSchema, DataSchemaTemplate
@@ -33,8 +36,40 @@ from mapi_spec.spec import (
     ScoreRequest,
     Sweep,
 )
+from mapi_spec.splitplan import SplitPlan
+from mapi_spec.stattests import StatTestResult
 from mapi_spec.storage import ObjectMeta, PostPolicy, SignedGet, SignedPut
-from mapi_spec.views import CounterfactualView, ForecastView, ResponseGridView
+from mapi_spec.views import (
+    AcfPacfView,
+    BacktestView,
+    ComparisonView,
+    CorrelationView,
+    CounterfactualView,
+    CrossCorrelationView,
+    DataOverviewView,
+    DecompositionView,
+    DistributionsView,
+    ExplorerIndex,
+    FevdView,
+    FitVsActualView,
+    ForecastView,
+    GroupComparisonView,
+    IrfView,
+    MissingnessView,
+    ModelDiagnosticsView,
+    ModelForecastView,
+    OutliersView,
+    ParamTableView,
+    QualityView,
+    ResidualDiagnosticsView,
+    ResponseCurvesView,
+    ResponseGridView,
+    StationarityView,
+    StlView,
+    TimeSeriesView,
+    VifView,
+)
+from mapi_spec.workflow import NodeResultSidecar, WorkflowNodeJob, WorkflowSpec
 
 __all__ = ["API_SCHEMA_MODELS", "SCHEMA_BASE_URI", "SCHEMA_MODELS", "export_schemas"]
 
@@ -76,6 +111,45 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "forecastview.json": ForecastView,
     "counterfactualview.json": CounterfactualView,
     "calibration.json": Calibration,
+    # M3.5: workflows, governance, About cards, explorers, optimisation
+    "workflow.json": WorkflowSpec,
+    "workflow-node-job.json": WorkflowNodeJob,
+    "node-result.json": NodeResultSidecar,
+    "about.json": About,
+    "chooser-result.json": ChooserResult,
+    "dataset-about.json": DatasetAbout,
+    "stat-test-result.json": StatTestResult,
+    "governance-policy.json": GovernancePolicy,
+    "check-result.json": CheckResult,
+    "model-validation.json": ModelValidation,
+    "evidence-pack.json": EvidencePack,
+    "optimize-request.json": OptimizeRequest,
+    "optimize-result.json": OptimizeResult,
+    "explorer-index.json": ExplorerIndex,
+    "explore-overview.json": DataOverviewView,
+    "explore-distributions.json": DistributionsView,
+    "explore-timeseries.json": TimeSeriesView,
+    "explore-missingness.json": MissingnessView,
+    "explore-outliers.json": OutliersView,
+    "explore-correlation.json": CorrelationView,
+    "explore-ccf.json": CrossCorrelationView,
+    "explore-acf-pacf.json": AcfPacfView,
+    "explore-stationarity.json": StationarityView,
+    "explore-stl.json": StlView,
+    "explore-vif.json": VifView,
+    "explore-groups.json": GroupComparisonView,
+    "explore-quality.json": QualityView,
+    "explore-params.json": ParamTableView,
+    "explore-diagnostics.json": ModelDiagnosticsView,
+    "explore-fit.json": FitVsActualView,
+    "explore-residuals.json": ResidualDiagnosticsView,
+    "explore-decomposition.json": DecompositionView,
+    "explore-response-curves.json": ResponseCurvesView,
+    "explore-irf.json": IrfView,
+    "explore-fevd.json": FevdView,
+    "explore-forecast.json": ModelForecastView,
+    "explore-backtest.json": BacktestView,
+    "explore-comparison.json": ComparisonView,
 }
 
 API_SCHEMA_MODELS: dict[str, type[BaseModel]] = {
@@ -108,6 +182,9 @@ def export_schemas(out_dir: str | Path | None = None) -> dict[str, dict[str, Any
         schemas[name] = _finish(name, model.model_json_schema(by_alias=True, mode="validation"))
     schemas["document.json"] = _finish(
         "document.json", TypeAdapter(AnyDocument).json_schema(by_alias=True, mode="validation")
+    )
+    schemas["split-plan.json"] = _finish(
+        "split-plan.json", TypeAdapter(SplitPlan).json_schema(by_alias=True, mode="validation")
     )
     if out_dir is not None:
         path = Path(out_dir)

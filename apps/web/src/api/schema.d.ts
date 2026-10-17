@@ -489,6 +489,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/catalog/abouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * About cards of catalog items (filter: kind)
+         * @description The plain-language About card of every model, preprocessing step, split, template,
+         *     workflow template, workflow node and governance check a user can pick.
+         */
+        get: operations["list_catalog_abouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/chooser": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The Help-me-choose questions
+         * @description The questions of "Help me choose", in the order to ask them; answer them as the
+         *     query of ``GET /v1/catalog/recommendations``.
+         */
+        get: operations["get_chooser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/governance-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The governance check catalog
+         * @description Every check a policy can require, with its About card, metric, direction, default
+         *     thresholds and parameter schema.
+         */
+        get: operations["list_governance_checks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog/models": {
         parameters: {
             query?: never;
@@ -540,6 +603,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/catalog/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ranked recommendations for chooser answers (query: one parameter per question)
+         * @description Catalog items ranked for the answers (``?goal=forecast&data_shape=panel``; repeat
+         *     a question or separate values with commas), each with plain reasons and cautions.
+         *     Without ``kind`` the candidates are models, guided templates and workflow templates;
+         *     ``kind`` ranks one kind (steps, nodes, checks, ...). An unknown question or answer is
+         *     ``CHOOSER_ANSWER_INVALID``.
+         */
+        get: operations["recommend_catalog_items"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog/steps": {
         parameters: {
             query?: never;
@@ -549,6 +636,40 @@ export interface paths {
         };
         /** List Catalog Steps */
         get: operations["list_catalog_steps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/workflow-nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workflow node implementations with ports, parameters and About cards */
+        get: operations["list_workflow_nodes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/workflow-nodes/{node_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One node implementation */
+        get: operations["get_workflow_node"];
         put?: never;
         post?: never;
         delete?: never;
@@ -590,6 +711,28 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/datasets/{dataset_id}/about": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The owner's description and the generated summary of the latest version
+         * @description A plain-language summary from the latest version's schema and coordinates: periods,
+         *     markets, what each measure is.
+         */
+        get: operations["get_dataset_about"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the owner's description */
+        patch: operations["update_dataset_about"];
         trace?: never;
     };
     "/v1/datasets/{dataset_id}/uploads": {
@@ -654,11 +797,32 @@ export interface paths {
         /**
          * Get Dataset Artifact
          * @description Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/
-         *     ``preview.json``/``summary.json``/``columns.json`` (15 min, HTTP Range works).
+         *     ``preview.json``/``summary.json``/``columns.json`` and (M3.5) the Data Explorer views
+         *     ``ui/explore/…`` written at ingest (15 min, HTTP Range works).
          */
         get: operations["get_dataset_artifact"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/datasets/{dataset_id}/versions/{version}/explore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compute Data Explorer sections (an explore run)
+         * @description STL, stationarity, cross-correlations, VIF and every other section on demand.
+         */
+        post: operations["explore_dataset_version"];
         delete?: never;
         options?: never;
         head?: never;
@@ -847,7 +1011,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint
+         * Python, TypeScript, curl, R, Apps Script and notebook code for the endpoint
          * @description Ready-to-run code that scores the endpoint with its example payload. The API token is
          *     read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.
          */
@@ -876,6 +1040,87 @@ export interface paths {
          *     unseen levels, future covariates) and dataset references. ``200`` even when invalid.
          */
         post: operations["validate_endpoint_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/explorations/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An explore run and, once done, links to its views
+         * @description ``done`` once the run is terminal; ``index`` and ``views`` only when it succeeded.
+         */
+        get: operations["get_exploration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/governance/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Policies in force in the project (its own and the tenant's)
+         * @description Tenant-wide policies first (every project's floor), then the project's own. The
+         *     platform's default policies are seeded on the tenant's first use.
+         */
+        get: operations["list_policies"];
+        put?: never;
+        /** Add a project policy (version 1) */
+        post: operations["create_policy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/governance/policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The latest version of a policy
+         * @description A project policy, or a tenant-wide one in force in the project.
+         */
+        get: operations["get_policy"];
+        /** Save a new version (expected_version guards concurrent edits) */
+        put: operations["update_policy"];
+        post?: never;
+        /** Retire a policy (its versions stay for audit) */
+        delete: operations["delete_policy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/governance/policies/{policy_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every version of a policy, newest first */
+        get: operations["list_policy_versions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -924,33 +1169,6 @@ export interface paths {
          *     answer; problems the validator finds come back as ``issues`` (200).
          */
         post: operations["create_guided_draft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/guided/import/bayesinsight": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * BayesInsight model_def.json + metadata.json -> a draft for a built-in MMM
-         * @description Import a BayesInsight project (Q8). With the default ``target:
-         *     mmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality
-         *     and pooling to the built-in geo MMM and lists every feature without an equivalent as
-         *     an ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` drafts the dedicated
-         *     plugin, which runs ``model_def`` as BayesInsight defines it (what it cannot run falls
-         *     back to BayesInsight's defaults with a warning). Either draft is validated statically
-         *     against the catalog. ``422 IMPORT_UNSUPPORTED`` when the model cannot run at all (no
-         *     single KPI, no media, split series).
-         */
-        post: operations["import_bayesinsight"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1178,6 +1396,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/models/{model_id}/versions/{version}/explore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compute Model Explorer sections (an explore run)
+         * @description Forecasts, backtests (refits on a split plan) and comparisons on demand; the fit
+         *     sections were already written by the fit.
+         */
+        post: operations["explore_model_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/models/{model_id}/versions/{version}/plots": {
         parameters: {
             query?: never;
@@ -1236,6 +1475,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/models/{model_id}/versions/{version}/validations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Validations of a model version, newest first */
+        get: operations["list_model_validations"];
+        put?: never;
+        /**
+         * Submit a model version: runs the policy checks as a governance run
+         * @description Every policy in force for the model's family (plus any ``policy_ids``, which can only
+         *     add policies) decides the checks; they run in the sandbox and the validation advances
+         *     when they finish.
+         */
+        post: operations["request_model_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/models/{model_id}/versions/{version}:evaluate": {
         parameters: {
             query?: never;
@@ -1247,6 +1509,32 @@ export interface paths {
         put?: never;
         /** Evaluate Model */
         post: operations["evaluate_model"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions/{version}:optimize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Optimise a budget across channels (Prefer: wait=N -> 200 if done, else 202)
+         * @description How should the budget be split across channels (and geos)? The plan comes from the
+         *     model's posterior: the allocation with its expected KPI and interval, the uplift over the
+         *     current plan and the chance it is positive, the expected regret of committing to one
+         *     plan, the marginal return of every channel and, on request, the efficient frontier.
+         *     Static problems (a model that cannot optimise, a version that is not ready) are refused
+         *     before any run starts; bounds the data cannot meet fail the run with
+         *     ``OPTIMIZE_INFEASIBLE``.
+         */
+        post: operations["optimize_model_version"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1268,6 +1556,48 @@ export interface paths {
          *     200 with output links if the run finished, else 202 with the run.
          */
         post: operations["score_model"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models:compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compare several model versions side by side
+         * @description Holdout metrics of every version, a ranking per metric and pairwise Diebold-Mariano
+         *     tests on the first version's held-out periods.
+         */
+        post: operations["compare_model_versions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/optimizations/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An optimize run and, once done, its plan
+         * @description ``done`` once the run is terminal; ``result`` only when it succeeded (a failed run's
+         *     problem, e.g. ``OPTIMIZE_INFEASIBLE``, is on ``run.problem``).
+         */
+        get: operations["get_optimization"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1932,6 +2262,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/governance/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tenant-wide policies (every project's floor) */
+        get: operations["list_tenant_policies"];
+        put?: never;
+        /** Add a tenant-wide policy */
+        post: operations["create_tenant_policy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/governance/policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A tenant-wide policy */
+        get: operations["get_tenant_policy"];
+        /** Save a new version of a tenant-wide policy */
+        put: operations["update_tenant_policy"];
+        post?: never;
+        /** Retire a tenant-wide policy */
+        delete: operations["delete_tenant_policy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/members": {
         parameters: {
             query?: never;
@@ -2152,6 +2519,155 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/validations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Validations of the project (filter: status, e.g. the reviewers' queue)
+         * @description ``?status=awaiting_approval`` is the reviewers' queue.
+         */
+        get: operations["list_validations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A validation: status, results, approvals, history */
+        get: operations["get_validation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A reviewer approves or rejects (never the submitter; audited)
+         * @description Needs the ``reviewer`` capability (or project admin) and a signed-in session; a
+         *     rejection needs a comment.
+         */
+        post: operations["decide_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every check result with its evidence */
+        get: operations["list_validation_evidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}/evidence-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The audit export (JSON, and a signed link to the HTML rendering)
+         * @description Self-contained: the HTML has inline styles, no scripts and no external assets.
+         */
+        post: operations["export_evidence_pack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop running checks (back to draft) */
+        post: operations["cancel_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}:deprecate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire a validated model version (audited with the reason) */
+        post: operations["deprecate_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}:resubmit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run the checks again after a failure or a rejection
+         * @description A new round under the policies in force now (earlier approvals no longer count).
+         */
+        post: operations["resubmit_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhooks": {
         parameters: {
             query?: never;
@@ -2260,10 +2776,471 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workflow-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A workflow run with every node, decision and output */
+        get: operations["get_workflow_run"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Workflow run events (SSE, Last-Event-ID)
+         * @description ``Accept: text/event-stream`` → a live stream: ``snapshot`` (the run), then one frame
+         *     per event (``event:`` is its type, ``id:`` its sequence number), then ``end``; anything
+         *     else → a JSON page of events after ``after``.
+         */
+        get: operations["workflow_run_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The node runs of a workflow run */
+        get: operations["list_workflow_node_runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}/nodes/{node_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One node's status, result and outputs */
+        get: operations["get_workflow_node_run"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A signed link to a node output's object
+         * @description A dataset output links to its ``data.zarr.zip``, a model output to its bundle; JSON
+         *     outputs (test results, metrics, tables, reports) are inline in the node and have no
+         *     object (``404``).
+         */
+        get: operations["get_workflow_node_output"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a workflow run and its running children
+         * @description Idempotent: ``cancelling`` until every running child stopped, then ``cancelled``
+         *     (a finished run is returned as it is).
+         */
+        post: operations["cancel_workflow_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The gallery of workflow templates */
+        get: operations["list_workflow_templates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One gallery template */
+        get: operations["get_workflow_template"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workflows of the project */
+        get: operations["list_workflows"];
+        put?: never;
+        /**
+         * Create a workflow from a document, YAML text or a gallery template
+         * @description Stores revision 1 with its static validation (a document with errors is stored but
+         *     cannot run until a valid revision is added). The workflow's name is
+         *     ``metadata.name``; ``409 CONFLICT`` when the project already has one of that name.
+         */
+        post: operations["create_workflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A workflow */
+        get: operations["get_workflow"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a workflow (its runs, schedules and triggers go with it)
+         * @description ``409 CONFLICT`` while one of its runs is still going (cancel it first).
+         */
+        delete: operations["delete_workflow"];
+        options?: never;
+        head?: never;
+        /** Change the description or archive it */
+        patch: operations["update_workflow"];
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Revisions, newest first */
+        get: operations["list_workflow_revisions"];
+        put?: never;
+        /**
+         * Save a new revision (validated; errors make it unrunnable)
+         * @description ``expected_revision`` guards concurrent edits (``409`` when another revision was
+         *     saved in between). The document's ``metadata.name`` must stay the workflow's name.
+         */
+        post: operations["create_workflow_revision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/revisions/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A revision with its validation */
+        get: operations["get_workflow_revision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runs of a workflow, newest first */
+        get: operations["list_workflow_runs"];
+        put?: never;
+        /**
+         * Run a revision (a workflow parent run)
+         * @description Starts a run of a revision (default: the latest). Inputs are references
+         *     (``dataset://project/name@latest`` is pinned to the version ready now); parameters are
+         *     checked against the workflow's ``params``. The orchestrator then starts every node that
+         *     can run; follow it with ``GET /v1/workflow-runs/{run_id}/events``.
+         */
+        post: operations["start_workflow_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cron schedules */
+        get: operations["list_workflow_schedules"];
+        put?: never;
+        /**
+         * Run the workflow on a cron schedule
+         * @description Five-field cron in an IANA time zone, at most every 15 minutes
+         *     (``SCHEDULE_INVALID``). Inputs may say ``@latest``: each run pins the version ready then.
+         *     At most ``MAPI_WORKFLOW_MAX_SCHEDULES`` active schedules per project (429).
+         */
+        post: operations["create_workflow_schedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/schedules/{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a schedule */
+        delete: operations["delete_workflow_schedule"];
+        options?: never;
+        head?: never;
+        /** Change or pause a schedule */
+        patch: operations["update_workflow_schedule"];
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/triggers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dataset triggers */
+        get: operations["list_workflow_triggers"];
+        put?: never;
+        /**
+         * Run the workflow when a dataset gets a new version
+         * @description The new version is bound to the workflow input ``input`` (a dataset input of the
+         *     latest revision, ``SCHEDULE_INVALID`` otherwise); versions arriving within
+         *     ``debounce_seconds`` start one run.
+         */
+        post: operations["create_workflow_trigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/triggers/{trigger_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a trigger */
+        delete: operations["delete_workflow_trigger"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Static checks of a workflow document (JSON pointers); stores nothing
+         * @description 200 even for invalid documents: the verdict is ``valid`` + ``issues``.
+         */
+        post: operations["validate_workflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * About
+         * @description The plain-language card of one catalog item.
+         *
+         *     Every field except the expert ones is required, so an About that validates is
+         *     structurally complete; :func:`about_issues` adds the editorial rules (one or two
+         *     sentences, no jargon in the summary, known chooser tags, related ids that exist).
+         * @example {
+         *       "assumptions": [
+         *         "Numbers can be added up (spend, sales); averages are averaged"
+         *       ],
+         *       "avoid_when": [
+         *         "Your data already has one row per week"
+         *       ],
+         *       "data_needs": [
+         *         "A date column"
+         *       ],
+         *       "difficulty": "beginner",
+         *       "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *       "fits": {
+         *         "goal": [
+         *           "check_data"
+         *         ]
+         *       },
+         *       "outputs": [
+         *         "The same columns, one row per week"
+         *       ],
+         *       "related": [
+         *         "core.calendar"
+         *       ],
+         *       "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *       "title": "Weekly totals",
+         *       "typical_runtime": "instant",
+         *       "use_when": [
+         *         "Your data is daily but you want to plan or report by week"
+         *       ]
+         *     }
+         */
+        About: {
+            /** Assumptions */
+            assumptions: string[];
+            /** Avoid When */
+            avoid_when: string[];
+            /** Data Needs */
+            data_needs: string[];
+            difficulty: components["schemas"]["Difficulty"];
+            /**
+             * Example
+             * @description A tiny example
+             */
+            example: string;
+            /**
+             * Expert Notes
+             * @description Maths, estimator details, caveats for experts
+             */
+            expert_notes?: string | null;
+            /**
+             * Fits
+             * @description Chooser tags: question id -> the answers this item suits
+             */
+            fits?: {
+                [key: string]: string[];
+            };
+            /** Outputs */
+            outputs: string[];
+            /** References */
+            references?: components["schemas"]["AboutReference"][];
+            /**
+             * Related
+             * @description Ids of related catalog items (models, steps, nodes, checks, templates)
+             */
+            related?: string[];
+            /**
+             * Summary Plain
+             * @description One or two sentences without jargon: what it does for you
+             */
+            summary_plain: string;
+            /**
+             * Title
+             * @description A human name
+             */
+            title: string;
+            typical_runtime: components["schemas"]["TypicalRuntime"];
+            /** Use When */
+            use_when: string[];
+        };
+        /**
+         * AboutKind
+         * @description What an About describes (chooser results and the catalog say which).
+         * @enum {string}
+         */
+        AboutKind: "model" | "step" | "split" | "template" | "workflow_template" | "node_kind" | "node" | "check" | "dataset" | "spec";
+        /**
+         * AboutReference
+         * @description A source for the expert detail (a paper, a book chapter, library documentation).
+         */
+        AboutReference: {
+            /** Title */
+            title: string;
+            /** Url */
+            url?: string | null;
+        };
         /**
          * AdminUsageReport
          * @description ``GET /v1/admin/usage`` (operators): cost by tenant for one UTC period, biggest spender
@@ -2363,7 +3340,7 @@ export interface components {
          *       "expires_at": "2026-11-14T09:30:00Z",
          *       "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
          *       "last_used_at": "2026-10-16T08:00:00Z",
-         *       "name": "atlas-optimiser",
+         *       "name": "budget-planner",
          *       "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
          *       "prefix": "7k2m9q4x",
          *       "project_id": "growth",
@@ -2430,6 +3407,59 @@ export interface components {
             vcpu_seconds_budget?: number | null;
         };
         /**
+         * Approval
+         * @example {
+         *       "approver_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "decided_at": "2026-10-15T09:30:00Z",
+         *       "decision": "approve",
+         *       "id": "apv_01jaf3j1k2m3n4p5q6r7s8t9v0",
+         *       "validation_id": "val_01jaf3k1m2n3p4q5r6s7t8v9w0"
+         *     }
+         */
+        Approval: {
+            /** Approver Id */
+            approver_id: string;
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Validation Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            validation_id: string;
+        };
+        /**
+         * ApprovalCreate
+         * @description ``POST /v1/validations/{validation_id}/approvals``: a reviewer's decision.
+         * @example {
+         *       "comment": "Evidence reviewed; null tests are convincing.",
+         *       "decision": "approve"
+         *     }
+         */
+        ApprovalCreate: {
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+        };
+        /**
          * ArtifactLink
          * @description A short-lived, generation-pinned signed GET URL for one artifact (HTTP Range works).
          * @example {
@@ -2472,11 +3502,42 @@ export interface components {
             url: string;
         };
         /**
+         * AsOfSplit
+         * @description Train on coords up to and including ``as_of``; hold out the rest (optionally ``gap``).
+         */
+        AsOfSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** As Of */
+            as_of: string | number | boolean;
+            /** Dim */
+            dim: string;
+            /**
+             * Gap
+             * @default 0
+             */
+            gap?: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "as_of";
+        };
+        /**
          * AuditAction
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -2573,173 +3634,6 @@ export interface components {
          */
         AuditOutcome: "success" | "denied" | "error";
         /**
-         * BayesInsightImport
-         * @description ``POST /v1/guided/import/bayesinsight``: a BayesInsight project as a draft (Q8: an
-         *     ingest adapter plus the ``mmm.bayesinsight`` plugin, not a separate spec kind).
-         * @example {
-         *       "dataset": "bi_mff",
-         *       "format": "mff",
-         *       "metadata": {
-         *         "allowed_campaigns": [
-         *           "Total"
-         *         ],
-         *         "allowed_creatives": [
-         *           "Total"
-         *         ],
-         *         "allowed_geos": [
-         *           "US",
-         *           "DE"
-         *         ],
-         *         "allowed_outlets": [
-         *           "Total"
-         *         ],
-         *         "allowed_products": [
-         *           "Total"
-         *         ],
-         *         "periodicity": "Weekly",
-         *         "row_ids": [
-         *           "Geography",
-         *           "Product",
-         *           "Period"
-         *         ]
-         *       },
-         *       "model_def": {
-         *         "variable_details": [
-         *           {
-         *             "likelihood": {
-         *               "type": "Normal"
-         *             },
-         *             "variable_name": "Sales_Total_Total_Total",
-         *             "variable_type": "exog"
-         *           },
-         *           {
-         *             "adstock": "delayed",
-         *             "media_transform": "hill",
-         *             "variable_name": "TV_Total_Total_Total",
-         *             "variable_type": "media"
-         *           },
-         *           {
-         *             "variable_name": "annual_seasonality",
-         *             "variable_type": "season"
-         *           }
-         *         ]
-         *       },
-         *       "name": "bi-import"
-         *     }
-         */
-        BayesInsightImport: {
-            /**
-             * Dataset
-             * @description Name of the dataset the MFF upload becomes
-             */
-            dataset: string;
-            /**
-             * Format
-             * @default mff
-             * @enum {string}
-             */
-            format?: "csv" | "parquet" | "mff";
-            /**
-             * Holdout Periods
-             * @default 8
-             */
-            holdout_periods?: number;
-            metadata: components["schemas"]["BayesInsightMetadata"];
-            model_def: components["schemas"]["BayesInsightModelDef"];
-            /** Name */
-            name: string;
-            /**
-             * Target
-             * @description M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight runs model_def as BayesInsight defines it (likelihoods, priors in KPI units, curves, carry-over, signs, random effects, seasons, local trends) and warns about what it cannot run
-             * @default mmm.hierarchical_geo
-             * @enum {string}
-             */
-            target?: "mmm.hierarchical_geo" | "mmm.bayesinsight";
-        };
-        /**
-         * BayesInsightMetadata
-         * @description BayesInsight's ``metadata.json`` (``{"metadata": {...}}`` is accepted too).
-         *
-         *     ``row_ids`` are the MFF key columns the model is indexed by (``Period`` always last);
-         *     the key columns *not* in ``row_ids`` are aggregated away and suffix variable names
-         *     (``Promotion_Total_Total_Total``).
-         */
-        BayesInsightMetadata: {
-            /** Allowed Campaigns */
-            allowed_campaigns?: string[] | null;
-            /** Allowed Creatives */
-            allowed_creatives?: string[] | null;
-            /** Allowed Geos */
-            allowed_geos?: string[] | null;
-            /** Allowed Outlets */
-            allowed_outlets?: string[] | null;
-            /** Allowed Products */
-            allowed_products?: string[] | null;
-            /** End Period */
-            end_period?: string | null;
-            /** Necessary Variables */
-            necessary_variables?: string[] | null;
-            /**
-             * Periodicity
-             * @default Weekly
-             * @enum {string}
-             */
-            periodicity?: "Weekly" | "Daily";
-            /**
-             * Row Ids
-             * @default [
-             *       "Period"
-             *     ]
-             */
-            row_ids?: string[];
-            /** Start Period */
-            start_period?: string | null;
-        };
-        /**
-         * BayesInsightModelDef
-         * @description BayesInsight's ``model_def.json``. ``artifact``, ``fitted`` and ``VOF`` describe a
-         *     local fit and are ignored by the import.
-         */
-        BayesInsightModelDef: {
-            VOF?: components["schemas"]["JsonValue"] | null;
-            /** Artifact */
-            artifact?: string | null;
-            /**
-             * Fitted
-             * @default false
-             */
-            fitted?: boolean;
-            /** Variable Details */
-            variable_details: components["schemas"]["BayesInsightVariable"][];
-        };
-        /**
-         * BayesInsightVariable
-         * @description One entry of ``model_def.json``'s ``variable_details``.
-         *
-         *     The fields the import interprets are typed; everything else (priors, transforms,
-         *     likelihood parameters) is kept verbatim for the ``mmm.bayesinsight`` plugin, which
-         *     validates it in the sandbox.
-         */
-        BayesInsightVariable: {
-            /** Fixed Ind Coeff Dims */
-            fixed_ind_coeff_dims?: string[] | null;
-            /** Normalization */
-            normalization?: string | null;
-            /** Random Coeff Dims */
-            random_coeff_dims?: string[] | null;
-            /** Sign */
-            sign?: ("positive" | "negative") | null;
-            /** Variable Name */
-            variable_name: string;
-            /**
-             * Variable Type
-             * @enum {string}
-             */
-            variable_type: "control" | "media" | "exog" | "localtrend" | "season";
-        } & {
-            [key: string]: unknown;
-        };
-        /**
          * Binding
          * @description Canonical name → dataset name, for dims and variables (``geo: market``).
          *
@@ -2755,6 +3649,81 @@ export interface components {
             vars?: {
                 [key: string]: string;
             };
+        };
+        /**
+         * BlockedKFoldPlan
+         * @description ``k`` contiguous blocks; ``gap`` periods on each side of the test block are dropped.
+         */
+        BlockedKFoldPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /**
+             * Gap
+             * @default 0
+             */
+            gap?: number;
+            /** K */
+            k: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "blocked_kfold";
+        };
+        /**
+         * BranchDecision
+         * @description Why a branch went one way: the condition, its value and the values it read.
+         * @example {
+         *       "arm": "then",
+         *       "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
+         *       "decided_at": "2026-10-15T09:30:00Z",
+         *       "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+         *       "inputs": {
+         *         "nodes.adf.p_value": 0.57,
+         *         "nodes.kpss.reject": true,
+         *         "params.alpha": 0.05
+         *       },
+         *       "node_id": "wanders",
+         *       "value": true
+         *     }
+         */
+        BranchDecision: {
+            /**
+             * Arm
+             * @enum {string}
+             */
+            arm: "then" | "else";
+            /** Condition */
+            condition: string;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+            /**
+             * Explain Plain
+             * @description What the path taken means, in plain words (the branch's explain_then or explain_else); none when the branch has no explanation
+             */
+            explain_plain?: string | null;
+            /**
+             * Inputs
+             * @description Each reference in the condition -> its value
+             */
+            inputs?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Node Id */
+            node_id: string;
+            /** Value */
+            value: boolean;
         };
         /**
          * BudgetPeriod
@@ -3029,10 +3998,60 @@ export interface components {
             score_modes: unknown[];
         };
         /**
+         * Capability
+         * @description Grants on top of a role (M3.5). Project admins hold every capability implicitly.
+         * @enum {string}
+         */
+        Capability: "reviewer";
+        /**
          * CaseOutcome
          * @enum {string}
          */
         CaseOutcome: "passed" | "failed" | "skipped" | "error";
+        /**
+         * CatalogAbout
+         * @description ``GET /v1/catalog/abouts``: one catalog item's About card (``kind`` + ``id``).
+         * @example {
+         *       "about": {
+         *         "assumptions": [
+         *           "Numbers can be added up (spend, sales); averages are averaged"
+         *         ],
+         *         "avoid_when": [
+         *           "Your data already has one row per week"
+         *         ],
+         *         "data_needs": [
+         *           "A date column"
+         *         ],
+         *         "difficulty": "beginner",
+         *         "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *         "fits": {
+         *           "goal": [
+         *             "check_data"
+         *           ]
+         *         },
+         *         "outputs": [
+         *           "The same columns, one row per week"
+         *         ],
+         *         "related": [
+         *           "core.calendar"
+         *         ],
+         *         "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *         "title": "Weekly totals",
+         *         "typical_runtime": "instant",
+         *         "use_when": [
+         *           "Your data is daily but you want to plan or report by week"
+         *         ]
+         *       },
+         *       "id": "core.resample",
+         *       "kind": "step"
+         *     }
+         */
+        CatalogAbout: {
+            about: components["schemas"]["About"];
+            /** Id */
+            id: string;
+            kind: components["schemas"]["AboutKind"];
+        };
         /**
          * CatalogResponse
          * @description The static catalog the control plane validates against (no plugin code involved).
@@ -3091,6 +4110,45 @@ export interface components {
             tuning?: boolean;
         };
         /**
+         * ChannelAllocation
+         * @description The plan for one channel (and geo): spend now and at the optimum, shares, the
+         *     expected contribution, the marginal return at the plan and how stable the
+         *     recommendation is across draws.
+         */
+        ChannelAllocation: {
+            /** Change Pct */
+            change_pct?: number | null;
+            /** Channel */
+            channel: string;
+            /** Current Share */
+            current_share: number;
+            /** Current Spend */
+            current_spend: number;
+            expected_contribution?: components["schemas"]["DistributionSummary"] | null;
+            /**
+             * Extrapolated
+             * @description Beyond the spend range seen in the data
+             * @default false
+             */
+            extrapolated?: boolean;
+            /** Geo */
+            geo?: string | null;
+            /**
+             * Marginal Roi
+             * @description Next unit of money's KPI return
+             */
+            marginal_roi?: number | null;
+            /** Optimal Share */
+            optimal_share: number;
+            /** Optimal Spend */
+            optimal_spend: number;
+            /**
+             * Stability
+             * @description Share of draws whose own optimum moves the same way
+             */
+            stability?: number | null;
+        };
+        /**
          * ChannelBelief
          * @description What the user believes about one channel: exactly one of ``roi`` or
          *     ``contribution_share``, held with ``credibility``.
@@ -3130,6 +4188,27 @@ export interface components {
             ] | null;
         };
         /**
+         * ChannelBounds
+         * @description Bounds on one channel: as multiples of its current spend and/or in money (money
+         *     bounds override multiples, as in mmm-framework).
+         */
+        ChannelBounds: {
+            /**
+             * Locked
+             * @description Keep the channel at its current spend
+             * @default false
+             */
+            locked?: boolean;
+            /** Max Multiplier */
+            max_multiplier?: number | null;
+            /** Max Spend */
+            max_spend?: number | null;
+            /** Min Multiplier */
+            min_multiplier?: number | null;
+            /** Min Spend */
+            min_spend?: number | null;
+        };
+        /**
          * ChannelOff
          * @description Intervention preset: what if this channel had spent nothing?
          */
@@ -3142,6 +4221,81 @@ export interface components {
              */
             kind: "channel_off";
         };
+        /**
+         * CheckDirection
+         * @enum {string}
+         */
+        CheckDirection: "max" | "min" | "band";
+        /**
+         * CheckResult
+         * @description The outcome of one check on one model version.
+         * @example {
+         *       "check": "null.permutation_target",
+         *       "computed_at": "2026-10-15T09:30:00Z",
+         *       "evidence": [
+         *         {
+         *           "inline": {
+         *             "real": 0.081,
+         *             "shuffled_min": 0.079
+         *           },
+         *           "kind": "table",
+         *           "name": "permutation_scores"
+         *         }
+         *       ],
+         *       "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *       "metric": "permutation_p_value",
+         *       "severity": "blocking",
+         *       "status": "pass",
+         *       "threshold": 0.05,
+         *       "value": 0.048
+         *     }
+         */
+        CheckResult: {
+            /** Check */
+            check: string;
+            /** Computed At */
+            computed_at?: string | null;
+            /** Evidence */
+            evidence?: components["schemas"]["EvidenceItem"][];
+            /** Message Expert */
+            message_expert?: string | null;
+            /** Message Plain */
+            message_plain: string;
+            /** Metric */
+            metric?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Run Id
+             * @description The run that computed it
+             */
+            run_id?: string | null;
+            severity: components["schemas"]["CheckSeverity"];
+            status: components["schemas"]["CheckStatus"];
+            /**
+             * Suggested Action
+             * @description What to do about a warning or failure (plain words)
+             */
+            suggested_action?: string | null;
+            /** Threshold */
+            threshold?: number | null;
+            /** Value */
+            value?: number | null;
+        };
+        /**
+         * CheckSeverity
+         * @description What a failing check does: ``blocking`` stops validation, ``warning`` is recorded and
+         *     shown to the approver, ``info`` is evidence only.
+         * @enum {string}
+         */
+        CheckSeverity: "blocking" | "warning" | "info";
+        /**
+         * CheckStatus
+         * @enum {string}
+         */
+        CheckStatus: "pass" | "warn" | "fail" | "error" | "skipped";
         /**
          * CheckThresholds
          * @description Warn and fail thresholds of a check (in the check's direction).
@@ -3177,6 +4331,110 @@ export interface components {
             segment: number;
             /** Size */
             size: number;
+        };
+        /** ChooserChoice */
+        ChooserChoice: {
+            /** Help Plain */
+            help_plain?: string | null;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * ChooserQuestion
+         * @description One plain-language question of the chooser (``multiple``: several answers allowed).
+         */
+        ChooserQuestion: {
+            /** Choices */
+            choices: components["schemas"]["ChooserChoice"][];
+            /** Help Plain */
+            help_plain?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Multiple
+             * @default false
+             */
+            multiple?: boolean;
+            /** Prompt Plain */
+            prompt_plain: string;
+            /**
+             * Weight
+             * @description How much a match on it counts
+             * @default 1
+             */
+            weight?: number;
+        };
+        /**
+         * ChooserQuestionnaire
+         * @description ``GET /v1/catalog/chooser``: the questions, in the order to ask them.
+         * @example {
+         *       "questions": [
+         *         {
+         *           "choices": [
+         *             {
+         *               "label": "Forecast the future",
+         *               "value": "forecast"
+         *             },
+         *             {
+         *               "label": "Measure what my marketing adds",
+         *               "value": "explain_marketing"
+         *             }
+         *           ],
+         *           "id": "goal",
+         *           "multiple": true,
+         *           "prompt_plain": "What do you want to do?",
+         *           "weight": 3
+         *         }
+         *       ]
+         *     }
+         */
+        ChooserQuestionnaire: {
+            /** Questions */
+            questions: components["schemas"]["ChooserQuestion"][];
+        };
+        /**
+         * ChooserResult
+         * @description ``GET /v1/catalog/recommendations``: candidates ranked best first.
+         * @example {
+         *       "answered": [
+         *         "goal",
+         *         "data_shape"
+         *       ],
+         *       "items": [
+         *         {
+         *           "cautions_plain": [],
+         *           "difficulty": "beginner",
+         *           "id": "weekly_forecast",
+         *           "kind": "template",
+         *           "reasons_plain": [
+         *             "Made for forecasting",
+         *             "Works on one series"
+         *           ],
+         *           "score": 0.92,
+         *           "summary_plain": "Forecasts one weekly number a few months ahead, with a range of likely values.",
+         *           "title": "Weekly forecast",
+         *           "typical_runtime": "minutes"
+         *         }
+         *       ],
+         *       "unanswered": [
+         *         "frequency",
+         *         "history",
+         *         "drivers",
+         *         "uncertainty",
+         *         "experience",
+         *         "speed"
+         *       ]
+         *     }
+         */
+        ChooserResult: {
+            /** Answered */
+            answered?: string[];
+            /** Items */
+            items?: components["schemas"]["Recommendation"][];
+            /** Unanswered */
+            unanswered?: string[];
         };
         /**
          * ColumnProfile
@@ -3477,6 +4735,92 @@ export interface components {
             spend_var?: string;
         };
         /**
+         * DataExploreRequest
+         * @description Which Data Explorer sections to compute, and how.
+         *
+         *     ``kpi`` is the result the cross-correlations are computed against (default: the
+         *     dataset's target variable); ``facet_by`` splits series by up to two dims; ``period``
+         *     is the season length for STL and seasonal strength (default: from the frequency).
+         * @example {
+         *       "facet_by": [
+         *         "geo"
+         *       ],
+         *       "kpi": "revenue",
+         *       "max_lag": 12,
+         *       "sections": [
+         *         "overview",
+         *         "timeseries",
+         *         "stationarity",
+         *         "ccf",
+         *         "stl",
+         *         "quality"
+         *       ]
+         *     }
+         */
+        DataExploreRequest: {
+            /**
+             * Alpha
+             * @default 0.05
+             */
+            alpha?: number;
+            /**
+             * Correlation
+             * @default pearson
+             * @enum {string}
+             */
+            correlation?: "pearson" | "spearman";
+            /** Facet By */
+            facet_by?: string[];
+            /**
+             * Group By
+             * @description Dim for group comparisons
+             */
+            group_by?: string | null;
+            /** Kpi */
+            kpi?: string | null;
+            /**
+             * Max Lag
+             * @default 26
+             */
+            max_lag?: number;
+            /**
+             * Max Series
+             * @default 50
+             */
+            max_series?: number;
+            /**
+             * Outlier Threshold
+             * @default 3.5
+             */
+            outlier_threshold?: number;
+            /**
+             * Outliers
+             * @default mad
+             * @enum {string}
+             */
+            outliers?: "iqr" | "mad" | "zscore";
+            /** Period */
+            period?: number | null;
+            /**
+             * Prewhiten
+             * @description Prewhiten before cross-correlations (filter both series with the driver's AR model, so a peak is not just two smooth series moving together)
+             * @default true
+             */
+            prewhiten?: boolean;
+            /** Sections */
+            sections?: ("overview" | "distributions" | "timeseries" | "missingness" | "outliers" | "correlation" | "ccf" | "acf_pacf" | "stationarity" | "stl" | "vif" | "groups" | "quality")[];
+            /**
+             * Time Dim
+             * @description Default: the dataset's time dim
+             */
+            time_dim?: string | null;
+            /**
+             * Vars
+             * @description Default: all
+             */
+            vars?: string[];
+        };
+        /**
          * DataRef
          * @description A dataset stored next to the bundle (path relative to the bundle root).
          */
@@ -3571,6 +4915,8 @@ export interface components {
          *     }
          */
         Dataset: {
+            /** @description M3.5: the description plus a summary generated from the schema */
+            about?: components["schemas"]["DatasetAbout"] | null;
             /**
              * Created At
              * Format: date-time
@@ -3605,6 +4951,46 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * DatasetAbout
+         * @description The About of a dataset: the owner's description plus a generated summary.
+         *
+         *     ``summary_generated`` and ``highlights`` come from the version's schema and coordinate
+         *     summary (:func:`describe_dataset`); ``warnings_plain`` from its ingest issues and profile.
+         * @example {
+         *       "description_user": "Weekly media spend and revenue from the finance warehouse.",
+         *       "highlights": [
+         *         "104 weeks of history",
+         *         "10 markets",
+         *         "3 channels"
+         *       ],
+         *       "summary_generated": "Weekly data from 2023-01-01 to 2024-12-29 (104 weeks) for 10 markets and 3 channels, with 3 measures: revenue (the result you want to explain), spend (marketing spend) and price.",
+         *       "warnings_plain": []
+         *     }
+         */
+        DatasetAbout: {
+            /** Description User */
+            description_user?: string | null;
+            /** Generated At */
+            generated_at?: string | null;
+            /** Highlights */
+            highlights?: string[];
+            /** Summary Generated */
+            summary_generated: string;
+            /** Warnings Plain */
+            warnings_plain?: string[];
+        };
+        /**
+         * DatasetAboutUpdate
+         * @description ``PATCH /v1/datasets/{dataset_id}/about``: the owner's own description.
+         * @example {
+         *       "description_user": "Weekly media spend and revenue from the finance warehouse."
+         *     }
+         */
+        DatasetAboutUpdate: {
+            /** Description User */
+            description_user?: string | null;
         };
         /**
          * DatasetCreate
@@ -3902,6 +5288,12 @@ export interface components {
              */
             path: string;
         };
+        /**
+         * Difficulty
+         * @description How much statistical background an item needs to use well.
+         * @enum {string}
+         */
+        Difficulty: "beginner" | "intermediate" | "expert";
         /**
          * DimMapping
          * @description A dim of the dataset, read from one column of a tabular upload.
@@ -4360,7 +5752,9 @@ export interface components {
          * EndpointRollback
          * @description ``POST /v1/endpoints/{alias}/rollback``: point the alias back at the version of an
          *     earlier revision (default: the one before the current). The gate is not re-run - the
-         *     version was promoted before - but the rollback is audited with its reason.
+         *     version was promoted before - but the rollback is audited with its reason. M3.5: when a
+         *     governance policy requires validated models, the earlier version must still be
+         *     ``validated`` (``NOT_VALIDATED`` otherwise).
          * @example {
          *       "reason": "v3 over-forecasts after the price change"
          *     }
@@ -4747,7 +6141,7 @@ export interface components {
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -4799,6 +6193,165 @@ export interface components {
              * @enum {string}
              */
             schema_change?: "block" | "warn" | "allow";
+        };
+        /**
+         * EvidenceItem
+         * @description One piece of evidence behind a check: a number, a small table, a plot or a stored
+         *     artifact (``ref`` is a run artifact name or a ``model://`` reference).
+         */
+        EvidenceItem: {
+            /** Caption Plain */
+            caption_plain?: string | null;
+            inline?: components["schemas"]["JsonValue"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "metric" | "table" | "plot" | "artifact" | "text";
+            /** Name */
+            name: string;
+            /** Ref */
+            ref?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            /** Value */
+            value?: number | null;
+        };
+        /**
+         * EvidencePack
+         * @description The audit export of a validation (``format`` ``mapi.evidence-pack/v1``; the HTML
+         *     rendering is a static, script-free document with the same content).
+         * @example {
+         *       "generated_at": "2026-10-15T09:30:00Z",
+         *       "lineage": {
+         *         "dataset": "dataset://growth/weekly_sales@v4",
+         *         "plugin": "mmm.bayesian@1.0.0"
+         *       },
+         *       "model_ref": "model://growth/geo-mmm@v7",
+         *       "policies": [
+         *         {
+         *           "checks": [
+         *             {
+         *               "check": "convergence"
+         *             },
+         *             {
+         *               "check": "data.quality"
+         *             },
+         *             {
+         *               "check": "null.permutation_target"
+         *             }
+         *           ],
+         *           "created_at": "2026-10-15T09:30:00Z",
+         *           "id": "pol_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *           "name": "All models",
+         *           "require_approval": true,
+         *           "scope": "tenant",
+         *           "tenant_id": "acme",
+         *           "version": 3
+         *         }
+         *       ],
+         *       "validation": {
+         *         "id": "val_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *         "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *         "policies": [
+         *           "pol_01jaf3h1j2k3m4n5p6q7r8s9t0@3"
+         *         ],
+         *         "project_id": "growth",
+         *         "require_approval": true,
+         *         "results": [
+         *           {
+         *             "check": "null.permutation_target",
+         *             "computed_at": "2026-10-15T09:30:00Z",
+         *             "evidence": [
+         *               {
+         *                 "inline": {
+         *                   "real": 0.081,
+         *                   "shuffled_min": 0.079
+         *                 },
+         *                 "kind": "table",
+         *                 "name": "permutation_scores"
+         *               }
+         *             ],
+         *             "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *             "metric": "permutation_p_value",
+         *             "severity": "blocking",
+         *             "status": "pass",
+         *             "threshold": 0.05,
+         *             "value": 0.048
+         *           }
+         *         ],
+         *         "status": "awaiting_approval",
+         *         "submitted_at": "2026-10-15T09:30:00Z",
+         *         "submitted_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+         *         "tenant_id": "acme",
+         *         "updated_at": "2026-10-15T09:30:00Z",
+         *         "version": 7
+         *       }
+         *     }
+         */
+        EvidencePack: {
+            /**
+             * Digest
+             * @description sha256 of the canonical JSON content
+             */
+            digest?: string | null;
+            /**
+             * Download
+             * @description Signed link to the HTML rendering (ArtifactLink)
+             */
+            download?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Format
+             * @default mapi.evidence-pack/v1
+             * @constant
+             */
+            format?: "mapi.evidence-pack/v1";
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Generated By */
+            generated_by?: string | null;
+            /** Lineage */
+            lineage?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Model Ref
+             * @description model://project/name@vN
+             */
+            model_ref: string;
+            /** Policies */
+            policies?: components["schemas"]["GovernancePolicy"][];
+            /** Scorecard */
+            scorecard?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            validation: components["schemas"]["ModelValidation"];
+        };
+        /**
+         * EvidencePackRequest
+         * @description ``POST /v1/validations/{validation_id}/evidence-pack``.
+         * @example {
+         *       "format": "html",
+         *       "include_plots": true
+         *     }
+         */
+        EvidencePackRequest: {
+            /**
+             * Format
+             * @default html
+             * @enum {string}
+             */
+            format?: "html" | "json";
+            /**
+             * Include Plots
+             * @default true
+             */
+            include_plots?: boolean;
         };
         /**
          * ExecutorAttestation
@@ -5241,6 +6794,188 @@ export interface components {
             reason: string;
         };
         /**
+         * ExpandingWindowPlan
+         * @description Training from the first period up to each origin.
+         */
+        ExpandingWindowPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Anchor
+             * @description end: the last test window ends at the last period
+             * @default end
+             * @enum {string}
+             */
+            anchor?: "end" | "start";
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /**
+             * Gap
+             * @description Periods between training and test (not scored)
+             * @default 0
+             */
+            gap?: number;
+            /**
+             * Horizons
+             * @description Forecast horizons scored per fold
+             */
+            horizons: number[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "expanding_window";
+            /**
+             * Min Train
+             * @description Fewest training periods a fold may have
+             * @default 1
+             */
+            min_train?: number;
+            /** N Folds */
+            n_folds?: number | null;
+            /**
+             * Step
+             * @description Periods between origins (default: max)
+             */
+            step?: number | null;
+        };
+        /**
+         * Exploration
+         * @description ``POST …/explore`` (``202``) and ``GET /v1/explorations/{run_id}``: the ``explore``
+         *     run and, once done, its index and signed links to every section view.
+         * @example {
+         *       "done": true,
+         *       "index": {
+         *         "ref": "dataset://growth/weekly_sales@v4",
+         *         "sections": [
+         *           {
+         *             "section": "stationarity",
+         *             "view": "ui/explore/stationarity.json"
+         *           }
+         *         ],
+         *         "target": "dataset"
+         *       },
+         *       "ref": "dataset://growth/weekly_sales@v4",
+         *       "run": {
+         *         "attempt": 1,
+         *         "cost": {
+         *           "estimated": true
+         *         },
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "executor": "local-process",
+         *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *         "kind": "explore",
+         *         "project_id": "default",
+         *         "queued_at": "2026-10-15T09:30:00Z",
+         *         "resource_class": "M",
+         *         "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *         "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *         "spec_revision": 2,
+         *         "started_at": "2026-10-15T09:30:05Z",
+         *         "state": "succeeded",
+         *         "tenant_id": "default",
+         *         "timeout": "45m",
+         *         "updated_at": "2026-10-15T09:31:00Z"
+         *       },
+         *       "target": "dataset",
+         *       "views": [
+         *         {
+         *           "content_type": "application/zip",
+         *           "crc32c": "4waSgw==",
+         *           "expires_at": "2026-10-15T09:45:00Z",
+         *           "generation": 7,
+         *           "name": "ui/explore/stationarity.json",
+         *           "size": 2097152,
+         *           "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Fmodels%2Fmdl_01%2F1%2Fbundle.zarr.zip?generation=7&X-Goog-Signature=…"
+         *         }
+         *       ]
+         *     }
+         */
+        Exploration: {
+            /** Done */
+            done: boolean;
+            index?: components["schemas"]["ExplorerIndex"] | null;
+            /** Ref */
+            ref: string;
+            run: components["schemas"]["Run"];
+            /**
+             * Target
+             * @enum {string}
+             */
+            target: "dataset" | "model";
+            /** Views */
+            views?: components["schemas"]["ArtifactLink"][];
+        };
+        /**
+         * ExplorerIndex
+         * @description ``ui/explore/index.json``: what an explore run produced (and why a section is
+         *     missing).
+         * @example {
+         *       "ref": "dataset://growth/weekly_sales@v4",
+         *       "sections": [
+         *         {
+         *           "section": "stationarity",
+         *           "view": "ui/explore/stationarity.json"
+         *         },
+         *         {
+         *           "message_plain": "Less than two seasons of data.",
+         *           "section": "stl",
+         *           "status": "skipped",
+         *           "view": "ui/explore/stl.json"
+         *         }
+         *       ],
+         *       "target": "dataset"
+         *     }
+         */
+        ExplorerIndex: {
+            /**
+             * Format
+             * @default mapi.explorer-index/v1
+             * @constant
+             */
+            format?: "mapi.explorer-index/v1";
+            /**
+             * Ref
+             * @description dataset://… or model://…
+             */
+            ref: string;
+            /** Sections */
+            sections?: components["schemas"]["ExplorerSectionRef"][];
+            /**
+             * Target
+             * @enum {string}
+             */
+            target: "dataset" | "model";
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExplorerSectionRef */
+        ExplorerSectionRef: {
+            /** Message Plain */
+            message_plain?: string | null;
+            /** Section */
+            section: string;
+            /**
+             * Status
+             * @default ok
+             * @enum {string}
+             */
+            status?: "ok" | "skipped" | "error";
+            /**
+             * View
+             * @description ui/explore/<section>.json
+             */
+            view: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * FailureClass
          * @description Why a run ended ``FAILED``; each maps to one stable :class:`ErrorCode`.
          * @enum {string}
@@ -5339,6 +7074,42 @@ export interface components {
             spend_var?: string;
         };
         /**
+         * FrontierPoint
+         * @description The best plan at one total budget.
+         */
+        FrontierPoint: {
+            /** Allocation */
+            allocation?: {
+                [key: string]: number;
+            };
+            /** Expected Kpi */
+            expected_kpi: number;
+            /** Kpi P5 */
+            kpi_p5?: number | null;
+            /** Kpi P95 */
+            kpi_p95?: number | null;
+            /** Marginal Roi */
+            marginal_roi?: number | null;
+            /** Total Budget */
+            total_budget: number;
+        };
+        /**
+         * FrontierRequest
+         * @description Also sweep budgets from ``budget_min`` to ``budget_max`` (default 40%-200% of the
+         *     current total) in ``n_points`` steps.
+         */
+        FrontierRequest: {
+            /** Budget Max */
+            budget_max?: number | null;
+            /** Budget Min */
+            budget_min?: number | null;
+            /**
+             * N Points
+             * @default 12
+             */
+            n_points?: number;
+        };
+        /**
          * FutureCovariates
          * @description Where future values of ``future_required`` covariates come from in a forecast (M3).
          *
@@ -5366,7 +7137,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE" | "NOT_EVALUATED";
+            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE" | "NOT_EVALUATED" | "NOT_VALIDATED";
             /** Message Plain */
             message_plain: string;
             outcome: components["schemas"]["GateOutcome"];
@@ -5442,6 +7213,53 @@ export interface components {
             include?: ("metadata" | "datasets" | "models" | "audit" | "usage")[];
         };
         /**
+         * GeoHoldoutPlan
+         * @description Hold out whole groups along ``dim``: the explicit ``groups`` (one fold), or ``n``
+         *     seeded random groups in each of ``n_folds`` folds. With ``time_dim``/``test_last``, the
+         *     held-out groups are tested on their last periods only, and ``include_pre_period``
+         *     trains on their earlier periods too (a geo experiment readout).
+         */
+        GeoHoldoutPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Dim
+             * @default geo
+             */
+            dim?: string;
+            /** Groups */
+            groups?: (string | number | boolean)[] | null;
+            /**
+             * Include Pre Period
+             * @default false
+             */
+            include_pre_period?: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "geo_holdout";
+            /** N */
+            n?: number | null;
+            /**
+             * N Folds
+             * @default 1
+             */
+            n_folds?: number;
+            /**
+             * Seed
+             * @default 0
+             */
+            seed?: number;
+            /** Test Last */
+            test_last?: number | null;
+            /** Time Dim */
+            time_dim?: string | null;
+        };
+        /**
          * GlobalSpend
          * @description Platform spend in the current window of the global spend cap: what the kill switch
          *     compares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in
@@ -5480,6 +7298,305 @@ export interface components {
              * Format: date-time
              */
             start: string;
+        };
+        /**
+         * GovernanceCheckDef
+         * @description One check of the governance catalog (``GET /v1/catalog/governance-checks``).
+         * @example {
+         *       "about": {
+         *         "assumptions": [
+         *           "Numbers can be added up (spend, sales); averages are averaged"
+         *         ],
+         *         "avoid_when": [
+         *           "Your data already has one row per week"
+         *         ],
+         *         "data_needs": [
+         *           "A date column"
+         *         ],
+         *         "difficulty": "beginner",
+         *         "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *         "fits": {
+         *           "goal": [
+         *             "check_data"
+         *           ]
+         *         },
+         *         "outputs": [
+         *           "The same columns, one row per week"
+         *         ],
+         *         "related": [
+         *           "core.calendar"
+         *         ],
+         *         "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *         "title": "Weekly totals",
+         *         "typical_runtime": "instant",
+         *         "use_when": [
+         *           "Your data is daily but you want to plan or report by week"
+         *         ]
+         *       },
+         *       "category": "baseline",
+         *       "direction": "min",
+         *       "fail": 0,
+         *       "id": "baseline.beats_naive",
+         *       "metric": "relative_skill",
+         *       "requires": [
+         *         "holdout",
+         *         "time_series"
+         *       ],
+         *       "title": "Beats simple benchmarks",
+         *       "warn": 0.05
+         *     }
+         */
+        GovernanceCheckDef: {
+            about: components["schemas"]["About"];
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "null_test" | "baseline" | "residuals" | "stability" | "plausibility" | "sensitivity" | "recovery" | "convergence" | "holdout" | "data";
+            /** @default blocking */
+            default_severity?: components["schemas"]["CheckSeverity"];
+            direction: components["schemas"]["CheckDirection"];
+            /** Fail */
+            fail: number;
+            /**
+             * Families
+             * @description Model families it applies to (None: every family)
+             */
+            families?: string[] | null;
+            /** Id */
+            id: string;
+            /** Metric */
+            metric: string;
+            /** Params Schema */
+            params_schema?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Requires */
+            requires?: ("bayesian" | "holdout" | "time_series" | "channels" | "residuals")[];
+            /** Target */
+            target?: number | null;
+            /** Title */
+            title: string;
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
+            /** Warn */
+            warn: number;
+        };
+        /**
+         * GovernancePolicy
+         * @description A versioned policy. ``project_id`` is ``None`` for tenant-wide policies.
+         * @example {
+         *       "checks": [
+         *         {
+         *           "check": "convergence"
+         *         },
+         *         {
+         *           "check": "data.quality"
+         *         },
+         *         {
+         *           "check": "null.permutation_target"
+         *         }
+         *       ],
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "id": "pol_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *       "name": "All models",
+         *       "require_approval": true,
+         *       "scope": "tenant",
+         *       "tenant_id": "acme",
+         *       "version": 3
+         *     }
+         */
+        GovernancePolicy: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            applies_to?: components["schemas"]["PolicyMatch"];
+            /**
+             * Approvals Required
+             * @default 1
+             */
+            approvals_required?: number;
+            /** Checks */
+            checks: components["schemas"]["PolicyCheck"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Project Id */
+            project_id?: string | null;
+            /**
+             * Require Approval
+             * @default false
+             */
+            require_approval?: boolean;
+            /**
+             * Require Validated For Promotion
+             * @default true
+             */
+            require_validated_for_promotion?: boolean;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "tenant" | "project";
+            /** Tenant Id */
+            tenant_id: string;
+            /** Version */
+            version: number;
+        };
+        /**
+         * GovernancePolicyCreate
+         * @description ``POST /v1/governance/policies`` (project) or ``/v1/tenants/{id}/governance/policies``.
+         * @example {
+         *       "applies_to": {
+         *         "families": [
+         *           "ts"
+         *         ]
+         *       },
+         *       "checks": [
+         *         {
+         *           "check": "baseline.beats_naive",
+         *           "severity": "blocking"
+         *         },
+         *         {
+         *           "check": "residuals.whiteness",
+         *           "severity": "warning"
+         *         },
+         *         {
+         *           "check": "null.permutation_target",
+         *           "params": {
+         *             "n_permutations": 20
+         *           },
+         *           "severity": "blocking"
+         *         },
+         *         {
+         *           "check": "holdout.accuracy",
+         *           "thresholds": {
+         *             "fail": 0.2,
+         *             "warn": 0.1
+         *           }
+         *         }
+         *       ],
+         *       "name": "Forecast models",
+         *       "require_approval": true
+         *     }
+         */
+        GovernancePolicyCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            applies_to?: components["schemas"]["PolicyMatch"];
+            /**
+             * Approvals Required
+             * @default 1
+             */
+            approvals_required?: number;
+            /** Checks */
+            checks: components["schemas"]["PolicyCheck"][];
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Require Approval
+             * @default false
+             */
+            require_approval?: boolean;
+            /**
+             * Require Validated For Promotion
+             * @default true
+             */
+            require_validated_for_promotion?: boolean;
+        };
+        /**
+         * GovernancePolicyUpdate
+         * @description ``PUT …/policies/{policy_id}``: a new version (the old one stays for audit).
+         * @example {
+         *       "applies_to": {
+         *         "families": [
+         *           "ts"
+         *         ]
+         *       },
+         *       "checks": [
+         *         {
+         *           "check": "baseline.beats_naive",
+         *           "severity": "blocking"
+         *         },
+         *         {
+         *           "check": "residuals.whiteness",
+         *           "severity": "warning"
+         *         },
+         *         {
+         *           "check": "null.permutation_target",
+         *           "params": {
+         *             "n_permutations": 20
+         *           },
+         *           "severity": "blocking"
+         *         },
+         *         {
+         *           "check": "holdout.accuracy",
+         *           "thresholds": {
+         *             "fail": 0.2,
+         *             "warn": 0.1
+         *           }
+         *         }
+         *       ],
+         *       "name": "Forecast models",
+         *       "require_approval": true
+         *     }
+         */
+        GovernancePolicyUpdate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            applies_to?: components["schemas"]["PolicyMatch"];
+            /**
+             * Approvals Required
+             * @default 1
+             */
+            approvals_required?: number;
+            /** Checks */
+            checks: components["schemas"]["PolicyCheck"][];
+            /** Description */
+            description?: string | null;
+            /**
+             * Expected Version
+             * @description 409 when it changed
+             */
+            expected_version?: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Require Approval
+             * @default false
+             */
+            require_approval?: boolean;
+            /**
+             * Require Validated For Promotion
+             * @default true
+             */
+            require_validated_for_promotion?: boolean;
         };
         /**
          * GuidedAnswers
@@ -5787,6 +7904,8 @@ export interface components {
          *     }
          */
         GuidedTemplate: {
+            /** @description M3.5: the plain-language About card (every built-in has one) */
+            about?: components["schemas"]["About"] | null;
             /** Defaults */
             defaults?: {
                 [key: string]: components["schemas"]["JsonValue"];
@@ -5862,7 +7981,7 @@ export interface components {
          *           "status": "ok"
          *         }
          *       },
-         *       "contract_version": "0.1",
+         *       "contract_version": "0.2",
          *       "status": "ok",
          *       "version": "0.2.0"
          *     }
@@ -5880,7 +7999,7 @@ export interface components {
             };
             /**
              * Contract Version
-             * @default 0.1
+             * @default 0.2
              */
             contract_version?: string;
             /**
@@ -5909,6 +8028,24 @@ export interface components {
              */
             status: "ok" | "degraded" | "fail";
         };
+        /**
+         * HoldoutPlan
+         * @description One fold: the existing train/holdout split.
+         */
+        HoldoutPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "holdout";
+            /** Split */
+            split: components["schemas"]["TimeHoldoutSplit"] | components["schemas"]["LastPerGroupSplit"] | components["schemas"]["AsOfSplit"] | components["schemas"]["LeaveGroupOutSplit"] | components["schemas"]["MaskBlockSplit"];
+        };
         /** Horizon */
         Horizon: {
             /** Dim */
@@ -5923,7 +8060,7 @@ export interface components {
          *     Tabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit
          *     ``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.
          *
-         *     With the ``mff``/``bayesinsight`` presets the long table is first pivoted to one column
+         *     With the ``mff`` preset the long table is first pivoted to one column
          *     per ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then
          *     pick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may
          *     refine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and
@@ -6022,8 +8159,6 @@ export interface components {
          *     }
          */
         IngestMapping: {
-            /** @description BayesInsight's metadata.json (the bayesinsight preset) */
-            bayesinsight?: components["schemas"]["BayesInsightMetadata"] | null;
             /** Dims */
             dims?: {
                 [key: string]: components["schemas"]["DimMapping"];
@@ -6041,7 +8176,7 @@ export interface components {
             layout?: "dense" | "long";
             /** @description The meridian preset's columns */
             meridian?: components["schemas"]["MeridianColumns"] | null;
-            /** @description Options of the mff/bayesinsight presets */
+            /** @description Options of the mff preset */
             mff?: components["schemas"]["MffOptions"] | null;
             /**
              * @description M3: a file contract instead of (or refined by) the column mapping
@@ -6064,7 +8199,7 @@ export interface components {
          * IngestPreset
          * @enum {string}
          */
-        IngestPreset: "none" | "mff" | "meridian" | "bayesinsight";
+        IngestPreset: "none" | "mff" | "meridian";
         /** IngestResponse */
         IngestResponse: {
             result: components["schemas"]["IngestResult"];
@@ -6234,6 +8369,72 @@ export interface components {
             updated_by?: string | null;
         };
         /**
+         * LastPerGroupSplit
+         * @description Hold out the last ``last`` rows along ``dim`` within each group (``min_len`` kept).
+         */
+        LastPerGroupSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** Dim */
+            dim: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "last_per_group";
+            /**
+             * Last
+             * @default 1
+             */
+            last?: number;
+            /**
+             * Min Len
+             * @default 1
+             */
+            min_len?: number;
+            /** Within */
+            within: string[];
+        };
+        /**
+         * LeaveGroupOutSplit
+         * @description Hold out whole groups of ``dim`` (explicit ``groups`` or ``n`` random ones).
+         */
+        LeaveGroupOutSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** Dim */
+            dim: string;
+            /** Groups */
+            groups?: (string | number | boolean)[] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "leave_group_out";
+            /** N */
+            n?: number | null;
+            /** Seed */
+            seed?: number | null;
+        };
+        /**
          * LiftTest
          * @description One experiment: ``spend_delta`` extra spend on ``channel`` (optionally in one ``geo``)
          *     from ``start`` to ``end`` (inclusive) caused ``kpi_delta`` incremental KPI.
@@ -6323,7 +8524,7 @@ export interface components {
          *       "lib_versions": {
          *         "pymc": "5.25.1"
          *       },
-         *       "plugin": "mmm.hierarchical_geo@1.3.2",
+         *       "plugin": "mmm.bayesian@1.3.2",
          *       "resource_class": "M",
          *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *       "seed": 20261014,
@@ -6356,7 +8557,7 @@ export interface components {
             overlay_hash?: string | null;
             /**
              * Plugin
-             * @example mmm.hierarchical_geo@1.3.2
+             * @example mmm.bayesian@1.3.2
              */
             plugin?: string | null;
             resource_class?: components["schemas"]["ResourceClass"] | null;
@@ -6449,6 +8650,38 @@ export interface components {
             key_id: string;
             /** Value */
             value: string;
+        };
+        /**
+         * MaskBlockSplit
+         * @description Hold out random blocks over ``dims`` (block sizes per dim) covering ``fraction``.
+         */
+        MaskBlockSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** Block */
+            block?: {
+                [key: string]: number;
+            };
+            /** Dims */
+            dims: string[];
+            /** Fraction */
+            fraction: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "mask_block";
+            /** Seed */
+            seed?: number | null;
         };
         /**
          * Me
@@ -6579,6 +8812,11 @@ export interface components {
          */
         Membership: {
             /**
+             * Capabilities
+             * @description M3.5: e.g. reviewer (approves model validations)
+             */
+            capabilities?: components["schemas"]["Capability"][];
+            /**
              * Created At
              * Format: date-time
              */
@@ -6620,6 +8858,11 @@ export interface components {
          *     }
          */
         MembershipCreate: {
+            /**
+             * Capabilities
+             * @description M3.5: e.g. reviewer (approves model validations)
+             */
+            capabilities?: components["schemas"]["Capability"][];
             /** Email */
             email?: string | null;
             /** Principal Id */
@@ -6628,13 +8871,21 @@ export interface components {
         };
         /**
          * MembershipUpdate
-         * @description Change a member's role (the last admin of a tenant or project cannot be demoted).
+         * @description Change a member's role (the last admin of a tenant or project cannot be demoted)
+         *     and, from M3.5, their capabilities (``reviewer``).
          * @example {
          *       "role": "editor"
          *     }
+         * @example {
+         *       "capabilities": [
+         *         "reviewer"
+         *       ]
+         *     }
          */
         MembershipUpdate: {
-            role: components["schemas"]["ProjectRole"];
+            /** Capabilities */
+            capabilities?: components["schemas"]["Capability"][] | null;
+            role?: components["schemas"]["ProjectRole"] | null;
         };
         /**
          * MeridianColumns
@@ -6746,9 +8997,17 @@ export interface components {
          * @description The MFF ("model feature format") long-table preset.
          *
          *     One row per ``(period, geography, product, campaign, outlet, creative, variable)`` with
-         *     the value in ``value_column``. ``Period`` becomes the time dim; the other key columns
-         *     become dims only when they hold more than one distinct value; ``VariableName`` values
-         *     become data variables.
+         *     the value in ``value_column``. ``Period`` becomes the time dim; ``VariableName`` values
+         *     become data variables. The rest follows mmm-framework's MFF semantics (its
+         *     ``MFFLoader``), so both read a file the same way:
+         *
+         *     * ``Geography`` and ``Product`` become dims when they hold more than one level. A blank
+         *       label (or ``National``, ``Total``, ``All``) is the coarser level: a variable given
+         *       only there (national TV) is spread across the levels - equal weights, or the KPI's
+         *       share of each level (``allocation``; mmm-framework's defaults: geographies equally,
+         *       products by sales). A variable may not mix the two levels.
+         *     * ``Campaign``, ``Outlet`` and ``Creative`` are breakdowns: rows that differ only there
+         *       are summed, unless the column is listed in ``split`` (then it becomes a dim).
          *
          *     ``combine`` joins several key columns into one dim (``{"geo": ["Geography", "Product"]}``
          *     gives labels such as ``US|Watches``) - a model with one panel dim can then fit a
@@ -6756,6 +9015,13 @@ export interface components {
          *     so ``{"geo": ["Geography"]}`` keeps a national table's geo dim.
          */
         MffOptions: {
+            /**
+             * Allocation
+             * @description v0.5: how a variable given only at the coarser level (a blank or 'National' label) is spread across the levels of a key column: equally, or by the KPI's share of each level (the variable with role 'target', or 'kpi')
+             */
+            allocation?: {
+                [key: string]: "equal" | "kpi";
+            };
             /**
              * Combine
              * @description M3: dim -> key columns whose labels are joined ('|') into that one dim
@@ -6776,6 +9042,11 @@ export interface components {
                 [key: string]: string;
             };
             /**
+             * Kpi
+             * @description v0.5: the KPI variable of 'kpi' allocation
+             */
+            kpi?: string | null;
+            /**
              * Missing
              * @default allow
              * @enum {string}
@@ -6793,6 +9064,11 @@ export interface components {
             roles?: {
                 [key: string]: string;
             };
+            /**
+             * Split
+             * @description v0.5: breakdown key columns (Campaign, Outlet, Creative) kept as dims instead of summed
+             */
+            split?: string[];
             /**
              * Time Dim
              * @default date
@@ -6880,10 +9156,87 @@ export interface components {
             yanked?: boolean;
         };
         /**
+         * ModelCompareRequest
+         * @description ``POST /v1/models:compare``: several model versions of the project side by side.
+         *
+         *     Starts an ``explore`` run on the first version with the others as ``compare_with`` and
+         *     the ``comparison`` section (plus ``backtest`` when a split plan is given): a metrics
+         *     table, a ranking per metric and pairwise Diebold-Mariano tests on the shared holdout.
+         * @example {
+         *       "models": [
+         *         "model://growth/sales-arimax@v3",
+         *         "model://growth/sales-ets@v1"
+         *       ],
+         *       "sections": [
+         *         "comparison",
+         *         "params"
+         *       ]
+         *     }
+         */
+        ModelCompareRequest: {
+            /** Backtest */
+            backtest?: (components["schemas"]["HoldoutPlan"] | components["schemas"]["RollingOriginPlan"] | components["schemas"]["ExpandingWindowPlan"] | components["schemas"]["BlockedKFoldPlan"] | components["schemas"]["PurgedKFoldPlan"] | components["schemas"]["GeoHoldoutPlan"] | components["schemas"]["NestedPlan"]) | null;
+            /** Horizon */
+            horizon?: number | null;
+            /**
+             * Models
+             * @description model:// refs
+             */
+            models: string[];
+            /** Sections */
+            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "forecast" | "backtest" | "comparison")[];
+        };
+        /**
+         * ModelExploreRequest
+         * @description Which Model Explorer sections to compute. ``compare_with`` adds other model versions
+         *     (``model://…``) to the comparison section; ``backtest`` runs a split plan for the
+         *     backtest section (fits run as child runs).
+         * @example {
+         *       "compare_with": [
+         *         "model://growth/sales-arimax@v2"
+         *       ],
+         *       "horizon": 12,
+         *       "sections": [
+         *         "params",
+         *         "fit",
+         *         "residuals",
+         *         "irf",
+         *         "fevd",
+         *         "comparison"
+         *       ]
+         *     }
+         */
+        ModelExploreRequest: {
+            /** Backtest */
+            backtest?: (components["schemas"]["HoldoutPlan"] | components["schemas"]["RollingOriginPlan"] | components["schemas"]["ExpandingWindowPlan"] | components["schemas"]["BlockedKFoldPlan"] | components["schemas"]["PurgedKFoldPlan"] | components["schemas"]["GeoHoldoutPlan"] | components["schemas"]["NestedPlan"]) | null;
+            /** Compare With */
+            compare_with?: string[];
+            /**
+             * Horizon
+             * @description Forecast/IRF horizon
+             */
+            horizon?: number | null;
+            /**
+             * Interval
+             * @default hdi_90
+             * @enum {string}
+             */
+            interval?: "hdi_90" | "hdi_95" | "ci_90" | "ci_95";
+            /**
+             * Max Params
+             * @default 500
+             */
+            max_params?: number;
+            /** Sections */
+            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "forecast" | "backtest" | "comparison")[];
+        };
+        /**
          * ModelManifest
          * @description Everything the control plane knows about a model plugin version (static JSON).
          */
         ModelManifest: {
+            /** @description M3.5: the plain-language About card (required by the catalog rule and the contract kit; optional here so older manifests still parse) */
+            about?: components["schemas"]["About"] | null;
             /**
              * Artifact Format
              * @default zarr.zip/v1
@@ -6894,6 +9247,11 @@ export interface components {
             derived?: components["schemas"]["DerivedDecl"][];
             /** Description */
             description?: string | null;
+            /**
+             * Family
+             * @description M3.5: the model family governance policies match (mmm, forecast, ts_multivariate, tabular, choice, regime); default: the id's namespace
+             */
+            family?: string | null;
             /** Fit Schema */
             fit_schema?: {
                 [key: string]: components["schemas"]["JsonValue"];
@@ -6931,6 +9289,105 @@ export interface components {
             version: number;
         };
         /**
+         * ModelValidation
+         * @description A validation of one model version: status, policies, results, approvals, history.
+         * @example {
+         *       "id": "val_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *       "policies": [
+         *         "pol_01jaf3h1j2k3m4n5p6q7r8s9t0@3"
+         *       ],
+         *       "project_id": "growth",
+         *       "require_approval": true,
+         *       "results": [
+         *         {
+         *           "check": "null.permutation_target",
+         *           "computed_at": "2026-10-15T09:30:00Z",
+         *           "evidence": [
+         *             {
+         *               "inline": {
+         *                 "real": 0.081,
+         *                 "shuffled_min": 0.079
+         *               },
+         *               "kind": "table",
+         *               "name": "permutation_scores"
+         *             }
+         *           ],
+         *           "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *           "metric": "permutation_p_value",
+         *           "severity": "blocking",
+         *           "status": "pass",
+         *           "threshold": 0.05,
+         *           "value": 0.048
+         *         }
+         *       ],
+         *       "status": "awaiting_approval",
+         *       "submitted_at": "2026-10-15T09:30:00Z",
+         *       "submitted_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+         *       "tenant_id": "acme",
+         *       "updated_at": "2026-10-15T09:30:00Z",
+         *       "version": 7
+         *     }
+         */
+        ModelValidation: {
+            /** Approvals */
+            approvals?: components["schemas"]["Approval"][];
+            /**
+             * Approvals Required
+             * @default 1
+             */
+            approvals_required?: number;
+            /** Failing Checks */
+            failing_checks?: string[];
+            /** History */
+            history?: components["schemas"]["ValidationTransitionRecord"][];
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Model Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_id: string;
+            /**
+             * Policies
+             * @description <policy id>@<version>
+             */
+            policies?: string[];
+            /** Project Id */
+            project_id: string;
+            /**
+             * Require Approval
+             * @default false
+             */
+            require_approval?: boolean;
+            /** Required Checks */
+            required_checks?: components["schemas"]["PolicyCheck"][];
+            /** Results */
+            results?: components["schemas"]["CheckResult"][];
+            status: components["schemas"]["ValidationStatus"];
+            /** Submitted At */
+            submitted_at?: string | null;
+            /** Submitted By */
+            submitted_by?: string | null;
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /**
+             * Workflow Run Id
+             * @description The governance workflow run
+             */
+            workflow_run_id?: string | null;
+        };
+        /**
          * ModelVersion
          * @description A verified bundle: signed manifest, diagnostics, scorecard, lineage and metrics.
          * @example {
@@ -6963,7 +9420,7 @@ export interface components {
          *         "lib_versions": {
          *           "pymc": "5.25.1"
          *         },
-         *         "plugin": "mmm.hierarchical_geo@1.3.2",
+         *         "plugin": "mmm.bayesian@1.3.2",
          *         "resource_class": "M",
          *         "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *         "seed": 20261014,
@@ -7093,6 +9550,253 @@ export interface components {
             version: number;
         };
         /**
+         * NestedPlan
+         * @description An ``inner`` plan inside every training window of an ``outer`` ordered plan.
+         */
+        NestedPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /** Inner */
+            inner: components["schemas"]["HoldoutPlan"] | components["schemas"]["RollingOriginPlan"] | components["schemas"]["ExpandingWindowPlan"] | components["schemas"]["BlockedKFoldPlan"] | components["schemas"]["PurgedKFoldPlan"] | components["schemas"]["GeoHoldoutPlan"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "nested";
+            /** Outer */
+            outer: components["schemas"]["HoldoutPlan"] | components["schemas"]["RollingOriginPlan"] | components["schemas"]["ExpandingWindowPlan"] | components["schemas"]["BlockedKFoldPlan"] | components["schemas"]["PurgedKFoldPlan"] | components["schemas"]["GeoHoldoutPlan"];
+        };
+        /** NodeError */
+        NodeError: {
+            code: components["schemas"]["ErrorCode"];
+            /** Message */
+            message: string;
+            /** Untrusted Text */
+            untrusted_text?: string | null;
+        };
+        /**
+         * NodeImplementation
+         * @description One node implementation of the catalog (``GET /v1/catalog/workflow-nodes``).
+         * @example {
+         *       "about": {
+         *         "assumptions": [
+         *           "Numbers can be added up (spend, sales); averages are averaged"
+         *         ],
+         *         "avoid_when": [
+         *           "Your data already has one row per week"
+         *         ],
+         *         "data_needs": [
+         *           "A date column"
+         *         ],
+         *         "difficulty": "beginner",
+         *         "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *         "fits": {
+         *           "goal": [
+         *             "check_data"
+         *           ]
+         *         },
+         *         "outputs": [
+         *           "The same columns, one row per week"
+         *         ],
+         *         "related": [
+         *           "core.calendar"
+         *         ],
+         *         "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *         "title": "Weekly totals",
+         *         "typical_runtime": "instant",
+         *         "use_when": [
+         *           "Your data is daily but you want to plan or report by week"
+         *         ]
+         *       },
+         *       "id": "test.adf",
+         *       "inputs": {
+         *         "data": {
+         *           "description": "The data to work on",
+         *           "type": "dataset"
+         *         }
+         *       },
+         *       "kind": "test",
+         *       "outputs": {
+         *         "result": "test_result"
+         *       },
+         *       "params_schema": {
+         *         "properties": {
+         *           "alpha": {
+         *             "type": "number"
+         *           }
+         *         },
+         *         "type": "object"
+         *       },
+         *       "result_fields": {
+         *         "p_value": {
+         *           "description": "The p-value",
+         *           "type": "number"
+         *         }
+         *       },
+         *       "version": "1.0.0"
+         *     }
+         */
+        NodeImplementation: {
+            about: components["schemas"]["About"];
+            /**
+             * Cacheable
+             * @description Same inputs and params give the same result
+             * @default true
+             */
+            cacheable?: boolean;
+            /** Id */
+            id: string;
+            /** Inputs */
+            inputs?: {
+                [key: string]: components["schemas"]["PortSpec"];
+            };
+            kind: components["schemas"]["NodeKind"];
+            /** Outputs */
+            outputs?: {
+                [key: string]: components["schemas"]["PortType"];
+            };
+            /** Params Schema */
+            params_schema?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Result Fields */
+            result_fields?: {
+                [key: string]: components["schemas"]["ResultField"];
+            };
+            /**
+             * Runs In
+             * @default sandbox
+             * @enum {string}
+             */
+            runs_in?: "orchestrator" | "sandbox" | "child_run";
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
+        };
+        /**
+         * NodeKind
+         * @enum {string}
+         */
+        NodeKind: "test" | "transform" | "branch" | "split" | "search" | "model" | "evaluate" | "compare" | "select" | "governance" | "report" | "subworkflow";
+        /**
+         * NodeOutputRef
+         * @description Where a node output lives: a reference (``dataset://``, ``model://``), a run artifact
+         *     (``run_id`` + ``object``) or, for small JSON payloads (test results, split plans,
+         *     metrics), ``inline``.
+         */
+        NodeOutputRef: {
+            inline?: components["schemas"]["JsonValue"];
+            /** Object */
+            object?: string | null;
+            /** Ref */
+            ref?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            type: components["schemas"]["PortType"];
+        };
+        /**
+         * NodeRun
+         * @description One node of a workflow run.
+         * @example {
+         *       "attempt": 1,
+         *       "cache_key": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *       "finished_at": "2026-10-15T09:30:04Z",
+         *       "kind": "test",
+         *       "node_id": "adf",
+         *       "outputs": {
+         *         "result": {
+         *           "inline": {
+         *             "test": "test.adf"
+         *           },
+         *           "type": "test_result"
+         *         }
+         *       },
+         *       "params": {
+         *         "alpha": 0.05,
+         *         "regression": "c"
+         *       },
+         *       "result": {
+         *         "decision": "unit_root",
+         *         "p_value": 0.57,
+         *         "reject": false,
+         *         "statistic": -1.42
+         *       },
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "started_at": "2026-10-15T09:30:00Z",
+         *       "status": "succeeded",
+         *       "use": "test.adf@1.0.0"
+         *     }
+         */
+        NodeRun: {
+            /**
+             * Attempt
+             * @default 0
+             */
+            attempt?: number;
+            /** Cache Key */
+            cache_key?: string | null;
+            /**
+             * Cached From
+             * @description Workflow run whose result was reused
+             */
+            cached_from?: string | null;
+            /**
+             * Child Runs
+             * @description Fits and other children
+             */
+            child_runs?: string[];
+            cost?: components["schemas"]["RunCost"] | null;
+            error?: components["schemas"]["NodeError"] | null;
+            /** Finished At */
+            finished_at?: string | null;
+            kind: components["schemas"]["NodeKind"];
+            /** Node Id */
+            node_id: string;
+            /** Outputs */
+            outputs?: {
+                [key: string]: components["schemas"]["NodeOutputRef"];
+            };
+            /**
+             * Params
+             * @description Resolved params
+             */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Result
+             * @description JSON result conditions read (nodes.<id>.<field>)
+             */
+            result?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Run Id
+             * @description The workflow_node run that executed it
+             */
+            run_id?: string | null;
+            /** Skipped Reason */
+            skipped_reason?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            status: components["schemas"]["NodeRunStatus"];
+            /**
+             * Use
+             * @description Resolved implementation ref (id@version)
+             */
+            use: string;
+        };
+        /**
+         * NodeRunStatus
+         * @enum {string}
+         */
+        NodeRunStatus: "pending" | "queued" | "running" | "succeeded" | "cached" | "skipped" | "failed" | "cancelled";
+        /**
          * ObjectRef
          * @description A stored object exposed through ``…/artifacts/{name}`` (fetch it as an ArtifactLink).
          * @example {
@@ -7113,6 +9817,326 @@ export interface components {
             name: string;
             /** Size */
             size: number;
+        };
+        /**
+         * Optimization
+         * @description ``POST …:optimize`` (``Prefer: wait=N``: ``200`` when done, else ``202``) and
+         *     ``GET /v1/optimizations/{run_id}``: the ``optimize`` run and, once done, the plan.
+         * @example {
+         *       "done": true,
+         *       "request": {
+         *         "channels": {
+         *           "search": {
+         *             "min_spend": 50000
+         *           },
+         *           "tv": {
+         *             "max_multiplier": 1.5,
+         *             "min_multiplier": 0.5
+         *           }
+         *         },
+         *         "frontier": {
+         *           "n_points": 10
+         *         },
+         *         "groups": [
+         *           {
+         *             "channels": [
+         *               "search",
+         *               "social"
+         *             ],
+         *             "min_share": 0.4,
+         *             "name": "digital"
+         *           }
+         *         ],
+         *         "objective": "p10",
+         *         "total_budget": 1000000
+         *       },
+         *       "result": {
+         *         "allocation": [
+         *           {
+         *             "change_pct": -25,
+         *             "channel": "tv",
+         *             "current_share": 0.6,
+         *             "current_spend": 600000,
+         *             "marginal_roi": 1.4,
+         *             "optimal_share": 0.45,
+         *             "optimal_spend": 450000,
+         *             "stability": 0.82
+         *           },
+         *           {
+         *             "change_pct": 37.5,
+         *             "channel": "search",
+         *             "current_share": 0.4,
+         *             "current_spend": 400000,
+         *             "marginal_roi": 1.4,
+         *             "optimal_share": 0.55,
+         *             "optimal_spend": 550000,
+         *             "stability": 0.9
+         *           }
+         *         ],
+         *         "current_total": 1000000,
+         *         "expected_kpi": {
+         *           "mean": 3400000,
+         *           "quantiles": {
+         *             "0.05": 3060000,
+         *             "0.95": 3750000
+         *           },
+         *           "sd": 210000
+         *         },
+         *         "expected_regret": 8000,
+         *         "kpi": "revenue",
+         *         "kpi_units": "EUR",
+         *         "n_draws": 200,
+         *         "objective": "p10",
+         *         "objective_label": "cautious plan (10th percentile of the KPI)",
+         *         "prob_positive_uplift": 0.97,
+         *         "spend_units": "EUR",
+         *         "total_budget": 1000000,
+         *         "uplift": {
+         *           "mean": 120000,
+         *           "quantiles": {
+         *             "0.05": 25000,
+         *             "0.95": 220000
+         *           },
+         *           "sd": 60000
+         *         }
+         *       },
+         *       "run": {
+         *         "attempt": 1,
+         *         "cost": {
+         *           "estimated": true
+         *         },
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "executor": "local-process",
+         *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *         "kind": "optimize",
+         *         "project_id": "default",
+         *         "queued_at": "2026-10-15T09:30:00Z",
+         *         "resource_class": "M",
+         *         "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *         "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *         "spec_revision": 2,
+         *         "started_at": "2026-10-15T09:30:05Z",
+         *         "state": "succeeded",
+         *         "tenant_id": "default",
+         *         "timeout": "45m",
+         *         "updated_at": "2026-10-15T09:31:00Z"
+         *       }
+         *     }
+         */
+        Optimization: {
+            /** Done */
+            done: boolean;
+            request: components["schemas"]["OptimizeRequest"];
+            result?: components["schemas"]["OptimizeResult"] | null;
+            run: components["schemas"]["Run"];
+        };
+        /**
+         * OptimizeRequest
+         * @description ``POST …:optimize``: how should the budget be split?
+         *
+         *     ``objective``: ``mean`` (expected KPI), ``p<q>`` (the q-th percentile across posterior
+         *     draws, a cautious plan) or ``cvar<a>`` (mean of the worst a% of draws). ``mode``:
+         *     ``fixed`` spends the budget; ``free`` funds each channel to break-even (marginal value
+         *     = 1 per unit of money, with ``value_per_kpi`` converting KPI to money) and makes the
+         *     total an output. ``horizon`` is the number of future periods the plan covers (default:
+         *     the fit window's length, as the response grid).
+         * @example {
+         *       "channels": {
+         *         "search": {
+         *           "min_spend": 50000
+         *         },
+         *         "tv": {
+         *           "max_multiplier": 1.5,
+         *           "min_multiplier": 0.5
+         *         }
+         *       },
+         *       "frontier": {
+         *         "n_points": 10
+         *       },
+         *       "groups": [
+         *         {
+         *           "channels": [
+         *             "search",
+         *             "social"
+         *           ],
+         *           "min_share": 0.4,
+         *           "name": "digital"
+         *         }
+         *       ],
+         *       "objective": "p10",
+         *       "total_budget": 1000000
+         *     }
+         * @example {
+         *       "budget_change_pct": -10,
+         *       "objective": "mean"
+         *     }
+         * @example {
+         *       "mode": "free",
+         *       "value_per_kpi": 1
+         *     }
+         */
+        OptimizeRequest: {
+            /** Budget Change Pct */
+            budget_change_pct?: number | null;
+            /**
+             * By Geo
+             * @description Allocate per (geo, channel) jointly
+             * @default false
+             */
+            by_geo?: boolean;
+            /** Channels */
+            channels?: {
+                [key: string]: components["schemas"]["ChannelBounds"];
+            };
+            /** @description Bounds of channels not listed in channels */
+            default_bounds?: components["schemas"]["ChannelBounds"];
+            frontier?: components["schemas"]["FrontierRequest"] | null;
+            /** Groups */
+            groups?: components["schemas"]["SpendGroup"][];
+            /** Horizon */
+            horizon?: number | null;
+            /**
+             * Max Draws
+             * @default 200
+             */
+            max_draws?: number;
+            /**
+             * Min Channel Spend
+             * @description Keep every channel funded at least this much
+             */
+            min_channel_spend?: number | null;
+            /**
+             * Mode
+             * @default fixed
+             * @enum {string}
+             */
+            mode?: "fixed" | "free";
+            /**
+             * N Steps
+             * @default 400
+             */
+            n_steps?: number;
+            /**
+             * Objective
+             * @default mean
+             * @example mean
+             * @example p10
+             * @example cvar5
+             */
+            objective?: string;
+            /** Seed */
+            seed?: number | null;
+            /** Total Budget */
+            total_budget?: number | null;
+            /** Value Per Kpi */
+            value_per_kpi?: number | null;
+        };
+        /**
+         * OptimizeResult
+         * @description ``optimize.json``: the recommended plan and its uncertainty.
+         * @example {
+         *       "allocation": [
+         *         {
+         *           "change_pct": -25,
+         *           "channel": "tv",
+         *           "current_share": 0.6,
+         *           "current_spend": 600000,
+         *           "marginal_roi": 1.4,
+         *           "optimal_share": 0.45,
+         *           "optimal_spend": 450000,
+         *           "stability": 0.82
+         *         },
+         *         {
+         *           "change_pct": 37.5,
+         *           "channel": "search",
+         *           "current_share": 0.4,
+         *           "current_spend": 400000,
+         *           "marginal_roi": 1.4,
+         *           "optimal_share": 0.55,
+         *           "optimal_spend": 550000,
+         *           "stability": 0.9
+         *         }
+         *       ],
+         *       "current_total": 1000000,
+         *       "expected_kpi": {
+         *         "mean": 3400000,
+         *         "quantiles": {
+         *           "0.05": 3060000,
+         *           "0.95": 3750000
+         *         },
+         *         "sd": 210000
+         *       },
+         *       "expected_regret": 8000,
+         *       "kpi": "revenue",
+         *       "kpi_units": "EUR",
+         *       "n_draws": 200,
+         *       "objective": "p10",
+         *       "objective_label": "cautious plan (10th percentile of the KPI)",
+         *       "prob_positive_uplift": 0.97,
+         *       "spend_units": "EUR",
+         *       "total_budget": 1000000,
+         *       "uplift": {
+         *         "mean": 120000,
+         *         "quantiles": {
+         *           "0.05": 25000,
+         *           "0.95": 220000
+         *         },
+         *         "sd": 60000
+         *       }
+         *     }
+         */
+        OptimizeResult: {
+            /** Allocation */
+            allocation: components["schemas"]["ChannelAllocation"][];
+            /** Computed At */
+            computed_at?: string | null;
+            current_kpi?: components["schemas"]["DistributionSummary"] | null;
+            /** Current Total */
+            current_total: number;
+            expected_kpi: components["schemas"]["DistributionSummary"];
+            /** Expected Regret */
+            expected_regret?: number | null;
+            /**
+             * Format
+             * @default mapi.optimize/v1
+             * @constant
+             */
+            format?: "mapi.optimize/v1";
+            /** Frontier */
+            frontier?: components["schemas"]["FrontierPoint"][];
+            /** Horizon */
+            horizon?: number | null;
+            /** Kpi */
+            kpi: string;
+            /** Kpi Units */
+            kpi_units?: string | null;
+            /**
+             * Mode
+             * @default fixed
+             * @enum {string}
+             */
+            mode?: "fixed" | "free";
+            /** N Draws */
+            n_draws: number;
+            /** Notes Plain */
+            notes_plain?: string[];
+            /** Objective */
+            objective: string;
+            /** Objective Label */
+            objective_label: string;
+            /** Prob Positive Uplift */
+            prob_positive_uplift?: number | null;
+            /**
+             * Shadow Price
+             * @description KPI value of the next unit of money
+             */
+            shadow_price?: number | null;
+            /** Spend Units */
+            spend_units?: string | null;
+            /** Total Budget */
+            total_budget: number;
+            /** @description Plan minus current plan */
+            uplift?: components["schemas"]["DistributionSummary"] | null;
         };
         /**
          * OutputDecl
@@ -7206,6 +10230,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[CatalogAbout]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_CatalogAbout_: {
+            /** Items */
+            items: components["schemas"]["CatalogAbout"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[CheckResult]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_CheckResult_: {
+            /** Items */
+            items: components["schemas"]["CheckResult"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[DatasetVersion]
          * @example {
          *       "items": [],
@@ -7284,6 +10334,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[GovernanceCheckDef]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_GovernanceCheckDef_: {
+            /** Items */
+            items: components["schemas"]["GovernanceCheckDef"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[GovernancePolicy]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_GovernancePolicy_: {
+            /** Items */
+            items: components["schemas"]["GovernancePolicy"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[GuidedTemplate]
          * @example {
          *       "items": [],
@@ -7336,6 +10412,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[ModelValidation]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_ModelValidation_: {
+            /** Items */
+            items: components["schemas"]["ModelValidation"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[ModelVersion]
          * @example {
          *       "items": [],
@@ -7358,6 +10447,32 @@ export interface components {
         Page_Model_: {
             /** Items */
             items: components["schemas"]["Model"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[NodeImplementation]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_NodeImplementation_: {
+            /** Items */
+            items: components["schemas"]["NodeImplementation"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[NodeRun]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_NodeRun_: {
+            /** Items */
+            items: components["schemas"]["NodeRun"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -7570,6 +10685,97 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[WorkflowEvent]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowEvent_: {
+            /** Items */
+            items: components["schemas"]["WorkflowEvent"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowRevision]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowRevision_: {
+            /** Items */
+            items: components["schemas"]["WorkflowRevision"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowRun]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowRun_: {
+            /** Items */
+            items: components["schemas"]["WorkflowRun"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowSchedule]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowSchedule_: {
+            /** Items */
+            items: components["schemas"]["WorkflowSchedule"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowTemplate]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowTemplate_: {
+            /** Items */
+            items: components["schemas"]["WorkflowTemplate"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowTrigger]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowTrigger_: {
+            /** Items */
+            items: components["schemas"]["WorkflowTrigger"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Workflow]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Workflow_: {
+            /** Items */
+            items: components["schemas"]["Workflow"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * PlotBindings
          * @description Role/dim template bindings, e.g. ``{x: "dim:time", y: "role:target"}``.
          *
@@ -7606,6 +10812,8 @@ export interface components {
          * @description A plot recipe the runner can produce.
          */
         PlotCatalogEntry: {
+            /** @description M3.5: optional About card (plots are chosen from a model, not a catalog) */
+            about?: components["schemas"]["About"] | null;
             /** Id */
             id: string;
             /**
@@ -8006,6 +11214,73 @@ export interface components {
             valid: boolean;
         };
         /**
+         * PolicyCheck
+         * @description A required check in a policy: thresholds, severity and parameters.
+         */
+        PolicyCheck: {
+            /** Check */
+            check: string;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** @default blocking */
+            severity?: components["schemas"]["CheckSeverity"];
+            thresholds?: components["schemas"]["CheckThresholds"] | null;
+        };
+        /**
+         * PolicyMatch
+         * @description Which models a policy covers; an empty list matches everything on that axis.
+         *
+         *     A family matches a model's declared family (``forecast`` for the statsmodels
+         *     forecasters, ``ts_multivariate``, ``mmm``) *or* the namespace of its id (``ts`` for
+         *     ``ts.sarimax``), so ``families: [ts]`` covers every ``ts.*`` model whatever family its
+         *     plugin declares.
+         */
+        PolicyMatch: {
+            /**
+             * Families
+             * @description Model families or model-id namespaces (ts covers ts.sarimax)
+             */
+            families?: string[];
+            /**
+             * Models
+             * @description Model ids
+             */
+            models?: string[];
+            /** Templates */
+            templates?: string[];
+        };
+        /**
+         * PortSpec
+         * @description An input port: its type, whether it must be bound and whether it takes several.
+         */
+        PortSpec: {
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Multiple
+             * @description Accepts a list of bindings (e.g. models)
+             * @default false
+             */
+            multiple?: boolean;
+            /**
+             * Required
+             * @default true
+             */
+            required?: boolean;
+            type: components["schemas"]["PortType"];
+        };
+        /**
+         * PortType
+         * @description What flows along a workflow edge.
+         * @enum {string}
+         */
+        PortType: "dataset" | "test_result" | "split_plan" | "model_version" | "metrics" | "table" | "plot" | "report" | "evidence";
+        /**
          * PrincipalKind
          * @enum {string}
          */
@@ -8156,21 +11431,23 @@ export interface components {
          *           }
          *         },
          *         "priors": {
-         *           "beta_channel": {
-         *             "dims": [
-         *               "channel"
-         *             ],
-         *             "distribution": "LogNormal",
-         *             "mu": [
-         *               -1.2,
-         *               -0.9,
-         *               -2.1
-         *             ],
-         *             "sigma": [
-         *               0.38,
-         *               0.33,
-         *               0.5
-         *             ]
+         *           "intercept": {
+         *             "mu": 0.2,
+         *             "sigma": 0.3
+         *           },
+         *           "roi": {
+         *             "search": {
+         *               "mu": 1.2,
+         *               "sigma": 0.33
+         *             },
+         *             "social": {
+         *               "mu": 0.1,
+         *               "sigma": 0.5
+         *             },
+         *             "tv": {
+         *               "mu": 0.9,
+         *               "sigma": 0.38
+         *             }
          *           }
          *         },
          *         "seed": 7
@@ -8284,8 +11561,9 @@ export interface components {
          * PriorTranslationResult
          * @description ``priors.json`` of a ``translate_priors`` run.
          *
-         *     ``priors`` are model-space priors in the plugin's ``settings.priors`` form (pymc-marketing
-         *     ``Prior`` dicts; per-channel parameters are lists in ``channels`` order), to be written
+         *     ``priors`` are model-space priors in the plugin's ``settings.priors`` form (engine-neutral
+         *     ``{distribution, <params>, dims}`` dicts; per-channel parameters are lists in ``channels``
+         *     order), to be written
          *     at :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range
          *     (close to the stated credibility when the translation is faithful).
          * @example {
@@ -8356,21 +11634,23 @@ export interface components {
          *         }
          *       },
          *       "priors": {
-         *         "beta_channel": {
-         *           "dims": [
-         *             "channel"
-         *           ],
-         *           "distribution": "LogNormal",
-         *           "mu": [
-         *             -1.2,
-         *             -0.9,
-         *             -2.1
-         *           ],
-         *           "sigma": [
-         *             0.38,
-         *             0.33,
-         *             0.5
-         *           ]
+         *         "intercept": {
+         *           "mu": 0.2,
+         *           "sigma": 0.3
+         *         },
+         *         "roi": {
+         *           "search": {
+         *             "mu": 1.2,
+         *             "sigma": 0.33
+         *           },
+         *           "social": {
+         *             "mu": 0.1,
+         *             "sigma": 0.5
+         *           },
+         *           "tv": {
+         *             "mu": 0.9,
+         *             "sigma": 0.38
+         *           }
          *         }
          *       },
          *       "seed": 7
@@ -8612,6 +11892,40 @@ export interface components {
             /** Scorecard Overall */
             scorecard_overall?: ("pass" | "warn" | "fail") | null;
         };
+        /**
+         * PurgedKFoldPlan
+         * @description Blocked k-fold with ``purge`` periods before and ``embargo`` after each test block
+         *     removed from training (labels that overlap the test window).
+         */
+        PurgedKFoldPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /**
+             * Embargo
+             * @default 0
+             */
+            embargo?: number;
+            /** K */
+            k: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "purged_kfold";
+            /**
+             * Purge
+             * @default 0
+             */
+            purge?: number;
+        };
         /** QuestionChoice */
         QuestionChoice: {
             /** Label */
@@ -8763,6 +12077,28 @@ export interface components {
             within_dim: string;
         };
         /**
+         * Recommendation
+         * @description One ranked candidate with the reasons in plain words.
+         */
+        Recommendation: {
+            about?: components["schemas"]["About"] | null;
+            /** Cautions Plain */
+            cautions_plain?: string[];
+            difficulty: components["schemas"]["Difficulty"];
+            /** Id */
+            id: string;
+            kind: components["schemas"]["AboutKind"];
+            /** Reasons Plain */
+            reasons_plain?: string[];
+            /** Score */
+            score: number;
+            /** Summary Plain */
+            summary_plain: string;
+            /** Title */
+            title: string;
+            typical_runtime: components["schemas"]["TypicalRuntime"];
+        };
+        /**
          * Representation
          * @description How a model encodes uncertainty in its outputs.
          * @enum {string}
@@ -8862,7 +12198,20 @@ export interface components {
          * ResourceKind
          * @enum {string}
          */
-        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export";
+        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export" | "workflow" | "policy" | "tenant_policy";
+        /**
+         * ResultField
+         * @description A field of a node's JSON result that conditions may read (``nodes.<id>.<field>``).
+         */
+        ResultField: {
+            /** Description */
+            description: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "number" | "integer" | "boolean" | "string" | "object" | "array";
+        };
         /**
          * Role
          * @description What a variable means to a model.
@@ -8923,6 +12272,63 @@ export interface components {
              * @description Columns no answer uses
              */
             unassigned?: string[];
+        };
+        /**
+         * RollingOriginPlan
+         * @description A fixed-length training ``window`` sliding forward.
+         */
+        RollingOriginPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Anchor
+             * @description end: the last test window ends at the last period
+             * @default end
+             * @enum {string}
+             */
+            anchor?: "end" | "start";
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /**
+             * Gap
+             * @description Periods between training and test (not scored)
+             * @default 0
+             */
+            gap?: number;
+            /**
+             * Horizons
+             * @description Forecast horizons scored per fold
+             */
+            horizons: number[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "rolling_origin";
+            /**
+             * Min Train
+             * @description Fewest training periods a fold may have
+             * @default 1
+             */
+            min_train?: number;
+            /** N Folds */
+            n_folds?: number | null;
+            /**
+             * Step
+             * @description Periods between origins (default: max)
+             */
+            step?: number | null;
+            /**
+             * Window
+             * @description Training periods per fold
+             */
+            window: number;
         };
         /**
          * Run
@@ -9211,7 +12617,7 @@ export interface components {
          *     M4): they own child runs and never execute on an executor themselves.
          * @enum {string}
          */
-        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors";
+        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance";
         /**
          * RunRetry
          * @description ``POST /runs/{id}:retry``: a *new* run from a failed one, optionally one class up.
@@ -9335,6 +12741,79 @@ export interface components {
             spec?: components["schemas"]["PlotSpec"] | null;
             /** Title */
             title: string;
+        };
+        /**
+         * ScheduleCreate
+         * @description ``POST /v1/workflows/{workflow_id}/schedules``: run on a cron schedule.
+         * @example {
+         *       "cron": "0 6 * * 1",
+         *       "description": "Every Monday at 06:00",
+         *       "inputs": {
+         *         "data": "dataset://growth/weekly_sales@latest"
+         *       },
+         *       "timezone": "Europe/Berlin"
+         *     }
+         */
+        ScheduleCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            /**
+             * Cron
+             * @example 0 6 * * 1
+             */
+            cron: string;
+            /** Description */
+            description?: string | null;
+            /** Inputs */
+            inputs?: {
+                [key: string]: string;
+            };
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Revision
+             * @description Pin a revision (default: latest)
+             */
+            revision?: number | null;
+            /**
+             * Timezone
+             * @default UTC
+             * @example Europe/Berlin
+             */
+            timezone?: string;
+        };
+        /**
+         * ScheduleUpdate
+         * @description ``PATCH /v1/workflows/{workflow_id}/schedules/{schedule_id}``.
+         * @example {
+         *       "active": false
+         *     }
+         * @example {
+         *       "cron": "0 7 * * 1-5"
+         *     }
+         */
+        ScheduleUpdate: {
+            /** Active */
+            active?: boolean | null;
+            /** Cron */
+            cron?: string | null;
+            /** Inputs */
+            inputs?: {
+                [key: string]: string;
+            } | null;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Revision */
+            revision?: number | null;
+            /** Timezone */
+            timezone?: string | null;
         };
         /**
          * ScoreCall
@@ -10037,7 +13516,7 @@ export interface components {
          * SnippetLanguage
          * @enum {string}
          */
-        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "atlas" | "notebook";
+        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "notebook";
         /**
          * SnippetSet
          * @description ``GET /v1/endpoints/{alias}/snippets`` (``?language=`` narrows it).
@@ -10063,7 +13542,7 @@ export interface components {
          * @description Create a spec document with its first revision (YAML 1.2 or JSON text).
          * @example {
          *       "message": "first draft",
-         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
          *     }
          */
         SpecCreate: {
@@ -10157,7 +13636,7 @@ export interface components {
          *       "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
          *       "tenant_id": "default",
          *       "valid": true,
-         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
          *     }
          */
         SpecRevision: {
@@ -10210,7 +13689,7 @@ export interface components {
          * @example {
          *       "message": "tune",
          *       "parent_revision": 1,
-         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
          *     }
          */
         SpecRevisionCreate: {
@@ -10220,6 +13699,24 @@ export interface components {
             parent_revision: number;
             /** Yaml */
             yaml: string;
+        };
+        /**
+         * SpendGroup
+         * @description A portfolio constraint over several channels (shares of the total and/or money).
+         */
+        SpendGroup: {
+            /** Channels */
+            channels: string[];
+            /** Max Share */
+            max_share?: number | null;
+            /** Max Spend */
+            max_spend?: number | null;
+            /** Min Share */
+            min_share?: number | null;
+            /** Min Spend */
+            min_spend?: number | null;
+            /** Name */
+            name: string;
         };
         /**
          * StageSchema
@@ -10285,6 +13782,8 @@ export interface components {
          *     ``side_table_params`` name fields that refer to ``data.side_tables`` entries.
          */
         StepCatalogEntry: {
+            /** @description M3.5: the plain-language About card (the catalog rule requires one) */
+            about?: components["schemas"]["About"] | null;
             /** Context */
             context?: {
                 [key: string]: components["schemas"]["JsonValue"];
@@ -10647,6 +14146,36 @@ export interface components {
             name: string;
         };
         /**
+         * TimeHoldoutSplit
+         * @description Hold out the end of an ordered dim: ``last`` periods, a ``fraction`` or ``after`` a coord.
+         */
+        TimeHoldoutSplit: {
+            /** After */
+            after?: string | number | boolean | null;
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** Dim */
+            dim: string;
+            /** Fraction */
+            fraction?: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "time_holdout";
+            /** Last */
+            last?: number | null;
+        };
+        /**
          * TokenCreate
          * @description ``POST /v1/tokens``: mint a token for the caller in the selected project.
          *
@@ -10655,7 +14184,7 @@ export interface components {
          * @example {
          *       "budget_period": "month",
          *       "expires_in_days": 30,
-         *       "name": "atlas-optimiser",
+         *       "name": "budget-planner",
          *       "rate_limit_per_minute": 120,
          *       "scopes": [
          *         "score:geo-mmm-prod",
@@ -10693,7 +14222,7 @@ export interface components {
          *         "expires_at": "2026-11-14T09:30:00Z",
          *         "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
          *         "last_used_at": "2026-10-16T08:00:00Z",
-         *         "name": "atlas-optimiser",
+         *         "name": "budget-planner",
          *         "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
          *         "prefix": "7k2m9q4x",
          *         "project_id": "growth",
@@ -10757,11 +14286,63 @@ export interface components {
          */
         TokenStatus: "active" | "expired" | "revoked";
         /**
+         * TriggerCreate
+         * @description ``POST /v1/workflows/{workflow_id}/triggers``: run when a new version of a dataset
+         *     is ready; the version is bound to workflow input ``input``.
+         * @example {
+         *       "dataset": "dataset://growth/weekly_sales",
+         *       "debounce_seconds": 600,
+         *       "input": "data"
+         *     }
+         */
+        TriggerCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            /**
+             * Dataset
+             * @description dataset://project/name (any version)
+             * @example dataset://growth/eu_media_daily@latest
+             */
+            dataset: string;
+            /**
+             * Debounce Seconds
+             * @description Collapse versions arriving within this window
+             * @default 300
+             */
+            debounce_seconds?: number;
+            /**
+             * Event
+             * @default dataset.version.created
+             * @constant
+             */
+            event?: "dataset.version.created";
+            /**
+             * Input
+             * @description The workflow input the new version is bound to
+             */
+            input: string;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Revision */
+            revision?: number | null;
+        };
+        /**
          * TrustTier
          * @description How much the platform trusts a tenant's code and data (plan §2, §7, §9).
          * @enum {string}
          */
         TrustTier: "internal" | "verified" | "public" | "self-hosted-trusted";
+        /**
+         * TypicalRuntime
+         * @description Rough wall-clock time on typical data (``S`` resource class).
+         * @enum {string}
+         */
+        TypicalRuntime: "instant" | "seconds" | "minutes" | "long";
         /**
          * UploadCreate
          * @description Ask for a signed PUT URL into the quarantine bucket for one file.
@@ -10966,7 +14547,7 @@ export interface components {
          *     ``dataset`` overrides the dataset version whose stored schema is the raw input schema
          *     (default: the spec's own ``data.dataset`` reference, resolved now).
          * @example {
-         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
          *     }
          */
         ValidateRequest: {
@@ -11056,6 +14637,67 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * ValidationEvent
+         * @enum {string}
+         */
+        ValidationEvent: "submit" | "cancel" | "checks_passed" | "checks_failed" | "request_approval" | "validate" | "approve" | "reject" | "resubmit" | "deprecate";
+        /**
+         * ValidationNote
+         * @description ``POST /v1/validations/{validation_id}:cancel|:resubmit|:deprecate``: why (a
+         *     deprecation needs a reason; it is audited).
+         * @example {
+         *       "note": "Superseded by v8 after the Q1 data refresh."
+         *     }
+         */
+        ValidationNote: {
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * ValidationRequest
+         * @description ``POST /v1/models/{model_id}/versions/{version}/validations``: run the checks.
+         * @example {
+         *       "note": "Q4 refresh of the geo MMM"
+         *     }
+         */
+        ValidationRequest: {
+            /**
+             * Dataset
+             * @description dataset:// for data checks (default: the fit's)
+             */
+            dataset?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Policy Ids
+             * @description Policies to add: every policy in force always applies, and these can only add to it
+             */
+            policy_ids?: string[];
+        };
+        /**
+         * ValidationStatus
+         * @enum {string}
+         */
+        ValidationStatus: "draft" | "checks_running" | "checks_passed" | "checks_failed" | "awaiting_approval" | "validated" | "rejected" | "deprecated";
+        /**
+         * ValidationTransitionRecord
+         * @description One step of a validation's history (also an audit event).
+         */
+        ValidationTransitionRecord: {
+            /** Actor Id */
+            actor_id?: string | null;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            event: components["schemas"]["ValidationEvent"];
+            from_status: components["schemas"]["ValidationStatus"];
+            /** Note */
+            note?: string | null;
+            to_status: components["schemas"]["ValidationStatus"];
         };
         /**
          * VarMapping
@@ -11414,7 +15056,7 @@ export interface components {
          * WebhookEventType
          * @enum {string}
          */
-        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed";
+        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed" | "workflow.run.succeeded" | "workflow.run.failed" | "model.validation.checks_passed" | "model.validation.checks_failed" | "model.validation.awaiting_approval" | "model.validated" | "model.rejected" | "model.deprecated" | "dataset.version.created" | "optimize.completed";
         /**
          * WebhookUpdate
          * @description ``PATCH /v1/webhooks/{webhook_id}`` (re-activating resets the failure count).
@@ -11523,6 +15165,901 @@ export interface components {
             role?: components["schemas"]["Role"];
             /** Units */
             units?: string | null;
+        };
+        /**
+         * Workflow
+         * @description A saved workflow (``workflow://project/name``) and its latest revision.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *       "latest_revision": 2,
+         *       "name": "ts-readiness",
+         *       "project_id": "growth",
+         *       "ref": "workflow://growth/ts-readiness",
+         *       "tenant_id": "acme",
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        Workflow: {
+            /**
+             * Archived
+             * @default false
+             */
+            archived?: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Latest Revision */
+            latest_revision: number;
+            /** Name */
+            name: string;
+            /** Project Id */
+            project_id: string;
+            /**
+             * Ref
+             * @description workflow://project/name
+             */
+            ref: string;
+            /**
+             * Template
+             * @description Gallery template it was created from
+             */
+            template?: string | null;
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * WorkflowCreate
+         * @description ``POST /v1/workflows``: a workflow with its first revision (the document).
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "ts-readiness",
+         *           "project": "growth"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf",
+         *             "with": {
+         *               "alpha": {
+         *                 "$param": "alpha"
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "id": "kpss",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.kpss"
+         *           },
+         *           {
+         *             "id": "wanders",
+         *             "use": "branch.if",
+         *             "with": {
+         *               "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject"
+         *             }
+         *           },
+         *           {
+         *             "id": "diff",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "transform.difference",
+         *             "when": "wanders.then"
+         *           },
+         *           {
+         *             "id": "order",
+         *             "inputs": {
+         *               "data": [
+         *                 "diff.data",
+         *                 "inputs.data"
+         *               ]
+         *             },
+         *             "use": "search.arma_order"
+         *           }
+         *         ],
+         *         "outputs": {
+         *           "orders": "order.table"
+         *         },
+         *         "params": {
+         *           "alpha": {
+         *             "default": 0.05,
+         *             "type": "number"
+         *           }
+         *         }
+         *       },
+         *       "message": "first version"
+         *     }
+         */
+        WorkflowCreate: {
+            /**
+             * Document
+             * @description The WorkflowSpec as JSON
+             */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Message */
+            message?: string | null;
+            /**
+             * Template
+             * @description Or a gallery template id
+             */
+            template?: string | null;
+            /**
+             * Text
+             * @description Or YAML/JSON text
+             */
+            text?: string | null;
+        };
+        /**
+         * WorkflowEvent
+         * @example {
+         *       "data": {
+         *         "arm": "then"
+         *       },
+         *       "node_id": "wanders",
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "seq": 7,
+         *       "ts": "2026-10-15T09:30:00Z",
+         *       "type": "workflow.branch.decided"
+         *     }
+         */
+        WorkflowEvent: {
+            /** Data */
+            data?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Node Id */
+            node_id?: string | null;
+            /**
+             * Run Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            run_id: string;
+            /** Seq */
+            seq: number;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            type: components["schemas"]["WorkflowEventType"];
+        };
+        /**
+         * WorkflowEventType
+         * @description Events of a workflow run (SSE on ``…/events``; the terminal ones also go to
+         *     webhooks as ``workflow.run.succeeded`` / ``workflow.run.failed``).
+         * @enum {string}
+         */
+        WorkflowEventType: "workflow.run.started" | "workflow.node.queued" | "workflow.node.started" | "workflow.node.succeeded" | "workflow.node.cached" | "workflow.node.skipped" | "workflow.node.failed" | "workflow.node.retrying" | "workflow.branch.decided" | "workflow.run.succeeded" | "workflow.run.failed" | "workflow.run.cancelled";
+        /**
+         * WorkflowRevision
+         * @description An immutable, hashed revision; ``validation`` is its static check at save time
+         *     (revisions with errors are stored but cannot run: ``WORKFLOW_NOT_RUNNABLE``).
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "ts-readiness",
+         *           "project": "growth"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf",
+         *             "with": {
+         *               "alpha": {
+         *                 "$param": "alpha"
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "id": "kpss",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.kpss"
+         *           },
+         *           {
+         *             "id": "wanders",
+         *             "use": "branch.if",
+         *             "with": {
+         *               "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject"
+         *             }
+         *           },
+         *           {
+         *             "id": "diff",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "transform.difference",
+         *             "when": "wanders.then"
+         *           },
+         *           {
+         *             "id": "order",
+         *             "inputs": {
+         *               "data": [
+         *                 "diff.data",
+         *                 "inputs.data"
+         *               ]
+         *             },
+         *             "use": "search.arma_order"
+         *           }
+         *         ],
+         *         "outputs": {
+         *           "orders": "order.table"
+         *         },
+         *         "params": {
+         *           "alpha": {
+         *             "default": 0.05,
+         *             "type": "number"
+         *           }
+         *         }
+         *       },
+         *       "ref": "workflow://growth/ts-readiness@r2",
+         *       "revision": 2,
+         *       "spec_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *       "validation": {
+         *         "issues": [],
+         *         "order": [
+         *           "adf",
+         *           "kpss",
+         *           "wanders",
+         *           "diff",
+         *           "order"
+         *         ],
+         *         "valid": true
+         *       },
+         *       "workflow_id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0"
+         *     }
+         */
+        WorkflowRevision: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Message */
+            message?: string | null;
+            /**
+             * Ref
+             * @description workflow://project/name@rN
+             */
+            ref: string;
+            /** Revision */
+            revision: number;
+            /** Spec Hash */
+            spec_hash: string;
+            validation: components["schemas"]["WorkflowValidation"];
+            /**
+             * Workflow Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            workflow_id: string;
+        };
+        /**
+         * WorkflowRevisionCreate
+         * @description ``POST /v1/workflows/{workflow_id}/revisions``.
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "ts-readiness",
+         *           "project": "growth"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf",
+         *             "with": {
+         *               "alpha": {
+         *                 "$param": "alpha"
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "id": "kpss",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.kpss"
+         *           },
+         *           {
+         *             "id": "wanders",
+         *             "use": "branch.if",
+         *             "with": {
+         *               "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject"
+         *             }
+         *           },
+         *           {
+         *             "id": "diff",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "transform.difference",
+         *             "when": "wanders.then"
+         *           },
+         *           {
+         *             "id": "order",
+         *             "inputs": {
+         *               "data": [
+         *                 "diff.data",
+         *                 "inputs.data"
+         *               ]
+         *             },
+         *             "use": "search.arma_order"
+         *           }
+         *         ],
+         *         "outputs": {
+         *           "orders": "order.table"
+         *         },
+         *         "params": {
+         *           "alpha": {
+         *             "default": 0.05,
+         *             "type": "number"
+         *           }
+         *         }
+         *       },
+         *       "expected_revision": 1
+         *     }
+         */
+        WorkflowRevisionCreate: {
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Expected Revision
+             * @description Refuse (409) when the latest revision is different
+             */
+            expected_revision?: number | null;
+            /** Message */
+            message?: string | null;
+            /** Text */
+            text?: string | null;
+        };
+        /**
+         * WorkflowRun
+         * @description ``GET /v1/workflow-runs/{run_id}``: a run of a workflow revision with every node.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "decisions": [
+         *         {
+         *           "arm": "then",
+         *           "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
+         *           "decided_at": "2026-10-15T09:30:00Z",
+         *           "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+         *           "inputs": {
+         *             "nodes.adf.p_value": 0.57,
+         *             "nodes.kpss.reject": true,
+         *             "params.alpha": 0.05
+         *           },
+         *           "node_id": "wanders",
+         *           "value": true
+         *         }
+         *       ],
+         *       "inputs": {
+         *         "data": "dataset://growth/weekly_sales@v4"
+         *       },
+         *       "nodes": [
+         *         {
+         *           "attempt": 1,
+         *           "cache_key": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *           "finished_at": "2026-10-15T09:30:04Z",
+         *           "kind": "test",
+         *           "node_id": "adf",
+         *           "outputs": {
+         *             "result": {
+         *               "inline": {
+         *                 "test": "test.adf"
+         *               },
+         *               "type": "test_result"
+         *             }
+         *           },
+         *           "params": {
+         *             "alpha": 0.05,
+         *             "regression": "c"
+         *           },
+         *           "result": {
+         *             "decision": "unit_root",
+         *             "p_value": 0.57,
+         *             "reject": false,
+         *             "statistic": -1.42
+         *           },
+         *           "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *           "started_at": "2026-10-15T09:30:00Z",
+         *           "status": "succeeded",
+         *           "use": "test.adf@1.0.0"
+         *         }
+         *       ],
+         *       "params": {
+         *         "alpha": 0.05
+         *       },
+         *       "project_id": "growth",
+         *       "revision": 2,
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "started_at": "2026-10-15T09:30:00Z",
+         *       "status": "running",
+         *       "tenant_id": "acme",
+         *       "workflow_id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0"
+         *     }
+         */
+        WorkflowRun: {
+            cost?: components["schemas"]["RunCost"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Decisions */
+            decisions?: components["schemas"]["BranchDecision"][];
+            error?: components["schemas"]["NodeError"] | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Inputs */
+            inputs?: {
+                [key: string]: string;
+            };
+            /** Nodes */
+            nodes?: components["schemas"]["NodeRun"][];
+            /** Outputs */
+            outputs?: {
+                [key: string]: components["schemas"]["NodeOutputRef"];
+            };
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Parent Run Id */
+            parent_run_id?: string | null;
+            /** Project Id */
+            project_id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Run Id
+             * @description The parent run (kind workflow)
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            run_id: string;
+            /** Started At */
+            started_at?: string | null;
+            status: components["schemas"]["WorkflowRunStatus"];
+            /** Tenant Id */
+            tenant_id: string;
+            /** @default manual */
+            trigger?: components["schemas"]["WorkflowTriggerEvent"];
+            /**
+             * Trigger Id
+             * @description The schedule or trigger that started it
+             */
+            trigger_id?: string | null;
+            /**
+             * Workflow Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            workflow_id: string;
+        };
+        /**
+         * WorkflowRunCreate
+         * @description ``POST /v1/workflows/{workflow_id}/runs`` (``Idempotency-Key``).
+         * @example {
+         *       "inputs": {
+         *         "data": "dataset://growth/weekly_sales@v4"
+         *       },
+         *       "params": {
+         *         "alpha": 0.05
+         *       }
+         *     }
+         */
+        WorkflowRunCreate: {
+            /**
+             * Inputs
+             * @description input name -> reference
+             */
+            inputs?: {
+                [key: string]: string;
+            };
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            resource_class?: components["schemas"]["ResourceClass"] | null;
+            /**
+             * Revision
+             * @description Default: the latest revision
+             */
+            revision?: number | null;
+            /**
+             * Use Cache
+             * @description Reuse unchanged node results
+             * @default true
+             */
+            use_cache?: boolean;
+        };
+        /**
+         * WorkflowRunStatus
+         * @enum {string}
+         */
+        WorkflowRunStatus: "queued" | "running" | "succeeded" | "failed" | "cancelling" | "cancelled";
+        /**
+         * WorkflowSchedule
+         * @example {
+         *       "active": true,
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "cron": "0 6 * * 1",
+         *       "id": "sch_01jaf3f1g2h3j4k5m6n7p8q9r0",
+         *       "next_run_at": "2026-10-19T04:00:00Z",
+         *       "timezone": "Europe/Berlin",
+         *       "workflow_id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0"
+         *     }
+         */
+        WorkflowSchedule: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Cron */
+            cron: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Inputs */
+            inputs?: {
+                [key: string]: string;
+            };
+            /** Last Run At */
+            last_run_at?: string | null;
+            /** Last Run Id */
+            last_run_id?: string | null;
+            /** Next Run At */
+            next_run_at?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Revision */
+            revision?: number | null;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Workflow Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            workflow_id: string;
+        };
+        /**
+         * WorkflowTemplate
+         * @description A gallery template: its About card and the workflow document.
+         * @example {
+         *       "about": {
+         *         "assumptions": [
+         *           "Numbers can be added up (spend, sales); averages are averaged"
+         *         ],
+         *         "avoid_when": [
+         *           "Your data already has one row per week"
+         *         ],
+         *         "data_needs": [
+         *           "A date column"
+         *         ],
+         *         "difficulty": "beginner",
+         *         "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *         "fits": {
+         *           "goal": [
+         *             "check_data"
+         *           ]
+         *         },
+         *         "outputs": [
+         *           "The same columns, one row per week"
+         *         ],
+         *         "related": [
+         *           "core.calendar"
+         *         ],
+         *         "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *         "title": "Weekly totals",
+         *         "typical_runtime": "instant",
+         *         "use_when": [
+         *           "Your data is daily but you want to plan or report by week"
+         *         ]
+         *       },
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "readiness",
+         *           "project": "templates"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf"
+         *           }
+         *         ]
+         *       },
+         *       "id": "readiness",
+         *       "tags": [
+         *         "forecast"
+         *       ]
+         *     }
+         */
+        WorkflowTemplate: {
+            about: components["schemas"]["About"];
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Id */
+            id: string;
+            /** Tags */
+            tags?: string[];
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
+        };
+        /**
+         * WorkflowTrigger
+         * @example {
+         *       "active": true,
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "dataset": "dataset://growth/weekly_sales",
+         *       "event": "dataset.version.created",
+         *       "id": "trg_01jaf3g1h2j3k4m5n6p7q8r9s0",
+         *       "input": "data",
+         *       "workflow_id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0"
+         *     }
+         */
+        WorkflowTrigger: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Dataset */
+            dataset: string;
+            /**
+             * Debounce Seconds
+             * @default 300
+             */
+            debounce_seconds?: number;
+            /**
+             * Event
+             * @constant
+             */
+            event: "dataset.version.created";
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Input */
+            input: string;
+            /** Last Fired At */
+            last_fired_at?: string | null;
+            /** Last Run Id */
+            last_run_id?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Revision */
+            revision?: number | null;
+            /**
+             * Workflow Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            workflow_id: string;
+        };
+        /**
+         * WorkflowTriggerEvent
+         * @enum {string}
+         */
+        WorkflowTriggerEvent: "manual" | "schedule" | "dataset.version.created" | "parent" | "validation";
+        /**
+         * WorkflowUpdate
+         * @description ``PATCH /v1/workflows/{workflow_id}``: metadata only (documents are revisions).
+         * @example {
+         *       "archived": false,
+         *       "description": "Weekly readiness checks"
+         *     }
+         */
+        WorkflowUpdate: {
+            /** Archived */
+            archived?: boolean | null;
+            /** Description */
+            description?: string | null;
+        };
+        /**
+         * WorkflowValidateRequest
+         * @description ``POST /v1/workflows:validate`` (sync, stores nothing).
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "ts-readiness",
+         *           "project": "growth"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf",
+         *             "with": {
+         *               "alpha": {
+         *                 "$param": "alpha"
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "id": "kpss",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.kpss"
+         *           },
+         *           {
+         *             "id": "wanders",
+         *             "use": "branch.if",
+         *             "with": {
+         *               "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject"
+         *             }
+         *           },
+         *           {
+         *             "id": "diff",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "transform.difference",
+         *             "when": "wanders.then"
+         *           },
+         *           {
+         *             "id": "order",
+         *             "inputs": {
+         *               "data": [
+         *                 "diff.data",
+         *                 "inputs.data"
+         *               ]
+         *             },
+         *             "use": "search.arma_order"
+         *           }
+         *         ],
+         *         "outputs": {
+         *           "orders": "order.table"
+         *         },
+         *         "params": {
+         *           "alpha": {
+         *             "default": 0.05,
+         *             "type": "number"
+         *           }
+         *         }
+         *       }
+         *     }
+         */
+        WorkflowValidateRequest: {
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Text */
+            text?: string | null;
+        };
+        /**
+         * WorkflowValidation
+         * @description ``POST /v1/workflows:validate``: issues located by JSON pointers, the execution order
+         *     and the resolved implementation of every node.
+         * @example {
+         *       "issues": [
+         *         {
+         *           "code": "WORKFLOW_INVALID",
+         *           "message": "node 'order' binds 'diff.series', but transform.difference has no output 'series' (it has: data)",
+         *           "pointer": "/nodes/3/inputs/data",
+         *           "severity": "error"
+         *         }
+         *       ],
+         *       "order": [],
+         *       "valid": false
+         *     }
+         */
+        WorkflowValidation: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Order */
+            order?: string[];
+            /**
+             * Resolved
+             * @description node id -> implementation ref (id@version)
+             */
+            resolved?: {
+                [key: string]: string;
+            };
+            /** Valid */
+            valid: boolean;
         };
         /**
          * XrJsonDataset
@@ -12650,6 +17187,163 @@ export interface operations {
             };
         };
     };
+    list_catalog_abouts: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                kind?: components["schemas"]["AboutKind"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CatalogAbout_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_chooser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChooserQuestionnaire"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_governance_checks: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GovernanceCheckDef_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_catalog_models: {
         parameters: {
             query?: {
@@ -12746,6 +17440,74 @@ export interface operations {
             };
         };
     };
+    recommend_catalog_items: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["AboutKind"] | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChooserResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHOOSER_ANSWER_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_catalog_steps: {
         parameters: {
             query?: {
@@ -12774,6 +17536,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_workflow_nodes: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                kind?: components["schemas"]["NodeKind"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_NodeImplementation_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_node: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeImplementation"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -12870,6 +17768,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dataset_about: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetAbout"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_dataset_about: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetAboutUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetAbout"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -13041,6 +18032,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explore_dataset_version: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                dataset_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataExploreRequest"];
+            };
+        };
+        responses: {
+            /** @description Already computed (or an idempotent replay) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `EXPLORE_INVALID`: The explorer request is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -13322,7 +18378,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: CONFLICT, PROMOTION_BLOCKED, OVERRIDE_REQUIRED */
+            /** @description Problem: CONFLICT, PROMOTION_BLOCKED, OVERRIDE_REQUIRED, NOT_VALIDATED */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -13540,7 +18596,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: CONFLICT */
+            /** @description Problem: CONFLICT, NOT_VALIDATED */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -13894,6 +18950,313 @@ export interface operations {
             };
         };
     };
+    get_exploration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_policies: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                scope?: ("tenant" | "project") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GovernancePolicy_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GovernancePolicyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GovernancePolicyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `CONFLICT`: Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_policy_versions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GovernancePolicy_"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     detect_roles: {
         parameters: {
             query?: never;
@@ -14004,57 +19367,6 @@ export interface operations {
                 };
             };
             /** @description Problem: SCHEMA_INVALID, GUIDED_ANSWERS_INVALID */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    import_bayesinsight: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BayesInsightImport"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GuidedDraft"];
-                };
-            };
-            /** @description Problem: UNAUTHENTICATED */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Problem: FORBIDDEN */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Problem: SCHEMA_INVALID, IMPORT_UNSUPPORTED */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -14517,6 +19829,71 @@ export interface operations {
             };
         };
     };
+    explore_model_version: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelExploreRequest"];
+            };
+        };
+        responses: {
+            /** @description Already computed (or an idempotent replay) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `EXPLORE_INVALID`: The explorer request is not valid; `CAPABILITY_UNSUPPORTED`: The model lacks this capability */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_plots: {
         parameters: {
             query?: {
@@ -14616,6 +19993,124 @@ export interface operations {
             };
         };
     };
+    list_model_validations: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ModelValidation_"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_model_validation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     evaluate_model: {
         parameters: {
             query?: never;
@@ -14663,6 +20158,72 @@ export interface operations {
             };
         };
     };
+    optimize_model_version: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptimizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Optimization"];
+                };
+            };
+            /** @description Still running (poll the optimization) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Optimization"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `OPTIMIZE_INFEASIBLE`: The budget constraints cannot all be met; `CAPABILITY_UNSUPPORTED`: The model lacks this capability */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     score_model: {
         parameters: {
             query?: never;
@@ -14698,6 +20259,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScoreCallResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_model_versions: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelCompareRequest"];
+            };
+        };
+        responses: {
+            /** @description Already computed (or an idempotent replay) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `EXPLORE_INVALID`: The explorer request is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_optimization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Optimization"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
             /** @description Validation Error */
@@ -16586,6 +22249,272 @@ export interface operations {
             };
         };
     };
+    list_tenant_policies: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GovernancePolicy_"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tenant_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GovernancePolicyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_tenant_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tenant_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GovernancePolicyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `CONFLICT`: Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_tenant_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_tenant_members: {
         parameters: {
             query?: {
@@ -17239,6 +23168,405 @@ export interface operations {
             };
         };
     };
+    list_validations: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: components["schemas"]["ValidationStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ModelValidation_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed; `SELF_APPROVAL_FORBIDDEN`: Approver and submitter must be different people */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this; `CONFLICT`: Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_validation_evidence: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CheckResult_"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_evidence_pack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidencePackRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidencePack"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancel_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationNote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deprecate_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationNote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resubmit_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationNote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_webhooks: {
         parameters: {
             query?: {
@@ -17790,6 +24118,1913 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRun"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    workflow_run_events: {
+        parameters: {
+            query?: {
+                after?: number | null;
+                limit?: number;
+            };
+            header?: {
+                "Last-Event-ID"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowEvent_"];
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_node_runs: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: components["schemas"]["NodeRunStatus"] | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_NodeRun_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_node_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeRun"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_node_output: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                node_id: string;
+                port: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactLink"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancel_workflow_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRun"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_templates: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowTemplate_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowTemplate"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflows: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                archived?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Workflow_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, WORKFLOW_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_revisions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowRevision_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_workflow_revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowRevisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRevision"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRevision"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_runs: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: components["schemas"]["WorkflowRunStatus"] | null;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowRun_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    start_workflow_run: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRun"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRun"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: WORKFLOW_NOT_RUNNABLE, IDEMPOTENCY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, WORKFLOW_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_schedules: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowSchedule_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_workflow_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowSchedule"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, SCHEDULE_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_workflow_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_workflow_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowSchedule"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, SCHEDULE_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_triggers: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowTrigger_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_workflow_trigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TriggerCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowTrigger"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, SCHEDULE_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_workflow_trigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+                trigger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    validate_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowValidation"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Problem: RATE_LIMITED */

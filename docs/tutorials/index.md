@@ -1,5 +1,5 @@
 ---
-description: Step-by-step tutorials for v0.4 - your first MMM in Guided mode, Google Sheets, embedded charts, webhook receivers, budget optimisation with Atlas and importing a BayesInsight model.
+description: Step-by-step tutorials - your first MMM in Guided mode, a forecast that tests and checks itself, null tests before a model goes live, Google Sheets, embedded charts, webhook receivers, and budget optimisation on mmm-framework.
 ---
 
 # Tutorials
@@ -46,23 +46,43 @@ Apps Scripts run against stand-ins for Google's services.
 
     *For developers.* [:octicons-arrow-right-24: Start](../guides/webhook-receivers.md)
 
--   :material-target:{ .lg .middle } **Optimise a budget with Atlas**
+-   :material-target:{ .lg .middle } **Optimise a budget**
 
     ---
 
-    Turn an endpoint into an Atlas model and let an optimiser split a fixed budget across
-    channels, with batching, caching and back-off.
+    Ask a fitted marketing-mix model how to split a budget across channels: bounds, groups,
+    cautious objectives, the uplift and the chance it helps, and the efficient frontier.
 
-    *For data scientists.* [:octicons-arrow-right-24: Start](../guides/atlas.md)
+    *For data scientists.* [:octicons-arrow-right-24: Start](../tutorials/optimise-a-budget.md)
 
--   :material-import:{ .lg .middle } **Import a BayesInsight model**
+-   :material-graph-outline:{ .lg .middle } **A forecast that tests itself** <span class="mapi-badge">v0.5</span>
 
     ---
 
-    Bring a BayesInsight `model_def.json` and its MFF data: check the import, fit it on your
-    laptop, then run it on the platform.
+    Unit-root tests, a differencing decision, an AR/MA order search, a rolling-origin
+    backtest against naive forecasts and governance, as one workflow you run with `--watch`
+    and schedule for Monday mornings.
 
-    *For data scientists.* [:octicons-arrow-right-24: Start](bayesinsight-import.md)
+    *For data scientists.* [:octicons-arrow-right-24: Start](../guides/workflow-cookbook.md#readiness-to-arimax)
+
+-   :material-shield-check-outline:{ .lg .middle } **Prove a model is not fitting noise** <span class="mapi-badge">v0.5</span>
+
+    ---
+
+    Write a policy with null tests, validate a model version, have a colleague approve it,
+    export the evidence pack and make the endpoint refuse anything unvalidated.
+
+    *For data scientists and reviewers.* [:octicons-arrow-right-24: Start](../guides/governance.md)
+
+-   :material-magnify-scan:{ .lg .middle } **Explore your data, then choose a model** <span class="mapi-badge">v0.5</span>
+
+    ---
+
+    Read the Data Explorer's quality warnings, stationarity and lead-lag views, then let
+    *Help me choose* turn a few answers into a shortlist with reasons.
+
+    *For analysts.* [:octicons-arrow-right-24: Start](../guides/data-explorer.md) ·
+    [Choosing a model](../guides/choosing-a-model.md)
 
 </div>
 
@@ -74,7 +94,7 @@ Apps Scripts run against stand-ins for Google's services.
   embedded charts are loaded from Google's and your viewers' machines.
 - **A fitted model.** The Guided tutorial makes one; `make seed` loads a demo marketing-mix
   spec you can fit from the web app.
-- **An endpoint**, for Sheets and Atlas: put a model live from the Guided *Share* step or the
+- **An endpoint**, for Sheets and other tools: put a model live from the Guided *Share* step or the
   [Integrations hub](../guides/integrations-hub.md#promoting-through-the-gate).
 
 More task-oriented guides are under [Guides](../guides/web-ui.md); the ideas behind them are in

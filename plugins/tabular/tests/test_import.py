@@ -12,3 +12,11 @@ def test_entry_point_registers_every_plugin() -> None:
         assert reg.model(f"{plugin.id}@^1") is plugin
     ids = {m.manifest.id for m in reg.catalog().models}
     assert {"tabular.hierarchical_glm", "tabular.regressor"} <= ids
+
+
+def test_every_plugin_has_a_complete_about_card() -> None:
+    """M3.5: built-in models carry plain-language About cards (mapi_spec.abouts)."""
+    from mapi_sdk.testing import check_about
+
+    report = check_about(*mapi_plugin_tabular.PLUGINS)
+    assert report.ok and len(report.results) == len(mapi_plugin_tabular.PLUGINS)

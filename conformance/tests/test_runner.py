@@ -164,7 +164,7 @@ PLAN_CORPUS = {
     "E84-lite": "e84_lite",
     "E82-slim": None,
     "E45": None,
-    "pymc-marketing": "pymc_marketing",
+    "owns-mmm": "mmm_frequentist",  # a model owning scaling, carry-over and units (v0.5)
     "sklearn": "sklearn_store_demand",
     "xgboost": "xgb_store_demand",
 }

@@ -16,11 +16,15 @@ const page = {
   admin: () => import("@/routes/admin"),
   build: () => import("@/routes/build"),
   catalog: () => import("@/routes/catalog"),
+  choose: () => import("@/routes/choose"),
   datasets: () => import("@/routes/datasets"),
+  exploreData: () => import("@/routes/explore-data"),
+  exploreModel: () => import("@/routes/explore-model"),
   guided: () => import("@/routes/guided"),
   integrations: () => import("@/routes/integrations"),
   members: () => import("@/routes/members"),
   models: () => import("@/routes/models"),
+  optimize: () => import("@/routes/optimize"),
   runDetail: () => import("@/routes/run-detail"),
   runs: () => import("@/routes/runs"),
   score: () => import("@/routes/score"),
@@ -28,6 +32,9 @@ const page = {
   specEditor: () => import("@/routes/spec-editor"),
   tokens: () => import("@/routes/tokens"),
   usage: () => import("@/routes/usage"),
+  // M3.5: workflows (the canvas loads with the editor) and governance.
+  workflows: () => import("@/routes/workflows"),
+  governance: () => import("@/routes/governance"),
 };
 
 export interface RouterContext {
@@ -45,6 +52,11 @@ function oneOf<T extends string>(v: unknown, allowed: readonly T[]): T | undefin
 
 function idParam(v: unknown): string | undefined {
   return typeof v === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(v) ? v : undefined;
+}
+
+/** A catalog id (`ts.sarimax`, `core.resample`). */
+function catalogId(v: unknown): string | undefined {
+  return typeof v === "string" && v.length <= 128 && /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(v) ? v : undefined;
 }
 
 function NotFound() {
@@ -83,7 +95,13 @@ const datasetRoute = createRoute({
 
 const buildRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build", component: lazyRouteComponent(page.build, "BuildPage") });
 
-const newSpecRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build/new", component: lazyRouteComponent(page.specEditor, "NewSpecPage") });
+const newSpecRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/build/new",
+  component: lazyRouteComponent(page.specEditor, "NewSpecPage"),
+  // M3.5: "Start with this model" (Help me choose, the catalog).
+  validateSearch: (s: Record<string, unknown>): { model?: string | undefined } => ({ model: catalogId(s.model) }),
+});
 
 const specRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -129,13 +147,73 @@ const scoreRoute = createRoute({
   }),
 });
 
+export const CATALOG_TABS = ["models", "steps", "plots"] as const;
+
 const catalogRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/catalog",
   component: lazyRouteComponent(page.catalog, "CatalogPage"),
-  validateSearch: (s: Record<string, unknown>): { tab?: "steps" | "plots" | undefined } => ({
-    tab: oneOf(s.tab, ["steps", "plots"] as const),
+  // M3.5: without a tab the page browses About cards; `about=kind:id` opens one card.
+  validateSearch: (s: Record<string, unknown>): { tab?: (typeof CATALOG_TABS)[number] | undefined; about?: string | undefined } => ({
+    tab: oneOf(s.tab, CATALOG_TABS),
+    about: typeof s.about === "string" && /^[a-z_]{1,32}:[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(s.about) ? s.about : undefined,
   }),
+});
+
+// M3.5: the explorers, model comparison, budget optimisation and Help me choose.
+export const DATA_EXPLORER_TABS = ["overview", "distributions", "timeseries", "missingness", "outliers", "correlation", "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality"] as const;
+export const MODEL_EXPLORER_TABS = ["summary", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd", "forecast", "backtest", "governance", "lineage"] as const;
+
+const exploreDataRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/datasets/$datasetId/versions/$version/explore",
+  component: lazyRouteComponent(page.exploreData, "DataExplorerPage"),
+  validateSearch: (s: Record<string, unknown>): { section?: (typeof DATA_EXPLORER_TABS)[number] | undefined; run?: string | undefined } => ({
+    section: oneOf(s.section, DATA_EXPLORER_TABS),
+    run: idParam(s.run),
+  }),
+});
+
+const exploreModelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/models/$modelId/versions/$version/explore",
+  component: lazyRouteComponent(page.exploreModel, "ModelExplorerPage"),
+  validateSearch: (s: Record<string, unknown>): { section?: (typeof MODEL_EXPLORER_TABS)[number] | undefined; run?: string | undefined } => ({
+    section: oneOf(s.section, MODEL_EXPLORER_TABS),
+    run: idParam(s.run),
+  }),
+});
+
+const compareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/models/compare",
+  component: lazyRouteComponent(page.exploreModel, "ComparePage"),
+  validateSearch: (s: Record<string, unknown>): { refs?: string[] | undefined; run?: string | undefined } => ({
+    refs: Array.isArray(s.refs) ? s.refs.filter((r): r is string => typeof r === "string" && /^model:\/\/\S{1,500}$/.test(r)).slice(0, 11) : undefined,
+    run: idParam(s.run),
+  }),
+});
+
+const optimizeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/models/$modelId/versions/$version/optimize",
+  component: lazyRouteComponent(page.optimize, "OptimizePage"),
+  validateSearch: (s: Record<string, unknown>): { run?: string | undefined; back?: string | undefined } => ({
+    run: idParam(s.run),
+    // The Guided analysis (spec id) the page was opened from.
+    back: idParam(s.back),
+  }),
+});
+
+const chooseRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/choose",
+  component: lazyRouteComponent(page.choose, "ChoosePage"),
+  // Answers as `?goal=forecast,explain_drivers&data_shape=panel` (the server checks them).
+  validateSearch: (s: Record<string, unknown>): Record<string, string> =>
+    Object.fromEntries(
+      Object.entries(s).filter((e): e is [string, string] => /^[a-z][a-z0-9_]{0,31}$/.test(e[0]) && typeof e[1] === "string" && /^[a-z0-9_,]{1,300}$/.test(e[1])),
+    ),
 });
 
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: lazyRouteComponent(page.settings, "SettingsPage") });
@@ -226,6 +304,101 @@ const adminRoute = createRoute({
   validateSearch: (s: Record<string, unknown>): { tab?: AdminTab | undefined } => ({ tab: oneOf(s.tab, ADMIN_TABS) }),
 });
 
+// ----------------------------------------------------------------------------- M3.5
+
+export const WORKFLOW_TABS = ["editor", "runs", "automation", "revisions"] as const;
+export type WorkflowTab = (typeof WORKFLOW_TABS)[number];
+
+function templateParam(v: unknown): string | undefined {
+  return typeof v === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(v) ? v : undefined;
+}
+
+/** A dataset reference to bind a template's data to (`dataset://project/name@vN|@latest`). */
+function datasetRefParam(v: unknown): string | undefined {
+  return typeof v === "string" && v.length <= 300 && /^dataset:\/\/[^@\s]+@(latest|v[1-9]\d*)$/.test(v) ? v : undefined;
+}
+
+const workflowsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflows",
+  component: lazyRouteComponent(page.workflows, "WorkflowsPage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: "workflows" | "templates" | undefined } => ({ tab: oneOf(s.tab, ["workflows", "templates"] as const) }),
+});
+
+const newWorkflowRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflows/new",
+  component: lazyRouteComponent(page.workflows, "NewWorkflowPage"),
+  validateSearch: (s: Record<string, unknown>): { template?: string | undefined; data?: string | undefined } => ({ template: templateParam(s.template), data: datasetRefParam(s.data) }),
+});
+
+const recipeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflows/recipe",
+  component: lazyRouteComponent(page.workflows, "RecipePage"),
+  validateSearch: (s: Record<string, unknown>): { template?: string | undefined; data?: string | undefined } => ({ template: templateParam(s.template), data: datasetRefParam(s.data) }),
+});
+
+const workflowRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflows/$workflowId",
+  component: lazyRouteComponent(page.workflows, "WorkflowPage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: WorkflowTab | undefined; rev?: number | undefined } => ({
+    tab: oneOf(s.tab, WORKFLOW_TABS),
+    rev: positiveInt(s.rev),
+  }),
+});
+
+const workflowRunRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflow-runs/$runId",
+  component: lazyRouteComponent(page.workflows, "WorkflowRunPage"),
+});
+
+export const GOVERNANCE_TABS = ["policies", "tenant", "checks"] as const;
+export type GovernanceTab = (typeof GOVERNANCE_TABS)[number];
+export const VALIDATION_STATUSES = ["draft", "checks_running", "checks_passed", "checks_failed", "awaiting_approval", "validated", "rejected", "deprecated"] as const;
+
+const governanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/governance",
+  component: lazyRouteComponent(page.governance, "GovernancePage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: GovernanceTab | undefined } => ({ tab: oneOf(s.tab, GOVERNANCE_TABS) }),
+});
+
+const newPolicyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/governance/policies/new",
+  component: lazyRouteComponent(page.governance, "NewPolicyPage"),
+  validateSearch: (s: Record<string, unknown>): { scope?: "tenant" | undefined } => ({ scope: oneOf(s.scope, ["tenant"] as const) }),
+});
+
+const policyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/governance/policies/$policyId",
+  component: lazyRouteComponent(page.governance, "PolicyPage"),
+  validateSearch: (s: Record<string, unknown>): { scope?: "tenant" | undefined } => ({ scope: oneOf(s.scope, ["tenant"] as const) }),
+});
+
+const validationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/validations",
+  component: lazyRouteComponent(page.governance, "ValidationsPage"),
+  validateSearch: (s: Record<string, unknown>): { status?: (typeof VALIDATION_STATUSES)[number] | undefined } => ({ status: oneOf(s.status, VALIDATION_STATUSES) }),
+});
+
+const validationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/validations/$validationId",
+  component: lazyRouteComponent(page.governance, "ValidationPage"),
+});
+
+const modelValidationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/models/$modelId/versions/$version/validations",
+  component: lazyRouteComponent(page.governance, "ModelValidationsPage"),
+});
+
 export const routeTree = rootRoute.addChildren([
   homeRoute,
   datasetsRoute,
@@ -240,6 +413,11 @@ export const routeTree = rootRoute.addChildren([
   modelVersionRoute,
   scoreRoute,
   catalogRoute,
+  exploreDataRoute,
+  exploreModelRoute,
+  compareRoute,
+  optimizeRoute,
+  chooseRoute,
   settingsRoute,
   guidedRoute,
   guidedNewRoute,
@@ -252,6 +430,17 @@ export const routeTree = rootRoute.addChildren([
   membersRoute,
   usageRoute,
   adminRoute,
+  workflowsRoute,
+  newWorkflowRoute,
+  recipeRoute,
+  workflowRoute,
+  workflowRunRoute,
+  governanceRoute,
+  newPolicyRoute,
+  policyRoute,
+  validationsRoute,
+  validationRoute,
+  modelValidationsRoute,
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {

@@ -1,7 +1,9 @@
 import {
   Activity,
+  BadgeCheck,
   BarChart3,
   Boxes,
+  Compass,
   Database,
   FileCode2,
   Gauge,
@@ -13,6 +15,7 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 
@@ -58,6 +61,31 @@ export const GUIDED_NAV: NavItem = {
   description: "Task-based flows for analysts",
 };
 
+/** "Help me choose" (M3.5): a few plain questions, then the models, analyses and recipes that fit. */
+export const CHOOSE_NAV: NavItem = {
+  to: "/choose",
+  label: "Help me choose",
+  icon: Compass,
+  chord: "o",
+  description: "Answer a few questions and get the analyses that fit",
+};
+
+/** Workflows as Expert users see them (the editor, runs and automation)… */
+export const WORKFLOWS_NAV: NavItem = {
+  to: "/workflows",
+  label: "Workflows",
+  icon: Workflow,
+  chord: "w",
+  description: "Tests, models and checks in one automated graph",
+};
+
+/** …and as Guided users see them: ready-made recipes run on their data (the same route). */
+export const RECIPES_NAV: NavItem = {
+  ...WORKFLOWS_NAV,
+  label: "Recipes",
+  description: "Ready-made analyses that check your data, fit a model and explain each step",
+};
+
 /** Expert navigation; Guided stays one click away (opening it switches the mode). */
 export const EXPERT_NAV: NavItem[] = [
   { to: "/", label: "Home", icon: Home, chord: "h", description: "Activity and health at a glance" },
@@ -67,8 +95,12 @@ export const EXPERT_NAV: NavItem[] = [
   { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" },
   { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Inspect fitted model versions" },
   { to: "/score", label: "Score", icon: Gauge, chord: "s", description: "Forecasts, scenarios and counterfactuals" },
+  // M3.5: automated analyses and the governance that validates models.
+  WORKFLOWS_NAV,
+  { to: "/governance", label: "Governance", icon: BadgeCheck, chord: "v", description: "Policies, validations and approvals" },
   INTEGRATIONS_NAV,
-  { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "Models, steps and plot recipes" },
+  { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "About cards of every model, step, check and template" },
+  CHOOSE_NAV,
 ];
 
 export const SETTINGS_NAV: NavItem = {
@@ -79,5 +111,11 @@ export const SETTINGS_NAV: NavItem = {
   description: "Theme, mode and connection",
 };
 
-/** Guided mode's navigation: Guided first, then the Expert areas (without Expert Home). */
-export const GUIDED_MODE_NAV: NavItem[] = [GUIDED_NAV, ...EXPERT_NAV.filter((item) => item.to !== "/" && item !== GUIDED_NAV)];
+/**
+ * Guided mode's navigation: Guided, Help me choose and the recipes first, then the Expert areas
+ * (without Expert Home).
+ */
+export const GUIDED_MODE_NAV: NavItem[] = [GUIDED_NAV, CHOOSE_NAV, RECIPES_NAV, ...EXPERT_NAV.filter((item) => item.to !== "/" && item !== GUIDED_NAV && item !== CHOOSE_NAV && item !== WORKFLOWS_NAV)];
+
+/** A Guided-locked project (members below admin): the Guided screens and the Integrations hub. */
+export const LOCKED_NAV: NavItem[] = [GUIDED_NAV, CHOOSE_NAV, RECIPES_NAV, INTEGRATIONS_NAV];

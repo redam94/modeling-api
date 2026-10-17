@@ -242,7 +242,6 @@ export function SnippetView({ snippet }: { snippet: Snippet }) {
 const SNIPPET_NOTES: Partial<Record<SnippetLanguage, string>> = {
   notebook: "Open in a notebook: paste this cell into Jupyter or marimo. It scores the endpoint with the Python client and shows the result as an xarray Dataset.",
   apps_script: "Paste into Extensions > Apps Script of a Google Sheet; it scores the rows of an Input sheet (or the example) and writes the summary table to a Result sheet.",
-  atlas: "An Atlas model backed by this endpoint: Atlas's optimisers score budgets against it.",
 };
 
 export function SnippetTabs({ endpoint }: { endpoint: Endpoint }) {

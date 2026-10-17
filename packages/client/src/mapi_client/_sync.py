@@ -83,7 +83,7 @@ from mapi_spec.quotas import QuotaLimits, QuotaScope
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 from mapi_spec.spec import ScoreRequest
-from mapi_spec.tenancy import ProjectRole, TenantStatus, TrustTier
+from mapi_spec.tenancy import Capability, ProjectRole, TenantStatus, TrustTier
 from mapi_spec.tokens import DEFAULT_TOKEN_TTL_DAYS, BudgetPeriod, TokenStatus
 from pydantic import JsonValue
 
@@ -116,6 +116,15 @@ from mapi_client._m3 import (
 )
 from mapi_client._m3 import signup as _signup
 from mapi_client._m3 import verify_email as _verify_email
+from mapi_client._m35 import (
+    CatalogAboutMixin,
+    DatasetAboutMixin,
+    Explorations,
+    Governance,
+    ModelInsightMixin,
+    Validations,
+    Workflows,
+)
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -206,6 +215,10 @@ class Client:
         self.guided = Guided(self)
         self.endpoints = Endpoints(self)
         self.webhooks = Webhooks(self)
+        self.workflows = Workflows(self)
+        self.governance = Governance(self)
+        self.validations = Validations(self)
+        self.explorations = Explorations(self)
 
     # ---------------------------------------------------------------------- lifecycle
     def close(self) -> None:
@@ -379,7 +392,7 @@ class Projects(_Resource):
         return self._c.send(calls.get_project(project_id))
 
 
-class Catalog(_Resource):
+class Catalog(_Resource, CatalogAboutMixin):
     def get(self) -> CatalogResponse:
         """The full catalog and its digest."""
         return self._c.send(calls.get_catalog())
@@ -401,7 +414,7 @@ class Catalog(_Resource):
         return self._c.send(calls.get_schema(name))
 
 
-class Datasets(_Resource):
+class Datasets(_Resource, DatasetAboutMixin):
     def create(
         self, name: str, *, description: str | None = None, labels: Mapping[str, str] | None = None
     ) -> Dataset:
@@ -793,7 +806,7 @@ class Runs(_Resource):
         return self._c.send(calls.retry_run(run_id, body, idempotency_key))
 
 
-class Models(_Resource):
+class Models(_Resource, ModelInsightMixin):
     def list(self, *, limit: int | None = None) -> Paginator[Model]:
         return self._c.page_iter(lambda cur: calls.list_models(limit, cur))
 
@@ -957,9 +970,16 @@ class Tenants(_Resource, TenantTrustMixin):
         project_id: str | None = None,
         principal_id: str | None = None,
         email: str | None = None,
+        capabilities: Sequence[Capability | str] = (),
     ) -> Membership:
-        """Grant ``role`` to a known principal or invite an ``email``."""
-        body = MembershipCreate(principal_id=principal_id, email=email, role=ProjectRole(role))
+        """Grant ``role`` to a known principal or invite an ``email``, with optional
+        capabilities on top of the role (``reviewer`` approves model validations)."""
+        body = MembershipCreate(
+            principal_id=principal_id,
+            email=email,
+            role=ProjectRole(role),
+            capabilities=[Capability(c) for c in capabilities],
+        )
         return self._c.send(calls.add_member(tenant_id, project_id, body))
 
     def set_role(
@@ -971,6 +991,18 @@ class Tenants(_Resource, TenantTrustMixin):
         project_id: str | None = None,
     ) -> Membership:
         body = MembershipUpdate(role=ProjectRole(role))
+        return self._c.send(calls.update_member(tenant_id, project_id, principal_id, body))
+
+    def set_capabilities(
+        self,
+        tenant_id: str,
+        principal_id: str,
+        capabilities: Sequence[Capability | str],
+        *,
+        project_id: str | None = None,
+    ) -> Membership:
+        """Replace a member's capabilities (``[]`` removes them all); the role is kept."""
+        body = MembershipUpdate(capabilities=[Capability(c) for c in capabilities])
         return self._c.send(calls.update_member(tenant_id, project_id, principal_id, body))
 
     def remove_member(

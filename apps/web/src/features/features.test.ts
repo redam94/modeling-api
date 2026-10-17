@@ -11,17 +11,16 @@ import { buildScoreRequest, defaultScoreForm, parseSel, sideTableOptions } from 
 
 describe("buildPipeline", () => {
   it("joins the document with stages, resolved steps, split and issues", () => {
-    const doc = { pipeline: [{ id: "weekly", use: "core.resample@^1" }, { id: "scale_spend" }, { id: "scale_y" }, { id: "lags" }, { id: "season" }], model: { use: "m@1" } };
-    const res = validateResponseFor(STARTER_SPEC.replace("after_step: weekly", "after_step: scale_y"));
+    const doc = { pipeline: [{ id: "weekly", use: "core.resample@^1" }, { id: "fill" }, { id: "cal" }], model: { use: "m@1" } };
+    const res = validateResponseFor(STARTER_SPEC.replace("after_step: weekly", "after_step: fill"));
     const model = buildPipeline(doc, res);
-    expect(model.steps.map((s) => s.id)).toEqual(["weekly", "scale_spend", "scale_y", "lags", "season"]);
+    expect(model.steps.map((s) => s.id)).toEqual(["weekly", "fill", "cal"]);
     expect(model.steps[0]?.splitAfter).toBe(true);
-    expect(model.steps[2]?.issues.map((i) => i.code)).toEqual(["LEAKAGE_RISK"]);
-    expect(model.steps[3]?.resolved?.context?.n).toBe(6);
-    expect(model.steps[3]?.delta?.addedVars).toEqual(["spend_lags"]);
-    expect(model.steps[3]?.delta?.addedDims).toEqual(["lag"]);
+    expect(model.steps[1]?.issues.map((i) => i.code)).toEqual(["LEAKAGE_RISK"]);
+    expect(model.steps[2]?.resolved?.context).toBeNull();
+    expect(model.steps[2]?.delta?.addedVars).toEqual(["calendar"]);
+    expect(model.steps[2]?.delta?.addedDims).toEqual(["calendar_feature"]);
     expect(model.steps[0]?.delta?.changedDims).toEqual(["date"]);
-    expect(model.steps[4]?.stage?.data_schema).toBeNull();
     expect(model.modelUse).toBe("m@1");
   });
 

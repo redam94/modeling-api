@@ -100,8 +100,10 @@ no Docker socket and is daemon-agnostic. Its trade-offs:
 
 **Docker executor settings.** `MAPI_DOCKER_IMAGES` maps a plugin namespace to its runner
 image: `mmm.*` and `tabular.*` run in `mapi/base-bayes`, `sklearn.*` in `mapi/base-ml` and
-`ts.*` in `mapi/base-forecast`. Runs without a model plugin (ingest, describe) use
-`MAPI_DOCKER_IMAGE`. The defaults are the tags `make docker-build` produces for the current
+`ts.*` in `mapi/base-forecast`. A workflow node run goes to the image of the model it
+runs: its `model` parameter (a backtest or search of `ts.sarimax`), else the plugin of the
+model version bound to it (a forecast, evaluation or governance check of a fitted model).
+Runs without a model plugin (ingest, describe, statistical tests) use `MAPI_DOCKER_IMAGE`. The defaults are the tags `make docker-build` produces for the current
 version. `MAPI_DOCKER_NETWORK` must give the run a way to reach the object store, because
 the bootstrap object and every signed URL point at it. In compose that means joining the
 shim's network namespace (`container:mapi-gcs-shim`). An internal Docker network that holds

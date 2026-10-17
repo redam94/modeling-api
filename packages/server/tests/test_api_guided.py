@@ -1,5 +1,5 @@
 """Guided mode, data path: templates, role detection (browser profiles and stored dataset
-versions), drafts validated against the catalog, the BayesInsight import, ``columns.json``
+versions), drafts validated against the catalog, ``columns.json``
 at finalize and the OpenAPI contract of the operations (single-tenant profile)."""
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ async def test_templates_are_listed_and_paged(client: httpx.AsyncClient) -> None
     ).json()
     assert [t["id"] for t in rest["items"]] == ["weekly_forecast"] and rest["next_cursor"] is None
     one = GuidedTemplate.model_validate((await client.get("/v1/guided/templates/geo_mmm")).json())
-    assert one.plugin == "mmm.hierarchical_geo@^1" and one.ui_levels["/pipeline"] == "hidden"
+    assert one.plugin == "mmm.bayesian@^1" and one.ui_levels["/pipeline"] == "hidden"
     choice = (await client.get("/v1/guided/templates/customer_choice")).json()
     assert choice["plugin_available"] is True
     _problem(await client.get("/v1/guided/templates/nope"), 404, "NOT_FOUND")
@@ -211,7 +211,7 @@ async def test_a_geo_mmm_draft_is_validated_against_the_catalog(
     draft = GuidedDraft.model_validate(r.json())
     assert draft.dataset_ref == "dataset://default/eu_media@latest"
     assert draft.mapping.wide["spend"].columns == {"tv": "TV_Spend", "search": "Search_Spend"}
-    assert draft.spec["model"]["use"] == "mmm.hierarchical_geo@^1"  # type: ignore[index]
+    assert draft.spec["model"]["use"] == "mmm.bayesian@^1"  # type: ignore[index]
     assert "kind: ModelSpec" in draft.yaml
     assert not [i for i in draft.issues if i.severity.value == "error"], draft.issues
     # the stored spec round-trips: save the YAML as the user would
@@ -223,12 +223,13 @@ async def test_draft_validation_reports_what_the_model_cannot_use(
     client: httpx.AsyncClient,
 ) -> None:
     body = _geo_answers()
+    # v0.5: mmm-framework owns seasonality, so the template's pipeline adds no Fourier step
+    # and a control named like one is just another control
     body["columns"] = [*MMM_COLUMNS, {"name": "Fourier", "dtype": "number", "n_rows": 520}]
     body["answers"]["controls"] = ["avg_price", "Fourier"]
     draft = GuidedDraft.model_validate((await client.post("/v1/guided/drafts", json=body)).json())
-    errors = [i for i in draft.issues if i.severity.value == "error"]
-    # the control would clash with the seasonality the template's pipeline adds
-    assert [(i.pointer, "already exists" in i.message) for i in errors] == [("/pipeline/4", True)]
+    assert not [i for i in draft.issues if i.severity.value == "error"], draft.issues
+    assert [s["id"] for s in draft.spec["pipeline"]] == ["weekly"]  # type: ignore[index,union-attr]
     body["columns"] = [{**c, "dtype": "string"} if c["name"] == "Revenue" else c
                        for c in MMM_COLUMNS]  # fmt: skip
     body["answers"]["controls"] = ["avg_price"]
@@ -284,56 +285,6 @@ async def test_choice_and_mff_drafts(client: httpx.AsyncClient) -> None:
     assert draft.mapping.format == "mff" and draft.mapping.preset.value == "mff"
 
 
-# ============================================================================== BayesInsight
-
-BI_MODEL_DEF = {
-    "variable_details": [
-        {"variable_name": "Sales_Total_Total_Total_Total", "variable_type": "exog",
-         "likelihood": {"type": "Poisson"}},
-        {"variable_name": "TV_Total_Total_Total_Total", "variable_type": "media",
-         "adstock": "delayed", "media_transform": "hill",
-         "adstock_prior": {"type": "Delayed", "retention_rate_mean": 0.3,
-                           "retention_rate_std": 5.0, "lag_max": 2.0}},
-        {"variable_name": "annual_seasonality", "variable_type": "season"},
-    ],
-    "artifact": None,
-    "fitted": False,
-    "VOF": None,
-}  # fmt: skip
-BI_METADATA = {
-    "metadata": {"allowed_geos": ["US", "DE"], "allowed_products": ["Total"],
-                 "allowed_outlets": ["Total"], "allowed_campaigns": ["Total"],
-                 "allowed_creatives": ["Total"], "periodicity": "Weekly",
-                 "row_ids": ["Geography", "Period"]}
-}  # fmt: skip
-
-
-async def test_bayesinsight_import(client: httpx.AsyncClient) -> None:
-    body = {"name": "bi", "dataset": "bi_mff", "model_def": BI_MODEL_DEF, "metadata": BI_METADATA}
-    r = await client.post("/v1/guided/import/bayesinsight", json=body)
-    assert r.status_code == 200, r.text
-    draft = GuidedDraft.model_validate(r.json())
-    assert draft.spec["model"]["use"] == "mmm.hierarchical_geo@^1"  # type: ignore[index]
-    assert draft.mapping.preset.value == "bayesinsight"
-    assert not [i for i in draft.issues if i.severity.value == "error"], draft.issues
-    assert any("Poisson" in i.message for i in draft.issues)
-    planned = (
-        await client.post("/v1/guided/import/bayesinsight", json={**body,
-                                                                    "target": "mmm.bayesinsight"})
-    ).json()  # fmt: skip
-    assert planned["spec"]["model"]["use"] == "mmm.bayesinsight@^1"
-    # the dedicated plugin is in the catalog: its draft is validated too, and is valid
-    assert not [i for i in planned["issues"] if i["severity"] == "error"], planned["issues"]
-    assert planned["spec"]["data"]["bind"]["vars"]["y"] == "sales"
-    no_media = {**body, "model_def": {"variable_details": [BI_MODEL_DEF["variable_details"][0]]}}  # type: ignore[index]
-    problem = _problem(
-        await client.post("/v1/guided/import/bayesinsight", json=no_media),
-        422,
-        "IMPORT_UNSUPPORTED",
-    )
-    assert problem["errors"][0]["pointer"] == "/model_def/variable_details"
-
-
 async def test_drafts_degrade_without_a_catalog(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:
@@ -358,15 +309,14 @@ async def test_the_guided_operations_document_their_problems(client: httpx.Async
         for op in item.values()
     }
     assert {"list_guided_templates", "get_guided_template", "detect_roles",
-            "create_guided_draft", "import_bayesinsight"} <= set(ops)  # fmt: skip
+            "create_guided_draft"} <= set(ops)  # fmt: skip
     draft = ops["create_guided_draft"]
     problem = draft["responses"]["422"]["content"][PROBLEM_CONTENT_TYPE]
     assert problem["schema"] == {"$ref": "#/components/schemas/Problem"}
     assert {"SCHEMA_INVALID", "GUIDED_ANSWERS_INVALID"} <= set(problem["examples"])
     assert "401" in draft["responses"] and "403" in draft["responses"]
-    assert "IMPORT_UNSUPPORTED" in str(ops["import_bayesinsight"]["responses"]["422"])
     schemas = doc["components"]["schemas"]
-    assert schemas["GuidedAnswers"]["examples"] and schemas["BayesInsightImport"]["examples"]
+    assert schemas["GuidedAnswers"]["examples"]
 
 
 async def test_project_carries_the_guided_lock(client: httpx.AsyncClient) -> None:

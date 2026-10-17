@@ -1,6 +1,6 @@
 """M3 guided mode: templates are consistent, role detection pre-fills answers, answers
 become an ingest mapping plus a ModelSpec draft (and its YAML), ingest presets (MFF,
-Meridian, BayesInsight) and the BayesInsight import."""
+Meridian)."""
 
 from __future__ import annotations
 
@@ -12,14 +12,12 @@ from mapi_spec.executor import RunKind
 from mapi_spec.guided import (
     BUILDER_VALUES,
     GUIDED_TEMPLATES,
-    BayesInsightImport,
     ColumnProfile,
     DetectRolesRequest,
     GuidedAnswers,
     GuidedTemplate,
     build_draft,
     channel_label,
-    draft_from_bayesinsight,
     get_template,
     render_template,
     safe_name,
@@ -28,13 +26,10 @@ from mapi_spec.guided import (
 )
 from mapi_spec.ingest import (
     MFF_COLUMNS,
-    BayesInsightMetadata,
-    BayesInsightModelDef,
     IngestMapping,
     IngestPreset,
     MeridianColumns,
     MffOptions,
-    bayesinsight_var_ref,
 )
 from mapi_spec.jobs import IngestJob, parse_job
 from mapi_spec.loader import load_document
@@ -63,7 +58,7 @@ def test_the_four_built_in_templates() -> None:
     assert set(GUIDED_TEMPLATES) == {"geo_mmm", "weekly_forecast", "store_demand",
                                      "customer_choice"}  # fmt: skip
     plugins = {t.id: (t.plugin, t.plugin_available) for t in GUIDED_TEMPLATES.values()}
-    assert plugins["geo_mmm"] == ("mmm.hierarchical_geo@^1", True)
+    assert plugins["geo_mmm"] == ("mmm.bayesian@^1", True)
     assert plugins["weekly_forecast"] == ("ts.hsgp_trend@^1", True)
     assert plugins["store_demand"] == ("tabular.regressor@^1", True)
     choice = GUIDED_TEMPLATES["customer_choice"]
@@ -298,12 +293,8 @@ def test_ingest_mapping_presets_and_compat() -> None:
     assert set(v02.model_dump(mode="json")) == {"format", "layout", "dims", "vars"}
     mff = IngestMapping(format="mff")
     assert mff.preset is IngestPreset.MFF and mff.effective_mff == MffOptions()
-    bi = IngestMapping(
-        format="csv",
-        preset="bayesinsight",
-        bayesinsight=BayesInsightMetadata(periodicity="Daily"),
-    )
-    assert bi.effective_mff is not None and bi.effective_mff.freq == "D"
+    with pytest.raises(ValidationError):  # only the documented presets
+        IngestMapping.model_validate({"format": "csv", "preset": "spreadsheet_magic"})
     assert IngestMapping(format="zarr_zip").effective_mff is None
 
 
@@ -318,7 +309,7 @@ def test_ingest_mapping_presets_and_compat() -> None:
                                                          "media": ["tv"]}}, "only used"),
         ({"format": "csv", "preset": "meridian", "mff": {},
           "meridian": {"media_channels": ["tv"], "media": ["tv"]}}, "'mff' options"),
-        ({"format": "csv", "preset": "mff", "bayesinsight": {}}, "'bayesinsight' metadata"),
+        ({"format": "csv", "preset": "mff", "model_def": {}}, "Extra inputs"),
         ({"format": "csv", "dims": {"d": {"column": "d", "spec": {"kind": "time"}}},
           "vars": {"spend": {"column": "s"}},
           "wide": {"spend": {"dim": "channel", "columns": {"tv": "tv"}}}}, "twice"),
@@ -352,121 +343,14 @@ def test_wide_mappings_need_distinct_columns() -> None:
         WideVarMapping(dim="channel", columns={"tv": "x", "search": "x"})
 
 
-# ----------------------------------------------------------------------------- BayesInsight
-
-BI_METADATA = {
-    "metadata": {
-        "allowed_geos": ["CA", "UK", "US"],
-        "allowed_products": ["Laptops", "Phones"],
-        "allowed_outlets": ["Total"],
-        "allowed_campaigns": ["Total"],
-        "allowed_creatives": ["Total"],
-        "periodicity": "Weekly",
-        "row_ids": ["Product", "Geography", "Period"],
-    }
-}
-BI_MODEL_DEF = {
-    "variable_details": [
-        {"variable_name": "annual_seasonality", "variable_type": "season",
-         "coeff_prior": {"coeff_dist": "Normal", "coeff_params": {"mu": 0.0, "sigma": 0.1}}},
-        {"variable_name": "Promotion_Total_Total_Total", "variable_type": "control",
-         "normalization": "Global Standardize", "random_coeff_dims": ["Geography", "Product"]},
-        {"variable_name": "media_var_0_Total_Total_Total", "variable_type": "media",
-         "adstock": "delayed", "media_transform": "hill", "sign": "positive",
-         "media_transform_prior": {"type": "Hill", "K_ave": 0.85}},
-        {"variable_name": "Stock_Total_Total_Total", "variable_type": "exog",
-         "likelihood": {"type": "Poisson"}},
-    ],
-    "artifact": None,
-    "fitted": False,
-    "VOF": None,
-}  # fmt: skip
+# ------------------------------------------------------------------------------------ MFF
 
 
-def test_the_mff_contract_matches_bayesinsight() -> None:
+def test_the_mff_columns() -> None:
     assert MFF_COLUMNS == (
         "Period", "Geography", "Product", "Outlet", "Campaign", "Creative", "VariableValue",
         "VariableName",
     )  # fmt: skip
-    meta = BayesInsightMetadata.model_validate(BI_METADATA)
-    assert meta.row_ids == ("Geography", "Product", "Period")  # canonical order
-    assert meta.suffix_columns == ("Outlet", "Campaign", "Creative")
-    with pytest.raises(ValidationError):
-        BayesInsightMetadata(row_ids=("Store",))
-
-
-def test_analytic_names_map_to_mff_variables() -> None:
-    meta = BayesInsightMetadata.model_validate(BI_METADATA)
-    ref = bayesinsight_var_ref("media_var_0_Total_Total_Total", meta)
-    assert (ref.variable, ref.sel) == ("media_var_0", {})
-    multi = meta.model_copy(update={"allowed_outlets": ["TV", "Radio"]})
-    ref = bayesinsight_var_ref("Spend_TV_Total_Total", multi)
-    assert (ref.variable, ref.sel) == ("Spend", {"outlet": "TV"})
-    with pytest.raises(ValueError):
-        bayesinsight_var_ref("Spend", meta)
-    flat = BayesInsightMetadata(row_ids=tuple(["Geography", "Product", "Outlet", "Campaign",
-                                               "Creative", "Period"]))  # fmt: skip
-    assert bayesinsight_var_ref("Sales", flat).variable == "Sales"
-
-
-def test_bayesinsight_import_draft() -> None:
-    req = BayesInsightImport(
-        name="bi-import",
-        dataset="bi_mff",
-        model_def=BayesInsightModelDef.model_validate(BI_MODEL_DEF),
-        metadata=BayesInsightMetadata.model_validate(BI_METADATA),
-    )
-    draft = draft_from_bayesinsight(req, project="growth")
-    assert draft.mapping.preset is IngestPreset.BAYESINSIGHT
-    assert draft.mapping.effective_mff is not None
-    assert draft.mapping.effective_mff.roles == {
-        "Promotion": "control", "media_var_0": "spend", "Stock": "target",
-    }  # fmt: skip
-    # every row id is a panel dim of its own
-    assert draft.mapping.effective_mff.combine == {"geo": ["Geography"], "product": ["Product"]}
-    spec = ModelSpec.model_validate(draft.spec)
-    assert str(spec.model.use) == "mmm.bayesinsight@^1"
-    assert spec.data.bind.vars["y"] == "stock"
-    settings = spec.model.settings
-    assert settings["variables"]["media_var_0_Total_Total_Total"] == "media_var_0"  # type: ignore[index]
-    assert settings["variables"]["Stock_Total_Total_Total"] == "y"  # type: ignore[index]
-    assert settings["panel"] == ["geo", "product"] and settings["media"] == ["media_var_0"]
-    kept = settings["model_def"]["variable_details"][2]  # type: ignore[index]
-    assert kept["media_transform_prior"] == {"type": "Hill", "K_ave": 0.85}
-    assert "VOF" not in settings["model_def"]  # type: ignore[operator]
-    example = BayesInsightImport.model_validate(
-        BayesInsightImport.model_json_schema()["examples"][0]
-    )
-    draft = draft_from_bayesinsight(example, project="p")
-    assert draft.spec["data"]["bind"]["vars"]["y"] == "sales"  # type: ignore[index]
-
-
-def test_bayesinsight_import_needs_one_kpi_and_matching_names() -> None:
-    no_kpi = {"variable_details": BI_MODEL_DEF["variable_details"][:3]}  # type: ignore[index]
-    req = BayesInsightImport(
-        name="x", dataset="x", model_def=BayesInsightModelDef.model_validate(no_kpi),
-        metadata=BayesInsightMetadata.model_validate(BI_METADATA),
-    )  # fmt: skip
-    with pytest.raises(MapiError) as exc:
-        draft_from_bayesinsight(req, project="p")
-    assert exc.value.code is ErrorCode.IMPORT_UNSUPPORTED
-    bad = {"variable_details": [{"variable_name": "Sales", "variable_type": "exog"}]}
-    req = req.model_copy(update={"model_def": BayesInsightModelDef.model_validate(bad)})
-    with pytest.raises(MapiError) as exc:
-        draft_from_bayesinsight(req, project="p")
-    assert exc.value.pointer == "/model_def/variable_details/0/variable_name"
-    trend = {
-        "variable_details": [
-            *BI_MODEL_DEF["variable_details"],  # type: ignore[misc]
-            {"variable_name": "trend", "variable_type": "localtrend"},
-        ]
-    }
-    req = req.model_copy(update={"model_def": BayesInsightModelDef.model_validate(trend)})
-    draft = draft_from_bayesinsight(req, project="p")
-    # local trends are fitted; only the faithful-but-surprising pooling default is noted
-    assert [(i.severity.value, i.pointer) for i in draft.issues] == [
-        ("info", "/model_def/variable_details/1/partial_pooling_sigma")
-    ]
 
 
 def test_detected_frequencies_are_explained_in_words() -> None:

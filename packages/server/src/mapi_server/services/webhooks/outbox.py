@@ -184,7 +184,8 @@ async def run_finished(session: AsyncSession, run: m.Run, state: RunState) -> No
     * ``run.succeeded`` / ``run.failed`` for every user run (not platform ``describe`` runs);
     * ``model.version.ready`` when a fit registered a ready model version;
     * ``score.completed`` when a score run succeeded (with its endpoint, if it came through
-      one).
+      one);
+    * ``optimize.completed`` when an optimize run succeeded (with the optimization's URL).
     """
     if run.kind == RunKind.DESCRIBE.value or state not in (RunState.SUCCEEDED, RunState.FAILED):
         return
@@ -259,6 +260,22 @@ async def run_finished(session: AsyncSession, run: m.Run, state: RunState) -> No
                     "scorecard_overall": scorecard.get("overall"),
                 },
             )
+    if run.kind == RunKind.OPTIMIZE.value:
+        planned = subscribed(WebhookEventType.OPTIMIZE_COMPLETED)
+        if planned:
+            await _store(
+                session,
+                planned,
+                WebhookEventType.OPTIMIZE_COMPLETED,
+                tenant,
+                project,
+                {
+                    "run_id": run.id,
+                    "model_version_id": run.model_version_id,
+                    "optimization": f"/v1/optimizations/{run.id}",
+                },
+            )
+        return
     if run.kind == RunKind.SCORE.value:
         done = subscribed(WebhookEventType.SCORE_COMPLETED)
         if not done:

@@ -18,7 +18,7 @@ pipeline:
       vars: [y]
       over: [time]
 model:
-  use: mmm.hierarchical_geo@^1
+  use: mmm.bayesian@^1
   settings:
     priors:
       "a/b": {sigma: 1}
@@ -39,7 +39,7 @@ describe("YamlLocator", () => {
     const { range, exact } = loc.locate("/model/use");
     expect(exact).toBe(true);
     expect(range.startLineNumber).toBe(15);
-    expect(SPEC.split("\n")[14]?.slice(range.startColumn - 1, range.endColumn - 1)).toBe("mmm.hierarchical_geo@^1");
+    expect(SPEC.split("\n")[14]?.slice(range.startColumn - 1, range.endColumn - 1)).toBe("mmm.bayesian@^1");
   });
 
   it("maps flow-style mapping values", () => {

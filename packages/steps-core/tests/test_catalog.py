@@ -112,7 +112,7 @@ def test_defaults_render_every_effect_and_context() -> None:
 
 STRING_LIST = {"type": "array", "items": {"type": "string"}}
 MMM: dict[str, Any] = {
-    "id": "mmm.hierarchical_geo",
+    "id": "mmm.bayesian",
     "version": "1.3.0",
     "capabilities": {
         "inference": "mcmc",
@@ -243,3 +243,14 @@ def test_registry_helper_extends_a_base_registry() -> None:
     base = Registry()
     reg = mapi_steps.registry(base)
     assert not base.steps() and len(reg.steps()) == 28
+
+
+def test_every_step_and_split_has_a_complete_about_card() -> None:
+    """M3.5: the catalog rule and the contract kit's About check pass for every built-in."""
+    from mapi_sdk.testing import check_about
+    from mapi_steps.splits import split_catalog
+
+    assert check_about(*mapi_steps.STEPS).ok
+    assert cat.catalog().about_issues() == []
+    for entry in split_catalog():
+        assert entry.about is not None and entry.about.summary_plain, entry.id

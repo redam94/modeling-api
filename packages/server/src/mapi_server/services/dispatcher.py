@@ -111,6 +111,42 @@ def _over_budget(policy: QuotaPolicy, usage: QuotaUsage) -> bool:
     )
 
 
+async def _workflow_node_model(session: AsyncSession, run: m.Run) -> str | None:
+    """The catalog model a ``workflow_node`` run executes: the node's ``model`` parameter
+    (``ts.sarimax@^1`` for backtests and searches), else the plugin of the model version
+    bound to it (its ``model`` port first), so the run gets the image that ships it."""
+    from mapi_spec.refs import ModelVersionRef
+    from mapi_spec.workflow import WORKFLOW_RUN_INPUT_PREFIX
+
+    from mapi_server.services.runs import Scope
+    from mapi_server.services.specs import resolve_model_version
+
+    params = (run.payload or {}).get("params")
+    if not isinstance(params, dict):
+        return None
+    model = params.get("model")
+    if isinstance(model, str) and "." in model:
+        return model
+    refs = params.get("_refs")
+    if not isinstance(refs, dict):
+        return None
+    first = f"{WORKFLOW_RUN_INPUT_PREFIX}model."
+    names = sorted(refs, key=lambda k: (not str(k).startswith(first), str(k)))
+    for name in names:
+        text = refs[name]
+        if not isinstance(text, str) or not text.startswith("model://"):
+            continue
+        try:
+            ref = ModelVersionRef.parse(text)
+        except ValueError:
+            continue
+        mv, _why = await resolve_model_version(session, Scope(run.tenant_id, run.project_id), ref)
+        plugin = (mv.lineage or {}).get("plugin") if mv is not None else None
+        if isinstance(plugin, str):
+            return plugin
+    return None
+
+
 class Dispatcher:
     def __init__(self, ctx: ServerContext, executor: Executor, *, name: str | None = None) -> None:
         self.ctx = ctx
@@ -325,7 +361,12 @@ class Dispatcher:
             .where(m.Tenant.id == m.Run.tenant_id, m.Tenant.status != TenantStatus.ACTIVE.value)
             .exists()
         )
-        conds: list[ColumnElement[bool]] = [m.Run.state == RunState.QUEUED.value, ~held_tenant]
+        conds: list[ColumnElement[bool]] = [
+            m.Run.state == RunState.QUEUED.value,
+            ~held_tenant,
+            # fan-out parents (workflow runs) never execute: their children do (M3.5)
+            m.Run.kind.notin_([k.value for k in RunKind if k.is_parent]),
+        ]
         if not switches.untrusted_execution_enabled:
             conds.append(m.Run.untrusted_code.is_(False))
         if s.dispatch_tiers:
@@ -638,6 +679,8 @@ class Dispatcher:
                 mv = await session.get(m.ModelVersion, run.model_version_id)
                 if mv is not None:
                     ref = (mv.lineage or {}).get("plugin")
+            elif run.kind == RunKind.WORKFLOW_NODE.value:
+                ref = await _workflow_node_model(session, run)
         if not isinstance(ref, str) or "." not in ref:
             return None
         namespace = ref.split(".", 1)[0]

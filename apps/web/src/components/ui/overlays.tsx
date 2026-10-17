@@ -231,14 +231,15 @@ export function SegmentedControl<T extends string>({
       onValueChange={(v) => {
         if (v) onValueChange(v as T);
       }}
-      className={cn("inline-flex h-8 items-center rounded-md border bg-muted p-0.5", className)}
+      // Too many options for a narrow screen scroll inside the strip, never the page.
+      className={cn("inline-flex h-8 max-w-full items-center overflow-x-auto rounded-md border bg-muted p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
     >
       {options.map((o) => (
         <ToggleGroupPrimitive.Item
           key={o.value}
           value={o.value}
           title={o.title}
-          className="inline-flex h-full items-center gap-1.5 rounded-[5px] px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs [&_svg]:size-3.5"
+          className="inline-flex h-full shrink-0 items-center gap-1.5 rounded-[5px] px-2.5 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs [&_svg]:size-3.5"
         >
           {o.label}
         </ToggleGroupPrimitive.Item>

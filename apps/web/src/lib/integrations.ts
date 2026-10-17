@@ -34,7 +34,6 @@ export const SNIPPET_LANGUAGES: { id: SnippetLanguage; label: string }[] = [
   { id: "curl", label: "curl" },
   { id: "r", label: "R" },
   { id: "apps_script", label: "Apps Script" },
-  { id: "atlas", label: "Atlas" },
   { id: "notebook", label: "Notebook" },
 ];
 

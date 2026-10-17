@@ -77,6 +77,75 @@ sliders, forecasts and sharing. The user guide is `docs/guides/guided-tutorial.m
   `uv run python apps/web/scripts/gen_guided_fixtures.py [--check]`). A project can be locked
   in mock mode with `localStorage["mapi.mock.guidedLocked"] = "acme/growth"`.
 
+## Explorers, About cards and budget plans (v0.5)
+
+| Route | Module | What |
+|---|---|---|
+| `/choose` | `routes/choose.tsx`, `features/about/chooser.tsx` | Help me choose (answers in the URL) |
+| `/catalog` (Browse) | `features/about/catalog-browser.tsx` | every About card (`?about=kind:id` opens one) |
+| `/datasets/$id/versions/$v/explore` | `routes/explore-data.tsx`, `features/explore/data-*.tsx` | Data Explorer (`?section=`, `?run=`) |
+| `/models/$id/versions/$v/explore` | `routes/explore-model.tsx`, `features/explore/model-*.tsx` | Model Explorer, governance evidence, lineage |
+| `/models/compare` | `features/explore/compare.tsx` | several versions side by side (`?refs=`) |
+| `/models/$id/versions/$v/optimize` | `routes/optimize.tsx`, `features/optimize/` | budget optimisation (`?run=`, `?back=<guided spec>`) |
+
+- **Views.** Explorer views (`mapi_spec.views`) are fetched through their signed links and
+  typed by `features/explore/views.gen.ts`, generated from the Pydantic schemas; `parseView`
+  checks each view's `format` tag. Strings in views come from user data: text only.
+- **Plain first.** `features/explore/plain.ts` turns views into plain readings (unit
+  tested); Guided mode shows them first and the statistics behind *Show the statistics*.
+- **Plots.** `features/explore/plots.ts` builds first-party Vega-Lite specs for the picked
+  variable or series; Expert mode also offers the platform's recipe plots
+  (`ui/explore/plots/<section>.json`). Both render in the plot sandbox only.
+- **Mocks.** `src/mocks/explore.ts` serves `explorer.gen.json`: views, plots, About cards,
+  rankings, governance results and a budget plan computed by the real runner, plots-core
+  and `mapi_spec` (`uv run python apps/web/scripts/gen_explorer_fixtures.py`, minutes;
+  `--check` validates them against the contracts in seconds).
+- **Start with this** (`features/about/start.ts`): a workflow template opens
+  `/workflows/recipe?template=<id>` for Guided users and `/workflows/new?template=<id>` for
+  Expert users (both take `?data=<dataset ref>` to bind the data); a governance check opens
+  `/governance?tab=checks`.
+
+## How the M3.5 screens connect
+
+- **Navigation.** `components/shell/nav.ts`: Guided mode lists Guided, Help me choose
+  (`CHOOSE_NAV`, `g o`) and Recipes (`RECIPES_NAV`, the `/workflows` route) first;
+  `LOCKED_NAV` is what a Guided-locked project shows.
+- **One validation store.** The Model Explorer uses `features/governance/api.ts`
+  (`useModelValidations`) and `features/governance/badge.tsx` (`ValidationBadge`); the mock's
+  validations all live in `mocks/governance.ts` (the explorer's computed ones are seeded there).
+- **Workflow → model.** `features/workflows/model-link.tsx` resolves `model_version` outputs
+  (`model://project/name@vN`) against the project's models and links the Model Explorer and the
+  version's validations (run summary, node drawer, outputs).
+## Workflows and governance (M3.5)
+
+`features/workflows` and `features/governance` hold the M3.5 screens (routes in
+`routes/workflows.tsx` and `routes/governance.tsx`); the user guides are the "In the web app"
+sections of `docs/guides/workflows.md` and `docs/guides/governance.md`.
+
+- **One document.** The canvas, the node editor and the YAML/JSON view all edit one
+  `WorkflowSpec` draft through the pure functions of `features/workflows/doc.ts`; the server
+  validates every draft (`POST /v1/workflows:validate`) and its issues are pinned to nodes by
+  their JSON pointers. Conditions and `$expr` values are only scanned for node ids, never
+  evaluated. Node positions are a per-browser preference (`localStorage`), not part of the
+  document.
+- **Typed ports.** `ports.ts` mirrors the server's port checks so an incompatible edge is refused
+  with its reason before anything is sent; `canvas-model.ts` turns a document into the graph
+  (data, gate and "reads" edges) without importing React Flow.
+- **React Flow** (`@xyflow/react`, MIT, pinned) loads with `canvas.tsx` only; `vite.config.ts`
+  forbids it in the entry closure. Selection flows one way: user selections arrive as `select`
+  node changes, the editor's own selection is pushed into the nodes.
+- **Runs.** `run-events.ts` follows `GET /v1/workflow-runs/{id}/events` (SSE, `Last-Event-ID`).
+  `cron.ts` ports `mapi_spec.cron` for the schedule preview; `workflows-lib.test.ts` replays the
+  server's firing times.
+- **DTO aliases** for these screens live beside them (`features/workflows/types.ts`,
+  `features/governance/types.ts`), built from `schema.d.ts` like `src/api/types.ts`.
+- **Mocks.** `src/mocks/workflows.ts`, `src/mocks/governance.ts` and the validator stand-in
+  `src/mocks/workflow-validate.ts` (checked against the server's answers for broken documents).
+  Their data, `src/mocks/workflows.gen.json`, comes from `mapi_spec` and a real local run of the
+  canonical template and two governed fits:
+  `uv run python apps/web/scripts/gen_workflow_fixtures.py [--check]`. Mock runs replay that
+  run's events, one every `localStorage["mapi.mock.wfStepMs"]` ms (150 by default).
+
 ## API client
 
 `openapi.json` drives `src/api/schema.d.ts` (openapi-typescript) and the typed client

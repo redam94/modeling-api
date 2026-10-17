@@ -23,12 +23,12 @@ This page walks through every page in navigation order. The screenshots come fro
 | Element | What it does |
 |---|---|
 | Project switcher | The tenant and project everything on the page acts in, with your role there; switch, create a project (tenant admins) or open its members. See [Authentication](authentication.md#browser-sign-in). |
-| Sidebar | Home, Guided, Datasets, Build, Runs, Models, Score, Integrations and Catalog (in Guided mode, Guided replaces Home); under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
+| Sidebar | Home, Guided, Datasets, Build, Runs, Models, Score, Workflows, Governance, Integrations, Catalog and Help me choose. In Guided mode, Guided, **Help me choose** and **Recipes** (the workflow gallery as ready-made recipes) come first and Home is left out; a Guided-locked project shows those three and Integrations. Under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
 | **Jump to…** (++cmd+k++ or ++slash++) | A command palette: go to any page, start a new spec, switch the theme, or paste an id (`run_…`, `mdl_…`, `ds_…`, `spc_…`) to open it. |
 | **API connected** | Polls `GET /readyz`: green when PostgreSQL, the object store and the catalog are ready, amber (*API degraded*) or red (*API unreachable*) otherwise. It links to **Settings**, which shows each check. |
 | **Guided / Expert** | The persona switch, remembered per user on this browser. Until you choose, a self-service (`public` tier) workspace starts in Guided mode and any other one (or a platform operator) in Expert; in Guided mode `/` opens the Guided start page. Hidden for members below admin of a project locked to Guided mode. |
 | Display icon | Light, dark or system theme. |
-| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++i++ Integrations, ++c++ Catalog, ++comma++ Settings. |
+| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++w++ Workflows, ++v++ Governance, ++i++ Integrations, ++c++ Catalog, ++o++ Help me choose, ++comma++ Settings. |
 
 Text that came from a run or a plugin (log lines, tracebacks, warning messages, plot
 captions) is always rendered as plain text, with ANSI escapes and control and bidi
@@ -260,6 +260,39 @@ summary as a table with one row per coordinate and one column per statistic, and
 chart you can re-plot by any column. A market the model has not seen, like FR above, is drawn
 from the fitted hierarchy, so its band is wider; the result's `issues` say so.
 
+## Workflows and governance <span class="mapi-badge">v0.5</span>
+
+**Workflows** builds, runs, schedules and watches workflows: a template gallery, a visual
+editor with a node palette, typed ports and a YAML view, and a live run monitor. See
+[In the web app](workflows.md#in-the-web-app). **Governance** edits policies, follows
+validations and holds the reviewers' queue; see [In the web app](governance.md#in-the-web-app).
+
+<div class="grid" markdown>
+
+![The workflow editor: palette, canvas with typed ports, node editor](../assets/screenshots/workflows-editor.png){ .mapi-shot }
+
+![A validation waiting for a reviewer, with its checks and evidence](../assets/screenshots/governance-validation.png){ .mapi-shot }
+
+</div>
+
+The screens lead into each other:
+
+- A finished workflow run links each model it fitted to the **Model Explorer** and to the
+  version's validations (in the run summary, the fit step's runs and its outputs); the run
+  page of a workflow run opens its monitor, and a model's lineage leads back to the workflow
+  run that fitted it.
+- The **Model Explorer** shows the version's validation status in its header (a link to the
+  version's validations) and, under *Governance evidence*, links to the latest validation and
+  the policies. A validation links back to the Model Explorer and to the run that computed
+  its checks.
+- The **Data Explorer** of data over time offers the readiness workflow with that data
+  already bound: the *Run this recipe* page in Guided mode, the template wizard in Expert mode.
+- **Start with this** on an About card or a Help me choose result opens a workflow template
+  as a recipe (Guided) or in the template wizard (Expert), and a governance check in the
+  check catalog. In Guided mode a model opens the guided template built on it; one without
+  a guided template offers **Set up in Expert mode** (a deliberate switch) instead of opening
+  the spec editor.
+
 ## Catalog
 
 ![The catalog: models, steps and plot recipes](../assets/screenshots/catalog.png){ .mapi-shot }
@@ -269,6 +302,19 @@ its digest: **Models** (inference, representation, score modes, base image), **S
 whether it learns state, invertibility, summary) and **Plots** (recipe, title, audience and
 the bundle groups it needs). Click a row for its full entry. Specs can only use what is listed here. The same data is in
 the [generated catalogs](../reference/generated/models-catalog.md).
+
+Since v0.5 the catalog opens on **Browse**: every item a user can pick by its plain-language
+About card, with **Help me choose** one click away (see [About cards and
+choosing](../concepts/about-and-choosing.md#in-the-web-app)).
+
+## Explorers and budget plans <span class="mapi-badge">v0.5</span>
+
+- **Explore this version** on a dataset version opens the
+  [Data Explorer](data-explorer.md#in-the-web-app).
+- **Explore** on a model version opens the [Model Explorer](model-explorer.md#in-the-web-app)
+  (parameters, diagnostics, fit, residuals, contributions, response curves, IRF/FEVD,
+  forecasts, backtests, governance evidence and lineage); **Compare** puts several versions
+  side by side with Diebold-Mariano tests; **Optimise budget** plans a marketing budget.
 
 ## Settings
 

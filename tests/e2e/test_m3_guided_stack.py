@@ -21,10 +21,8 @@ One analyst's whole journey, from outside the processes, against a ``dev``-profi
    ``run.succeeded``, ``model.version.ready``, ``endpoint.promoted`` and ``score.completed``
    deliveries, verified with :func:`mapi_client.webhooks.verify`; a replay arrives again.
 8. **Embed.** A saved platform-recipe plot as a read-only embed link, then revoked.
-9. **Atlas.** :class:`mapi_client.atlas.RemoteModel` against the live endpoint: an optimiser
-   written against Atlas's ``OptimizerProtocol`` reallocates next quarter's budget, and the
-   chosen allocation beats the current one under the model. With Atlas installed (``make e2e``
-   overlays ``ATLAS_DIR``) the result is Atlas's own ``OptimizationResult``.
+9. **Budget optimisation.** ``POST …:optimize`` on the promoted version: mmm-framework
+   planning reallocates the budget within bounds and reports the uplift and the frontier.
 10. **GDPR export and deletion.** The export downloads (no secrets inside); with
     ``MAPI_TENANT_DELETION_GRACE_S=0`` the purge removes every tenant row in Postgres and
     every object under ``t/<tenant>/`` in the GCS shim, and the webhook hears
@@ -38,7 +36,6 @@ one the dev IdP offers; every run creates a new workspace.
 from __future__ import annotations
 
 import asyncio
-import importlib.util
 import json
 import os
 import ssl
@@ -59,7 +56,6 @@ import pytest
 import yaml
 from mapi_cli.profile import profile_csv
 from mapi_client import Client
-from mapi_client.atlas import RemoteModel, register_with_atlas
 from mapi_client.oidc import dev_idp_login
 from mapi_client.webhooks import verify
 from mapi_conformance.fixtures.guided_mmm.data import SIZES, _simulate, truth
@@ -84,7 +80,6 @@ RUN_TIMEOUT_S: Final = 1200.0
 EVENT_TIMEOUT_S: Final = 120.0
 SIZE: Final = "full"
 """Two years of five regions and three channels: enough history for the scorecard."""
-PLAN_WEEKS: Final = 13
 TINY_FIT: Final = {"tune": 150, "draws": 150, "chains": 2}
 ENDPOINT_FIT: Final = {"tune": 1000, "draws": 1000, "chains": 4, "target_accept": 0.95}
 """A fit long enough for the scorecard's convergence checks to pass or warn (not fail)."""
@@ -225,7 +220,9 @@ class Receiver:
         deadline = time.monotonic() + EVENT_TIMEOUT_S
         while time.monotonic() < deadline:
             for d in self.snapshot()[after:]:
-                env = verify(d.headers, d.body, secret)  # raises on a bad signature
+                # verified as the receiver got it (raises on a bad signature): a delivery read
+                # minutes later is not "too old"
+                env = verify(d.headers, d.body, secret, now=int(d.at))
                 if env.type == event and match(env):
                     return env, d
             time.sleep(0.25)
@@ -436,7 +433,7 @@ def test_template_roles_draft_and_upload(
 
 
 def test_the_same_data_as_an_mff_long_table(journey: Journey) -> None:
-    """MFF (BayesInsight's model feature format) ingests to the same variables."""
+    """MFF (the model feature format long table) ingests to the same variables."""
     j = journey
     api, csv = j.api, _need(j.csv, "the CSV")
     long = pd.read_csv(csv).melt(
@@ -502,7 +499,7 @@ def test_business_priors_preview_and_lift_test(journey: Journey) -> None:
             draws=500, timeout=RUN_TIMEOUT_S,
         )  # fmt: skip
     result = _need(tr.result, "the translation result")
-    assert result.priors["beta_channel"]["distribution"] == "LogNormal"
+    assert set(result.priors["roi"]) == {"tv", "search"}  # mmm-framework ROI priors
     # the translated priors put about the stated credibility inside each range
     for key in ("tv", "search", "baseline"):
         assert abs(result.coverage[key] - 0.8) < 0.15, result.coverage
@@ -701,7 +698,7 @@ def test_promote_through_the_gate(journey: Journey) -> None:
     assert schema.model_ref == mv.ref and schema.example is not None
     snippets = api.endpoints.snippets(j.alias)
     languages = {s.language for s in snippets.items}
-    assert {"python", "curl", "atlas", "apps_script"} <= {
+    assert {"python", "curl", "apps_script", "notebook"} <= {
         str(getattr(x, "value", x)) for x in languages
     }
     for s in snippets.items:
@@ -778,8 +775,8 @@ def test_webhooks_are_signed_and_replayable(journey: Journey) -> None:
     assert again == scored and d.headers.get("Mapi-Delivery-Id") == replay.id
     assert d.headers.get("Mapi-Delivery-Id") != scored_at.headers.get("Mapi-Delivery-Id")
     # a body signed with another secret is refused by the verifier
-    with pytest.raises(MapiError):
-        verify(d.headers, d.body, "whsec_" + "x" * 43)
+    with pytest.raises(MapiError):  # (at its arrival time: refused for the secret alone)
+        verify(d.headers, d.body, "whsec_" + "x" * 43, now=int(d.at))
 
 
 # ======================================================================= 8. embed
@@ -813,106 +810,45 @@ def test_an_embed_link_renders_read_only_and_is_revoked(journey: Journey) -> Non
         assert gone.status_code == 410 and gone.json()["code"] == "LINK_EXPIRED"
 
 
-# ======================================================================= 9. Atlas
+# ============================================================= 9. budget optimisation
 
 
-class Result:
-    """The fields of Atlas's ``OptimizationResult`` this optimiser fills (no Atlas)."""
-
-    def __init__(self, **fields: Any) -> None:
-        self.__dict__.update(fields)
-
-
-class ReallocationOptimizer:
-    """An Atlas ``OptimizerProtocol`` (``optimize(model, constraints, config)``) for a
-    fixed total budget: move a step of budget between two channels while that improves the
-    model's KPI, halving the step when no move does. Every candidate is scored by the
-    endpoint through ``model.predict_batch`` (a remote model's cache answers repeats)."""
-
-    def __init__(self, result_type: Callable[..., Any] = Result) -> None:
-        self.result_type = result_type
-        self.evaluations = 0
-
-    def _score(self, model: Any, budgets: Sequence[Mapping[str, float]]) -> list[float]:
-        self.evaluations += len(budgets)
-        preds = model.predict_batch([model.allocation(b) for b in budgets])
-        return [float(p) for p in preds]
-
-    def optimize(self, model: Any, constraints: dict[str, Any], config: dict[str, Any]) -> Any:
-        current = {c: float(v) for c, v in constraints["current"].items()}
-        total = sum(current.values())
-        floor = float(constraints.get("min_share", 0.05)) * total
-        step = float(config.get("step", 0.2)) * total
-        min_step = float(config.get("min_step", 0.05)) * total
-        budget_left = int(config.get("max_evaluations", 30))
-        best, [best_value] = dict(current), self._score(model, [current])
-        start_value = best_value
-        history = [best_value]
-        while step >= min_step and budget_left > 0:
-            moves = []
-            for src in best:
-                for dst in best:
-                    if src != dst and best[src] - step >= floor:
-                        cand = dict(best)
-                        cand[src] -= step
-                        cand[dst] += step
-                        moves.append(cand)
-            moves = moves[:budget_left]
-            values = self._score(model, moves)
-            budget_left -= len(moves)
-            i = max(range(len(values)), key=values.__getitem__)
-            if values[i] > best_value:
-                best, best_value = moves[i], values[i]
-                history.append(best_value)
-            else:
-                step /= 2
-        return self.result_type(
-            optimal_budget=best,
-            optimal_value=best_value,
-            metadata={"evaluations": self.evaluations, "start_value": start_value},
-            convergence_info={"history": history, "final_step": step},
-        )
-
-
-def test_atlas_optimises_a_budget_against_the_endpoint(journey: Journey) -> None:
+def test_the_platform_optimises_the_budget(journey: Journey) -> None:
+    """``POST …:optimize`` (v0.5): mmm-framework planning over
+    the promoted version's posterior reallocates the budget with tv held within +-50%; the
+    plan spends the budget, does not lose KPI on average and reports its frontier."""
     j = journey
-    token = _need(j.score_token, "the score token")
-    full, _ = _simulate(0, SIZE, SIZES[SIZE]["weeks"] + PLAN_WEEKS)
-    plan = (
-        full.isel(week=slice(SIZES[SIZE]["weeks"], None))
-        .drop_vars("revenue")
-        .rename({"week": "time", "region": "geo"})
-    )  # next quarter's flighting, in the endpoint's input names
-    current = {str(c): float(plan["spend"].sel(channel=c).sum()) for c in plan["channel"].values}
-    atlas = importlib.util.find_spec("atlas") is not None
-    result_type: Callable[..., Any] = Result
-    with Client(j.stack.api, token=token) as scorer:
-        scorer.use(j.project)
-        model = RemoteModel(scorer, j.alias, base=plan, kpi="y_hat")
-        if atlas:
-            from atlas.core.interfaces import AbstractModel, OptimizationResult
-
-            assert register_with_atlas() and isinstance(model, AbstractModel)
-            result_type = OptimizationResult
-        optimizer = ReallocationOptimizer(result_type)
-        with _Timer(j, "atlas_optimise"):
-            result = optimizer.optimize(
-                model, {"current": current, "min_share": 0.05},
-                {"step": 0.2, "min_step": 0.05, "max_evaluations": 24},
-            )  # fmt: skip
-        info = model.cache_info()
-    start = float(result.metadata["start_value"])
-    assert sum(result.optimal_budget.values()) == pytest.approx(sum(current.values()))
-    assert result.optimal_value > start, "the chosen allocation must beat the current one"
-    j.notes["atlas"] = {
-        "atlas_installed": atlas,
-        "current": current,
-        "chosen": result.optimal_budget,
-        "kpi_current": start,
-        "kpi_chosen": result.optimal_value,
-        "uplift_pct": 100 * (result.optimal_value / start - 1),
-        "evaluations": optimizer.evaluations,
-        "score_requests": info.requests,
+    mv = j.mv
+    body = {
+        "budget_change_pct": 0,
+        "channels": {"tv": {"min_multiplier": 0.5, "max_multiplier": 1.5}},
+        "objective": "mean",
+        "frontier": {"n_points": 5},
+        "max_draws": 100,
+    }
+    url = f"{j.stack.api}/v1/models/{mv.model_id}/versions/{mv.version}:optimize"
+    with httpx.Client(timeout=90, verify=False) as http, _Timer(j, "optimize"):
+        r = http.post(url, json=body, headers={**j.headers(), "Prefer": "wait=60"})
+        assert r.status_code in (200, 202), r.text
+        view = r.json()
+        run_id = view["run"]["id"]
+        deadline = time.monotonic() + RUN_TIMEOUT_S
+        while not view["done"] and time.monotonic() < deadline:
+            time.sleep(2)
+            got = http.get(f"{j.stack.api}/v1/optimizations/{run_id}", headers=j.headers())
+            assert got.status_code == 200, got.text
+            view = got.json()
+    assert view["done"] and view["result"] is not None, view["run"].get("problem")
+    plan = view["result"]
+    spent = sum(a["optimal_spend"] for a in plan["allocation"])
+    assert spent == pytest.approx(plan["total_budget"], rel=0.005)
+    assert plan["uplift"]["mean"] >= -1e-6 * abs(plan["expected_kpi"]["mean"])
+    # the KPI by its dataset name (a Guided draft records no units, so the plan has none)
+    assert len(plan["frontier"]) == 5 and plan["kpi"].lower() == "revenue"
+    j.notes["optimize"] = {
+        "allocation": {a["channel"]: a["optimal_spend"] for a in plan["allocation"]},
+        "uplift": plan["uplift"],
+        "prob_positive_uplift": plan["prob_positive_uplift"],
     }
 
 

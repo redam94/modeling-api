@@ -230,6 +230,17 @@ See [Sharing plots](../guides/sharing-plots.md).
 Webhook signing secrets are sealed with a key derived from `MAPI_SERVER_SECRET`: changing the
 server secret makes every webhook secret unusable (rotate them afterwards).
 
+**Workflows (v0.5)** (see [Workflows](../guides/workflows.md))
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_WORKFLOW_TICK_S` | `1` | How often (seconds) the orchestrator's workflow loop advances active workflow runs, fires due schedules and debounced triggers |
+| `MAPI_WORKFLOW_MAX_ACTIVE_RUNS` | `20` | Workflow runs one project may have going at once, sub-workflow runs included (`429` beyond; a `subworkflow.run` node over the limit fails with `QUOTA_EXCEEDED`) |
+| `MAPI_WORKFLOW_MAX_SCHEDULES` | `20` | Active cron schedules per project |
+| `MAPI_WORKFLOW_MAX_TRIGGERS` | `20` | Active dataset-version triggers per project |
+| `MAPI_WORKFLOW_NODE_TIMEOUT_S` | `1800` | Timeout of a node's child run when the node sets none |
+| `MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES` | `1048576` | Largest JSON output (tables, metrics, reports) a node may return |
+
 **Pub/Sub push events** (`POST /internal/events`)
 
 | Variable | Default | Meaning |
@@ -443,6 +454,7 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 | `MAPI_E2E_BURST_RUNS` | Opt-in: how many concurrent real fits `tests/e2e/test_m2_burst_stack.py` submits ([M2 verification](m2-verification.md)) |
 | `MAPI_E2E_SIGNUP_ACCOUNT` | The address the M3 trust-lifecycle suite (`tests/e2e/test_m3_trust_stack.py`) signs up with; it must be a development-IdP account so it can sign in (default `viewer@dev.local`) |
 | `MAPI_E2E_GUIDED_ACCOUNT` | The address the M3 journey (`tests/e2e/test_m3_guided_stack.py`) signs up with; a development-IdP account (default `viewer@dev.local`) |
+| `MAPI_E2E_KEEP` | `1` keeps the project the M3.5 journeys create (`tests/e2e/test_m35_stack.py`, `apps/web/e2e/m35-live.e2e.spec.ts`) instead of deleting it afterwards, to look at it in the app ([M3.5 verification](m35-verification.md)) |
 | `MAPI_E2E_WEBHOOK_TLS_DIR` | Where the M3 journey's webhook receiver finds `cert.pem` and `key.pem` (default `$MAPI_DATA_DIR/dev/webhook-tls`) |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests (`make snapshots`) |
 | `MAPI_HYPOTHESIS_EXAMPLES` | Examples per property in the wire-format round-trip tests (default 60) |
@@ -454,5 +466,8 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 | `MAPI_DOCS_SPEC` | The spec `scripts/docs_screenshots.mjs` (`make docs-screenshots`) opens and fits, default `eu-geo-mmm`. The script also reads `MAPI_WEB_ORIGIN` |
 | `MAPI_DOCS_PROJECT` | The project `scripts/docs_screenshots_admin.mjs` (`make docs-screenshots-admin`) selects after capturing the project switcher, default `Default project`. The script also reads `MAPI_WEB_ORIGIN`, `MAPI_API_URL` and `MAPI_DEV_ACCOUNT` |
 | `MAPI_GUIDED_SCREENSHOTS` | Set to `1` to run `apps/web/e2e/guided-screenshots.spec.ts`, which captures the Guided tutorial's screenshots from the mock-mode app (`make docs-screenshots-guided` sets it, with `MAPI_SMOKE_WEB_PORT`/`MAPI_SMOKE_PLOTS_PORT` defaulting to 15173/15174); the smoke suite skips it otherwise |
+| `MAPI_EXPLORER_SCREENSHOTS` | Set to `1` to run `apps/web/e2e/explorer-screenshots.spec.ts`, which captures the explorer, About-card and budget-plan screenshots of the docs from the mock-mode app (`make docs-screenshots-explorers` sets it, with the same port defaults); the smoke suite skips it otherwise |
+| `MAPI_WORKFLOW_SCREENSHOTS` | Set to `1` to run `apps/web/e2e/workflow-screenshots.spec.ts`, which captures the workflow (gallery, editor, run monitor, schedules, Guided recipe) and governance (policies, policy editor, review queue, validation, evidence) screenshots of the docs from the mock-mode app (`make docs-screenshots-workflows` sets it, with `MAPI_SMOKE_WEB_PORT`/`MAPI_SMOKE_PLOTS_PORT` defaulting to 15183/15184); the smoke suite skips it otherwise |
+| `MAPI_SHOTS_DIR` | A directory; when set, the workflow and governance smoke specs (`apps/web/e2e/workflows.spec.ts`, `governance.spec.ts`) also save full-page screenshots of their screens there |
 | `MAPI_EMBED_VIEW` | The `EmbedView` JSON that `scripts/docs_screenshots_tutorials.mjs` (`make docs-screenshots-tutorials`) serves to the plot sandbox's embed page, written by `scripts/docs_embed_view.py` (default `.local/embed-view.json`). The script also reads `MAPI_WEB_ORIGIN` and `MAPI_PLOTS_ORIGIN` (default ports 15173/15174) |
 | `MAPI_EMBED_API` | The API origin the embed page asks for the view in that script, answered by Playwright (default `http://127.0.0.1:8000`, the sandbox dev server's `VITE_API_URL`; nothing needs to listen there) |

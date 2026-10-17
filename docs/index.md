@@ -1,6 +1,6 @@
 ---
 title: modeling-api
-description: Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists bring PyMC, scikit-learn and forecasting models whose preprocessing is replayed exactly, and put them behind an endpoint in one click.
+description: Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists automate whole analyses as tested workflows, prove every model against null tests before anyone uses it, and put it behind an endpoint in one click.
 hide:
   - navigation
   - toc
@@ -17,25 +17,28 @@ dimensions</strong> (market × channel × week, store × product × day, househo
 answers questions with them in the units your business uses. An analyst uploads a spreadsheet
 and gets a report, a sanity scorecard and instant what-if sliders. A data scientist writes a
 small spec or a few lines of Python and gets the same model behind a versioned endpoint,
-with the fitted preprocessing replayed exactly on every call. Every run happens in a fresh
-sandbox, and every result says how sure it is.</p>
+with the fitted preprocessing replayed exactly on every call. Whole analyses - tests,
+decisions, models, benchmarks - run as versioned **workflows**, and a model only goes live
+after it has beaten **shuffled data, fake drivers and a naive forecast**. Every run happens in
+a fresh sandbox, and every result says how sure it is.</p>
 
 [Your first MMM in Guided mode](guides/guided-tutorial.md){ .md-button .md-button--primary }
 [Quickstart for data scientists](getting-started/quickstart.md){ .md-button }
-[Why modeling-api?](why.md){ .md-button }
+[What's new in 0.5](whats-new-0.5.md){ .md-button }
 
 </div>
 ![modeling-api logo: a labelled data cube](assets/logo.svg)
 </div>
 
-!!! success "v0.4: Guided mode and integrations"
-    Analysts get **Guided mode**: templates, questions instead of a column mapper, beliefs as
-    ROI ranges and lift tests, a sanity scorecard, what-if sliders and forecasts. Other
-    applications get **endpoints** promoted through the scorecard, code snippets, signed
-    **webhooks**, **embeddable charts**, Google Sheets and an **Atlas** budget optimiser.
-    Every number on this page was measured on a laptop running the whole stack
-    ([M3 verification](operations/m3-verification.md)); the cloud pieces are tested against
-    fakes, and the study with five non-technical testers is still to come.
+!!! success "v0.5: workflows, governance, explorers, mmm-framework and statsmodels"
+    **Workflows** chain unit-root tests, differencing decisions, AR/MA order searches,
+    rolling-origin backtests against naive forecasts, model selection and governance into
+    one versioned, schedulable graph. **Governance policies** hold every model to null tests
+    - it must beat itself fitted on shuffled results and give fake noise drivers no credit -
+    with a second person's approval and an evidence pack. **Data and Model Explorers**,
+    **mmm-framework** marketing-mix models with budget optimisation, **twelve statsmodels**
+    time-series models, and an **About card on everything** with *Help me choose*.
+    [What's new in 0.5](whats-new-0.5.md).
 
 ## Two ways in, one model
 
@@ -53,6 +56,8 @@ sandbox, and every result says how sure it is.</p>
 - Drag **what-if sliders**: answers in your browser, with a range that stays honest when
   several channels move at once. "Run exact" asks the full model.
 - Share a live chart or put the model in a Google Sheet.
+- Not sure which model? **Help me choose** asks a few questions and explains its
+  recommendations; every option has an *About* card in plain words.
 
 [:octicons-arrow-right-24: Your first analysis in Guided mode](guides/guided-tutorial.md)
 
@@ -70,9 +75,12 @@ sandbox, and every result says how sure it is.</p>
 - Uncertainty is first-class: draws, quantiles or intervals, with the aggregations that are
   valid for each.
 - Promote a version to an **endpoint** through the scorecard gate; copy a snippet for
-  Python, TypeScript, curl, R, Apps Script, Atlas or a notebook.
+  Python, TypeScript, curl, R, Apps Script or a notebook.
+- Automate the statistics: **workflows** of tests, branches, searches, backtests and
+  governance checks, run live from `mapi workflows run --watch` or `api.workflows`.
 
-[:octicons-arrow-right-24: Quickstart: zero to first model](getting-started/quickstart.md)
+[:octicons-arrow-right-24: Quickstart: zero to first model](getting-started/quickstart.md) ·
+[Workflow cookbook](guides/workflow-cookbook.md)
 
 </div>
 </div>
@@ -84,14 +92,16 @@ changes come back to Guided mode intact. [Who it is for, and who it is not for](
 
 ```mermaid
 flowchart LR
-    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian · BayesInsight"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
+    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
     Q["Guided answers<br/>or a YAML spec"] --> V{{"Static checks<br/>before any compute"}}
     I --> V
     V --> F["Fit in a fresh sandbox<br/>preprocessing learned<br/>on train only"]
     F --> B[("Signed bundle<br/>states · posterior ·<br/>scorecard · grids")]
-    B --> R["Report and<br/>what-if sliders"]
-    B --> E["Endpoint<br/>gated on the scorecard"]
-    E --> S["Sheets · BI embeds ·<br/>webhooks · Atlas ·<br/>Python, TS, R"]
+    W["Workflow<br/>tests → decisions →<br/>search → backtest"] -.-> F
+    B --> R["Report, explorers,<br/>what-if, budget plans"]
+    B --> G{{"Governance<br/>null tests · benchmarks ·<br/>second-person approval"}}
+    G --> E["Endpoint<br/>gated on the scorecard<br/>and the validation"]
+    E --> S["Sheets · BI embeds ·<br/>webhooks ·<br/>Python, TS, R"]
 ```
 
 1. **Your data stays labelled.** The upload becomes an `xr.Dataset` with named dims, roles and
@@ -103,8 +113,14 @@ flowchart LR
    your units.
 4. **Results are checked twice.** Outputs are verified against the storage's own checksums
    and signed; the scorecard checks convergence, holdout error and plausibility.
-5. **Other tools connect to an endpoint, not a file.** Promote a better model and every
+5. **Models earn their place.** A governance policy holds each version to null tests and
+   benchmarks, records the evidence and, if you ask, waits for a second person; endpoints
+   can refuse anything that is not validated.
+6. **Other tools connect to an endpoint, not a file.** Promote a better model and every
    integration uses it; roll back with one call.
+7. **Whole analyses repeat themselves.** A workflow re-runs the tests, decisions, fits and
+   checks every Monday or whenever the data changes, reusing every step whose inputs did not
+   change.
 
 ## Your first MMM in Guided mode
 
@@ -166,7 +182,110 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
 </div>
 
-## What's new in v0.4
+## What's new in v0.5
+
+<div class="grid cards" markdown>
+
+-   :material-graph-outline:{ .lg .middle } **Workflows that think like a statistician**
+
+    ---
+
+    Unit roots → differencing → AR/MA orders → rolling-origin backtest → ARIMAX vs naive →
+    select → governance, as one versioned YAML graph with live node status, caching,
+    schedules and dataset triggers. Seventeen statistical tests, seven split plans,
+    Diebold-Mariano.
+
+    [:octicons-arrow-right-24: Workflow cookbook](guides/workflow-cookbook.md)
+
+-   :material-shield-check-outline:{ .lg .middle } **Models must beat noise**
+
+    ---
+
+    Governance policies: shuffled-target and placebo-regressor null tests, naive benchmarks,
+    residual whiteness, stability, signs, prior sensitivity. Second-person approval, evidence
+    packs, and endpoints that refuse unvalidated models.
+
+    [:octicons-arrow-right-24: Can you trust this model?](guides/null-tests.md)
+
+-   :material-magnify-scan:{ .lg .middle } **Data and Model Explorers**
+
+    ---
+
+    Stationarity, cross-correlation with the KPI, STL, VIF and quality warnings before you
+    model; parameters, residual tests, IRF/FEVD, forecasts, backtests and side-by-side
+    comparisons after.
+
+    [:octicons-arrow-right-24: Explore a dataset](guides/data-explorer.md)
+
+-   :material-chart-bell-curve-cumulative:{ .lg .middle } **mmm-framework MMMs and budget plans**
+
+    ---
+
+    `mmm.bayesian` pooled over geos and products, `mmm.frequentist` in seconds, business
+    priors, lift tests, and budgets optimised from the posterior with risk objectives.
+
+    [:octicons-arrow-right-24: Marketing-mix models](models/mmm-framework.md)
+
+-   :material-chart-timeline-variant:{ .lg .middle } **Twelve statsmodels models**
+
+    ---
+
+    SARIMAX to VECM and Markov switching, with future drivers, prediction intervals,
+    impulse responses and cointegration tests.
+
+    [:octicons-arrow-right-24: statsmodels models](models/statsmodels.md)
+
+-   :material-help-circle-outline:{ .lg .middle } **About cards and Help me choose**
+
+    ---
+
+    Every model, step, node, check and template explains itself in plain words; eight
+    questions turn into a ranked shortlist with reasons - in the web app, `mapi choose` or
+    `api.catalog.recommend()`.
+
+    [:octicons-arrow-right-24: Choosing a model](guides/choosing-a-model.md)
+
+</div>
+
+### See it at work
+
+<div class="mapi-shots" markdown>
+
+<figure markdown>
+[![The visual workflow editor with the readiness-to-ARIMAX graph](assets/screenshots/workflows-editor.png){ .mapi-shot loading=lazy }](guides/workflows.md#the-editor)
+<figcaption>Workflows: tests, decisions, searches, backtests and governance as one graph, with typed ports.</figcaption>
+</figure>
+
+<figure markdown>
+[![A workflow run followed live, every step done](assets/screenshots/workflows-run-monitor.png){ .mapi-shot loading=lazy }](guides/workflows.md#running-and-watching)
+<figcaption>Run monitor: every step, decision and verdict live, with the run's cost.</figcaption>
+</figure>
+
+<figure markdown>
+[![A validation awaiting a reviewer's approval](assets/screenshots/governance-validation.png){ .mapi-shot loading=lazy }](guides/governance.md#validating-a-model-version)
+<figcaption>Governance: checks, evidence and a second person's sign-off.</figcaption>
+</figure>
+
+<figure markdown>
+[![The real model's error against nineteen fits on shuffled results](assets/screenshots/governance-evidence.png){ .mapi-shot loading=lazy }](guides/null-tests.md)
+<figcaption>Null tests: the real model must beat itself fitted on shuffled results.</figcaption>
+</figure>
+
+<figure markdown>
+[![Stationarity per series in the Data Explorer](assets/screenshots/explorer-data-stationarity.png){ .mapi-shot loading=lazy }](guides/data-explorer.md)
+<figcaption>Data Explorer: does each series wander, with a plain verdict.</figcaption>
+</figure>
+
+<figure markdown>
+[![A budget plan with the efficient frontier](assets/screenshots/explorer-optimize.png){ .mapi-shot loading=lazy }](tutorials/optimise-a-budget.md)
+<figcaption>Budget plans: mmm-framework planning from the posterior, with the frontier.</figcaption>
+</figure>
+
+</div>
+
+[:octicons-arrow-right-24: Everything that is new in 0.5](whats-new-0.5.md)
+
+## What came in v0.4
 
 <div class="grid cards" markdown>
 
@@ -234,24 +353,14 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     [:octicons-arrow-right-24: Embed a chart](tutorials/embed-a-chart.md)
 
--   :material-target:{ .lg .middle } **Atlas and Google Sheets**
+-   :material-google-spreadsheet:{ .lg .middle } **Google Sheets**
 
     ---
 
-    `RemoteModel` makes an endpoint an Atlas model for budget optimisation; an Apps Script
-    writes a forecast into a sheet every morning.
+    A card on every endpoint generates an Apps Script that writes a forecast into a sheet
+    every morning, with a token scoped to that one endpoint.
 
-    [:octicons-arrow-right-24: Optimise a budget](guides/atlas.md) ·
-    [Connect Sheets](tutorials/google-sheets.md)
-
--   :material-import:{ .lg .middle } **BayesInsight and Meridian data**
-
-    ---
-
-    BayesInsight's `model_def.json` runs as a built-in model or maps onto the geo MMM, with
-    every unsupported feature reported, never dropped.
-
-    [:octicons-arrow-right-24: Import a BayesInsight model](tutorials/bayesinsight-import.md)
+    [:octicons-arrow-right-24: Connect Sheets](tutorials/google-sheets.md)
 
 -   :material-account-check-outline:{ .lg .middle } **Sign-up and the data lifecycle**
 
@@ -284,22 +393,30 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
 ## Measured, not promised
 
-Measured on an 8-core laptop against the whole stack, on the data and settings described in
-[M3 verification](operations/m3-verification.md).
+Measured on an 8-core laptop against the whole stack, with real fits in the sandboxed runner.
+The v0.5 journeys, on the data and settings of [M3.5 verification](operations/m35-verification.md):
+
+<div class="mapi-stats" markdown>
+<div class="mapi-stat"><strong>37–40 s</strong><span>the canonical workflow, 19 nodes from unit-root tests to governance, through the orchestrator and the sandboxed runner</span></div>
+<div class="mapi-stat"><strong>p = 0.7–0.95</strong><span>an ARIMAX fitted on pure noise against 19 shuffled refits: validation fails, promotion answers NOT_VALIDATED</span></div>
+<div class="mapi-stat"><strong>0.1 %</strong><span>of the result credited to three fake noise drivers by a model fitted on real signal</span></div>
+<div class="mapi-stat"><strong>26 s</strong><span>a validation with the null tests: 19 shuffled refits plus 3 fake drivers</span></div>
+<div class="mapi-stat"><strong>10–16 s</strong><span>an mmm-framework budget plan with a 5-point efficient frontier, in the sandbox</span></div>
+</div>
+
+Those runs found eight defects that no unit, integration or mocked-browser test could see;
+each was fixed with a regression test before release. The v0.4 journey, on the data of
+[M3 verification](operations/m3-verification.md):
 
 <div class="mapi-stats" markdown>
 <div class="mapi-stat"><strong>135 s</strong><span>upload → report → scenario, clicked through by a script; 79 s of it is the fit</span></div>
 <div class="mapi-stat"><strong>0.08 %</strong><span>instant slider vs the exact model for TV at half budget (−454,590 vs −454,241; exact sd 14,003)</span></div>
 <div class="mapi-stat"><strong>0.01 %</strong><span>"TV off" from the grid vs an exact counterfactual run (−1,046,519 vs −1,046,414)</span></div>
 <div class="mapi-stat"><strong>76–81 %</strong><span>of each translated prior inside the analyst's stated 80% ROI range</span></div>
-<div class="mapi-stat"><strong>&lt; 1 %</strong><span>holdout error of the endpoint's model, with every plausibility check passing</span></div>
-<div class="mapi-stat"><strong>+0.22 %</strong><span>revenue at the same budget, found by Atlas against the live endpoint (25 candidates, 22 requests)</span></div>
 <div class="mapi-stat"><strong>0 objects</strong><span>left in five buckets after a tenant deletion (285 before); only the audit log and cost ledger are kept</span></div>
-<div class="mapi-stat"><strong>15 / 15</strong><span>end-to-end API tests of the M3 journey passing against a live stack</span></div>
 </div>
 
-The same runs found six usability defects, two of them dead ends, which were fixed before
-release. Not yet measured: real testers, a real Google Cloud project, Docker-isolated public
+Not yet measured: real testers, a real Google Cloud project, Docker-isolated public
 workspaces ([what remains](operations/m3-verification.md#what-remains-unverified)).
 
 ## Connect it to everything
@@ -318,7 +435,7 @@ workspaces ([what remains](operations/m3-verification.md#what-remains-unverified
 
 <figure markdown>
 [![Generated snippets](assets/screenshots/integrations-snippets.png){ .mapi-shot loading=lazy }](guides/integrations-hub.md#an-endpoints-page)
-<figcaption>Snippets: Python, TypeScript, curl, R, Apps Script, Atlas, notebook.</figcaption>
+<figcaption>Snippets: Python, TypeScript, curl, R, Apps Script, notebook.</figcaption>
 </figure>
 
 <figure markdown>
@@ -350,9 +467,8 @@ flowchart LR
         A["Daily spend & revenue<br/>local currency"] --> B["fx_convert<br/>(side table)"]
         B --> C["resample<br/>daily → weekly"]
         C --> S{{"split<br/>last 8 weeks"}}
-        S --> D["mean_scale<br/><i>learns scale(geo, channel)</i>"]
-        D --> E["lag_tensor<br/><i>stores last 6 weeks per geo</i>"]
-        E --> M["model.fit"]
+        S --> D["holidays<br/><i>pinned side table</i>"]
+        D --> M["model.fit<br/><i>keeps the fitted history<br/>for carry-over</i>"]
     end
     M --> BUN[("Bundle<br/>states · context tails · posterior<br/>hashes · no pickle")]
     subgraph SCORE["Score (any time)"]
@@ -370,10 +486,10 @@ flowchart LR
     pipeline:
       - {id: to_eur, use: core.fx_convert@^1, with: {vars: [y, spend], table: fx, ...}}
       - {id: weekly, use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum}}
-      - {id: scale,  use: core.mean_scale@^1, with: {vars: [spend], over: [time]}}
-      - {id: lags,   use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 6}}
+      - {id: hols,   use: core.holidays@^1,   with: {table: holidays, along: time}}
     model:
-      use: mmm.hierarchical_geo@^1.3
+      use: mmm.bayesian@^1                 # mmm-framework: scaling and carry-over inside
+      settings: {hierarchy: {pool_over: [geo]}, new_levels: hyperprior}
       fit: {mode: evaluate_then_refit}
     ```
 
@@ -388,9 +504,9 @@ flowchart LR
 
 === "What you get back"
 
-    - Forecasts in **weekly EUR**, not "model units": scaling is inverted, and inversion stops
-      at the weekly resample because daily values cannot be recovered from weekly sums.
-      The output says so in its `output_space` attribute.
+    - Forecasts in **weekly EUR**, not "model units": the model reports its own units, and
+      they stop at the weekly resample because daily values cannot be recovered from weekly sums.
+      The output says so in its `output_space` (`model-owned`) and `units` attributes.
     - A new market drawn from the fitted **hyperprior**, honestly wider than a known one.
     - What-if deltas that share their noise with the baseline (common random numbers), so
       the delta reflects the change, not sampling noise.

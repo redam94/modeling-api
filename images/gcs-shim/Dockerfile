@@ -4,7 +4,7 @@
 # docker-compose in place of real GCS. Objects live under /data (mount a volume there).
 # Build from the repository root:
 #
-#   docker build -f images/gcs-shim/Dockerfile -t mapi/gcs-shim:0.4.0 .
+#   docker build -f images/gcs-shim/Dockerfile -t mapi/gcs-shim:0.5.0 .
 #
 # Local/test use only: it is a development stand-in, never a production object store.
 
@@ -71,6 +71,8 @@ RUN apt-get update \
 ENV PATH=/opt/mapi/venv/bin:${PATH} \
     HOME=/tmp/mapi-home
 COPY --from=builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 COPY --chmod=0644 images/common/healthcheck.py images/common/assert_dists.py /opt/mapi/bin/
 RUN python -I /opt/mapi/bin/assert_dists.py \
       --present mapi-gcs-shim google-crc32c starlette uvicorn \

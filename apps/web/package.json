@@ -1,7 +1,7 @@
 {
   "name": "@mapi/web",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "modeling-api web app (Expert and Guided modes)",
   "license": "AGPL-3.0-only OR LicenseRef-mapi-commercial",
   "type": "module",
@@ -29,6 +29,7 @@
     "@tanstack/react-router": "1.170.37",
     "@tanstack/react-table": "8.21.3",
     "@tanstack/react-virtual": "3.14.12",
+    "@xyflow/react": "12.12.0",
     "apache-arrow": "21.1.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

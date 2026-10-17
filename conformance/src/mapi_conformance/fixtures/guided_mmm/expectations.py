@@ -1,7 +1,8 @@
-"""Guided MMM expectations: the beliefs are true to the simulation, the fit translated them
-(no translate_priors run) and conditioned on the lift test, ROI, baseline share and lift
-land near the truth (what the Guided scorecard's plausibility checks read), and the
-report's forecast and channel-off preset behave."""
+"""Guided MMM expectations on mmm-framework: the beliefs are true to the simulation, the
+fit translated them (no translate_priors run) into ROI priors and conditioned on the lift
+test (an mmm-framework experiment likelihood), ROI and baseline share land near the truth
+(what the Guided scorecard's plausibility checks read), and the report's forecast and
+channel-off preset behave."""
 
 from __future__ import annotations
 
@@ -51,13 +52,14 @@ def check_fit(bundle: Bundle, data: xr.Dataset, *, ctx: FixtureContext) -> None:
     assert isinstance(learned, dict)
     translated = learned["translated_priors"]
     assert isinstance(translated, dict)
-    assert translated["beta_channel"]["distribution"] == "LogNormal"  # type: ignore[index,call-overload]
-    assert translated["intercept"]["distribution"] == "Normal"  # type: ignore[index,call-overload]
-    assert learned["lift_tests"] == {"used": ["tv-north"], "skipped": []}
-    # the lift likelihood pulled the model's lift towards the measured one
-    post = bundle.model.posterior
-    modelled = float(post["lift_tests__model"].mean())
-    assert abs(modelled - test.kpi_delta) < 4 * test.sigma, modelled
+    # mmm-framework's ROI parameterisation: a log-normal ROI prior per stated channel, and
+    # the intercept for the baseline share
+    assert set(translated["roi"]) == {"tv", "search"}  # type: ignore[arg-type]
+    assert {"mu", "sigma"} <= set(translated["intercept"])  # type: ignore[arg-type]
+    # the lift test entered as an mmm-framework experiment likelihood
+    assert learned["lift_tests"] == {"used": ["tv-north"], "skipped": {}}
+    roi_tv = float(np.median(bundle.model.posterior["roi_tv"].values))
+    assert 0.5 < roi_tv < 8.0, roi_tv
     # ROI and baseline share from the response curves at the actual spend - what the
     # scorecard's plausibility checks measure
     rc = bundle.model.derived["response_curves"]

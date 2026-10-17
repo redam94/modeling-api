@@ -1,6 +1,6 @@
 [project]
 name = "mapi-runner"
-version = "0.4.0"
+version = "0.5.0"
 description = "Sandboxed run harness (supervisor + worker) for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -14,11 +14,15 @@ dependencies = [
   "mapi-spec",
   "mapi-sdk",
   "mapi-plots[recipes,render]",
+  "mapi-workflows[runtime]",
   "httpx>=0.27",
   "numpy>=2.0",
   "pandas>=2.2",
   "pyarrow>=17",
   "xarray>=2025.1",
+  # M3.5: governance checks and explorer views (stat tests, STL, VIF) in the sandbox.
+  "scipy>=1.13",
+  "statsmodels>=0.14.4",
 ]
 
 [dependency-groups]
@@ -28,6 +32,10 @@ test = ["mapi-gcs-shim", "mapi-conformance"]
 
 [project.scripts]
 mapi-runner = "mapi_runner.__main__:main"
+
+# Every governance check as a check runner of workflow governance nodes (M3.5).
+[project.entry-points."mapi.governance_checks"]
+runner = "mapi_runner.worker.governance_checks:check_runners"
 
 [build-system]
 requires = ["hatchling>=1.25"]
@@ -42,3 +50,4 @@ mapi-gcs-shim = { workspace = true }
 mapi-conformance = { workspace = true }
 mapi-sdk = { workspace = true }
 mapi-plots = { workspace = true }
+mapi-workflows = { workspace = true }

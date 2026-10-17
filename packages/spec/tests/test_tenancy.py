@@ -53,7 +53,8 @@ EXPECTED: dict[str, dict[str, str]] = {
     "dataset": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "A/P"},
     "spec": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "A/P"},
     "run": {"read": "V/P", "create": "R/P", "cancel": "R/P"},
-    "model": {"read": "V/P", "run": "R/P", "delete": "A/P"},
+    "model": {"read": "V/P", "run": "R/P", "delete": "A/P",
+              "validate": "R/P", "approve": "E/P+reviewer", "update": "A/P"},
     "endpoint": {
         "read": "V/P", "run": "R/P", "create": "A/P", "update": "A/P", "promote": "A/P",
         "delete": "A/P", "manage": "A/P",
@@ -72,6 +73,11 @@ EXPECTED: dict[str, dict[str, str]] = {
     "kill_switch": {"read": "op", "update": "op"},
     "executor": {"read": "op", "update": "op"},
     "event": {"create": "int"},
+    # M3.5
+    "workflow": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "A/P",
+                 "run": "R/P", "cancel": "R/P"},
+    "policy": {"read": "V/P", "create": "A/P", "update": "A/P", "delete": "A/P"},
+    "tenant_policy": {"read": "V/T", "create": "A/T", "update": "A/T", "delete": "A/T"},
 }  # fmt: skip
 LETTER = {"V": V, "E": E, "R": R, "A": A}
 
@@ -80,6 +86,8 @@ def _expected_can(role: ProjectRole | None, action: Action, resource: ResourceKi
     code = EXPECTED.get(resource.value, {}).get(action.value)
     if code is None or code in ("op", "int") or role is None:
         return False
+    if code.endswith("+reviewer"):  # a capability rule: without it only admins qualify
+        return role is A
     return role >= LETTER[code[0]]
 
 
@@ -109,7 +117,9 @@ def test_matrix_lists_exactly_the_specified_pairs_and_levels() -> None:
             assert rule.level is Level.INTERNAL and rule.min_role is None
         else:
             assert rule.min_role is LETTER[code[0]]
-            assert rule.level is (Level.TENANT if code.endswith("/T") else Level.PROJECT)
+            base, _, cap = code.partition("+")
+            assert rule.level is (Level.TENANT if base.endswith("/T") else Level.PROJECT)
+            assert (rule.capability.value if rule.capability else "") == cap
 
 
 def test_every_resource_is_readable_by_someone_and_unknown_inputs_deny() -> None:

@@ -8,7 +8,7 @@ DOCKER ?= docker
 COMPOSE ?= $(DOCKER) compose
 PY_DIRS := packages plugins conformance scripts images tests
 DEVOPS_PY := scripts/dev.py scripts/seed.py scripts/image_pins.py scripts/lock_closure.py \
-	scripts/release_check.py
+	scripts/release_check.py scripts/third_party_notices.py
 CORPUS_SIZE ?= tiny
 
 VERSION := $(shell sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -n 1)
@@ -78,14 +78,15 @@ fmt: ## Auto-format Python code
 
 # Packages checked with ``mypy --strict`` one at a time (per-package strictness is part of
 # their contract: e.g. untyped third-party calls need explicit ignores only under --strict).
-STRICT_PY := packages/spec/src packages/gcs-shim/src packages/runner/src packages/server/src \
+STRICT_PY := packages/spec/src packages/sdk/src packages/gcs-shim/src packages/runner/src packages/server/src \
+	packages/workflows/src \
 	packages/client/src packages/cli/src
 
 .PHONY: typecheck
 typecheck: ## mypy over every type-checked package, the dev scripts and the image helpers
 	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src packages/sdk-pymc/src \
 		packages/sdk-sklearn/src packages/plots-core/src plugins/mmm/src plugins/ts/src \
-		plugins/tabular/src conformance/src
+		plugins/tabular/src plugins/statsmodels/src conformance/src
 	@set -e; for pkg in $(STRICT_PY); do echo "mypy --strict $$pkg"; $(UV) run mypy --strict $$pkg; done
 	$(UV) run mypy $(DEVOPS_PY)
 	$(UV) run mypy images/common
@@ -110,24 +111,9 @@ test-fast: ## Unit tests only, skipping slow MCMC tests
 .PHONY: test-all
 test-all: test web-test ## Python suite + web (Vitest) suites
 
-# Atlas (the budget optimiser, AGPL) lives in its own repository; it is never a locked
-# dependency. The Atlas tests install it into a throwaway overlay of the environment.
-ATLAS_DIR ?= ../optimizer-framework
-
-.PHONY: test-atlas
-test-atlas: ## The mapi_client.atlas tests with Atlas installed from ATLAS_DIR (default ../optimizer-framework)
-	$(UV) run --with-editable $(ATLAS_DIR) python -m pytest -q -p no:cacheprovider packages/client/tests/test_atlas.py
-
-# The M3 journey's Atlas step uses Atlas itself when ATLAS_DIR holds a checkout: that suite
-# runs in a throwaway overlay (as in test-atlas), the others in the project environment (the
-# CLI walkthroughs need its console scripts). Without Atlas it uses Atlas's protocol only.
-M3_JOURNEY := tests/e2e/test_m3_guided_stack.py
-HAVE_ATLAS := $(wildcard $(ATLAS_DIR)/pyproject.toml)
-
 .PHONY: e2e
 e2e: ## End-to-end tests against a running stack (`make dev` first): API suites (M1-M3), then the browser @e2e suites
-	$(UV) run pytest -q -m e2e $(if $(HAVE_ATLAS),--ignore=$(M3_JOURNEY))
-	$(if $(HAVE_ATLAS),$(UV) run --with-editable $(ATLAS_DIR) python -m pytest -q -p no:cacheprovider -m e2e $(M3_JOURNEY))
+	$(UV) run pytest -q -m e2e
 	@if ls apps/web/playwright.config.* >/dev/null 2>&1; then \
 		$(PNPM) --filter @mapi/web e2e; \
 	else echo "e2e: apps/web has no Playwright config; browser suite skipped"; fi
@@ -199,12 +185,16 @@ snapshots: ## Regenerate the contract snapshot (mapi_spec), the server's Guided 
 		conformance/tests/test_guided_catalog.py
 	$(UV) run python apps/web/scripts/gen_guided_fixtures.py
 	$(UV) run python apps/web/scripts/gen_integration_fixtures.py
+	$(UV) run python apps/web/scripts/gen_explorer_fixtures.py
+	$(UV) run python apps/web/scripts/gen_workflow_fixtures.py
 
 .PHONY: web-check
 web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_openapi.py --check
 	$(UV) run python apps/web/scripts/gen_guided_fixtures.py --check
 	$(UV) run python apps/web/scripts/gen_integration_fixtures.py --check
+	$(UV) run python apps/web/scripts/gen_explorer_fixtures.py --check
+	$(UV) run python apps/web/scripts/gen_workflow_fixtures.py --check
 	$(PNPM) -r lint
 	$(PNPM) -r typecheck
 	$(PNPM) -r test
@@ -270,7 +260,8 @@ docs-build: docs-catalog ## Build the documentation site into ./site (strict)
 
 .PHONY: docs-test
 docs-test: ## Run every documentation snippet and check every include
-	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py conformance/tests/test_docs_tutorials.py
+	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py conformance/tests/test_docs_tutorials.py \
+		conformance/tests/test_docs_v05.py packages/server/tests/test_docs_client_v05.py
 
 .PHONY: docs-screenshots
 docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)
@@ -305,11 +296,32 @@ docs-screenshots-tutorials: ## Recapture the v0.4 tutorial screenshots (Sheets c
 	MAPI_EMBED_VIEW=.local/embed-view.json node scripts/docs_screenshots_tutorials.mjs .local/screenshots-tutorials
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-tutorials docs/assets/screenshots --max-kb 150 --only $(DOCS_TUTORIAL_SHOTS)
 
+DOCS_EXPLORER_SHOTS := explorer-chooser,explorer-about-card,explorer-data-overview-guided,explorer-data-stationarity,explorer-data-stl,explorer-model-summary,explorer-model-params,explorer-model-residuals,explorer-model-irf,explorer-model-governance,explorer-model-compare,explorer-optimize
+
+.PHONY: docs-screenshots-explorers
+docs-screenshots-explorers: ## Recapture the v0.5 explorer, About-card, chooser and optimisation screenshots from mock mode (Playwright)
+	MAPI_EXPLORER_SCREENSHOTS=1 MAPI_SMOKE_WEB_PORT=$${MAPI_SMOKE_WEB_PORT:-15173} MAPI_SMOKE_PLOTS_PORT=$${MAPI_SMOKE_PLOTS_PORT:-15174} \
+		$(PNPM) --filter @mapi/web exec playwright test e2e/explorer-screenshots.spec.ts
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-explorers docs/assets/screenshots --max-kb 150 --only $(DOCS_EXPLORER_SHOTS)
+
+DOCS_WORKFLOW_SHOTS := workflows-gallery,workflows-editor,workflows-run-monitor,workflows-node-drawer,workflows-decisions,workflows-schedule,workflows-recipe,governance-policies,governance-policy,governance-policy-editor,governance-review-queue,governance-validation,governance-evidence
+
+.PHONY: docs-screenshots-workflows
+docs-screenshots-workflows: ## Recapture the v0.5 workflow and governance screenshots from mock mode (Playwright)
+	MAPI_WORKFLOW_SCREENSHOTS=1 MAPI_SMOKE_WEB_PORT=$${MAPI_SMOKE_WEB_PORT:-15183} MAPI_SMOKE_PLOTS_PORT=$${MAPI_SMOKE_PLOTS_PORT:-15184} \
+		$(PNPM) --filter @mapi/web exec playwright test e2e/workflow-screenshots.spec.ts
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-workflows docs/assets/screenshots --max-kb 150 --only $(DOCS_WORKFLOW_SHOTS)
+
 ## ---------------------------------------------------------------- release
 .PHONY: release-check
-release-check: ## One version everywhere, a dated CHANGELOG entry, no plan files tracked, pinned images
+release-check: ## One version everywhere, a dated CHANGELOG entry, no plan files tracked, pinned images, current notices
 	$(UV) run python scripts/release_check.py
 	$(UV) run python scripts/image_pins.py check
+	$(UV) run python scripts/third_party_notices.py --check
+
+.PHONY: notices
+notices: ## Regenerate THIRD-PARTY-NOTICES.md from uv.lock and pnpm-lock.yaml (after a lock change)
+	$(UV) run python scripts/third_party_notices.py
 
 ## ---------------------------------------------------------------- housekeeping
 .PHONY: clean

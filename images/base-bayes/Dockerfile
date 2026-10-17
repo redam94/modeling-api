@@ -6,8 +6,8 @@
 # mapi-pymc and the PyMC plugins (mmm.*, tabular.*). It is the image of the Cloud Run Jobs
 # and of the docker executor; `ENTRYPOINT` is the runner. Build from the repository root:
 #
-#   docker build -f images/base-bayes/Dockerfile -t mapi/base-bayes:0.4.0 .
-#   docker build -f images/base-bayes/Dockerfile --target worker -t mapi/worker:0.4.0 .
+#   docker build -f images/base-bayes/Dockerfile -t mapi/base-bayes:0.5.0 .
+#   docker build -f images/base-bayes/Dockerfile --target worker -t mapi/worker:0.5.0 .
 #
 # Targets: `runtime` (default, last stage) and `worker` (the compose orchestrator image:
 # runtime + every plugin + mapi-server, running the local-process executor).
@@ -19,13 +19,13 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09
 
 # ------------------------------------------------------------------- image-specific settings
 ARG MAPI_IMAGE_NAME=base-bayes
-ARG MAPI_DESCRIPTION="modeling-api runner: PyMC models (mmm.*, tabular.*), steps and plot recipes"
+ARG MAPI_DESCRIPTION="modeling-api runner: PyMC models (mmm.* on mmm-framework, tabular.*), steps and plot recipes"
 ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-pymc mapi-plugin-mmm mapi-plugin-tabular"
 # xgboost pulls a 300 MB NVIDIA NCCL wheel on Linux; it is only used for multi-GPU training.
 ARG MAPI_NO_INSTALL="nvidia-nccl-cu13"
 # PyTensor compiles C at run time, so the Bayesian images need a C++ compiler.
 ARG MAPI_APT_PACKAGES="tini g++"
-ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-pymc mapi-plugin-mmm mapi-plugin-tabular pymc pytensor nutpie vl-convert-python"
+ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-pymc mapi-plugin-mmm mapi-plugin-tabular mapi-workflows mmm-framework statsmodels scipy pymc pytensor nutpie numpyro jax vl-convert-python"
 ARG MAPI_ASSERT_ABSENT="mapi-server mapi-gcs-shim mapi-plugin-ts nvidia-nccl-cu13"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)
@@ -116,6 +116,8 @@ LABEL org.opencontainers.image.title="mapi/worker" \
       io.mapi.image.role="worker" \
       io.mapi.image.user="10001"
 COPY --from=worker-builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 # The image digest `mapi-server worker` keys the catalog by: sha256 of this uv.lock, the same
 # value the mapi/server image (api) computes (Settings.resolve_image_digest).
 COPY --chmod=0644 uv.lock /opt/mapi/uv.lock
@@ -160,6 +162,8 @@ LABEL org.opencontainers.image.title="mapi/${MAPI_IMAGE_NAME}" \
       io.mapi.image.user="10001" \
       io.mapi.catalog="/opt/mapi/catalog.json"
 COPY --from=builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 # Fail the build if the environment is not what this image promises, then export the static
 # catalog (+ digest) and bake the PyTensor/Numba caches read-only into /opt/mapi/cache.
 RUN python -I /opt/mapi/bin/assert_dists.py \

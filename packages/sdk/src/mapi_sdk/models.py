@@ -25,6 +25,8 @@ from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
 
 import numpy as np
 import xarray as xr
+from mapi_spec.about import About
+from mapi_spec.abouts import MODEL_ABOUTS
 from mapi_spec.calibration import Calibration, PriorTranslationJob, PriorTranslationResult
 from mapi_spec.capabilities import (
     Capabilities,
@@ -38,6 +40,7 @@ from mapi_spec.capabilities import (
 )
 from mapi_spec.catalog import ModelCatalogEntry
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.schema import DataSchema, DataSchemaTemplate, DimPolicy
 from mapi_spec.spec import FitConfig, Horizon, ScoreRequest
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
@@ -47,6 +50,7 @@ from mapi_sdk.steps import CancelToken
 
 __all__ = [
     "PREDICTIONS",
+    "BudgetPlan",
     "CustomModel",
     "FitContext",
     "FitOutput",
@@ -151,6 +155,20 @@ class PriorTranslation:
 
     result: PriorTranslationResult
     preview: xr.Dataset = field(default_factory=xr.Dataset)
+
+
+@dataclass(slots=True)
+class BudgetPlan:
+    """What a plugin's optional ``optimize`` hook returns (M3.5).
+
+    ``result`` is the ``optimize.json`` document. ``plans`` holds the plans compared for
+    the ``mmm.budget_plans`` plot: ``spend(plan, channel)`` and ``outcome(sample, plan)``
+    (the expected KPI per posterior draw) with ``plan`` coords ``current`` and
+    ``optimal``.
+    """
+
+    result: OptimizeResult
+    plans: xr.Dataset = field(default_factory=xr.Dataset)
 
 
 @dataclass(slots=True)
@@ -268,6 +286,8 @@ def build_manifest(
     resources: ResourceHint | None = None,
     artifact_format: str = "zarr.zip/v1",
     description: str | None = None,
+    about: About | None = None,
+    family: str | None = None,
 ) -> ModelManifest:
     """Assemble and validate a :class:`~mapi_spec.capabilities.ModelManifest`."""
     if isinstance(schema_template, DataSchema):
@@ -292,6 +312,8 @@ def build_manifest(
         resources=resources or ResourceHint(),
         artifact_format=artifact_format,
         description=description,
+        about=about,
+        family=family,
     )
 
 
@@ -299,8 +321,9 @@ class CustomModel[SettingsT: BaseModel]:
     """Base class for hand-written plugins: declare metadata, implement ``fit``/``score``.
 
     Optional hooks: :meth:`diagnostics`, :meth:`postprocess`, :meth:`derive`,
-    :meth:`objective`, :meth:`recommend`. Set ``pad_extend = False`` if the model does not
-    index time positionally (scoring then skips padding ``extend`` dims to the fit range).
+    :meth:`objective`, :meth:`recommend`, :meth:`translate_priors`, :meth:`optimize`. Set
+    ``pad_extend = False`` if the model does not index time positionally (scoring then skips
+    padding ``extend`` dims to the fit range).
     """
 
     id: ClassVar[str]
@@ -315,6 +338,11 @@ class CustomModel[SettingsT: BaseModel]:
     fit_schema: ClassVar[Mapping[str, Any] | None] = None
     description: ClassVar[str | None] = None
     pad_extend: ClassVar[bool] = True
+    about: ClassVar[About | None] = None
+    """M3.5: the plain-language About card. Built-in models take theirs from
+    :data:`mapi_spec.abouts.MODEL_ABOUTS` when this is unset."""
+    family: ClassVar[str | None] = None
+    """M3.5: the family governance policies match (default: the id's namespace)."""
 
     @classmethod
     def manifest(cls) -> ModelManifest:
@@ -330,6 +358,8 @@ class CustomModel[SettingsT: BaseModel]:
             plots=cls.plots,
             resources=cls.resources,
             description=cls.description,
+            about=cls.about if cls.about is not None else MODEL_ABOUTS.get(cls.id),
+            family=cls.family,
         )
 
     @classmethod
@@ -380,6 +410,13 @@ class CustomModel[SettingsT: BaseModel]:
         self, fitted: Fitted, candidates: xr.Dataset, q: int, ctx: ScoreContext
     ) -> xr.Dataset:
         raise NotImplementedError(f"model {self.id!r} does not recommend")
+
+    def optimize(self, fitted: Fitted, request: OptimizeRequest, ctx: ScoreContext) -> BudgetPlan:
+        """Budget optimisation (M3.5, ``POST …:optimize``; plugins that declare
+        ``capabilities.decision``): split ``request``'s budget across channels from the
+        fitted model's posterior and return the plan with its uncertainty. The runner
+        fills in the KPI name and units."""
+        raise NotImplementedError(f"model {self.id!r} does not optimise budgets")
 
     def translate_priors(
         self, ds: xr.Dataset, s: SettingsT, job: PriorTranslationJob, ctx: FitContext

@@ -65,6 +65,7 @@ plugins:
             - packages/steps-core/src
             - packages/plots-core/src
             - packages/runner/src
+            - packages/client/src
           options:
             docstring_style: google
             docstring_options:
@@ -121,6 +122,7 @@ markdown_extensions:
 nav:
   - Home:
       - index.md
+      - "What's new in 0.5": whats-new-0.5.md
       - "Why modeling-api?": why.md
       - Use cases: use-cases.md
   - Getting started:
@@ -134,8 +136,7 @@ nav:
       - Connect Google Sheets: tutorials/google-sheets.md
       - "Embed a chart in Notion, Slack or BI": tutorials/embed-a-chart.md
       - Receive webhooks: guides/webhook-receivers.md
-      - Optimise a budget with Atlas: guides/atlas.md
-      - Import a BayesInsight model: tutorials/bayesinsight-import.md
+      - Optimise a budget: tutorials/optimise-a-budget.md
   - Concepts:
       - concepts/index.md
       - Architecture overview: concepts/architecture.md
@@ -150,6 +151,9 @@ nav:
       - Quotas and cost: concepts/quotas-and-cost.md
       - Guided mode: concepts/guided-mode.md
       - Integrations: concepts/integrations.md
+      - Workflows: concepts/workflows.md
+      - Governance: concepts/governance.md
+      - About cards and choosing: concepts/about-and-choosing.md
   - Guides:
       - Using the platform:
           - The Expert web app: guides/web-ui.md
@@ -160,6 +164,11 @@ nav:
           - "From a spreadsheet to a Guided draft": guides/guided-data.md
           - Endpoints and webhooks: guides/endpoints-and-webhooks.md
           - The Integrations hub: guides/integrations-hub.md
+          - Explore a dataset: guides/data-explorer.md
+          - Explore a model: guides/model-explorer.md
+          - Validate models with governance policies: guides/governance.md
+          - "Can you trust this model? Null tests explained": guides/null-tests.md
+          - Choosing a model: guides/choosing-a-model.md
       - Running it for teams:
           - Authentication: guides/authentication.md
           - Administration: guides/administration.md
@@ -172,6 +181,9 @@ nav:
           - Marketing-mix models: guides/mmm.md
           - "Guided modelling: priors, lift tests, scorecard": guides/guided-modelling.md
           - Forecasting and sequential models: guides/time-series.md
+          - statsmodels time-series models: models/statsmodels.md
+          - "Workflows: tests, decisions, models, automation": guides/workflows.md
+          - Workflow cookbook: guides/workflow-cookbook.md
           - Plots, recipes and templates: guides/plots.md
           - Sharing plots: guides/sharing-plots.md
           - Conformance corpus: guides/conformance.md
@@ -182,7 +194,10 @@ nav:
       - Built-in steps: reference/steps.md
       - Steps catalog: reference/generated/steps-catalog.md
       - Built-in models: reference/models.md
+      - "Marketing-mix models (mmm-framework)": models/mmm-framework.md
       - Models catalog: reference/generated/models-catalog.md
+      - Workflow nodes: reference/workflow-nodes.md
+      - Governance checks: reference/generated/governance-checks.md
       - Plots and the sanitizer: reference/plots.md
       - Plot recipes catalog: reference/generated/plots-catalog.md
       - Error codes: reference/generated/error-codes.md
@@ -206,6 +221,7 @@ nav:
           - mapi_steps: reference/api/steps.md
           - mapi_plots: reference/api/plots.md
           - mapi_runner: reference/api/runner.md
+          - mapi_client: reference/api/client.md
   - Deployment:
       - operations/index.md
       - Local, without Docker: operations/local-development.md
@@ -220,6 +236,7 @@ nav:
       - Security suite: operations/security-suite.md
       - M2 verification: operations/m2-verification.md
       - M3 verification: operations/m3-verification.md
+      - M3.5 verification: operations/m35-verification.md
       - Configuration reference: operations/configuration.md
       - Troubleshooting: operations/troubleshooting.md
   - Roadmap:
@@ -227,7 +244,8 @@ nav:
       - The local platform (v0.2): roadmap/platform-api.md
       - Cloud and multi-tenant (v0.3): roadmap/cloud.md
       - Guided mode and integrations (v0.4): roadmap/guided-ui.md
-      - "Next: expert plugins, MCP and optimisation (v0.5)": roadmap/expert-plugins.md
+      - Workflows, governance and explorers (v0.5): roadmap/workflows-governance.md
+      - "Next: expert plugins and MCP (v0.6)": roadmap/expert-plugins.md
   - Project:
       - Licensing: project/licensing.md
       - Contributing: project/contributing.md

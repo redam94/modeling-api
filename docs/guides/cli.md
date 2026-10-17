@@ -302,10 +302,85 @@ kept, and asks you to type the tenant id; scripts pass `--confirm TENANT`. The t
 `--tenant`, else the selected project's, else your only one
 ([Deleting and exporting data](data-deletion.md)).
 
+### Workflows, governance and explorers <span class="mapi-badge">v0.5</span> { #workflows-governance-and-explorers }
+
+**Help me choose** and **About cards**, in the terminal:
+
+```bash
+--8<-- "cli_v05.sh:choose"
+```
+
+**Workflows**: start from the gallery, check the file on the server, save it, run it and watch
+every node live. `--watch` exits with status 1 when the run fails, so it works in CI:
+
+```bash
+--8<-- "cli_v05.sh:workflow"
+```
+
+`validate` and `apply` print the order the nodes will run in (captured on a local stack, with
+the [cookbook's](workflow-cookbook.md#readiness-to-arimax) document):
+
+```text
+weekly-readiness.yaml: valid (23 nodes)
+order: adf → kpss → pp → za → seas → folds → holdout → wanders → seasonal → naive → order → sdiff → backtest → fit → diff → compare → dm → acf → select → governance → report → trusted → pack
+```
+
+The live board of `--watch` and the summary it ends with are in the
+[cookbook](workflow-cookbook.md#run-it-with-the-cli). Then inspect a run node by node:
+
+```bash
+--8<-- "cli_v05.sh:inspect"
+```
+
+```text
+ node        order
+ uses        search.arma_order@1.0.0
+ status      succeeded
+ attempt     1
+ child runs  run_01m53hawz719exdgb6kcw5ysp3
+ params      {"d": 1, "exog": ["price"], "max_p": 3, "max_q": 3, "trend": "c", "criterion": "aic"}
+ result      {"best_p": 1, "best_q": 1, "best_order": [1, 1, 1], "criterion": "aic",
+              "best_score": 430.4823790539326, "n_failed": 0, "suggested_p": 0, "suggested_q": 0}
+ outputs     table: table
+```
+
+(`mapi workflows node "$RUN" order`, the JSON folded onto fewer lines here: the search was
+given `d = 1` by the differencing decision and the run's `price` driver, and chose ARIMA(1, 1, 1)
+by AIC.)
+
+```bash
+--8<-- "cli_v05.sh:automate"
+```
+
+`-i name=ref` binds a workflow input (`@latest` is pinned to a version when the run starts);
+`-p name=value` sets a parameter, as JSON when it parses (`-p 'horizons=[1,4,13]'`). The
+[workflow cookbook](workflow-cookbook.md) has complete documents to start from.
+
+**Governance**: the check catalog, policies, validations and second-person approval. `mapi
+validate model` waits for the checks and prints each result in plain words with the suggested
+action; `mapi approve` needs a signed-in reviewer who did not submit the model:
+
+```bash
+--8<-- "cli_v05.sh:governance"
+```
+
+**Explorers and budget plans**:
+
+```bash
+--8<-- "cli_v05.sh:explore"
+```
+
+```bash
+--8<-- "cli_v05.sh:optimize"
+```
+
+Model references are `model://project/name@vN`, `name@vN`, `name` with `-v N`, or a model id;
+datasets the same with `dataset://`. Every command takes `--json`.
+
 ### Scripting with `--json`
 
 `--json` (a global option) prints one JSON document on stdout instead of tables; `runs watch
---json` prints one JSON event per line. Errors become `{"error": {...}}` with exit status 1,
+--json` and `workflows watch --json` print one JSON event per line. Errors become `{"error": {...}}` with exit status 1,
 and usage errors exit with 2.
 
 ```bash

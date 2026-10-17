@@ -45,10 +45,12 @@ __all__ = [
     "EndpointRevision",
     "EndpointRun",
     "ExecutorReport",
+    "GovernancePolicyRow",
     "IdempotencyKey",
     "LoginTransactionRow",
     "Membership",
     "Model",
+    "ModelValidation",
     "ModelVersion",
     "PlatformSetting",
     "Plot",
@@ -71,10 +73,18 @@ __all__ = [
     "TenantVerification",
     "Upload",
     "User",
+    "ValidationApproval",
     "WebSession",
     "Webhook",
     "WebhookDelivery",
     "WebhookEvent",
+    "Workflow",
+    "WorkflowEventRow",
+    "WorkflowNodeRunRow",
+    "WorkflowRevisionRow",
+    "WorkflowRunRow",
+    "WorkflowScheduleRow",
+    "WorkflowTriggerRow",
 ]
 
 TENANT_TABLES: tuple[str, ...] = (
@@ -109,6 +119,18 @@ TENANT_TABLES: tuple[str, ...] = (
     "tenant_verifications",
     "tenant_deletions",
     "tenant_exports",
+    # M3.5 workflows (0011_workflows)
+    "workflows",
+    "workflow_revisions",
+    "workflow_runs",
+    "workflow_node_runs",
+    "workflow_events",
+    "workflow_schedules",
+    "workflow_triggers",
+    # M3.5 governance (0012_governance)
+    "governance_policies",
+    "model_validations",
+    "validation_approvals",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -245,6 +267,8 @@ class Membership(Base):
     role: Mapped[str] = mapped_column(String(16))
     email: Mapped[str | None] = mapped_column(String(320))
     display_name: Mapped[str | None] = mapped_column(String(200))
+    capabilities: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    """M3.5: grants on top of the role (``reviewer``), see :class:`mapi_spec.tenancy.Capability`."""
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     created_by: Mapped[str | None] = mapped_column(String(64))
 
@@ -1193,4 +1217,310 @@ class TenantExport(Base):
         CheckConstraint("state in ('queued','running','ready','expired','failed')", name="state"),
         Index("ix_tenant_exports_tenant", "tenant_id", "created_at"),
         Index("ix_tenant_exports_state", "state"),
+    )
+
+
+# ============================================================================ workflows (M3.5)
+
+
+def _scope_fk() -> ForeignKeyConstraint:
+    return ForeignKeyConstraint(
+        ["tenant_id", "project_id"], ["projects.tenant_id", "projects.id"], ondelete="CASCADE"
+    )
+
+
+class Workflow(_Scoped, Base):
+    """A saved workflow (``workflow://project/name``); documents are its revisions."""
+
+    __tablename__ = "workflows"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str | None] = mapped_column(Text)
+    latest_revision: Mapped[int] = mapped_column(Integer, default=1)
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    template: Mapped[str | None] = mapped_column(String(64))
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        _scope_fk(),
+        UniqueConstraint("tenant_id", "project_id", "name"),
+        CheckConstraint("latest_revision >= 1", name="latest_revision"),
+    )
+
+
+class WorkflowRevisionRow(_Scoped, Base):
+    """An immutable, hashed workflow document and its static validation at save time."""
+
+    __tablename__ = "workflow_revisions"
+
+    workflow_id: Mapped[str] = mapped_column(
+        ForeignKey("workflows.id", ondelete="CASCADE"), primary_key=True
+    )
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document: Mapped[dict[str, Any]] = mapped_column()
+    spec_hash: Mapped[str] = mapped_column(String(71))
+    validation: Mapped[dict[str, Any]] = mapped_column()
+    valid: Mapped[bool] = mapped_column(Boolean)
+    message: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+
+class WorkflowRunRow(_Scoped, Base):
+    """The orchestration state of a ``workflow`` run (its ``runs`` row is the parent run)."""
+
+    __tablename__ = "workflow_runs"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    workflow_id: Mapped[str] = mapped_column(ForeignKey("workflows.id", ondelete="CASCADE"))
+    revision: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16))
+    trigger: Mapped[str] = mapped_column(String(32), default="manual")
+    trigger_id: Mapped[str | None] = mapped_column(String(64))
+    parent_run_id: Mapped[str | None] = mapped_column(String(64))
+    parent_node_id: Mapped[str | None] = mapped_column(String(64))
+    params: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    inputs: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    input_refs: Mapped[dict[str, Any]] = mapped_column(default=dict)  # name -> NodeOutputRef
+    input_identities: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    decisions: Mapped[list[Any]] = mapped_column(default=list)
+    outputs: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    use_cache: Mapped[bool] = mapped_column(Boolean, default=True)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    resource_class: Mapped[str | None] = mapped_column(String(4))
+    seed: Mapped[int] = mapped_column(BigInteger, default=0)
+    last_event_id: Mapped[int] = mapped_column(BigInteger, default=0)
+    deadline: Mapped[datetime | None] = mapped_column()
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    started_at: Mapped[datetime | None] = mapped_column()
+    finished_at: Mapped[datetime | None] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('queued','running','succeeded','failed','cancelling','cancelled')",
+            name="status",
+        ),
+        Index("ix_workflow_runs_workflow", "workflow_id", "created_at"),
+        Index("ix_workflow_runs_active", "status"),
+    )
+
+
+class WorkflowNodeRunRow(_Scoped, Base):
+    """One node of a workflow run (a :class:`mapi_spec.workflow.NodeRun`)."""
+
+    __tablename__ = "workflow_node_runs"
+
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_runs.run_id", ondelete="CASCADE"), primary_key=True
+    )
+    node_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    use: Mapped[str] = mapped_column(String(160))
+    kind: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16))
+    attempt: Mapped[int] = mapped_column(Integer, default=0)
+    child_run_id: Mapped[str | None] = mapped_column(String(64))
+    child_runs: Mapped[list[Any]] = mapped_column(default=list)
+    phase: Mapped[str | None] = mapped_column(String(32))
+    cache_key: Mapped[str | None] = mapped_column(String(71))
+    cached_from: Mapped[str | None] = mapped_column(String(64))
+    params: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    outputs: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    skipped_reason: Mapped[str | None] = mapped_column(String(500))
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    started_at: Mapped[datetime | None] = mapped_column()
+    finished_at: Mapped[datetime | None] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        Index("ix_workflow_node_runs_cache", "tenant_id", "project_id", "cache_key"),
+        Index("ix_workflow_node_runs_child", "child_run_id"),
+    )
+
+
+class WorkflowEventRow(_Scoped, Base):
+    """A workflow run event (``id`` increases per run: the SSE event id)."""
+
+    __tablename__ = "workflow_events"
+
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_runs.run_id", ondelete="CASCADE"), primary_key=True
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    type: Mapped[str] = mapped_column(String(48))
+    node_id: Mapped[str | None] = mapped_column(String(64))
+    ts: Mapped[datetime] = mapped_column()
+    data: Mapped[dict[str, Any]] = mapped_column(default=dict)
+
+
+class WorkflowScheduleRow(_Scoped, Base):
+    """A cron schedule of a workflow (fired by the orchestrator's workflow loop)."""
+
+    __tablename__ = "workflow_schedules"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workflow_id: Mapped[str] = mapped_column(ForeignKey("workflows.id", ondelete="CASCADE"))
+    cron: Mapped[str] = mapped_column(String(200))
+    timezone: Mapped[str] = mapped_column(String(64))
+    revision: Mapped[int | None] = mapped_column(Integer)
+    params: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    inputs: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    description: Mapped[str | None] = mapped_column(String(500))
+    next_run_at: Mapped[datetime | None] = mapped_column()
+    last_run_id: Mapped[str | None] = mapped_column(String(64))
+    last_run_at: Mapped[datetime | None] = mapped_column()
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (Index("ix_workflow_schedules_due", "active", "next_run_at"),)
+
+
+class WorkflowTriggerRow(_Scoped, Base):
+    """Run a workflow when a dataset gets a new version (debounced)."""
+
+    __tablename__ = "workflow_triggers"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workflow_id: Mapped[str] = mapped_column(ForeignKey("workflows.id", ondelete="CASCADE"))
+    event: Mapped[str] = mapped_column(String(48))
+    dataset: Mapped[str] = mapped_column(String(300))
+    dataset_name: Mapped[str] = mapped_column(String(128))
+    input: Mapped[str] = mapped_column(String(64))
+    revision: Mapped[int | None] = mapped_column(Integer)
+    params: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    debounce_seconds: Mapped[int] = mapped_column(Integer, default=300)
+    pending_version: Mapped[int | None] = mapped_column(Integer)
+    pending_since: Mapped[datetime | None] = mapped_column()
+    last_fired_at: Mapped[datetime | None] = mapped_column()
+    last_run_id: Mapped[str | None] = mapped_column(String(64))
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        Index("ix_workflow_triggers_dataset", "tenant_id", "project_id", "dataset_name"),
+        Index("ix_workflow_triggers_pending", "pending_since"),
+    )
+
+
+# ============================================================================ governance (M3.5)
+
+
+class GovernancePolicyRow(Base):
+    """One version of a governance policy (:class:`mapi_spec.governance.GovernancePolicy`).
+
+    ``(id, version)`` is the key: an update inserts the next version and the old ones stay
+    for audit; ``retired_at`` on the latest version retires the policy. ``project_id`` is
+    NULL for tenant-wide policies (every project's floor)."""
+
+    __tablename__ = "governance_policies"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    scope: Mapped[str] = mapped_column(String(16))
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str | None] = mapped_column(Text)
+    applies_to: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    checks: Mapped[list[Any]] = mapped_column(default=list)
+    require_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    approvals_required: Mapped[int] = mapped_column(Integer, default=1)
+    require_validated_for_promotion: Mapped[bool] = mapped_column(Boolean, default=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    retired_at: Mapped[datetime | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    created_by: Mapped[str | None] = mapped_column(String(128))
+
+    __table_args__ = (
+        CheckConstraint("scope in ('tenant','project')", name="scope"),
+        CheckConstraint("(scope = 'tenant') = (project_id IS NULL)", name="scope_project"),
+        CheckConstraint("version >= 1", name="version"),
+        CheckConstraint("approvals_required between 1 and 3", name="approvals_required"),
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_governance_policies_scope", "tenant_id", "project_id"),
+    )
+
+
+class ModelValidation(_Scoped, Base):
+    """A validation of one model version (:class:`mapi_spec.governance.ModelValidation`):
+    status, the policies and checks it was held to, results, history. ``round`` counts
+    submissions (approvals belong to the current round)."""
+
+    __tablename__ = "model_validations"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    model_id: Mapped[str] = mapped_column(String(64))
+    model_version_id: Mapped[str] = mapped_column(
+        ForeignKey("model_versions.id", ondelete="CASCADE")
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(32))
+    round: Mapped[int] = mapped_column(Integer, default=1)
+    policies: Mapped[list[Any]] = mapped_column(default=list)
+    required_checks: Mapped[list[Any]] = mapped_column(default=list)
+    results: Mapped[list[Any]] = mapped_column(default=list)
+    failing_checks: Mapped[list[Any]] = mapped_column(default=list)
+    require_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    approvals_required: Mapped[int] = mapped_column(Integer, default=1)
+    history: Mapped[list[Any]] = mapped_column(default=list)
+    run_id: Mapped[str | None] = mapped_column(String(64))
+    dataset: Mapped[str | None] = mapped_column(String(512))
+    note: Mapped[str | None] = mapped_column(Text)
+    submitted_by: Mapped[str | None] = mapped_column(String(128))
+    submitted_at: Mapped[datetime | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('draft','checks_running','checks_passed','checks_failed',"
+            "'awaiting_approval','validated','rejected','deprecated')",
+            name="status",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_model_validations_version", "model_version_id", "created_at"),
+        Index("ix_model_validations_status", "tenant_id", "project_id", "status"),
+        Index("ix_model_validations_run", "run_id"),
+    )
+
+
+class ValidationApproval(_Scoped, Base):
+    """A reviewer's decision on one round of a validation (append-only for requests)."""
+
+    __tablename__ = "validation_approvals"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    validation_id: Mapped[str] = mapped_column(
+        ForeignKey("model_validations.id", ondelete="CASCADE")
+    )
+    round: Mapped[int] = mapped_column(Integer)
+    approver_id: Mapped[str] = mapped_column(String(128))
+    decision: Mapped[str] = mapped_column(String(16))
+    comment: Mapped[str | None] = mapped_column(Text)
+    decided_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (
+        CheckConstraint("decision in ('approve','reject')", name="decision"),
+        UniqueConstraint("validation_id", "round", "approver_id"),
+        Index("ix_validation_approvals_validation", "validation_id", "round"),
     )

@@ -150,7 +150,7 @@ interface TenancyState {
 }
 
 function membership(principal: Persona, tenant: string, project: string | null, role: ProjectRole): Membership {
-  return { tenant_id: tenant, project_id: project, principal_id: principal.id, principal_kind: "user", role, email: principal.email, display_name: principal.name, created_at: T0 };
+  return { tenant_id: tenant, project_id: project, principal_id: principal.id, principal_kind: "user", role, capabilities: [], email: principal.email, display_name: principal.name, created_at: T0 };
 }
 
 const TOKEN_ID = (n: number) => `tok_01jaf3r1s2t3v4w5x6y7z8a9${String(n).padStart(2, "0").replace(/\d/g, (d) => "abcdefghjk"[Number(d)] ?? "a")}`;
@@ -229,7 +229,7 @@ export function createTenancyState(): TenancyState {
         tenant_id: "acme",
         project_id: "growth",
         owner_id: ana.id,
-        name: "atlas-optimiser",
+        name: "budget-planner",
         prefix: "7k2m9q4x",
         display: "mapi_7k2m9q4x_…",
         scopes: ["score:geo-mmm-prod", "models:read"],
@@ -647,10 +647,12 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
         const project = params.project ? String(params.project) : null;
         const m = state.members.find((x) => x.tenant_id === params.tenant && x.project_id === project && x.principal_id === params.principal);
         if (!m) return problem(404, "NOT_FOUND", "Not found");
-        const body = (await request.json()) as { role: ProjectRole };
+        const body = (await request.json()) as { role?: ProjectRole | null; capabilities?: Membership["capabilities"] | null };
         const admins = state.members.filter((x) => x.tenant_id === params.tenant && x.project_id === project && x.role === "admin");
-        if (m.role === "admin" && body.role !== "admin" && admins.length <= 1) return problem(409, "CONFLICT", "Conflict", "the last admin cannot be demoted");
-        m.role = body.role;
+        if (body.role && m.role === "admin" && body.role !== "admin" && admins.length <= 1) return problem(409, "CONFLICT", "Conflict", "the last admin cannot be demoted");
+        if (body.role) m.role = body.role;
+        // M3.5: grants on top of the role (`reviewer` approves validations).
+        if (body.capabilities) m.capabilities = [...new Set(body.capabilities)];
         return HttpResponse.json(m);
       }),
       http.delete(`${API}/v1/tenants/:tenant${suffix}/members/:principal`, ({ params }) => {

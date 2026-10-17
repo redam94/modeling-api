@@ -30,7 +30,7 @@ ever importing the plugin.
 
 | Field | What it declares |
 |---|---|
-| `id`, `version` | `mmm.hierarchical_geo`, `1.3.0`. Specs pick a version with a semver range: `use: mmm.hierarchical_geo@^1.3` |
+| `id`, `version` | `mmm.bayesian`, `1.0.0`. Specs pick a version with a semver range: `use: mmm.bayesian@^1` |
 | `schema_template` | The input data contract, in canonical names. It can be a function of settings: a template with `params` such as `{group_dim}` that are filled from the model's settings |
 | `settings_schema`, `fit_schema` | JSON Schemas of `model.settings` and `model.fit`. Every field may carry `x-ui-level: basic` or `advanced`; Guided mode shows only `basic` |
 | `outputs` | Output variables with dims and units (`units_of: y` means "in the target's units") |

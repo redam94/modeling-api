@@ -9,7 +9,7 @@
 # not included because its `tabular.hierarchical_glm` model is a PyMC model; it ships in
 # base-bayes. Build from the repository root:
 #
-#   docker build -f images/base-ml/Dockerfile -t mapi/base-ml:0.4.0 .
+#   docker build -f images/base-ml/Dockerfile -t mapi/base-ml:0.5.0 .
 #
 # See docs/operations/docker.md.
 
@@ -24,7 +24,7 @@ ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-sklearn"
 # xgboost pulls a 300 MB NVIDIA NCCL wheel on Linux; it is only used for multi-GPU training.
 ARG MAPI_NO_INSTALL="nvidia-nccl-cu13"
 ARG MAPI_APT_PACKAGES="tini"
-ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-sklearn scikit-learn xgboost skops vl-convert-python"
+ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows statsmodels scipy mapi-sklearn scikit-learn xgboost skops vl-convert-python"
 ARG MAPI_ASSERT_ABSENT="pymc pytensor nutpie numba mapi-pymc mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-server mapi-gcs-shim nvidia-nccl-cu13"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)
@@ -113,6 +113,8 @@ LABEL org.opencontainers.image.title="mapi/${MAPI_IMAGE_NAME}" \
       io.mapi.image.user="10001" \
       io.mapi.catalog="/opt/mapi/catalog.json"
 COPY --from=builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 # Fail the build if the environment is not what this image promises, then export the static
 # catalog (+ digest) and bake the PyTensor/Numba caches read-only into /opt/mapi/cache.
 RUN python -I /opt/mapi/bin/assert_dists.py \

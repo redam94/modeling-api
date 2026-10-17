@@ -1,5 +1,7 @@
 """E33 expectations beyond "fits and scores": units, derived quantities, plots and the
-semantics of each score request (horizon, new market, weekly EUR plan, counterfactual)."""
+semantics of each score request (horizon, new market, weekly EUR plan, counterfactual) on
+mmm-framework, which owns scaling, carry-over and units (outputs are ``model-owned``, in the
+weekly EUR of the model stage)."""
 
 from __future__ import annotations
 
@@ -28,8 +30,10 @@ def check_fit(bundle: Bundle, data: xr.Dataset, *, ctx: FixtureContext) -> None:
     """Production bundle: evaluation lineage, derived quantities in EUR, plots."""
     sim = truth(ctx.seed, ctx.size)
     assert bundle.evaluation is not None, "evaluate_then_refit keeps the evaluation bundle"
-    assert bundle.metrics.output_space == "weekly"
+    assert set(bundle.model.manifest.capabilities.owns) == {"scaling", "carryover", "inverse_units"}
+    assert bundle.metrics.output_space == "model-owned"
     assert {"coverage_90", "mape", "elpd_loo"} <= set(bundle.metrics.values)
+    assert "fit_data" in bundle.model.groups
     derived = bundle.model.derived
     assert set(derived) == {"contributions", "response_curves", "marginal_cost"}
     contrib = derived["contributions"]["channel_contribution"]
@@ -66,7 +70,7 @@ def check_score(
         assert set(summary["stat"].values) == {"mean", "hdi_90_lower", "hdi_90_upper"}
         assert bool(np.isfinite(summary).all())
         assert summary.attrs["units"] == "EUR"
-        assert json.loads(attrs["output_space"])["y_hat"] == "weekly"
+        assert json.loads(attrs["output_space"])["y_hat"] == "model-owned"
         assert _group(tree, "draws")["y_hat"].sizes["sample"] == 50
         fan = render_plots(tree, ["core.ppc_fan"], registry=registry)
         assert [p.id for p in fan.plots] == ["core.ppc_fan"], fan.issues

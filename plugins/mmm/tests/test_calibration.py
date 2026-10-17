@@ -1,454 +1,272 @@
-"""Business priors → model-space priors and lift-test calibration (``mapi_plugin_mmm.calibration``).
-
-The round-trip property tests are the contract of the translation: sampling the translated
-priors afresh puts the stated credibility inside the stated range (within Monte Carlo error)
-whenever the solve reports no infeasibility.
-"""
+"""Business priors to mmm-framework ROI priors, the prior preview, and lift tests."""
 
 from __future__ import annotations
 
+import math
 from datetime import date
 from typing import Any
 
 import numpy as np
-import pymc as pm
 import pytest
 import xarray as xr
-from hypothesis import HealthCheck, given, settings
-from hypothesis import strategies as st
 from mapi_plugin_mmm.calibration import (
-    LIFT_DIM,
-    LIFT_VAR,
-    LiftDesign,
-    ModelScales,
-    lift_design,
-    model_scales,
+    UnitScales,
+    lift_measurements,
+    lift_window_cut,
     prior_preview,
     translate_business_priors,
+    unit_scales,
+    with_priors,
 )
-from mapi_plugin_mmm.hierarchical_geo import HierarchicalGeoMMM
-from mapi_plugin_mmm.settings import HierarchicalGeoSettings
-from mapi_plugin_mmm.transforms import adstock_weights, saturate
-from mapi_pymc.context import BuildContext
-from mapi_spec.calibration import BusinessPriors, LiftTest
+from mapi_plugin_mmm.framework import PanelData, detect_controls, make_model
+from mapi_plugin_mmm.settings import BayesianSettings
+from mapi_spec.calibration import BusinessPriors, LiftTest, PriorTranslationResult
 from mapi_spec.errors import ErrorCode, MapiError, Severity
-
-pytestmark = pytest.mark.unit
-
-GEOS = ["north", "south"]
-CHANNELS = ["tv", "search"]
-N_TIME, N_LAG = 26, 3
+from scipy import stats
 
 
-def model_stage(seed: int = 0, *, zero_channel: int | None = None) -> xr.Dataset:
-    """A model-stage dataset: ``y(geo, time)`` and the spend lag tensor (model units)."""
-    rng = np.random.default_rng(seed)
-    times = np.asarray(
-        [np.datetime64("2024-01-07") + np.timedelta64(7 * i, "D") for i in range(N_TIME)]
+@pytest.fixture(scope="module")
+def setup(geo_stage: xr.Dataset) -> tuple[PanelData, BayesianSettings, Any]:
+    s = BayesianSettings.model_validate(
+        {"hierarchy": {"pool_over": ["geo"]}, "adstock": {"l_max": 4}, "trend": {"kind": "none"}}
     )
-    spend = rng.gamma(4.0, 0.25, size=(len(GEOS), len(CHANNELS), N_TIME))
-    if zero_channel is not None:
-        spend[:, zero_channel, :] = 0.0
-    lagged = np.stack(
-        [np.concatenate([np.repeat(spend[..., :1], k, axis=-1), spend[..., : N_TIME - k]], -1)
-         for k in range(N_LAG)],
-        axis=-1,
+    data = PanelData.from_dataset(
+        geo_stage, ["geo"], detect_controls(geo_stage, None), with_target=True
+    )
+
+    def factory(st: BayesianSettings) -> Any:
+        return make_model(data, st, frequency="W")
+
+    return data, s, factory
+
+
+def _beliefs(raw: dict[str, Any]) -> BusinessPriors:
+    return BusinessPriors.model_validate(raw)
+
+
+def test_an_roi_range_is_the_lognormal_with_those_quantiles(setup: Any) -> None:
+    data, s, factory = setup
+    out = translate_business_priors(
+        _beliefs({"channels": {"tv": {"roi": [1.0, 3.0], "credibility": 0.8}}}),
+        data, s, UnitScales(), model_factory=factory, draws=200,
     )  # fmt: skip
-    y = 1.0 + 0.1 * rng.standard_normal((len(GEOS), N_TIME))
-    return xr.Dataset(
+    prior = out.priors["roi"]["tv"]
+    dist = stats.lognorm(s=prior["sigma"], scale=math.exp(prior["mu"]))
+    np.testing.assert_allclose(dist.ppf([0.1, 0.9]), [1.0, 3.0], rtol=1e-9)
+    assert out.ranges["tv"] == ("roi", 1.0, 3.0, 0.8)
+    assert "intercept" not in out.priors
+
+
+def test_a_share_range_is_an_roi_range_scaled_by_kpi_over_spend(setup: Any) -> None:
+    data, s, factory = setup
+    out = translate_business_priors(
+        _beliefs({"channels": {"search": {"contribution_share": [0.05, 0.15]}}}),
+        data, s, UnitScales(), model_factory=factory, draws=200,
+    )  # fmt: skip
+    k = float(data.y.sum()) / float(data.spend[..., 1].sum())  # type: ignore[union-attr]
+    prior = out.priors["roi"]["search"]
+    dist = stats.lognorm(s=prior["sigma"], scale=math.exp(prior["mu"]))
+    np.testing.assert_allclose(dist.ppf([0.1, 0.9]), [0.05 * k, 0.15 * k], rtol=1e-9)
+
+
+def test_units_convert_business_roi_to_model_roi(setup: Any) -> None:
+    data, s, factory = setup
+    scales = UnitScales(kpi_factor=4.0, spend_factor=2.0)
+    out = translate_business_priors(
+        _beliefs({"channels": {"tv": {"roi": [2.0, 6.0]}}}), data, s, scales,
+        model_factory=factory, draws=200,
+    )  # fmt: skip
+    prior = out.priors["roi"]["tv"]
+    assert math.exp(prior["mu"]) == pytest.approx(math.sqrt(2.0 * 6.0) / 2.0)
+
+
+def test_zero_lows_unknown_channels_and_dark_channels(setup: Any, geo_stage: xr.Dataset) -> None:
+    data, s, factory = setup
+    out = translate_business_priors(
+        _beliefs({"channels": {"tv": {"roi": [0.0, 2.0]}, "radio": {"roi": [1.0, 2.0]}}}),
+        data, s, UnitScales(), model_factory=factory, draws=200,
+    )  # fmt: skip
+    codes = {(i.severity, i.pointer) for i in out.issues}
+    assert (Severity.INFO, "/business_priors/channels/tv/roi") in codes
+    assert (Severity.ERROR, "/business_priors/channels/radio") in codes
+    assert set(out.priors["roi"]) == {"tv"}
+    dark = geo_stage.copy()
+    dark["spend"] = dark.spend.where(dark.channel != "search", 0.0)
+    d2 = PanelData.from_dataset(dark, ["geo"], ["price", "season"], with_target=True)
+    out = translate_business_priors(
+        _beliefs({"channels": {"search": {"contribution_share": [0.1, 0.2]}}}), d2, s, UnitScales(),
+        model_factory=lambda st: make_model(d2, st, frequency="W"), draws=200,
+    )  # fmt: skip
+    assert [i.severity for i in out.issues] == [Severity.ERROR]
+
+
+def test_the_preview_covers_the_stated_ranges(setup: Any) -> None:
+    data, s, factory = setup
+    beliefs = _beliefs(
         {
-            "y": (("geo", "time"), y),
-            "spend": (("geo", "channel", "time", "lag"), lagged),
-        },
-        coords={"geo": GEOS, "channel": CHANNELS, "time": times, "lag": np.arange(N_LAG)},
-    )
+            "channels": {"tv": {"roi": [0.5, 2.0], "credibility": 0.8},
+                         "search": {"contribution_share": [0.05, 0.2], "credibility": 0.8}},
+            "baseline_share": {"share": [0.5, 0.9], "credibility": 0.8},
+        }
+    )  # fmt: skip
+    out = translate_business_priors(beliefs, data, s, UnitScales(), model_factory=factory,
+                                    draws=600, seed=1)  # fmt: skip
+    assert set(out.priors) == {"roi", "intercept"}
+    result, preview = prior_preview(
+        out, data, s, UnitScales(kpi_units="EUR"),
+        model_factory=factory, draws=600, seed=2,
+        lift_tests=[LiftTest(channel="tv", start=date(2024, 3, 3), end=date(2024, 3, 31),
+                             spend_delta=500.0, kpi_delta=400.0, se=100.0)],
+    )  # fmt: skip
+    PriorTranslationResult.model_validate(result.model_dump(mode="json"))
+    # ROI is exactly log-normal under mmm-framework's ROI parameterisation
+    assert result.coverage["tv"] == pytest.approx(0.8, abs=0.06)
+    assert result.coverage["search"] == pytest.approx(0.8, abs=0.06)
+    assert result.coverage["baseline"] == pytest.approx(0.8, abs=0.12)
+    assert set(preview.data_vars) >= {"roi", "contribution_share", "baseline_share", "kpi",
+                                      "kpi_observed", "stated_low", "stated_high"}  # fmt: skip
+    assert preview["kpi"].sizes["time"] == 52
+    assert preview["baseline_share"].attrs["range_low"] == 0.5
+    assert result.preview.kpi_fan is not None and len(result.preview.kpi_fan.coords) == 52
+    assert result.preview.roi["tv"].quantiles
 
 
-def scaled(factor_y: float = 1000.0, factor_x: float = 50.0) -> Any:
-    """A linear ``to_original``: KPI x ``factor_y``, spend x ``factor_x`` (per geo)."""
+def test_with_priors_merges_channel_priors(setup: Any) -> None:
+    _, s, _ = setup
+    a = with_priors(s, {"roi": {"tv": {"mu": 0.0, "sigma": 1.0}}})
+    b = with_priors(a, {"roi": {"search": {"mu": 1.0, "sigma": 0.5}}})
+    assert set(b.priors.roi) == {"tv", "search"}
 
-    def convert(da: xr.DataArray, src: str) -> xr.DataArray:
-        geo_scale = xr.DataArray([1.0, 2.0], dims=["geo"], coords={"geo": GEOS})
-        f = factor_y if src == "y" else factor_x
-        out = da * f * geo_scale
-        out.attrs = {"units": "EUR", "output_space": "weekly"}
+
+def test_unit_scales_read_the_pipeline_inverse(geo_stage: xr.Dataset) -> None:
+    assert unit_scales(geo_stage, None).kpi_units == "EUR"
+
+    def double(da: xr.DataArray, src: str) -> xr.DataArray:
+        out = da * (2.0 if src == "y" else 1.0)
+        out.attrs["units"] = "GBP"
         return out
 
-    return convert
+    sc = unit_scales(geo_stage, double)
+    assert (sc.kpi_factor, sc.spend_factor, sc.kpi_units) == (2.0, 1.0, "GBP")
 
-
-SETTINGS = HierarchicalGeoSettings.model_validate({"adstock": {"l_max": N_LAG}})
-
-
-def _translate(
-    beliefs: dict[str, Any], s: HierarchicalGeoSettings = SETTINGS, seed: int = 1
-) -> tuple[Any, ModelScales, xr.Dataset]:
-    ds = model_stage()
-    scales = model_scales(ds, s, scaled())
-    priors = BusinessPriors.model_validate(beliefs)
-    outcome = translate_business_priors(priors, scales, s, ds, draws=1500, seed=seed)
-    return outcome, scales, ds
-
-
-# ================================================================================ scales
-
-
-def test_scales_read_units_through_the_pipeline_inverse() -> None:
-    ds = model_stage()
-    sc = model_scales(ds, SETTINGS, scaled())
-    assert sc.target_scale.shape == (2, N_TIME)
-    np.testing.assert_allclose(sc.target_scale[:, 0], [1000.0, 2000.0])
-    np.testing.assert_allclose(sc.spend_scale[1, 0, 0], 100.0)
-    np.testing.assert_allclose(sc.spend, ds["spend"].values[..., 0] * sc.spend_scale)
-    assert sc.kpi_units == "EUR" and sc.spend_units == "EUR"
-    assert sc.kpi_total == pytest.approx(float((ds["y"].values * sc.target_scale).sum()))
-    ident = model_scales(ds, SETTINGS, None)
-    assert np.all(ident.target_scale == 1.0) and ident.kpi_units is None
-
-
-def test_non_linear_preprocessing_is_refused() -> None:
-    def log_inverse(da: xr.DataArray, src: str) -> xr.DataArray:
-        return np.expm1(da)
+    def logged(da: xr.DataArray, src: str) -> xr.DataArray:
+        return np.log1p(da)
 
     with pytest.raises(MapiError) as err:
-        model_scales(model_stage(), SETTINGS, log_inverse)
+        unit_scales(geo_stage, logged)
     assert err.value.code is ErrorCode.CALIBRATION_UNSUPPORTED
 
 
-# =========================================================================== translation
-
-
-def _coverage_ok(result: Any, outcome: Any, label: str, cred: float) -> None:
-    narrow = [i for i in outcome.issues if "narrower" in i.message and label in i.message]
-    if narrow:
-        return  # infeasible by construction: reported, not met
-    assert abs(result.coverage[label] - cred) < 0.07, (label, result.coverage, cred)
-
-
-@settings(
-    max_examples=12,
-    deadline=None,
-    suppress_health_check=[HealthCheck.too_slow],
-    derandomize=True,
-)
-@given(
-    lo=st.floats(0.3, 5.0),
-    ratio=st.floats(2.0, 12.0),
-    cred=st.floats(0.5, 0.95),
-    pooling=st.sampled_from(["partial", "complete", "none"]),
-)
-def test_roi_ranges_round_trip(lo: float, ratio: float, cred: float, pooling: str) -> None:
-    s = HierarchicalGeoSettings.model_validate({"adstock": {"l_max": N_LAG}, "pooling": pooling})
-    hi = lo * ratio
-    outcome, scales, ds = _translate(
-        {"channels": {"tv": {"roi": [lo, hi], "credibility": cred}}}, s
-    )
-    result, preview = prior_preview(outcome, scales, s, ds, draws=3000, seed=11)
-    _coverage_ok(result, outcome, "tv", cred)
-    q = (1 - cred) / 2
-    roi = preview["roi"].sel(channel="tv").values
-    if not any("narrower" in i.message for i in outcome.issues):
-        lo_q, hi_q = np.quantile(roi, [q, 1 - q])
-        width = np.log(ratio)
-        assert abs(np.log(lo_q / lo)) < 0.2 * width + 0.05
-        assert abs(np.log(hi_q / hi)) < 0.2 * width + 0.05
-    # the untouched channel keeps a log-normal like its default prior
-    spec = outcome.priors["beta_channel"]
-    assert spec["distribution"] == "LogNormal" and len(spec["mu"]) == 2
-
-
-@settings(max_examples=8, deadline=None, derandomize=True)
-@given(lo=st.floats(0.01, 0.3), ratio=st.floats(1.8, 4.0), cred=st.floats(0.6, 0.95))
-def test_share_ranges_round_trip(lo: float, ratio: float, cred: float) -> None:
-    hi = min(lo * ratio, 0.95)
-    outcome, scales, ds = _translate(
-        {"channels": {"search": {"contribution_share": [lo, hi], "credibility": cred}}}
-    )
-    result, _ = prior_preview(outcome, scales, SETTINGS, ds, draws=3000, seed=5)
-    _coverage_ok(result, outcome, "search", cred)
-
-
-def test_a_baseline_belief_alone_translates() -> None:
-    # Guided's "Results without any media" with no channel ticked (M3 review)
-    outcome, scales, ds = _translate({"baseline_share": {"share": [0.5, 0.8], "credibility": 0.8}})
-    assert not [i for i in outcome.issues if i.severity is Severity.ERROR]
-    assert "intercept" in outcome.priors
-    result, _ = prior_preview(outcome, scales, SETTINGS, ds, draws=3000, seed=4)
-    assert result.coverage["baseline"] == pytest.approx(0.8, abs=0.08)
-    assert set(result.preview.roi) == set(CHANNELS)  # every channel at its default
-
-
-def test_mixed_beliefs_baseline_and_the_preview() -> None:
-    beliefs = {
-        "channels": {
-            "tv": {"roi": [1.5, 4.0], "credibility": 0.8},
-            "search": {"contribution_share": [0.05, 0.15], "credibility": 0.9},
-        },
-        "baseline_share": {"share": [0.5, 0.8], "credibility": 0.8},
-    }
-    outcome, scales, ds = _translate(beliefs)
-    assert set(outcome.priors) >= {"beta_channel", "intercept"}
-    # the result validates as settings (the spec's priors block)
-    merged = HierarchicalGeoSettings.model_validate(
-        {"adstock": {"l_max": N_LAG}, "priors": outcome.priors}
-    )
-    assert merged.priors.beta_channel is not None
-    result, preview = prior_preview(outcome, scales, SETTINGS, ds, draws=3000, seed=2)
-    assert result.coverage["tv"] == pytest.approx(0.8, abs=0.07)
-    assert result.coverage["search"] == pytest.approx(0.9, abs=0.07)
-    assert result.coverage["baseline"] == pytest.approx(0.8, abs=0.08)
-    assert set(result.preview.roi) == {"tv", "search"}
-    assert result.preview.roi["tv"].units == "EUR per EUR"
-    fan = result.preview.kpi_fan
-    assert fan is not None and len(fan.coords) == N_TIME and fan.observed is not None
-    assert fan.coords[0] == "2024-01-07"
-    assert list(preview["stated_quantity"].values) == ["roi", "contribution_share"]
-    assert result.channels == CHANNELS and result.draws == 3000
-
-
-def test_unknown_channels_zero_spend_and_ranges_from_zero() -> None:
-    ds = model_stage(zero_channel=1)
-    scales = model_scales(ds, SETTINGS, None)
-    priors = BusinessPriors.model_validate(
-        {
-            "channels": {
-                "radio": {"roi": [1, 2]},
-                "search": {"roi": [1, 2]},
-                "tv": {"roi": [0.0, 3.0]},
-            }
-        }
-    )
-    out = translate_business_priors(priors, scales, SETTINGS, ds, draws=400, seed=0)
-    errors = {i.pointer: i for i in out.issues if i.severity is Severity.ERROR}
-    assert "/business_priors/channels/radio" in errors
-    assert "/business_priors/channels/search/roi" in errors
-    info = [i for i in out.issues if i.severity is Severity.INFO]
-    assert any("starts at 0" in i.message for i in info)
-    assert set(out.ranges) == {"tv"}
-
-
-def test_a_share_belief_on_a_channel_without_spend_is_refused() -> None:
-    """A new channel with no spend yet has a share of 0 whatever its coefficient: solving
-    for it gave LogNormal(mu~692), which predicts ~1e300 for any new spend."""
-    ds = model_stage(zero_channel=1)
-    scales = model_scales(ds, SETTINGS, None)
-    priors = BusinessPriors.model_validate(
-        {"channels": {"search": {"contribution_share": [0.05, 0.1]}, "tv": {"roi": [1, 3]}}}
-    )
-    out = translate_business_priors(priors, scales, SETTINGS, ds, draws=400, seed=0)
-    errors = {i.pointer: i for i in out.issues if i.severity is Severity.ERROR}
-    assert "/business_priors/channels/search/contribution_share" in errors
-    assert "no spend" in errors["/business_priors/channels/search/contribution_share"].message
-    assert set(out.ranges) == {"tv"}
-    beta = out.priors["beta_channel"]
-    assert all(np.isfinite(beta["mu"])) and max(abs(v) for v in beta["mu"]) < 50
-
-
-def test_the_pymc_marketing_translator_refuses_a_share_without_spend() -> None:
-    import pandas as pd
-    from mapi_plugin_mmm.pymc_marketing_calibration import (
-        PmmPriorDraws,
-        translate_pmm_business_priors,
-    )
-    from mapi_plugin_mmm.settings import PyMCMarketingSettings
-
-    rng = np.random.default_rng(0)
-    n, cells = 400, 2
-    media = rng.gamma(4.0, 1.0, size=(n, cells, 2))
-    media[..., 1] = 0.0  # search never spent: its media effect is 0
-    draws = PmmPriorDraws(
-        media=media,
-        beta=rng.lognormal(size=(n, cells, 2)),
-        intercept=rng.normal(size=(n, cells)),
-        other=np.zeros((n, 10)),
-        kpi=None,
-        target_scale=1.0,
-        n_time=10,
-    )
-    frame = pd.DataFrame({"tv": rng.gamma(2.0, 1.0, 20), "search": np.zeros(20), "y": 5.0})
-    s = PyMCMarketingSettings.model_validate({"dims": ["geo"], "adstock": {"l_max": 2}})
-    priors = BusinessPriors.model_validate(
-        {"channels": {"search": {"contribution_share": [0.05, 0.1]}, "tv": {"roi": [1, 3]}}}
-    )
-    out = translate_pmm_business_priors(priors, draws, frame, ["tv", "search"], s, seed=0)
-    errors = {i.pointer for i in out.issues if i.severity is Severity.ERROR}
-    assert errors == {"/business_priors/channels/search/contribution_share"}
-    beta = out.priors["saturation_beta"]
-    assert all(np.isfinite(beta["mu"])) and max(abs(v) for v in beta["mu"]) < 50
-    assert set(out.ranges) == {"tv"}
-
-
-def test_a_degenerate_solve_is_refused_and_the_default_prior_kept() -> None:
-    """Spend that exists but is negligible next to the KPI asks for an absurd coefficient:
-    the translator refuses it instead of emitting LogNormal(mu~hundreds)."""
-    ds = model_stage()
-    ds["spend"] = ds["spend"] * xr.DataArray([1.0, 1e-200], dims=["channel"])
-    scales = model_scales(ds, SETTINGS, None)
-    priors = BusinessPriors.model_validate(
-        {"channels": {"search": {"contribution_share": [0.05, 0.1]}, "tv": {"roi": [1, 3]}}}
-    )
-    out = translate_business_priors(priors, scales, SETTINGS, ds, draws=400, seed=0)
-    pointer = "/business_priors/channels/search/contribution_share"
-    errors = {i.pointer: i for i in out.issues if i.severity is Severity.ERROR}
-    assert pointer in errors and "degenerate" in errors[pointer].message
-    beta = out.priors["beta_channel"]
-    assert all(np.isfinite(beta["mu"])) and max(abs(v) for v in beta["mu"]) < 50
-    assert set(out.ranges) == {"tv"}
-
-
-def test_a_range_tighter_than_the_other_priors_is_reported() -> None:
-    outcome, _, _ = _translate({"channels": {"tv": {"roi": [2.0, 2.02], "credibility": 0.95}}})
-    assert any("narrower" in i.message for i in outcome.issues)
-
-
-def test_translation_is_deterministic_given_the_seed() -> None:
-    a, _, _ = _translate({"channels": {"tv": {"roi": [1.0, 3.0]}}}, seed=4)
-    b, _, _ = _translate({"channels": {"tv": {"roi": [1.0, 3.0]}}}, seed=4)
-    assert a.priors == b.priors
-
-
-# ============================================================================ lift tests
+# ======================================================================== lift tests
 
 
 def _test(**kw: Any) -> LiftTest:
-    base: dict[str, Any] = {
-        "channel": "tv",
-        "start": date(2024, 2, 5),
-        "end": date(2024, 3, 3),
-        "spend_delta": -100.0,
-        "kpi_delta": -150.0,
-        "se": 40.0,
-    }
+    base: dict[str, Any] = {"channel": "tv", "start": date(2024, 3, 3), "end": date(2024, 3, 24),
+                            "kpi_delta": 300.0, "se": 60.0}  # fmt: skip
     return LiftTest.model_validate({**base, **kw})
 
 
-def test_lift_design_spreads_the_extra_spend_in_proportion() -> None:
-    ds = model_stage()
-    sc = model_scales(ds, SETTINGS, scaled())
-    design = lift_design([_test(geo="south")], sc)
-    assert design is not None and design.n_tests == 1
-    weeks = np.flatnonzero(
-        (sc.times >= np.datetime64("2024-02-05")) & (sc.times <= np.datetime64("2024-03-03"))
-    )
-    assert len(design.test) == weeks.size == 4
-    assert set(design.geo) == {1}
-    # lag 0 of each cell carries that week's share of the removed spend, in model units
-    alloc = design.dx[:, 0] * sc.spend_scale[1, 0, weeks]
-    base = sc.spend[1, 0, weeks]
-    np.testing.assert_allclose(alloc, -100.0 * base / base.sum())
-    assert alloc.sum() == pytest.approx(-100.0)
-    # carry-over inside the window: lag 1 of week k is week k-1's change
-    np.testing.assert_allclose(design.dx[1:, 1], design.dx[:-1, 0])
-    assert design.dx[0, 1] == 0.0
-    np.testing.assert_allclose(design.target_scale, sc.target_scale[1, weeks])
+def test_extra_spend_becomes_a_marginal_roas_measurement(setup: Any) -> None:
+    from mmm_framework.calibration import ExperimentEstimand
+
+    data = setup[0]
+    plan = lift_measurements([_test(spend_delta=400.0, geo="north")], data, UnitScales())
+    (m,) = plan.measurements
+    window = data.spend[
+        (data.times >= np.datetime64("2024-03-03")) & (data.times <= np.datetime64("2024-03-24"))
+    ]
+    spend = float(window[:, 0, 0, 0].sum())
+    assert m.estimand is ExperimentEstimand.MROAS
+    assert m.spend_lift_pct == pytest.approx(100 * 400.0 / spend)
+    assert m.value == pytest.approx(300.0 / 400.0) and m.se == pytest.approx(60.0 / 400.0)
+    assert m.holdout_regions == ["north"] and m.channel == "tv"
+    assert plan.used == ["lift_0"]
 
 
-def _contribution(
-    x: np.ndarray, alpha: np.ndarray, lam: np.ndarray, beta: np.ndarray, ts: np.ndarray
-) -> np.ndarray:
-    w = adstock_weights("geometric", np.arange(N_LAG), alpha=alpha[:, None])
-    ad = np.einsum("gctl,cl->gct", x, w)
-    return ts[:, None, :] * beta[:, :, None] * saturate(ad, "logistic", lam=lam[None, :, None])
+def test_a_full_holdout_is_a_contribution_measurement(setup: Any) -> None:
+    from mmm_framework.calibration import ExperimentEstimand
+
+    data = setup[0]
+    mask = (data.times >= np.datetime64("2024-03-03")) & (data.times <= np.datetime64("2024-03-24"))
+    spend = float(data.spend[mask][..., 0].sum())
+    plan = lift_measurements(
+        [_test(spend_delta=-spend, kpi_delta=-900.0, se=None, ci=(-1200.0, -600.0))],
+        data, UnitScales(),
+    )  # fmt: skip
+    (m,) = plan.measurements
+    assert m.estimand is ExperimentEstimand.CONTRIBUTION
+    assert m.value == pytest.approx(900.0)
+    assert m.se == pytest.approx(600.0 / (2 * stats.norm.ppf(0.95)))
 
 
-def test_lift_equals_the_difference_of_two_full_contributions() -> None:
-    """The cell design reproduces sum_window(contrib(x + dx) - contrib(x)) exactly."""
-    ds = model_stage()
-    sc = model_scales(ds, SETTINGS, scaled())
-    tests = [_test(), _test(channel="search", spend_delta=60.0, kpi_delta=80.0, id="s-up")]
-    design = lift_design(tests, sc)
-    assert design is not None
-    alpha, lam = np.array([0.4, 0.2]), np.array([1.5, 0.8])
-    beta = np.array([[0.3, 0.2], [0.25, 0.1]])
-    got = design.lift(
-        adstock_weights("geometric", np.arange(N_LAG), alpha=alpha[:, None]),
-        {"lam": lam},
-        beta,
-        "logistic",
-    )
-    window = (sc.times >= np.datetime64("2024-02-05")) & (sc.times <= np.datetime64("2024-03-03"))
-    for k, test in enumerate(tests):
-        c = CHANNELS.index(test.channel)
-        base = sc.spend[:, c, window]
-        dx_orig = np.zeros_like(sc.spend[:, c, :])
-        dx_orig[:, window] = test.spend_delta * base / base.sum()
-        dx = dx_orig / sc.spend_scale[:, c, :]
-        x1 = sc.x.copy()
-        for lag in range(N_LAG):
-            shifted = np.zeros_like(dx)
-            shifted[:, lag:] = dx[:, : N_TIME - lag]
-            x1[:, c, :, lag] += shifted
-        diff = _contribution(x1, alpha, lam, beta, sc.target_scale) - _contribution(
-            sc.x, alpha, lam, beta, sc.target_scale
-        )
-        assert got[k] == pytest.approx(float(diff[:, c, window].sum()), rel=1e-10)
+def test_partial_cuts_and_skips(setup: Any) -> None:
+    data = setup[0]
+    mask = (data.times >= np.datetime64("2024-03-03")) & (data.times <= np.datetime64("2024-03-24"))
+    spend = float(data.spend[mask][..., 0].sum())
+    plan = lift_measurements(
+        [
+            _test(id="small", spend_delta=-0.1 * spend, kpi_delta=-50.0),
+            _test(id="half", spend_delta=-0.5 * spend, kpi_delta=-200.0),
+            _test(id="later", start=date(2026, 1, 4), end=date(2026, 1, 25), spend_delta=10.0),
+            _test(id="cut", start=date(2024, 12, 15), end=date(2025, 2, 2), spend_delta=10.0),
+        ],
+        data, UnitScales(),
+    )  # fmt: skip
+    # Regression: a partial cut measures the slope *below* today's spend (a backward
+    # difference), but mmm-framework's marginal-ROAS estimand is the slope *above* it
+    # (spend_lift_pct > 0 only); under a concave curve the backward slope is larger
+    # (e^{0.2 lam} times for 1 - exp(-lam x) and a 20% cut), so mapping one onto the other
+    # biased the saturation curve. Partial cuts are skipped with the reason instead.
+    assert plan.used == []
+    assert set(plan.skipped) == {"small", "half", "later", "cut"}
+    assert "partial cut" in plan.skipped["half"]
+    assert "below" in plan.skipped["small"] and "above" in plan.skipped["small"]
+    assert plan.record()["used"] == []
+    lam, c = 2.0, 0.2
+    curve = lambda x: 1 - np.exp(-lam * x)  # noqa: E731
+    backward = (curve(1.0) - curve(1 - c)) / c
+    forward = (curve(1 + c) - curve(1.0)) / c
+    assert backward / forward == pytest.approx(np.exp(c * lam))
 
 
 @pytest.mark.parametrize(
     ("kw", "pointer"),
-    [
-        ({"channel": "radio"}, "/calibration/lift_tests/0/channel"),
-        ({"geo": "west"}, "/calibration/lift_tests/0/geo"),
-        ({"spend_delta": -1e9}, "/calibration/lift_tests/0/spend_delta"),
-        ({"start": date(2024, 2, 5), "end": date(2024, 2, 6)}, "/calibration/lift_tests/0"),
-    ],
+    [({"channel": "radio"}, "/channel"), ({"geo": "mars"}, "/geo")],
 )
-def test_lift_design_refuses_tests_the_data_cannot_carry(kw: dict[str, Any], pointer: str) -> None:
-    sc = model_scales(model_stage(), SETTINGS, None)
+def test_lift_tests_on_unknown_channels_or_geos(
+    setup: Any, kw: dict[str, Any], pointer: str
+) -> None:
     with pytest.raises(MapiError) as err:
-        lift_design([_test(**kw)], sc)
-    assert err.value.code is ErrorCode.SCHEMA_INVALID and err.value.pointer == pointer
+        lift_measurements([_test(spend_delta=10.0, **kw)], setup[0], UnitScales())
+    assert err.value.code is ErrorCode.SCHEMA_INVALID
+    assert err.value.pointer == "/calibration/lift_tests/0" + pointer
 
 
-def test_tests_after_the_fitted_periods_are_skipped() -> None:
-    sc = model_scales(model_stage(), SETTINGS, scaled())
-    logged: list[str] = []
-    later = _test(start=date(2025, 1, 6), end=date(2025, 2, 2), id="later")
-    assert lift_design([later], sc, log=logged.append) is None
-    design = lift_design([_test(id="now"), later], sc)
-    assert isinstance(design, LiftDesign) and design.ids == ["now"] and design.skipped == ["later"]
+def test_window_cut() -> None:
+    days = np.arange(
+        np.datetime64("2024-01-07"), np.datetime64("2024-03-31"), np.timedelta64(7, "D")
+    )
+    assert not lift_window_cut(days, date(2024, 2, 1), date(2024, 2, 20))
+    assert lift_window_cut(days, date(2024, 3, 20), date(2024, 4, 30))
+    assert not lift_window_cut(days, date(2024, 3, 20), date(2024, 3, 30))
 
 
-def test_tests_the_fit_window_cuts_are_skipped_not_squeezed() -> None:
-    """A test straddling the end of the training split (an evaluate_then_refit evaluation
-    fit) used to put all its spend into the periods left and compare them with the whole
-    test's KPI change, biasing the evaluation fit."""
-    sc = model_scales(model_stage(), SETTINGS, scaled())  # weekly, 2024-01-07 .. 2024-06-30
-    logged: list[str] = []
-    straddles = _test(start=date(2024, 6, 10), end=date(2024, 7, 7), id="straddles")
-    early = _test(start=date(2023, 12, 18), end=date(2024, 1, 14), id="early")
-    inside = _test(start=date(2024, 6, 3), end=date(2024, 6, 30), id="inside")
-    design = lift_design([straddles, early, inside], sc, log=logged.append)
-    assert isinstance(design, LiftDesign) and design.ids == ["inside"]
-    assert design.skipped == ["straddles", "early"]
-    assert any("straddles" in m and "partly" in m for m in logged)
+def test_the_translate_priors_hook(geo_stage: xr.Dataset) -> None:
+    from mapi_plugin_mmm.bayesian import MMMBayesian
+    from mapi_sdk.models import FitContext
+    from mapi_spec.calibration import PriorTranslationJob
 
-
-def test_the_pymc_marketing_lift_frame_leaves_out_a_cut_test() -> None:
-    import pandas as pd
-    from mapi_plugin_mmm.pymc_marketing import DATE, lift_frame
-    from mapi_plugin_mmm.settings import PyMCMarketingSettings
-
-    weeks = pd.date_range("2024-01-07", periods=26, freq="W-SUN")
-    frame = pd.DataFrame({DATE: weeks, "tv": 10.0, "search": 5.0})
-    s = PyMCMarketingSettings.model_validate({"adstock": {"l_max": 2}})
-    inside = _test(start=date(2024, 6, 3), end=date(2024, 6, 30), spend_delta=-20.0)
-    straddles = _test(start=date(2024, 6, 10), end=date(2024, 7, 7), spend_delta=-20.0)
-    out = lift_frame([inside, straddles], frame, s, ["tv", "search"])
-    assert len(out) == 1 and out["delta_x"].iloc[0] == pytest.approx(-20.0 / 4)
-
-
-def test_the_fit_graph_carries_the_lift_likelihood_and_score_does_not() -> None:
-    ds = model_stage()
-    sc = model_scales(ds, SETTINGS, scaled())
-    plugin = HierarchicalGeoMMM()
-    plugin._lift = lift_design([_test()], sc)
-    schema = HierarchicalGeoMMM.manifest().schema_template.resolve({})
-    fit_ctx = BuildContext(phase="fit", ds=ds, schema=schema, seed=1)
-    model = plugin.build_model(ds, SETTINGS, fit_ctx)
-    assert LIFT_VAR in model.named_vars and model.named_vars_to_dims[LIFT_VAR] == (LIFT_DIM,)
-    assert np.isfinite(model.compile_logp()(model.initial_point()))
-    lift = pm.draw(model[f"{LIFT_VAR}__model"], draws=2, random_seed=0)
-    assert lift.shape == (2, 1) and np.all(lift < 0)  # removing spend loses KPI
-    score_ctx = BuildContext(phase="score", ds=ds, schema=schema, seed=1, fit_coords={})
-    assert LIFT_VAR not in plugin.build_model(ds, SETTINGS, score_ctx).named_vars
+    plugin = MMMBayesian()
+    s = plugin.parse_settings({"hierarchy": {"pool_over": ["geo"]}, "adstock": {"l_max": 3}})
+    job = PriorTranslationJob(
+        spec={},
+        business_priors=_beliefs({"channels": {"tv": {"roi": [0.5, 1.5]}}}),
+        draws=200,
+        seed=4,
+    )
+    out = plugin.translate_priors(geo_stage, s, job, FitContext(seed=1))
+    assert set(out.result.priors["roi"]) == {"tv"}
+    assert out.result.draws == 200 and "tv" in out.result.coverage
+    # the translated priors are valid settings
+    merged = with_priors(s, out.result.priors)
+    assert merged.priors.roi["tv"].sigma > 0

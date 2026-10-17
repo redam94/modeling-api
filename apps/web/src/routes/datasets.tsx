@@ -1,6 +1,6 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Database, Plus, Upload } from "lucide-react";
+import { Database, Plus, Telescope, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { errorMessage } from "@/api/client";
@@ -11,6 +11,7 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Textarea } from "@/components/ui/primitives";
+import { DatasetAboutCard } from "@/features/about/dataset-about";
 import { UploadWizard } from "@/features/datasets/upload-wizard";
 import { CoordBrowser, MissingnessPanel, PreviewPanel, SchemaTable } from "@/features/datasets/version-views";
 import { formatBytes, relativeTime, shortId } from "@/lib/format";
@@ -127,6 +128,14 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
         <Mono className="min-w-0 text-[15px] font-semibold break-all">{version.ref}</Mono>
         <CopyButton value={version.ref} label="Copy reference" />
         <Badge variant={VERSION_STATUS[version.status]}>{version.status}</Badge>
+        {version.status === "ready" ? (
+          // M3.5: the Data Explorer of this version.
+          <Button asChild size="sm" className="ml-auto">
+            <Link to="/datasets/$datasetId/versions/$version/explore" params={{ datasetId: version.dataset_id, version: String(version.version) }}>
+              <Telescope /> Explore this version
+            </Link>
+          </Button>
+        ) : null}
         {version.ingest_run_id ? (
           <Link to="/runs/$runId" params={{ runId: version.ingest_run_id }} className="text-xs text-muted-foreground hover:underline">
             ingest run {shortId(version.ingest_run_id)}
@@ -200,6 +209,12 @@ export function DatasetDetailPage() {
           </Button>
         }
       />
+      {/* M3.5: the dataset's About (owner description + generated summary). */}
+      {dataset.data && dataset.data.latest_version ? (
+        <div className="mb-6">
+          <DatasetAboutCard datasetId={datasetId} />
+        </div>
+      ) : null}
       {uploading ? (
         <Card className="mb-6">
           <CardHeader>

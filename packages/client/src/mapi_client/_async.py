@@ -84,7 +84,7 @@ from mapi_spec.quotas import QuotaLimits, QuotaScope
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 from mapi_spec.spec import ScoreRequest
-from mapi_spec.tenancy import ProjectRole, TenantStatus, TrustTier
+from mapi_spec.tenancy import Capability, ProjectRole, TenantStatus, TrustTier
 from mapi_spec.tokens import DEFAULT_TOKEN_TTL_DAYS, BudgetPeriod, TokenStatus
 from pydantic import JsonValue
 
@@ -117,6 +117,15 @@ from mapi_client._m3_async import (
 )
 from mapi_client._m3_async import signup as _signup
 from mapi_client._m3_async import verify_email as _verify_email
+from mapi_client._m35_async import (
+    AsyncCatalogAboutMixin,
+    AsyncDatasetAboutMixin,
+    AsyncExplorations,
+    AsyncGovernance,
+    AsyncModelInsightMixin,
+    AsyncValidations,
+    AsyncWorkflows,
+)
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -200,6 +209,10 @@ class AsyncClient:
         self.guided = AsyncGuided(self)
         self.endpoints = AsyncEndpoints(self)
         self.webhooks = AsyncWebhooks(self)
+        self.workflows = AsyncWorkflows(self)
+        self.governance = AsyncGovernance(self)
+        self.validations = AsyncValidations(self)
+        self.explorations = AsyncExplorations(self)
 
     async def aclose(self) -> None:
         await self._http.aclose()
@@ -363,7 +376,7 @@ class AsyncProjects(_Resource):
         return await self._c.send(calls.get_project(project_id))
 
 
-class AsyncCatalog(_Resource):
+class AsyncCatalog(_Resource, AsyncCatalogAboutMixin):
     async def get(self) -> CatalogResponse:
         return await self._c.send(calls.get_catalog())
 
@@ -383,7 +396,7 @@ class AsyncCatalog(_Resource):
         return await self._c.send(calls.get_schema(name))
 
 
-class AsyncDatasets(_Resource):
+class AsyncDatasets(_Resource, AsyncDatasetAboutMixin):
     async def create(
         self, name: str, *, description: str | None = None, labels: Mapping[str, str] | None = None
     ) -> Dataset:
@@ -758,7 +771,7 @@ class AsyncRuns(_Resource):
         return await self._c.send(calls.retry_run(run_id, body, idempotency_key))
 
 
-class AsyncModels(_Resource):
+class AsyncModels(_Resource, AsyncModelInsightMixin):
     def list(self, *, limit: int | None = None) -> AsyncPaginator[Model]:
         return self._c.page_iter(lambda cur: calls.list_models(limit, cur))
 
@@ -910,9 +923,16 @@ class AsyncTenants(_Resource, AsyncTenantTrustMixin):
         project_id: str | None = None,
         principal_id: str | None = None,
         email: str | None = None,
+        capabilities: Sequence[Capability | str] = (),
     ) -> Membership:
-        """Grant ``role`` to a known principal or invite an ``email``."""
-        body = MembershipCreate(principal_id=principal_id, email=email, role=ProjectRole(role))
+        """Grant ``role`` to a known principal or invite an ``email``, with optional
+        capabilities on top of the role (``reviewer`` approves model validations)."""
+        body = MembershipCreate(
+            principal_id=principal_id,
+            email=email,
+            role=ProjectRole(role),
+            capabilities=[Capability(c) for c in capabilities],
+        )
         return await self._c.send(calls.add_member(tenant_id, project_id, body))
 
     async def set_role(
@@ -924,6 +944,18 @@ class AsyncTenants(_Resource, AsyncTenantTrustMixin):
         project_id: str | None = None,
     ) -> Membership:
         body = MembershipUpdate(role=ProjectRole(role))
+        return await self._c.send(calls.update_member(tenant_id, project_id, principal_id, body))
+
+    async def set_capabilities(
+        self,
+        tenant_id: str,
+        principal_id: str,
+        capabilities: Sequence[Capability | str],
+        *,
+        project_id: str | None = None,
+    ) -> Membership:
+        """Replace a member's capabilities (``[]`` removes them all); the role is kept."""
+        body = MembershipUpdate(capabilities=[Capability(c) for c in capabilities])
         return await self._c.send(calls.update_member(tenant_id, project_id, principal_id, body))
 
     async def remove_member(

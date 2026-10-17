@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, SegmentedControl } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, Field, Input, NativeSelect } from "@/components/ui/primitives";
 import { useWorkspace } from "@/features/auth/workspace";
+import { ReviewerToggle } from "@/features/governance/reviewer-toggle";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
@@ -123,6 +124,25 @@ export function MembersPage() {
                 </option>
               ))}
             </NativeSelect>
+          );
+        },
+      },
+      {
+        // M3.5: the reviewer capability (approves model validations).
+        id: "reviewer",
+        header: "Reviewer",
+        accessorFn: (m) => (m.capabilities ?? []).includes("reviewer"),
+        cell: ({ row }) => {
+          const m = row.original;
+          const inherited = !tenantWide && m.project_id == null;
+          return (
+            <ReviewerToggle
+              member={m}
+              name={personLabel(m).primary}
+              editable={canEdit && !inherited}
+              pending={update.isPending}
+              onChange={(capabilities, done) => update.mutate({ principalId: m.principal_id, capabilities }, done)}
+            />
           );
         },
       },

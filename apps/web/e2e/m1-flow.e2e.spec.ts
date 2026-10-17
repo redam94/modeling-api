@@ -233,9 +233,10 @@ test.describe("@e2e M1: fit, inspect and score an E33 geo MMM from the UI", () =
       const fan = await renderedPlot(runPlots);
       // the forecast fan (v0.4: the KPI summed over markets, with the fitted history)
       await expect(fan.contentFrame().locator("svg.marks").first()).toContainText("date");
-      // 8 weeks x markets x 5 components, one row per coordinate (stat pivoted into columns):
-      // the new market is scored too (the table is virtualised: count, do not read, its rows)
-      await expect(results.getByText(`${8 * s.markets * 5} rows`)).toBeVisible();
+      // 8 weeks x markets x 6 components (v0.5, mmm-framework: tv, search, baseline, trend,
+      // seasonality and the holiday control), one row per coordinate (stat pivoted into
+      // columns): the new market is scored too (the table is virtualised: count, do not read)
+      await expect(results.getByText(`${8 * s.markets * 6} rows`)).toBeVisible();
       await expect(results.getByRole("table", { name: "ui/summary.arrow" })).toContainText("y_hat_mean");
       // the quick chart over the pivoted summary (its frame loads lazily, once in view)
       const quick = results.locator('iframe[data-testid="plot-frame"]').nth(1);

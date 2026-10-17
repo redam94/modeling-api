@@ -1,0 +1,35 @@
+# mmm.frequentist score requests. `payload` names a payload_<name>() builder in
+# mmm_frequentist/data.py (or `fit_data`).
+- name: forecast_4w
+  payload: future             # daily local-currency spend for 4 weeks after the fit
+  request:
+    mode: forecast
+    horizon: {dim: time, periods: 4}
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean, hdi_90], draws: 30}
+  expect: {groups: [summary, draws], vars: [y_hat, contributions], sizes: {date: 4}}
+
+- name: recent_window
+  payload: window             # the last 4 fit weeks scored on their own (owned carry-over)
+  request:
+    mode: predict
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean]}
+  expect: {vars: [y_hat, contributions]}
+
+- name: full_series
+  payload: fit_data           # every fit week, for the carry-over comparison
+  request:
+    mode: predict
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean]}
+  expect: {vars: [y_hat, contributions]}
+
+- name: counterfactual_search
+  payload: window
+  request:
+    mode: counterfactual
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    interventions: [{var: spend_local, sel: {channel: search}, multiply: 1.5}]
+    output: {kind: expected, summary: [mean, hdi_90], draws: 30}
+  expect: {groups: [summary, delta/summary]}

@@ -25,6 +25,7 @@ from mapi_spec._types import (
     StrictModel,
     unique,
 )
+from mapi_spec.about import About
 from mapi_spec.calibration import Calibration
 from mapi_spec.capabilities import OutputSelector, ScoreMode
 from mapi_spec.errors import parse_pointer
@@ -73,7 +74,7 @@ API_VERSION = "mapi/v1"
 #: Version of the contract (documents, manifests, catalogs, errors, plot envelope) that the
 #: exported JSON Schemas describe. Frozen per release: additive changes keep it, breaking
 #: changes bump it (see ``packages/spec/tests/snapshots/contract.json``).
-CONTRACT_VERSION = "0.1"
+CONTRACT_VERSION = "0.2"
 ApiVersion = Literal["mapi/v1"]
 
 MAX_PIPELINE_STEPS = 64
@@ -86,6 +87,12 @@ class Metadata(StrictModel):
     project: Slug
     labels: dict[LabelKey, LabelValue] = Field(default_factory=dict, max_length=64)
     description: str | None = Field(None, max_length=4000)
+    about: About | None = Field(
+        None,
+        description="M3.5: a plain-language About card so others can choose this spec, "
+        "pipeline or workflow (see mapi_spec.about)",
+        exclude_if=lambda v: v is None,
+    )
 
 
 # --------------------------------------------------------------------------------- data

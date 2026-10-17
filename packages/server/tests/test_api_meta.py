@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from typing import Any
 
 import httpx
 from mapi_server.app import openapi_document
 from mapi_server.auth.identity import LOCAL_USER_ID
 from mapi_server.context import ServerContext
-from mapi_spec.api import ENDPOINTS, Health, Me, Page, Project
+from mapi_spec.api import ENDPOINTS, V04_ENDPOINTS, Health, Me, Page, Project
 from mapi_spec.errors import PROBLEM_CONTENT_TYPE, Problem
 
 
@@ -153,9 +154,7 @@ async def test_schemas(client: httpx.AsyncClient) -> None:
     assert (await client.get("/v1/schemas/nope.json")).status_code == 404
 
 
-def test_route_table_covers_every_endpoint() -> None:
-    """Every row of ``mapi_spec.api.ENDPOINTS`` (M1 + M2 + M3) is served with its operation
-    id."""
+def _missing(table: tuple[Any, ...]) -> list[str]:
     doc = openapi_document()
     served = {
         (method.upper(), path, op.get("operationId"))
@@ -163,12 +162,22 @@ def test_route_table_covers_every_endpoint() -> None:
         for method, op in item.items()
         if isinstance(op, dict)
     }
-    missing = [
+    return [
         f"{e.method} {e.path} ({e.operation_id})"
-        for e in ENDPOINTS
+        for e in table
         if (e.method, e.path, e.operation_id) not in served
     ]
+
+
+def test_route_table_covers_every_endpoint() -> None:
+    """Every row of ``mapi_spec.api.V04_ENDPOINTS`` (M1 + M2 + M3) is served with its
+    operation id."""
+    missing = _missing(V04_ENDPOINTS)
     assert not missing, missing
+
+
+def test_route_table_covers_the_m35_endpoints() -> None:
+    assert not _missing(ENDPOINTS)
 
 
 def test_openapi_document_is_31_and_names_operations() -> None:
@@ -180,7 +189,7 @@ def test_openapi_document_is_31_and_names_operations() -> None:
         for op in path.values()
         if isinstance(op, dict) and "operationId" in op
     }
-    assert {e.operation_id for e in ENDPOINTS} <= ops
+    assert {e.operation_id for e in V04_ENDPOINTS} <= ops
     assert "PlotSpec" in doc["components"]["schemas"]
 
 

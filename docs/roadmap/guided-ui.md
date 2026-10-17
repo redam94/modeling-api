@@ -1,6 +1,6 @@
 # Guided mode and integrations <span class="mapi-badge">v0.4</span>
 
-!!! success "Status: this release (milestone M3), the first public launch"
+!!! success "Status: available in v0.4 (milestone M3), the first public launch"
     With the multi-tenant core in place ([v0.3](cloud.md)), v0.4 lets analysts go from a
     spreadsheet to a trustworthy report and a what-if scenario without writing YAML, and lets
     other applications call fitted models through stable endpoints. It is the first public
@@ -32,7 +32,7 @@ journey
 | Shipped | Where to read about it |
 |---|---|
 | Four templates (geo marketing mix, weekly forecast, demand by store, customer choice) and a question flow with role detection | [Your first analysis in Guided mode](../guides/guided-tutorial.md) |
-| Sandboxed ingest of CSV, Parquet, MFF and Meridian-shaped tables; the BayesInsight import and the `mmm.bayesinsight` model | [From a spreadsheet to a Guided draft](../guides/guided-data.md), [Import a BayesInsight model](../tutorials/bayesinsight-import.md) |
+| Sandboxed ingest of CSV, Parquet, MFF and Meridian-shaped tables | [From a spreadsheet to a Guided draft](../guides/guided-data.md) |
 | Business priors (ROI or share ranges) translated in a sandbox, lift tests as calibration | [Guided modelling](../guides/guided-modelling.md) |
 | The sanity scorecard and the promotion gate | [Guided mode](../concepts/guided-mode.md#scorecard), [Integrations](../concepts/integrations.md#promotion-gate) |
 | What-if sliders over per-draw response grids, "Run exact", forecast and counterfactual views | [What if…](../guides/guided-tutorial.md#6-what-if) |
@@ -43,10 +43,10 @@ journey
 | Shipped | Where to read about it |
 |---|---|
 | Endpoints and aliases with history, rollback and a frozen input contract; `score:<alias>` tokens | [Endpoints and webhooks](../guides/endpoints-and-webhooks.md) |
-| Generated snippets: Python, TypeScript, curl, R, Apps Script, Atlas, a notebook cell | [The Integrations hub](../guides/integrations-hub.md#an-endpoints-page), [Connect Google Sheets](../tutorials/google-sheets.md) |
+| Generated snippets: Python, TypeScript, curl, R, Apps Script, a notebook cell | [The Integrations hub](../guides/integrations-hub.md#an-endpoints-page), [Connect Google Sheets](../tutorials/google-sheets.md) |
 | Signed webhooks with an outbox, retries, a delivery log, replays and an SSRF guard | [Receive webhooks](../guides/webhook-receivers.md) |
 | Saved plots, PNG/SVG/PDF renders in the sandbox and expiring embed links | [Embed a chart](../tutorials/embed-a-chart.md), [Sharing plots](../guides/sharing-plots.md) |
-| The Python client's endpoints and the Atlas `RemoteModel`; the CLI's `endpoints`, `webhooks`, `plots`, `guided`, `priors` and `tenant` commands | [Optimise a budget with Atlas](../guides/atlas.md), [The Python client](../guides/python-client.md) |
+| The Python client's endpoints; the CLI's `endpoints`, `webhooks`, `plots`, `guided`, `priors` and `tenant` commands | [Optimise a budget](../tutorials/optimise-a-budget.md), [The Python client](../guides/python-client.md) |
 
 ## Trust and the data lifecycle
 
@@ -62,7 +62,7 @@ journey
 | Criterion | Where it stands |
 |---|---|
 | Five non-technical testers go from upload to report to scenario unaided in under 30 minutes | Prepared: an automated run takes 135 s of system time, six usability defects it found are fixed, and the [protocol for the testers](../operations/m3-verification.md#protocol-for-the-five-non-technical-testers) is written. The sessions themselves are still to run |
-| Atlas optimises against an endpoint | Met on a laptop: +0.22 % revenue at the same budget against the live endpoint ([details](../operations/m3-verification.md#atlas-against-the-live-endpoint)) |
+| An external optimiser works against an endpoint | Met on a laptop: +0.22 % revenue at the same budget against the live endpoint ([details](../operations/m3-verification.md#an-external-optimiser-against-the-live-endpoint)). Since v0.5 budgets are optimised next to the model instead, in a sandboxed `optimize` run on mmm-framework planning ([Optimise a budget](../tutorials/optimise-a-budget.md)); the external-optimiser adapter was removed |
 | Cut line A: public launch of declarative specs and built-ins | Met for admission: sign-up workspaces are `public`, uploaded code is refused; public runs need an executor that enforces egress and DNS (`docker-gvisor` or Cloud Run Jobs), which this laptop could not run |
 
 Everything was verified locally; see [M3 verification](../operations/m3-verification.md) for

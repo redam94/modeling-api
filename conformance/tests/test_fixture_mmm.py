@@ -1,4 +1,5 @@
-"""The E33 and pymc-marketing MMM fixtures: corpus layout and request semantics.
+"""The mmm-framework MMM fixtures (E33 on mmm.bayesian, mmm.frequentist): corpus layout and
+request semantics.
 
 Both fixtures run end to end (fit, every score request with the fixture's expectations,
 evaluate, contract kit and plots) in ``test_corpus.py``; these fast tests pin what each
@@ -17,7 +18,7 @@ pytestmark = [pytest.mark.conformance]
 
 
 def test_fixtures_are_registered() -> None:
-    assert {"e33", "pymc_marketing"} <= set(FIXTURES)
+    assert {"e33", "mmm_frequentist", "guided_mmm"} <= set(FIXTURES)
 
 
 def test_e33_requests_cover_horizon_new_market_plan_and_counterfactual() -> None:
@@ -59,24 +60,25 @@ def test_e33_payloads() -> None:
     assert plan.sizes["date"] == 8
 
 
-def test_pymc_marketing_requests() -> None:
-    fx = load_fixture("pymc_marketing")
+def test_mmm_frequentist_requests() -> None:
+    fx = load_fixture("mmm_frequentist")
     names = [c.name for c in fx.cases]
     assert names == ["forecast_4w", "recent_window", "full_series", "counterfactual_search"]
     data, _ = fx.generate(0, "tiny")
     schema = fx.raw_schema(data)
-    # pymc-marketing cannot score panel levels unseen at fit
+    # the ridge estimator has no geo spread to draw an unseen market from
     assert schema.dims["market"].policy == "fixed"
 
 
-def test_pymc_marketing_owns_scaling_and_carryover() -> None:
+@pytest.mark.parametrize("fixture_id", ["e33", "mmm_frequentist"])
+def test_mmm_framework_owns_scaling_and_carryover(fixture_id: str) -> None:
     """``owns: [scaling, carryover]``: platform scaling/carry-over on the target or media
     is rejected statically instead of silently double-scaling (plan §4.3)."""
     from mapi_sdk.registry import default_registry
     from mapi_spec import load_model_spec, validate_spec
     from mapi_spec.errors import ErrorCode
 
-    fx = load_fixture("pymc_marketing")
+    fx = load_fixture(fixture_id)
     data, _ = fx.generate(0, "tiny")
     schema = fx.raw_schema(data)
     catalog = default_registry().catalog()
@@ -93,7 +95,7 @@ def test_pymc_marketing_owns_scaling_and_carryover() -> None:
         assert errs and f"owns {what}" in errs[0].message, res.issues
 
 
-@pytest.mark.parametrize("fixture_id", ["e33", "pymc_marketing"])
+@pytest.mark.parametrize("fixture_id", ["e33", "mmm_frequentist", "guided_mmm"])
 def test_expectation_hooks_take_the_runner_context(fixture_id: str) -> None:
     fx = load_fixture(fixture_id)
     for name in ("check_fit", "check_score"):

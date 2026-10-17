@@ -22,6 +22,7 @@ import { Badge, Field, Input, NativeSelect, Textarea } from "@/components/ui/pri
 import { useWorkspace } from "@/features/auth/workspace";
 import { absoluteTime, relativeTime } from "@/lib/format";
 import { GATE_META, GATE_REASON_LABEL, gateFromProblem, previewGate } from "@/lib/gate";
+import { NotValidatedNotice } from "@/features/governance/model-validations";
 import { ALIAS_RE } from "@/lib/integrations";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
@@ -138,7 +139,7 @@ export function EndpointsSection() {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-[68ch] text-muted-foreground">
-          An endpoint is a stable name for one model version. Spreadsheets, dashboards and Atlas call the name, so promoting a better version - or rolling back - never breaks them. Promotion is gated on the version&apos;s sanity scorecard.
+          An endpoint is a stable name for one model version. Spreadsheets, dashboards and notebooks call the name, so promoting a better version - or rolling back - never breaks them. Promotion is gated on the version&apos;s sanity scorecard.
         </p>
         <Button onClick={() => setPromoting(true)} disabled={!canPromote} title={canPromote ? undefined : "Project admins promote endpoints"}>
           <ArrowUpCircle /> Promote a model
@@ -167,7 +168,7 @@ export function EndpointsSection() {
                 ) : null
               }
             >
-              Promote a fitted model version to an endpoint to score it from a spreadsheet, a BI tool, a notebook or Atlas.
+              Promote a fitted model version to an endpoint to score it from a spreadsheet, a BI tool, a notebook or your own service.
             </EmptyState>
           )
         }
@@ -339,7 +340,9 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
                   </span>
                 </div>
                 <ScorecardSummary scorecard={mv.data.scorecard} />
-                {decision ? (
+                {decision?.reasons?.some((r) => r.code === "NOT_VALIDATED") ? (
+                  <NotValidatedNotice modelId={mv.data.model_id} version={mv.data.version} />
+                ) : decision ? (
                   <div className={cn("grid gap-2 rounded-md border p-3", decision.outcome === "blocked" ? "border-destructive/35 bg-destructive/6" : "border-warning/40 bg-warning/8")} role="alert">
                     <p className="font-medium">{decision.outcome === "blocked" ? "This version cannot be promoted" : "The gate needs an admin override"}</p>
                     <GateReasons decision={decision} />

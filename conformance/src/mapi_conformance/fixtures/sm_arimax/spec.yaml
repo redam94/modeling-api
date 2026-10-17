@@ -1,0 +1,15 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: weekly-sales-arimax, project: retail, labels: {corpus: sm_arimax}}
+data:
+  dataset: dataset://retail/weekly_sales_by_geo@latest
+  bind:
+    dims: {t: date}
+    vars: {y: sales}
+  split: {kind: time_holdout, dim: t, last: 8}
+model:
+  use: ts.sarimax@^1
+  settings: {order: [1, 0, 0], exog: [price, promo], series_dims: [geo]}
+  fit: {mode: evaluate_then_refit, seed: 5}
+evaluate: {metrics: [rmse, mae, mape, coverage_90]}
+outputs: {plots: [core.ppc_fan, core.fit_vs_actual, core.residuals_over_time]}

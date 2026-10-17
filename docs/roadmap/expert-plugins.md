@@ -1,16 +1,17 @@
-# Expert plugins, MCP and optimisation jobs <span class="mapi-badge mapi-badge--soon">next: v0.5</span>
+# Expert plugins and MCP <span class="mapi-badge mapi-badge--soon">next: v0.6</span>
 
 !!! abstract "Status: next (milestone M4)"
-    v0.4 opened the hosted platform to declarative specs and built-in models. v0.5 lets
-    **allow-listed teams upload their own model plugins**, gives AI agents a curated **MCP
-    server**, and moves budget optimisation and model sweeps **into the sandbox**. Public code
-    upload for everyone comes after it, behind its own controls (see the
-    [roadmap](index.md#after-v05)).
+    v0.4 opened the hosted platform to declarative specs and built-in models; v0.5 added
+    workflows, governance, the explorers and in-sandbox budget optimisation
+    ([what's new](../whats-new-0.5.md)). v0.6 lets **allow-listed experts upload their own
+    model plugins** and gives AI assistants and agents a curated **MCP server**; sweeps and
+    simulation-based calibration become single parent runs. Public code upload for everyone
+    comes after it, behind its own controls (see the [roadmap](index.md#after-v06)).
 
 ## Plugin upload for allow-listed experts
 
 Today a data scientist's own `PyMCModel` or `SklearnModel` runs on a deployment they control,
-installed into the runner's environment. v0.5 makes it a product feature of a shared
+installed into the runner's environment. v0.6 makes it a product feature of a shared
 deployment, for tenants an operator has allow-listed:
 
 ```mermaid
@@ -42,15 +43,16 @@ run and fetching a plot, for AI assistants and agents. Every string that came fr
 a plugin is returned as clearly delimited untrusted text, so a model name cannot smuggle
 instructions into an agent. Tokens and scopes work as for any other client.
 
-## Optimisation and sweeps as jobs
+## Sweeps as jobs, and what v0.5 already delivered
 
-- **`optimize` runs.** Atlas runs *next to the model* in the sandbox instead of calling the
-  endpoint once per candidate from your machine (today's
-  [RemoteModel](../guides/atlas.md) path), so long optimisations no longer pay a run start-up
-  per batch.
-- **`Sweep`, `Backtest` and `SBC`** as one parent run that fans out and aggregates: a
-  sensitivity sweep over a prior, an as-of backtest across forecast origins, simulation-based
-  calibration of a new plugin.
+- **`optimize` runs** (delivered in v0.5). Budgets are optimised *next to the model* in the
+  sandbox with mmm-framework's planning module, from the posterior's response curves
+  ([Optimise a budget](../tutorials/optimise-a-budget.md)).
+- **Backtests** (delivered in v0.5) run as workflow nodes on rolling-origin and
+  expanding-window plans ([cookbook](../guides/workflow-cookbook.md)).
+- **`Sweep` and `SBC`** as one parent run that fans out and aggregates: a sensitivity sweep
+  over a prior, simulation-based calibration of a new plugin (v0.5's governance has a
+  parametric-bootstrap version, `recovery.simulated`).
 
 ## Exit criteria
 

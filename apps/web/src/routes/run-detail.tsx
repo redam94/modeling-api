@@ -10,6 +10,7 @@ import {
   Radio,
   Stethoscope,
   WifiOff,
+  Workflow as WorkflowIcon,
 } from "lucide-react";
 
 import { useModelVersionById, useRun } from "@/api/queries";
@@ -140,6 +141,19 @@ function OutputLink({ mvId }: { mvId: string }) {
   );
 }
 
+/** M3.5: a workflow run opens in its run monitor; a step of a workflow links to its workflow run. */
+function WorkflowRunLink({ run }: { run: Run }) {
+  const target = run.kind === "workflow" ? run.id : run.parent_run_id && run.labels?.["workflow"] ? run.parent_run_id : null;
+  if (!target) return null;
+  return (
+    <Button asChild variant="outline">
+      <Link to="/workflow-runs/$runId" params={{ runId: target }}>
+        <WorkflowIcon /> {run.kind === "workflow" ? "Open the run monitor" : "Workflow run"}
+      </Link>
+    </Button>
+  );
+}
+
 export function RunDetailPage() {
   const { runId } = route.useParams();
   const run = useRun(runId);
@@ -172,7 +186,12 @@ export function RunDetailPage() {
             <StreamStatus status={stream.status} terminal={terminal} />
           </>
         }
-        actions={<RunActions run={r} />}
+        actions={
+          <>
+            <WorkflowRunLink run={r} />
+            <RunActions run={r} />
+          </>
+        }
       />
 
       {r.state === "stalled" ? (

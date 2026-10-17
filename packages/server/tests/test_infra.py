@@ -62,25 +62,53 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
 
 
 M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010_trust_lifecycle")
+M35_CHAIN = ("0011_workflows", "0012_governance")
+CHAIN = (*M3_CHAIN, *M35_CHAIN)
 
 
 def test_m3_migrations_are_linear_and_step_down_and_up(scratch_db: str) -> None:
-    """The four M3 revisions chain off 0006 in order, and each steps down and up cleanly."""
+    """The M3 and M3.5 revisions chain off 0006 in order, and each steps down and up cleanly."""
     script = ScriptDirectory.from_config(alembic_config(scratch_db))
-    assert script.get_heads() == [M3_CHAIN[-1]]
+    assert script.get_heads() == [CHAIN[-1]]
     down = "0006_executor_disable"
-    for rev in M3_CHAIN:
+    for rev in CHAIN:
         assert script.get_revision(rev).down_revision == down
         down = rev
     upgrade(scratch_db)
-    m3_tables = {"endpoints", "webhooks", "saved_plots", "plot_embeds", "tenant_deletions"}
-    assert m3_tables <= _tables(scratch_db)
-    for target in reversed(("0006_executor_disable", *M3_CHAIN[:-1])):
+    new_tables = {
+        "endpoints",
+        "webhooks",
+        "saved_plots",
+        "plot_embeds",
+        "tenant_deletions",
+        "workflows",
+        "workflow_runs",
+        "workflow_node_runs",
+        "workflow_schedules",
+    }
+    assert new_tables <= _tables(scratch_db)
+    for target in reversed(("0006_executor_disable", *CHAIN[:-1])):
         downgrade(scratch_db, target)
-    assert not m3_tables & _tables(scratch_db)
-    for rev in M3_CHAIN:
+    assert not new_tables & _tables(scratch_db)
+    for rev in CHAIN:
         upgrade(scratch_db, rev)
-    assert m3_tables <= _tables(scratch_db)
+    assert new_tables <= _tables(scratch_db)
+    command.check(alembic_config(scratch_db))
+
+
+def test_governance_migration_steps_down_and_up(scratch_db: str) -> None:
+    """0012_governance adds three RLS tables and the memberships' capabilities, and steps
+    down to (and up from) the revision before it cleanly."""
+    script = ScriptDirectory.from_config(alembic_config(scratch_db))
+    before = script.get_revision("0012_governance").down_revision
+    assert isinstance(before, str)
+    upgrade(scratch_db)
+    gov = {"governance_policies", "model_validations", "validation_approvals"}
+    assert gov <= _tables(scratch_db)
+    downgrade(scratch_db, before)
+    assert not gov & _tables(scratch_db)
+    upgrade(scratch_db)
+    assert gov <= _tables(scratch_db)
     command.check(alembic_config(scratch_db))
 
 

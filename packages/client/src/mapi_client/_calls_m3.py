@@ -15,7 +15,6 @@ from mapi_spec.api import (
     API_PREFIX,
     MAX_PREFER_WAIT_SECONDS,
     PREFER_HEADER,
-    BayesInsightImport,
     DetectRolesRequest,
     EmailVerify,
     EmbedView,
@@ -114,16 +113,6 @@ def create_guided_draft(body: GuidedAnswers) -> Call[GuidedDraft]:
     return Call(
         "POST",
         f"{V1}/guided/drafts",
-        parse_model(GuidedDraft),
-        json=dump(body),
-        retry_safe=True,
-    )
-
-
-def import_bayesinsight(body: BayesInsightImport) -> Call[GuidedDraft]:
-    return Call(
-        "POST",
-        f"{V1}/guided/import/bayesinsight",
         parse_model(GuidedDraft),
         json=dump(body),
         retry_safe=True,

@@ -22,9 +22,13 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs"
 SNIPPETS = DOCS / "snippets"
-SLOW = {"plugin_pymc.py", "pymc_fast.py", "bayesinsight_import.py"}  # tiny MCMC fits
+SLOW = {"plugin_pymc.py", "pymc_fast.py"}  # tiny MCMC fits
 
-NEEDS_STACK = {"client_tour.py"}  # run against `make dev` by test_docs_platform.py (e2e)
+NEEDS_STACK = {
+    "client_tour.py",  # run against `make dev` by test_docs_platform.py (e2e)
+    "client_v05.py",  # run against a real server by packages/server/tests/test_docs_client_v05.py
+    "client_v05_more.py",  # compiled and import-checked by test_docs_v05.py
+}
 
 SCRIPTS = sorted(
     p for p in SNIPPETS.glob("*.py") if not p.name.startswith("test_") and p.name not in NEEDS_STACK
@@ -121,4 +125,9 @@ def test_catalog_pages_cover_every_step_and_model(tmp_path: Path) -> None:
     assert "`ModelSpec`" in (tmp_path / "spec-schema.md").read_text("utf-8")
     assert "`HORIZON_EXCEEDS_FIT` | 409" in (tmp_path / "error-codes.md").read_text("utf-8")
     assert (tmp_path / "schemas" / "modelspec.json").exists()
+    from mapi_spec.governance import DEFAULT_POLICIES, GOVERNANCE_CHECKS
+
+    checks = (tmp_path / "governance-checks.md").read_text("utf-8")
+    assert all(f"## `{c}` - " in checks for c in GOVERNANCE_CHECKS)
+    assert all(p.name in checks for p in DEFAULT_POLICIES)
     assert gen.generate(tmp_path) == [], "regenerating unchanged content must not rewrite files"

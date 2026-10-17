@@ -1,0 +1,119 @@
+# Workflow cookbook: is the weekly KPI ready to forecast, which ARIMAX, does it beat naive,
+# and may we use it? (validated by conformance/tests/test_docs_v05.py and run end to end
+# against a real server by packages/server/tests/test_docs_client_v05.py)
+apiVersion: mapi/v1
+kind: Workflow
+metadata:
+  name: weekly-readiness
+  project: growth
+  description: Unit roots -> differencing -> AR/MA orders -> rolling-origin backtest -> ARIMAX vs naive -> select -> governance
+params:
+  alpha: {type: number, default: 0.05, minimum: 0.001, maximum: 0.2, description: "Significance level of every test"}
+  season: {type: integer, default: 52, minimum: 2, maximum: 400, description: "Season length (52 for weekly data)"}
+  drivers: {type: array, default: [], description: "Drivers known for the future (planned price, promotions)"}
+  window: {type: integer, default: 104, minimum: 20, description: "Training weeks per backtest fold"}
+  horizons: {type: array, default: [1, 4, 8], description: "Forecast horizons scored separately"}
+  gap: {type: integer, default: 1, minimum: 0, maximum: 52, description: "Weeks between training and test (data arrives late)"}
+  max_p: {type: integer, default: 3, minimum: 0, maximum: 8}
+  max_q: {type: integer, default: 3, minimum: 0, maximum: 8}
+inputs:
+  data: {type: dataset, description: "The weekly KPI with its drivers"}
+nodes:
+# 1. Unit-root tests. ADF and Phillips-Perron: "the series wanders" is the null hypothesis;
+#    KPSS: "the series is stable" is the null; Zivot-Andrews allows one structural break.
+- {id: adf, use: test.adf, inputs: {data: inputs.data}, with: {alpha: {$param: alpha}}}
+- {id: kpss, use: test.kpss, inputs: {data: inputs.data}, with: {alpha: {$param: alpha}}}
+- {id: pp, use: test.pp, inputs: {data: inputs.data}, with: {alpha: {$param: alpha}}}
+- {id: za, use: test.zivot_andrews, inputs: {data: inputs.data}, with: {alpha: {$param: alpha}}}
+- {id: seas, use: test.seasonal_strength, inputs: {data: inputs.data}, with: {period: {$param: season}}}
+# 2. Decide the differencing (a branch reads the test results; never eval).
+- id: wanders
+  use: branch.if
+  label: Difference?
+  with: {condition: "(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)"}
+- id: seasonal
+  use: branch.if
+  label: Seasonal difference?
+  with: {condition: nodes.seas.seasonal}
+- {id: sdiff, use: transform.seasonal_difference, inputs: {data: inputs.data}, when: seasonal.then,
+   with: {period: {$param: season}}}
+- {id: diff, use: transform.difference, inputs: {data: [sdiff.data, inputs.data]}, when: wanders.then}
+# 3. AR and MA orders: autocorrelations to read, an information-criterion grid to decide.
+- {id: acf, use: test.acf_pacf, inputs: {data: [diff.data, sdiff.data, inputs.data]},
+   with: {max_order: {$param: max_p}}}
+- id: order
+  use: search.arma_order
+  inputs: {data: inputs.data}
+  with:
+    d: {$expr: "if(nodes.wanders.value, 1, 0)"}
+    max_p: {$param: max_p}
+    max_q: {$param: max_q}
+    exog: {$param: drivers}
+    criterion: aic
+# 4. An honest backtest: a rolling origin with a fixed training window, a gap and several
+#    horizons; ARIMAX and the naive benchmarks on the very same folds.
+- id: folds
+  use: split.rolling_origin
+  inputs: {data: inputs.data}
+  with:
+    window: {$param: window}
+    horizons: {$param: horizons}
+    gap: {$param: gap}
+    n_folds: 6
+    step: 4
+- id: backtest
+  use: model.backtest
+  inputs: {data: inputs.data, split: folds.plan}
+  with:
+    model: ts.sarimax@^1
+    settings:
+      order: {$expr: "[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]"}
+      seasonal_order: {$expr: "[0, if(nodes.seasonal.value, 1, 0), 0, params.season]"}
+      exog: {$param: drivers}
+    metrics: [mae, rmse, mape, mase]
+- id: naive
+  use: evaluate.baseline
+  inputs: {data: inputs.data, split: folds.plan}
+  with: {methods: [naive, seasonal_naive], season: {$param: season}}
+# 5. ARIMAX vs naive: rank them, and test whether the difference is more than luck.
+- {id: compare, use: compare.models, inputs: {candidates: [backtest.metrics, naive.metrics]},
+   with: {metric: mae}}
+- {id: dm, use: compare.diebold_mariano, inputs: {a: backtest.metrics, b: naive.metrics},
+   with: {loss: squared, horizon: 1, alpha: {$param: alpha}}}
+# 6. Fit (scored on the last 13 weeks first, then refitted on everything, so governance has
+#    a test period) and keep it only if it beats naive.
+- id: holdout
+  use: split.holdout
+  inputs: {data: inputs.data}
+  with: {split: {kind: time_holdout, dim: time, last: 13}}
+- id: fit
+  use: model.fit
+  inputs: {data: inputs.data, split: holdout.plan}
+  with:
+    model: ts.sarimax@^1
+    settings:
+      order: {$expr: "[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]"}
+      seasonal_order: {$expr: "[0, if(nodes.seasonal.value, 1, 0), 0, params.season]"}
+      exog: {$param: drivers}
+    fit: {mode: evaluate_then_refit}
+    evaluate: {metrics: [mape, mase, coverage_90]}
+- id: select
+  use: select.best
+  inputs: {table: compare.table, models: [fit.model]}
+  with: {metric: mae, must_beat: [naive], margin: 0.0}
+# 7. Governance: the policy in force (null tests, benchmarks, residuals...), recorded as a
+#    validation of the model version when it passes; the evidence pack only if it did.
+- {id: governance, use: governance.policy, inputs: {model: select.model, data: inputs.data},
+   with: {submit: true}}
+- {id: trusted, use: branch.if, with: {condition: nodes.governance.passed}}
+- {id: pack, use: report.evidence_pack, inputs: {model: select.model, evidence: governance.evidence},
+   when: trusted.then, with: {format: json}}
+- id: report
+  use: report.summary
+  inputs:
+    tests: [adf.result, kpss.result, pp.result, za.result, seas.result, acf.result, dm.result]
+    metrics: [backtest.metrics, naive.metrics]
+    items: [order.table, compare.table]
+    model: select.model
+  with: {title: Weekly readiness and ARIMAX}
+outputs: {model: select.model, report: report.report, evidence: governance.evidence}

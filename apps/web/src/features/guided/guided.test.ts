@@ -312,7 +312,7 @@ describe("Guided usability fixes (M3 tester run)", () => {
     const max = { tune: 4000, draws: 4000, target_accept: 0.99 };
     expect(canFitMoreCarefully(max)).toBe(false);
     expect(canFitMoreCarefully(fit)).toBe(true);
-    const doc = { model: { use: "mmm.hierarchical_geo@^1", fit }, data: { dataset: "x" } };
+    const doc = { model: { use: "mmm.bayesian@^1", fit }, data: { dataset: "x" } };
     expect(withCarefulFit(doc).model.fit).toMatchObject({ draws: 1000 });
     expect(doc.model.fit.draws).toBe(500); // the original is untouched
   });

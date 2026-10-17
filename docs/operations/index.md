@@ -70,5 +70,8 @@ Whichever you choose:
   cloud project, the measured numbers, and the steps left for a real one.
 - [M3 verification](m3-verification.md): the Guided journey and the integrations through the
   live stack, the unaided-tester timings and fixes, and the protocol for the five testers.
+- [M3.5 verification](m35-verification.md): workflows, governance, the explorers,
+  mmm-framework and Help me choose through the live stack, the defects found and fixed, and
+  how to rerun the journeys.
 - [Configuration reference](configuration.md): every environment variable.
 - [Troubleshooting](troubleshooting.md): port conflicts and everything else.

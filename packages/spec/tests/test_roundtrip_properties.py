@@ -157,7 +157,9 @@ def score_request_dicts(draw: st.DrawFn) -> dict[str, Any]:
         "mode": mode,
         "inputs_stage": draw(st.sampled_from(["raw", "scale_spend"])),
         "select": draw(
-            st.dictionaries(names, st.lists(st.one_of(names, st.integers()), max_size=3))
+            st.dictionaries(
+                names, st.lists(st.one_of(names, st.integers()), max_size=3), max_size=64
+            )
         ),
         "output": {
             "kind": draw(st.sampled_from(["expected", "predictive"])),

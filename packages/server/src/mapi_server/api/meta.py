@@ -6,16 +6,32 @@ import time
 from functools import lru_cache
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, Path, Query, Request
 from fastapi.responses import JSONResponse
+from mapi_spec.about import (
+    CHOOSER_QUESTIONS,
+    About,
+    AboutKind,
+    ChooserQuestionnaire,
+    ChooserResult,
+    chooser_answers_from_query,
+    recommend,
+)
+from mapi_spec.abouts import builtin_about_kind, builtin_abouts
 from mapi_spec.api import (
+    CatalogAbout,
     CatalogResponse,
     Health,
     HealthCheck,
     Page,
     Project,
 )
-from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
+from mapi_spec.catalog import (
+    Catalog,
+    ModelCatalogEntry,
+    PlotCatalogEntry,
+    StepCatalogEntry,
+)
 from mapi_spec.jsonschema_export import export_schemas
 from mapi_spec.refs import Version
 from sqlalchemy import text
@@ -31,6 +47,7 @@ from mapi_server.api.common import (
     decode_cursor,
     encode_cursor,
 )
+from mapi_server.api.problems import responses_for
 from mapi_server.api.tenancy import project_dto, visible_projects
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
@@ -237,3 +254,131 @@ async def get_schema(
     if name not in schemas:
         raise NotFoundError("schema", name)
     return JSONResponse(schemas[name], media_type="application/schema+json")
+
+
+# ============================================================== About cards and the chooser
+
+_BUILTIN_KINDS: frozenset[AboutKind] = frozenset(
+    {
+        AboutKind.SPLIT,
+        AboutKind.TEMPLATE,
+        AboutKind.WORKFLOW_TEMPLATE,
+        AboutKind.NODE_KIND,
+        AboutKind.NODE,
+        AboutKind.CHECK,
+    }
+)
+
+
+_STARTING_POINTS: frozenset[AboutKind] = frozenset(
+    {AboutKind.MODEL, AboutKind.TEMPLATE, AboutKind.WORKFLOW_TEMPLATE}
+)
+"""What "Help me choose" ranks without a ``kind``: things a user starts from."""
+_BUILDING_BLOCKS: frozenset[AboutKind] = frozenset(
+    {AboutKind.STEP, AboutKind.NODE, AboutKind.CHECK}
+)
+"""What it ranks instead when no starting point is made for the user's goal."""
+
+
+def catalog_abouts(catalog: Catalog) -> list[CatalogAbout]:
+    """Every selectable item's About, ordered by ``(kind, id)``: the installed steps and
+    models (latest version of each id; yanked ones left out) from the catalog, and the
+    platform's splits, guided templates, workflow templates, workflow node kinds and nodes
+    and governance checks. Built-in cards of models that are not installed are left out."""
+    found: dict[tuple[AboutKind, str], About] = {}
+    for step in sorted(catalog.steps, key=lambda e: (e.id, Version.parse(e.version))):
+        if not step.yanked and step.about is not None:
+            found[(AboutKind.STEP, step.id)] = step.about
+    for model in sorted(catalog.models, key=lambda e: (e.id, Version.parse(e.version))):
+        if not model.yanked and model.manifest.about is not None:
+            found[(AboutKind.MODEL, model.id)] = model.manifest.about
+    for item_id, about in builtin_abouts().items():
+        kind = builtin_about_kind(item_id)
+        if kind in _BUILTIN_KINDS and kind is not None:
+            found.setdefault((kind, item_id), about)
+    # related items must be items a user can open: drop models that are not installed
+    served = {i for _, i in found}
+
+    def _related(a: About) -> About:
+        keep = [r for r in a.related if r in served]
+        return a if keep == a.related else a.model_copy(update={"related": keep})
+
+    return [
+        CatalogAbout(kind=k, id=i, about=_related(a))
+        for (k, i), a in sorted(found.items(), key=lambda kv: (kv[0][0].value, kv[0][1]))
+    ]
+
+
+@router.get(
+    "/v1/catalog/abouts",
+    response_model=Page[CatalogAbout],
+    tags=["catalog"],
+    operation_id="list_catalog_abouts",
+    summary="About cards of catalog items (filter: kind)",
+    responses=responses_for("list_catalog_abouts"),
+)
+async def list_catalog_abouts(
+    ctx: Ctx,
+    session: SystemSession,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
+    kind: AboutKind | None = None,
+) -> Page[CatalogAbout]:
+    """The plain-language About card of every model, preprocessing step, split, template,
+    workflow template, workflow node and governance check a user can pick."""
+    snap = await ctx.catalogs.require(session)
+    items = [a for a in catalog_abouts(snap.catalog) if kind is None or a.kind is kind]
+    chunk, nxt = _page_list(items, limit, cursor)
+    return Page[CatalogAbout](items=chunk, next_cursor=nxt)
+
+
+@router.get(
+    "/v1/catalog/chooser",
+    response_model=ChooserQuestionnaire,
+    tags=["catalog"],
+    operation_id="get_chooser",
+    summary="The Help-me-choose questions",
+    responses=responses_for("get_chooser"),
+)
+async def get_chooser() -> ChooserQuestionnaire:
+    """The questions of "Help me choose", in the order to ask them; answer them as the
+    query of ``GET /v1/catalog/recommendations``."""
+    return ChooserQuestionnaire(questions=list(CHOOSER_QUESTIONS))
+
+
+@router.get(
+    "/v1/catalog/recommendations",
+    response_model=ChooserResult,
+    tags=["catalog"],
+    operation_id="recommend_catalog_items",
+    summary="Ranked recommendations for chooser answers (query: one parameter per question)",
+    responses=responses_for("recommend_catalog_items"),
+)
+async def recommend_catalog_items(
+    request: Request,
+    ctx: Ctx,
+    session: SystemSession,
+    kind: AboutKind | None = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> ChooserResult:
+    """Catalog items ranked for the answers (``?goal=forecast&data_shape=panel``; repeat
+    a question or separate values with commas), each with plain reasons and cautions.
+    Without ``kind`` the candidates are models, guided templates and workflow templates;
+    ``kind`` ranks one kind (steps, nodes, checks, ...). An unknown question or answer is
+    ``CHOOSER_ANSWER_INVALID``."""
+    query = {k: request.query_params.getlist(k) for k in request.query_params}
+    answers = chooser_answers_from_query(query)
+    snap = await ctx.catalogs.require(session)
+    abouts = catalog_abouts(snap.catalog)
+    candidates = [
+        (a.kind, a.id, a.about)
+        for a in abouts
+        if (a.kind in _STARTING_POINTS if kind is None else a.kind is kind)
+    ]
+    # no starting point made for the goal: rank the building blocks that are
+    fallback = (
+        [(a.kind, a.id, a.about) for a in abouts if a.kind in _BUILDING_BLOCKS]
+        if kind is None
+        else None
+    )
+    return recommend(answers, candidates, limit=limit, include_about=True, fallback=fallback)

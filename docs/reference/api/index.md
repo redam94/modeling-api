@@ -12,6 +12,7 @@ data scientist or integrator uses; private helpers (names starting with `_`) are
 | [`mapi-sklearn`](sklearn.md) | `mapi_sklearn` | `SklearnModel` and its variants, the estimator registry |
 | [`mapi-steps`](steps.md) | `mapi_steps` | The built-in step registry and catalog export |
 | [`mapi-plots`](plots.md) | `mapi_plots` | The sanitizer, templates, converters and recipes |
+| [`mapi-client`](client.md) | `mapi_client` | The Python client: every API call, sync and async, workflows, governance, explorers |
 
 !!! tip "Stable surface"
     Import from the package root (`from mapi_sdk import fit_spec`) where a name is re-exported

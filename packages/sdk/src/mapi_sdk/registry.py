@@ -47,6 +47,7 @@ BUILTIN_DISTRIBUTIONS: frozenset[str] = frozenset(
         "mapi-plugin-mmm",
         "mapi-plugin-ts",
         "mapi-plugin-tabular",
+        "mapi-plugin-statsmodels",
         "mapi-conformance",
     }
 )

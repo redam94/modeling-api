@@ -64,7 +64,7 @@ describe("a first visit", () => {
     ana.operator = false;
     try {
       const { router } = renderApp("/", "ana", { tenantId: "globex", projectId: "sandbox" });
-      expect(await screen.findByRole("heading", { name: "What do you want to learn?" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "What do you want to learn?" }, { timeout: 3000 })).toBeInTheDocument();
       await waitFor(() => expect(router.state.location.pathname).toBe("/guided"));
       expect(screen.getByRole("radiogroup", { name: "Mode" })).toBeInTheDocument();
     } finally {

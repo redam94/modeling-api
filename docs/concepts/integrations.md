@@ -57,7 +57,7 @@ nothing else.
 
 `GET /v1/endpoints/{alias}/snippets` returns ready-to-run code that scores the endpoint with
 its example payload, in Python (`mapi-client`), TypeScript (`fetch`), curl, R (`httr2`),
-Google Sheets (Apps Script), Atlas (`RemoteModel`) and a notebook cell
+Google Sheets (Apps Script) and a notebook cell
 (`Client().endpoint(alias).score(...)`, which returns an `xarray.Dataset`). The generators are
 pure functions (`mapi_spec.snippets.render_snippets`), so the server, the CLI, the web app and
 these docs produce the same code: the Integrations hub shows and copies the server's snippets

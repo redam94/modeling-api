@@ -4,6 +4,7 @@ import { Database, FileCode2, Library, Plus, Sparkles } from "lucide-react";
 import { useModels, useReady, useRuns } from "@/api/queries";
 import type { Run } from "@/api/types";
 import { ErrorNotice, LoadingRows, Mono, StateBadge } from "@/components/common";
+import { ChooserTeaser } from "@/features/about/chooser-teaser";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, Progress } from "@/components/ui/primitives";
 import { phaseLabel } from "@/features/runs/progress-panel";
@@ -74,6 +75,8 @@ export function HomePage() {
           <div className="grid divide-y rounded-lg border bg-card p-1">{active.map((r) => <ActiveRun key={r.id} run={r} />)}</div>
         ) : null}
       </section>
+
+      <ChooserTeaser />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>

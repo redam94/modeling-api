@@ -1,0 +1,177 @@
+# The canonical workflow: time-series readiness -> ARIMAX (template ts_readiness_arimax).
+# Kept identical to mapi_spec.workflow_templates.TS_READINESS_ARIMAX by a test.
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: ts-readiness-arimax, project: templates}
+params:
+  alpha: {type: number, default: 0.05, minimum: 0.001, maximum: 0.2, description: Significance level of the tests}
+  season: {type: integer, default: 52, minimum: 2, maximum: 400, description: Season length in periods (52 for weekly data)}
+  horizons:
+    type: array
+    default: [1, 4, 8]
+    description: Forecast horizons scored in the backtest
+  gap: {type: integer, default: 0, minimum: 0, maximum: 52, description: Periods between training and test (late data)}
+  n_folds: {type: integer, default: 6, minimum: 2, maximum: 50}
+  max_p: {type: integer, default: 3, minimum: 0, maximum: 8}
+  max_q: {type: integer, default: 3, minimum: 0, maximum: 8}
+  drivers:
+    type: array
+    default: []
+    description: Driver columns known for the future
+inputs:
+  data: {type: dataset, description: The weekly (or daily) series to model}
+nodes:
+# 1. the seasonal difference first (as nsdiffs before ndiffs) ...
+- id: seas
+  use: test.seasonal_strength
+  inputs: {data: inputs.data}
+  with:
+    period: {$param: season}
+- id: seasonal
+  use: branch.if
+  label: Seasonal difference?
+  with:
+    condition: nodes.seas.seasonal
+    explain_then: The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).
+    explain_else: The series has no strong seasonal pattern, so it was not seasonally differenced.
+- id: sdiff
+  use: transform.seasonal_difference
+  inputs: {data: inputs.data}
+  when: seasonal.then
+  with:
+    period: {$param: season}
+# 2. ... then the unit-root tests on the seasonally differenced series
+- id: adf
+  use: test.adf
+  inputs:
+    data: [sdiff.data, inputs.data]
+  with:
+    alpha: {$param: alpha}
+  label: Does it wander? (ADF)
+- id: kpss
+  use: test.kpss
+  inputs:
+    data: [sdiff.data, inputs.data]
+  with:
+    alpha: {$param: alpha}
+  label: Is it stable? (KPSS)
+- id: pp
+  use: test.pp
+  inputs:
+    data: [sdiff.data, inputs.data]
+  with:
+    alpha: {$param: alpha}
+- id: za
+  use: test.zivot_andrews
+  inputs:
+    data: [sdiff.data, inputs.data]
+  with:
+    alpha: {$param: alpha}
+# over-differencing guard: a first difference whose lag-1 autocorrelation is below -0.5
+# removed a unit root that was not there
+- id: cand
+  use: transform.difference
+  inputs:
+    data: [sdiff.data, inputs.data]
+  label: Trial difference
+- id: overdiff
+  use: test.acf_pacf
+  inputs: {data: cand.data}
+  with: {nlags: 4, max_order: 1}
+  label: Too much differencing?
+- id: wanders
+  use: branch.if
+  label: Difference?
+  with:
+    condition: (not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject) and nodes.overdiff.acf[1] > -0.5
+    # plain words for the run report and the run monitor
+    explain_then: The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).
+    explain_else: The tests found that the series returns to a steady level (or that differencing it would go too far), so it was used as it is.
+- id: diff
+  use: transform.difference
+  inputs:
+    data: [sdiff.data, inputs.data]
+  when: wanders.then
+- id: acf
+  use: test.acf_pacf
+  inputs:
+    data: [diff.data, sdiff.data, inputs.data]
+  with:
+    max_order: {$param: max_p}
+# the orders of the model that is fitted (same d and D), searched before the backtest's
+# first test window
+- id: order
+  use: search.arma_order
+  inputs: {data: inputs.data, split: folds.plan}
+  with:
+    d: {$expr: 'if(nodes.wanders.value, 1, 0)'}
+    D: {$expr: 'if(nodes.seasonal.value, 1, 0)'}
+    period: {$param: season}
+    max_p: {$param: max_p}
+    max_q: {$param: max_q}
+    exog: {$param: drivers}
+    criterion: aic
+  label: AR and MA orders
+- id: folds
+  use: split.expanding_window
+  inputs: {data: inputs.data}
+  with:
+    horizons: {$param: horizons}
+    gap: {$param: gap}
+    n_folds: {$param: n_folds}
+    step: 4
+- id: backtest
+  use: model.backtest
+  label: ARIMAX
+  inputs: {data: inputs.data, split: folds.plan}
+  with:
+    model: ts.sarimax@^1
+    settings:
+      order: {$expr: '[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]'}
+      seasonal_order: {$expr: '[0, if(nodes.seasonal.value, 1, 0), 0, params.season]'}
+      exog: {$param: drivers}
+    metrics: [mae, rmse, mape, mase]
+- id: naive
+  use: evaluate.baseline
+  label: Naive forecast
+  inputs: {data: inputs.data, split: folds.plan}
+  with:
+    methods: [naive, seasonal_naive]
+    season: {$param: season}
+- id: compare
+  use: compare.models
+  inputs:
+    candidates: [backtest.metrics, naive.metrics]
+  with: {metric: mae}
+- id: fit
+  use: model.fit
+  inputs: {data: inputs.data}
+  with:
+    model: ts.sarimax@^1
+    settings:
+      order: {$expr: '[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]'}
+      seasonal_order: {$expr: '[0, if(nodes.seasonal.value, 1, 0), 0, params.season]'}
+      exog: {$param: drivers}
+    evaluate:
+      metrics: [mape, coverage_90]
+- id: select
+  use: select.best
+  inputs:
+    table: compare.table
+    models: [fit.model]
+  with:
+    metric: mae
+    must_beat: [naive]
+    margin: 0.0
+- id: governance
+  use: governance.policy
+  inputs: {model: select.model, data: inputs.data}
+- id: report
+  use: report.summary
+  inputs:
+    tests: [adf.result, kpss.result, pp.result, za.result, seas.result, acf.result]
+    metrics: [backtest.metrics, naive.metrics]
+    items: [order.table, compare.table]
+    model: select.model
+  with: {title: Time-series readiness and ARIMAX}
+outputs: {model: select.model, report: report.report, evidence: governance.evidence}

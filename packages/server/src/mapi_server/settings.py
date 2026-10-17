@@ -80,6 +80,8 @@ DEFAULT_ESTIMATE_WALL_S: dict[str, float] = {
     RunKind.RENDER.value: 30.0,
     RunKind.OPTIMIZE.value: 300.0,
     RunKind.TRANSLATE_PRIORS.value: 60.0,
+    RunKind.EXPLORE.value: 60.0,
+    RunKind.GOVERNANCE.value: 900.0,
 }
 """Wall-time estimate per run kind (seconds, capped at the run's timeout): what a run is
 charged against vCPU-second quotas until its attempts are metered into the cost ledger."""
@@ -603,6 +605,29 @@ class Settings(BaseSettings):
     webhook_max_per_project: int = Field(25, ge=1, le=1000)
     webhook_retention_days: int = Field(
         30, ge=1, le=3650, description="Days webhook events and their delivery logs are kept"
+    )
+
+    # ------------------------------------------------------------------- workflows (M3.5)
+    workflow_tick_s: float = Field(
+        1.0, gt=0, description="How often the orchestrator advances active workflow runs"
+    )
+    workflow_max_active_runs: int = Field(
+        20,
+        ge=1,
+        le=10_000,
+        description="Workflow runs a project may have going at once, sub-workflow runs included",
+    )
+    workflow_max_schedules: int = Field(
+        20, ge=0, le=1000, description="Active cron schedules per project"
+    )
+    workflow_max_triggers: int = Field(
+        20, ge=0, le=1000, description="Active dataset triggers per project"
+    )
+    workflow_node_timeout_s: int = Field(
+        1800, ge=60, le=24 * 3600, description="Timeout of a node without its own timeout"
+    )
+    workflow_max_json_output_bytes: int = Field(
+        1024 * 1024, ge=1024, le=16 * 1024 * 1024, description="Largest JSON output of a node"
     )
 
     # ------------------------------------------------------------- trust lifecycle (M3)

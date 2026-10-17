@@ -181,9 +181,7 @@ def _catalog_with_calibration(catalog: Catalog, kinds: list[str]) -> Catalog:
 
     def walk(node: Any) -> None:
         if isinstance(node, dict):
-            if node.get("id") == "mmm.hierarchical_geo" and isinstance(
-                node.get("capabilities"), dict
-            ):
+            if node.get("id") == "mmm.bayesian" and isinstance(node.get("capabilities"), dict):
                 node["capabilities"]["calibration"] = kinds
             for v in node.values():
                 walk(v)
@@ -279,10 +277,10 @@ def test_apply_prior_translation_merges_priors_and_records_lineage() -> None:
     out = apply_prior_translation(
         doc, res, business_priors=BusinessPriors.model_validate(EX_PRIORS), run_id=run
     )
-    assert doc["model"]["settings"]["priors"]["beta_channel"]["distribution"] == "HalfNormal"
+    assert "roi" not in doc["model"]["settings"]["priors"]
     priors = out["model"]["settings"]["priors"]
-    assert priors["beta_channel"]["distribution"] == "LogNormal"  # translated keys win
-    assert priors["lam"]["distribution"] == "Gamma"  # others are kept
+    assert priors["roi"]["tv"] == {"mu": 0.9, "sigma": 0.38}  # translated keys are merged
+    assert priors["beta_channel"]["distribution"] == "HalfNormal"  # others are kept
     assert out["calibration"]["prior_translation_run"] == run
     spec = ModelSpec.model_validate(out)
     assert spec.calibration is not None and spec.calibration.business_priors is not None

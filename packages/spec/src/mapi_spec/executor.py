@@ -92,6 +92,16 @@ class RunKind(StrEnum):
     TRANSLATE_PRIORS = "translate_priors"
     """M3: business priors → model-space priors plus a prior-predictive preview in business
     units (sandboxed; :class:`mapi_spec.calibration.PriorTranslationJob`)."""
+    WORKFLOW = "workflow"
+    """M3.5: a workflow run (a parent: the orchestrator walks the DAG and starts
+    ``workflow_node`` runs and child fits; :mod:`mapi_spec.workflow`)."""
+    WORKFLOW_NODE = "workflow_node"
+    """M3.5: one sandbox node of a workflow (:class:`mapi_spec.workflow.WorkflowNodeJob`)."""
+    EXPLORE = "explore"
+    """M3.5: Data or Model Explorer views (:class:`mapi_spec.explore.ExploreJob`)."""
+    GOVERNANCE = "governance"
+    """M3.5: the governance checks of one model version in the sandbox
+    (:class:`mapi_spec.governance.GovernanceJob`; output ``governance.json``)."""
 
     @property
     def is_parent(self) -> bool:
@@ -99,7 +109,11 @@ class RunKind(StrEnum):
         return self in _PARENT_KINDS
 
 
-_PARENT_KINDS = frozenset({RunKind.SWEEP, RunKind.BACKTEST, RunKind.SBC, RunKind.CAMPAIGN})
+_PARENT_KINDS = frozenset(
+    {RunKind.SWEEP, RunKind.BACKTEST, RunKind.SBC, RunKind.CAMPAIGN, RunKind.WORKFLOW}
+)
+RUN_KIND_MAX_LEN: Final = 16
+"""``runs.kind`` is ``VARCHAR(16)``: every run kind value fits (a test checks it)."""
 
 
 class RunSubmit(StrictModel):

@@ -264,12 +264,12 @@ export function detectMeridian(profiles: readonly ColumnProfile[]): PresetMatch 
   return { preset: "meridian", label: "Google Meridian table", answers };
 }
 
-/** An MFF long table: answers follow BayesInsight's names (`Period`, `Geography`). */
+/** An MFF long table: answers follow MFF's standard names (`Period`, `Geography`). */
 export function detectMff(table: LocalTable): PresetMatch | null {
   if (!table.mff) return null;
   const answers: Record<string, string | string[]> = { date: "Period" };
   if (table.mff.keys.includes("Geography")) answers.geo = "Geography";
-  return { preset: "mff", label: "MFF long table (BayesInsight)", answers };
+  return { preset: "mff", label: "MFF long table", answers };
 }
 
 /** Plain-language checks of a local table before anything is uploaded. */

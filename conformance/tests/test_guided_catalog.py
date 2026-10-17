@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 from mapi_sdk.registry import Registry, default_registry
+from mapi_spec.abouts import PLANNED_MODEL_IDS
 from mapi_spec.catalog import Catalog
 from mapi_spec.guided import GUIDED_TEMPLATES
 
@@ -32,7 +33,6 @@ def registry() -> Registry:
 def _guided_catalog(registry: Registry) -> Catalog:
     full = registry.catalog()
     plugins = {t.plugin.split("@")[0] for t in GUIDED_TEMPLATES.values()}
-    plugins.add("mmm.bayesinsight")  # the dedicated BayesInsight import target
     models = [e for e in full.models if e.manifest.id in plugins]
     return full.model_copy(update={"models": models})
 
@@ -43,6 +43,8 @@ def test_every_template_plugin_is_a_built_in(registry: Registry) -> None:
         use = template.plugin
         assert template.plugin_available, template.id
         entry = catalog.resolve_model(use)
+        if entry is None and use.split("@")[0] in PLANNED_MODEL_IDS:
+            continue  # a v0.5 plugin (mmm-framework, statsmodels) not installed here
         assert entry is not None, f"{template.id}: no built-in plugin satisfies {use}"
 
 

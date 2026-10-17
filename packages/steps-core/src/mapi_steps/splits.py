@@ -23,6 +23,8 @@ from typing import Any, ClassVar
 
 import xarray as xr
 from mapi_sdk.split import SplitResult, split_dataset
+from mapi_spec.about import About
+from mapi_spec.abouts import SPLIT_ABOUTS
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import (
     AsOfSplit,
@@ -65,6 +67,7 @@ class SplitCatalogEntry(BaseModel):
     )
     summary: str
     summary_plain: str
+    about: About | None = Field(None, description="M3.5: the plain-language About card")
 
     @property
     def ref(self) -> str:
@@ -120,6 +123,7 @@ class SplitStrategy:
             settings_schema=schema,
             ordered=self.ordered,
             masks_cells=self.masks_cells,
+            about=SPLIT_ABOUTS.get(self.id),
             summary=self.summary,
             summary_plain=self.summary_plain,
         )

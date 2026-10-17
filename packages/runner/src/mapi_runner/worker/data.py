@@ -174,17 +174,22 @@ def supplied_side_tables(spec: ModelSpec, available: Iterable[str]) -> dict[str,
     }
 
 
-def load_bundle(ctx: WorkerContext) -> Bundle:
-    """Rebuild a fitted :class:`Bundle` from the ``bundle`` (+ ``bundle.manifest``) inputs.
+def load_bundle(
+    ctx: WorkerContext,
+    name: str = INPUT_BUNDLE,
+    manifest_name: str = INPUT_BUNDLE_MANIFEST,
+) -> Bundle:
+    """Rebuild a fitted :class:`Bundle` from the ``bundle`` (+ ``bundle.manifest``) inputs
+    (M3.5: or any other pair, e.g. ``evaluation`` or ``compare.<k>``).
 
     With a manifest, the archive must match its recorded size and hashes.
     """
-    path = ctx.download(INPUT_BUNDLE)
+    path = ctx.download(name)
     assert path is not None
     raw = path.read_bytes()
     manifest: BundleManifest
-    if ctx.has_input(INPUT_BUNDLE_MANIFEST):
-        mpath = ctx.download(INPUT_BUNDLE_MANIFEST)
+    if ctx.has_input(manifest_name):
+        mpath = ctx.download(manifest_name)
         assert mpath is not None
         try:
             manifest = BundleManifest.model_validate_json(mpath.read_bytes())

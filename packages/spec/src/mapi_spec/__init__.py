@@ -1,7 +1,10 @@
 """Pure-Pydantic contracts for modeling-api (specs, schemas, manifests, plot envelopes, the
 multi-tenant control-plane contracts: tenancy, tokens, quotas, cost, audit, admin, and the M3
 guided-mode and integration contracts: templates, calibration, what-if, scorecard and
-promotion gate, endpoints, snippets, webhooks, plot sharing and the trust lifecycle).
+promotion gate, endpoints, snippets, webhooks, plot sharing and the trust lifecycle; and the
+M3.5 contracts: About cards and the chooser, workflows with the safe condition language,
+split plans, statistical test results, governance policies and validation, the Data and
+Model Explorer views and budget optimisation).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -9,6 +12,19 @@ must stay JSON-only. Public names are re-exported here; see the submodules for d
 
 from importlib import metadata as _metadata
 
+from mapi_spec.about import (
+    About,
+    AboutKind,
+    ChooserAnswer,
+    ChooserResult,
+    DatasetAbout,
+    Difficulty,
+    TypicalRuntime,
+    about_issues,
+    describe_dataset,
+    recommend,
+)
+from mapi_spec.abouts import builtin_about, builtin_abouts
 from mapi_spec.admin import ExecutorHealth, KillSwitches, kill_switch_decision
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome
 from mapi_spec.calibration import (
@@ -37,7 +53,13 @@ from mapi_spec.capabilities import (
     parse_summary,
     summary_allowed,
 )
-from mapi_spec.catalog import Catalog, ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
+from mapi_spec.catalog import (
+    Catalog,
+    ModelCatalogEntry,
+    PlotCatalogEntry,
+    StepCatalogEntry,
+    catalog_about_issues,
+)
 from mapi_spec.conformance_executor import EXECUTOR_CONFORMANCE, ConformanceCase
 from mapi_spec.coords import CoordSummary, DataSummary, parse_freq
 from mapi_spec.cost import (
@@ -77,6 +99,17 @@ from mapi_spec.errors import (
     http_status,
     json_pointer,
 )
+from mapi_spec.expr import Condition, Expression, evaluate_condition, parse_expression
+from mapi_spec.governance import (
+    GOVERNANCE_CHECKS,
+    CheckResult,
+    GovernancePolicy,
+    ModelValidation,
+    PolicyCheck,
+    ValidationEvent,
+    ValidationStatus,
+    transition,
+)
 from mapi_spec.guided import (
     GUIDED_TEMPLATES,
     ColumnProfile,
@@ -84,11 +117,9 @@ from mapi_spec.guided import (
     GuidedDraft,
     GuidedTemplate,
     build_draft,
-    draft_from_bayesinsight,
     suggest_roles,
 )
 from mapi_spec.ingest import (
-    BayesInsightModelDef,
     IngestMapping,
     IngestPreset,
     MeridianColumns,
@@ -108,6 +139,7 @@ from mapi_spec.loader import (
     spec_hash,
     upgrade,
 )
+from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import DataRef, InlineArrow, PlotBindings, PlotProvenance, PlotSpec
 from mapi_spec.quotas import (
     PriorityClass,
@@ -126,6 +158,7 @@ from mapi_spec.refs import (
     UseRef,
     Version,
     VersionRange,
+    WorkflowRef,
     resolve_version,
 )
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
@@ -170,11 +203,14 @@ from mapi_spec.spec import (
     StepCall,
     Sweep,
 )
+from mapi_spec.splitplan import Fold, SplitPlan, plan_folds, plan_group_folds
+from mapi_spec.stattests import StatTestResult
 from mapi_spec.sweep import expand_sweep
 from mapi_spec.tenancy import (
     PERMISSIONS,
     Action,
     AuthContext,
+    Capability,
     Membership,
     Principal,
     ProjectRole,
@@ -197,7 +233,7 @@ from mapi_spec.validate import (
     validate_score_request,
     validate_spec,
 )
-from mapi_spec.views import ResponseGridView
+from mapi_spec.views import ExplorerIndex, ResponseGridView
 from mapi_spec.webhooks import (
     WebhookEnvelope,
     WebhookEventType,
@@ -206,12 +242,22 @@ from mapi_spec.webhooks import (
     verify_signature,
 )
 from mapi_spec.whatif import WhatIfScenario, evaluate_scenario, scenario_score_request
+from mapi_spec.workflow import (
+    NodeRun,
+    WorkflowRun,
+    WorkflowSpec,
+    load_workflow,
+    topological_order,
+    validate_workflow,
+)
+from mapi_spec.workflow_nodes import NODE_IMPLEMENTATIONS, NodeImplementation, NodeKind, PortType
+from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES, WorkflowTemplate
 from mapi_spec.xrjson import XrJsonDataset
 
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.4.0"
+    __version__ = "0.5.0"
 
 __all__ = [
     "API_VERSION",
@@ -219,12 +265,17 @@ __all__ = [
     "DEFAULT_PRICE_TABLE",
     "ERROR_INFO",
     "EXECUTOR_CONFORMANCE",
+    "GOVERNANCE_CHECKS",
     "GUIDED_TEMPLATES",
+    "NODE_IMPLEMENTATIONS",
     "PERMISSIONS",
     "REPRESENTATION_RULES",
     "RESOURCE_CLASSES",
     "SBC",
     "SCORECARD_CHECKS",
+    "WORKFLOW_TEMPLATES",
+    "About",
+    "AboutKind",
     "Action",
     "Aggregation",
     "AggregationVerdict",
@@ -235,15 +286,19 @@ __all__ = [
     "AuditOutcome",
     "AuthContext",
     "Backtest",
-    "BayesInsightModelDef",
     "Binding",
     "BusinessPriors",
     "Calibration",
     "Campaign",
     "Capabilities",
+    "Capability",
     "Catalog",
     "ChannelBelief",
+    "CheckResult",
+    "ChooserAnswer",
+    "ChooserResult",
     "ColumnProfile",
+    "Condition",
     "ConformanceCase",
     "ContextNeed",
     "CoordSummary",
@@ -253,9 +308,11 @@ __all__ = [
     "DataSchema",
     "DataSchemaTemplate",
     "DataSummary",
+    "DatasetAbout",
     "DatasetRef",
     "DerivedDecl",
     "Diagnostic",
+    "Difficulty",
     "DimPolicy",
     "DimSpec",
     "Endpoint",
@@ -264,9 +321,13 @@ __all__ = [
     "ErrorCode",
     "EvaluationPolicy",
     "ExecutorHealth",
+    "ExplorerIndex",
+    "Expression",
     "FitConfig",
+    "Fold",
     "FutureCovariates",
     "GateOutcome",
+    "GovernancePolicy",
     "GuidedAnswers",
     "GuidedDraft",
     "GuidedTemplate",
@@ -287,7 +348,13 @@ __all__ = [
     "ModelCatalogEntry",
     "ModelManifest",
     "ModelSpec",
+    "ModelValidation",
     "ModelVersionRef",
+    "NodeImplementation",
+    "NodeKind",
+    "NodeRun",
+    "OptimizeRequest",
+    "OptimizeResult",
     "OutputDecl",
     "OutputSelector",
     "PlotBindings",
@@ -295,6 +362,8 @@ __all__ = [
     "PlotEmbed",
     "PlotProvenance",
     "PlotSpec",
+    "PolicyCheck",
+    "PortType",
     "PriceTable",
     "Principal",
     "PriorTranslationResult",
@@ -331,7 +400,9 @@ __all__ = [
     "SnippetLanguage",
     "SpecRef",
     "SpecValidation",
+    "SplitPlan",
     "Stage",
+    "StatTestResult",
     "StepCall",
     "StepCatalogEntry",
     "StepKind",
@@ -340,8 +411,11 @@ __all__ = [
     "TenantDeletion",
     "TenantStatus",
     "TrustTier",
+    "TypicalRuntime",
     "UseRef",
+    "ValidationEvent",
     "ValidationFailed",
+    "ValidationStatus",
     "VarDerive",
     "VarPatch",
     "VarSpec",
@@ -352,22 +426,31 @@ __all__ = [
     "WebhookEventType",
     "WhatIfScenario",
     "WideVarMapping",
+    "WorkflowRef",
+    "WorkflowRun",
+    "WorkflowSpec",
+    "WorkflowTemplate",
     "XrJsonDataset",
     "__version__",
+    "about_issues",
     "apply_effect",
     "apply_prior_translation",
     "authorize_promotion",
     "build_draft",
+    "builtin_about",
+    "builtin_abouts",
     "can",
     "can_aggregate",
     "canonical_json",
+    "catalog_about_issues",
     "check_webhook_url",
     "default_summary",
-    "draft_from_bayesinsight",
+    "describe_dataset",
     "dump_yaml",
     "embeddable",
     "estimate_cost",
     "evaluate_check",
+    "evaluate_condition",
     "evaluate_quota",
     "evaluate_scenario",
     "example_score_call",
@@ -380,13 +463,18 @@ __all__ = [
     "load_document",
     "load_model_spec",
     "load_score_request",
+    "load_workflow",
     "parse_document",
+    "parse_expression",
     "parse_freq",
     "parse_summary",
     "parse_token",
+    "plan_folds",
+    "plan_group_folds",
     "plan_leases",
     "promotion_gate",
     "propagate",
+    "recommend",
     "register_upgrader",
     "render_snippets",
     "resolve_effect",
@@ -398,9 +486,12 @@ __all__ = [
     "spec_hash",
     "suggest_roles",
     "summary_allowed",
+    "topological_order",
+    "transition",
     "upgrade",
     "uploaded_code_allowed",
     "validate_score_request",
     "validate_spec",
+    "validate_workflow",
     "verify_signature",
 ]

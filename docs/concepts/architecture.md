@@ -220,7 +220,7 @@ and states only, and an embed link shows one chart.
 ```mermaid
 flowchart LR
     subgraph out["Outside"]
-        app["Sheets · BI · Atlas ·<br/>your app"]
+        app["Sheets · BI ·<br/>your app"]
         rcv["Your webhook<br/>receiver"]
         viewer["A viewer's browser<br/>(Notion, Looker Studio, …)"]
     end

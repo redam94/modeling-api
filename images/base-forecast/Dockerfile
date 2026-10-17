@@ -1,10 +1,11 @@
 # syntax=docker/dockerfile:1.26@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 #
 # mapi/base-forecast - the time-series runner image (plan §7 tier T0): the ts.* plugins
-# (ts.hsgp_trend, ts.gaussian_hmm) on PyMC, with the SDK, built-in steps and plot recipes.
-# No marketing-mix stack (pymc-marketing) and no tabular models. Build from the repo root:
+# (ts.hsgp_trend, ts.gaussian_hmm on PyMC; the statsmodels models of
+# mapi-plugin-statsmodels), with the SDK, built-in steps and plot recipes.
+# No marketing-mix stack (mmm-framework) and no tabular models. Build from the repo root:
 #
-#   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.4.0 .
+#   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.5.0 .
 #
 # See docs/operations/docker.md.
 
@@ -15,12 +16,12 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09
 # ------------------------------------------------------------------- image-specific settings
 ARG MAPI_IMAGE_NAME=base-forecast
 ARG MAPI_DESCRIPTION="modeling-api runner: time-series and state-space models (ts.*), steps and plot recipes"
-ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-pymc mapi-plugin-ts"
+ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-pymc mapi-plugin-ts mapi-plugin-statsmodels"
 ARG MAPI_NO_INSTALL=""
 # PyTensor compiles C at run time, so the Bayesian images need a C++ compiler.
 ARG MAPI_APT_PACKAGES="tini g++"
-ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-pymc mapi-plugin-ts pymc pytensor nutpie vl-convert-python"
-ARG MAPI_ASSERT_ABSENT="pymc-marketing mapi-plugin-mmm mapi-plugin-tabular mapi-sklearn mapi-server mapi-gcs-shim"
+ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows mapi-pymc mapi-plugin-ts mapi-plugin-statsmodels statsmodels scipy pymc pytensor nutpie vl-convert-python"
+ARG MAPI_ASSERT_ABSENT="mmm-framework mapi-plugin-mmm mapi-plugin-tabular mapi-sklearn mapi-server mapi-gcs-shim"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)
 ARG VERSION=0.0.0-dev
@@ -108,6 +109,8 @@ LABEL org.opencontainers.image.title="mapi/${MAPI_IMAGE_NAME}" \
       io.mapi.image.user="10001" \
       io.mapi.catalog="/opt/mapi/catalog.json"
 COPY --from=builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 # Fail the build if the environment is not what this image promises, then export the static
 # catalog (+ digest) and bake the PyTensor/Numba caches read-only into /opt/mapi/cache.
 RUN python -I /opt/mapi/bin/assert_dists.py \

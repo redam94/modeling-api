@@ -1,6 +1,6 @@
 [project]
 name = "mapi-conformance"
-version = "0.4.0"
+version = "0.5.0"
 description = "Conformance corpus (pymc-challenges-style fixtures)"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -15,6 +15,7 @@ dependencies = [
   "mapi-plugin-mmm",
   "mapi-plugin-ts",
   "mapi-plugin-tabular",
+  "mapi-plugin-statsmodels",
   "mapi-client[xarray]",  # stack mode: the corpus through a running stack's API
 ]
 
@@ -34,4 +35,5 @@ mapi-plots = { workspace = true }
 mapi-plugin-mmm = { workspace = true }
 mapi-plugin-ts = { workspace = true }
 mapi-plugin-tabular = { workspace = true }
+mapi-plugin-statsmodels = { workspace = true }
 mapi-client = { workspace = true }

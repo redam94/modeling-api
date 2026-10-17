@@ -13,31 +13,31 @@ check = validate_spec(load_model_spec(E33_SPEC_YAML), catalog, raw_schema)
 rs = check.resolved
 for stage, schema in rs.stages.items():
     y, time = schema.vars["y"], schema.dims["time"]
-    print(f"{stage:12} time={time.freq:6} y in {y.units:4} dims={', '.join(schema.dims)}")
-# raw          time=D      y in LCU  dims=geo, channel, time
-# to_eur       time=D      y in EUR  dims=geo, channel, time
-# weekly       time=W-SUN  y in EUR  dims=geo, channel, time
-# scale_spend  time=W-SUN  y in EUR  dims=geo, channel, time
-# scale_y      time=W-SUN  y in 1    dims=geo, channel, time
-# lags         time=W-SUN  y in 1    dims=geo, channel, time, lag
-# season       time=W-SUN  y in 1    dims=geo, channel, time, lag, fourier_mode
-# hols         time=W-SUN  y in 1    dims=geo, channel, time, lag, fourier_mode
+    print(f"{stage:7} time={time.freq:6} y in {y.units:4} vars={', '.join(schema.vars)}")
+# raw     time=D      y in LCU  vars=y, spend
+# to_eur  time=D      y in EUR  vars=y, spend
+# weekly  time=W-SUN  y in EUR  vars=y, spend
+# hols    time=W-SUN  y in EUR  vars=y, spend, holiday
 print(rs.split_stage)  # weekly: the holdout is cut in whole weeks
-print(rs.last_reshape_stage)  # weekly: outputs are inverted back to weekly EUR, not days
+print(rs.last_reshape_stage)  # weekly: outputs are reported in weekly EUR, not days
 # --8<-- [end:stages]
 assert check.ok, check.errors
 assert rs.split_stage == "weekly" and rs.last_reshape_stage == "weekly"
 
 # --8<-- [start:leakage]
-leaky = E33_SPEC_YAML.replace("after_step: weekly", "after_step: scale_y")
+# standardise the holiday control, then cut the holdout only after that step
+leaky = E33_SPEC_YAML.replace("after_step: weekly", "after_step: std_hol").replace(
+    "\nmodel:\n",
+    "\n  - {id: std_hol, use: core.standardize@^1, with: {vars: [holiday], over: [time]}}\n"
+    "\nmodel:\n",
+    1,
+)
 for issue in validate_spec(load_model_spec(leaky), catalog, raw_schema).errors:
     print(issue.code, issue.pointer)
     print("  ", issue.message)
 # LEAKAGE_RISK /data/split/after_step
-#    stateful step 'scale_spend' (pipeline[2]) runs before the split at stage 'scale_y';
+#    stateful step 'std_hol' (pipeline[3]) runs before the split at stage 'std_hol';
 #    its state would be learned from holdout data
-# LEAKAGE_RISK /data/split/after_step
-#    stateful step 'scale_y' (pipeline[3]) runs before the split at stage 'scale_y'; ...
 # --8<-- [end:leakage]
 codes = {i.code for i in validate_spec(load_model_spec(leaky), catalog, raw_schema).errors}
 assert "LEAKAGE_RISK" in codes

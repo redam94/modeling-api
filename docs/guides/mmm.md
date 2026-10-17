@@ -1,20 +1,24 @@
 # Marketing-mix models
 
-`mapi-plugin-mmm` ships two marketing-mix models (MMMs) as built-in plugins:
+`mapi-plugin-mmm` ships the platform's marketing-mix models (MMMs), both on
+[mmm-framework](../models/mmm-framework.md):
 
 | Plugin | What it is | Use it when |
 |---|---|---|
-| `mmm.hierarchical_geo` | A hierarchical geo MMM written for the platform (PyMC) | You have several markets, want new markets and budgets scored honestly, and want response curves and marginal costs in your own currency |
-| `mmm.pymc_marketing` | An adapter around [pymc-marketing](https://www.pymc-marketing.io)'s `MMM` | You already use pymc-marketing and want its model behind the platform: versioned bundles, forecasts, counterfactuals and plots |
+| `mmm.bayesian` | mmm-framework's Bayesian MMM, national or hierarchical over geos and products | You want each channel's contribution and return with honest ranges, business priors and lift tests, what-if answers and budget plans |
+| `mmm.frequentist` | mmm-framework's ridge estimator with bootstrap intervals | You need a first read in seconds, or want to compare many set-ups quickly |
 
-Both are registered through the `mapi.models` entry point, so a spec only has to name
-them: `use: mmm.hierarchical_geo@^1.3`.
+Both are registered through the `mapi.models` entry point, so a spec only names them:
+`use: mmm.bayesian@^1`. This guide walks through a complete analysis; the
+[model reference](../models/mmm-framework.md) has every setting and how it maps onto
+mmm-framework.
 
 ## From daily spend in local currency to weekly EUR decisions
 
 A typical European media dataset is daily, per market and channel, in each market's own
-currency. The platform's preprocessing turns that into the weekly EUR panel the model
-fits, and remembers every learned step so scoring replays exactly the same work:
+currency. mmm-framework owns scaling, carry-over and seasonality, so the platform's
+pipeline only converts currencies, aggregates to weeks and adds a holiday control - and
+remembers every learned step so scoring replays exactly the same work:
 
 ```yaml
 apiVersion: mapi/v1
@@ -34,21 +38,16 @@ pipeline:
     use: core.fx_convert@^1
     with: {vars: [y, spend], table: fx, table_along: date, currency_dim: geo,
            currencies: {UK: GBP}, default_currency: EUR}
-  - {id: weekly,      use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum}}
-  - {id: scale_spend, use: core.mean_scale@^1, with: {vars: [spend], over: [time], unseen_levels: pooled}}
-  - {id: scale_y,     use: core.mean_scale@^1, with: {vars: [y], over: [time], unseen_levels: pooled}}
-  - {id: lags,        use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 6, pad: first}}
-  - {id: season,      use: core.fourier@^1,    with: {along: time, period: 52.18, order: 3, out: fourier}}
-  - {id: hols,        use: core.holidays@^1,   with: {table: holidays, table_along: date, along: time}}
+  - {id: weekly, use: core.resample@^1, with: {dim: time, freq: W-SUN, how: sum}}
+  - {id: hols,   use: core.holidays@^1, with: {table: holidays, table_along: date, along: time}}
 model:
-  use: mmm.hierarchical_geo@^1.3
+  use: mmm.bayesian@^1
   settings:
-    pooling: partial
+    hierarchy: {pool_over: [geo]}       # one baseline per market, partially pooled
+    new_levels: hyperprior              # a new market is drawn from the fitted spread
     adstock: {kind: geometric, l_max: 6}
     saturation: {kind: logistic}
-    priors:
-      beta_channel: {distribution: HalfNormal, sigma: 1.0, dims: [channel]}
-      lam:          {distribution: Gamma, alpha: 3, beta: 1, dims: [channel]}
+    seasonality: {yearly_order: 3}
   fit: {mode: evaluate_then_refit, engine: nutpie, tune: 1000, draws: 1000, chains: 4, seed: 7}
 outputs:
   derived: [contributions, response_curves, marginal_cost]
@@ -65,79 +64,38 @@ What the platform does with this, without a line of model code:
 - **Evaluate, then refit.** The model is fitted on the training weeks, scored on the
   holdout *through the scoring path* (the same code a forecast uses), then refitted on all
   weeks so forecasts start from the latest data.
-- **Context.** `lag_tensor` stores each market's last weeks of spend; a forecast
-  prepends them, so carry-over from last month's TV burst reaches next month's sales.
-- **Original units.** Predictions and contributions come back in **weekly EUR**: the
-  scaling steps are inverted, and the inversion stops at the weekly resample (daily
-  values cannot be recovered from weekly sums). Every output says so in its
-  `output_space` and `units` attributes.
+- **Owned scaling and carry-over.** mmm-framework scales the data itself and carries
+  spend over with its own adstock kernel; a scoring window is replayed on top of the
+  stored fit history, so carry-over from last month's TV burst reaches next month's sales.
+  A scaling or lag step on `y` or `spend` is refused at validation (`CAPABILITY_UNSUPPORTED`).
+- **Weekly EUR.** Predictions and contributions come back in the model stage's units -
+  weekly EUR here - and say so in their `output_space` (`model-owned`) and `units`.
 
 A runnable version of this spec, scaled down, ships as
-`mapi_plugin_mmm.examples.E33_SPEC_YAML`, together with a simulator
-(`e33_dataset`) whose true parameters are known.
+`mapi_plugin_mmm.examples.E33_SPEC_YAML`, together with a simulator (`e33_dataset`) whose
+true contributions are known.
 
-## The model
-
-For geo `g`, channel `c` and week `t` (model units: the target and spend are
-mean-scaled):
-
-```text
-adstock   a[g,c,t] = sum_l spend[g,c,t,l] * w[c,l]          w = alpha**l (normalised)
-saturate  s[g,c,t] = (1 - exp(-lam[c] a)) / (1 + exp(-lam[c] a))
-effects   beta[g,c] = beta_channel[c] * exp(beta_sigma[c] * z[g,c])     partial pooling
-mean      mu[g,t]  = intercept[g] + sum_c beta[g,c] s[g,c,t] + controls[g,t]
-target    y[g,t]  ~ Normal(mu[g,t], sigma)
-```
-
-`intercept[g]` is a hierarchical effect over geos, and every other numeric variable
-along time (Fourier terms, holidays, prices…) is a control with one coefficient per
-feature.
-
-### Settings
+## Settings at a glance
 
 | Setting | Level | Default | Meaning |
 |---|---|---|---|
-| `pooling` | basic | `partial` | `partial` shares channel effects across geos; `complete` uses one effect for all geos; `none` estimates each geo separately (and then new geos cannot be scored) |
-| `adstock.kind` | basic | `geometric` | `geometric` decays from the spend week; `delayed` peaks after `theta` weeks |
-| `saturation.kind` | basic | `logistic` | `logistic`, `hill` or `none` (linear) |
-| `centred` | advanced | `false` | Centred parameterisation of geo effects; non-centred samples better with few geos |
-| `adstock.l_max` | advanced | from the data | Must equal the `lag_tensor` `l_max` |
-| `adstock.normalize` | advanced | `true` | Lag weights sum to one, so a constant spend has steady-state adstock equal to the spend |
-| `priors` | advanced | see below | Prior overrides by parameter |
-| `controls` | advanced | auto | Control variables (default: every other numeric variable along time) |
-| `grid` | advanced | 0–2× in 21 steps | The spend-multiplier grid of the response curves |
+| `hierarchy.pool_over` | basic | `[]` | Panel dims of the data (`geo`, `product`); each level gets its own baseline, partially pooled |
+| `adstock.kind` / `l_max` | basic | `geometric`, 8 | Carry-over shape (`geometric`, `delayed`, `weibull`, `none`) and length |
+| `saturation.kind` | basic | `logistic` | Diminishing returns (`logistic`, `hill`, `michaelis_menten`, `tanh`, `root`, `none`) |
+| `trend.kind` | basic | `linear` | `none`, `linear`, `piecewise`, `spline` or `gp` |
+| `seasonality.yearly_order` | basic | 2 | Yearly Fourier pairs |
+| `channels.<c>` | advanced | - | Per-channel adstock/saturation overrides |
+| `hierarchy.media_by_geo` | advanced | `false` | Channel effects per geo, partially pooled |
+| `media_prior` | advanced | `roi` | Channel effects stated as returns on spend |
+| `priors` | advanced | - | `roi.<c>: {mu, sigma}`, `roi_default`, `intercept` |
+| `likelihood` | advanced | `normal` | `student_t` for heavy-tailed outliers |
+| `new_levels` | advanced | `pooled` | How unseen geos/products are scored |
+| `controls` | advanced | auto | Control variables (default: every other numeric variable over time) |
+| `grid` | advanced | 0-2.5x in 26 steps | The response curves' spend-multiplier grid |
 
 Guided mode shows the **basic** settings only; every field carries `x-ui-level` in the
-manifest's JSON Schema.
-
-### Priors
-
-Priors use pymc-marketing's dict form: a distribution, numeric parameters and the
-canonical dims the parameter varies over.
-
-| Parameter | Support | Default | Meaning |
-|---|---|---|---|
-| `intercept` | real | `Normal(0.5, 0.5)` | Population mean of the geo intercepts |
-| `intercept_sigma` | positive | `HalfNormal(0.25)` | Spread of the geo intercepts |
-| `beta_channel` | positive | `HalfNormal(1)` per channel | Typical channel effect at full saturation |
-| `beta_sigma` | positive | `HalfNormal(0.3)` per channel | How much a channel's effect varies across geos |
-| `alpha` | unit interval | `Beta(1, 3)` per channel | Weekly adstock decay |
-| `theta` | positive | `HalfNormal(2)` per channel | Delayed adstock: weeks to the peak |
-| `lam` | positive | `Gamma(3, 1)` per channel | Logistic saturation rate |
-| `slope`, `half` | positive | `Gamma(3, 2)`, `Gamma(2, 2)` | Hill curve |
-| `gamma_control` | real | `Normal(0, 0.5)` | Each control feature's coefficient |
-| `sigma` | positive | `HalfNormal(0.5)` | Observation noise |
-
-The allow-list covers `Normal`, `StudentT`, `Laplace`, `HalfNormal`, `HalfStudentT`,
-`HalfCauchy`, `Exponential`, `Gamma`, `InverseGamma`, `LogNormal`, `Weibull`, `Beta`,
-`Uniform` and `TruncatedNormal`. A prior whose support does not fit its parameter (a
-`Normal` media effect, a `HalfNormal` adstock decay) is rejected when the spec is
-validated, before anything runs. A list-valued parameter gives one value per label:
-
-```yaml
-priors:
-  lam: {distribution: Gamma, alpha: [3, 2, 2], beta: 1, dims: [channel]}
-```
+manifest's JSON Schema. The [models catalog](../reference/generated/models-catalog.md)
+lists them all with their defaults.
 
 ## Scoring
 
@@ -159,9 +117,9 @@ Score requests work like for every other model; these are the ones MMM users nee
 
 === "A new market"
 
-    Add a market the model has never seen (`FR`). Its intercept and channel effects are
-    drawn from the fitted hyperpriors for every posterior draw, so its forecast is honest
-    about what the model does not know: wider than a fitted market's. The response
+    Add a market the model has never seen (`FR`). With `new_levels: hyperprior` its
+    baseline is drawn from the fitted spread for every posterior draw, so its forecast is
+    honest about what the model does not know: wider than a fitted market's. The response
     carries an `UNSEEN_LEVELS` notice.
 
 === "A weekly EUR plan"
@@ -172,10 +130,9 @@ Score requests work like for every other model; these are the ones MMM users nee
     inputs_stage: weekly          # enter after fx conversion and resampling
     ```
 
-    Planners and optimisers send weekly EUR budgets (`spend_local(market, channel, date)`
-    on W-SUN weeks) instead of inventing daily local-currency spend. No FX table is needed:
-    the steps that use it are skipped. The forecast equals the raw-data path for the same
-    spend.
+    Planners send weekly EUR budgets instead of inventing daily local-currency spend. No
+    FX table is needed: the steps that use it are skipped. The forecast equals the
+    raw-data path for the same spend.
 
 === "What if"
 
@@ -190,103 +147,57 @@ Score requests work like for every other model; these are the ones MMM users nee
     channel's contribution moves.
 
 Every score returns `y_hat` and `contributions(component, geo, time)`: one component per
-channel, `baseline` and one per control. They add up to `y_hat`.
+channel, `baseline`, `trend`, `seasonality` and one per control. They add up to `y_hat`.
 
-## Derived quantities: what a Guided report reads
+## What a Guided report reads
 
-Ask for them in `outputs.derived`; they are computed once, at fit, over the first
-`outputs.ui_draws` posterior draws, and stored in the bundle **in original units**:
-
-- **`contributions`**: `channel_contribution(sample, channel, geo, time)`, `baseline` and
-  one variable per control, over the fit window. `mmm.decomposition` plots them.
-- **`response_curves`**: `contribution(sample, channel, multiplier, geo)`, the total
-  contribution over the fit window when a channel's spend is scaled by the multiplier,
-  plus the EUR spend on every grid point. `mmm.response_curves` and `mmm.marginal_cost`
-  plot them, and Guided-mode **what-if sliders** interpolate them per draw: instant, and
-  the uncertainty bands stay joint.
-- **`marginal_cost`**: the extra EUR of spend needed for one extra EUR of revenue at
-  current spend (and its inverse, marginal ROI), per geo and per channel.
-
-`response_curves` also carries the `baseline` (intercepts and controls, per draw and per
-geo), so the what-if grid view closes the expected KPI. Business priors (ROI or share
-ranges) and lift tests calibrate this model through the spec's `calibration` block: see
-[Guided modelling](guided-modelling.md).
+`contributions`, `response_curves` and `marginal_cost` (in `outputs.derived`) are computed
+once, at fit, over the first `outputs.ui_draws` posterior draws. `mmm.decomposition`,
+`mmm.response_curves` and `mmm.marginal_cost` plot them; Guided-mode what-if sliders
+interpolate the response curves per draw (instant, with joint uncertainty bands); the
+scorecard's plausibility checks (negative or absurd ROI, a channel's share, the baseline
+share) read them too. Business priors (ROI or share ranges) and lift tests calibrate the
+model through the spec's `calibration` block: see
+[Guided modelling](guided-modelling.md) and [the model reference](../models/mmm-framework.md#priors-in-business-terms).
 
 ## Optimising budgets
 
-`mmm.hierarchical_geo` declares `decision: true`. Its objective scores a budget per
-posterior draw:
+The platform optimises budgets with mmm-framework's planning module - no external
+optimiser needed:
 
 ```python
-import xarray as xr
-from mapi_plugin_mmm import HierarchicalGeoMMM
-from mapi_sdk.models import ScoreContext
+import httpx
 
-budget = xr.Dataset(
-    {"spend": ("channel", [40_000.0, 25_000.0, 10_000.0])},
-    coords={"channel": ["tv", "search", "social"]},
-    attrs={"periods": 13},                       # EUR per week, for a quarter
-)
-value = HierarchicalGeoMMM().objective(bundle.model, budget, ScoreContext())
-value.dims   # ('chain', 'draw'): expected revenue of the plan, per draw
+with httpx.Client(base_url=API, headers={"Authorization": f"Bearer {token}",
+                                         "X-Mapi-Project": "growth"}) as http:
+    r = http.post(
+        f"/v1/models/{model_id}/versions/3:optimize",
+        json={"budget_change_pct": 10, "objective": "mean", "frontier": {"n_points": 8}},
+        headers={"Prefer": "wait=60"},
+    )
+    plan = r.json()["result"]          # None while the run is still going (202)
+for a in plan["allocation"]:
+    print(a["channel"], round(a["current_spend"]), "->", round(a["optimal_spend"]))
+print("uplift", plan["uplift"]["mean"], "chance it helps", plan["prob_positive_uplift"])
 ```
 
-Budgets are in original units (EUR per week here) and so is the result; this uses the
-unit conversions cached with `response_curves`, so request that derived quantity (or pass
-`attrs={"units": "model"}` to work in model units). A channel budget is split across geos
-by each geo's share of that channel's spend; pass `spend(geo, channel)` to set it
-yourself. The value assumes the spend is sustained long
-enough for carry-over to settle (steady state).
+See [Optimise a budget](../tutorials/optimise-a-budget.md) for a walk-through and
+[the model reference](../models/mmm-framework.md#budget-optimisation) for every option.
+In Python, a fitted bundle's decision objective is also available directly:
+`MMMBayesian().objective(bundle.model, budget, ScoreContext())` values a per-period budget
+`spend(channel)` (or `spend(geo, channel)`) at steady state, per posterior draw.
 
-## The pymc-marketing adapter
+## The fast frequentist model
 
-`mmm.pymc_marketing` runs `pymc_marketing.mmm.MMM` (version 1.2, on PyMC 6). pymc-marketing
-scales the data, carries spend over and reports original units itself, so the adapter
-declares `owns: [scaling, carryover, inverse_units]` and the platform steps aside:
-
-- keep scaling and lag steps **out** of the pipeline (currency conversion, resampling and
-  holidays are fine);
-- scoring prepends the last `l_max` fit weeks before any window, so a four-week window
-  scores exactly like the same weeks of the full series;
-- outputs are labelled `model-owned`; holdout metrics are not inverted a second time.
-
-```yaml
-model:
-  use: mmm.pymc_marketing@^1
-  settings:
-    dims: [geo]                    # panel dims besides time and channel
-    adstock: {l_max: 4}
-    saturation: {kind: logistic}
-    controls: [holiday]
-    yearly_seasonality: 2
-  fit: {engine: nutpie, tune: 1000, draws: 1000, chains: 4}
-```
-
-Bundles never contain pickle: the adapter stores the posterior, pymc-marketing's
-`fit_data` and its JSON model description, and rebuilds the model through
-pymc-marketing's own loading path when it scores. Markets are a fixed dim for this
-adapter: pymc-marketing cannot score a market it has not seen.
-
-`settings.priors` overrides pymc-marketing's priors (`saturation_beta`, `intercept`,
-`gamma_control`, `gamma_fourier`, in its scaled units). Business priors and lift tests in the
-spec's `calibration` block calibrate the adapter as they do the geo MMM; the business priors
-are translated on pymc-marketing's own model (see
-[Guided modelling](guided-modelling.md#business-priors-for-mmmpymc_marketing)).
-
-## BayesInsight models
-
-`mmm.bayesinsight` fits a BayesInsight `model_def.json` as BayesInsight defines it -
-likelihoods, priors in KPI units, curves, carry-over, signs, effects per row id, seasons and
-local trends. Import a BayesInsight project with `"target": "mmm.bayesinsight"` (see
-[the import](guided-data.md#importing-for-mmmbayesinsight)); the
-[models reference](../reference/models.md#mmmbayesinsight-a-bayesinsight-model_defjson)
-documents every feature.
+`mmm.frequentist` takes the same data and settings and answers in seconds: transforms are
+searched out of sample, the model is solved by ridge regression with non-negative channel
+effects, and the ranges are bootstrap confidence intervals. Use it for a first look, then
+fit `mmm.bayesian` before making decisions.
 
 ## Trust, but verify
 
 Both plugins pass the SDK contract kit (`mapi_sdk.testing.check_model`): bundle round
-trips, shuffled and subset markets, typed errors, the holdout scored through the same
-path as a forecast, additive contributions. The conformance corpus runs both through the
-whole spec → fit → score path, and a parameter-recovery test fits simulated data with
-known adstock, saturation and channel effects and checks they come back (adstock decay
-within 0.1, EUR contributions within 20%).
+trips, shuffled and subset markets, new levels, typed errors, the holdout scored through
+the same path as a forecast, additive contributions. The conformance corpus runs them
+through the whole spec -> fit -> score path (`e33`, `guided_mmm`, `mmm_frequentist`), and
+the plugin's tests check the forward pass against mmm-framework's own forecaster and graph.

@@ -48,7 +48,7 @@ Pure-Pydantic contracts. No numpy, xarray or pandas: the control plane depends o
 
 ::: mapi_spec.catalog
     options:
-      members: [Catalog, StepCatalogEntry, ModelCatalogEntry, PlotCatalogEntry]
+      members: [Catalog, StepCatalogEntry, ModelCatalogEntry, PlotCatalogEntry, catalog_about_issues]
       heading_level: 3
 
 ## Errors
@@ -182,29 +182,14 @@ See [Guided mode](../../concepts/guided-mode.md).
 
 ::: mapi_spec.guided
     options:
-      members: [GuidedTemplate, GuidedQuestion, TemplateLookup, GUIDED_TEMPLATES, get_template, template_placeholders, render_template, ColumnProfile, DetectRolesRequest, RoleCandidate, QuestionSuggestion, RoleSuggestions, suggest_roles, GuidedAnswers, GuidedDraft, build_draft, safe_name, channel_label, BayesInsightImport, draft_from_bayesinsight]
+      members: [GuidedTemplate, GuidedQuestion, TemplateLookup, GUIDED_TEMPLATES, get_template, template_placeholders, render_template, ColumnProfile, DetectRolesRequest, RoleCandidate, QuestionSuggestion, RoleSuggestions, suggest_roles, GuidedAnswers, GuidedDraft, build_draft, safe_name, channel_label]
       heading_level: 3
 
 ## Ingest presets <span class="mapi-badge">v0.4</span>
 
 ::: mapi_spec.ingest
     options:
-      members: [IngestMapping, DimMapping, VarMapping, WideVarMapping, IngestPreset, MFF_COLUMNS, MFF_KEY_COLUMNS, MffOptions, MeridianColumns, BayesInsightMetadata, BayesInsightVariable, BayesInsightModelDef, BayesInsightVarRef, bayesinsight_var_ref]
-      heading_level: 3
-
-## BayesInsight models <span class="mapi-badge">v0.4</span>
-
-The importer (`import_bayesinsight`) and the settings of the built-in `mmm.bayesinsight`
-(see [Built-in models](../models.md#mmmbayesinsight-a-bayesinsight-model_defjson)).
-
-::: mapi_spec.bayesinsight
-    options:
-      members: [import_bayesinsight, dedicated_draft, BAYESINSIGHT_TARGET, DEDICATED_TARGET]
-      heading_level: 3
-
-::: mapi_spec.bayesinsight_model
-    options:
-      members: [BayesInsightSettings, BayesInsightModel, BIExog, BIMedia, BIControl, BISeason, BILocalTrend, Likelihood, CoeffPrior, DeterministicTransform, DelayedAdstockPrior, WeibullAdstockPrior, HillPrior, SShapedPrior, LocalTrendPrior, coeff_param_problem]
+      members: [IngestMapping, DimMapping, VarMapping, WideVarMapping, IngestPreset, MFF_COLUMNS, MFF_KEY_COLUMNS, MffOptions, MeridianColumns]
       heading_level: 3
 
 ## Business priors and calibration <span class="mapi-badge">v0.4</span>
@@ -271,6 +256,87 @@ See [Integrations](../../concepts/integrations.md).
 ::: mapi_spec.trust
     options:
       members: [SignupRequest, SignupAccepted, check_signup, DisposableEmailPolicy, BlocklistEmailPolicy, email_domain, EmailVerify, VerificationResult, VerificationStatus, VerificationMethod, VerificationUpdate, uploaded_code_allowed, DeletionState, next_deletion_state, TenantDeletionRequest, TenantDeletion, StoreProgress, GdprExportRequest, GdprExport]
+      heading_level: 3
+
+## About cards and the chooser <span class="mapi-badge">v0.5</span>
+
+See [About cards and choosing](../../concepts/about-and-choosing.md).
+
+::: mapi_spec.about
+    options:
+      members: [About, AboutKind, AboutReference, Difficulty, TypicalRuntime, about_issues, ABOUT_JARGON, DatasetAbout, DatasetAboutUpdate, describe_dataset, ChooserQuestion, ChooserChoice, ChooserQuestionnaire, CHOOSER_QUESTIONS, ChooserAnswer, chooser_answers_from_query, Recommendation, ChooserResult, recommend]
+      heading_level: 3
+
+::: mapi_spec.abouts
+    options:
+      members: [STEP_ABOUTS, SPLIT_ABOUTS, MODEL_ABOUTS, TEMPLATE_ABOUTS, SURVIVING_MODEL_IDS, PLANNED_MODEL_IDS, builtin_abouts, builtin_about, builtin_about_kind]
+      heading_level: 3
+
+## Workflows <span class="mapi-badge">v0.5</span>
+
+See [Workflows](../../concepts/workflows.md).
+
+::: mapi_spec.workflow
+    options:
+      members: [WorkflowSpec, WorkflowNode, WorkflowParam, WorkflowInput, WorkflowExecution, validate_workflow, WorkflowValidation, load_workflow, workflow_hash, node_dependencies, topological_order, node_cache_key, check_run_params, Workflow, WorkflowCreate, WorkflowUpdate, WorkflowRevision, WorkflowRevisionCreate, WorkflowValidateRequest, WorkflowRunCreate, WorkflowRun, WorkflowRunStatus, NodeRun, NodeRunStatus, NodeOutputRef, NodeError, BranchDecision, WorkflowTriggerEvent, WorkflowEventType, WorkflowEvent, ScheduleCreate, ScheduleUpdate, WorkflowSchedule, TriggerCreate, WorkflowTrigger, WorkflowNodeJob, NodeResultSidecar]
+      heading_level: 3
+
+::: mapi_spec.workflow_nodes
+    options:
+      members: [PortType, NodeKind, PortSpec, ResultField, NodeImplementation, NODE_IMPLEMENTATIONS, NODE_KIND_ABOUTS, get_node]
+      heading_level: 3
+
+::: mapi_spec.workflow_templates
+    options:
+      members: [WorkflowTemplate, WORKFLOW_TEMPLATES, get_workflow_template, instantiate_template]
+      heading_level: 3
+
+::: mapi_spec.expr
+    options:
+      members: [parse_expression, Expression, evaluate, evaluate_condition, check_condition, Condition, ExpressionLimits, LIMITS, ROOTS, FUNCTIONS]
+      heading_level: 3
+
+::: mapi_spec.cron
+    options:
+      members: [parse_cron, CronSpec, next_fire, check_cron, check_timezone, MIN_INTERVAL_MINUTES]
+      heading_level: 3
+
+## Split plans and test results <span class="mapi-badge">v0.5</span>
+
+::: mapi_spec.splitplan
+    options:
+      members: [HoldoutPlan, RollingOriginPlan, ExpandingWindowPlan, BlockedKFoldPlan, PurgedKFoldPlan, GeoHoldoutPlan, NestedPlan, Fold, plan_folds, plan_group_folds]
+      heading_level: 3
+
+::: mapi_spec.stattests
+    options:
+      members: [StatTestResult, SeriesTestResult, TestDefinition, TEST_DEFINITIONS, decide, make_test_result]
+      heading_level: 3
+
+## Governance <span class="mapi-badge">v0.5</span>
+
+See [Governance](../../concepts/governance.md).
+
+::: mapi_spec.governance
+    options:
+      members: [GovernancePolicy, GovernancePolicyCreate, GovernancePolicyUpdate, PolicyCheck, PolicyMatch, CheckSeverity, GovernanceCheckDef, GOVERNANCE_CHECKS, check_status, CheckStatus, CheckResult, EvidenceItem, rollup_results, policies_for, effective_checks, requires_validation, ValidationStatus, ValidationEvent, TRANSITIONS, transition, after_checks, Approval, ApprovalCreate, check_approver, ValidationRequest, ValidationNote, ValidationTransitionRecord, ModelValidation, EvidencePackRequest, EvidencePack]
+      heading_level: 3
+
+## Explorers and budget optimisation <span class="mapi-badge">v0.5</span>
+
+::: mapi_spec.explore
+    options:
+      members: [DataExploreRequest, ModelExploreRequest, ExploreJob]
+      heading_level: 3
+
+::: mapi_spec.views
+    options:
+      members: [ExplorerIndex, ExplorerSectionRef, explore_view_name, DataOverviewView, DistributionsView, TimeSeriesView, MissingnessView, OutliersView, CorrelationView, CrossCorrelationView, AcfPacfView, StationarityView, StlView, VifView, GroupComparisonView, QualityView, ParamTableView, ModelDiagnosticsView, FitVsActualView, ResidualDiagnosticsView, DecompositionView, ResponseCurvesView, IrfView, FevdView, ModelForecastView, BacktestView, ComparisonView]
+      heading_level: 3
+
+::: mapi_spec.optimize
+    options:
+      members: [OptimizeRequest, ChannelBounds, SpendGroup, FrontierRequest, OptimizeResult, ChannelAllocation, FrontierPoint, OptimizeJob, check_feasible]
       heading_level: 3
 
 ## Local development

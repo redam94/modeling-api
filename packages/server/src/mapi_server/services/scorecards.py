@@ -53,8 +53,13 @@ async def promotion_decision(
     *,
     policy: EvaluationPolicy | None = None,
     schema_breaks: Sequence[str] = (),
+    require_validated: bool = False,
+    validation_status: str | None = None,
 ) -> PromotionGateDecision:
-    """Whether ``mv`` may be promoted under the endpoint's ``policy`` (pure given the rows)."""
+    """Whether ``mv`` may be promoted under the endpoint's ``policy`` (pure given the rows).
+
+    M3.5: ``require_validated`` (a governance policy in force says so) blocks every version
+    whose latest validation is not ``validated`` (``NOT_VALIDATED``)."""
     policy = policy or EvaluationPolicy()
     return promotion_gate(
         stored_scorecard(mv),
@@ -64,4 +69,6 @@ async def promotion_decision(
         schema_breaks=schema_breaks,
         schema_change=policy.schema_change,
         required_checks=await required_checks_of(session, mv),
+        require_validated=require_validated,
+        validation_status=validation_status,
     )

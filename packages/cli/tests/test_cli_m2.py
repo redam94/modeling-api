@@ -398,7 +398,7 @@ def test_tokens_create_prints_the_secret_once_to_stdout(
     secret = created["secret"]
     route = api.post(f"{V1}/tokens").respond(201, json=created)
     res = mapi(
-        "--url", URL, "--project", "acme/growth", "tokens", "create", "atlas",
+        "--url", URL, "--project", "acme/growth", "tokens", "create", "budget-planner",
         "-s", "score:geo-mmm-prod", "-s", "models:read", "--expires-in-days", "30",
         "--rate-limit", "120", "--budget", "36000",
     )  # fmt: skip
@@ -407,7 +407,7 @@ def test_tokens_create_prints_the_secret_once_to_stdout(
     assert secret not in res.stderr and "not shown again" in res.stderr
     body = json.loads(route.calls.last.request.content)
     assert body == {
-        "name": "atlas",
+        "name": "budget-planner",
         "scopes": ["score:geo-mmm-prod", "models:read"],
         "expires_in_days": 30,
         "rate_limit_per_minute": 120,
@@ -437,13 +437,13 @@ def test_tokens_ls_get_and_revoke_with_confirmation(
     assert res.exit_code == 0 and "mapi_7k2m9q4x_…" in res.stdout
     assert listing.calls.last.request.url.params["all"] == "true"
     api.get(f"{V1}/tokens/tok_1").respond(200, json=example(ApiToken))
-    assert "atlas-optimiser" in mapi("--url", URL, "tokens", "get", "tok_1").stdout
+    assert "budget-planner" in mapi("--url", URL, "tokens", "get", "tok_1").stdout
     revoke = api.delete(f"{V1}/tokens/tok_1").respond(204)
     declined = mapi("--url", URL, "tokens", "revoke", "tok_1", input="n\n")
     assert declined.exit_code == 1 and not revoke.called
     accepted = mapi("--url", URL, "tokens", "revoke", "tok_1", input="y\n")
     assert accepted.exit_code == 0 and revoke.call_count == 1
-    assert "Revoke 'atlas-optimiser'" in accepted.stderr
+    assert "Revoke 'budget-planner'" in accepted.stderr
     scripted = mapi("--url", URL, "--json", "tokens", "revoke", "tok_1", "--yes")
     assert json.loads(scripted.stdout) == {"revoked": "tok_1"} and revoke.call_count == 2
     no_input = mapi("--url", URL, "tokens", "revoke", "tok_1")

@@ -1,6 +1,6 @@
 [project]
 name = "mapi-server"
-version = "0.4.0"
+version = "0.5.0"
 description = "modeling-api control plane (FastAPI)"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -10,6 +10,7 @@ dependencies = [
   "mapi-spec",
   "mapi-plots",
   "mapi-gcs-shim",
+  "mapi-workflows",
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
   "pydantic-settings>=2.4",
@@ -56,3 +57,4 @@ packages = ["src/mapi_server"]
 mapi-spec = { workspace = true }
 mapi-plots = { workspace = true }
 mapi-gcs-shim = { workspace = true }
+mapi-workflows = { workspace = true }

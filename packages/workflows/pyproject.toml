@@ -1,0 +1,41 @@
+[project]
+name = "mapi-workflows"
+version = "0.5.0"
+description = "Workflow engine for modeling-api: the JSON-only DAG engine (control plane safe) and the node runtime (statistical tests, transforms, splits, searches, model fits)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+# The core (mapi_workflows.engine, .orchestrator, .reference, .local without models) is pure
+# Python over mapi-spec: the control plane imports it. Node implementations need the array
+# stack and statsmodels: they are the ``runtime`` extra, installed in runner images only.
+dependencies = ["mapi-spec", "jsonschema>=4.23"]
+
+[project.optional-dependencies]
+runtime = [
+  "mapi-sdk",
+  "mapi-steps",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "xarray>=2025.1",
+  "scipy>=1.13",
+  "statsmodels>=0.15,<0.16",
+]
+# mapi_workflows.testing: the real statsmodels models for tests, examples and the docs.
+testing = ["mapi-workflows[runtime]", "mapi-plugin-statsmodels"]
+
+[project.entry-points."mapi.workflow_nodes"]
+core = "mapi_workflows.runtime.nodes:builtin_nodes"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_workflows"]
+
+[tool.uv.sources]
+mapi-spec = { workspace = true }
+mapi-sdk = { workspace = true }
+mapi-steps = { workspace = true }
+mapi-plugin-statsmodels = { workspace = true }

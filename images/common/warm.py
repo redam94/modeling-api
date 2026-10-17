@@ -43,6 +43,10 @@ _VERSIONED = (
     "mapi-plugin-mmm",
     "mapi-plugin-ts",
     "mapi-plugin-tabular",
+    "mapi-plugin-statsmodels",
+    "mapi-workflows",
+    "statsmodels",
+    "scipy",
     "pymc",
     "pytensor",
     "nutpie",
@@ -52,7 +56,7 @@ _VERSIONED = (
     "arviz",
     "scikit-learn",
     "xgboost",
-    "pymc-marketing",
+    "mmm-framework",
 )
 
 

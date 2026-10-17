@@ -6,7 +6,7 @@ pulled into copyleft; the hosted platform itself is protected.
 | Component | Where | Licence |
 |---|---|---|
 | **SDK and contracts**: `mapi-spec`, `mapi-sdk`, `mapi-pymc`, `mapi-sklearn` | `packages/spec`, `packages/sdk`, `packages/sdk-pymc`, `packages/sdk-sklearn` | Apache-2.0 |
-| **Built-ins**: steps, plots, model plugins, conformance corpus | `packages/steps-core`, `packages/plots-core`, `plugins/*`, `conformance/` | Apache-2.0 |
+| **Built-ins**: steps, plots, model plugins, workflow runtime, conformance corpus | `packages/steps-core`, `packages/plots-core`, `plugins/*`, `packages/workflows`, `conformance/` | Apache-2.0 |
 | **Tools**: CLI, Python client, GCS emulator | `packages/cli`, `packages/client`, `packages/gcs-shim` | Apache-2.0 |
 | **Platform**: API server, run harness, web apps, images, infrastructure | `packages/server`, `packages/runner`, `apps/*`, `images/`, `infra/`, `ops/`, `security/` | AGPLv3 **or** a commercial licence |
 | **Documentation** | `docs/` | CC BY 4.0 |
@@ -34,8 +34,20 @@ texts are in the repository root: `LICENSE.md`, `LICENSE-APACHE.txt`, `LICENSE-A
 ## Third-party libraries
 
 The SDK builds on xarray, numpy, pandas, zarr and Pydantic; the model packages on PyMC,
-ArviZ, scikit-learn, xgboost and skops; the marketing-mix adapter on pymc-marketing; the plot
-recipes on Altair and Plotly. Each keeps its own licence.
+ArviZ, scikit-learn, xgboost and skops. The marketing-mix models run on mmm-framework
+(Apache-2.0), which brings NumPyro and JAX (Apache-2.0) and nutpie (MIT). The time-series
+models (`ts.sarimax`, `ts.var`, `ts.ets` and the rest) run on statsmodels (BSD-3-Clause).
+The plot recipes use Altair and Plotly, and the visual workflow builder in the web app uses
+@xyflow/react (MIT). The API server talks to PostgreSQL through psycopg (LGPL-3.0, used
+unmodified as a separately installed library). Each library keeps its own licence.
+
+`THIRD-PARTY-NOTICES.md` in the repository root is the full list: every Python and
+JavaScript package the container images ship, with its version and SPDX licence. It also
+reproduces the NOTICE files of Apache-2.0 packages, and the licence texts of the JavaScript
+packages compiled into the web app and the plot sandbox. The file is generated from `uv.lock`
+and `pnpm-lock.yaml`: run `make notices` after changing a lock file. `make release-check`
+and the test suite fail when it is out of date. Every image carries it, with the licence
+files above, in `/usr/share/doc/mapi/`.
 
 ## Contributions
 

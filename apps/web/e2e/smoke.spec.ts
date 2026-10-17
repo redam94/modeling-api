@@ -101,7 +101,7 @@ test("spec editor validates live and shows the pipeline with its split", async (
   const pipeline = page.getByRole("list", { name: "Pipeline" });
   await expect(pipeline.getByText("weekly", { exact: true })).toBeVisible();
   await expect(pipeline.getByRole("separator", { name: "Train/holdout split" })).toBeVisible();
-  await expect(pipeline.getByText("Keeps a 6-step tail along time", { exact: false })).toBeVisible();
+  await expect(pipeline.getByText("cal", { exact: true })).toBeVisible();
 });
 
 async function typeInEditor(page: import("@playwright/test").Page, text: string) {

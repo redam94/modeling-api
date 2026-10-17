@@ -38,8 +38,8 @@ e02               tabular.hierarchical_glm@1.0.0  ok        ok   ok 6/6  ok     
 c08               ts.hsgp_trend@1.0.0             ok        ok   ok 6/6  ok        ok 13/13  ok 3/3  ok                 PASS
 e24               ts.gaussian_hmm@1.0.0           ok        ok   ok 5/5  ok        ok 15/15  ok 2/2  ok                 PASS
 xgb_store_demand  tabular.regressor@1.0.0         ok        ok   ok 6/6  ok        ok 16/16  ok 3/3  ok                 PASS
-e33               mmm.hierarchical_geo@1.3.0      ok        ok   ok 5/5  ok        ok 16/16  ok 4/4  ok                 PASS
-pymc_marketing    mmm.pymc_marketing@1.0.0        ok        ok   ok 4/4  ok        ok 16/16  ok 2/2  ok                 PASS
+e33               mmm.bayesian@1.0.0              ok        ok   ok 5/5  ok        ok 17/17  ok 4/4  ok                 PASS
+mmm_frequentist   mmm.frequentist@1.0.0           ok        ok   ok 4/4  ok        ok 18/18  ok 1/1  ok                 PASS
 ```
 
 `--size tiny` (the default, used by `pytest -m conformance`) keeps data small and MCMC
@@ -76,10 +76,10 @@ The contract kit does not run in this mode; it needs the plugin in-process.
 | `e24` | `ts.gaussian_hmm` | padded + mask, terminal state, forecast and filter, relabelling, invalid LOO |
 | `xgb_store_demand` | `tabular.regressor` | pooled new stores, quantile aggregation refused, future-required covariates |
 | `sklearn_store_demand` | `sklearn.tabular_conformal` | the same panel with plain scikit-learn (histogram boosting, skops): split-conformal intervals, interval aggregation refused, pooled new stores |
-| `e33` | `mmm.hierarchical_geo` | FX (`supplied`) and holiday (`pinned`) side tables, split after `resample`, per-market lag context, new market from the hyperprior, weekly EUR plan via `inputs_stage`, CRN counterfactual (intervention and baseline-vs-scenario), derived quantities in EUR |
-| `pymc_marketing` | `mmm.pymc_marketing` | a model that `owns` scaling, carry-over and units; a scoring window equals the same weeks of the full series |
+| `e33` | `mmm.bayesian` | FX (`supplied`) and holiday (`pinned`) side tables, split after `resample`, mmm-framework owning scaling and carry-over (history prepended at score time), new market from the hyperprior, weekly EUR plan via `inputs_stage`, CRN counterfactual (intervention and baseline-vs-scenario), derived quantities in EUR |
+| `mmm_frequentist` | `mmm.frequentist` | mmm-framework's ridge estimator with bootstrap draws; a model that `owns` scaling, carry-over and units; a scoring window equals the same weeks of the full series |
 | `e84_lite` | `choice.multinomial_logit` | a ragged household × trip panel with a text target, `last_per_group` split, products off the shelf, new households from the fitted spread, a price-rise counterfactual, next trips, categorical holdout metrics (hit rate against the naive guess, log score, Brier) |
-| `guided_mmm` | `mmm.hierarchical_geo` | the `geo_mmm` Guided template's draft with business priors (ROI, contribution share, baseline share) translated at fit time and a lift test in the likelihood, both true to the simulation; ROI, baseline share and lift checked against the truth; a forecast and the channel-off preset |
+| `guided_mmm` | `mmm.bayesian` | the `geo_mmm` Guided template's draft with business priors (ROI, contribution share, baseline share) translated at fit time and a lift test in the likelihood, both true to the simulation; ROI, baseline share and lift checked against the truth; a forecast and the channel-off preset |
 
 ### Deferred
 
@@ -107,7 +107,7 @@ from commit timestamps; record it here when a fixture is ported or re-ported.
 | `xgb_store_demand` | not measured yet | – |
 | `sklearn_store_demand` | not measured yet | – |
 | `e33` | not measured yet | – |
-| `pymc_marketing` | not measured yet | – |
+| `mmm_frequentist` | not measured yet | – |
 
 ## Add a fixture
 

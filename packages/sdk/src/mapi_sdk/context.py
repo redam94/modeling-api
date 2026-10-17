@@ -148,7 +148,7 @@ def _overwrite_replayed(
             if d != along and d in ds.coords and d in stored.coords:
                 stored = stored.reindex({d: ds[d].values})
         hit = xr.DataArray(np.isin(ds[along].values, labels), dims=[along])
-        merged = xr.where(hit, stored, ds[v]).transpose(*ds[v].dims)
+        merged = stored.where(hit, ds[v]).transpose(*ds[v].dims)
         merged.attrs = ds[v].attrs
         updates[v] = merged.astype(ds[v].dtype) if ds[v].dtype.kind == "f" else merged
     return ds.assign(updates) if updates else ds

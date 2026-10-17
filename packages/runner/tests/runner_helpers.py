@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import os
 import secrets
 import subprocess
@@ -189,3 +190,20 @@ def assert_signed_stream(result: Result) -> None:
         assert ev.attempt == result.run.rs.attempt
         assert ev.seq == i
         assert verify_event(ev, result.run.key), f"event {i} fails its HMAC"
+
+
+#: Wall-clock slack allowed on the gap between two coalesced ``progress`` events. The
+#: coalescer spaces events on ``time.monotonic``, but the emitter stamps ``ts`` with the wall
+#: clock *after* taking its lock, which the log pump shares. A lock wait or a scheduler stall
+#: on the earlier event (common under ``pytest -n 6``) shrinks the stamped gap below the
+#: interval although the coalescer kept it. An uncoalesced stream has gaps of milliseconds,
+#: so a quarter of a second still tells the two apart.
+COALESCE_JITTER_S = 0.25
+
+
+def assert_progress_coalesced(
+    progress: list[RunEvent], interval: float = 2.0, *, jitter: float = COALESCE_JITTER_S
+) -> None:
+    """``progress`` events are at most one per ``interval`` seconds, allowing stamp jitter."""
+    gaps = [(b.ts - a.ts).total_seconds() for a, b in itertools.pairwise(progress)]
+    assert all(g >= interval - jitter for g in gaps), gaps

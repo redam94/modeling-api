@@ -1,7 +1,7 @@
 """Endpoints: stable aliases for promoted model versions (plan §2, §8.2, §11; Q13; M3).
 
 An endpoint ``endpoint://<project>/<alias>`` points at one model version at a time.
-Integrations (the Python and TypeScript clients, Google Sheets, Atlas, BI exports) call the
+Integrations (the Python and TypeScript clients, Google Sheets, BI exports) call the
 alias, so a new model version can be promoted - or rolled back - without touching them.
 
 * **Promotion** (``PUT /v1/endpoints/{alias}``) passes the promotion gate
@@ -258,7 +258,9 @@ class EndpointRevision(ResponseModel):
 class EndpointRollback(RequestModel):
     """``POST /v1/endpoints/{alias}/rollback``: point the alias back at the version of an
     earlier revision (default: the one before the current). The gate is not re-run - the
-    version was promoted before - but the rollback is audited with its reason."""
+    version was promoted before - but the rollback is audited with its reason. M3.5: when a
+    governance policy requires validated models, the earlier version must still be
+    ``validated`` (``NOT_VALIDATED`` otherwise)."""
 
     to_revision: int | None = Field(None, ge=1)
     reason: str = Field(..., min_length=1, max_length=1000)

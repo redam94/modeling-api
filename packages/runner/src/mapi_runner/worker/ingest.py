@@ -19,8 +19,6 @@ label of a new dim, or use a preset:
   is pivoted to one column per variable; key columns with several values become dims, and
   ``MffOptions.combine`` joins key columns into one dim. An explicit mapping then picks and
   renames variables (and may gather them into wide variables) exactly as for a CSV;
-* ``bayesinsight`` - an MFF table restricted to what BayesInsight's ``metadata.json``
-  allows (``allowed_*`` key values, ``start_period``/``end_period``);
 * ``meridian`` - Google Meridian's column contract on a wide CSV/Parquet table.
 
 Every byte of user data is parsed here, in the sandbox, under the caps of
@@ -49,7 +47,8 @@ from mapi_spec.guided import ColumnProfile, safe_name
 from mapi_spec.ingest import (
     COMBINE_SEPARATOR,
     MFF_COLUMNS,
-    BayesInsightMetadata,
+    MFF_PANEL_KEY_COLUMNS,
+    MFF_TOTAL_LABELS,
     DimMapping,
     IngestMapping,
     IngestPreset,
@@ -470,21 +469,17 @@ def mff_table(
     opts: MffOptions,
     limits: IngestLimits = _UNLIMITED,
     *,
-    bayesinsight: BayesInsightMetadata | None = None,
     notes: Notes | None = None,
 ) -> tuple[pd.DataFrame, dict[str, str], list[str]]:
     """Pivot an MFF long table to one column per variable.
 
     Returns ``(table, dims, variables)``: the wide table (``Period``, the key columns that
     vary, combined dims, then one column per ``VariableName``), the dims it is indexed by
-    (``column -> dim name``) and the variable columns. With ``bayesinsight`` metadata, rows
-    outside its ``allowed_*`` values and period range are dropped first.
+    (``column -> dim name``) and the variable columns.
     """
     for col in (opts.period_column, opts.variable_column, opts.value_column):
         if col not in df.columns:
             raise _mff_error(f"MFF upload has no {col!r} column")
-    if bayesinsight is not None:
-        df = _bayesinsight_rows(df, opts, bayesinsight)
     names = df[opts.variable_column].astype(str).str.strip()
     variables = sorted(set(names) - {""})
     if (names == "").any():
@@ -528,20 +523,28 @@ def mff_table(
         table[dim] = label.astype(str)
         index[dim] = dim
         combined |= set(cols)
+    # every key column, for the duplicate check on the full key (as mmm-framework's)
+    full_key = [opts.period_column, *index.keys() - {opts.period_column}]
+    spread: list[tuple[str, list[str]]] = []
     for col, dim in opts.key_columns.items():
         if col in combined or col not in df.columns:
             continue
-        labels = df[col].astype("string").fillna("").str.strip()
-        if labels.nunique() > 1:
-            table[col] = labels.astype(str)
+        labels = df[col].astype("string").fillna("").str.strip().astype(str)
+        table[col] = labels
+        full_key.append(col)
+        if col not in MFF_PANEL_KEY_COLUMNS and col not in opts.split:
+            continue  # a breakdown (Campaign, Outlet, Creative): summed below
+        levels = sorted({v for v in labels.unique() if v.lower() not in MFF_TOTAL_LABELS})
+        if len(levels) > 1 or (col in opts.split and levels):
             index[col] = dim
+            spread.append((col, levels))
     clash = sorted(set(variables) & (set(index) | set(index.values())))
     if clash:
         raise _mff_error(
             f"the variable {clash[0][:64]!r} has the name of an MFF key column or dim",
             action="Rename the variable in VariableName.",
         )
-    keys = [*index, "__var__"]
+    keys = [*full_key, "__var__"]
     dup = table.duplicated(subset=keys)
     if dup.any():
         first = {k: str(v)[:40] for k, v in table.loc[dup, keys].iloc[0].to_dict().items()}
@@ -551,6 +554,13 @@ def mff_table(
             "aggregate duplicates first.",
             untrusted_text=str(first),
         )
+    for col, levels in spread:
+        table = _spread_totals(table, col, levels, opts, notes)
+    # breakdowns not kept as dims are summed up to the modelled dims (a cell given only
+    # as missing values stays missing)
+    table = table.groupby([*index, "__var__"], as_index=False, sort=False)["__value__"].sum(
+        min_count=1
+    )
     wide = table.pivot_table(
         index=list(index), columns="__var__", values="__value__", aggfunc="first", dropna=False
     )
@@ -559,46 +569,66 @@ def mff_table(
     return out, index, variables
 
 
-def _bayesinsight_rows(
-    df: pd.DataFrame, opts: MffOptions, meta: BayesInsightMetadata
+def _spread_totals(
+    table: pd.DataFrame,
+    col: str,
+    levels: list[str],
+    opts: MffOptions,
+    notes: Notes | None,
 ) -> pd.DataFrame:
-    allowed = {
-        "Geography": meta.allowed_geos,
-        "Product": meta.allowed_products,
-        "Outlet": meta.allowed_outlets,
-        "Campaign": meta.allowed_campaigns,
-        "Creative": meta.allowed_creatives,
-    }
-    keep = pd.Series(True, index=df.index)
-    for col, values in allowed.items():
-        if values is not None and col in df.columns:
-            keep &= df[col].astype("string").str.strip().isin([str(v) for v in values])
-    if meta.start_period or meta.end_period:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            period = pd.to_datetime(df[opts.period_column], errors="coerce")
-        if meta.start_period:
-            keep &= period >= pd.Timestamp(meta.start_period)
-        if meta.end_period:
-            keep &= period <= pd.Timestamp(meta.end_period)
-    out = df.loc[keep]
-    if out.empty:
-        raise _schema_error(
-            "no MFF rows match the BayesInsight metadata (allowed_* values and periods)",
-            "/mapping/bayesinsight",
-            action="Check that metadata.json belongs to this data file.",
+    """Rows of ``col``'s coarser level (a blank, ``National`` or ``Total`` label) spread
+    across ``levels``: a variable given only in total (national TV) gets each level's share
+    - equal, or the KPI's share of the level (``opts.allocation``), as mmm-framework's
+    ``MFFLoader`` disaggregates national media. A variable may not mix the two levels."""
+    total = table[col].str.lower().isin(MFF_TOTAL_LABELS)
+    if not total.any():
+        return table
+    mixed = sorted(set(table.loc[total, "__var__"]) & set(table.loc[~total, "__var__"]))
+    if mixed:
+        raise _mff_error(
+            f"the variable {mixed[0][:64]!r} has rows for single {col} labels and rows for "
+            f"all of them (a blank or 'National' {col})",
+            f"/mapping/mff/{col}",
+            action=f"Give each variable at one level: per {col}, or in total only.",
         )
-    if meta.necessary_variables:
-        present = set(out[opts.variable_column].astype(str).str.strip())
-        lacking = [v for v in meta.necessary_variables if v not in present]
-        if lacking:
-            raise _schema_error(
-                f"the MFF table lacks {len(lacking)} necessary variable(s), e.g. "
-                f"{lacking[0][:64]!r}",
-                "/mapping/bayesinsight/necessary_variables",
-                action="Upload the data file the BayesInsight model was built on.",
+    method = opts.allocation.get(col, "equal")
+    weights = pd.Series(1.0 / len(levels), index=levels)
+    kpi = opts.kpi or next((v for v, r in opts.roles.items() if r == "target"), None)
+    if method == "kpi":
+        rows = table[(table["__var__"] == kpi) & ~total] if kpi is not None else table[:0]
+        sums = rows.groupby(col)["__value__"].sum().reindex(levels)
+        if sums.notna().all() and float(sums.sum()) > 0 and (sums >= 0).all():
+            weights = sums / float(sums.sum())
+        elif notes is not None:
+            notes.append(
+                {
+                    "pointer": f"/mapping/mff/allocation/{col}",
+                    "message": f"variables given in total were spread equally across {col}: "
+                    + (
+                        f"the KPI {kpi!r} has no positive total per {col}"
+                        if kpi
+                        else "no KPI is known (give a variable the role 'target' or set 'kpi')"
+                    ),
+                }
             )
-    return out
+    parts = [table[~total]]
+    coarse = table[total]
+    for level in levels:
+        part = coarse.copy()
+        part[col] = level
+        part["__value__"] = part["__value__"] * float(weights[level])
+        parts.append(part)
+    if notes is not None:
+        names = sorted(set(coarse["__var__"]))
+        notes.append(
+            {
+                "pointer": f"/mapping/mff/{col}",
+                "message": f"{len(names)} variable(s) given in total ({', '.join(names[:5])}) "
+                f"were spread across the {len(levels)} {col} levels "
+                + ("equally" if method == "equal" or weights.nunique() == 1 else "by the KPI"),
+            }
+        )
+    return pd.concat(parts, ignore_index=True)
 
 
 def dataset_from_mff(
@@ -606,12 +636,11 @@ def dataset_from_mff(
     opts: MffOptions,
     *,
     limits: IngestLimits = _UNLIMITED,
-    bayesinsight: BayesInsightMetadata | None = None,
 ) -> tuple[xr.Dataset, DataSchema]:
     """The MFF preset: long ``(period, keys..., variable) -> value`` rows, every variable
     kept under its own name."""
     notes: Notes = []
-    table, index, variables = mff_table(df, opts, limits, bayesinsight=bayesinsight, notes=notes)
+    table, index, variables = mff_table(df, opts, limits, notes=notes)
     frame = table.rename(columns=index)
     _check_cube(frame, list(index.values()), limits, "/mapping/mff")
     ds = frame.set_index(list(index.values())).sort_index().to_xarray()
@@ -641,8 +670,8 @@ def dataset_from_mff(
 
 def _mff_freq(opts: MffOptions, dates: Any) -> str | None:
     """The time dim's frequency: the declared one, unless the data has the same base
-    frequency with another anchor (BayesInsight's 'Weekly' is ``W``, i.e. Sundays, while
-    its periods are often Mondays)."""
+    frequency with another anchor (a declared weekly ``W`` means Sundays, while MFF periods
+    are often Mondays)."""
     inferred = infer_freq(dates)
     if opts.freq is None:
         return inferred
@@ -1005,19 +1034,18 @@ def build_dataset(
         return ds, schema, None
     fmt = "parquet" if mapping.format == "parquet" else "csv"
     df = read_table(path, fmt, limits)
-    if preset in (IngestPreset.MFF, IngestPreset.BAYESINSIGHT):
+    if preset is IngestPreset.MFF:
         opts = mapping.effective_mff
         assert opts is not None
-        meta = mapping.bayesinsight if preset is IngestPreset.BAYESINSIGHT else None
         notes: Notes = []
-        table, index, variables = mff_table(df, opts, limits, bayesinsight=meta, notes=notes)
+        table, index, variables = mff_table(df, opts, limits, notes=notes)
         profiles = column_profiles(table, variables=variables)
         if mapping.vars or mapping.wide:
             ds, schema = dataset_from_table(
                 table, _mff_mapping(mapping, index, opts, table), limits=limits
             )
         else:
-            ds, schema = dataset_from_mff(df, opts, limits=limits, bayesinsight=meta)
+            ds, schema = dataset_from_mff(df, opts, limits=limits)
         if notes:
             ds.attrs[INGEST_NOTES_ATTR] = notes
         return ds, schema, profiles
@@ -1071,5 +1099,11 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
     ctx.write_json("preview.json", preview(ds, job.preview_rows))
     if columns is not None:
         ctx.write_output(INGEST_COLUMNS, write_profiles(columns))
+    # M3.5: the cheap Data Explorer sections (ui/explore/); never fails the ingest
+    from mapi_runner.worker.explore import write_data_explorer
+
+    ctx.progress(0.95, "computing the Data Explorer overview")
+    ds.attrs.pop(SCHEMA_ATTR, None)
+    write_data_explorer(ctx, ds, schema, ref=job.dataset or "dataset://runner/upload@latest")
     ctx.progress(1.0, "dataset ready", force=True)
     return schema

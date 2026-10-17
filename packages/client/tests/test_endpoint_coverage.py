@@ -1,6 +1,6 @@
 """Every endpoint a program may call has a request builder whose method, path, success
-statuses and project scoping match ``mapi_spec.api.ENDPOINTS`` (the whole v0.4 table: M1, M2
-and M3) and ``ROUTE_ACCESS`` - the contract the server's route table is tested against."""
+statuses and project scoping match ``mapi_spec.api.ENDPOINTS`` (the whole v0.5 table: M1, M2,
+M3 and M3.5) and ``ROUTE_ACCESS`` - the contract the server's route table is tested against."""
 
 from __future__ import annotations
 
@@ -11,13 +11,16 @@ from typing import Any
 import pytest
 from mapi_client import _calls as c
 from mapi_client import _calls_m3 as m3
+from mapi_client import _calls_m35 as m35
 from mapi_client._http import Call
 from mapi_spec.api import (
     ENDPOINTS,
     IDEMPOTENCY_KEY_HEADER,
     PREFER_HEADER,
     ROUTE_ACCESS,
-    BayesInsightImport,
+    ApprovalCreate,
+    DataExploreRequest,
+    DatasetAboutUpdate,
     DatasetCreate,
     DatasetVersionCreate,
     DetectRolesRequest,
@@ -26,15 +29,21 @@ from mapi_spec.api import (
     EndpointPromote,
     EndpointRollback,
     EndpointScoreCall,
+    EvidencePackRequest,
     ExecutorEvidenceUpdate,
     ExecutorUpdate,
     GdprExportRequest,
+    GovernancePolicyCreate,
+    GovernancePolicyUpdate,
     GuidedAnswers,
     GuidedCompile,
     IngestMapping,
     KillSwitchUpdate,
     MembershipCreate,
     MembershipUpdate,
+    ModelCompareRequest,
+    ModelExploreRequest,
+    OptimizeRequest,
     PlotEmbedCreate,
     PlotRenderRequest,
     PlotSpec,
@@ -46,6 +55,8 @@ from mapi_spec.api import (
     RunCreate,
     RunRetry,
     SavedPlotCreate,
+    ScheduleCreate,
+    ScheduleUpdate,
     ScoreCall,
     SignupRequest,
     SignupReviewDecision,
@@ -56,11 +67,19 @@ from mapi_spec.api import (
     TenantDeletionRequest,
     TenantUpdate,
     TokenCreate,
+    TriggerCreate,
     UploadCreate,
     ValidateRequest,
+    ValidationNote,
+    ValidationRequest,
     VerificationUpdate,
     WebhookCreate,
     WebhookUpdate,
+    WorkflowCreate,
+    WorkflowRevisionCreate,
+    WorkflowRunCreate,
+    WorkflowUpdate,
+    WorkflowValidateRequest,
 )
 from mapi_spec.quotas import QuotaLimits
 
@@ -82,6 +101,9 @@ def _ex[M](model: type[M], index: int = 0) -> M:
 _CALL = _ex(EndpointScoreCall)
 _WH = "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
 _PLT = "plt_01jaf3h1j2k3m4n5p6q7r8s9t0"
+_WF = "wfl_01jaf3h1j2k3m4n5p6q7r8s9t0"
+_POL = "pol_01jaf3h1j2k3m4n5p6q7r8s9t0"
+_VAL = "val_01jaf3h1j2k3m4n5p6q7r8s9t0"
 
 NOT_FOR_PROGRAMS = frozenset(
     {
@@ -207,7 +229,6 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "get_guided_template": lambda: m3.get_guided_template("geo_mmm"),
     "detect_roles": lambda: m3.detect_roles(_ex(DetectRolesRequest)),
     "create_guided_draft": lambda: m3.create_guided_draft(_ex(GuidedAnswers)),
-    "import_bayesinsight": lambda: m3.import_bayesinsight(_ex(BayesInsightImport)),
     "compile_guided_request": lambda: m3.compile_guided_request(_ex(GuidedCompile)),
     "create_prior_translation": lambda: m3.create_prior_translation(
         _ex(PriorTranslationRequest), None
@@ -266,10 +287,94 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "admin_list_signups": lambda: m3.admin_list_signups(None, None, review="flagged"),
     "admin_review_signup": lambda: m3.admin_review_signup("sgn_1", _ex(SignupReviewDecision)),
     "admin_retry_tenant_deletion": lambda: m3.admin_retry_tenant_deletion("acme"),
+    # v0.5 About cards, chooser and catalogs
+    "list_catalog_abouts": lambda: m35.list_catalog_abouts(None, None, kind="model"),
+    "get_chooser": m35.get_chooser,
+    "recommend_catalog_items": lambda: m35.recommend_catalog_items(
+        {"goal": "forecast", "data_shape": ["one_series", "panel"]}, kind="model", limit=5
+    ),
+    "list_workflow_nodes": lambda: m35.list_workflow_nodes(None, None, kind="test"),
+    "get_workflow_node": lambda: m35.get_workflow_node("test.adf"),
+    "list_governance_checks": lambda: m35.list_governance_checks(None, None),
+    # v0.5 datasets and explorers
+    "get_dataset_about": lambda: m35.get_dataset_about("ds_1"),
+    "update_dataset_about": lambda: m35.update_dataset_about("ds_1", _ex(DatasetAboutUpdate)),
+    "explore_dataset_version": lambda: m35.explore_dataset_version(
+        "ds_1", 4, _ex(DataExploreRequest), None
+    ),
+    "get_exploration": lambda: m35.get_exploration("run_1"),
+    "explore_model_version": lambda: m35.explore_model_version(
+        "mdl_1", 3, _ex(ModelExploreRequest), None
+    ),
+    "compare_model_versions": lambda: m35.compare_model_versions(_ex(ModelCompareRequest), None),
+    "optimize_model_version": lambda: m35.optimize_model_version(
+        "mdl_1", 3, _ex(OptimizeRequest), wait=30, idempotency_key="k"
+    ),
+    "get_optimization": lambda: m35.get_optimization("run_1"),
+    # v0.5 workflows
+    "list_workflows": lambda: m35.list_workflows(None, None, archived=False),
+    "create_workflow": lambda: m35.create_workflow(_ex(WorkflowCreate)),
+    "validate_workflow": lambda: m35.validate_workflow(_ex(WorkflowValidateRequest)),
+    "get_workflow": lambda: m35.get_workflow(_WF),
+    "update_workflow": lambda: m35.update_workflow(_WF, _ex(WorkflowUpdate)),
+    "delete_workflow": lambda: m35.delete_workflow(_WF),
+    "list_workflow_revisions": lambda: m35.list_workflow_revisions(_WF, None, None),
+    "create_workflow_revision": lambda: m35.create_workflow_revision(
+        _WF, _ex(WorkflowRevisionCreate)
+    ),
+    "get_workflow_revision": lambda: m35.get_workflow_revision(_WF, 2),
+    "start_workflow_run": lambda: m35.start_workflow_run(_WF, _ex(WorkflowRunCreate), "k"),
+    "list_workflow_runs": lambda: m35.list_workflow_runs(_WF, None, None, status="running"),
+    "get_workflow_run": lambda: m35.get_workflow_run("run_1"),
+    "cancel_workflow_run": lambda: m35.cancel_workflow_run("run_1"),
+    "workflow_run_events": lambda: m35.workflow_run_events("run_1", 7, 100),
+    "list_workflow_node_runs": lambda: m35.list_workflow_node_runs(
+        "run_1", None, None, status="failed"
+    ),
+    "get_workflow_node_run": lambda: m35.get_workflow_node_run("run_1", "adf"),
+    "get_workflow_node_output": lambda: m35.get_workflow_node_output("run_1", "diff", "data"),
+    "list_workflow_schedules": lambda: m35.list_workflow_schedules(_WF, None, None),
+    "create_workflow_schedule": lambda: m35.create_workflow_schedule(_WF, _ex(ScheduleCreate)),
+    "update_workflow_schedule": lambda: m35.update_workflow_schedule(
+        _WF, "wsc_1", _ex(ScheduleUpdate)
+    ),
+    "delete_workflow_schedule": lambda: m35.delete_workflow_schedule(_WF, "wsc_1"),
+    "list_workflow_triggers": lambda: m35.list_workflow_triggers(_WF, None, None),
+    "create_workflow_trigger": lambda: m35.create_workflow_trigger(_WF, _ex(TriggerCreate)),
+    "delete_workflow_trigger": lambda: m35.delete_workflow_trigger(_WF, "wtr_1"),
+    "list_workflow_templates": lambda: m35.list_workflow_templates(None, None),
+    "get_workflow_template": lambda: m35.get_workflow_template("ts_readiness_arimax"),
+    # v0.5 governance policies
+    "list_policies": lambda: m35.list_policies(None, None, scope="project"),
+    "create_policy": lambda: m35.create_policy(_ex(GovernancePolicyCreate)),
+    "get_policy": lambda: m35.get_policy(_POL),
+    "update_policy": lambda: m35.update_policy(_POL, _ex(GovernancePolicyUpdate)),
+    "delete_policy": lambda: m35.delete_policy(_POL),
+    "list_policy_versions": lambda: m35.list_policy_versions(_POL, None, None),
+    "list_tenant_policies": lambda: m35.list_tenant_policies("acme", None, None),
+    "create_tenant_policy": lambda: m35.create_tenant_policy("acme", _ex(GovernancePolicyCreate)),
+    "get_tenant_policy": lambda: m35.get_tenant_policy("acme", _POL),
+    "update_tenant_policy": lambda: m35.update_tenant_policy(
+        "acme", _POL, _ex(GovernancePolicyUpdate)
+    ),
+    "delete_tenant_policy": lambda: m35.delete_tenant_policy("acme", _POL),
+    # v0.5 validations
+    "request_model_validation": lambda: m35.request_model_validation(
+        "mdl_1", 3, _ex(ValidationRequest), None
+    ),
+    "list_model_validations": lambda: m35.list_model_validations("mdl_1", 3, None, None),
+    "list_validations": lambda: m35.list_validations(None, None, status="awaiting_approval"),
+    "get_validation": lambda: m35.get_validation(_VAL),
+    "list_validation_evidence": lambda: m35.list_validation_evidence(_VAL, None, None),
+    "cancel_validation": lambda: m35.cancel_validation(_VAL, _ex(ValidationNote)),
+    "resubmit_validation": lambda: m35.resubmit_validation(_VAL, _ex(ValidationNote), None),
+    "decide_validation": lambda: m35.decide_validation(_VAL, _ex(ApprovalCreate)),
+    "deprecate_validation": lambda: m35.deprecate_validation(_VAL, _ex(ValidationNote)),
+    "export_evidence_pack": lambda: m35.export_evidence_pack(_VAL, _ex(EvidencePackRequest)),
 }
 
 CLIENT_ENDPOINTS = ENDPOINTS
-"""The table the client covers: every row of the v0.4 API."""
+"""The table the client covers: every row of the v0.5 API (M1, M2, M3 and M3.5)."""
 PROGRAM_ENDPOINTS = tuple(d for d in CLIENT_ENDPOINTS if d.operation_id not in NOT_FOR_PROGRAMS)
 
 
@@ -278,6 +383,10 @@ def _pattern(decl: EndpointDecl) -> re.Pattern[str]:
     return re.compile(
         "^" + "".join("[^/]+" if p.startswith("{") else re.escape(p) for p in parts) + "$"
     )
+
+
+def test_the_client_covers_the_m35_table() -> None:
+    assert {d.operation_id for d in ENDPOINTS} - NOT_FOR_PROGRAMS <= set(BUILDERS)
 
 
 def test_every_endpoint_has_a_builder() -> None:
@@ -414,8 +523,10 @@ def test_m3_waits_are_capped() -> None:
 
 
 def test_m3_snippet_languages_are_repeated_and_checked() -> None:
-    call = m3.list_endpoint_snippets("a", ["python", "atlas"])
-    assert call.params == {"language": ["python", "atlas"]}
+    call = m3.list_endpoint_snippets("a", ["python", "notebook"])
+    assert call.params == {"language": ["python", "notebook"]}
+    with pytest.raises(ValueError):  # only the documented snippet languages
+        m3.list_endpoint_snippets("a", ["cobol"])
     assert m3.list_endpoint_snippets("a").params == {}
     with pytest.raises(ValueError):
         m3.list_endpoint_snippets("a", ["cobol"])

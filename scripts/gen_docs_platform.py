@@ -80,6 +80,10 @@ RESOURCE_LABELS: dict[str, str] = {
     "embed": "Read-only embed links of saved plots",
     "tenant_deletion": "Deleting the whole tenant",
     "tenant_export": "GDPR exports of the tenant's data",
+    # M3.5
+    "workflow": "Workflows, their runs, schedules and triggers",
+    "policy": "A project's governance policies",
+    "tenant_policy": "Tenant-wide governance policies (every project's floor)",
 }
 
 ACTION_NOTES: dict[tuple[str, str], str] = {
@@ -94,14 +98,23 @@ ACTION_NOTES: dict[tuple[str, str], str] = {
     ("webhook", "update"): "includes rotating the secret and replaying deliveries",
     ("tenant_deletion", "cancel"): "within the grace period",
     ("tenant_deletion", "manage"): "purge, retry",
+    ("model", "validate"): "submit, resubmit or cancel a governance validation",
+    ("model", "approve"): "needs the reviewer capability; never the submitter, never a token",
+    ("model", "update"): "deprecate a validated version",
 }
 
 
 def _matrix_rows() -> Iterator[tuple[str, str, Any]]:
+    """Every (resource, action) rule, the actions of one resource together, in the order the
+    resources first appear in the matrix (so later additions such as M3.5's ``model``
+    actions join their resource's rows)."""
     from mapi_spec.tenancy import PERMISSIONS
 
-    for (resource, action), rule in PERMISSIONS.items():
-        yield resource.value, action.value, rule
+    first: dict[str, int] = {}
+    for resource, _ in PERMISSIONS:
+        first.setdefault(resource.value, len(first))
+    rows = [(r.value, a.value, rule) for (r, a), rule in PERMISSIONS.items()]
+    yield from sorted(rows, key=lambda row: first[row[0]])  # stable: actions keep their order
 
 
 def roles_matrix() -> str:
@@ -131,21 +144,66 @@ def roles_matrix() -> str:
             op = "internal services only"
         else:
             suffix = " tenant-wide" if rule.level is Level.TENANT else ""
-            cells = [YES + suffix if can(r, action, resource) else "" for r in roles]
+            cells = []
+            for r in roles:
+                if can(r, action, resource):
+                    cells.append(YES + suffix)
+                elif rule.capability is not None and can(r, action, resource, [rule.capability]):
+                    cells.append(f"{YES} with `{rule.capability.value}`")
+                else:
+                    cells.append("")
             op = YES if (ResourceKind(resource), Action(action)) in OPERATOR_PERMISSIONS else ""
         lines.append(f"| {label} | {_cell(act)} | " + " | ".join(cells) + f" | {op} |")
     return "\n".join(lines) + "\n"
 
 
-SCOPE_COLUMNS = (
-    "models:read",
-    "runs:create",
-    "score:*",
-    "datasets:write",
-    "plugins:publish",
-    "endpoints:promote",
-    "webhooks:manage",
-)
+def _scope_columns() -> tuple[str, ...]:
+    """Every scope family but ``admin`` (which covers everything); ``score`` as ``score:*``."""
+    from mapi_spec.tokens import ScopeName
+
+    return tuple(
+        "score:*" if s is ScopeName.SCORE else s.value
+        for s in ScopeName
+        if s is not ScopeName.ADMIN
+    )
+
+
+SCOPE_COLUMNS = _scope_columns()
+
+#: What each capability allows, in plain words. A test checks every ``Capability`` has one.
+CAPABILITY_TEXT: dict[str, str] = {
+    "reviewer": "Approve or reject model validations that wait for a second person "
+    "(`POST /v1/validations/{id}/approvals`), never the member's own submissions "
+    "(`SELF_APPROVAL_FORBIDDEN`) and never through an API token. Granted per project "
+    "membership (`capabilities` on the membership, or the Reviewer column of Members); "
+    "viewers cannot hold it.",
+}
+
+
+def capabilities_section() -> str:
+    return (
+        "A capability is granted on top of a role, per project membership; project admins hold "
+        "every capability implicitly. A rule that needs one says so in the roles table "
+        '("✓ with `reviewer`").\n\n' + capabilities_table()
+    )
+
+
+def capabilities_table() -> str:
+    """Grants on top of a role (``mapi_spec.tenancy.Capability``) and the rules needing them."""
+    from mapi_spec.tenancy import Capability
+
+    lines = [
+        "| Capability | Needed for | What it allows |",
+        "|---|---|---|",
+    ]
+    for cap in Capability:
+        needs = ", ".join(
+            f"`{resource}` {action}"
+            for resource, action, rule in _matrix_rows()
+            if rule.capability is cap
+        )
+        lines.append(f"| `{cap.value}` | {needs} | {_cell(CAPABILITY_TEXT[cap.value])} |")
+    return "\n".join(lines) + "\n"
 
 
 def scopes_matrix() -> str:
@@ -239,7 +297,9 @@ def permissions_page() -> str:
         + "through an API token) hold exactly these permissions, on every tenant: "
         + ", ".join(ops)
         + ". None of them reads tenant content: datasets, specs, models or plots.\n\n"
-        + "## Token scopes\n\n"
+        + "## Capabilities\n\n"
+        + capabilities_section()
+        + "\n## Token scopes\n\n"
         + "A token acts as its owner, narrowed by its scopes: both the owner's role and a "
         + "scope must allow an action. `admin` covers everything the owner's role allows; "
         + "`score:<alias>` covers one endpoint (`score:*` every endpoint of the project).\n\n"
@@ -502,6 +562,7 @@ PAGES = {"permissions.md": permissions_page, "environment-variables.md": environ
 FRAGMENT_MAKERS = {
     "roles-matrix": roles_matrix,
     "token-scopes": scopes_matrix,
+    "capabilities": capabilities_table,
     "trust-tiers": trust_tiers,
     "metrics": metrics_table,
     "alerts": alerts_table,

@@ -142,6 +142,19 @@ def test_members(scoped: Client, api: respx.MockRouter, example: Ex) -> None:
     )
     scoped.tenants.set_role("acme", usr, "editor", project_id="growth")
     assert json.loads(role.calls.last.request.content) == {"role": "editor"}
+    # M3.5: the reviewer capability on top of a role (granted, then taken away)
+    scoped.tenants.set_capabilities("acme", usr, ["reviewer"], project_id="growth")
+    assert json.loads(role.calls.last.request.content) == {"capabilities": ["reviewer"]}
+    scoped.tenants.set_capabilities("acme", usr, [], project_id="growth")
+    assert json.loads(role.calls.last.request.content) == {"capabilities": []}
+    with pytest.raises(ValueError):
+        scoped.tenants.set_capabilities("acme", usr, ["approver"])
+    scoped.tenants.add_member("acme", "editor", principal_id=usr, capabilities=["reviewer"])
+    assert json.loads(add.calls.last.request.content) == {
+        "principal_id": usr,
+        "role": "editor",
+        "capabilities": ["reviewer"],
+    }
     rm = api.delete(f"{V1}/tenants/acme/members/{usr}").respond(204)
     scoped.tenants.remove_member("acme", usr)
     assert rm.called
@@ -167,7 +180,7 @@ def test_tokens(scoped: Client, api: respx.MockRouter, example: Ex) -> None:
     assert tokens[0].display.startswith("mapi_")
     assert listing.calls.last.request.url.params["all"] == "true"
     api.get(f"{V1}/tokens/tok_1").respond(200, json=example(ApiToken))
-    assert scoped.tokens.get("tok_1").name == "atlas-optimiser"
+    assert scoped.tokens.get("tok_1").name == "budget-planner"
     revoke = api.delete(f"{V1}/tokens/tok_1").respond(204)
     scoped.tokens.revoke("tok_1")
     assert revoke.calls.last.request.headers[HEADER] == "acme/growth"

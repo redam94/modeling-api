@@ -395,6 +395,8 @@ def test_control_plane_image_has_no_science_dependencies() -> None:
         "mapi-plugin-mmm",
         "mapi-plugin-ts",
         "mapi-plugin-tabular",
+        "mapi-plugin-statsmodels",
+        "statsmodels",
     }
     assert not names & forbidden
     contracts = stage("server", "contracts")
@@ -453,7 +455,7 @@ def test_control_plane_images_resolve_the_image_digest(
 
 def test_base_ml_has_no_pymc() -> None:
     names = image_closure(*arg_default("base-ml", "MAPI_PACKAGES").split())
-    assert not names & {"pymc", "pytensor", "nutpie", "mapi-pymc", "pymc-marketing"}
+    assert not names & {"pymc", "pytensor", "nutpie", "mapi-pymc", "mmm-framework"}
     assert {"scikit-learn", "xgboost", "mapi-sklearn"} <= names
 
 

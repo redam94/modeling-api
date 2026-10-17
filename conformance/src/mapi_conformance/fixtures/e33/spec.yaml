@@ -1,7 +1,9 @@
-# E33: hierarchical geo MMM - the plan's §6.1 spec scaled down for the corpus.
-# Differences from §6.1: lag_tensor/adstock l_max 4 (not 6), a tiny pymc fit (the nightly
-# corpus overrides the draws), no `dim_policies: {geo: fixed}` so the corpus can score a
-# new market, and the real core.fx_convert settings for a GBP market.
+# E33: hierarchical geo MMM - the plan's §6.1 spec on mmm-framework (mmm.bayesian), scaled
+# down for the corpus. mmm-framework owns scaling and carry-over, so the pipeline only
+# converts the GBP market to EUR, aggregates to weeks and adds the holiday control (no
+# mean scaling, lag tensor or Fourier step). Differences from §6.1: adstock l_max 4, a tiny
+# pymc fit (the nightly corpus overrides the draws) and new markets drawn from the fitted
+# geo spread (new_levels: hyperprior) so the corpus can score one.
 apiVersion: mapi/v1
 kind: ModelSpec
 metadata: {name: eu-geo-mmm, project: growth, labels: {family: mmm, fixture: e33}}
@@ -20,23 +22,18 @@ pipeline:
   - id: to_eur
     use: core.fx_convert@^1
     with: {vars: [y, spend], table: fx, table_along: date, currency_dim: geo, currencies: {UK: GBP}, default_currency: EUR}
-  - {id: weekly,      use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum, full_periods_only: true}}
-  - {id: scale_spend, use: core.mean_scale@^1, with: {vars: [spend], over: [time], unseen_levels: pooled}}
-  - {id: scale_y,     use: core.mean_scale@^1, with: {vars: [y], over: [time], unseen_levels: pooled}}
-  - {id: lags,        use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 4, pad: first}}
-  - {id: season,      use: core.fourier@^1,    with: {along: time, period: 52.18, order: 2, out: fourier}}
-  - {id: hols,        use: core.holidays@^1,   with: {table: holidays, table_along: date, along: time}}
+  - {id: weekly, use: core.resample@^1, with: {dim: time, freq: W-SUN, how: sum, full_periods_only: true}}
+  - {id: hols,   use: core.holidays@^1, with: {table: holidays, table_along: date, along: time}}
 
 model:
-  use: mmm.hierarchical_geo@^1.3
+  use: mmm.bayesian@^1
   settings:
-    pooling: partial
-    centred: false
+    hierarchy: {pool_over: [geo]}
+    new_levels: hyperprior
     adstock: {kind: geometric, l_max: 4}
     saturation: {kind: logistic}
-    priors:
-      beta_channel: {distribution: HalfNormal, sigma: 1.0, dims: [channel]}
-      lam:          {distribution: Gamma, alpha: 3, beta: 1, dims: [channel]}
+    trend: {kind: none}
+    seasonality: {yearly_order: 2}
   fit:
     mode: evaluate_then_refit
     engine: pymc

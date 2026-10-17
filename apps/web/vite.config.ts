@@ -4,7 +4,9 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
 import { bundleBudget } from "./bundle-budget";
+import { canonicalHost } from "./canonical-host";
 import { buildAppCsp, type AppCspOptions } from "./csp";
+import { DEV_PREBUNDLE } from "./dev-prebundle";
 
 const HOST = "127.0.0.1";
 const PORT = 5173;
@@ -15,7 +17,8 @@ const PORT = 5173;
  */
 const ENTRY_BUDGET = {
   maxEntryBytes: 640 * 1024,
-  forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow)\//],
+  // M3.5: React Flow (the workflow canvas) loads only with the workflow editor and run graph.
+  forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow|@xyflow)\//],
 };
 
 function cspMeta(opts: AppCspOptions): Plugin {
@@ -42,12 +45,13 @@ export default defineConfig(({ mode }) => {
     "Referrer-Policy": "strict-origin-when-cross-origin",
   };
   return {
-    plugins: [react(), tailwindcss(), cspMeta(csp), bundleBudget(ENTRY_BUDGET)],
+    plugins: [react(), tailwindcss(), canonicalHost(HOST), cspMeta(csp), bundleBudget(ENTRY_BUDGET)],
     resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
     // `--mode mock` serves the MSW service worker (mock-public/) and enables the mocks;
     // production builds never contain it.
     publicDir: mode === "mock" ? "mock-public" : "public",
     server: { host: HOST, port: PORT, strictPort: true },
+    optimizeDeps: { include: [...DEV_PREBUNDLE] },
     preview: { host: HOST, port: PORT, strictPort: true, headers },
     build: {
       target: "es2022",

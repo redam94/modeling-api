@@ -343,7 +343,7 @@ and skip otherwise.
 | Python suite | `make test` | 4141 passed, 11 skipped (optional cloud SDKs not installed, Linux-only `prctl`, Debian `cp`, `shellcheck`, the three documented `local-process` conformance skips), 45 deselected (`docker`, `cloud`, `e2e`) |
 | Lint and import contracts | `make lint` | ruff and format clean (569 files); import contracts 4 kept, 0 broken |
 | Type checks | `make typecheck` | mypy clean on every package (`--strict` for spec, gcs-shim, runner, server, client and cli) |
-| Conformance corpus (tiny) | `make conformance` | 7/7 fixtures passed (e02, c08, e24, xgb and sklearn store demand, e33, pymc-marketing) in 77 s |
+| Conformance corpus (tiny) | `make conformance` | 7/7 fixtures passed (e02, c08, e24, xgb and sklearn store demand, e33 and the model-owns-units MMM fixture) in 77 s |
 | Web: lint, typecheck, unit, smoke, build | `make web-check` | web: 146 Vitest tests; plot sandbox: 60; Playwright smoke: 26; both production builds OK |
 | Docs | `make docs-build` (MkDocs `--strict`) | built with no warnings |
 | End to end, M1 and M2, API and browser | `make e2e` | API suites 28 passed, 1 skipped (the opt-in burst): M1 E33 stack, corpus on the stack, the docs walkthroughs, M2 tenancy. Browser `@e2e` suites 14 passed: the stack smoke tests, the M1 flow and the M2 flow |

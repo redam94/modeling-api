@@ -12,7 +12,7 @@
 # The `docker` extra (docker-py) is included so `mapi-server worker` can drive the docker
 # executor through a mounted socket. Build from the repository root:
 #
-#   docker build -f images/server/Dockerfile -t mapi/server:0.4.0 .
+#   docker build -f images/server/Dockerfile -t mapi/server:0.5.0 .
 #
 # See docs/operations/docker.md.
 
@@ -21,8 +21,8 @@ ARG PYTHON_IMAGE=python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09d2c6cf1aa58abcb6507d124b50286f9f
 
 ARG MAPI_PACKAGES="mapi-server[docker]"
-ARG MAPI_ASSERT_PRESENT="mapi-server mapi-spec mapi-plots fastapi uvicorn sqlalchemy alembic psycopg procrastinate docker"
-ARG MAPI_ASSERT_ABSENT="numpy xarray pandas scipy pyarrow zarr pymc pytensor nutpie numba scikit-learn xgboost altair plotly mapi-sdk mapi-runner mapi-steps mapi-pymc mapi-sklearn mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-conformance"
+ARG MAPI_ASSERT_PRESENT="mapi-server mapi-spec mapi-plots mapi-workflows jsonschema fastapi uvicorn sqlalchemy alembic psycopg procrastinate docker"
+ARG MAPI_ASSERT_ABSENT="numpy xarray pandas scipy pyarrow zarr pymc pytensor nutpie numba scikit-learn xgboost altair plotly mapi-sdk mapi-runner mapi-steps mapi-pymc mapi-sklearn mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-plugin-statsmodels statsmodels mapi-conformance"
 ARG VERSION=0.0.0-dev
 ARG VCS_REF=unknown
 ARG BUILD_DATE=1970-01-01T00:00:00Z
@@ -101,6 +101,8 @@ ENV PATH=/opt/mapi/venv/bin:${PATH} \
     HOME=/tmp/mapi-home \
     MAPI_UV_LOCK_PATH=/opt/mapi/uv.lock
 COPY --from=builder /opt/mapi/venv /opt/mapi/venv
+COPY --chmod=0644 LICENSE.md LICENSE-APACHE.txt LICENSE-AGPL.txt COMMERCIAL-LICENSE.md \
+     THIRD-PARTY-NOTICES.md /usr/share/doc/mapi/
 COPY --chmod=0644 images/common/healthcheck.py images/common/assert_dists.py /opt/mapi/bin/
 COPY --chmod=0644 uv.lock /opt/mapi/uv.lock
 # Referencing the contracts stage makes BuildKit run it; the marker itself is informational.
