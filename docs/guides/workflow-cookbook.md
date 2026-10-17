@@ -137,7 +137,7 @@ following workflow run run_01m53hawnnyn7cyeptj70cxkk0 (23 nodes)
  order      │ search     │ ✓ succeeded │ 22.9s │ {"best_p": 1, "best_q": 1}
  sdiff      │ transform  │ – skipped   │ 0.0s  │ branch 'seasonal' took the else path
  dm         │ compare    │ ✓ succeeded │ 18.7s │ The difference between backtest and naive at
-            │            │             │       │ horizon 1 may be luck.
+            │            │             │       │ horizon 1 is possibly luck.
  acf        │ test       │ ✓ succeeded │ 13.4s │ No past period is related to the present beyond
             │            │             │       │ chance.
  select     │ select     │ ✓ succeeded │ 0.0s  │ backtest has the best average error (1.78) and beats

@@ -58,7 +58,7 @@ async function startGeoMmm(page: Page) {
   await expect(page.getByLabel("Which column names the market or region?")).toHaveValue("market");
   const spend = page.getByRole("group", { name: /media spend/ });
   for (const ch of ["tv_spend", "search_spend", "social_spend"]) await expect(spend.getByRole("checkbox", { name: new RegExp(ch) })).toBeChecked();
-  await expect(page.getByRole("group", { name: /move the result/ }).getByRole("checkbox", { name: /avg_price/ })).toBeChecked();
+  await expect(page.getByRole("group", { name: /change the result/ }).getByRole("checkbox", { name: /avg_price/ })).toBeChecked();
   await expect(page.getByText("Very likely match").first()).toBeVisible();
   // live preview: the file read locally, with a sparkline per chosen series
   const preview = page.getByRole("complementary", { name: "Preview" });

@@ -149,7 +149,7 @@ test("a run is followed live, a node's details open and another run is cancelled
   await page.getByRole("tab", { name: "Steps" }).click();
   await page.getByRole("table", { name: "Steps" }).getByRole("button", { name: /Does it wander\? \(ADF\)/ }).click();
   const drawer = page.getByTestId("node-drawer");
-  await expect(drawer.getByTestId("test-verdict")).toContainText("The series wanders");
+  await expect(drawer.getByTestId("test-verdict")).toContainText("The series does not return to a stable level");
   await expect(drawer.getByText("Sandbox run")).toBeVisible();
   await shot(page, "node-drawer");
   await page.keyboard.press("Escape");

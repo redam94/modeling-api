@@ -97,9 +97,9 @@ this effect advertising.
   unless you tell this.
 - **Assumptions do not decide the answer** (Bayesian models): If you make the priors wider and
   narrower, the answer must almost not move.
-- **Finds known answers**: The check simulates data from the fitted model and fits it again.
+- **Finds known values**: The check simulates data from the fitted model and fits it again.
   It makes sure that the ranges contain the truth about 90% of the time.
-- **The fit finished properly**, **the error on unseen data is below your limit**, and **the
+- **The fit is complete and stable**, **the error on unseen data is below your limit**, and **the
   data is good enough**. The last check means no long gaps, no constant drivers and no
   negative spend.
 

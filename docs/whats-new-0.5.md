@@ -100,7 +100,7 @@ The workflow also runs again each Monday morning automatically.
   example *Is my weekly KPI ready to forecast?*, *Do these series move together?*, *A
   governed marketing-mix model* or *Forecast bake-off*. Read the result as a report. Each
   test has a plain verdict ("The series wanders: consider differencing it."). Each decision
-  shows the numbers that it read. Each comparison says "may be luck" or "beyond luck".
+  shows the numbers that it read. Each comparison says "is possibly luck" or "It is not luck".
 - **A model must earn its place.** Before a person uses a model, the platform shuffles the
   results that the model was fitted on. Then it fits the model again, many times. A model
   that learned something real must be clearly better on the real data. The platform also
@@ -193,7 +193,7 @@ wanders then {'nodes.pp.reject': False, 'nodes.za.reject': False, 'nodes.adf.rej
 seasonal else {'nodes.seas.seasonal': False}
 trusted then {'nodes.governance.passed': True}
 ARIMA(1, 1, 1)
-The difference between backtest and naive at horizon 1 may be luck.
+The difference between backtest and naive at horizon 1 is possibly luck.
 backtest has the best average error (1.83) and beats every benchmark (the strongest, naive, scored 1.87).
 passed
 validated
@@ -213,7 +213,7 @@ This output shows that the platform is honest. It does not flatter the model:
 - On weeks that it did not see, ARIMAX is 25% better than "same as last week".
 - ARIMAX forecasts better than all twenty fits with the price driver shuffled in time. Thus
   the driver has real information.
-- But Diebold-Mariano says that the one-week-ahead advantage over naive *may be luck*.
+- But Diebold-Mariano says that the one-week-ahead advantage over naive *is possibly luck*.
 - The AR coefficient changes across windows of history.
 
 The default forecasting policy uses stability as information only. Thus the version is

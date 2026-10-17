@@ -44,14 +44,14 @@ describe("Governance", () => {
     await user.click(screen.getByRole("tab", { name: "Check catalog" }));
     const catalog = await screen.findByTestId("check-catalog");
     expect(within(catalog).getAllByTestId("about-card")).toHaveLength(12);
-    expect(catalog).toHaveTextContent("Beats a shuffled result");
+    expect(catalog).toHaveTextContent("Better than shuffled data");
   });
 
   it("saves a new policy version with the edited checks and the expected version", async () => {
     const user = userEvent.setup();
     renderApp(`/governance/policies/${PROJECT_POLICY_ID}`);
     const editor = await screen.findByTestId("policy-editor");
-    await within(editor).findByRole("option", { name: "Ignores fake drivers (null.noise_regressors)" });
+    await within(editor).findByRole("option", { name: "No effect from false drivers (null.noise_regressors)" });
     await user.selectOptions(within(editor).getByLabelText("Add a check"), "null.noise_regressors");
     await user.click(within(editor).getByRole("button", { name: "Add check" }));
     const holdout = editor.querySelector('li[data-check="holdout.accuracy"]') as HTMLElement;

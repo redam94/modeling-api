@@ -220,15 +220,15 @@ thresholds stricter. The catalog is `mapi_spec.scorecard.SCORECARD_CHECKS`:
 |---|---|---|---|
 | <a id="check-convergence-rhat"></a>`convergence.rhat` (Chains agree) | `r_hat_max` | warn above 1.01, fail above 1.05 | Run more tuning and draws, or make the model simpler. |
 | <a id="check-convergence-ess"></a>`convergence.ess` (Enough independent draws) | `ess_bulk_min` | warn below 400, fail below 100 | Increase the number of draws. |
-| <a id="check-convergence-divergences"></a>`convergence.divergences` (Sampler stayed on track) | `divergence_rate` | warn above 0%, fail above 1% | Increase target_accept, or use more informative priors. |
+| <a id="check-convergence-divergences"></a>`convergence.divergences` (The sampler had no problems) | `divergence_rate` | warn above 0%, fail above 1% | Increase target_accept, or use more informative priors. |
 
 #### Holdout error
 
 | Check | Metric | Thresholds | What to do |
 |---|---|---|---|
 | <a id="check-holdout-mape"></a>`holdout.mape` (Holdout error) | `mape` | warn above 10%, fail above 25% | Look for gaps or one-time events in the last periods of data. Add holidays or controls that explain them. |
-| <a id="check-holdout-coverage-90"></a>`holdout.coverage_90` (Uncertainty is honest) | `coverage_90` | warn when more than 10% away from 90%, fail when more than 25% away | Look for trends or shifts that the model does not include. |
-| <a id="check-holdout-hit-rate"></a>`holdout.hit_rate` (Beats a naive guess) | `accuracy_lift` | warn below +2 points, fail below -10 points | Add the drivers of the choice for each product (price, promotions, displays). Or collect more trips for each customer. |
+| <a id="check-holdout-coverage-90"></a>`holdout.coverage_90` (The uncertainty is correct) | `coverage_90` | warn when more than 10% away from 90%, fail when more than 25% away | Look for trends or shifts that the model does not include. |
+| <a id="check-holdout-hit-rate"></a>`holdout.hit_rate` (Better than a simple guess) | `accuracy_lift` | warn below +2 points, fail below -10 points | Add the drivers of the choice for each product (price, promotions, displays). Or collect more trips for each customer. |
 
 `holdout.hit_rate` is the check of the `customer_choice` template. For each household, the
 check uses the trip in the holdout. It compares the most probable product of the model with
@@ -244,10 +244,10 @@ higher is better) and the multi-class `brier` score (0 is perfect).
 | Check | Metric | Thresholds | What to do |
 |---|---|---|---|
 | <a id="check-plausibility-negative-roi"></a>`plausibility.negative_roi` (No channel loses money) | `negative_roi_share` | warn above 10%, fail above 50% | Examine the spend data of the channel, or give an ROI range in business priors. |
-| <a id="check-plausibility-roi-absurd"></a>`plausibility.roi_absurd` (Returns are believable) | `roi_max` | warn above 20, fail above 100 | Examine the spend units and gaps, or give an ROI range in business priors. |
-| <a id="check-plausibility-share-outlier"></a>`plausibility.share_outlier` (No channel dominates) | `max_channel_share` | warn above 60%, fail above 90% | Look for a missing control (price, promotions, seasonality). |
-| <a id="check-plausibility-baseline-share"></a>`plausibility.baseline_share` (Baseline is plausible) | `baseline_share` | warn when more than 40% away from 50%, fail when more than 48% away | Give a baseline share in business priors, or examine the controls. |
-| <a id="check-plausibility-prior-overlap"></a>`plausibility.prior_overlap` (The data informed the model) | `prior_overlap_max` | warn above 90%, fail above 99% | Add data where the driver changes (or a lift test). Or give a business prior for it that you trust. |
+| <a id="check-plausibility-roi-absurd"></a>`plausibility.roi_absurd` (Returns are not too high) | `roi_max` | warn above 20, fail above 100 | Examine the spend units and gaps, or give an ROI range in business priors. |
+| <a id="check-plausibility-share-outlier"></a>`plausibility.share_outlier` (No channel is too large) | `max_channel_share` | warn above 60%, fail above 90% | Look for a missing control (price, promotions, seasonality). |
+| <a id="check-plausibility-baseline-share"></a>`plausibility.baseline_share` (The baseline is in the usual range) | `baseline_share` | warn when more than 40% away from 50%, fail when more than 48% away | Give a baseline share in business priors, or examine the controls. |
+| <a id="check-plausibility-prior-overlap"></a>`plausibility.prior_overlap` (The data changed the model) | `prior_overlap_max` | warn above 90%, fail above 99% | Add data where the driver changes (or a lift test). Or give a business prior for it that you trust. |
 
 #### Data
 
@@ -255,7 +255,7 @@ higher is better) and the multi-class `brier` score (0 is perfect).
 |---|---|---|---|
 | <a id="check-data-missing"></a>`data.missing` (Few missing values) | `missing_fraction` | warn above 5%, fail above 30% | Fill the gaps in the source data, or remove the series that have gaps. |
 | <a id="check-data-history"></a>`data.history` (Enough history) | `history_years` | warn below 2 years, fail below 1 year (the `weekly_forecast` template: below 0.5) | Add more history if you have it. |
-| <a id="check-data-spend-variation"></a>`data.spend_variation` (Spend varies enough) | `spend_cv_min` | warn below 10%, fail below 2% | Add a lift test for the channel, or give its ROI in business priors. |
+| <a id="check-data-spend-variation"></a>`data.spend_variation` (Spend changes enough) | `spend_cv_min` | warn below 10%, fail below 2% | Add a lift test for the channel, or give its ROI in business priors. |
 
 [Guided modelling](../guides/guided-modelling.md#the-sanity-scorecard) tells how the runner
 measures each check. The scorecard also controls promotion to an endpoint. Refer to

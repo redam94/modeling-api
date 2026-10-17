@@ -167,7 +167,7 @@ documentation tests run each spec (`docs/snippets/statsmodels_catalog.py`):
 
 ### `ts.sarimax` - forecast with past values and drivers
 
-> Forecasts a series from its own recent past, its seasonal pattern and outside drivers you know ahead, such as planned prices or holidays.
+> Forecasts a series from its recent past, its seasonal pattern and outside drivers that you know in advance, such as planned prices or holidays.
 
 **Use it when** you forecast one regular series a few periods ahead, and known future drivers
 (prices, promotions, holidays) are important. **Use a different model when** you have less
@@ -197,7 +197,7 @@ only if it is better than a naive forecast.
 
 ### `ts.arima` - forecast from past values
 
-> Forecasts a series from its own recent past and trend, without outside drivers.
+> Forecasts a series from its recent past and trend, without outside drivers.
 
 **Use it when** you have only the series itself and want a solid, well-known method. **Use a
 different model when** outside drivers explain most of the movement (use `ts.sarimax`).
@@ -212,7 +212,7 @@ differencing (use `trend: t` for a drift).
 
 ### `ts.ets` - exponential smoothing
 
-> Forecasts a series by giving recent values more weight than older ones, with optional trend and seasonality, and is quick and robust.
+> Forecasts a series and gives recent values more weight than older values. It has an optional trend and seasonality, and it is quick and robust.
 
 **Use it when** you need a fast, reliable baseline, and the level, trend and season change
 slowly. **Use a different model when** outside drivers explain most of the movement.
@@ -229,7 +229,7 @@ request gives the same quantiles.
 
 ### `ts.theta` - a simple, strong baseline
 
-> Forecasts a series by combining a straight-line trend with smoothed recent values, a simple method that is hard to beat.
+> Forecasts a series with a combination of a straight-line trend and smoothed recent values. This simple method is hard to beat.
 
 **Use it when** you want a strong, simple baseline to compare other models against. **Use a
 different model when** outside drivers are very important, or when you need detailed
@@ -244,7 +244,7 @@ This is the theta method with optional seasonal adjustment (`period`, `deseasona
 
 ### `ts.unobserved_components` - trend, season and noise
 
-> Splits a series into a slowly changing level and trend, a seasonal pattern and noise, and forecasts it from those parts.
+> Divides a series into a level and a trend that change slowly, a seasonal pattern and noise. It forecasts the series from these parts.
 
 **Use it when** you want to see the underlying trend without the noise, and the trend and
 season change slowly. **Use a different model when** you only need a quick baseline.
@@ -261,7 +261,7 @@ values of the drivers.
 
 ### `ts.ardl` - effects that build up over time
 
-> Explains a series from its own past and the current and past values of drivers, so you can see how an effect builds up over several periods.
+> Explains a series from its past and from the current and past values of drivers. You can see how an effect increases over several periods.
 
 **Use it when** the effect of a driver spreads over many periods. **Use a different model
 when** the effects are only immediate (a simple regression is sufficient).
@@ -277,7 +277,7 @@ change has an effect over the subsequent weeks.
 
 ### `ts.ecm` - long-run and short-run effects
 
-> Separates the short-term effect of a driver from its long-term effect on one series, and tests whether a long-run relationship exists at all.
+> Separates the short-term effect of a driver from its long-term effect on one series. It also tests if a long-run relationship exists.
 
 **Use it when** one result and some drivers have the same trend, and you want the immediate
 effect and the lasting effect of a driver. **Use a different model when** the result and the
@@ -299,7 +299,7 @@ This is the same model in error-correction form (statsmodels `UECM`):
 
 ### `ts.var` - series that drive each other
 
-> Models several series that influence each other over time, such as prices and sales of two brands, and forecasts them together.
+> Models two or more series that change each other over time, such as the prices and sales of two brands. It forecasts them together.
 
 **Use it when** many series move together and have an effect on each other, and you want to
 see how a shock to one series spreads to the others. **Use a different model when** you have
@@ -319,7 +319,7 @@ contains these items:
 
 ### `ts.vecm` - series tied together for good
 
-> Models series that wander but stay tied together in the long run, such as prices of close substitutes, and shows how fast they snap back after a gap opens.
+> Models series that wander but stay tied together in the long run, such as the prices of close substitutes. It shows how fast they go back after a gap opens.
 
 **Use it when** the series have a trend but keep a stable long-run relation. **Use a
 different model when** the series have no trend, or when a long-run relation is not
@@ -344,7 +344,7 @@ models for you.
 
 ### `ts.varmax` - series that drive each other, with drivers
 
-> Models several series that influence each other and also respond to outside drivers you know ahead, and forecasts them together.
+> Models two or more series that change each other and also respond to outside drivers that you know in advance. It forecasts them together.
 
 **Use it when** many series have an effect on each other, and outside drivers are also
 important. **Use a different model when** you have one series, or many series and a short
@@ -359,7 +359,7 @@ This is VARMA(p, q) with drivers in state-space form (VARX when `q = 0`). As wit
 
 ### `ts.dynamic_factor` - common movements across many series
 
-> Finds a few hidden forces that move many series together, such as the overall economy behind sales in many categories.
+> Finds a few hidden forces that move many series together, such as the general economy behind the sales in many categories.
 
 **Use it when** you have many related series and want their shared drivers. **Use a
 different model when** you have one or two series.
@@ -374,7 +374,7 @@ In this state-space model, some hidden factors follow a VAR and drive many serie
 
 ### `ts.markov_switching` - switching between regimes
 
-> Detects whether a series switches between regimes, such as high-growth and low-growth periods, and estimates the behaviour in each.
+> Finds if a series changes between regimes, such as periods of high growth and low growth. It estimates the behaviour in each regime.
 
 **Use it when** the behaviour jumps between different modes, and you want the probability of
 each mode now. **Use a different model when** the changes are gradual, or when you have a

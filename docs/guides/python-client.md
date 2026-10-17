@@ -165,7 +165,7 @@ model://default/eu-geo-mmm@v1 fail
 warn RHAT: The chains mostly agree, but not fully (R-hat 1.05).
 fail ESS: Only 71 independent draws: the numbers are not stable.
 pass DIVERGENCES: The sampler explored the model without problems.
-pass HOLDOUT_MAPE: Forecasts were off by 3% on the held-out periods.
+pass HOLDOUT_MAPE: The forecast error on the holdout periods was 3%.
 pass HOLDOUT_COVERAGE: 96% of held-out values fell inside the 90% range, as expected.
 pass NEGATIVE_ROI: No channel is likely to have a negative return.
 pass ROI_ABSURD: The highest channel return (4.34 per unit spent) is believable.

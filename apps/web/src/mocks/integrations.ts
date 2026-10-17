@@ -104,7 +104,7 @@ const WARN_GATE: PromotionGateDecision = {
   outcome: "needs_override",
   scorecard_overall: "warn",
   failing_checks: ["holdout.mape"],
-  reasons: [{ code: "SCORECARD_WARN", outcome: "needs_override", check: "holdout.mape", message_plain: "Forecasts were off by 14% on the last 8 weeks." }],
+  reasons: [{ code: "SCORECARD_WARN", outcome: "needs_override", check: "holdout.mape", message_plain: "The forecast error on the holdout periods was 14%." }],
 };
 
 /**
@@ -438,7 +438,7 @@ export function createIntegrationHandlers(state: IntegrationsState, deps: Integr
       if (row && row.model_version_id === MV_ID) return HttpResponse.json(row);
       if (!body.override) {
         return problem(409, "OVERRIDE_REQUIRED", "The promotion needs an admin override", "the scorecard warns; a project admin may override with a reason", [
-          { code: "OVERRIDE_REQUIRED", pointer: "", severity: "warning", message: "Forecasts were off by 14% on the last 8 weeks.", context: { gate_code: "SCORECARD_WARN", check: "holdout.mape" } },
+          { code: "OVERRIDE_REQUIRED", pointer: "", severity: "warning", message: "The forecast error on the holdout periods was 14%.", context: { gate_code: "SCORECARD_WARN", check: "holdout.mape" } },
         ]);
       }
       if (!body.reason?.trim()) return problem(422, "SCHEMA_INVALID", "Invalid request", "an override needs a reason", [{ code: "SCHEMA_INVALID", pointer: "/reason", message: "an override needs a reason" }]);
