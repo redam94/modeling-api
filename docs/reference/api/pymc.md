@@ -1,6 +1,7 @@
 # `mapi_pymc`
 
-PyMC models: write `build()`, get engines, diagnostics, new levels and counterfactuals.
+This package is for PyMC models. You write `build()`. The package gives engines, diagnostics,
+new levels and counterfactuals.
 
 ## The base class
 

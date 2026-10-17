@@ -1,6 +1,7 @@
 # `mapi_spec`
 
-Pure-Pydantic contracts. No numpy, xarray or pandas: the control plane depends on this package.
+This package has contracts that use only Pydantic. It does not use numpy, xarray or pandas,
+because the control plane depends on this package.
 
 ## Data schema
 
@@ -67,7 +68,7 @@ Pure-Pydantic contracts. No numpy, xarray or pandas: the control plane depends o
 
 ## Executor protocol
 
-The executor shapes are re-exported unchanged by `mapi_spec.run`.
+`mapi_spec.run` exports the executor shapes again with no changes.
 
 ::: mapi_spec.executor
     options:
@@ -76,7 +77,7 @@ The executor shapes are re-exported unchanged by `mapi_spec.run`.
 
 ## Run protocol
 
-See [Run protocol](../run-protocol.md) for the narrative specification.
+For the full description, read [Run protocol](../run-protocol.md).
 
 ::: mapi_spec.run
     options:
@@ -108,8 +109,8 @@ See [Job payloads and object names](../run-protocol.md#job-payloads-and-object-n
 
 ## REST DTOs
 
-See [HTTP API (v1)](../http-api.md) for the endpoint tables, conventions and the
-[multi-tenant additions](../http-api.md#multi-tenant-api) of v0.3.
+For the endpoint tables and the conventions, read [HTTP API (v1)](../http-api.md). Also read
+the [multi-tenant additions](../http-api.md#multi-tenant-api) of v0.3.
 
 ::: mapi_spec.api
     options:

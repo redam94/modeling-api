@@ -1,7 +1,7 @@
 # `mapi_plots`
 
-The JSON-only sanitizer and templates (core install) and the recipes and converters (extra
-`recipes`).
+This package has a sanitizer and templates that use only JSON. These are in the core install.
+The package also has recipes and converters. These are in the `recipes` extra.
 
 ## Sanitizer
 

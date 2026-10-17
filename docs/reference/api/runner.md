@@ -1,7 +1,8 @@
 # `mapi_runner`
 
-The sandboxed run harness (see [Runner](../runner.md)). The supervisor modules import only
-`mapi_spec` and `httpx`; the worker modules run the SDK harness and plugin code.
+This package is the run harness in the sandbox (see [Runner](../runner.md)). The supervisor
+modules import only `mapi_spec` and `httpx`. The worker modules run the SDK harness and the
+plugin code.
 
 ## Job documents and input/output names
 
