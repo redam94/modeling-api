@@ -8,6 +8,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { env } from "@/env";
 import { createHandlers } from "@/mocks/handlers";
+import editorGen from "@/mocks/editor.gen.json";
 import { MODEL_ID, modelVersion } from "@/mocks/fixtures";
 import { routeTree } from "@/router";
 
@@ -92,5 +93,26 @@ describe("ScorePage", () => {
     expect(Object.keys(data.coords).sort()).toEqual(["channel", "geo", "time"]);
     expect(data.data_vars.spend!.dims).toEqual(["geo", "channel", "time"]);
     expect((data.data_vars.spend!.data as number[][][])[0]![0]![0]).toBe(1000);
+  });
+
+  it("asks a quantile model for the summaries it can give, and no draws", async () => {
+    let sent: { request?: { output?: { summary?: string[]; draws?: number } } } = {};
+    server.use(
+      http.get(`${env.apiBase}/v1/models/:id/versions/:v/inputs`, () =>
+        HttpResponse.json({ ...editorGen.model_inputs, snapshot: { ...editorGen.model_inputs.snapshot, representation: "quantiles" } }),
+      ),
+      http.post(new RegExp(`/v1/models/[^/]+/versions/\\d+:score$`), async ({ request }) => {
+        sent = (await request.json()) as typeof sent;
+        return HttpResponse.json({ done: true, run: { id: "run_x", kind: "score", state: "succeeded" }, outputs: [] });
+      }),
+    );
+    renderAt(`/score?model=${MODEL_ID}&version=1`);
+    await screen.findByRole("table", { name: "Values to score" }, { timeout: 3000 });
+    const summaries = screen.getByRole("group", { name: "Summaries" });
+    expect(within(summaries).queryByRole("button", { name: "mean" })).toBeNull();
+    expect(screen.getByLabelText("Draws")).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: /^Forecast$/ }));
+    await waitFor(() => expect(sent.request).toBeDefined());
+    expect(sent.request?.output).toMatchObject({ summary: ["median", "q5", "q95"], draws: 0 });
   });
 });

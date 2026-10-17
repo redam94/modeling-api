@@ -22,6 +22,12 @@ milestone releases are tagged on `main`.
   `POST …/versions/{version}:score`, checked against the version's inputs and stored as run
   inputs exactly like an endpoint's inline payloads. The route gets the endpoint score body cap.
 
+### Fixed
+- The Score page asked every model for `mean`/`hdi_90` summaries, which quantile, interval and
+  point models refuse (`CAPABILITY_UNSUPPORTED`). Summaries now default to the model's
+  representation (`median`/`q5`/`q95` for quantiles), only the ones it can give are offered,
+  and draws are off for models without them.
+
 ### Known gaps
 - The docs' Score screenshots still show the previous form; regenerate them against a live
   stack (`scripts/docs_screenshots.mjs`).

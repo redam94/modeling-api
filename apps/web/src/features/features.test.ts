@@ -7,7 +7,7 @@ import { STARTER_SPEC } from "@/features/editor/starter";
 import { initialMappings, toIngestMapping, validateMappings } from "./datasets/mapping";
 import { buildPipeline, schemaDelta } from "./editor/pipeline";
 import { missingnessHeatmap, quickChart, stateArrayPlot } from "./plots/builtin-specs";
-import { buildScoreRequest, defaultScoreForm, parseSel, sideTableOptions } from "./score/request";
+import { REPRESENTATIONS, buildScoreRequest, defaultScoreForm, parseSel, sideTableOptions } from "./score/request";
 
 describe("buildPipeline", () => {
   it("joins the document with stages, resolved steps, split and issues", () => {
@@ -53,6 +53,16 @@ describe("score request", () => {
       output: { kind: "expected", summary: ["mean", "hdi_90"], draws: 0, units: "original", names: "dataset", vars: ["y_hat"] },
       seed: 7,
     });
+  });
+
+  it("refuses summaries and draws the model's representation cannot give", () => {
+    const form = { ...defaultScoreForm(), output: { ...defaultScoreForm().output, draws: "10" } };
+    const out = buildScoreRequest(form, "model://default/m@v1", "quantiles");
+    expect("problems" in out && out.problems.map((p) => p.field).sort()).toEqual(["draws", "summary"]);
+    const ok = buildScoreRequest({ ...form, output: { ...form.output, draws: "0", summary: REPRESENTATIONS.quantiles.defaults } }, "model://default/m@v1", "quantiles");
+    expect("request" in ok && ok.request.output?.summary).toEqual(["median", "q5", "q95"]);
+    // Unknown representation (an older version): the server decides.
+    expect("request" in buildScoreRequest(form, "model://default/m@v1")).toBe(true);
   });
 
   it("sends the payload dataset (only when it is the source) and the non-empty side tables", () => {

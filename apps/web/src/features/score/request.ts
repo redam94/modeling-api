@@ -40,7 +40,28 @@ export interface ScoreForm {
   seed: string;
 }
 
-export const SUMMARY_OPTIONS = ["mean", "median", "sd", "hdi_50", "hdi_90", "hdi_95", "q05", "q50", "q95"];
+/** How a model's output is represented (`Capabilities.representation`). */
+export type Representation = "draws" | "quantiles" | "interval" | "point" | "moments";
+
+/**
+ * What each representation can be summarised as, its default summaries and whether draws can
+ * be returned: `mapi_spec.capabilities.REPRESENTATION_RULES` / `_DEFAULT_SUMMARY` (the
+ * server checks the request against the same rules).
+ */
+export const REPRESENTATIONS: Record<Representation, { options: string[]; defaults: string[]; draws: boolean }> = {
+  draws: { options: ["mean", "median", "sd", "hdi_50", "hdi_90", "hdi_95", "q5", "q50", "q95"], defaults: ["mean", "hdi_90"], draws: true },
+  quantiles: { options: ["median", "q5", "q25", "q50", "q75", "q95", "eti_90"], defaults: ["median", "q5", "q95"], draws: false },
+  interval: { options: ["point", "interval"], defaults: ["point", "interval"], draws: false },
+  point: { options: ["point", "mean"], defaults: ["point"], draws: false },
+  moments: { options: ["mean", "sd", "eti_90", "point"], defaults: ["mean", "sd"], draws: false },
+};
+
+/** Summaries offered when the representation is unknown (an older model version). */
+export const SUMMARY_OPTIONS = REPRESENTATIONS.draws.options;
+
+export function asRepresentation(value: unknown): Representation | null {
+  return typeof value === "string" && value in REPRESENTATIONS ? (value as Representation) : null;
+}
 
 export function defaultScoreForm(): ScoreForm {
   return {
@@ -89,8 +110,13 @@ export function parseSel(sel: string): Record<string, (string | number | boolean
   return out;
 }
 
-/** Validate the form and build the request (or return the problems). */
-export function buildScoreRequest(form: ScoreForm, modelRef: string): { request: ScoreRequest } | { problems: FormProblem[] } {
+/** Validate the form and build the request (or return the problems). With `representation`,
+ * summaries and draws the model's output cannot give are problems, not server refusals. */
+export function buildScoreRequest(
+  form: ScoreForm,
+  modelRef: string,
+  representation: Representation | null = null,
+): { request: ScoreRequest } | { problems: FormProblem[] } {
   const problems: FormProblem[] = [];
   const request: ScoreRequest = {
     apiVersion: "mapi/v1",
@@ -150,6 +176,13 @@ export function buildScoreRequest(form: ScoreForm, modelRef: string): { request:
 
   const draws = Number(form.output.draws || "0");
   if (!Number.isInteger(draws) || draws < 0 || draws > 10_000) problems.push({ field: "draws", message: "Draws must be between 0 and 10000." });
+  else if (draws > 0 && representation && !REPRESENTATIONS[representation].draws) {
+    problems.push({ field: "draws", message: `This model returns ${representation}, not draws: set draws to 0.` });
+  }
+  if (representation) {
+    const bad = form.output.summary.filter((s) => !REPRESENTATIONS[representation].options.includes(s));
+    if (bad.length) problems.push({ field: "summary", message: `This model returns ${representation}: ${bad.join(", ")} cannot be computed from it.` });
+  }
   const vars = form.output.vars.split(",").map((s) => s.trim()).filter(Boolean);
   if (vars.some((v) => !NAME_RE.test(v))) problems.push({ field: "vars", message: "Variable names are letters, digits, _ . -" });
   const output: OutputSelector = {
