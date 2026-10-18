@@ -23,6 +23,7 @@ from mapi_spec.about import About, AboutKind, AboutReference, Difficulty, Typica
 __all__ = [
     "MODEL_ABOUTS",
     "PLANNED_MODEL_IDS",
+    "SCIENCE_MODEL_IDS",
     "SPLIT_ABOUTS",
     "STEP_ABOUTS",
     "SURVIVING_MODEL_IDS",
@@ -1418,6 +1419,290 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "drivers": ["yes"],
         },
     ),
+    # ---------------------------------------------------------------- scientific models
+    "sci.lgcp_grid": _a(
+        "Event counts on a map over time",
+        "Finds where and when events such as earthquakes occur more often. It counts the "
+        "events in each cell of a map for each period, and it forecasts the next periods "
+        "with a range.",
+        [
+            "You have counts of events in each cell of a regular grid for each period",
+            "The area with many events moves or changes over time",
+            "You want a map of the expected rate and a map of the uncertainty",
+        ],
+        [
+            "You have exact locations and want a model for each point (bin them into cells first)",
+            "The grid has thousands of cells (the fit becomes too slow)",
+            "You must know what occurs if a cause changes, such as a new policy (the model has "
+            "no columns for causes)",
+            "You need a forecast further ahead than the model permits without a new fit",
+        ],
+        [
+            "A count of events for each cell and each period (quarters, months or years)",
+            "Cells of equal size, with the row and column number of each cell",
+        ],
+        [
+            "The rate changes smoothly from one cell to the cells near it",
+            "The map changes only from one era (a group of periods) to the next",
+            "The total for the full grid changes gradually from one period to the next",
+            "Events can occur in groups (more variation than a constant rate gives)",
+        ],
+        [
+            "The expected events for each cell and period, with a range",
+            "The expected total for each period, with a range",
+            "Forecasts of the map and of the total for the next periods",
+        ],
+        _X,
+        _MIN,
+        "Count the earthquakes in each 25 km cell for each quarter from 2009 to 2017. Then "
+        "forecast the map and the total for 2018 and 2019 with a 90% range.",
+        related=["ts.hsgp_trend"],
+        expert="Log-Gaussian Cox process on a space-time grid (pymc-challenges E07, rung 4). "
+        "log rate = alpha + g_t + log softmax over cells of f_era(s): the total per period "
+        "(exp(alpha + g_t), g a centred Gaussian random walk) is separate from the share of "
+        "each cell, so the field cannot inflate the total. f is a 2-D Hilbert-space GP "
+        "(Matern-5/2, product basis of m_row x m_col sine functions, boundary factor c) "
+        "whose basis coefficients follow a random walk over eras, anchored at the busiest "
+        "fit era. Negative binomial counts (prior on 1/phi). The random-walk steps and the "
+        "era coefficients cover max_extension periods after the fit, so forecasts use "
+        "posterior draws of their prior. Lengthscale prior: inverse gamma with 90% of its "
+        "mass between ell_lower_km and ell_upper_km.",
+        refs=[
+            (
+                "Moller, Syversveen and Waagepetersen (1998), Log Gaussian Cox processes",
+                "https://doi.org/10.1111/1467-9469.00115",
+            ),
+            (
+                "Riutort-Mayol et al. (2022), Practical Hilbert space approximate Bayesian "
+                "Gaussian processes",
+                "https://arxiv.org/abs/2004.11408",
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "forecast"],
+            "data_shape": ["grid", "panel"],
+            "frequency": ["monthly"],
+            "history": ["medium", "long"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
+    "sci.fisher_kpp": _a(
+        "Cells that close a wound",
+        "Measures how fast cells move and divide when they close a scratch in a layer of "
+        "cells. It also shows the speed of the cell front and forecasts the counts at later "
+        "hours, with a range.",
+        [
+            "You have counts of cells in columns across a scratch at some times",
+            "You want to know how fast the cells move and how fast they divide",
+            "You want the speed at which the wound closes, with a range",
+        ],
+        [
+            "The columns do not have equal width",
+            "You have positions of single cells, not counts (count them in columns first)",
+            "The cells move in a direction, for example to a chemical signal (the model has "
+            "only random movement)",
+            "You need a forecast further ahead than the model permits without a new fit",
+        ],
+        [
+            "A count of cells for each column and each time, with the time in whole hours",
+            "Columns of equal width, with the position of the center of each column in um",
+            "Counts at the first time for all columns (the model starts from them)",
+        ],
+        [
+            "Cells move at random and divide until the columns are full",
+            "No cells go in or out at the two edges of the image",
+            "All columns have the same maximum number of cells",
+            "With the delay setting, the cells start slowly after the scratch",
+        ],
+        [
+            "The expected cells for each column and time, with a range (a map over time and "
+            "position)",
+            "The speed of the cell front in um per hour, with a range",
+            "The rates of movement and division, and the maximum cells in a column",
+            "Forecasts of the counts for the next times",
+        ],
+        _X,
+        _MIN,
+        "Count PC-3 cells in 38 columns of 50 um at 0, 12, 24, 36 and 48 hours. Get the "
+        "speed of the cell front (about 27 um per hour) and forecast the counts at 60 hours.",
+        related=["sci.lgcp_grid"],
+        expert="Fisher-KPP reaction-diffusion u_t = a(t) (D u_xx + lam u (1 - u)), "
+        "a(t) = tanh(beta t) with the delay setting, else 1 (pymc-challenges E50). Method of "
+        "lines: finite-volume Laplacian with zero-flux boundaries, explicit Euler steps of "
+        "1/steps_per_hour hours in pytensor.scan. The PDE starts from the counts at the "
+        "first fitted time (conditioned on, not in the likelihood, kept in the bundle). "
+        "Counts are Poisson with mean K u. Priors: D ~ LogNormal(log 1000, 1) um^2/h, lam ~ "
+        "LogNormal(log 0.05, 1) 1/h, K ~ Normal(122, 15), beta ~ LogNormal(log 0.1, 1) 1/h. "
+        "The fit refuses settings where D dt / dx^2 > 1/2 at the 99% prior quantile of D "
+        "(CFL bound). wave_speed = 2 sqrt(D lam). Without the delay, D is biased low by a "
+        "factor of about four on the PC-3 data, and LOO prefers the delay model.",
+        refs=[
+            (
+                "Jin et al. (2016), Reproducibility of scratch assays is affected by the "
+                "initial degree of confluence, Journal of Theoretical Biology",
+                None,  # lead: verify and add the DOI (not given in the E50 source)
+            ),
+            (
+                "Simpson, Murphy and Maclaren (2024), likelihood analysis of the PC-3 scratch "
+                "assay counts with a delayed Fisher-KPP model",
+                None,  # lead: verify the exact title and add the DOI
+            ),
+        ],
+        fits={
+            "goal": ["fit_physics", "forecast"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
+    "sci.traction_force": _a(
+        "Cell forces from gel movement",
+        "Calculates the forces that cells apply to a soft gel from the measured movement of the "
+        "gel surface. It gives a range of probable force maps.",
+        [
+            "You have a map of the gel movement under a cell or a colony (bead tracking or PIV)",
+            "You need the strain energy or the contractility of the cells with a range",
+            "You want to know which smoothness of the force map the data support",
+        ],
+        [
+            "The displacement map has gaps (the model needs a value at each pixel)",
+            "The gel is not much thicker than the cells are wide",
+            "The forces occur only at a few small adhesions and you need sharp peaks",
+        ],
+        [
+            "A displacement map with x and y components on a regular grid of pixels",
+            "The grid spacing, the stiffness (Young's modulus) and the Poisson ratio of the gel",
+            "Optional: a mask of the area under the cells",
+        ],
+        [
+            "The gel is a linear elastic solid and its stiffness is known (or known to a given "
+            "percentage)",
+            "The force map is smooth and has the same statistical properties in all of the image",
+            "The noise in the displacements is independent from pixel to pixel",
+            "The image repeats at its edges (the Fourier transform uses this)",
+        ],
+        [
+            "Probable force maps (traction, in Pa) with a mean, a spread and a 90% range for each "
+            "pixel",
+            "The displacement map that each force map causes",
+            "The strain energy (fJ) and the contractility (uN) inside the mask, with a range",
+        ],
+        _X,
+        _MIN,
+        "The gel movement under a colony of seven cells on a 49 kPa gel gives a strain energy of "
+        "271 fJ and a contractility of 2.17 uN.",
+        related=["sci.strong_lens"],
+        expert="Fourier-transform traction cytometry (FTTC) as a Gaussian inverse problem. The "
+        "Boussinesq Green's function of an elastic half-space is diagonal in longitudinal and "
+        "transverse Fourier modes. The prior spectrum is white (Tikhonov), squared exponential or "
+        "Matern. NUTS samples the noise sd and the spectrum hyperparameters with the field "
+        "integrated out (closed-form marginal likelihood per mode). At score time, exact joint "
+        "draws of the field come from two FFTs per hyperparameter draw. An optional lognormal "
+        "uncertainty of Young's modulus scales each draw. A diagnostic compares the data power in "
+        "the finest modes with the model (correlated PIV noise makes the ranges too narrow).",
+        refs=[
+            (
+                "Butler et al. (2002), Traction fields, moments, and strain energy that cells "
+                "exert on their surroundings",
+                "https://doi.org/10.1152/ajpcell.00270.2001",
+            ),
+            (
+                "Huang et al. (2019), Traction force microscopy with optimized regularization and "
+                "automated Bayesian parameter selection",
+                "https://doi.org/10.1038/s41598-018-36896-x",
+            ),
+            (
+                "Bauer et al. (2021), pyTFM: a tool for traction force and monolayer stress "
+                "microscopy",
+                "https://doi.org/10.1371/journal.pcbi.1008364",
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "fit_physics"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+        },
+    ),
+    "sci.strong_lens": _a(
+        "Gravitational lens from an image",
+        "Measures the mass of a galaxy that bends the light of a more distant galaxy into a ring "
+        "or arcs. It predicts each pixel of the telescope image and shows the distant galaxy "
+        "without the lens.",
+        [
+            "You have a telescope image of one lens galaxy with a ring or arcs around it",
+            "You need the Einstein radius and the mass inside it, with a range",
+            "You want to see the source galaxy without the lens, and the critical curves of the "
+            "lens",
+        ],
+        [
+            "The lens is a group or a cluster of galaxies, or the image has many lenses",
+            "You do not have a point-spread function (PSF) or a noise value for each pixel",
+            "You need the slope of the mass profile (one image cannot give it)",
+        ],
+        [
+            "A cutout of the image with the lens galaxy at the centre",
+            "The inverse variance (weight) of each pixel",
+            "The PSF as a small image with an odd number of rows and columns, for example from "
+            "stars in the same image",
+            "Optional: a mask of the pixels to use, and the redshifts of the lens and the source",
+        ],
+        [
+            "The mass of the lens is an isothermal ellipsoid, with an optional external shear",
+            "The light of the lens galaxy and of the source are smooth elliptical profiles",
+            "The noise is Gaussian. Neighbouring pixels can have a correlated noise",
+        ],
+        [
+            "The Einstein radius, and the mass inside it when you give the two redshifts",
+            "The predicted image, and simulated images with noise",
+            "An image of the source galaxy without the lens",
+            "The critical curves and the caustics for posterior draws",
+        ],
+        _X,
+        _MIN,
+        "An HST image of the lens SDSS J1627-0053 gives an Einstein radius of 1.22 arcsec and a "
+        "mass of 2.3e11 solar masses inside this radius.",
+        related=["sci.traction_force"],
+        expert="Pixel forward model in PyTensor: a singular isothermal ellipsoid (Kormann et al. "
+        "1994) plus external shear, ray tracing on a sub-pixel grid, Sersic lens light and source, "
+        "and PSF convolution as a separable SVD expansion (matrix products only). A separable "
+        "lag-one correlation of the noise (drizzled images) is whitened exactly. The linear light "
+        "amplitudes are integrated out in closed form and drawn after the fit from their "
+        "conditional Gaussian. A staged optimisation finds the mode (lens light with sigma "
+        "clipping, the Einstein radius from the ring profile, then starts around the lens axis). "
+        "NUTS samples a parameterisation whitened by the Laplace approximation at that mode. "
+        "Critical curves and caustics are analytic for each direction. The mass-sheet degeneracy "
+        "is not broken: only the mass inside the Einstein radius is robust. No pointwise LOO.",
+        refs=[
+            (
+                "Kormann, Schneider & Bartelmann (1994), Isothermal elliptical gravitational lens "
+                "models",
+                None,
+            ),
+            (
+                "Bolton et al. (2008), The Sloan Lens ACS Survey V: the full ACS strong-lens "
+                "sample",
+                "https://arxiv.org/abs/0805.1931",
+            ),
+            (
+                "Suyu et al. (2006), A Bayesian analysis of regularized source inversions in "
+                "gravitational lensing",
+                "https://arxiv.org/abs/astro-ph/0601493",
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "fit_physics"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential"],
+            "experience": ["expert"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -1431,7 +1716,15 @@ SURVIVING_MODEL_IDS: Final[frozenset[str]] = frozenset(
 """Built-in models shipped before v0.5 that remain (``mapi-plugin-tabular``, ``-ts`` and
 the scikit-learn models of ``mapi-sklearn``)."""
 
-PLANNED_MODEL_IDS: Final[frozenset[str]] = frozenset(MODEL_ABOUTS) - SURVIVING_MODEL_IDS
+SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
+    {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens"}
+)
+"""The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
+problems ported from the pymc-challenges case studies)."""
+
+PLANNED_MODEL_IDS: Final[frozenset[str]] = (
+    frozenset(MODEL_ABOUTS) - SURVIVING_MODEL_IDS - SCIENCE_MODEL_IDS
+)
 """Model ids the v0.5 mmm-framework and statsmodels plugins implement (their cards are
 here so plugins, docs and the chooser use the same words)."""
 

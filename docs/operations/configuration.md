@@ -469,6 +469,7 @@ variables that Terraform sets on the Cloud Run services (the deployment contract
 | `MAPI_E2E_WEBHOOK_TLS_DIR` | The location where the webhook receiver of the M3 journey finds `cert.pem` and `key.pem` (default `$MAPI_DATA_DIR/dev/webhook-tls`) |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` makes the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests again (`make snapshots`) |
 | `MAPI_HYPOTHESIS_EXAMPLES` | The examples for each property in the wire-format round-trip tests (default 60) |
+| `MAPI_PYMC_CHALLENGES_DATA` | The `data/` directory of a local copy of pymc-challenges. The `from_challenges` loaders of `mapi-plugin-science` read the real data files there, and the tests that use them run. If it is not set, these tests are skipped |
 
 ## Documentation
 

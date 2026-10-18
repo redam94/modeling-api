@@ -1,7 +1,7 @@
 /**
  * The Model Explorer sections (M3.5) of one model version, each rendered from its view:
  * parameters, diagnostics, fit against actuals, residual analysis, contributions, response
- * curves, impulse responses, variance decompositions, forecasts and backtests. The plain
+ * curves, impulse responses, variance decompositions, fields on a grid, forecasts and backtests. The plain
  * reading comes first; the statistics are open in Expert mode.
  */
 import type { ColumnDef } from "@tanstack/react-table";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/primitives";
 import { fanPlot } from "@/features/guided/plots";
 import { cn } from "@/lib/utils";
 
+import { FieldViewer } from "./field-viewer";
 import { backtestReading, decompositionReading, diagnosticsReading, fitReading, paramsReading } from "./plain";
 import { fevdPlot, fitPlot, forestPlot, histogramPlot, irfPlot, lagPlot, linesPlot, qqPlot, responseCurvesPlot, stackedAreaPlot } from "./plots";
 import { ExplorerPlot, num, pct, Picker, PlainSummary, pValue, Statistics, StatTable, TestsTable, useOptions, ViewNotes } from "./ui";
@@ -21,6 +22,8 @@ import type {
   BacktestView,
   DecompositionView,
   FevdView,
+  FieldEntry,
+  FieldsView,
   FitVsActualView,
   IrfView,
   ModelDiagnosticsView,
@@ -418,6 +421,48 @@ export function FevdSection({ view, expert }: P<FevdView>) {
 // ------------------------------------------------------------------------------ forecast
 
 /** "By 2025-12-28, revenue is most likely about 1.2M (90% likely between 1.1M and 1.3M)." */
+// ------------------------------------------------------------------------------ fields
+
+function fieldLabel(f: Pick<FieldEntry, "output" | "facet">): string {
+  return Object.keys(f.facet ?? {}).length ? `${f.output} (${facetLabel(f.facet)})` : f.output;
+}
+
+export function FieldsSection({ view, expert }: P<FieldsView>) {
+  const fields = view.fields;
+  const [pick, setPick] = useState(0);
+  const field = fields[Math.min(pick, fields.length - 1)];
+  if (!field) return null;
+  const frames = field.frames.length;
+  const draws = field.frames[0]?.draws?.length ?? 0;
+  return (
+    <div className="grid gap-5">
+      <PlainSummary>
+        <p>
+          {fields.length === 1 ? "The model has 1 output on a grid." : `The model has ${fields.length} outputs on a grid.`} Select a statistic to see the expected value or the uncertainty of each cell.
+          {draws ? " Play the draws to see some possible fields that agree with the data." : ""}
+        </p>
+      </PlainSummary>
+      {fields.length > 1 ? <Picker label="Output" value={String(pick)} options={fields.map((f, i) => ({ value: String(i), label: fieldLabel(f) }))} onChange={(v) => setPick(Number(v))} /> : null}
+      {field.description ? <p className="text-[13px] text-muted-foreground">{field.description}</p> : null}
+      <FieldViewer key={`${pick}:${fieldLabel(field)}`} field={field} />
+      <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
+      <Statistics expert={expert} label="Show the grid details">
+        <KeyValues
+          items={[
+            ["Output", <span key="o" className="font-mono text-xs">{fieldLabel(field)}</span>],
+            ["Grid", `${field.y_dim} × ${field.x_dim}${field.frame_dim ? ` × ${field.frame_dim}` : ""}${field.component_dim ? ` (vector: ${field.component_dim})` : ""}`],
+            ["Cells", field.downsampled ? `${field.height} × ${field.width} (block means of ${field.source_height} × ${field.source_width})` : `${field.height} × ${field.width}`],
+            ["Frames", field.omitted_frames ? `${frames} of ${frames + field.omitted_frames}` : String(frames)],
+            ["Posterior draws", field.n_draws ? `${field.n_draws} (${draws} shown one by one)` : "none (the model gives a summary only)"],
+            ["Colour map", `${field.colormap ?? "viridis"}${field.log ? ", log scale" : ""}`],
+          ]}
+        />
+        {view.omitted?.length ? <p className="text-[13px] text-muted-foreground">Not shown: {view.omitted.join(", ")}.</p> : null}
+      </Statistics>
+    </div>
+  );
+}
+
 export function endOfHorizon(f: { kpi: string; units?: string | null; fan: { coords: (string | number)[]; quantiles: number[]; values: (number | null)[][] } }): string {
   const j = f.fan.coords.length - 1;
   const qs = f.fan.quantiles;

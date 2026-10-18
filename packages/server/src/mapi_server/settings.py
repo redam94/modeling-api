@@ -50,6 +50,7 @@ __all__ = [
 
 DEFAULT_CLOUDRUN_BASES: dict[str, str] = {
     "mmm": "base-bayes",
+    "sci": "base-bayes",
     "tabular": "base-bayes",
     "sklearn": "base-ml",
     "ts": "base-forecast",
@@ -58,6 +59,7 @@ DEFAULT_CLOUDRUN_BASES: dict[str, str] = {
 
 DEFAULT_DOCKER_IMAGES: dict[str, str] = {
     "mmm": f"mapi/base-bayes:{__version__}",
+    "sci": f"mapi/base-bayes:{__version__}",
     "tabular": f"mapi/base-bayes:{__version__}",
     "sklearn": f"mapi/base-ml:{__version__}",
     "ts": f"mapi/base-forecast:{__version__}",

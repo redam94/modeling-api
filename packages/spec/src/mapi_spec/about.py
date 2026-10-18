@@ -478,6 +478,8 @@ CHOOSER_QUESTIONS: Final[tuple[ChooserQuestion, ...]] = (
         ("compare_series", "See how several series move together"),
         ("check_data", "Examine or prepare my data"),
         ("validate_model", "Make sure that I can trust a model"),
+        ("map_fields", "Make a map or an image from measurements, with its uncertainty"),
+        ("fit_physics", "Fit a physical model to measurements"),
     ], weight=3, multiple=True),
     _q("data_shape", "What does your data look like?", [
         ("one_series", "One number over time"),
@@ -485,6 +487,7 @@ CHOOSER_QUESTIONS: Final[tuple[ChooserQuestion, ...]] = (
         ("panel", "The same numbers for many markets, stores or products"),
         ("choices", "Purchases or choices by customers"),
         ("table", "A table of items without a time order"),
+        ("grid", "A map, an image or values on a regular grid"),
     ], weight=2, multiple=True),
     _q("frequency", "How often do you record the data?", [
         ("daily", "Daily"), ("weekly", "Weekly"), ("monthly", "Monthly or less often"),

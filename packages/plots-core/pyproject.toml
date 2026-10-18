@@ -31,6 +31,7 @@ render = ["vl-convert-python==1.9.0.post1"]
 core = "mapi_plots.recipes:standard_recipes"
 mmm = "mapi_plots.packs.mmm:mmm_recipes"
 ml = "mapi_plots.packs.ml:ml_recipes"
+sci = "mapi_plots.packs.sci:sci_recipes"
 
 [build-system]
 requires = ["hatchling>=1.25"]

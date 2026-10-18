@@ -18,6 +18,7 @@ from mapi_plots import examples as ex  # noqa: E402
 from mapi_plots.convert import arrow_to_frame  # noqa: E402
 from mapi_plots.packs.ml import ml_recipes  # noqa: E402
 from mapi_plots.packs.mmm import mmm_recipes  # noqa: E402
+from mapi_plots.packs.sci import sci_recipes  # noqa: E402
 from mapi_plots.recipes import (  # noqa: E402
     Recipe,
     RecipeDataError,
@@ -84,8 +85,9 @@ def test_catalog_covers_the_plan() -> None:
     ids = {r.id for r in all_recipes()}
     assert ids >= PLAN_IDS
     assert len(ids) == len(all_recipes())
-    assert set(EXAMPLES) == ids
-    packs = {r.id for r in mmm_recipes()} | {r.id for r in ml_recipes()}
+    sci = {r.id for r in sci_recipes()}  # Plotly: covered by test_sci_recipes.py
+    assert set(EXAMPLES) == ids - sci
+    packs = {r.id for r in mmm_recipes()} | {r.id for r in ml_recipes()} | sci
     assert {r.id for r in standard_recipes()} | packs == ids
     catalog = Catalog(plots=[r.catalog_entry() for r in all_recipes()])
     assert catalog.resolve_plot("core.ppc_fan@^1") is not None

@@ -7782,6 +7782,44 @@ export interface components {
             require_validated_for_promotion?: boolean;
         };
         /**
+         * GridDecl
+         * @description How to draw an output as a 2-D field (an image, a map, a vector field).
+         *
+         *     ``y`` and ``x`` are the dims of the raster rows and columns; ``y`` runs top to bottom
+         *     unless ``origin`` is ``lower``. ``frame`` names a third dim with one raster per level
+         *     (years, eras, times); ``component`` names a dim of length two that holds the ``(x, y)``
+         *     components of a vector field. Every other dim of the output is reduced over the
+         *     posterior draws only, never over space.
+         */
+        GridDecl: {
+            /**
+             * Colormap
+             * @default viridis
+             * @enum {string}
+             */
+            colormap?: "viridis" | "magma" | "cividis" | "gray" | "diverging";
+            /** Component */
+            component?: string | null;
+            /** Frame */
+            frame?: string | null;
+            /**
+             * Log
+             * @description Draw log10 of the value (for counts and intensities)
+             * @default false
+             */
+            log?: boolean;
+            /**
+             * Origin
+             * @default upper
+             * @enum {string}
+             */
+            origin?: "upper" | "lower";
+            /** X */
+            x: string;
+            /** Y */
+            y: string;
+        };
+        /**
          * GuidedAnswers
          * @description ``POST /v1/guided/drafts``: answers to a template's questions.
          *
@@ -9459,7 +9497,7 @@ export interface components {
              */
             models: string[];
             /** Sections */
-            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "forecast" | "backtest" | "comparison")[];
+            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "fields" | "forecast" | "backtest" | "comparison")[];
         };
         /**
          * ModelExploreRequest
@@ -9503,7 +9541,7 @@ export interface components {
              */
             max_params?: number;
             /** Sections */
-            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "forecast" | "backtest" | "comparison")[];
+            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "fields" | "forecast" | "backtest" | "comparison")[];
         };
         /**
          * ModelInputSchema
@@ -10569,6 +10607,8 @@ export interface components {
              * @description The output also carries every dim of this input variable (e.g. 'y' for models whose data dims come from settings, such as the sklearn row dims)
              */
             dims_of?: string | null;
+            /** @description Draw the output as a 2-D field (Model Explorer 'fields' section) */
+            grid?: components["schemas"]["GridDecl"] | null;
             /** Units */
             units?: string | null;
             /**

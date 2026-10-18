@@ -325,6 +325,7 @@ def test_docker_settings_default_to_the_built_images() -> None:
     assert s.docker_image == f"mapi/base-bayes:{__version__}"  # what `make docker-build` tags
     assert s.docker_images == {
         "mmm": f"mapi/base-bayes:{__version__}",
+        "sci": f"mapi/base-bayes:{__version__}",
         "tabular": f"mapi/base-bayes:{__version__}",
         "sklearn": f"mapi/base-ml:{__version__}",
         "ts": f"mapi/base-forecast:{__version__}",

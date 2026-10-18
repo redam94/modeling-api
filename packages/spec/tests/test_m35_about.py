@@ -21,6 +21,7 @@ from mapi_spec.about import (
 from mapi_spec.abouts import (
     MODEL_ABOUTS,
     PLANNED_MODEL_IDS,
+    SCIENCE_MODEL_IDS,
     SPLIT_ABOUTS,
     STEP_ABOUTS,
     SURVIVING_MODEL_IDS,
@@ -118,7 +119,13 @@ def test_cards_cover_the_surviving_catalog_and_the_planned_engines() -> None:
             "ts.arima", "ts.var", "ts.varmax", "ts.vecm", "ts.ecm", "ts.ardl", "ts.ets",
             "ts.unobserved_components", "ts.dynamic_factor", "ts.markov_switching",
             "ts.theta"} == set(PLANNED_MODEL_IDS)  # fmt: skip
-    assert set(MODEL_ABOUTS) == SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS  # nothing else
+    assert {
+        "sci.lgcp_grid",
+        "sci.fisher_kpp",
+        "sci.traction_force",
+        "sci.strong_lens",
+    } == SCIENCE_MODEL_IDS
+    assert set(MODEL_ABOUTS) == SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS | SCIENCE_MODEL_IDS
     for template in GUIDED_TEMPLATES.values():
         assert template.about == TEMPLATE_ABOUTS[template.id]
 

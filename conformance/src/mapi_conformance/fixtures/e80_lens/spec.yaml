@@ -1,0 +1,24 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: mock-strong-lens, project: astronomy, labels: {corpus: e80}}
+data:
+  dataset: dataset://astronomy/mock_lens@latest
+  split: {kind: mask_block, dims: [row, col], fraction: 0.1, block: {row: 4, col: 4}, seed: 3}
+model:
+  use: sci.strong_lens@^1
+  settings:
+    pixel_scale: 0.1
+    subsample: 1
+    lens_light_components: 1
+    external_shear: false
+    n_starts: 2
+    theta_e_median: 0.7
+    light_size_medians: [0.4, 1.0]
+    source_size_median: 0.15
+    source_grid: 16
+    source_half_width: 0.4
+    curve_points: 64
+    curve_draws: 20
+  fit: {mode: train_only, seed: 7, tune: 500, draws: 500, chains: 4, engine: pymc}
+evaluate: {metrics: [rmse, mae, coverage_90]}
+outputs: {plots: [core.convergence, core.posterior_forest, sci.field_map]}

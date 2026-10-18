@@ -30,6 +30,10 @@ each lift likelihood.
 | `choice.multinomial_logit@1` | `mapi-plugin-tabular` | draws (Bayesian bootstrap) | predict, forecast, counterfactual, evaluate | `e84_lite` |
 | `ts.sarimax@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | `sm_arimax` |
 | `ts.vecm@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | `sm_vecm_macro` |
+| `sci.lgcp_grid@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e07_lgcp` |
+| `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
+| `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
+| `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -289,3 +293,141 @@ categorical metrics of `evaluate.metrics`:
 The Guided `customer_choice` template evaluates all five on the last trip of each household.
 Its scorecard runs [`holdout.hit_rate`](../concepts/guided-mode.md#check-holdout-hit-rate).
 For a text target, the server skips numeric metrics, for example `mape`.
+
+## Scientific models (`mapi-plugin-science`)
+
+These plugins come from the case studies of
+[pymc-challenges](https://github.com/redam94/pymc-challenges). Their data are maps, images and
+fields on a regular grid. Their outputs are fields with a range for each cell. Each output that
+is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the column dim `x`, an
+optional `frame` dim and an optional `component` dim for a vector field). The platform then
+shows the output in two places:
+
+- The **Fields** section of the Model Explorer. It shows the mean, the sd, mean ÷ sd, the 5% and
+  95% maps and single draws, with a frame slider and a draw player.
+- The `sci.*` plot recipes (see [Plot recipes](plots.md#scientific-model-pack-sci)).
+
+The runner images of `base-bayes` contain these plugins (namespace `sci`).
+
+!!! note "Real data"
+    Each data module has a `from_challenges(path)` function. It reads the real data file of the
+    case study from a local copy of pymc-challenges. To run the tests that use the real files,
+    set `MAPI_PYMC_CHALLENGES_DATA` to the `data/` directory of that copy. Without it, these
+    tests are skipped.
+
+### `sci.lgcp_grid` — event counts on a map over time (E07)
+
+A log-Gaussian Cox process on a space-time grid. The total for each period follows a random
+walk. The share of each cell comes from a 2-D Hilbert-space GP (Matérn 5/2) whose map changes
+from one era (a group of periods) to the next.
+
+**Inputs.** `period` (time, policy `extend`), `row` and `col` (integer, fixed) and the target
+`count(period, row, col)`. Row 0 is the south edge of the grid.
+
+**Outputs.** `rate(period, row, col)` (a field with a frame for each period, log colour scale)
+and `total(period)`. The sum of `rate` over the cells is equal to `total`.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `max_extension` | 8 | The number of periods after the fit that a forecast can reach without a new fit |
+| `era_periods` | 4 | The number of periods in one era. The map changes from era to era |
+| `field` | `era_walk` | `era_walk` (a new map for each era) or `static` (one map) |
+| `cell_km` | 25 | The width of one cell in km |
+| `m_row`, `m_col`, `c` | 10, 14, 1.5 | Basis functions and boundary factor of the approximation |
+| `ell_lower_km`, `ell_upper_km` | 15, 100 | The 5% and 95% quantiles of the lengthscale prior |
+| `likelihood` | `negbin` | `negbin` or `poisson` |
+
+`from_challenges` puts the Oklahoma earthquake catalogue into 12 × 9 cells of 25 km for each
+quarter from 2009 to 2019. A fit on 2009–2017 takes approximately one minute with nutpie.
+
+### `sci.fisher_kpp` — a reaction-diffusion PDE (E50)
+
+The Fisher-KPP equation `du/dt = D d²u/dx² + lam u (1 - u)` moves and grows cells into a
+scratch wound. The model solves the equation in the model graph (explicit Euler in
+`pytensor.scan`, zero flux at the edges). The counts are Poisson. With `delay: true`, the
+movement and the growth start slowly after the scratch (`tanh(beta t)`).
+
+**Inputs.** `t` (integer hours, policy `extend`), `x` (float positions in µm, equal spaces,
+fixed) and the target `count(t, x)`. The first time is the initial condition. The likelihood
+does not use it. Each time after the first must be on the Euler grid.
+
+**Outputs.** `density(t, x)` (a field: time on the rows, position on the columns) and the
+scalar `wave_speed` (`2 sqrt(D lam)`, µm/h). A forecast continues the PDE to later times.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `steps_per_hour` | 10 | Euler steps for each hour |
+| `delay` | true | Multiply the movement and the growth by `tanh(beta t)` |
+| `max_extension` | 4 | The number of periods after the fit that a forecast can reach |
+| `diffusivity_median`, `growth_median` | 1000, 0.05 | Prior medians of `D` (µm²/h) and `lam` (1/h) |
+| `capacity_mu`, `capacity_sigma` | 122, 15 | Prior of the capacity `K` (cells for each column) |
+| `cfl_quantile` | 0.99 | The prior quantile of `D` that must keep the Euler steps stable |
+
+If the Euler steps are not stable at the `cfl_quantile` of the prior of `D`, the model stops
+with `SETTINGS_INVALID`. The message gives the smallest `steps_per_hour` that is stable.
+
+### `sci.traction_force` — cell forces from gel movement (E60)
+
+Fourier-transform traction cytometry as a Gaussian inverse problem. The data are a displacement
+field of a soft gel. The output is the traction field that the cells apply. NUTS samples only
+the noise sd and the prior spectrum. The model integrates the field out, with one closed-form
+likelihood for each Fourier mode. At score time, the model draws each traction field exactly
+with two FFTs for each posterior draw.
+
+**Inputs.** `component` (categorical `x`, `y`), `row` and `col` (integer, fixed) and the target
+`displacement(component, row, col)` in µm. The raster must have no missing pixels. Thus the
+model has no split: evaluate it in sample. With `force_mask: true`, the data also has a
+`force_mask(row, col)`.
+
+**Outputs.** `traction(component, row, col)` (a vector field, Pa), `displacement_hat`, and the
+scalars `strain_energy` (fJ) and `contractility` (µN).
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `grid_um`, `young_pa`, `poisson` | 1, 10000, 0.49 | Grid spacing (µm), Young's modulus (Pa) and Poisson ratio of the gel |
+| `young_cv` | 0 | Relative uncertainty of Young's modulus (0 = known) |
+| `prior` | `matern` | `white` (Tikhonov), `smooth` or `matern` |
+| `field_draws` | 100 | The number of traction fields to draw for each score |
+| `force_mask` | false | Sum the strain energy and the contractility inside `force_mask` only |
+
+The `NOISE_SPECTRUM_MISMATCH` diagnostic compares the power of the data in the finest modes with
+the model. Correlated noise from overlapping PIV windows causes it, and then the ranges are too
+narrow. `challenges_settings(ds)` gives the settings for the real pyTFM colony of
+`from_challenges`.
+
+### `sci.strong_lens` — a galaxy-scale strong lens (E80)
+
+A pixel forward model of a strong gravitational lens in a telescope image. The mass is a
+singular isothermal ellipsoid with an optional external shear. Rays from each pixel (and from
+sub-pixels) go back to the source plane. The source and the lens light are Sérsic profiles,
+and the model applies the PSF of the image. The model integrates the linear light amplitudes
+out in closed form. A staged search for the mode starts the sampler, and NUTS samples near
+that mode with a Laplace preconditioner.
+
+**Inputs.** `row` and `col` (integer, fixed, row 0 at the bottom), the target `image(row, col)`,
+the inverse variance `weight(row, col)` (0 leaves a pixel out) and a constant
+`psf(psf_row, psf_col)` with odd sides. With `use_mask: true`, the data also has a bool
+`mask(row, col)`.
+
+**Outputs.** `model_image(row, col)` (a field, grey scale), `source(source_row, source_col)` (the
+source on a source-plane grid), the scalar `einstein_radius` (arcsec) and, when `z_lens` and
+`z_source` are set, `einstein_mass` (solar masses). The fit keeps the critical curve, the
+caustic and the cut of each posterior draw as the derived group `critical_curves`. In
+`simulate` mode, the model makes new noisy images from the posterior.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `pixel_scale` | 0.05 | Pixel size (arcsec) |
+| `subsample` | 2 | Rays for each pixel along each axis |
+| `lens_light_components` | 2 | Sérsic profiles of the lens galaxy light (0 to 2) |
+| `external_shear` | true | Add an external shear to the mass |
+| `noise_correlation` | 0 | Correlation of the noise between neighbour pixels (drizzled images) |
+| `theta_e_median`, `theta_e_log_sd` | 1.0, 0.5 | Log-normal prior of the Einstein radius |
+| `n_starts` | 5 | Starts of the search for the mode |
+| `source_grid`, `source_half_width` | 30, 0.45 | Size of the source-plane grid (pixels, arcsec) |
+| `curve_draws` | 100 | Posterior draws with critical curves |
+
+The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F814W image of
+SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
+posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
+

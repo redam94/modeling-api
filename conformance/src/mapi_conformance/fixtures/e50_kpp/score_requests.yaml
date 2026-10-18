@@ -1,0 +1,22 @@
+# E50: the PDE run past the last fitted hour, the refit boundary and typed coordinate errors.
+- name: forecast_2
+  request: {mode: forecast, horizon: {dim: t, periods: 2}, output: {draws: 20}}
+  expect: {groups: [summary, draws], vars: [density, wave_speed], sizes: {hours: 2}}
+- name: forecast_predictive
+  request: {mode: forecast, horizon: {dim: t, periods: 2}, output: {kind: predictive}}
+  expect: {vars: [density], sizes: {hours: 2}}
+- name: horizon_exceeds_fit
+  request: {mode: forecast, horizon: {dim: t, periods: 5}}
+  expect_error: HORIZON_EXCEEDS_FIT
+- name: predict_last_two_times
+  request: {mode: predict, output: {summary: [mean, q5, q95]}}
+  payload: "tail:2"
+  expect: {sizes: {hours: 2, stat: 3}}
+- name: gap_after_fit
+  request: {mode: predict}
+  payload: gapped
+  expect_error: NON_CONTIGUOUS_EXTENSION
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: cells, multiply: 1.1}]}
+  payload: "tail:2"
+  expect_error: MODE_NOT_SUPPORTED

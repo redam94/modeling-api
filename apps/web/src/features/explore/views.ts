@@ -30,6 +30,11 @@ export type DecompositionView = V["DecompositionView"];
 export type ResponseCurvesView = V["ResponseCurvesView"];
 export type IrfView = V["IrfView"];
 export type FevdView = V["FevdView"];
+export type FieldsView = V["FieldsView"];
+export type FieldEntry = V["FieldEntry"];
+export type FieldFrame = V["FieldFrame"];
+export type FieldRaster = V["FieldRaster"];
+export type FieldArrows = V["FieldArrows"];
 export type ModelForecastView = V["ModelForecastView"];
 export type BacktestView = V["BacktestView"];
 export type ComparisonView = V["ComparisonView"];
@@ -78,6 +83,7 @@ export const MODEL_SECTIONS = [
   "response_curves",
   "irf",
   "fevd",
+  "fields",
   "forecast",
   "backtest",
   "comparison",
@@ -88,7 +94,7 @@ export type ExplorerSection = DataSection | ModelSection;
 /** The sections an ingest writes (`CHEAP_SECTIONS`); the rest need an explore run. */
 export const INGEST_SECTIONS: readonly DataSection[] = ["overview", "distributions", "timeseries", "missingness", "outliers", "correlation", "quality"];
 /** The sections a fit writes (`FIT_SECTIONS`); the rest need an explore run. */
-export const FIT_SECTIONS: readonly ModelSection[] = ["params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd"];
+export const FIT_SECTIONS: readonly ModelSection[] = ["params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd", "fields"];
 
 export interface SectionViews {
   overview: DataOverviewView;
@@ -112,6 +118,7 @@ export interface SectionViews {
   response_curves: ResponseCurvesView;
   irf: IrfView;
   fevd: FevdView;
+  fields: FieldsView;
   forecast: ModelForecastView;
   backtest: BacktestView;
   comparison: ComparisonView;
@@ -140,6 +147,7 @@ export const VIEW_FORMAT: { [S in ExplorerSection]: string } = {
   response_curves: "mapi.model-explorer.response-curves/v1",
   irf: "mapi.model-explorer.irf/v1",
   fevd: "mapi.model-explorer.fevd/v1",
+  fields: "mapi.model-explorer.fields/v1",
   forecast: "mapi.model-explorer.forecast/v1",
   backtest: "mapi.model-explorer.backtest/v1",
   comparison: "mapi.model-explorer.comparison/v1",

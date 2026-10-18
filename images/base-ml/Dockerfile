@@ -25,7 +25,7 @@ ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-sklearn"
 ARG MAPI_NO_INSTALL="nvidia-nccl-cu13"
 ARG MAPI_APT_PACKAGES="tini"
 ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows statsmodels scipy mapi-sklearn scikit-learn xgboost skops vl-convert-python"
-ARG MAPI_ASSERT_ABSENT="pymc pytensor nutpie numba mapi-pymc mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-server mapi-gcs-shim nvidia-nccl-cu13"
+ARG MAPI_ASSERT_ABSENT="pymc pytensor nutpie numba mapi-pymc mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-plugin-science mapi-server mapi-gcs-shim nvidia-nccl-cu13"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)
 ARG VERSION=0.0.0-dev

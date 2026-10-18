@@ -3,7 +3,8 @@
  *
  * Vega-Lite applies an explicit mark colour over any theme config, so the recipes draw with a
  * fixed light palette and the sandbox swaps each of those colours for its dark variant when it
- * renders in dark mode. A Python test (plots-core `test_the_plot_sandbox_mirrors_the_dark_variants`)
+ * renders in dark mode. Plotly recipes (`sci.*`) use the same palette in trace colours, so
+ * their specs get the same swap. A Python test (plots-core `test_the_plot_sandbox_mirrors_the_dark_variants`)
  * keeps this table equal to `mapi_plots.palette.dark_variants()`.
  */
 import type { JsonValue, Theme } from "./protocol";
@@ -28,17 +29,25 @@ export const DARK_VARIANTS: Readonly<Record<string, string>> = {
 /** Fills that need no text-level contrast (empty cells, separators in the card colour). */
 export const NON_TEXT_FILLS: ReadonlySet<string> = new Set(["#e3e6ec", "#ffffff"]);
 
-/** Data and inline datasets are values, not styling: never rewritten. */
-const DATA_KEYS = new Set(["data", "datasets"]);
+/** Data and inline datasets are values, not styling: never rewritten (Vega-Lite). */
+const DATA_KEYS: ReadonlySet<string> = new Set(["data", "datasets"]);
+
+/**
+ * Plotly keeps its styling inside the traces (`data`), so only the data-array attributes of a
+ * trace are values there. Dataset references (`{"$ref": ...}`) hold no colours either way.
+ */
+export const PLOTLY_DATA_KEYS: ReadonlySet<string> = new Set([
+  "x", "y", "z", "text", "hovertext", "customdata", "ids", "labels", "values", "parents",
+]);
 
 /** The spec with every recipe-palette colour replaced by its `theme` variant. */
-export function themeRecipeColours(node: JsonValue, theme: Theme): JsonValue {
+export function themeRecipeColours(node: JsonValue, theme: Theme, skip: ReadonlySet<string> = DATA_KEYS): JsonValue {
   if (theme !== "dark") return node;
   if (typeof node === "string") return DARK_VARIANTS[node.toLowerCase()] ?? node;
-  if (Array.isArray(node)) return node.map((v) => themeRecipeColours(v, theme));
+  if (Array.isArray(node)) return node.map((v) => themeRecipeColours(v, theme, skip));
   if (node === null || typeof node !== "object") return node;
   const out: Record<string, JsonValue> = {};
-  for (const [k, v] of Object.entries(node)) out[k] = DATA_KEYS.has(k) ? v : themeRecipeColours(v, theme);
+  for (const [k, v] of Object.entries(node)) out[k] = skip.has(k) ? v : themeRecipeColours(v, theme, skip);
   return out;
 }
 

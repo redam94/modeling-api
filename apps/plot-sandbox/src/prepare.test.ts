@@ -142,6 +142,29 @@ describe("preparePlotly", () => {
     expect(out.layout.title).toEqual({ text: "T" });
     expect(out.layout.paper_bgcolor).toBe("rgba(0,0,0,0)");
   });
+
+  it("swaps recipe colours in traces and frames in dark mode, never data values", () => {
+    const sets = { cells: [{ x: 1, c: "#3366cc" }] };
+    const spec: JsonObject = {
+      data: [
+        { type: "scatter", x: { $ref: "cells.x" }, text: ["#3366cc"], line: { color: "#3366CC" }, fillcolor: "#1b2333" },
+        { type: "heatmap", z: { $ref: "cells.x" }, colorscale: [[0, "#440154"], [1, "#fde725"]] },
+      ],
+      layout: { annotations: [{ text: "a", font: { color: "#5b6577" } }] },
+      frames: [{ name: "1", data: [{ type: "scatter", marker: { color: "#1b2333" } }] }],
+    };
+    const dark = preparePlotly(spec, sets, "dark");
+    const t0 = dark.data[0] as JsonObject;
+    expect((t0.line as JsonObject).color).toBe("#6fa8f0");
+    expect(t0.fillcolor).toBe("#e3e7ee");
+    expect(t0.text).toEqual(["#3366cc"]);
+    expect(t0.x).toEqual([1]);
+    expect((dark.data[1] as JsonObject).colorscale).toEqual([[0, "#440154"], [1, "#fde725"]]);
+    expect(JSON.stringify(dark.layout.annotations)).toContain("#9aa3b2");
+    expect(JSON.stringify(dark.frames)).toContain("#e3e7ee");
+    const light = preparePlotly(spec, sets, "light");
+    expect(((light.data[0] as JsonObject).line as JsonObject).color).toBe("#3366CC");
+  });
 });
 
 describe("deepMerge", () => {

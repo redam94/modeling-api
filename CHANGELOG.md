@@ -6,6 +6,40 @@ milestone releases are tagged on `main`.
 ## [Unreleased]
 
 ### Added
+- **Scientific models (`mapi-plugin-science`).** Four new plugins from the pymc-challenges
+  case studies. They have data on a map, an image or a grid, and their outputs are fields with a
+  range for each cell:
+  - `sci.lgcp_grid`: event counts on a map over time, with a forecast (E07, Oklahoma
+    earthquakes).
+  - `sci.fisher_kpp`: a reaction-diffusion PDE that the model solves in each step of the fit,
+    with a forecast to later times (E50, scratch assay).
+  - `sci.traction_force`: cell forces from the movement of a gel, with exact draws of the
+    force field (E60).
+  - `sci.strong_lens`: a strong gravitational lens in a telescope image, with the source, the
+    Einstein radius and the critical curves of each draw (E80).
+
+  Each plugin has a conformance fixture (`e07_lgcp`, `e50_kpp`, `e60_traction`, `e80_lens`).
+  The `base-bayes` runner images contain them (namespace `sci`).
+- `OutputDecl.grid` (`GridDecl`): a model can declare that an output is a 2-D field. The
+  declaration gives the row and column dims, an optional frame dim, an optional component dim
+  for a vector field, the colour map, the log scale and the origin.
+- **Fields in the Model Explorer.** A new `fields` section shows each field output on a canvas.
+  Select the mean, the sd, mean ÷ sd, the 5% or 95% map, or single draws. Use the frame slider
+  and the draw player (hypothetical outcome plots). Point to a cell to see its value and its
+  90% range. Vector fields show arrows.
+- **`sci.*` plot recipes** (Plotly): `sci.field_map`, `sci.vector_field`, `sci.profile_bands`
+  and `sci.ensemble`. A recipe can now return a Plotly figure.
+- Two new chooser goals ("Make a map or an image from measurements, with its uncertainty" and
+  "Fit a physical model to measurements") and a new data shape ("A map, an image or values on a
+  regular grid").
+
+### Fixed
+- A score payload with one label on an integer dim with a step larger than 1 (for example
+  hours with an 8 h step) no longer fails with a false "gap" error. The validator now puts the
+  payload on the grid of the fit.
+- The harness no longer treats a vector field (an output with a `component` dim that its
+  `grid` declares) as an additive decomposition.
+
 - **Score page: type values instead of uploading a dataset.** The page now explains what the
   chosen model version needs (what it predicts, the inputs it reads and which of them it needs
   on future periods, the fitted date range and every fitted level) and guides the request in
