@@ -24037,7 +24037,7 @@
    },
    "DataBlock": {
     "additionalProperties": false,
-    "description": "The dataset, side tables, binding to canonical names and the split.",
+    "description": "The dataset, side tables, binding to canonical names and the split.\n\nFor a tree dataset (M4), ``nodes`` picks the nodes whose variables are merged into the\nONE flat dataset the pipeline sees (:meth:`mapi_spec.tree.TreeSchema.flat`), aligned per\n``join``. Without ``nodes`` a tree dataset's root node is read (when it has variables).\n``nodes`` on a plain dataset is an error. The binding applies to the merged names.",
     "properties": {
      "bind": {
       "$ref": "#/$defs/Binding"
@@ -24050,6 +24050,37 @@
       "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
       "title": "Dataset",
       "type": "string"
+     },
+     "join": {
+      "default": "exact",
+      "description": "M4: how the coords of the selected nodes align (xarray merge join)",
+      "enum": [
+       "exact",
+       "inner",
+       "outer"
+      ],
+      "title": "Join",
+      "type": "string"
+     },
+     "nodes": {
+      "anyOf": [
+       {
+        "maxProperties": 64,
+        "minProperties": 1,
+        "patternProperties": {
+         "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/NodeSelect"
+         }
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "M4: tree datasets: the nodes merged into the pipeline input",
+      "title": "Nodes"
      },
      "side_tables": {
       "maxProperties": 32,
@@ -24782,6 +24813,55 @@
     "title": "ModelBlock",
     "type": "object"
    },
+   "NodeSelect": {
+    "additionalProperties": false,
+    "description": "One node a spec reads from a tree dataset (an entry of ``data.nodes``).\n\nIts variables (all, or ``vars``) are merged into the flat pipeline input, renamed\n``prefix + name`` when ``prefix`` is given (so two nodes with the same variable names can\nboth be read). Dims are never renamed: a dim shared by several selected nodes must be\nthe same dim (equal :class:`~mapi_spec.schema.DimSpec`).",
+    "properties": {
+     "path": {
+      "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+      "title": "Path",
+      "type": "string"
+     },
+     "prefix": {
+      "anyOf": [
+       {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Prepended to the node's variable names in the flat dataset",
+      "title": "Prefix"
+     },
+     "vars": {
+      "anyOf": [
+       {
+        "items": {
+         "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+         "type": "string"
+        },
+        "maxItems": 4096,
+        "minItems": 1,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Default: every variable of the node",
+      "title": "Vars"
+     }
+    },
+    "required": [
+     "path"
+    ],
+    "title": "NodeSelect",
+    "type": "object"
+   },
    "OutputsBlock": {
     "additionalProperties": false,
     "properties": {
@@ -24905,8 +24985,22 @@
    },
    "SideTable": {
     "additionalProperties": false,
-    "description": "A small constant dataset (FX rates, holidays ...) used by steps.",
+    "description": "A small constant dataset (FX rates, holidays ...) used by steps.\n\nA side table that is a tree dataset (M4) reads ONE node, named by ``node``.",
     "properties": {
+     "node": {
+      "anyOf": [
+       {
+        "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset to read (needed when the table is a tree)",
+      "title": "Node"
+     },
      "ref": {
       "description": "Dataset reference dataset://project/name@version",
       "examples": [
