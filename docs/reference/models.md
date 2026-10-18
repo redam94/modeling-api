@@ -315,6 +315,47 @@ The runner images of `base-bayes` contain these plugins (namespace `sci`).
     set `MAPI_PYMC_CHALLENGES_DATA` to the `data/` directory of that copy. Without it, these
     tests are skipped.
 
+### Export the data of a case study
+
+`mapi_plugin_science.export` writes the dataset of a case study to a file. You can then upload
+the file in the web app (**Datasets → New dataset**), with the CLI or with the Python client.
+The file contains the raw schema of the model (the `mapi_schema` attribute). Thus the ingest
+gives the correct role to each variable, for example `target` and `mask`.
+
+```bash
+# the cases that you can export
+python -m mapi_plugin_science.export --list
+# the real data, from a local copy of pymc-challenges, and the suggested spec
+python -m mapi_plugin_science.export e07 \
+    --challenges ~/pymc-challenges/data --out quakes.nc --spec quakes.yaml
+# the simulated data of the model (you do not need pymc-challenges)
+python -m mapi_plugin_science.export e50 --synthetic --out assay.nc
+```
+
+`--challenges` is the `data/` directory of pymc-challenges. If you do not give it, the command
+uses `MAPI_PYMC_CHALLENGES_DATA`. The suffix of `--out` sets the format:
+
+| Suffix | Format |
+|---|---|
+| `.nc` | NetCDF-4 (h5netcdf). A tree dataset has one HDF5 group for each node |
+| `.zarr.zip` | A zarr zip of a plain dataset (the `data.zarr.zip` wire format) |
+| `.tree.zip` | A tree dataset (the `data.tree.zip` wire format) |
+
+If you do not give `--out`, the file is `<dataset>.nc`. With `--spec`, the command also writes
+the suggested spec. That spec reads the suggested dataset name
+(`dataset://<project>/<dataset>@latest`). Use that name when you upload the file.
+
+| Case | Model | Data file in `data/` | Suggested dataset |
+|---|---|---|---|
+| `e07` | `sci.lgcp_grid` | `oklahoma_quakes.csv` | `geoscience/oklahoma_quakes_grid` |
+| `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
+| `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
+| `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
+
+In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
+`write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
+`ExportCase` entry to `EXPORTS` (the docstring of the module shows an example).
+
 ### `sci.lgcp_grid` — event counts on a map over time (E07)
 
 A log-Gaussian Cox process on a space-time grid. The total for each period follows a random

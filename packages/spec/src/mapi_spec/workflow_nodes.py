@@ -1136,6 +1136,27 @@ _MODEL_REF = {"type": "string",
               "description": "Catalog model ref (id@range), for example ts.sarimax@^1",
               "pattern": r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+(@\S+)?$"}  # fmt: skip
 _MODEL_FIT = {"goal": ["forecast", "explain_drivers", "explain_marketing"]}
+_TREE_NODES = {
+    "type": "object",
+    "maxProperties": 64,
+    "description": "Tree datasets: the nodes merged into the model input (data.nodes: "
+    "{name: {path, vars?, prefix?}}). If not given, the node reads "
+    "the root node",
+    "additionalProperties": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+            "path": {"type": "string"},
+            "vars": {"type": "array", "items": {"type": "string"}},
+            "prefix": {"type": "string"},
+        },
+    },
+}
+_TREE_JOIN = _enum(
+    "Tree datasets: how the coords of the selected nodes align (data.join)",
+    ["exact", "inner", "outer"],
+    "exact",
+)
 
 _node("model.fit", NodeKind.MODEL, _a(
     "Fit a model",
@@ -1153,7 +1174,8 @@ _node("model.fit", NodeKind.MODEL, _a(
            "fit": {"type": "object", "description": "Fit configuration (FitConfig)"},
            "pipeline": {"type": "array", "maxItems": 64, "description": "Preprocessing steps"},
            "bind": {"type": "object", "description": "Binding to canonical names"},
-           "evaluate": {"type": "object", "description": "Evaluation block (metrics)"}},
+           "evaluate": {"type": "object", "description": "Evaluation block (metrics)"},
+           "nodes": _TREE_NODES, "join": _TREE_JOIN},
    required=["model"],
    inputs={"data": PortSpec(type=PortType.DATASET),
            "split": PortSpec(type=PortType.SPLIT_PLAN, required=False,
@@ -1181,7 +1203,8 @@ _node("model.backtest", NodeKind.MODEL, _a(
            "metrics": {"type": "array", "items": {"type": "string"},
                        "default": ["mae", "rmse", "mape", "mase"]},
            "refit": _bool("Fit again on each fold (if false, fit one time and roll forward)",
-                          True)},
+                          True),
+           "nodes": _TREE_NODES, "join": _TREE_JOIN},
    required=["model"],
    inputs={"data": PortSpec(type=PortType.DATASET), "split": PortSpec(type=PortType.SPLIT_PLAN)},
    outputs={"metrics": PortType.METRICS, "table": PortType.TABLE},

@@ -19,6 +19,11 @@ known truth and `from_challenges(path)`, which reads the real data file of the c
 `MAPI_PYMC_CHALLENGES_DATA` to the `data/` directory of a local copy of pymc-challenges to run
 the tests that use the real files.
 
+`python -m mapi_plugin_science.export <case> --challenges <data dir> --out <file.nc>` writes
+the dataset of a case study to a file that you can upload (`--list` shows the cases,
+`--synthetic` writes the simulated data, `--spec` also writes the suggested spec). See
+"Export the data of a case study" in `docs/reference/models.md`.
+
 ## Tree datasets
 
 `sci.strong_lens` declares `capabilities.input = "tree"`, so it also reads a tree dataset version

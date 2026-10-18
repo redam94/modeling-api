@@ -56,7 +56,7 @@ from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import DEFAULT_FIT_SEED
 from mapi_spec.storage import ObjectMeta, PreconditionFailed, dataset_prefix
-from mapi_spec.tree import TreeSchema
+from mapi_spec.tree import NodeSelect, TreeSchema
 from mapi_spec.webhooks import WebhookEventType
 from mapi_spec.workflow import (
     NODE_RESULT_MAX_BYTES,
@@ -814,7 +814,8 @@ class WorkflowOrchestrator:
         except ValueError as exc:
             raise _NodeFailure(ErrorCode.WORKFLOW_INVALID, str(exc)) from None
         snapshot = await self.ctx.catalogs.get(s)
-        if snapshot is not None and dv.data_schema:
+        data_schema = _bind_schema(dv, doc["data"])
+        if snapshot is not None and data_schema:
             with contextlib.suppress(ValueError, ValidationError):
                 entry = snapshot.catalog.resolve_model(str(doc["model"]["use"]))
                 if entry is not None:
@@ -823,7 +824,7 @@ class WorkflowOrchestrator:
                     )
                     if schema is not None:
                         doc["data"]["bind"] = auto_bind(
-                            schema, DataSchema.model_validate(dv.data_schema), doc["data"]["bind"]
+                            schema, DataSchema.model_validate(data_schema), doc["data"]["bind"]
                         )
                         doc["pipeline"] = canonical_steps(doc["pipeline"], doc["data"]["bind"])
                         if "split" in doc["data"]:
@@ -1487,3 +1488,17 @@ class WorkflowOrchestrator:
             state = RunState(child.state)
         if state.terminal:
             env.engine.cancelled(nid)
+
+
+def _bind_schema(dv: m.DatasetVersion, block: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The schema a model node's binding is completed from: the dataset's, or (a tree
+    dataset with ``data.nodes``) the schema of the merged nodes (``None`` if unknown)."""
+    nodes = block.get("nodes")
+    if not isinstance(nodes, dict) or not nodes or not dv.tree_schema:
+        return dv.data_schema
+    try:
+        tree = TreeSchema.model_validate(dv.tree_schema)
+        flat = tree.flat({str(k): NodeSelect.model_validate(v) for k, v in nodes.items()})
+    except ValueError:
+        return None
+    return flat.model_dump(mode="json", exclude_none=True)

@@ -151,3 +151,44 @@ def test_a_plot_node_draws_a_catalog_recipe_inline(gcs: ShimGcs) -> None:
     assert side.result["recipe"] == "core.data_overview@1.0.0" and side.result["source"] == "data"
     plot = PlotSpec.model_validate(side.outputs["plot"].inline)
     assert plot.id == "core.data_overview" and side.outputs["plot"].type.value == "plot"
+
+
+def test_a_backtest_reads_nodes_of_a_tree_dataset(gcs: ShimGcs) -> None:
+    """M4: a tree dataset input keeps its tree, so ``nodes`` selects the model's input and a
+    tree-input model (``toy.tree_linear`` refuses to fit without it) gets the tree."""
+    from mapi_sdk.testing.toy import tree_dataset
+    from mapi_sdk.tree import write_tree_zip
+    from mapi_workflows.runtime.splits import resolve_plan
+    from mapi_workflows.runtime.values import DatasetValue, NodeContext
+
+    tree = tree_dataset()
+    d = gcs.buckets.data
+    key = "t/default/datasets/toy_tree/data.tree.zip"
+    gcs.put(d, key, write_tree_zip(tree) or b"")
+    ctx = NodeContext(
+        node_id="folds",
+        use="split.expanding_window@1.0.0",
+        params={},
+        inputs={"data": [DatasetValue.from_tree(tree)]},
+    )
+    plan = resolve_plan(
+        {"kind": "expanding_window", "dim": "date", "horizons": [1, 2], "n_folds": 2}, ctx
+    )
+    job = _job(
+        "bt",
+        "model.backtest@1.0.0",
+        {
+            "model": "toy.tree_linear@^1",
+            "nodes": {"sales": {"path": "/sales"}, "media": {"path": "/media"}},
+            "bind": {"dims": {"geo": "market", "time": "date"}, "vars": {"y": "revenue"}},
+            "metrics": ["mae", "rmse"],
+        },
+        input_types={"in.data.0": "dataset", "in.split.0": "split_plan"},
+        inline_inputs={"in.split.0": plan.model_dump(mode="json")},
+    )
+    result = run_supervisor(
+        make_run(gcs, RunKind.WORKFLOW_NODE, job, inputs={"in.data.0": (d, key)}),
+        registry=REGISTRY,
+    )
+    _ok(result)
+    assert _sidecar(result).result["n_folds"] == 2

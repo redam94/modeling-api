@@ -1,8 +1,9 @@
 """The v0.5 documentation is checked like code.
 
-* every workflow document of the cookbook is valid against the node catalog and runs to the
-  end with the local runner, on data shaped like the pages say (the canonical one also runs
-  against a real server: ``packages/server/tests/test_docs_client_v05.py``);
+* every workflow document of the cookbook is valid against the node catalog (with the
+  ``sci.*`` models of the science plugin) and runs to the end with the local runner, on
+  data shaped like the pages say (the canonical one also runs against a real server:
+  ``packages/server/tests/test_docs_client_v05.py``);
 * the governance policy file is a valid ``GovernancePolicyCreate``;
 * the client snippets compile and import only names that exist;
 * every ``mapi`` command in the v0.5 CLI walkthrough exists, with every option it uses;
@@ -40,7 +41,7 @@ def test_cookbook_documents_are_valid(path: Path) -> None:
     from mapi_spec.workflow import validate_workflow
     from mapi_workflows.testing import test_registry
 
-    res = validate_workflow(_doc(path), catalog=test_registry().catalog())
+    res = validate_workflow(_doc(path), catalog=test_registry(science=True).catalog())
     assert res.valid, [(i.pointer, i.message) for i in res.issues]
 
 

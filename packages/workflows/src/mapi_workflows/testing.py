@@ -4,8 +4,11 @@ The gallery templates name statsmodels plugin ids (``ts.sarimax``, ``ts.var``, `
 ``ts.ets``, ``ts.theta``). :func:`test_registry` registers the real statsmodels plugin
 (:mod:`mapi_plugin_statsmodels`) with the SDK's toy models and the built-in steps, so
 workflows run end to end on a laptop exactly as they run in the runner; a worker loads it
-with ``--registry mapi_workflows.testing:test_registry``. The data helpers simulate small
-weekly series with known structure.
+with ``--registry mapi_workflows.testing:test_registry``. ``test_registry(science=True)``
+(or :func:`science_registry`) also registers the ``sci.*`` models of
+:mod:`mapi_plugin_science`, so recipes over the scientific models validate and run (that
+plugin is then needed too). The data helpers simulate small weekly series with known
+structure.
 
 Requires the ``runtime`` and ``testing`` extras.
 """
@@ -18,7 +21,7 @@ import xarray as xr
 from mapi_sdk.registry import Registry
 from mapi_spec.schema import DataSchema
 
-__all__ = ["multi_series", "test_registry", "weekly_series"]
+__all__ = ["multi_series", "science_registry", "test_registry", "weekly_series"]
 
 _TIME = "time"
 
@@ -26,8 +29,9 @@ _TIME = "time"
 # ================================================================================ registry
 
 
-def test_registry() -> Registry:
-    """The toy registry plus the statsmodels plugin's models and the built-in steps."""
+def test_registry(*, science: bool = False) -> Registry:
+    """The toy registry plus the statsmodels plugin's models and the built-in steps; with
+    ``science`` also the ``sci.*`` models of :mod:`mapi_plugin_science`."""
     from mapi_plugin_statsmodels import PLUGINS
     from mapi_sdk.testing.toy import toy_registry
     from mapi_steps import builtin_steps
@@ -35,10 +39,20 @@ def test_registry() -> Registry:
     reg = toy_registry()
     reg.register(list(PLUGINS))
     reg.register(builtin_steps())
+    if science:
+        from mapi_plugin_science import PLUGINS as SCIENCE
+
+        reg.register(list(SCIENCE))
     return reg
 
 
 test_registry.__test__ = False  # type: ignore[attr-defined]
+
+
+def science_registry() -> Registry:
+    """:func:`test_registry` with the ``sci.*`` models (``--registry
+    mapi_workflows.testing:science_registry`` for a worker)."""
+    return test_registry(science=True)
 
 
 # ==================================================================================== data
