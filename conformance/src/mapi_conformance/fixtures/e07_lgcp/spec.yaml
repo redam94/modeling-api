@@ -1,0 +1,15 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: induced-quakes-lgcp, project: geoscience, labels: {corpus: e07}}
+data:
+  dataset: dataset://geoscience/quake_grid@latest
+  bind:
+    dims: {period: quarter}
+    vars: {count: quakes}
+  split: {kind: time_holdout, dim: period, last: 4}
+model:
+  use: sci.lgcp_grid@^1
+  settings: {max_extension: 8, era_periods: 4, m_row: 10, m_col: 14, cell_km: 25.0}
+  fit: {mode: evaluate_then_refit, seed: 7, tune: 1000, draws: 1000, chains: 4, engine: pymc}
+evaluate: {metrics: [rmse, mae, coverage_90]}
+outputs: {plots: [core.convergence, core.posterior_forest, core.ppc_fan, sci.field_map, sci.ensemble]}

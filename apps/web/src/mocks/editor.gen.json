@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:98fe71a71496355705b48e3d65d96a6d394f46a6b2556a3d907628aa827c9345",
+  "digest": "sha256:cdc2e51d1e31e83d5581e8c8157f1ff6e9bcc750058e8aadb62e96ec803f7fba",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -1798,6 +1798,1418 @@
        }
       },
       "title": "FrequentistSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "Cells move at random and divide until the columns are full",
+       "No cells go in or out at the two edges of the image",
+       "All columns have the same maximum number of cells",
+       "With the delay setting, the cells start slowly after the scratch"
+      ],
+      "avoid_when": [
+       "The columns do not have equal width",
+       "You have positions of single cells, not counts (count them in columns first)",
+       "The cells move in a direction, for example to a chemical signal (the model has only random movement)",
+       "You need a forecast further ahead than the model permits without a new fit"
+      ],
+      "data_needs": [
+       "A count of cells for each column and each time, with the time in whole hours",
+       "Columns of equal width, with the position of the center of each column in um",
+       "Counts at the first time for all columns (the model starts from them)"
+      ],
+      "difficulty": "expert",
+      "example": "Count PC-3 cells in 38 columns of 50 um at 0, 12, 24, 36 and 48 hours. Get the speed of the cell front (about 27 um per hour) and forecast the counts at 60 hours.",
+      "expert_notes": "Fisher-KPP reaction-diffusion u_t = a(t) (D u_xx + lam u (1 - u)), a(t) = tanh(beta t) with the delay setting, else 1 (pymc-challenges E50). Method of lines: finite-volume Laplacian with zero-flux boundaries, explicit Euler steps of 1/steps_per_hour hours in pytensor.scan. The PDE starts from the counts at the first fitted time (conditioned on, not in the likelihood, kept in the bundle). Counts are Poisson with mean K u. Priors: D ~ LogNormal(log 1000, 1) um^2/h, lam ~ LogNormal(log 0.05, 1) 1/h, K ~ Normal(122, 15), beta ~ LogNormal(log 0.1, 1) 1/h. The fit refuses settings where D dt / dx^2 > 1/2 at the 99% prior quantile of D (CFL bound). wave_speed = 2 sqrt(D lam). Without the delay, D is biased low by a factor of about four on the PC-3 data, and LOO prefers the delay model.",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "fit_physics",
+        "forecast"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The expected cells for each column and time, with a range (a map over time and position)",
+       "The speed of the cell front in um per hour, with a range",
+       "The rates of movement and division, and the maximum cells in a column",
+       "Forecasts of the counts for the next times"
+      ],
+      "references": [
+       {
+        "title": "Jin et al. (2016), Reproducibility of scratch assays is affected by the initial degree of confluence, Journal of Theoretical Biology"
+       },
+       {
+        "title": "Simpson, Murphy and Maclaren (2024), likelihood analysis of the PC-3 scratch assay counts with a delayed Fisher-KPP model"
+       }
+      ],
+      "related": [
+       "sci.lgcp_grid"
+      ],
+      "summary_plain": "Measures how fast cells move and divide when they close a scratch in a layer of cells. It also shows the speed of the cell front and forecasts the counts at later hours, with a range.",
+      "title": "Cells that close a wound",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have counts of cells in columns across a scratch at some times",
+       "You want to know how fast the cells move and how fast they divide",
+       "You want the speed at which the wound closes, with a range"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "wave_speed",
+       "D",
+       "lam"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "forecast",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "Cell counts across a closing wound (a scratch assay) as a Fisher-KPP reaction-diffusion equation: cells move with diffusivity D, divide logistically at rate lam up to a capacity K, optionally after a start-up delay. The PDE runs inside the model from the counts at the first time; outputs are the expected density field (a kymograph over time and position) and the front speed 2 sqrt(D lam).",
+     "fit_schema": {},
+     "id": "sci.fisher_kpp",
+     "outputs": {
+      "density": {
+       "description": "Cells per column: the expected count K u(x, t), or a Poisson draw",
+       "dims": [
+        "t",
+        "x"
+       ],
+       "grid": {
+        "colormap": "viridis",
+        "log": false,
+        "origin": "lower",
+        "x": "x",
+        "y": "t"
+       },
+       "units_of": "count"
+      },
+      "wave_speed": {
+       "description": "Speed of the travelling invasion front, 2 sqrt(D lam)",
+       "dims": [],
+       "units": "um/h"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.profile_bands",
+      "sci.field_map"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "max_extension": {
+        "default": 4,
+        "required": false,
+        "type": "integer"
+       }
+      },
+      "template": {
+       "dims": {
+        "t": {
+         "description": "Hours since the start of the assay",
+         "kind": "integer",
+         "max_extension": "{max_extension}",
+         "policy": "extend"
+        },
+        "x": {
+         "description": "Centre of each column across the wound (um, equal spacing)",
+         "kind": "float",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "count": {
+         "bounds": [
+          0,
+          null
+         ],
+         "dims": [
+          "t",
+          "x"
+         ],
+         "dtype": "int64",
+         "role": "target",
+         "units": "cells"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.fisher_kpp`` (D in um^2/h, rates in 1/h, K in cells per column).",
+      "properties": {
+       "capacity_mu": {
+        "default": 122.0,
+        "description": "Prior mean of K (cells per column)",
+        "exclusiveMinimum": 0,
+        "title": "Capacity Mu",
+        "type": "number"
+       },
+       "capacity_sigma": {
+        "default": 15.0,
+        "description": "Prior sd of K",
+        "exclusiveMinimum": 0,
+        "title": "Capacity Sigma",
+        "type": "number"
+       },
+       "cfl_quantile": {
+        "default": 0.99,
+        "description": "Quantile of the prior of D that must satisfy D dt / dx^2 <= 1/2",
+        "exclusiveMaximum": 1.0,
+        "exclusiveMinimum": 0.5,
+        "title": "Cfl Quantile",
+        "type": "number"
+       },
+       "delay": {
+        "default": true,
+        "description": "Multiply movement and growth by tanh(beta t): the cells start slowly after the scratch (x-ui-level: basic)",
+        "title": "Delay",
+        "type": "boolean"
+       },
+       "delay_rate_log_sd": {
+        "default": 1.0,
+        "description": "Log-scale sd of the prior of beta",
+        "exclusiveMinimum": 0,
+        "title": "Delay Rate Log Sd",
+        "type": "number"
+       },
+       "delay_rate_median": {
+        "default": 0.1,
+        "description": "Prior median of beta (1/h)",
+        "exclusiveMinimum": 0,
+        "title": "Delay Rate Median",
+        "type": "number"
+       },
+       "diffusivity_log_sd": {
+        "default": 1.0,
+        "description": "Log-scale sd of the prior of D",
+        "exclusiveMinimum": 0,
+        "title": "Diffusivity Log Sd",
+        "type": "number"
+       },
+       "diffusivity_median": {
+        "default": 1000.0,
+        "description": "Prior median of D (um^2/h)",
+        "exclusiveMinimum": 0,
+        "title": "Diffusivity Median",
+        "type": "number"
+       },
+       "growth_log_sd": {
+        "default": 1.0,
+        "description": "Log-scale sd of the prior of lam",
+        "exclusiveMinimum": 0,
+        "title": "Growth Log Sd",
+        "type": "number"
+       },
+       "growth_median": {
+        "default": 0.05,
+        "description": "Prior median of lam (1/h)",
+        "exclusiveMinimum": 0,
+        "title": "Growth Median",
+        "type": "number"
+       },
+       "initial_floor": {
+        "default": 0.1,
+        "description": "Smallest initial count, so an empty column can still fill",
+        "exclusiveMinimum": 0,
+        "title": "Initial Floor",
+        "type": "number"
+       },
+       "max_extension": {
+        "default": 4,
+        "description": "Observation periods a forecast may reach past the last fitted time",
+        "maximum": 1000,
+        "minimum": 0,
+        "title": "Max Extension",
+        "type": "integer"
+       },
+       "steps_per_hour": {
+        "default": 10,
+        "description": "Explicit Euler steps per hour; more steps are slower but stable for a larger diffusivity (x-ui-level: basic)",
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Steps Per Hour",
+        "type": "integer"
+       }
+      },
+      "title": "FisherKPPSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The rate changes smoothly from one cell to the cells near it",
+       "The map changes only from one era (a group of periods) to the next",
+       "The total for the full grid changes gradually from one period to the next",
+       "Events can occur in groups (more variation than a constant rate gives)"
+      ],
+      "avoid_when": [
+       "You have exact locations and want a model for each point (bin them into cells first)",
+       "The grid has thousands of cells (the fit becomes too slow)",
+       "You must know what occurs if a cause changes, such as a new policy (the model has no columns for causes)",
+       "You need a forecast further ahead than the model permits without a new fit"
+      ],
+      "data_needs": [
+       "A count of events for each cell and each period (quarters, months or years)",
+       "Cells of equal size, with the row and column number of each cell"
+      ],
+      "difficulty": "expert",
+      "example": "Count the earthquakes in each 25 km cell for each quarter from 2009 to 2017. Then forecast the map and the total for 2018 and 2019 with a 90% range.",
+      "expert_notes": "Log-Gaussian Cox process on a space-time grid (pymc-challenges E07, rung 4). log rate = alpha + g_t + log softmax over cells of f_era(s): the total per period (exp(alpha + g_t), g a centred Gaussian random walk) is separate from the share of each cell, so the field cannot inflate the total. f is a 2-D Hilbert-space GP (Matern-5/2, product basis of m_row x m_col sine functions, boundary factor c) whose basis coefficients follow a random walk over eras, anchored at the busiest fit era. Negative binomial counts (prior on 1/phi). The random-walk steps and the era coefficients cover max_extension periods after the fit, so forecasts use posterior draws of their prior. Lengthscale prior: inverse gamma with 90% of its mass between ell_lower_km and ell_upper_km.",
+      "fits": {
+       "data_shape": [
+        "grid",
+        "panel"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "monthly"
+       ],
+       "goal": [
+        "map_fields",
+        "forecast"
+       ],
+       "history": [
+        "medium",
+        "long"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The expected events for each cell and period, with a range",
+       "The expected total for each period, with a range",
+       "Forecasts of the map and of the total for the next periods"
+      ],
+      "references": [
+       {
+        "title": "Moller, Syversveen and Waagepetersen (1998), Log Gaussian Cox processes",
+        "url": "https://doi.org/10.1111/1467-9469.00115"
+       },
+       {
+        "title": "Riutort-Mayol et al. (2022), Practical Hilbert space approximate Bayesian Gaussian processes",
+        "url": "https://arxiv.org/abs/2004.11408"
+       }
+      ],
+      "related": [
+       "ts.hsgp_trend"
+      ],
+      "summary_plain": "Finds where and when events such as earthquakes occur more often. It counts the events in each cell of a map for each period, and it forecasts the next periods with a range.",
+      "title": "Event counts on a map over time",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have counts of events in each cell of a regular grid for each period",
+       "The area with many events moves or changes over time",
+       "You want a map of the expected rate and a map of the uncertainty"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "alpha",
+       "sigma_g",
+       "ell",
+       "eta0",
+       "eta_d",
+       "inv_phi"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "forecast",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "A log-Gaussian Cox process for event counts on a regular space-time grid: a random-walk total per period times a smooth 2-D map (Mat\u00e9rn-5/2 HSGP) that can change from era to era, with negative-binomial counts. Forecasts reach at most max_extension periods past the fit.",
+     "fit_schema": {},
+     "id": "sci.lgcp_grid",
+     "outputs": {
+      "rate": {
+       "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+       "dims": [
+        "period",
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "frame": "period",
+        "log": true,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units_of": "count"
+      },
+      "total": {
+       "description": "Expected events per period in the whole grid",
+       "dims": [
+        "period"
+       ],
+       "units_of": "count"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "core.ppc_fan",
+      "sci.field_map",
+      "sci.ensemble"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 120,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "max_extension": {
+        "default": 8,
+        "required": false,
+        "type": "integer"
+       }
+      },
+      "template": {
+       "dims": {
+        "col": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "period": {
+         "kind": "time",
+         "max_extension": "{max_extension}",
+         "policy": "extend"
+        },
+        "row": {
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "count": {
+         "dims": [
+          "period",
+          "row",
+          "col"
+         ],
+         "dtype": "int64",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.lgcp_grid`` (lengthscales are in km).",
+      "properties": {
+       "alpha_sigma": {
+        "default": 1.5,
+        "description": "Sd of the log total per period (centred on the fit mean)",
+        "exclusiveMinimum": 0,
+        "title": "Alpha Sigma",
+        "type": "number"
+       },
+       "anchor": {
+        "default": "busiest",
+        "description": "The era whose map gets the marginal prior; the other eras walk away from it (busiest = the fit era with the most events)",
+        "enum": [
+         "busiest",
+         "first",
+         "last"
+        ],
+        "title": "Anchor",
+        "type": "string"
+       },
+       "c": {
+        "default": 1.5,
+        "description": "HSGP boundary factor",
+        "exclusiveMinimum": 1.0,
+        "maximum": 5.0,
+        "title": "C",
+        "type": "number"
+       },
+       "cell_km": {
+        "default": 25.0,
+        "description": "Width of one grid cell in km",
+        "exclusiveMinimum": 0,
+        "title": "Cell Km",
+        "type": "number"
+       },
+       "ell_lower_km": {
+        "default": 15.0,
+        "description": "5% quantile of the lengthscale prior",
+        "exclusiveMinimum": 0,
+        "title": "Ell Lower Km",
+        "type": "number"
+       },
+       "ell_upper_km": {
+        "default": 100.0,
+        "description": "95% quantile of the lengthscale prior",
+        "exclusiveMinimum": 0,
+        "title": "Ell Upper Km",
+        "type": "number"
+       },
+       "era_periods": {
+        "default": 4,
+        "description": "Periods in one era: the spatial field changes from era to era (4 quarters = one map per year)",
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Era Periods",
+        "type": "integer"
+       },
+       "eta0_scale": {
+        "default": 2.0,
+        "description": "Half-normal scale of the anchor map",
+        "exclusiveMinimum": 0,
+        "title": "Eta0 Scale",
+        "type": "number"
+       },
+       "eta_d_scale": {
+        "default": 1.0,
+        "description": "Half-normal scale of the era increments",
+        "exclusiveMinimum": 0,
+        "title": "Eta D Scale",
+        "type": "number"
+       },
+       "field": {
+        "default": "era_walk",
+        "description": "era_walk: a new map each era (a random walk of maps); static: one map for all periods (the separable model)",
+        "enum": [
+         "era_walk",
+         "static"
+        ],
+        "title": "Field",
+        "type": "string"
+       },
+       "inv_phi_rate": {
+        "default": 1.0,
+        "description": "Exponential rate of 1/phi (0 = Poisson)",
+        "exclusiveMinimum": 0,
+        "title": "Inv Phi Rate",
+        "type": "number"
+       },
+       "likelihood": {
+        "default": "negbin",
+        "enum": [
+         "negbin",
+         "poisson"
+        ],
+        "title": "Likelihood",
+        "type": "string"
+       },
+       "m_col": {
+        "default": 14,
+        "description": "HSGP basis functions along columns",
+        "maximum": 60,
+        "minimum": 2,
+        "title": "M Col",
+        "type": "integer"
+       },
+       "m_row": {
+        "default": 10,
+        "description": "HSGP basis functions along rows",
+        "maximum": 60,
+        "minimum": 2,
+        "title": "M Row",
+        "type": "integer"
+       },
+       "max_extension": {
+        "default": 8,
+        "description": "Periods a forecast may reach past the fitted range without a refit (x-ui-level: basic)",
+        "maximum": 400,
+        "minimum": 1,
+        "title": "Max Extension",
+        "type": "integer"
+       },
+       "sigma_g_scale": {
+        "default": 0.5,
+        "description": "Half-normal scale of the RW step",
+        "exclusiveMinimum": 0,
+        "title": "Sigma G Scale",
+        "type": "number"
+       }
+      },
+      "title": "LGCPGridSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The mass of the lens is an isothermal ellipsoid, with an optional external shear",
+       "The light of the lens galaxy and of the source are smooth elliptical profiles",
+       "The noise is Gaussian. Neighbouring pixels can have a correlated noise"
+      ],
+      "avoid_when": [
+       "The lens is a group or a cluster of galaxies, or the image has many lenses",
+       "You do not have a point-spread function (PSF) or a noise value for each pixel",
+       "You need the slope of the mass profile (one image cannot give it)"
+      ],
+      "data_needs": [
+       "A cutout of the image with the lens galaxy at the centre",
+       "The inverse variance (weight) of each pixel",
+       "The PSF as a small image with an odd number of rows and columns, for example from stars in the same image",
+       "Optional: a mask of the pixels to use, and the redshifts of the lens and the source"
+      ],
+      "difficulty": "expert",
+      "example": "An HST image of the lens SDSS J1627-0053 gives an Einstein radius of 1.22 arcsec and a mass of 2.3e11 solar masses inside this radius.",
+      "expert_notes": "Pixel forward model in PyTensor: a singular isothermal ellipsoid (Kormann et al. 1994) plus external shear, ray tracing on a sub-pixel grid, Sersic lens light and source, and PSF convolution as a separable SVD expansion (matrix products only). A separable lag-one correlation of the noise (drizzled images) is whitened exactly. The linear light amplitudes are integrated out in closed form and drawn after the fit from their conditional Gaussian. A staged optimisation finds the mode (lens light with sigma clipping, the Einstein radius from the ring profile, then starts around the lens axis). NUTS samples a parameterisation whitened by the Laplace approximation at that mode. Critical curves and caustics are analytic for each direction. The mass-sheet degeneracy is not broken: only the mass inside the Einstein radius is robust. No pointwise LOO.",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "map_fields",
+        "fit_physics"
+       ],
+       "uncertainty": [
+        "essential"
+       ]
+      },
+      "outputs": [
+       "The Einstein radius, and the mass inside it when you give the two redshifts",
+       "The predicted image, and simulated images with noise",
+       "An image of the source galaxy without the lens",
+       "The critical curves and the caustics for posterior draws"
+      ],
+      "references": [
+       {
+        "title": "Kormann, Schneider & Bartelmann (1994), Isothermal elliptical gravitational lens models"
+       },
+       {
+        "title": "Bolton et al. (2008), The Sloan Lens ACS Survey V: the full ACS strong-lens sample",
+        "url": "https://arxiv.org/abs/0805.1931"
+       },
+       {
+        "title": "Suyu et al. (2006), A Bayesian analysis of regularized source inversions in gravitational lensing",
+        "url": "https://arxiv.org/abs/astro-ph/0601493"
+       }
+      ],
+      "related": [
+       "sci.traction_force"
+      ],
+      "summary_plain": "Measures the mass of a galaxy that bends the light of a more distant galaxy into a ring or arcs. It predicts each pixel of the telescope image and shows the distant galaxy without the lens.",
+      "title": "Gravitational lens from an image",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have a telescope image of one lens galaxy with a ring or arcs around it",
+       "You need the Einstein radius and the mass inside it, with a range",
+       "You want to see the source galaxy without the lens, and the critical curves of the lens"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": false,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "theta_E",
+       "e_mass",
+       "xy_mass",
+       "shear"
+      ],
+      "inference": "mcmc",
+      "loo_invalid_reason": "the light amplitudes are integrated out over all pixels and the whitened noise couples neighbouring pixels, so pointwise leave-one-out is not defined",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [
+      {
+       "cache": "fit",
+       "description": "Tangential critical curve (image plane), its caustic and the cut (source plane) for posterior draws, in arcsec and grid pixel indices",
+       "dims": [
+        "sample",
+        "curve_point"
+       ],
+       "name": "critical_curves",
+       "units": "arcsec"
+      }
+     ],
+     "description": "A pixel forward model of a galaxy-scale strong gravitational lens: a singular isothermal ellipsoid with external shear traces every pixel to a Sersic source; the lens light, a PSF and correlated noise are modelled; the light amplitudes are integrated out. Gives the Einstein radius, the unlensed source and critical curves.",
+     "fit_schema": {},
+     "id": "sci.strong_lens",
+     "outputs": {
+      "einstein_mass": {
+       "description": "Mass inside the Einstein radius (needs z_lens and z_source)",
+       "dims": [],
+       "units": "solar_mass"
+      },
+      "einstein_radius": {
+       "description": "Einstein radius of the isothermal ellipsoid",
+       "dims": [],
+       "units": "arcsec"
+      },
+      "model_image": {
+       "description": "Expected image (lens light, lensed source, sky, PSF), or a simulated observation with noise",
+       "dims": [
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "gray",
+        "log": false,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units_of": "image"
+      },
+      "source": {
+       "description": "The unlensed source (parametric Sersic of each draw) on a source-plane grid",
+       "dims": [
+        "source_row",
+        "source_col"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "log": false,
+        "origin": "lower",
+        "x": "source_col",
+        "y": "source_row"
+       },
+       "units_of": "image"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.field_map"
+     ],
+     "resources": {
+      "default_class": "M",
+      "est_fit_seconds": 600,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "vars": {
+          "mask": {
+           "description": "True where the pixel is used in the fit",
+           "dims": [
+            "row",
+            "col"
+           ],
+           "dtype": "bool",
+           "role": "mask"
+          }
+         }
+        },
+        "when": {
+         "use_mask": true
+        }
+       }
+      ],
+      "params": {
+       "use_mask": {
+        "default": false,
+        "required": false,
+        "type": "boolean"
+       }
+      },
+      "template": {
+       "dims": {
+        "col": {
+         "description": "Image columns",
+         "kind": "integer"
+        },
+        "psf_col": {
+         "description": "Columns of the PSF kernel",
+         "kind": "integer"
+        },
+        "psf_row": {
+         "description": "Rows of the PSF kernel",
+         "kind": "integer"
+        },
+        "row": {
+         "description": "Image rows (row 0 at the bottom)",
+         "kind": "integer"
+        }
+       },
+       "vars": {
+        "image": {
+         "description": "Surface brightness of each pixel (for example electrons/s)",
+         "dims": [
+          "row",
+          "col"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        },
+        "psf": {
+         "description": "The point-spread function (odd sides, centred)",
+         "dims": [
+          "psf_row",
+          "psf_col"
+         ],
+         "dtype": "float64",
+         "role": "constant"
+        },
+        "weight": {
+         "description": "Inverse variance of each pixel; 0 leaves the pixel out",
+         "dims": [
+          "row",
+          "col"
+         ],
+         "dtype": "float64",
+         "role": "weight"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.strong_lens`` (angles in arcsec).",
+      "properties": {
+       "curve_draws": {
+        "default": 100,
+        "description": "Posterior draws with cached critical curves",
+        "maximum": 2000,
+        "minimum": 1,
+        "title": "Curve Draws",
+        "type": "integer"
+       },
+       "curve_points": {
+        "default": 128,
+        "description": "Points per critical curve",
+        "maximum": 2048,
+        "minimum": 16,
+        "title": "Curve Points",
+        "type": "integer"
+       },
+       "ellipticity_sd": {
+        "default": 0.2,
+        "description": "Prior sd of ellipticity components",
+        "exclusiveMinimum": 0,
+        "title": "Ellipticity Sd",
+        "type": "number"
+       },
+       "external_shear": {
+        "default": true,
+        "description": "Add an external shear to the lens",
+        "title": "External Shear",
+        "type": "boolean"
+       },
+       "fit_noise_scale": {
+        "default": true,
+        "description": "Scale the noise map by a free factor",
+        "title": "Fit Noise Scale",
+        "type": "boolean"
+       },
+       "h0": {
+        "default": 70.0,
+        "description": "Hubble constant (km/s/Mpc)",
+        "exclusiveMinimum": 0,
+        "title": "H0",
+        "type": "number"
+       },
+       "lens_light_components": {
+        "default": 2,
+        "description": "Concentric Sersic profiles for the lens galaxy's light",
+        "maximum": 2,
+        "minimum": 0,
+        "title": "Lens Light Components",
+        "type": "integer"
+       },
+       "light_center_sd": {
+        "default": 0.1,
+        "description": "Prior sd of the light centre",
+        "exclusiveMinimum": 0,
+        "title": "Light Center Sd",
+        "type": "number"
+       },
+       "light_size_medians": {
+        "default": [
+         0.5,
+         1.5
+        ],
+        "description": "Prior medians of the lens-light half-light radii",
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "number"
+         }
+        ],
+        "title": "Light Size Medians",
+        "type": "array"
+       },
+       "mass_center_sd": {
+        "default": 0.1,
+        "description": "Prior sd of the mass centre",
+        "exclusiveMinimum": 0,
+        "title": "Mass Center Sd",
+        "type": "number"
+       },
+       "max_iter": {
+        "default": 3000,
+        "description": "Iterations per optimisation",
+        "maximum": 100000,
+        "minimum": 10,
+        "title": "Max Iter",
+        "type": "integer"
+       },
+       "n_starts": {
+        "default": 5,
+        "description": "Starts of the full-model optimisation (source positions)",
+        "maximum": 9,
+        "minimum": 1,
+        "title": "N Starts",
+        "type": "integer"
+       },
+       "noise_correlation": {
+        "default": 0.0,
+        "description": "Lag-one correlation of the noise between neighbouring pixels (separable rows x columns; drizzled images have about 0.2). 0 treats pixels as independent",
+        "exclusiveMaximum": 0.45,
+        "minimum": 0.0,
+        "title": "Noise Correlation",
+        "type": "number"
+       },
+       "noise_scale_log_sd": {
+        "default": 0.2,
+        "description": "Prior sd of log noise scale",
+        "exclusiveMinimum": 0,
+        "title": "Noise Scale Log Sd",
+        "type": "number"
+       },
+       "omega_m": {
+        "default": 0.3,
+        "description": "Matter density (flat LCDM)",
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0,
+        "title": "Omega M",
+        "type": "number"
+       },
+       "pixel_scale": {
+        "default": 0.05,
+        "description": "Pixel size in arcsec",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Pixel Scale",
+        "type": "number"
+       },
+       "psf_max_rank": {
+        "default": 12,
+        "description": "Most separable PSF terms",
+        "maximum": 40,
+        "minimum": 1,
+        "title": "Psf Max Rank",
+        "type": "integer"
+       },
+       "psf_tolerance": {
+        "default": 0.001,
+        "description": "Relative error allowed in the separable PSF expansion",
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0,
+        "title": "Psf Tolerance",
+        "type": "number"
+       },
+       "shear_sd": {
+        "default": 0.05,
+        "description": "Prior sd of the shear components",
+        "exclusiveMinimum": 0,
+        "title": "Shear Sd",
+        "type": "number"
+       },
+       "source_grid": {
+        "default": 30,
+        "description": "Source-plane grid side (pixels)",
+        "maximum": 128,
+        "minimum": 4,
+        "title": "Source Grid",
+        "type": "integer"
+       },
+       "source_half_width": {
+        "default": 0.45,
+        "description": "Half-width of the source-plane grid (arcsec)",
+        "exclusiveMinimum": 0,
+        "title": "Source Half Width",
+        "type": "number"
+       },
+       "source_offset_sd": {
+        "default": 0.3,
+        "description": "Prior sd of the source position",
+        "exclusiveMinimum": 0,
+        "title": "Source Offset Sd",
+        "type": "number"
+       },
+       "source_size_median": {
+        "default": 0.2,
+        "description": "Prior median source radius",
+        "exclusiveMinimum": 0,
+        "title": "Source Size Median",
+        "type": "number"
+       },
+       "subsample": {
+        "default": 2,
+        "description": "Rays per pixel along each axis (sub-pixel sampling)",
+        "maximum": 4,
+        "minimum": 1,
+        "title": "Subsample",
+        "type": "integer"
+       },
+       "theta_e_log_sd": {
+        "default": 0.5,
+        "description": "Prior sd of log Einstein radius",
+        "exclusiveMinimum": 0,
+        "title": "Theta E Log Sd",
+        "type": "number"
+       },
+       "theta_e_median": {
+        "default": 1.0,
+        "description": "Prior median of the Einstein radius",
+        "exclusiveMinimum": 0,
+        "title": "Theta E Median",
+        "type": "number"
+       },
+       "theta_e_start": {
+        "anyOf": [
+         {
+          "exclusiveMinimum": 0,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Start the optimisation at this Einstein radius instead of the radius of the ring found in the light-subtracted image",
+        "title": "Theta E Start"
+       },
+       "use_mask": {
+        "default": false,
+        "description": "The data has a bool mask(row, col) of pixels",
+        "title": "Use Mask",
+        "type": "boolean"
+       },
+       "z_lens": {
+        "anyOf": [
+         {
+          "exclusiveMinimum": 0,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Lens redshift (for the mass)",
+        "title": "Z Lens"
+       },
+       "z_source": {
+        "anyOf": [
+         {
+          "exclusiveMinimum": 0,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Source redshift (for the mass)",
+        "title": "Z Source"
+       }
+      },
+      "title": "StrongLensSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The gel is a linear elastic solid and its stiffness is known (or known to a given percentage)",
+       "The force map is smooth and has the same statistical properties in all of the image",
+       "The noise in the displacements is independent from pixel to pixel",
+       "The image repeats at its edges (the Fourier transform uses this)"
+      ],
+      "avoid_when": [
+       "The displacement map has gaps (the model needs a value at each pixel)",
+       "The gel is not much thicker than the cells are wide",
+       "The forces occur only at a few small adhesions and you need sharp peaks"
+      ],
+      "data_needs": [
+       "A displacement map with x and y components on a regular grid of pixels",
+       "The grid spacing, the stiffness (Young's modulus) and the Poisson ratio of the gel",
+       "Optional: a mask of the area under the cells"
+      ],
+      "difficulty": "expert",
+      "example": "The gel movement under a colony of seven cells on a 49 kPa gel gives a strain energy of 271 fJ and a contractility of 2.17 uN.",
+      "expert_notes": "Fourier-transform traction cytometry (FTTC) as a Gaussian inverse problem. The Boussinesq Green's function of an elastic half-space is diagonal in longitudinal and transverse Fourier modes. The prior spectrum is white (Tikhonov), squared exponential or Matern. NUTS samples the noise sd and the spectrum hyperparameters with the field integrated out (closed-form marginal likelihood per mode). At score time, exact joint draws of the field come from two FFTs per hyperparameter draw. An optional lognormal uncertainty of Young's modulus scales each draw. A diagnostic compares the data power in the finest modes with the model (correlated PIV noise makes the ranges too narrow).",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "map_fields",
+        "fit_physics"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "Probable force maps (traction, in Pa) with a mean, a spread and a 90% range for each pixel",
+       "The displacement map that each force map causes",
+       "The strain energy (fJ) and the contractility (uN) inside the mask, with a range"
+      ],
+      "references": [
+       {
+        "title": "Butler et al. (2002), Traction fields, moments, and strain energy that cells exert on their surroundings",
+        "url": "https://doi.org/10.1152/ajpcell.00270.2001"
+       },
+       {
+        "title": "Huang et al. (2019), Traction force microscopy with optimized regularization and automated Bayesian parameter selection",
+        "url": "https://doi.org/10.1038/s41598-018-36896-x"
+       },
+       {
+        "title": "Bauer et al. (2021), pyTFM: a tool for traction force and monolayer stress microscopy",
+        "url": "https://doi.org/10.1371/journal.pcbi.1008364"
+       }
+      ],
+      "related": [
+       "sci.strong_lens"
+      ],
+      "summary_plain": "Calculates the forces that cells apply to a soft gel from the measured movement of the gel surface. It gives a range of probable force maps.",
+      "title": "Cell forces from gel movement",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have a map of the gel movement under a cell or a colony (bead tracking or PIV)",
+       "You need the strain energy or the contractility of the cells with a range",
+       "You want to know which smoothness of the force map the data support"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "noise_sd",
+       "traction_sd",
+       "lengthscale",
+       "smoothness"
+      ],
+      "inference": "mcmc",
+      "loo_invalid_reason": "the likelihood is a potential over Fourier modes of the whole raster; pixels are not conditionally independent, so pointwise leave-one-out is not defined",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "Traction force microscopy: recovers the 2-D traction field under a cell from the displacement field of the gel. A Gaussian prior in Fourier space (white, squared exponential or Matern spectrum); NUTS on the hyperparameters with the field integrated out, then exact posterior draws of the field.",
+     "fit_schema": {},
+     "id": "sci.traction_force",
+     "outputs": {
+      "contractility": {
+       "description": "Sum of the forces towards the force epicentre, inside the mask",
+       "dims": [],
+       "units": "uN"
+      },
+      "displacement_hat": {
+       "description": "Displacement of each traction draw (expected), plus noise (predictive)",
+       "dims": [
+        "component",
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "viridis",
+        "component": "component",
+        "log": false,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units_of": "displacement"
+      },
+      "strain_energy": {
+       "description": "Elastic energy the cell put into the gel, inside the force mask",
+       "dims": [],
+       "units": "fJ"
+      },
+      "traction": {
+       "description": "Joint posterior draws of the traction field",
+       "dims": [
+        "component",
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "component": "component",
+        "log": false,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units": "Pa"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.vector_field"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 180,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "vars": {
+          "force_mask": {
+           "description": "Region that strain energy and contractility cover",
+           "dims": [
+            "row",
+            "col"
+           ],
+           "dtype": "bool",
+           "role": "mask"
+          }
+         }
+        },
+        "when": {
+         "force_mask": true
+        }
+       }
+      ],
+      "params": {
+       "force_mask": {
+        "default": false,
+        "required": false,
+        "type": "boolean"
+       }
+      },
+      "template": {
+       "dims": {
+        "col": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "component": {
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "row": {
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "displacement": {
+         "description": "Displacement of the gel surface (x and y components)",
+         "dims": [
+          "component",
+          "row",
+          "col"
+         ],
+         "dtype": "float64",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.traction_force``: the gel, the prior spectrum and the draws.",
+      "properties": {
+       "field_draws": {
+        "default": 100,
+        "description": "Traction fields drawn per score (over all chains)",
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Field Draws",
+        "type": "integer"
+       },
+       "force_mask": {
+        "default": false,
+        "description": "The data has a force_mask(row, col) variable: strain energy and contractility are summed inside it (else over the whole grid)",
+        "title": "Force Mask",
+        "type": "boolean"
+       },
+       "grid_um": {
+        "default": 1.0,
+        "description": "Grid spacing of the displacement raster (um)",
+        "exclusiveMinimum": 0,
+        "title": "Grid Um",
+        "type": "number"
+       },
+       "lengthscale_um": {
+        "default": 5.0,
+        "description": "Prior median of the length scale (um; smooth and matern)",
+        "exclusiveMinimum": 0,
+        "title": "Lengthscale Um",
+        "type": "number"
+       },
+       "noise_um": {
+        "default": 0.01,
+        "description": "Prior median of the noise sd (um)",
+        "exclusiveMinimum": 0,
+        "title": "Noise Um",
+        "type": "number"
+       },
+       "poisson": {
+        "default": 0.49,
+        "description": "Poisson ratio of the gel",
+        "exclusiveMaximum": 0.5,
+        "minimum": 0,
+        "title": "Poisson",
+        "type": "number"
+       },
+       "prior": {
+        "default": "matern",
+        "description": "Prior spectrum of the tractions: white (Tikhonov), smooth (squared exponential) or matern ((1 + k^2 l^2)^-alpha)",
+        "enum": [
+         "white",
+         "smooth",
+         "matern"
+        ],
+        "title": "Prior",
+        "type": "string"
+       },
+       "traction_pa": {
+        "default": 300.0,
+        "description": "Prior median of the traction scale (Pa)",
+        "exclusiveMinimum": 0,
+        "title": "Traction Pa",
+        "type": "number"
+       },
+       "young_cv": {
+        "default": 0.0,
+        "description": "Relative uncertainty of Young's modulus (lognormal sd); 0 = known exactly",
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Young Cv",
+        "type": "number"
+       },
+       "young_pa": {
+        "default": 10000.0,
+        "description": "Young's modulus of the gel (Pa)",
+        "exclusiveMinimum": 0,
+        "title": "Young Pa",
+        "type": "number"
+       }
+      },
+      "title": "TractionForceSettings",
       "type": "object"
      },
      "version": "1.0.0"
@@ -16923,6 +18335,42 @@
     ],
     "requires_representation": [],
     "title": "Response curves",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "id": "sci.ensemble",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "title": "Ensemble of draws",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "id": "sci.field_map",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "title": "Field map",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "id": "sci.profile_bands",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "title": "Profiles with bands",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "id": "sci.vector_field",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "title": "Vector field",
     "version": "1.0.0",
     "yanked": false
    }

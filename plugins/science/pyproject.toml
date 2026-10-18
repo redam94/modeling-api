@@ -1,0 +1,32 @@
+[project]
+name = "mapi-plugin-science"
+version = "0.6.0"
+description = "Scientific model plugins: space-time fields, PDE simulators and image inverse problems"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+dependencies = [
+  "mapi-sdk",
+  "mapi-pymc",
+  "mapi-steps",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "scipy>=1.13",
+  "xarray>=2025.1",
+]
+
+[project.entry-points."mapi.models"]
+science = "mapi_plugin_science:PLUGINS"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_plugin_science"]
+
+[tool.uv.sources]
+mapi-sdk = { workspace = true }
+mapi-pymc = { workspace = true }
+mapi-steps = { workspace = true }

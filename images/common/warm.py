@@ -44,6 +44,7 @@ _VERSIONED = (
     "mapi-plugin-ts",
     "mapi-plugin-tabular",
     "mapi-plugin-statsmodels",
+    "mapi-plugin-science",
     "mapi-workflows",
     "statsmodels",
     "scipy",

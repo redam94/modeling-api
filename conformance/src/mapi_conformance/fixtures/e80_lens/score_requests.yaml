@@ -1,0 +1,19 @@
+# E80: every pixel of the image, the unlensed source and the cached critical curves.
+- name: predict_image_and_source
+  request: {mode: predict, output: {draws: 5}}
+  payload: fit_data
+  expect:
+    groups: [summary, draws]
+    vars: [model_image, source, einstein_radius]
+    sizes: {row: 24, col: 24, source_row: 16, source_col: 16}
+- name: simulate_observation
+  request: {mode: simulate, output: {kind: predictive}}
+  payload: fit_data
+  expect: {vars: [model_image], sizes: {row: 24, col: 24}}
+- name: critical_curves
+  request: {mode: predict, output: {vars: [model_image, critical_curves]}}
+  payload: fit_data
+  expect: {groups: [summary, derived/critical_curves], vars: [model_image]}
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: row, periods: 2}}
+  expect_error: MODE_NOT_SUPPORTED
