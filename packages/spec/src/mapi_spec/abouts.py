@@ -1705,6 +1705,79 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "experience": ["expert"],
         },
     ),
+    "sci.colour_naming": _a(
+        "How people name colours",
+        "Shows how the speakers of one language name colour chips: which word each speaker "
+        "is likely to use for each chip, and a map of the words on the chip palette.",
+        [
+            "Each speaker of a language named each chip of a colour palette once",
+            "You want to know where the boundaries between the colour words are, with a range",
+            "You want to predict how a new speaker will name the chips",
+            "You want to know how many colour categories the language really has",
+        ],
+        [
+            "You have more than one language in the data (fit one language at a time)",
+            "The words are not colour names, or the items do not have a colour",
+            "You want to know which chip is the best example of a word (the model gives the "
+            "chip that the most speakers agree on, which is a different thing)",
+            "You have more than 40 different words (merge the rare words into one word first)",
+        ],
+        [
+            "The word that each speaker gave to each chip (an empty cell when there is no "
+            "answer)",
+            "The CIELAB colour (L*, a*, b*) of each chip",
+            "The row and the column of each chip on the palette (for the maps)",
+        ],
+        [
+            "Each word has a region in colour space with a smooth shape",
+            "The speakers share the shapes. Each speaker can use a word more or less and move "
+            "its boundaries (setting kind: hierarchical)",
+            "Given the speaker, each chip is named independently of the other chips",
+            "A missing answer does not depend on the chip or the word",
+        ],
+        [
+            "The probability of each word for each speaker and chip, also for new speakers",
+            "A map of each word on the palette: the share of speakers who use it, with a range",
+            "The palette in the colour of the most probable word of each chip",
+            "The effective number of colour categories, for one speaker and for the language",
+        ],
+        _I,
+        _MIN,
+        "The 29 Nafaanra speakers of the World Color Survey use four words. Nine speakers that "
+        "the model did not see are named correctly for 88% of the chips.",
+        related=["choice.multinomial_logit"],
+        expert="Multinomial logistic regression on 10 standardised quadratic CIELAB features "
+        "(1, L, a, b, L^2, a^2, b^2, ab, La, Lb), the well-conditioned natural form of Gaussian "
+        "categories (pymc-challenges E77). W ~ ZeroSumNormal(3) over terms. kind: hierarchical "
+        "adds speaker effects on the intercept and the linear weights, W_s = W + sd z_s with "
+        "sd ~ HalfNormal(1) and z ~ ZeroSumNormal(1) (non-centred). The likelihood is a "
+        "potential over the observed responses (pooled: the chip x term count table). "
+        "features: grid_line / grid_circle are the printed-grid variants (hue as a line or a "
+        "circle) for an elpd_loo ladder. New speakers get fresh effects per draw (new-level "
+        "strategy hyperprior); the language-level shares average 20 simulated speakers per "
+        "draw. Pointwise log-likelihood is per chip (leave-one-chip-out). Effective "
+        "categories = exp(I(chip; term)).",
+        refs=[
+            (
+                "Kay, Berlin, Maffi, Merrifield & Cook (2009), The World Color Survey, CSLI "
+                "Publications",
+                "https://linguistics.berkeley.edu/wcs/",
+            ),
+            (
+                "Kay & Regier (2003), Resolving the question of color naming universals, PNAS "
+                "100:9085-9089",
+                "https://doi.org/10.1073/pnas.1532837100",
+            ),
+        ],
+        fits={
+            "goal": ["understand_choices", "map_fields"],
+            "data_shape": ["choices", "grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["intermediate", "expert"],
+            "speed": ["minutes"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -1719,7 +1792,13 @@ SURVIVING_MODEL_IDS: Final[frozenset[str]] = frozenset(
 the scikit-learn models of ``mapi-sklearn``)."""
 
 SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
-    {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens"}
+    {
+        "sci.lgcp_grid",
+        "sci.fisher_kpp",
+        "sci.traction_force",
+        "sci.strong_lens",
+        "sci.colour_naming",
+    }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
 problems ported from the pymc-challenges case studies)."""
