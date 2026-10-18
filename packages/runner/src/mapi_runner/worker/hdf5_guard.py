@@ -26,7 +26,9 @@ never following a soft or external link, and refuses all of that with
   the expansion budget of the upload, or one chunk larger than it;
 * data types whose size cannot be bounded: variable-length sequences, compound, array,
   reference and opaque datasets. Variable-length *strings* are accepted: their bytes live in
-  the file's heap, so the file's size bounds them.
+  the file's heap, so the file's size bounds each one. A variable-length text attribute is
+  read whole by libhdf5, so before it is read its worst case (elements x file size: elements
+  may share one heap object) must fit the expansion budget; its text is then capped as above.
 
 The walk also returns what it saw (:class:`Hdf5Walk`), which the ``inspect`` run lists
 without reading array data. Dynamic filter plugins are disabled for the whole process
@@ -184,8 +186,10 @@ class _Walker:
         *,
         attr_bytes: int,
         max_attrs: int,
+        file_bytes: int = 0,
     ) -> None:
         self.fid = fid
+        self.file_bytes = file_bytes
         self.limits = limits
         self.budget = budget
         self.collect_attrs = collect_attrs
@@ -237,7 +241,18 @@ class _Walker:
                     untrusted=where,
                 )
             if cls == h5t.STRING and tid.is_variable_str():
-                # the text lives in the heap: read it to bound it (attributes are metadata)
+                # The text lives in the heap and libhdf5 reads an attribute whole, so its
+                # size is only known after the read. Bound the read first: every element's
+                # text lies in the file, but elements may share one heap object, so the
+                # worst case is elements x file size - it must fit the expansion budget.
+                worst = nelem * max(self.file_bytes, 1)
+                if nelem > 1 and worst > self.budget:
+                    raise unsafe(
+                        f"a variable-length text attribute has {nelem:,} elements, which could "
+                        f"decode to {worst:,} bytes (the maximum is {self.budget:,})",
+                        untrusted=where,
+                        action="Store the text as one string, or as a fixed-length string array.",
+                    )
                 text = _read_attr(attr)
                 total = sum(len(t) for t in text)
                 if total > self.attr_bytes:
@@ -555,7 +570,13 @@ def walk_hdf5(
             )
         try:
             walker = _Walker(
-                fid, limits, budget, collect_attrs, attr_bytes=attr_bytes, max_attrs=max_attrs
+                fid,
+                limits,
+                budget,
+                collect_attrs,
+                attr_bytes=attr_bytes,
+                max_attrs=max_attrs,
+                file_bytes=size,
             )
             return walker.walk()
         except RecursionError:
