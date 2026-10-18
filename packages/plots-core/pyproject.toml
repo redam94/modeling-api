@@ -1,6 +1,6 @@
 [project]
 name = "mapi-plots"
-version = "0.7.0"
+version = "0.8.0"
 description = "Plot recipes and the JSON-only PlotSpec sanitizer"
 readme = "README.md"
 requires-python = ">=3.12"

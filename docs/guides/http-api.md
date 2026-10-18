@@ -38,7 +38,7 @@ storage URLs, because these URLs have their own authorization. See
 ```
 
 ```text
-{"status":"ok","version":"0.7.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
+{"status":"ok","version":"0.8.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
 mmm.bayesian@1.0.0  draws
 mmm.frequentist@1.0.0  draws
 sklearn.tabular_bootstrap@1.0.0  draws

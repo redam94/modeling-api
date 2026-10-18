@@ -5,6 +5,29 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.8.0] — Tree datasets — 2026-10-18
+
+This release adds datasets that are trees of groups. A NetCDF-4 or HDF5 file keeps its
+groups, a raw HDF5 file is mapped to variables after an inspection of its arrays, and a
+version can combine several files: each file as a node, files stacked along a dim, or files
+merged on shared coords. A spec selects the nodes that its pipeline reads, and a model can
+also ask for the whole tree. A guard checks every HDF5 file in the sandbox before it is
+opened. The catalog also shows each plot recipe as a card with an example picture.
+
+### Known gaps
+- libhdf5 reads a variable-length text attribute whole before the exact length check. The
+  read is bounded by the run budget, and some rare files with such attributes are refused.
+- The web HDF5 mapper cannot set the description of a variable or the DimSpec of a coord. Use
+  the Python client or the CLI for these.
+- A local `mapi fit --data x.tree.zip` reads the file as a plain dataset. Only `mapi check`
+  resolves `data.nodes` locally.
+- Workflow nodes that fit again on changed flat data, and the ablations of governance checks,
+  do not give a tree to tree-input models.
+- The tree version page shows the preview and profile of the default node only. The Data
+  Explorer shows the other nodes.
+- The web flows for trees ran against the mock API only. The real server and runner path ran
+  in the end-to-end test.
+
 ### Added
 - **Tree datasets** (M4). A dataset version can hold an `xr.DataTree` (layout `tree`): one
   node for each group, with node paths such as `/` and `/instrument/psf`. A `TreeSchema`
