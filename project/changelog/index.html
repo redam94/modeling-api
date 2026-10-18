@@ -4753,8 +4753,30 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[Unreleased]">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#070-scientific-models-2026-10-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.7.0] — Scientific models — 2026-10-17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.7.0] — Scientific models — 2026-10-17">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#known-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known gaps
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#added" class="md-nav__link">
@@ -4772,17 +4794,6 @@
     <span class="md-ellipsis">
       
         Fixed
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#known-gaps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Known gaps
       
     </span>
   </a>
@@ -5459,8 +5470,30 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[Unreleased]">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#070-scientific-models-2026-10-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.7.0] — Scientific models — 2026-10-17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.7.0] — Scientific models — 2026-10-17">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#known-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known gaps
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#added" class="md-nav__link">
@@ -5478,17 +5511,6 @@
     <span class="md-ellipsis">
       
         Fixed
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#known-gaps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Known gaps
       
     </span>
   </a>
@@ -6135,9 +6157,54 @@
 <p>All notable changes are documented here. The project follows <a href="https://semver.org/">Semantic Versioning</a>;
 milestone releases are tagged on <code>main</code>.</p>
 <h2 id="unreleased">[Unreleased]<a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="070-scientific-models-2026-10-17">[0.7.0] — Scientific models — 2026-10-17<a class="headerlink" href="#070-scientific-models-2026-10-17" title="Permanent link">&para;</a></h2>
+<p>This release adds scientific models with data on a map, an image or a grid. Four new plugins
+come from the pymc-challenges case studies: event counts on a map, a reaction-diffusion PDE,
+cell forces from gel movement and a strong gravitational lens. A model can now declare that an
+output is a 2-D field. The Model Explorer then shows the field with its uncertainty, and new
+Plotly recipes draw it. The Score page now guides each request in steps, and a forecast with
+actuals shows its predictions next to the actuals.</p>
+<h3 id="known-gaps">Known gaps<a class="headerlink" href="#known-gaps" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The docs' Score screenshots still show the previous form; regenerate them against a live
+  stack (<code>scripts/docs_screenshots.mjs</code>).</li>
+<li>The Model Explorer shows the <strong>Fields</strong> section only for fits made with this release. Fit a
+  model again to see its fields.</li>
+<li>The <code>sci.*</code> recipes and the field viewer are not in the plot gallery of the docs, which shows
+  only Vega-Lite plots.</li>
+<li>The real-data loaders of <code>mapi-plugin-science</code> need a local copy of pymc-challenges
+  (<code>MAPI_PYMC_CHALLENGES_DATA</code>). The platform does not ingest the <code>.npz</code> files directly.</li>
+<li>The corpus checks run <code>e80_lens</code> only at the tiny size. Nobody ran the full size.</li>
+</ul>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Score page: type values instead of uploading a dataset.</strong> The page now explains what the
+<li><strong>Scientific models (<code>mapi-plugin-science</code>).</strong> Four new plugins from the pymc-challenges
+  case studies. They have data on a map, an image or a grid, and their outputs are fields with a
+  range for each cell:</li>
+<li><code>sci.lgcp_grid</code>: event counts on a map over time, with a forecast (E07, Oklahoma
+    earthquakes).</li>
+<li><code>sci.fisher_kpp</code>: a reaction-diffusion PDE that the model solves in each step of the fit,
+    with a forecast to later times (E50, scratch assay).</li>
+<li><code>sci.traction_force</code>: cell forces from the movement of a gel, with exact draws of the
+    force field (E60).</li>
+<li><code>sci.strong_lens</code>: a strong gravitational lens in a telescope image, with the source, the
+    Einstein radius and the critical curves of each draw (E80).</li>
+</ul>
+<p>Each plugin has a conformance fixture (<code>e07_lgcp</code>, <code>e50_kpp</code>, <code>e60_traction</code>, <code>e80_lens</code>).
+  The <code>base-bayes</code> runner images contain them (namespace <code>sci</code>).
+- <code>OutputDecl.grid</code> (<code>GridDecl</code>): a model can declare that an output is a 2-D field. The
+  declaration gives the row and column dims, an optional frame dim, an optional component dim
+  for a vector field, the colour map, the log scale and the origin.
+- <strong>Fields in the Model Explorer.</strong> A new <code>fields</code> section shows each field output on a canvas.
+  Select the mean, the sd, mean ÷ sd, the 5% or 95% map, or single draws. Use the frame slider
+  and the draw player (hypothetical outcome plots). Point to a cell to see its value and its
+  90% range. Vector fields show arrows.
+- <strong><code>sci.*</code> plot recipes</strong> (Plotly): <code>sci.field_map</code>, <code>sci.vector_field</code>, <code>sci.profile_bands</code>
+  and <code>sci.ensemble</code>. A recipe can now return a Plotly figure.
+- Two new chooser goals ("Make a map or an image from measurements, with its uncertainty" and
+  "Fit a physical model to measurements") and a new data shape ("A map, an image or values on a
+  regular grid").
+- <strong>Score page: type values instead of uploading a dataset.</strong> The page now explains what the
   chosen model version needs (what it predicts, the inputs it reads and which of them it needs
   on future periods, the fitted date range and every fitted level) and guides the request in
   steps: what to do (the version's modes in plain words), how far ahead, the values to score
@@ -6145,38 +6212,35 @@ milestone releases are tagged on <code>main</code>.</p>
   crossed with every fitted level, with paste from a spreadsheet and "fill blanks" for a
   column; a forecast says what blank future inputs become. A dataset or no new data are still
   there, and the rarely changed settings moved under <strong>Advanced</strong>. A checklist says what will
-  be sent and what is missing.</li>
-<li><code>GET /v1/models/{model_id}/versions/{version}/inputs</code> (<code>ModelInputSchema</code>): the input contract
+  be sent and what is missing.
+- <code>GET /v1/models/{model_id}/versions/{version}/inputs</code> (<code>ModelInputSchema</code>): the input contract
   of a version - the one an endpoint serving it would freeze - and its input table with
-  <code>?periods=N</code> periods after the fit.</li>
-<li>
-<p><code>ScoreCall.inline</code> (<code>ScoreInline</code>): <code>data</code>/<code>scenario</code> as inline XrJSON (up to 5 MB each) on
+  <code>?periods=N</code> periods after the fit.
+- <code>ScoreCall.inline</code> (<code>ScoreInline</code>): <code>data</code>/<code>scenario</code> as inline XrJSON (up to 5 MB each) on
   <code>POST …/versions/{version}:score</code>, checked against the version's inputs and stored as run
   inputs exactly like an endpoint's inline payloads. The route gets the endpoint score body cap.</p>
-</li>
-<li>
-<p><strong>Predictions against your actuals.</strong> A forecast sent actuals returns one-step-ahead
+<ul>
+<li><strong>Predictions against your actuals.</strong> A forecast sent actuals returns one-step-ahead
   predictions on those periods (what the model expected before seeing each actual); the Score
   page now shows them next to the actuals: the number compared, the typical (MAE) and
   percentage error, how often the actuals fell inside the band and the average over/under
   prediction, a chart per series in the plot sandbox (actuals as points, the forecast dashed
-  after the last actual) and a table with the error per period.</p>
-</li>
+  after the last actual) and a table with the error per period.</li>
 <li><code>ScoreSummary.actuals</code>: the actuals a forecast used, as tables named after the prediction
   variable they compare with (its coordinate columns, then <code>actual</code>), in the output's names
   and original units (raw-stage payloads; none for model-space output).</li>
 </ul>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
+<li>A score payload with one label on an integer dim with a step larger than 1 (for example
+  hours with an 8 h step) no longer fails with a false "gap" error. The validator now puts the
+  payload on the grid of the fit.</li>
+<li>The harness no longer treats a vector field (an output with a <code>component</code> dim that its
+  <code>grid</code> declares) as an additive decomposition.</li>
 <li>The Score page asked every model for <code>mean</code>/<code>hdi_90</code> summaries, which quantile, interval and
   point models refuse (<code>CAPABILITY_UNSUPPORTED</code>). Summaries now default to the model's
   representation (<code>median</code>/<code>q5</code>/<code>q95</code> for quantiles), only the ones it can give are offered,
   and draws are off for models without them.</li>
-</ul>
-<h3 id="known-gaps">Known gaps<a class="headerlink" href="#known-gaps" title="Permanent link">&para;</a></h3>
-<ul>
-<li>The docs' Score screenshots still show the previous form; regenerate them against a live
-  stack (<code>scripts/docs_screenshots.mjs</code>).</li>
 </ul>
 <h2 id="060-spec-builder-2026-10-17">[0.6.0] — Spec builder — 2026-10-17<a class="headerlink" href="#060-spec-builder-2026-10-17" title="Permanent link">&para;</a></h2>
 <p>Building a spec no longer means knowing every id and column by heart. The YAML editor now

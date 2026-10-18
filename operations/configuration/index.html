@@ -6570,6 +6570,10 @@ variables that Terraform sets on the Cloud Run services (the deployment contract
 <td><code>MAPI_HYPOTHESIS_EXAMPLES</code></td>
 <td>The examples for each property in the wire-format round-trip tests (default 60)</td>
 </tr>
+<tr>
+<td><code>MAPI_PYMC_CHALLENGES_DATA</code></td>
+<td>The <code>data/</code> directory of a local copy of pymc-challenges. The <code>from_challenges</code> loaders of <code>mapi-plugin-science</code> read the real data files there, and the tests that use them run. If it is not set, these tests are skipped</td>
+</tr>
 </tbody>
 </table>
 <h2 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h2>

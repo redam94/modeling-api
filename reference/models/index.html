@@ -3120,6 +3120,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#scistrong_lens-a-galaxy-scale-strong-lens-e80" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sci.strong_lens — a galaxy-scale strong lens (E80)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5040,6 +5051,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#scistrong_lens-a-galaxy-scale-strong-lens-e80" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sci.strong_lens — a galaxy-scale strong lens (E80)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5189,6 +5211,13 @@ each lift likelihood.</p>
 <td>draws</td>
 <td>predict, evaluate</td>
 <td><code>e60_traction</code></td>
+</tr>
+<tr>
+<td><code>sci.strong_lens@1</code></td>
+<td><code>mapi-plugin-science</code></td>
+<td>draws</td>
+<td>predict, simulate, evaluate</td>
+<td><code>e80_lens</code></td>
 </tr>
 <tr>
 <td><code>ts.arima@1</code>, <code>ts.ets@1</code>, <code>ts.theta@1</code>, <code>ts.unobserved_components@1</code>, <code>ts.ardl@1</code>, <code>ts.ecm@1</code>, <code>ts.var@1</code>, <code>ts.varmax@1</code>, <code>ts.dynamic_factor@1</code>, <code>ts.markov_switching@1</code></td>
@@ -5739,6 +5768,81 @@ scalars <code>strain_energy</code> (fJ) and <code>contractility</code> (µN).</p
 the model. Correlated noise from overlapping PIV windows causes it, and then the ranges are too
 narrow. <code>challenges_settings(ds)</code> gives the settings for the real pyTFM colony of
 <code>from_challenges</code>.</p>
+<h3 id="scistrong_lens-a-galaxy-scale-strong-lens-e80"><code>sci.strong_lens</code> — a galaxy-scale strong lens (E80)<a class="headerlink" href="#scistrong_lens-a-galaxy-scale-strong-lens-e80" title="Permanent link">&para;</a></h3>
+<p>A pixel forward model of a strong gravitational lens in a telescope image. The mass is a
+singular isothermal ellipsoid with an optional external shear. Rays from each pixel (and from
+sub-pixels) go back to the source plane. The source and the lens light are Sérsic profiles,
+and the model applies the PSF of the image. The model integrates the linear light amplitudes
+out in closed form. A staged search for the mode starts the sampler, and NUTS samples near
+that mode with a Laplace preconditioner.</p>
+<p><strong>Inputs.</strong> <code>row</code> and <code>col</code> (integer, fixed, row 0 at the bottom), the target <code>image(row, col)</code>,
+the inverse variance <code>weight(row, col)</code> (0 leaves a pixel out) and a constant
+<code>psf(psf_row, psf_col)</code> with odd sides. With <code>use_mask: true</code>, the data also has a bool
+<code>mask(row, col)</code>.</p>
+<p><strong>Outputs.</strong> <code>model_image(row, col)</code> (a field, grey scale), <code>source(source_row, source_col)</code> (the
+source on a source-plane grid), the scalar <code>einstein_radius</code> (arcsec) and, when <code>z_lens</code> and
+<code>z_source</code> are set, <code>einstein_mass</code> (solar masses). The fit keeps the critical curve, the
+caustic and the cut of each posterior draw as the derived group <code>critical_curves</code>. In
+<code>simulate</code> mode, the model makes new noisy images from the posterior.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixel_scale</code></td>
+<td>0.05</td>
+<td>Pixel size (arcsec)</td>
+</tr>
+<tr>
+<td><code>subsample</code></td>
+<td>2</td>
+<td>Rays for each pixel along each axis</td>
+</tr>
+<tr>
+<td><code>lens_light_components</code></td>
+<td>2</td>
+<td>Sérsic profiles of the lens galaxy light (0 to 2)</td>
+</tr>
+<tr>
+<td><code>external_shear</code></td>
+<td>true</td>
+<td>Add an external shear to the mass</td>
+</tr>
+<tr>
+<td><code>noise_correlation</code></td>
+<td>0</td>
+<td>Correlation of the noise between neighbour pixels (drizzled images)</td>
+</tr>
+<tr>
+<td><code>theta_e_median</code>, <code>theta_e_log_sd</code></td>
+<td>1.0, 0.5</td>
+<td>Log-normal prior of the Einstein radius</td>
+</tr>
+<tr>
+<td><code>n_starts</code></td>
+<td>5</td>
+<td>Starts of the search for the mode</td>
+</tr>
+<tr>
+<td><code>source_grid</code>, <code>source_half_width</code></td>
+<td>30, 0.45</td>
+<td>Size of the source-plane grid (pixels, arcsec)</td>
+</tr>
+<tr>
+<td><code>curve_draws</code></td>
+<td>100</td>
+<td>Posterior draws with critical curves</td>
+</tr>
+</tbody>
+</table>
+<p>The model has no LOO (<code>loo_valid</code> is false). <code>from_challenges</code> reads the HST F814W image of
+SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
+posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.</p>
 
 
 
