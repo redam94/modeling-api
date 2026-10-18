@@ -176,6 +176,12 @@ def heatmaps(plot: PlotSpec) -> list[dict[str, Any]]:
 def test_pack_is_in_the_catalog() -> None:
     ids = [r.id for r in sci_recipes()]
     assert ids[:4] == ["sci.field_map", "sci.vector_field", "sci.profile_bands", "sci.ensemble"]
+    assert {
+        "sci.image_residuals",
+        "sci.ppc_image_grid",
+        "sci.swatches",
+        "sci.power_spectrum",
+    } <= set(ids)
     assert set(ids) <= {r.id for r in all_recipes()}
     assert get_recipe("sci.field_map") is field_map
     assert all(r.summary and r.tags[0] == "sci" for r in sci_recipes())

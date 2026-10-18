@@ -254,6 +254,10 @@ the string columns of these DataFrames.
 | `sci.area_map` | `var`, `group`, `observed`, `stats` (observed, mean, sd, exceedance; also median), `threshold` (1 for a positive output, else 0), `mark_above` (0.95), `log_scale` (false), `show_edges` (false), `select`, `colormap` (viridis), `classes` (9), `max_draws` (2 000), `max_vertices` (40 000), `columns` (2), `width` (760), `height` (340, one row of panels) |
 | `sci.phylogeny` | `var`, `group`, `tip_dim`, `observed`, `interval` (0.9), `point` (mean \| median), `max_tips` (400), `max_draws` (2 000), `labels` (up to 80 tips), `select`, `colormap` (viridis), `width` (780), `height` (0: from the number of tips) |
 | `sci.rose` | `var`, `group`, `observed`, `angle_dim`, `units` (radians \| degrees \| hours \| days), `period`, `bins` (24), `frame`, `select`, `interval` (0.9), `scale` (auto \| count \| share), `clockwise`, `max_draws` (1 000), `max_frames` (24), `width` (560), `height` (520) |
+| `sci.image_residuals` | the same as `sci.field_map` (no `stats`, `n_draws`), + `observed_var`, `sigma` (a variable or a number), `sigma_kind` (sd \| variance \| inverse_variance), `columns` (2), `hist_height` (200; 0: no histogram). `group` auto reads posterior_predictive, predictions, posterior |
+| `sci.ppc_image_grid` | the same as `sci.field_map` (no `stats`), + `observed_var`, `n_draws` (5, at most 11), `shuffle` (false), `seed` (0). `group` auto reads posterior_predictive, predictions, posterior |
+| `sci.swatches` | `var`, `group`, `observed_var`, `channel` (rgb), `item`, `row` (row), `col` (col), `arrange` (auto \| list \| map), `prob`, `prob_as` (border \| opacity), `select`, `n_draws` (3), `max_draws` (400), `max_items` (60, list only), `tile` (20 px), `columns` (2), `seed` (0), `width` (640) |
+| `sci.power_spectrum` | `var`, `group`, `observed_var`, `error_var` (default `<observed>_sd`), `theory`, `along`, `x_coord`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_draws` (2 000), `log_x`, `log_y` (false), `width` (640), `height` (360) |
 
 ### Extra core recipes
 
@@ -283,6 +287,10 @@ profiles and trajectories. They read draws (`chain`/`draw` or `sample` dims) fro
 | `sci.area_map` | A map of areas (polygons) coloured by the observed value, the mean, the sd and the probability that the value is above `threshold`. A cross marks each area where this probability is above `mark_above`. |
 | `sci.phylogeny` | A tree of the tips (species) next to a strip with the estimate and its interval for each tip, and the observed values. |
 | `sci.rose` | A polar chart of angles: a rose of the observed angles with the 90% range of simulated data in each sector, or a curve around the circle with its limits. |
+| `sci.image_residuals` | The observed image, the model mean, the residual and the normalised residual `(obs - mean) / sqrt(sd² + σ²)`, with a histogram of the normalised residuals against N(0, 1). |
+| `sci.ppc_image_grid` | The observed image next to `n_draws` images from the model on one colour scale. With `shuffle`, the panels are in a random order and the caption names the real one. |
+| `sci.swatches` | Squares in the colours of an sRGB output `(…, item, rgb)` in [0, 1]: observed, mean and some draws. A map when the item dim has `row` and `col` coords. |
+| `sci.power_spectrum` | A binned spectrum `(…, bin)` against a coord such as `ell`: median, 50% and 90% bands, a theory curve and the observed values with error bars. |
 
 Data for the map, tree and polar recipes:
 
@@ -303,6 +311,17 @@ Data for the map, tree and polar recipes:
   365.25 days, or `period`. If the output has an angle dim (`angle_dim`, or a dim called
   `angle`, `direction`, `hour` and so on), the recipe draws a curve. Otherwise it counts
   the angles in `bins` sectors.
+
+Notes on the image and spectrum recipes (`mapi_plots.packs.sci_images`):
+
+- `sci.image_residuals` and `sci.ppc_image_grid` need the observed image in `observed_data`,
+  with the grid dims of the output. The recipe uses the variable with the same name, the
+  `observed_var` setting or the only observed variable.
+- Draws from `posterior_predictive` already hold the noise of the data, so
+  `sci.image_residuals` adds no σ to them. For a noise-free output (`posterior` or
+  `predictions`), it uses `sigma` or a variable named `sigma`.
+- `sci.swatches` writes the colours as `#rrggbb` text in the dataset. The plot sandbox does
+  not change these colours in dark mode, because they are data.
 
 Statistics of `sci.field_map`:
 

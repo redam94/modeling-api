@@ -13,6 +13,10 @@ manifest's ``plots``:
 * ``sci.ensemble``: a spaghetti of posterior draws along one dim, the 90 % band, the median
   and the observed points.
 
+The image and spectrum recipes of the pack (``sci.image_residuals``, ``sci.ppc_image_grid``,
+``sci.swatches``, ``sci.power_spectrum``) are in :mod:`mapi_plots.packs.sci_images`, built on
+the field helpers here; :func:`sci_recipes` lists them too.
+
 Inputs are bundle or score trees, as for the core recipes: draws (``chain``/``draw`` or
 ``sample`` dims) in ``posterior``, ``predictions`` or ``posterior_predictive`` and actual values
 in ``observed_data``. The grid dims default to the output's ``grid`` declaration
@@ -1444,6 +1448,14 @@ def ensemble(inp: RecipeInput, s: EnsembleSettings) -> Figure:
 
 def sci_recipes() -> list[Recipe[Any]]:
     """The scientific-model pack (entry point ``mapi.plots: sci``)."""
+    from mapi_plots.packs.sci_images import sci_image_recipes
     from mapi_plots.packs.sci_maps import sci_map_recipes
 
-    return [field_map, vector_field, profile_bands, ensemble, *sci_map_recipes()]
+    return [
+        field_map,
+        vector_field,
+        profile_bands,
+        ensemble,
+        *sci_map_recipes(),
+        *sci_image_recipes(),
+    ]
