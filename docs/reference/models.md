@@ -34,6 +34,7 @@ each lift likelihood.
 | `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
 | `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
 | `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
+| `sci.graphical_model@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e19_ggm` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -297,8 +298,9 @@ For a text target, the server skips numeric metrics, for example `mape`.
 ## Scientific models (`mapi-plugin-science`)
 
 These plugins come from the case studies of
-[pymc-challenges](https://github.com/redam94/pymc-challenges). Their data are maps, images and
-fields on a regular grid. Their outputs are fields with a range for each cell. Each output that
+[pymc-challenges](https://github.com/redam94/pymc-challenges). Most of their data are maps,
+images and fields on a regular grid, and their outputs are fields with a range for each cell.
+`sci.graphical_model` learns a network of variables, and its matrix outputs are also fields. Each output that
 is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the column dim `x`, an
 optional `frame` dim and an optional `component` dim for a vector field). The platform then
 shows the output in two places:
@@ -351,6 +353,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
 | `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
 | `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
+| `e19` | `sci.graphical_model` | `sachs2005.txt`, `sachs2005_consensus.txt` | `biology/sachs_cd3cd28` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -476,3 +479,68 @@ The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F81
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
 
+### `sci.graphical_model` — direct links between variables (E19)
+
+A Gaussian graphical model. The model measures the partial correlation of each pair of
+variables: the correlation that stays when all the other variables are held constant. A zero
+partial correlation means that the two variables have no direct link. A link (an edge) is
+present when `|partial correlation| > threshold`, and the model gives the probability of each
+edge. The model centres and scales each variable with the mean and the sd of the fit data.
+
+There are two kinds:
+
+- `dense` (default): one multivariate normal with an LKJ prior on the correlations
+  (`eta = 2`) and an Exponential(1) prior on the sds. The precision matrix comes from a
+  triangular solve. This kind also predicts and simulates new samples.
+- `neighbourhood`: a sparse (regularised horseshoe) regression of each variable on all the
+  others, in one model. The `edge_rule` setting makes the two coefficients of a pair into one
+  edge: `and` (both pass the threshold), `or` (one passes) or `rho` (their symmetric
+  combination). This kind conditions on the other variables of each sample. Thus it does not
+  predict, simulate or evaluate new samples, and a spec with this kind has no split.
+
+**Inputs.** `cell` (integer, policy `new_levels` with the `pooled` strategy: the samples are
+exchangeable, so new samples can be scored), `var` (categorical, fixed: the variables) and the
+target `value(cell, var)`. With `reference: true`, the data also has a known network
+`reference(var, var_)` (1 = edge, constant). The fit keeps it in `constant_data`, and
+`net.graph` draws it below the learned edges.
+
+**Outputs.** `pcor(var, var_)` (the partial correlations, a field with a diverging colour
+scale), `edge_prob(var, var_)` (the edge indicator of each draw: its mean is the edge
+probability) and, for kind `dense`, `value(cell, var)`. With kind `expected`, `value` is the
+mean of each variable. With kind `predictive` or in `simulate` mode, it is a new sample from the
+model. The fit also keeps the posterior `precision(var, var_)` and the learned values `edges`
+(the pairs with a probability above 0.5), `undecided_pairs` (between 0.2 and 0.8) and
+`pcor_sd_mean`.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kind` | `dense` | `dense` (LKJ multivariate normal) or `neighbourhood` (horseshoe regressions) |
+| `threshold` | 0.1 | An edge is a partial correlation larger than this value (in absolute value) |
+| `reference` | false | The data has a known network `reference(var, var_)` |
+| `standardise` | true | Centre and scale each variable with the fit data |
+| `log_likelihood` | `auto` | The log-likelihood that the fit keeps for `elpd_loo`: `joint` (dense only) or `conditional`. `auto` is `joint` for dense and `conditional` for neighbourhood |
+| `lkj_eta`, `sd_rate`, `mean_sd` | 2, 1, 1 | dense: the LKJ shape, the rate of the sd prior and the sd of the mean prior |
+| `expected_neighbours` | 2 | neighbourhood: the prior guess of the links of each variable |
+| `slab_alpha`, `slab_beta` | 2, 2 | neighbourhood: the slab prior `c² ~ InvGamma(alpha, beta)` |
+| `edge_rule` | `and` | neighbourhood: `and`, `or` or `rho` |
+
+The fit keeps one log-likelihood value for each sample when `fit.keep.log_likelihood` is true.
+To compare a `dense` fit and a `neighbourhood` fit with `elpd_loo`, set
+`log_likelihood: conditional` on both. Then both values are the sum of the log densities of
+each variable given the other variables of the same sample.
+
+Typed errors: `SETTINGS_INVALID` for `log_likelihood: joint` with kind `neighbourhood`, or
+`expected_neighbours` that is not smaller than the number of other variables;
+`SCHEMA_INVALID` for missing values, a variable with no variation, fewer than two variables,
+or `reference: true` without a `reference` variable; `MODE_NOT_SUPPORTED` for `simulate`,
+`evaluate` or `predictive` outputs with kind `neighbourhood`, and for `forecast` and
+`counterfactual`.
+
+`from_challenges` reads the Sachs et al. (2005) flow cytometry data: the 853 cells with only the
+CD3/CD28 stimulus and 11 proteins (log of the intensity + 10). When `sachs2005_consensus.txt` is
+in the same directory, it adds the 20 edges of the consensus network as `consensus`. With
+`observational=False`, it reads all 7466 cells of the nine conditions (the notebook shows why
+you must not pool them). On the 853 cells, the dense model finds 8 edges with a probability
+above 0.5. Seven of them are in the consensus network. The fit takes approximately 40 seconds
+with nutpie. The neighbourhood model finds 6 edges, all in the consensus network, in
+approximately 2 minutes.

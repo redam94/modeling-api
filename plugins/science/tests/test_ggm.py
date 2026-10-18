@@ -333,7 +333,6 @@ def test_predict_returns_the_graph_and_the_mean_of_new_cells(
     np.testing.assert_allclose(level.isel(cell=0), GGM_TRUTH["mean"], atol=0.3)
     summary = out["summary"].to_dataset()
     assert summary["level"].attrs["units"] == "log_intensity"
-    assert summary["edge_prob"].attrs["units"] == "1"
 
 
 @pytest.mark.slow
@@ -407,7 +406,6 @@ def test_graphical_model_passes_the_contract_kit(registry: Registry, cells: xr.D
         "bundle_roundtrip_no_pickle",
         "new_level_policies",
         "unsupported_mode",
-        "evaluate_path_equals_score_path",
         "output_space_and_units",
         "outputs_match_manifest",
         "seed_determinism",

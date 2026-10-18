@@ -1705,6 +1705,86 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "experience": ["expert"],
         },
     ),
+    "sci.graphical_model": _a(
+        "Direct links between measured variables",
+        "Finds which variables are directly linked to each other when the effect of all the "
+        "other variables is removed. It gives the probability of each link and shows the links "
+        "as a network.",
+        [
+            "You measured the same set of variables on many samples, for example proteins in "
+            "single cells",
+            "You want to know which pairs are linked directly, not only through other variables",
+            "You want a probability for each link, and a network to compare with a known one",
+        ],
+        [
+            "You need the direction of each link (cause and effect): the network has no arrows",
+            "The samples come from different conditions or treatments (fit each one separately)",
+            "The relations are strongly curved or the values have very long tails (the model "
+            "sees only straight-line relations)",
+            "You have more than about 50 variables (the fit becomes slow)",
+        ],
+        [
+            "One value for each variable in each sample, with no missing values",
+            "Samples that are independent and come from one condition",
+            "Optional: a known network as a matrix of 0 and 1, to compare with",
+        ],
+        [
+            "The variables have a joint normal distribution after the fit centres and scales them",
+            "A link is present when the partial correlation is larger than the threshold (0.1 "
+            "by default)",
+            "With kind neighbourhood: most variables have only a few direct links",
+        ],
+        [
+            "The partial correlation of each pair of variables, with a range",
+            "The probability of a link for each pair (a matrix and a network)",
+            "With kind dense: values for new samples, and simulated samples",
+            "A score for each sample to compare models (elpd_loo)",
+        ],
+        _I,
+        _MIN,
+        "Measure 11 proteins in 853 T cells. Get 8 links with a probability above 0.5, for "
+        "example Erk with Akt and Raf with Mek. Compare them with the 20 links of the published "
+        "signalling network: 7 of the 8 are in it.",
+        related=["sci.lgcp_grid"],
+        expert="Gaussian graphical model (pymc-challenges E19). kind dense: z ~ MvNormal(mu, L "
+        "L^T) on the standardised data, L ~ LKJCholeskyCov(eta = 2, sd ~ Exponential(1)), mu ~ "
+        "Normal(0, 1); the precision Omega = L^-T L^-1 comes from a triangular solve and the "
+        "partial correlations rho_jk = -Omega_jk / sqrt(Omega_jj Omega_kk) are deterministics. "
+        "An edge is |rho| > delta (default 0.1), so P(edge) = P(|rho| > delta | data). The LKJ "
+        "prior is a dense-graph prior (83% prior probability for each edge in 11 dimensions). "
+        "kind neighbourhood: Meinshausen-Buhlmann neighbourhood selection, one regularised "
+        "horseshoe regression per variable in one model (tau0 = p0 / (P - 1 - p0) / sqrt(n), "
+        "c^2 ~ InvGamma(2, 2)), with AND, OR or symmetric rho = sign(B_jk) sqrt(B_jk B_kj) "
+        "rules; it conditions on the other variables, so it scores only the graph. A "
+        "horseshoe directly on Omega is not offered: most of its prior is not positive "
+        "definite. Pointwise log-likelihood per sample: joint (dense) or the sum of the full "
+        "conditionals (both kinds, comparable by elpd_loo).",
+        refs=[
+            (
+                "Sachs et al. (2005), Causal protein-signaling networks derived from "
+                "multiparameter single-cell data, Science",
+                "https://doi.org/10.1126/science.1105809",
+            ),
+            (
+                "Meinshausen and Buhlmann (2006), High-dimensional graphs and variable "
+                "selection with the lasso, Annals of Statistics",
+                "https://doi.org/10.1214/009053606000000281",
+            ),
+            (
+                "Piironen and Vehtari (2017), Sparsity information and regularization in the "
+                "horseshoe and other shrinkage priors",
+                "https://arxiv.org/abs/1707.01694",
+            ),
+        ],
+        fits={
+            "goal": ["explain_drivers"],
+            "data_shape": ["table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["intermediate", "expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -1719,7 +1799,13 @@ SURVIVING_MODEL_IDS: Final[frozenset[str]] = frozenset(
 the scikit-learn models of ``mapi-sklearn``)."""
 
 SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
-    {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens"}
+    {
+        "sci.lgcp_grid",
+        "sci.fisher_kpp",
+        "sci.traction_force",
+        "sci.strong_lens",
+        "sci.graphical_model",
+    }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
 problems ported from the pymc-challenges case studies)."""
