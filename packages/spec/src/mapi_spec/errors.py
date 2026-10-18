@@ -114,6 +114,9 @@ class ErrorCode(StrEnum):
     # --- forecasts conditioned on actuals (additive, after v0.5) ----------------------------
     ACTUALS_NOT_SUPPORTED = "ACTUALS_NOT_SUPPORTED"
     ACTUALS_INVALID = "ACTUALS_INVALID"
+    # --- M4: tree datasets, HDF5 and multi-file versions -------------------------------------
+    NOT_READY = "NOT_READY"
+    INGEST_UNSAFE_FILE = "INGEST_UNSAFE_FILE"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -234,6 +237,11 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ),
     ErrorCode.ACTUALS_INVALID: ErrorInfo(
         422, "The supplied actuals cannot be used for this forecast", "coords"
+    ),
+    # M4: tree datasets, HDF5 and multi-file versions
+    ErrorCode.NOT_READY: ErrorInfo(409, "The result is not ready yet", "api", retryable=True),
+    ErrorCode.INGEST_UNSAFE_FILE: ErrorInfo(
+        422, "The upload was refused: it is unsafe to read", "run"
     ),
 }
 
@@ -499,6 +507,13 @@ class SandboxViolation(RunFailure):
     default_code = ErrorCode.SANDBOX_VIOLATION
 
 
+class UnsafeUpload(RunFailure):
+    """An upload uses a file feature the sandbox refuses to read (HDF5 external links,
+    virtual datasets, dynamic filter plugins ...; M4)."""
+
+    default_code = ErrorCode.INGEST_UNSAFE_FILE
+
+
 _CLASS_FOR_CODE: dict[ErrorCode, type[MapiError]] = {
     ErrorCode.SCHEMA_INVALID: SpecError,
     ErrorCode.SPEC_PARSE_ERROR: SpecParseError,
@@ -523,6 +538,7 @@ _CLASS_FOR_CODE: dict[ErrorCode, type[MapiError]] = {
     ErrorCode.INTEGRITY_FAILURE: IntegrityFailure,
     ErrorCode.TIMEOUT: RunTimeout,
     ErrorCode.SANDBOX_VIOLATION: SandboxViolation,
+    ErrorCode.INGEST_UNSAFE_FILE: UnsafeUpload,
 }
 
 

@@ -48,7 +48,8 @@ def test_the_table_is_additive_and_unique() -> None:
     keys = [(e.method, e.path) for e in ENDPOINTS]
     ops = [e.operation_id for e in ENDPOINTS]
     assert len(keys) == len(set(keys)) and len(ops) == len(set(ops))
-    assert set(ROUTE_ACCESS) == set(ops)
+    # M4 rows (api.M4_ENDPOINTS) are in the contract before the server serves them
+    assert set(ROUTE_ACCESS) == set(ops) | {e.operation_id for e in api.M4_ENDPOINTS}
 
 
 @pytest.mark.parametrize("e", M35_ENDPOINTS, ids=lambda e: e.operation_id)

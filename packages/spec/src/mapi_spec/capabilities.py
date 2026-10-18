@@ -239,6 +239,12 @@ class Capabilities(StrictModel):
         description="Calibration data the model uses from a spec's calibration block (M3)",
         exclude_if=lambda v: not v,
     )
+    input: Literal["dataset", "tree"] = Field(
+        "dataset",
+        description="M4: 'tree' models also receive the whole tree dataset (the bound "
+        "xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one",
+        exclude_if=lambda v: v == "dataset",
+    )
     conditions_on_actuals: bool = Field(
         False,
         description="A forecast can be conditioned on actuals sent with the request (target "

@@ -64,6 +64,7 @@ from mapi_spec.schema import (
 )
 from mapi_spec.spec import Binding, FutureCovariates, ModelSpec, ScorePolicy, ScoreRequest
 from mapi_spec.template import TemplateError
+from mapi_spec.tree import NodeSelectionError, TreeSchema
 
 __all__ = [
     "KNOWN_METRICS",
@@ -73,6 +74,7 @@ __all__ = [
     "ScoreMetadata",
     "SpecValidation",
     "apply_defaults",
+    "resolve_input_schema",
     "validate_score_request",
     "validate_settings",
     "validate_spec",
@@ -459,12 +461,71 @@ def _dtype_family(dtype: str) -> str:
 # ---------------------------------------------------------------------------- validate_spec
 
 
-def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> SpecValidation:
-    """Statically validate ``spec`` against ``catalog`` and the dataset's ``raw_schema``."""
-    issues: list[Issue] = []
+def resolve_input_schema(
+    spec: ModelSpec,
+    raw_schema: DataSchema,
+    tree_schema: TreeSchema | None = None,
+) -> tuple[DataSchema | None, list[Issue]]:
+    """The flat schema the pipeline of ``spec`` reads, and the issues found resolving it (M4).
+
+    For a plain dataset (``tree_schema`` is ``None``) that is ``raw_schema``, and
+    ``data.nodes`` is an error. For a tree dataset it is the merge of the nodes
+    ``data.nodes`` selects (:meth:`TreeSchema.flat`), or the root node when ``data.nodes``
+    is omitted and the root has variables. ``None`` when it cannot be resolved.
+    """
+    nodes = spec.data.nodes
+    if tree_schema is None:
+        if nodes is None:
+            return raw_schema, []
+        return raw_schema, [
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer=json_pointer("data", "nodes"),
+                message="this dataset is not a tree: data.nodes only applies to tree datasets",
+                suggested_action="Remove data.nodes, or use a tree dataset version",
+            )
+        ]
+    if nodes is None:
+        if tree_schema.root.vars:
+            return tree_schema.root, []
+        return None, [
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer=json_pointer("data"),
+                message="this dataset is a tree: pick nodes in data.nodes",
+                suggested_action="Add data.nodes naming the node(s) to read, e.g. node "
+                f"{tree_schema.default_node()!r}",
+            )
+        ]
+    try:
+        return tree_schema.flat(nodes), []
+    except NodeSelectionError as exc:
+        ptr = (
+            json_pointer("data", "nodes", exc.key)
+            if exc.key is not None
+            else json_pointer("data", "nodes")
+        )
+        return None, [Issue(code=ErrorCode.SCHEMA_INVALID, pointer=ptr, message=str(exc)[:2000])]
+
+
+def validate_spec(
+    spec: ModelSpec,
+    catalog: Catalog,
+    raw_schema: DataSchema,
+    *,
+    tree_schema: TreeSchema | None = None,
+) -> SpecValidation:
+    """Statically validate ``spec`` against ``catalog`` and the dataset's ``raw_schema``.
+
+    For a tree dataset (M4) pass its ``tree_schema`` too (``raw_schema`` is then its root
+    node's schema and is not used): the pipeline input is resolved from ``data.nodes`` by
+    :func:`resolve_input_schema`.
+    """
+    # 0. tree datasets: the flat schema data.nodes selects ------------------------------
+    flat, issues = resolve_input_schema(spec, raw_schema, tree_schema)
 
     # 1. binding ------------------------------------------------------------------------
-    current = _apply_binding(spec.data.bind, raw_schema, issues)
+    current = _apply_binding(spec.data.bind, flat, issues) if flat is not None else None
     if current is not None:
         # the model's template decides what the target is, whatever the raw schema says
         # (an inferred schema marks nothing as target); target dependence, recursion and

@@ -876,6 +876,31 @@ check.
 | `POST /v1/validations/{validation_id}:deprecate` | Retire a validated model version (audited with the reason) | `ValidationNote` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `VALIDATION_TRANSITION_INVALID` |
 | `POST /v1/validations/{validation_id}/evidence-pack` | The audit export (JSON, and a signed link to the HTML version) | `EvidencePackRequest` | `EvidencePack` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
 
+## Tree datasets and multi-file versions <span class="mapi-badge">v0.8</span> { #m4 }
+
+A dataset version can hold an `xr.DataTree` (layout `tree`) instead of one `xr.Dataset`
+(layout `dataset`, the default). `DatasetVersion` then has `layout: "tree"`, the
+`tree_schema` (a `TreeSchema`: one `DataSchema` per node such as `/` or `/instrument/psf`)
+and the `sources` it was built from, and `data_schema` is the schema of the root node.
+
+- **Several files in one version.** `DatasetVersionCreate` takes either `upload_id` +
+  `mapping` (one file, as before) or `assembly` (an `IngestAssembly`): each source names its
+  upload, its own `IngestMapping`, the `node` it goes to and how it joins the other sources
+  of that node: `node` (the only source), `concat` (along `concat_dim`, one `concat_label`
+  per file) or `merge` (variables on shared coords, aligned per `join`).
+- **Raw HDF5.** Format `hdf5` needs `mapping.hdf5` (an `Hdf5Mapping`): which HDF5 dataset
+  becomes which variable of which node, with its dims (`Hdf5Var`) and coords (`Hdf5Coord`).
+  To see what is in a file first, inspect the upload (below). NetCDF and xarray-written HDF5
+  files keep format `netcdf`; their groups become nodes.
+- **Inspection.** An `inspect` run reads only the metadata of an upload (after the HDF5
+  safety checks) and lists its groups and arrays. It is idempotent per upload: a finished
+  inspection is returned as it is.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `POST /v1/datasets/{dataset_id}/uploads/{upload_id}/inspect` | List the groups and arrays of an upload (an `inspect` run). Accepts `Idempotency-Key`. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (the upload is not complete), `QUOTA_EXCEEDED` |
+| `GET /v1/datasets/{dataset_id}/uploads/{upload_id}/inspection` | What the inspect run found | — | `UploadInspection` | 200 | `NOT_FOUND` (never inspected), `NOT_READY` (409, the run has not finished) |
+
 ## DTO index
 
 All of these models are in `mapi_spec.api`, unless the table gives a different module. Each
@@ -904,4 +929,5 @@ model has a schema in the OpenAPI document and in `export_schemas()` as `api-<Na
 | About cards (v0.5) | `About`, `CatalogAbout`, `ChooserQuestionnaire`, `ChooserResult`, `DatasetAbout`, `DatasetAboutUpdate` (`mapi_spec.about`) |
 | Workflows (v0.5) | `Workflow`, `WorkflowCreate`, `WorkflowUpdate`, `WorkflowRevision`, `WorkflowRevisionCreate`, `WorkflowValidateRequest`, `WorkflowValidation`, `WorkflowRun`, `WorkflowRunCreate`, `NodeRun`, `ScheduleCreate`, `ScheduleUpdate`, `WorkflowSchedule`, `TriggerCreate`, `WorkflowTrigger` (`mapi_spec.workflow`), `NodeImplementation` (`mapi_spec.workflow_nodes`), `WorkflowTemplate` (`mapi_spec.workflow_templates`) |
 | Governance (v0.5) | `GovernanceCheckDef`, `GovernancePolicy`, `GovernancePolicyCreate`, `GovernancePolicyUpdate`, `ValidationRequest`, `ValidationNote`, `ModelValidation`, `CheckResult`, `ApprovalCreate`, `EvidencePackRequest`, `EvidencePack` (`mapi_spec.governance`) |
+| Tree datasets (v0.8) | `TreeSchema`, `NodeSelect` (`mapi_spec.tree`), `IngestAssembly`, `AssemblySource`, `Hdf5Mapping`, `Hdf5Var`, `Hdf5Coord`, `UploadInspection`, `InspectedArray` (`mapi_spec.ingest`) |
 | Explorers and optimisation (v0.5) | `DataExploreRequest`, `ModelExploreRequest`, `ModelCompareRequest` (`mapi_spec.explore`), `Exploration`, `ExplorerIndex` (`mapi_spec.views`), `OptimizeRequest`, `OptimizeResult` (`mapi_spec.optimize`), `Optimization` |

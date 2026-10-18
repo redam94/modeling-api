@@ -99,6 +99,7 @@ def version_dto(ds: m.Dataset, dv: m.DatasetVersion) -> DatasetVersion:
         profile=ObjectRef.model_validate(dv.profile) if dv.profile else None,
         preview=ObjectRef.model_validate(dv.preview) if dv.preview else None,
         ingest_run_id=dv.ingest_run_id,
+        sources=[dv.upload_id] if dv.upload_id else [],
         issues=[Issue.model_validate(i) for i in dv.issues],
         message=dv.message,
         created_at=dv.created_at,
@@ -251,15 +252,30 @@ async def create_dataset_version(
     idempotency_key: IdempotencyKeyHeader = None,
 ) -> JSONResponse:
     ds = await _dataset(ctx, session, dataset_id, lock=True)
+    if body.assembly is not None or body.upload_id is None or body.mapping is None:
+        # M4 contract: multi-file versions are served once the tree-dataset backend lands
+        raise MapiError(
+            "multi-file dataset versions (assembly) are not supported by this server yet",
+            code=ErrorCode.CAPABILITY_UNSUPPORTED,
+            pointer="/body/assembly",
+        )
+    if body.mapping.format == "hdf5":
+        # M4 contract: raw HDF5 is read once the runner's hdf5 guard and reader land
+        raise MapiError(
+            "raw HDF5 uploads (format 'hdf5') are not supported by this server yet",
+            code=ErrorCode.CAPABILITY_UNSUPPORTED,
+            pointer="/body/mapping/format",
+        )
+    upload_id, mapping = body.upload_id, body.mapping
     idem = Idempotency(session, ctx.scope, idempotency_key)
     replay = await idem.begin(f"POST {request.url.path}", await request.json())
     if replay is not None:
         dv = await session.get(m.DatasetVersion, (ds.id, int(replay.resource_id)))
         assert dv is not None
         return JSONResponse(version_dto(ds, dv).model_dump(mode="json"), status_code=200)
-    upload = await session.get(m.Upload, body.upload_id, with_for_update=True)
+    upload = await session.get(m.Upload, upload_id, with_for_update=True)
     if upload is None or upload.dataset_id != ds.id:
-        raise NotFoundError("upload", body.upload_id)
+        raise NotFoundError("upload", upload_id)
     if upload.status == "consumed":
         raise Conflict("this upload was already turned into a dataset version")
     if upload.expires_at < datetime.now(UTC) and upload.status == "pending":
@@ -284,7 +300,7 @@ async def create_dataset_version(
         project_id=ds.project_id,
         status="ingesting",
         upload_id=upload.id,
-        mapping=body.mapping.model_dump(mode="json"),
+        mapping=mapping.model_dump(mode="json"),
         message=body.message,
         objects={},
         issues=[],
@@ -299,7 +315,7 @@ async def create_dataset_version(
         version=version,
         upload=upload,
         generation=meta.generation,
-        mapping=body.mapping.model_dump(mode="json"),
+        mapping=mapping.model_dump(mode="json"),
     )
     dv.ingest_run_id = run.id
     await session.flush()
