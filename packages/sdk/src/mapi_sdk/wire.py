@@ -138,6 +138,10 @@ class WireLimits:
     max_decoded_bytes: int = 64 * 1024**2
     """XrJSON: bytes the decoded arrays may take (fixed-width strings cost ``4 * longest``
     per element, so one long string among many short ones cannot blow up memory)."""
+    max_tree_nodes: int = 4096
+    """DataTree zips: groups (the root included) the store may declare."""
+    max_tree_depth: int = 32
+    """DataTree zips: levels below the root a group may sit at."""
 
 
 DEFAULT_LIMITS = WireLimits()
@@ -680,8 +684,9 @@ def zip_entries(
 _EXPANSION_FLOOR = 256 * 1024**2
 
 
-def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> None:
-    """Validate every ``zarr.json`` before any chunk is decoded.
+def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> list[str]:
+    """Validate every ``zarr.json`` before any chunk is decoded; return the group paths
+    (``/`` for the root, ``/a/b`` for nested groups).
 
     The declared shapes are what decoding allocates (a missing chunk becomes its fill
     value), so they are budgeted as a whole: element count (``max_store_elements``),
@@ -690,6 +695,7 @@ def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> No
     """
     total_elements = 0
     total_bytes = 0
+    groups: list[str] = []
     for name, raw in entries.items():
         base = name.rsplit("/", 1)[-1]
         if base in (".zarray", ".zgroup", ".zattrs", ".zmetadata"):
@@ -703,6 +709,7 @@ def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> No
         if not isinstance(meta, dict) or meta.get("zarr_format") != 3:
             raise WireFormatError(f"{name[:200]!r} is not zarr v3 metadata")
         if meta.get("node_type") == "group":
+            groups.append("/" + name[: -len("zarr.json")].rstrip("/"))
             continue
         if meta.get("node_type") != "array":
             raise WireFormatError(f"{name[:200]!r} has an unknown node type")
@@ -752,6 +759,23 @@ def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> No
         raise PayloadLimitError(
             f"store declares {total_bytes} bytes of data but the archive holds only {stored}"
         )
+    return groups
+
+
+def _check_tree_groups(groups: Sequence[str], limits: WireLimits, node_pattern: str | None) -> None:
+    """Node count, depth and (optionally) path syntax of a DataTree store, before decoding."""
+    if len(groups) > limits.max_tree_nodes:
+        raise PayloadLimitError(
+            f"tree has {len(groups)} nodes; at most {limits.max_tree_nodes} are allowed"
+        )
+    for path in groups:
+        depth = 0 if path == "/" else path.count("/")
+        if depth > limits.max_tree_depth:
+            raise PayloadLimitError(
+                f"tree node {path[:200]!r} is deeper than {limits.max_tree_depth} levels"
+            )
+        if node_pattern is not None and not re.fullmatch(node_pattern, path):
+            raise WireFormatError(f"tree node {path[:200]!r} is not a valid node path")
 
 
 def _check_strings(ds: xr.Dataset, limits: WireLimits, where: str) -> None:
@@ -807,11 +831,21 @@ def read_zarr_zip(
 
 
 def read_datatree_zip(
-    src: str | Path | bytes | IO[bytes], *, limits: WireLimits = DEFAULT_LIMITS
+    src: str | Path | bytes | IO[bytes],
+    *,
+    limits: WireLimits = DEFAULT_LIMITS,
+    node_pattern: str | None = None,
 ) -> xr.DataTree:
-    """Read a ``DataTree`` written by :func:`write_datatree_zip` (same checks)."""
+    """Read a ``DataTree`` written by :func:`write_datatree_zip` (same checks).
+
+    Every node gets the checks of :func:`read_zarr_zip`; the store as a whole is capped at
+    ``limits.max_tree_nodes`` groups no deeper than ``limits.max_tree_depth``, and when
+    ``node_pattern`` is given every group path (``/``, ``/a/b``) must match it - all checked
+    before any array is decoded.
+    """
     entries = zip_entries(src, limits=limits)
-    _check_zarr_metadata(entries, limits)
+    groups = _check_zarr_metadata(entries, limits)
+    _check_tree_groups(groups, limits, node_pattern)
     store = _memory_store(entries)
     try:
         tree = xr.open_datatree(
