@@ -3,7 +3,7 @@
  * injection, Plotly `$ref` resolution, theme merging.
  */
 import type { JsonObject, JsonValue, PlotDatasets, Row, Scalar, Theme } from "./protocol";
-import { themeRecipeColours } from "./recipe-palette";
+import { PLOTLY_DATA_KEYS, themeRecipeColours } from "./recipe-palette";
 import { plotlyLayout, vegaConfig } from "./theme";
 
 export class SpecError extends Error {
@@ -62,6 +62,8 @@ export interface PreparedPlotly {
 }
 
 export function preparePlotly(spec: JsonObject, datasets: PlotDatasets, theme: Theme): PreparedPlotly {
+  // theme the recipe palette before the dataset columns go in: data is never rewritten
+  spec = themeRecipeColours(spec, theme, PLOTLY_DATA_KEYS) as JsonObject;
   const resolved = resolvePlotlyRefs(spec, datasets) as JsonObject;
   const data = resolved.data;
   if (!Array.isArray(data)) throw new SpecError("a Plotly spec needs a 'data' array");

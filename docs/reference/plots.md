@@ -179,6 +179,7 @@ get_recipe(id) -> Recipe                 # bundled recipes (core + packs)
 standard_recipes() -> list[Recipe]       # entry point  mapi.plots: core
 mapi_plots.packs.mmm.mmm_recipes()       # entry point  mapi.plots: mmm
 mapi_plots.packs.ml.ml_recipes()         # entry point  mapi.plots: ml
+mapi_plots.packs.sci.sci_recipes()       # entry point  mapi.plots: sci (Plotly)
 Recipe.render(data, **settings) -> PlotSpec       # also Recipe(data, **settings)
 Recipe.catalog_entry() -> PlotCatalogEntry        # id, version, persona, required groups/representation
 
@@ -211,6 +212,13 @@ def weekly_total(inp, s: Settings) -> Figure:
     return Figure(chart, {"weekly": frame}, caption=f"Total {s.var} per week.")
 ```
 
+A recipe can also return a Plotly figure (`plotly.graph_objects.Figure` or a
+`{data, layout, frames}` dict) in `Figure.chart`. `Recipe.render` then sends it through
+`from_plotly` with the same title, caption, persona and provenance. The recipe can also give
+its own DataFrames in `Figure.datasets`. The traces then refer to their columns with
+`{"$ref": "<dataset>.<column>"}`. The function `plotly_plot` applies the inline-text rules to
+the string columns of these DataFrames.
+
 ### Settings shared by every recipe
 
 `title` (override), `width` (480), `height` (180). The recipe rejects unknown settings.
@@ -234,6 +242,52 @@ def weekly_total(inp, s: Settings) -> Figure:
 | `mmm.marginal_cost` | the same as response curves, + `metric` (cost \| roi), `clip_quantile` (0.98) |
 | `mmm.budget_plans` | `spend_var`, `outcome_var`, `plan`, `channel`, `reference`, `hdi_prob` |
 | `ml.feature_importance` | `top` (20), `feature_dim` (feature), `source` (auto \| importance \| coefficients) |
+| `sci.field_map` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive), `y`, `x`, `frame`, `select`, `stats` ([mean, sd]; also median, z, q05, q95, draws), `n_draws` (3), `max_draws` (400), `max_cells` (40 000), `max_frames` (24), `colormap`, `log`, `origin`, `aspect` (equal \| auto), `columns` (3), `width` (760), `height` (280, one row of panels) |
+| `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
+| `sci.profile_bands` | `var`, `group`, `observed_var`, `along`, `by`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_curves` (12), `max_draws` (1 000), `colormap` (viridis), `log` (false), `width` (640), `height` (360) |
+| `sci.ensemble` | `var`, `group`, `observed_var`, `along`, `select`, `n_draws` (40), `levels` ([0.9]), `point` (median \| mean \| none), `max_draws` (2 000), `seed` (0), `log` (false), `width` (640), `height` (320) |
+
+### Scientific-model pack (`sci.*`)
+
+The `sci.*` recipes make Plotly figures for models with gridded outputs, vector fields,
+profiles and trajectories. They read draws (`chain`/`draw` or `sample` dims) from
+`posterior`, `predictions` or `posterior_predictive`. They read the actual values from
+`observed_data`.
+
+| Recipe | What it shows |
+|---|---|
+| `sci.field_map` | One heatmap panel for each statistic of a gridded output. A slider and a Play button show one `frame` at a time. |
+| `sci.vector_field` | The length of a vector as colours, arrows of the mean vector, and the sd of the length. |
+| `sci.profile_bands` | The median and the 50% and 90% bands along `along`, one curve for each level of `by`, and the actual values. A slider shows one level with its bands. |
+| `sci.ensemble` | Some draws as thin lines, the 90% band of all draws, the median and the actual values. |
+
+Statistics of `sci.field_map`:
+
+- `mean`, `median`: the average value and the middle value of the draws.
+- `sd`: the uncertainty. A high sd shows where the data do not fix the value.
+- `z`: the mean divided by the sd. Values far from zero are clear.
+- `q05`, `q95`: the limits of the 90% interval.
+- `draws`: `n_draws` possible fields from the model.
+
+The grid dims come from the settings. If you do not set them, the recipe uses the `grid` of
+the output (`OutputDecl.grid`). It reads the `grid` from the `grid` attribute of the variable
+or from the model manifest in the bundle. The `colormap`, `log` and `origin` settings also
+come from the `grid` when you do not set them. If the output has more dims than the plot
+uses, use `select` to pick one level of each, for example `select: {species: 0}`.
+
+The size of a field plot has limits:
+
+- All the cells of a plot are in one dataset: `x`, `y` and one column for each statistic
+  and frame. The recipe keeps this dataset below the inline Arrow limit (2 MB).
+- If the field has too many cells, the recipe calculates the average of each block of
+  k × k cells. A cell with no value (NaN) stays empty. The caption tells the block size.
+- A field of 189 × 193 cells with six panels and one frame has its full resolution.
+- `max_frames` sets the maximum number of frames. The slider shows frames at equal
+  intervals.
+
+The plot sandbox shows the Plotly `frames`, `sliders` and `updatemenus` of these plots. In
+dark mode, it changes the palette colours of the traces to their dark variants, the same as
+for Vega-Lite.
 
 The convergence diagnostics are rank-normalised split R-hat and bulk/tail ESS (Vehtari et al.
 2021). The package calculates them with numpy. Tests make sure that the values agree exactly
