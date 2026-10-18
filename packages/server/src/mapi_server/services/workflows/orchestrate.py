@@ -83,7 +83,7 @@ from mapi_workflows.binding import (
 )
 from mapi_workflows.engine import UNKNOWN, Action, CacheHit, EngineEvent, WorkflowEngine
 from mapi_workflows.orchestrator import BoundValue, evidence_pack
-from mapi_workflows.payloads import MetricsCandidate, MetricsPayload, clean_number
+from mapi_workflows.payloads import ElpdPayload, MetricsCandidate, MetricsPayload, clean_number
 from mapi_workflows.specs import MODEL_LABEL, model_spec_document, node_model_name
 from pydantic import JsonValue, ValidationError
 from sqlalchemy import select
@@ -1269,6 +1269,7 @@ class WorkflowOrchestrator:
             model=str(params.get("model")) if params.get("model") else None,
             settings=_settings_of(params),
             metrics=metrics,
+            elpd=await self._fit_elpd(env, child),
         )
         result_metrics: dict[str, JsonValue] = {k: v for k, v in metrics.items()}
         env.engine.succeeded(
@@ -1287,6 +1288,22 @@ class WorkflowOrchestrator:
                 ),
             },
         )
+
+    async def _fit_elpd(self, env: _Env, child: m.Run) -> dict[str, ElpdPayload] | None:
+        """M5: the elpd estimates (with pointwise values) the fit wrote in ``metrics.json``,
+        for ``compare.stacking``; ``None`` when there are none or they cannot be read."""
+        att = await env.session.get(m.RunAttempt, (child.id, child.attempt))
+        meta = (att.outputs or {}).get("metrics.json") if att is not None else None
+        if not isinstance(meta, dict):
+            return None
+        try:
+            doc = await self._read_json(meta, self.ctx.settings.workflow_max_json_output_bytes)
+            raw = doc.get("elpd") if isinstance(doc, dict) else None
+            if not isinstance(raw, dict) or not raw:
+                return None
+            return {str(k): ElpdPayload.model_validate(v) for k, v in raw.items()}
+        except (_NodeFailure, ValidationError, MapiError):
+            return None
 
     async def _register_dataset(
         self,

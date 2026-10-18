@@ -47,6 +47,7 @@ from mapi_sdk.summarise import interp_quantile
 
 __all__ = [
     "CATEGORICAL_METRICS",
+    "MAX_POINTWISE_ELPD",
     "MetricResult",
     "categorical_dim",
     "compute_metrics",
@@ -57,6 +58,8 @@ __all__ = [
 _COVERAGE = re.compile(r"^(coverage|interval_width)_([1-9][0-9]?)$")
 MetricResult = tuple[dict[str, float | None], dict[str, str]]
 PARETO_K_THRESHOLD = 0.7
+MAX_POINTWISE_ELPD = 10_000
+"""The most pointwise elpd values :func:`elpd` keeps in ``detail`` (larger data: none)."""
 CATEGORICAL_METRICS: tuple[str, ...] = (
     "accuracy",
     "accuracy_naive",
@@ -305,17 +308,50 @@ def compute_metrics(
     return values, skipped
 
 
+def _finite(v: object) -> float | None:
+    try:
+        f = float(v)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return f if math.isfinite(f) else None
+
+
+def _elpd_detail(res: Any) -> dict[str, Any]:
+    """The fields of an ``ElpdDetail`` from an ArviZ ELPD result."""
+    raw = getattr(res, "elpd_i", None)
+    if raw is None:
+        raw = getattr(res, "loo_i", getattr(res, "waic_i", None))
+    pw: list[float] | None = None
+    n = int(getattr(res, "n_data_points", 0) or 0)
+    if raw is not None:
+        flat = np.asarray(getattr(raw, "values", raw), dtype=float).ravel()
+        n = n or int(flat.size)
+        if flat.size <= MAX_POINTWISE_ELPD and bool(np.all(np.isfinite(flat))):
+            pw = [float(f"{v:.6g}") for v in flat.tolist()]
+    return {
+        "elpd": float(res.elpd),
+        "se": _finite(getattr(res, "se", None)),
+        "p": _finite(getattr(res, "p", None)),
+        "n": n,
+        "pointwise": pw,
+    }
+
+
 def elpd(
     groups: Mapping[str, xr.Dataset],
     names: Sequence[str],
     *,
     loo_valid: bool = True,
     reason: str | None = None,
+    detail: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, float | None], dict[str, str], list[Diagnostic]]:
     """``elpd_loo``/``elpd_waic`` from a ``log_likelihood`` group (needs ArviZ).
 
     Returns ``(values, skipped, diagnostics)``; high Pareto k values become a
-    ``PARETO_K_HIGH`` diagnostic instead of a warning on stderr.
+    ``PARETO_K_HIGH`` diagnostic instead of a warning on stderr. When ``detail`` is given,
+    it receives ``{name: {elpd, se, p, n, pointwise}}`` for each computed estimate (the
+    fields of :class:`mapi_sdk.bundle.ElpdDetail`; ``pointwise`` is ``None`` above
+    :data:`MAX_POINTWISE_ELPD` points).
     """
     values: dict[str, float | None] = {}
     skipped: dict[str, str] = {}
@@ -348,11 +384,13 @@ def elpd(
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                res = fn(tree)
+                res = fn(tree, pointwise=True)
         except Exception as exc:  # report, never fail the run on a diagnostic
             skipped[n] = f"ArviZ could not compute it: {type(exc).__name__}"
             continue
         values[n] = float(res.elpd)
+        if detail is not None:
+            detail[n] = _elpd_detail(res)
         k = getattr(res, "pareto_k", None)
         if n == "elpd_loo" and k is not None:
             kv = np.asarray(getattr(k, "values", k), dtype=float)

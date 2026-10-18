@@ -34,6 +34,7 @@ __all__ = [
     "REPORT_FORMAT",
     "SPLIT_PLAN_FORMAT",
     "TABLE_FORMAT",
+    "ElpdPayload",
     "EvidencePayload",
     "MetricsCandidate",
     "MetricsPayload",
@@ -67,6 +68,18 @@ def clean_number(value: object) -> float | None:
     return f if math.isfinite(f) else None
 
 
+class ElpdPayload(_Payload):
+    """M5: an elpd estimate of a fitted model (``elpd_loo`` or ``elpd_waic``): the value, its
+    standard error, the effective number of parameters and, for data of at most 10 000
+    points, the pointwise values (``compare.stacking`` uses them)."""
+
+    elpd: float
+    se: float | None = None
+    p: float | None = None
+    n: int = 0
+    pointwise: list[float] | None = None
+
+
 class MetricsCandidate(_Payload):
     """The scores of one model or benchmark on a set of test periods.
 
@@ -89,6 +102,9 @@ class MetricsCandidate(_Payload):
     )
     origins: list[int | None] | None = Field(
         None, description="Per fold, the position of its first test period (fold spacing)"
+    )
+    elpd: dict[str, ElpdPayload] | None = Field(
+        None, description="M5: elpd estimates by metric name, with pointwise values"
     )
 
     @property

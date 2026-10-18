@@ -90,7 +90,7 @@ from mapi_sdk.actuals import (
     required_drivers,
 )
 from mapi_sdk.binding import BindingMap
-from mapi_sdk.bundle import Bundle, MetricsReport, assert_no_pickle, new_manifest
+from mapi_sdk.bundle import Bundle, ElpdDetail, MetricsReport, assert_no_pickle, new_manifest
 from mapi_sdk.context import drop_context
 from mapi_sdk.coords import (
     CanonicalPlan,
@@ -638,13 +638,16 @@ def _check_recursion(rs: ResolvedSpec, split: Split, sr: SplitResult) -> None:
 
 def _add_elpd(env: _FitEnv, bundle: Bundle) -> None:
     caps = bundle.model.manifest.capabilities
+    detail: dict[str, dict[str, Any]] = {}
     values, skipped, diagnostics = elpd(
         bundle.model.groups,
         env.spec.evaluate.metrics,
         loo_valid=caps.loo_valid,
         reason=caps.loo_invalid_reason,
+        detail=detail,
     )
     bundle.metrics.values.update(values)
+    bundle.metrics.elpd.update({k: ElpdDetail.model_validate(v) for k, v in detail.items()})
     bundle.metrics.skipped.update(skipped)
     bundle.diagnostics.extend(diagnostics)
 

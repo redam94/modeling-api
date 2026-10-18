@@ -176,7 +176,10 @@ def compare_models(params: Mapping[str, JsonValue], values: Sequence[BoundValue]
         meta={
             "metric": metric,
             "direction": direction,
-            "candidates": {c.key: c.model_dump(mode="json", exclude={"errors"}) for c in cands},
+            "candidates": {
+                c.key: c.model_dump(mode="json", exclude={"errors": True, "elpd": True})
+                for c in cands
+            },
         },
     )
     result: dict[str, JsonValue] = {"ranking": ranking, "best": best}
