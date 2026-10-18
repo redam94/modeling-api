@@ -1,7 +1,8 @@
 /**
  * `/datasets/$datasetId/versions/$version/explore`: the Data Explorer of one dataset version
  * (M3.5), with the dataset's About on top. `?section=` picks the view, `?run=` the explore
- * run whose views the page shows (so a link keeps both).
+ * run whose views the page shows (so a link keeps both). M4: `?node=` picks the node of a
+ * tree dataset; each node has its own views.
  */
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Workflow } from "lucide-react";
@@ -9,8 +10,9 @@ import { ArrowLeft, Workflow } from "lucide-react";
 import { useDataset, useDatasetVersion } from "@/api/queries";
 import { ErrorNotice, LoadingRows, Mono, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/primitives";
+import { Badge, Field, NativeSelect } from "@/components/ui/primitives";
 import { DatasetAboutCard } from "@/features/about/dataset-about";
+import { explorerNode, isTree, nodesWithVars } from "@/features/datasets/tree";
 import { DataExplorer } from "@/features/explore/data-explorer";
 import { useEffectivePersona } from "@/features/guided/persona";
 
@@ -33,6 +35,13 @@ export function DataExplorerPage() {
   const dv = useDatasetVersion(datasetId, valid ? v : undefined);
   const persona = useEffectivePersona();
   const expert = persona === "expert";
+  const tree = isTree(dv.data) ? dv.data.tree_schema.nodes : null;
+  const nodeOptions = tree ? nodesWithVars(tree) : [];
+  // Only a node with variables can be explored (the picker lists only those): a group node or
+  // an unknown one in `?node=` falls back to the default node, with a note.
+  const picked = tree ? explorerNode(tree, search.node) : null;
+  const node = picked?.node ?? null;
+  const schema = tree && node ? tree[node] : dv.data?.data_schema;
   if (!valid) return <ErrorNotice error={new Error("The version must be a positive integer.")} />;
   if (dataset.isError) return <ErrorNotice error={dataset.error} title="The app could not load this dataset" />;
   if (dv.isError) return <ErrorNotice error={dv.error} title="The app could not load this dataset version" />;
@@ -59,7 +68,7 @@ export function DataExplorerPage() {
                 <ArrowLeft /> Back to the dataset
               </Link>
             </Button>
-            {dv.data?.status === "ready" && hasTimeDim(dv.data.data_schema) ? (
+            {dv.data?.status === "ready" && hasTimeDim(schema) && !tree ? (
               // M3.5: the readiness workflow (unit roots, differencing, order search, backtest, ARIMAX).
               <Button asChild variant="outline">
                 <Link to={expert ? "/workflows/new" : "/workflows/recipe"} search={{ template: READINESS_TEMPLATE, data: dv.data.ref }}>
@@ -76,16 +85,44 @@ export function DataExplorerPage() {
       ) : dv.data.status !== "ready" ? (
         <ErrorNotice error={new Error(dv.data.status === "ingesting" ? "The ingest of this version is not complete. The explorer opens when the version is ready." : "The ingest of this version failed. There is no data to explore. Upload the data again.")} />
       ) : (
+        <>
+        {tree && node ? (
+          // M4: one explorer per node of a tree dataset.
+          <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card px-4 py-3">
+            <Field label="Node" htmlFor="explore-node" hint={expert ? undefined : "This dataset is a tree. Each node has its own variables and views."}>
+              <NativeSelect
+                id="explore-node"
+                value={node}
+                onChange={(e) => void navigate({ search: (prev) => ({ ...prev, node: e.target.value, run: undefined }), replace: true })}
+                className="w-80 max-w-full font-mono"
+              >
+                {nodeOptions.map((p) => (
+                  <option key={p} value={p}>
+                    {p} ({Object.keys(tree[p]?.vars ?? {}).length} {Object.keys(tree[p]?.vars ?? {}).length === 1 ? "variable" : "variables"})
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            {picked?.note ? (
+              <p role="status" className="text-xs text-warning">
+                {picked.note}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <DataExplorer
+          key={node ?? "/"}
           datasetId={datasetId}
           version={v}
-          schema={dv.data.data_schema}
+          node={node}
+          schema={schema}
           section={search.section ?? "overview"}
           onSection={(s) => void navigate({ search: (prev) => ({ ...prev, section: s }), replace: true })}
           runId={search.run ?? null}
           onRun={(run) => void navigate({ search: (prev) => ({ ...prev, run }) })}
           expert={expert}
         />
+        </>
       )}
     </div>
   );

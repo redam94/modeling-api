@@ -116,14 +116,19 @@ function CoordValues({ name, c }: { name: string; c: CoordSummary }) {
   );
 }
 
-export function CoordBrowser({ version }: { version: DatasetVersion }) {
-  const coords = Object.entries(version.summary?.coords ?? {});
-  if (!coords.length) return <p className="text-muted-foreground">This version has no coordinate summary.</p>;
+/** Coordinate summaries as cards (a version's, or one node's of a tree version). */
+export function CoordList({ coords }: { coords: Record<string, CoordSummary> }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {coords.map(([name, c]) => <CoordValues key={name} name={name} c={c} />)}
+      {Object.entries(coords).map(([name, c]) => <CoordValues key={name} name={name} c={c} />)}
     </div>
   );
+}
+
+export function CoordBrowser({ version }: { version: DatasetVersion }) {
+  const coords = version.summary?.coords ?? {};
+  if (!Object.keys(coords).length) return <p className="text-muted-foreground">This version has no coordinate summary.</p>;
+  return <CoordList coords={coords} />;
 }
 
 function useDatasetView<T>(version: DatasetVersion, name: "profile.json" | "preview.json", parse: (raw: unknown) => T, available: boolean) {

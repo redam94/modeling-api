@@ -13,6 +13,9 @@ padded extend dims). The helpers hide the differences so the same ``build`` serv
   fitted hyperprior during prediction, with frozen noise so scenario and baseline agree);
 * :meth:`BuildContext.position` / :attr:`BuildContext.anticipated_coords` - stable positions
   along ``extend`` dims, so trends and HSGPs see the same axis at fit and at forecast time.
+
+``BuildContext.tree`` (M4) is the bound tree dataset for models whose capabilities declare
+``input="tree"`` (``FitContext.tree`` / ``ScoreContext.tree``), else ``None``.
 """
 
 from __future__ import annotations
@@ -83,6 +86,7 @@ class BuildContext:
     observed_values: dict[str, np.ndarray] = field(default_factory=dict)
     hier_effects: dict[str, HierEffect] = field(default_factory=dict)
     frozen: dict[str, FrozenNoise] = field(default_factory=dict)
+    tree: xr.DataTree | None = None
 
     def __post_init__(self) -> None:
         if self.phase == "fit" and not self.fit_coords:

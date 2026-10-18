@@ -21,40 +21,60 @@ This module only *describes* files; every byte of an upload is parsed inside the
 
 from __future__ import annotations
 
+import math
 from enum import StrEnum
 from typing import Annotated, Any, Final, Literal, Self
 
 from pydantic import (
     ConfigDict,
     Field,
+    StringConstraints,
     field_validator,
     model_validator,
 )
 
-from mapi_spec._dto import RequestModel, dto_examples
-from mapi_spec._types import Name, StrictModel
+from mapi_spec._dto import Id, RequestModel, ResponseModel, dto_examples
+from mapi_spec._types import Name, StrictModel, unique
 from mapi_spec.schema import DimSpec, Role
+from mapi_spec.tree import ROOT, NodePath, TreeJoin, is_ancestor
 
 __all__ = [
     "COMBINE_SEPARATOR",
+    "MAX_ASSEMBLY_SOURCES",
+    "MAX_INSPECTION_BYTES",
+    "MAX_INSPECT_ARRAYS",
+    "MAX_INSPECT_ATTRS",
+    "MAX_INSPECT_ATTR_CHARS",
     "MFF_COLUMNS",
     "MFF_KEY_COLUMNS",
     "MFF_PANEL_KEY_COLUMNS",
     "MFF_TOTAL_LABELS",
+    "AssemblySource",
     "ColumnRef",
+    "CombineRule",
     "DimMapping",
+    "Hdf5Coord",
+    "Hdf5Mapping",
+    "Hdf5Var",
+    "IngestAssembly",
     "IngestFormat",
     "IngestMapping",
     "IngestPreset",
+    "InspectedArray",
+    "JsonScalar",
     "MeridianColumns",
     "MffOptions",
+    "UploadInspection",
     "VarMapping",
     "WideVarMapping",
 ]
 
-IngestFormat = Literal["csv", "parquet", "mff", "zarr_zip", "netcdf"]
+IngestFormat = Literal["csv", "parquet", "mff", "zarr_zip", "netcdf", "hdf5"]
 """Upload formats. ``mff`` is a CSV laid out as an MFF long table (implies ``preset=mff``);
-``zarr_zip`` (a single-object zarr v3 zip) and ``netcdf`` are self-describing."""
+``zarr_zip`` (a single-object zarr v3 zip) and ``netcdf`` are self-describing (``netcdf``:
+NetCDF-3/4 or an xarray/h5netcdf-written HDF5 file, read as a tree when it has groups).
+``hdf5`` (M4) is a raw HDF5 file without dim metadata, described by
+:class:`Hdf5Mapping`."""
 
 TABULAR_FORMATS: Final = frozenset({"csv", "parquet", "mff"})
 
@@ -336,11 +356,175 @@ class VarMapping(RequestModel):
     model_config = dto_examples({"column": "revenue", "role": "target", "units": "EUR"})
 
 
+# ======================================================================================= HDF5
+
+HDF5_PATH_RE: Final = r"^/[^\x00]{1,1024}$"
+"""An HDF5 object path inside the uploaded file (``/group/dataset``)."""
+
+Hdf5Path = Annotated[str, Field(pattern=HDF5_PATH_RE)]
+CoordValue = int | float | str
+
+
+def _no_bool(value: Any) -> Any:
+    """A coord value (a label, a range start or step): a number or a string, never a
+    boolean, NaN or an infinity (a NaN label never matches itself)."""
+    if isinstance(value, bool):
+        raise ValueError("expected a number or a string, not a boolean")
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("expected a finite number, not NaN or an infinity")
+    return value
+
+
+def _label_key(value: CoordValue) -> tuple[str, Any]:
+    """Equal labels compare equal (``2024`` and ``2024.0`` are the same coord value)."""
+    return ("str", value) if isinstance(value, str) else ("number", float(value))
+
+
+class Hdf5Var(RequestModel):
+    """A data variable read from one HDF5 dataset of a raw HDF5 upload (M4).
+
+    ``dims`` names the array's axes in order (its length must equal the array's ``ndim``;
+    the sandbox checks it). The variable is stored as ``name`` in tree node ``node``.
+    """
+
+    path: Hdf5Path
+    node: NodePath = ROOT
+    name: Name
+    dims: list[Name] = Field(default_factory=list, max_length=32)
+    role: Role = Role.COVARIATE
+    units: str | None = Field(None, max_length=64)
+    missing: Literal["forbid", "allow", "mask"] = "forbid"
+    description: str | None = Field(None, max_length=2000)
+
+    model_config = dto_examples(
+        {
+            "path": "/observations/image",
+            "node": "/",
+            "name": "image",
+            "dims": ["row", "col"],
+            "units": "counts",
+        }
+    )
+
+    @field_validator("dims")
+    @classmethod
+    def _distinct(cls, v: list[str]) -> list[str]:
+        if dups := unique(v):
+            raise ValueError(f"duplicate dims: {dups}")
+        return v
+
+
+class Hdf5Coord(RequestModel):
+    """The coordinate of dim ``dim`` in node ``node`` of a raw HDF5 upload (M4).
+
+    Exactly one source: ``path`` (a 1-D HDF5 dataset holding the labels), or ``start`` with
+    an optional ``step`` (a range: numbers, or a date and a pandas frequency such as
+    ``"2024-01-01"`` + ``"W-MON"``), or neither (an integer index ``0..n-1``). ``spec``
+    overrides the inferred :class:`~mapi_spec.schema.DimSpec`.
+    """
+
+    dim: Name
+    node: NodePath = ROOT
+    path: Hdf5Path | None = None
+    start: CoordValue | None = None
+    step: CoordValue | None = None
+    spec: DimSpec | None = None
+
+    model_config = dto_examples(
+        {"dim": "row", "start": 0.0, "step": 0.05, "spec": {"kind": "float", "ordered": True}},
+        {"dim": "date", "path": "/axes/date", "spec": {"kind": "time", "policy": "extend"}},
+    )
+
+    _scalars = field_validator("start", "step", mode="before")(_no_bool)
+
+    @model_validator(mode="after")
+    def _one_source(self) -> Hdf5Coord:
+        if self.path is not None and self.start is not None:
+            raise ValueError("give either path or start (a range), not both")
+        if self.step is not None and self.start is None:
+            raise ValueError("step needs start")
+        if self.step is not None:
+            if isinstance(self.start, str) != isinstance(self.step, str):
+                raise ValueError(
+                    "a range is numbers (start and step) or a date and a frequency string "
+                    "(start '2024-01-01', step 'W-MON'), not a mix"
+                )
+            if not isinstance(self.step, str) and self.step == 0:
+                raise ValueError("step must not be 0")
+        return self
+
+
+class Hdf5Mapping(RequestModel):
+    """How a raw HDF5 upload becomes a (tree) dataset (M4): which arrays become which
+    variables of which node, with which dims and coords. Arrays that are not mapped are
+    reported in one warning, never read."""
+
+    vars: list[Hdf5Var] = Field(..., min_length=1, max_length=1024)
+    coords: list[Hdf5Coord] = Field(default_factory=list, max_length=64)
+
+    model_config = dto_examples(
+        {
+            "vars": [
+                Hdf5Var.model_json_schema()["examples"][0],
+                {"path": "/psf/kernel", "node": "/psf", "name": "psf", "dims": ["prow", "pcol"]},
+            ],
+            "coords": [Hdf5Coord.model_json_schema()["examples"][0]],
+        }
+    )
+
+    @model_validator(mode="after")
+    def _check(self) -> Hdf5Mapping:
+        keys = [f"{v.node}:{v.name}" for v in self.vars]
+        if dups := unique(keys):
+            raise ValueError(f"variables mapped twice (node:name): {dups}")
+        coord_keys = [f"{c.node}:{c.dim}" for c in self.coords]
+        if dups := unique(coord_keys):
+            raise ValueError(f"coords given twice (node:dim): {dups}")
+        for v in self.vars:
+            if v.name in v.dims:
+                raise ValueError(f"variable {v.name!r} has the name of one of its dims")
+        node_dims: dict[str, set[str]] = {}
+        node_vars: dict[str, set[str]] = {}
+        for v in self.vars:
+            node_dims.setdefault(v.node, set()).update(v.dims)
+            node_vars.setdefault(v.node, set()).add(v.name)
+        for node, names in node_vars.items():
+            if clash := sorted(names & node_dims[node]):
+                raise ValueError(f"node {node!r}: names used both as dim and variable: {clash}")
+        for node, names in node_vars.items():
+            # a child sees its ancestors' dims as inherited coords, which hide a variable
+            # of the same name
+            for anc, dims in node_dims.items():
+                if is_ancestor(anc, node) and (clash := sorted(names & dims)):
+                    raise ValueError(
+                        f"node {node!r}: variable(s) {clash} have the name of a dim of its "
+                        f"ancestor {anc!r}"
+                    )
+        for c in self.coords:
+            # a coord serves its node and every node below it (inherited coords)
+            users = [
+                n
+                for n, dims in node_dims.items()
+                if c.dim in dims and (n == c.node or c.node == ROOT or n.startswith(c.node + "/"))
+            ]
+            if not users:
+                raise ValueError(
+                    f"coord {c.dim!r} of node {c.node!r} is not a dim of any variable mapped "
+                    "to that node or below it"
+                )
+        return self
+
+
+# ======================================================================= IngestMapping
+
+
 class IngestMapping(RequestModel):
     """How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).
 
     Tabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit
-    ``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.
+    ``dims``/``vars`` (with groups, they rename/select per node by name). A raw ``hdf5``
+    file (M4) needs ``hdf5`` (:class:`Hdf5Mapping`) instead of ``dims``/``vars``. Parsing
+    happens only inside a sandboxed ingest run.
 
     With the ``mff`` preset the long table is first pivoted to one column
     per ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then
@@ -373,6 +557,11 @@ class IngestMapping(RequestModel):
     )
     meridian: MeridianColumns | None = Field(
         None, description="The meridian preset's columns", exclude_if=lambda v: v is None
+    )
+    hdf5: Hdf5Mapping | None = Field(
+        None,
+        description="M4: the arrays, dims and coords of a raw HDF5 upload (format 'hdf5')",
+        exclude_if=lambda v: v is None,
     )
 
     model_config = ConfigDict(
@@ -414,6 +603,7 @@ class IngestMapping(RequestModel):
                     "media_spend": ["tv_spend"],
                 },
             },
+            {"format": "hdf5", "hdf5": Hdf5Mapping.model_json_schema()["examples"][0]},
         ),
     )
 
@@ -427,6 +617,13 @@ class IngestMapping(RequestModel):
     @model_validator(mode="after")
     def _tabular(self) -> IngestMapping:
         tabular = self.format in ("csv", "parquet", "mff")
+        if self.format == "hdf5":
+            if self.hdf5 is None:
+                raise ValueError("format 'hdf5' needs 'hdf5' (which arrays become variables)")
+            if self.dims or self.vars or self.wide:
+                raise ValueError("a raw HDF5 upload is described by 'hdf5', not dims/vars/wide")
+        elif self.hdf5 is not None:
+            raise ValueError("'hdf5' is only used with format 'hdf5'")
         if self.preset is IngestPreset.NONE:
             if self.format == "mff":
                 raise ValueError("format 'mff' needs the mff preset")
@@ -452,3 +649,207 @@ class IngestMapping(RequestModel):
         if self.preset is IngestPreset.MFF:
             return self.mff or MffOptions()
         return None
+
+
+# ===================================================================== multi-file versions
+
+MAX_ASSEMBLY_SOURCES: Final = 64
+"""Uploads combined into one dataset version."""
+
+CombineRule = Literal["node", "concat", "merge"]
+"""How a source joins the other sources of its node: ``node`` (it is the node's only
+source), ``concat`` (along ``concat_dim``, one label per file: a year, a region) or
+``merge`` (variables of files on shared coords)."""
+
+
+class AssemblySource(RequestModel):
+    """One upload of a multi-file dataset version (M4) and where it goes.
+
+    The upload is ingested with its own ``mapping`` into node ``node``; a file that is
+    itself a tree mounts its nodes *under* ``node`` (file group ``/psf`` at node
+    ``/instrument`` becomes ``/instrument/psf``). Sources of the same node are combined by
+    ``combine`` (see :data:`CombineRule`).
+    """
+
+    upload_id: Id
+    mapping: IngestMapping
+    node: NodePath = ROOT
+    combine: CombineRule = "node"
+    concat_dim: Name | None = Field(None, description="combine 'concat': the dim to stack on")
+    concat_label: CoordValue | None = Field(
+        None, description="combine 'concat': this file's label along concat_dim"
+    )
+    join: TreeJoin = Field("exact", description="How coords align when sources are combined")
+
+    model_config = dto_examples(
+        {
+            "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+            "mapping": {"format": "netcdf"},
+            "node": "/",
+            "combine": "concat",
+            "concat_dim": "year",
+            "concat_label": 2024,
+        }
+    )
+
+    _label = field_validator("concat_label", mode="before")(_no_bool)
+
+    @model_validator(mode="after")
+    def _concat_fields(self) -> AssemblySource:
+        if self.combine == "concat":
+            if self.concat_dim is None or self.concat_label is None:
+                raise ValueError("combine 'concat' needs concat_dim and concat_label")
+        elif self.concat_dim is not None or self.concat_label is not None:
+            raise ValueError("concat_dim and concat_label are only used by combine 'concat'")
+        return self
+
+
+class IngestAssembly(RequestModel):
+    """A dataset version built from several uploads (M4): every source is ingested in the
+    same sandboxed run (inputs ``upload.<i>``, ``i`` = the source's index), then combined
+    per node. The result is a tree dataset unless every source lands in the root."""
+
+    sources: list[AssemblySource] = Field(..., min_length=1, max_length=MAX_ASSEMBLY_SOURCES)
+
+    model_config = dto_examples(
+        {
+            "sources": [
+                AssemblySource.model_json_schema()["examples"][0],
+                {
+                    "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p1",
+                    "mapping": {"format": "netcdf"},
+                    "combine": "concat",
+                    "concat_dim": "year",
+                    "concat_label": 2025,
+                },
+                {
+                    "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p2",
+                    "mapping": {"format": "netcdf"},
+                    "node": "/instrument",
+                },
+            ]
+        }
+    )
+
+    @model_validator(mode="after")
+    def _combine(self) -> IngestAssembly:
+        if dups := unique(s.upload_id for s in self.sources):
+            raise ValueError(f"an upload may be used once: {dups}")
+        by_node: dict[str, list[AssemblySource]] = {}
+        for s in self.sources:
+            by_node.setdefault(s.node, []).append(s)
+        for node, group in by_node.items():
+            rules = {s.combine for s in group}
+            if len(rules) > 1:
+                raise ValueError(
+                    f"node {node!r}: sources combine in different ways {sorted(rules)}"
+                )
+            rule = group[0].combine
+            if rule == "node" and len(group) > 1:
+                raise ValueError(
+                    f"node {node!r} has {len(group)} sources: combine them with 'concat' or 'merge'"
+                )
+            if rule == "concat":
+                if len({s.concat_dim for s in group}) > 1:
+                    raise ValueError(f"node {node!r}: concat sources need the same concat_dim")
+                keys = [_label_key(s.concat_label) for s in group if s.concat_label is not None]
+                if len({k for k, _ in keys}) > 1:
+                    raise ValueError(f"node {node!r}: concat labels mix numbers and strings")
+                if len(set(keys)) != len(keys):
+                    raise ValueError(f"node {node!r}: concat labels must be unique")
+            if rule in ("concat", "merge") and len({s.join for s in group}) > 1:
+                raise ValueError(f"node {node!r}: {rule} sources need the same join")
+        return self
+
+    def nodes(self) -> dict[str, list[int]]:
+        """Node → indices of its sources (the ``upload.<i>`` input of each)."""
+        out: dict[str, list[int]] = {}
+        for i, s in enumerate(self.sources):
+            out.setdefault(s.node, []).append(i)
+        return out
+
+
+# ================================================================================ inspect
+
+MAX_INSPECT_ARRAYS: Final = 2000
+"""Arrays an inspection lists; past it the listing is ``truncated``."""
+MAX_INSPECT_ATTRS: Final = 64
+"""Attributes kept per array (small scalars only; the rest are dropped)."""
+MAX_INSPECT_ATTR_CHARS: Final = 1024
+"""Characters of one string attribute value an inspection keeps (longer ones are dropped
+or truncated by the inspector)."""
+MAX_INSPECTION_BYTES: Final = 8 * 1024**2
+"""The whole inspection as JSON (it is stored on the upload row and served as is)."""
+
+JsonScalar = str | int | float | bool | None
+_InspectStr = Annotated[str, StringConstraints(max_length=MAX_INSPECT_ATTR_CHARS)]
+InspectAttr = _InspectStr | int | float | bool | None
+_AttrKey = Annotated[str, StringConstraints(max_length=256)]
+_ObjectPath = Annotated[str, StringConstraints(max_length=1025)]
+_ShortStr = Annotated[str, StringConstraints(max_length=256)]
+_Message = Annotated[str, StringConstraints(max_length=2000)]
+
+
+class InspectedArray(ResponseModel):
+    """One array of an inspected upload (from its metadata only; no data is read).
+
+    ``dims_hint`` comes from the file's own dim metadata where there is some (HDF5
+    ``DIMENSION_LIST``, zarr ``_ARRAY_DIMENSIONS``, NetCDF dims).
+    """
+
+    path: str = Field(..., max_length=1025)
+    shape: list[Annotated[int, Field(ge=0)]] = Field(default_factory=list, max_length=64)
+    dtype: str = Field(..., max_length=64)
+    chunks: list[Annotated[int, Field(ge=1)]] | None = Field(None, max_length=64)
+    filters: list[_ShortStr] = Field(default_factory=list, max_length=32)
+    dims_hint: list[_ShortStr] | None = Field(None, max_length=64)
+    attrs: dict[_AttrKey, InspectAttr] = Field(default_factory=dict, max_length=MAX_INSPECT_ATTRS)
+
+    model_config = dto_examples(
+        {
+            "path": "/observations/image",
+            "shape": [64, 64],
+            "dtype": "float32",
+            "chunks": [64, 64],
+            "filters": ["deflate", "shuffle"],
+            "dims_hint": None,
+            "attrs": {"units": "counts"},
+        }
+    )
+
+
+class UploadInspection(ResponseModel):
+    """What an ``inspect`` run found in an upload (``inspection.json``; M4): its groups and
+    arrays, so a raw HDF5 file can be mapped (:class:`Hdf5Mapping`) and a NetCDF/zarr file's
+    groups previewed before ingest."""
+
+    format: IngestFormat
+    size_bytes: int = Field(..., ge=0)
+    groups: list[_ObjectPath] = Field(default_factory=list, max_length=10_000)
+    arrays: list[InspectedArray] = Field(default_factory=list, max_length=MAX_INSPECT_ARRAYS)
+    truncated: bool = False
+    warnings: list[_Message] = Field(default_factory=list, max_length=1000)
+
+    model_config = dto_examples(
+        {
+            "format": "hdf5",
+            "size_bytes": 2_097_152,
+            "groups": ["/", "/observations", "/psf"],
+            "arrays": [
+                InspectedArray.model_json_schema()["examples"][0],
+                {"path": "/psf/kernel", "shape": [9, 9], "dtype": "float64"},
+            ],
+            "truncated": False,
+            "warnings": [],
+        }
+    )
+
+    @model_validator(mode="after")
+    def _size(self) -> Self:
+        size = len(self.model_dump_json().encode())
+        if size > MAX_INSPECTION_BYTES:
+            raise ValueError(
+                f"the inspection is {size} bytes of JSON, over {MAX_INSPECTION_BYTES}: "
+                "list fewer arrays (truncated) or fewer attributes"
+            )
+        return self

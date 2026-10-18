@@ -45,6 +45,7 @@ __all__ = [
     "Profile",
     "Settings",
     "SignerKind",
+    "checkout_image_digest",
     "local_image_digest",
 ]
 
@@ -84,6 +85,7 @@ DEFAULT_ESTIMATE_WALL_S: dict[str, float] = {
     RunKind.TRANSLATE_PRIORS.value: 60.0,
     RunKind.EXPLORE.value: 60.0,
     RunKind.GOVERNANCE.value: 900.0,
+    RunKind.INSPECT.value: 15.0,
 }
 """Wall-time estimate per run kind (seconds, capped at the run's timeout): what a run is
 charged against vCPU-second quotas until its attempts are metered into the cost ledger."""
@@ -135,8 +137,39 @@ class ObjectStoreKind(StrEnum):
 
 
 def local_image_digest(lock_path: Path) -> str:
-    """``sha256:<hex>`` of ``uv.lock``: the image digest of the local environment."""
+    """``sha256:<hex>`` of ``uv.lock``: the image digest of an environment built from it."""
     return "sha256:" + hashlib.sha256(lock_path.read_bytes()).hexdigest()
+
+
+CHECKOUT_SOURCES = ("packages/*/src", "plugins/*/src")
+"""The workspace sources a source checkout's catalog is made from (steps, models, plots and
+the runner that describes them), relative to the directory of ``uv.lock``."""
+
+
+def checkout_image_digest(lock_path: Path) -> str:
+    """The image digest of a source checkout (``make dev``): ``uv.lock`` plus every file
+    under :data:`CHECKOUT_SOURCES` (path and content).
+
+    A code change that leaves ``uv.lock`` alone (a new recipe, an About card, a fixed step)
+    changes the catalog, so it must change the digest too, or the catalog cached under the
+    old digest is served forever. Without workspace sources next to the lock this is
+    :func:`local_image_digest`."""
+    root = lock_path.parent
+    files = sorted(
+        p
+        for pattern in CHECKOUT_SOURCES
+        for src in root.glob(pattern)
+        for p in src.rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts and p.suffix not in {".pyc", ".pyo"}
+    )
+    if not files:
+        return local_image_digest(lock_path)
+    h = hashlib.sha256(lock_path.read_bytes())
+    for p in files:
+        h.update(p.relative_to(root).as_posix().encode())
+        h.update(b"\0")
+        h.update(hashlib.sha256(p.read_bytes()).digest())
+    return "sha256:" + h.hexdigest()
 
 
 def _default_runner_command() -> list[str]:
@@ -513,6 +546,12 @@ class Settings(BaseSettings):
         ge=30,
         le=3600,
         description="Wall-clock limit of a POST /v1/plots:render run (the sandbox kills it)",
+    )
+    inspect_timeout_s: int = Field(
+        300,
+        ge=30,
+        le=3600,
+        description="Wall-clock limit of an upload inspect run (M4; it reads only metadata)",
     )
     render_plotly_enabled: bool = Field(
         False,
@@ -1030,13 +1069,20 @@ class Settings(BaseSettings):
         return f"{self.gcs_endpoint.rstrip('/')}/storage/v1/b/{self.buckets.bootstrap}/o/{{nonce}}"
 
     def resolve_image_digest(self) -> str:
-        """The image digest the catalog is cached under (``sha256`` of ``uv.lock`` locally)."""
+        """The image digest the catalog is cached under: ``image_digest``, else the
+        ``sha256`` of ``uv_lock_path`` (the images bake their lock), else the source
+        checkout's digest (:func:`checkout_image_digest` of the ``uv.lock`` above the
+        working directory: ``make dev`` describes again after a code change)."""
         if self.image_digest:
             return self.image_digest
-        lock = self.uv_lock_path or _find_uv_lock(Path.cwd())
-        if lock is None or not lock.is_file():
+        if self.uv_lock_path is not None:
+            if not self.uv_lock_path.is_file():
+                raise RuntimeError(f"MAPI_UV_LOCK_PATH {self.uv_lock_path} is not a file")
+            return local_image_digest(self.uv_lock_path)
+        lock = _find_uv_lock(Path.cwd())
+        if lock is None:
             raise RuntimeError(
                 "cannot determine the local image digest: set MAPI_IMAGE_DIGEST or "
                 "MAPI_UV_LOCK_PATH (no uv.lock found above the working directory)"
             )
-        return local_image_digest(lock)
+        return checkout_image_digest(lock)

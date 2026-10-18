@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 from mapi_server.context import ServerContext
+from mapi_server.db import models as m
 from mapi_server_testkit.builders import ready_dataset
 from mapi_spec.api import Dataset, DatasetVersion, UploadSession
 
@@ -110,3 +111,40 @@ async def test_dataset_artifacts_and_views(client: httpx.AsyncClient, ctx: Serve
     assert r.status_code == 404  # this fixture version has no preview.json
     r = await client.get(f"/v1/datasets/{ds.id}/versions/1/secrets", follow_redirects=False)
     assert r.status_code == 422
+
+
+async def test_raw_hdf5_upload_starts_an_ingest_run(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """M4: a raw HDF5 upload with its mapping is ingested like any other format (the
+    sandbox's HDF5 guard decides whether the file is safe to read)."""
+    ds = await _dataset(client)
+    up = UploadSession.model_validate(
+        (
+            await client.post(
+                f"/v1/datasets/{ds.id}/uploads",
+                json={"filename": "obs.h5", "content_type": "application/x-hdf5", "size_bytes": 64},
+            )
+        ).json()
+    )
+    await ctx.store.put(ctx.buckets.quarantine, up.upload.name, b"\x89HDF\r\n\x1a\n" + b"\0" * 8)
+    hdf5 = {
+        "format": "hdf5",
+        "hdf5": {"vars": [{"path": "/img", "name": "image", "dims": ["row"]}]},
+    }
+    r = await client.post(
+        f"/v1/datasets/{ds.id}/versions", json={"upload_id": up.id, "mapping": hdf5}
+    )
+    assert r.status_code == 202, r.text
+    dv = DatasetVersion.model_validate(r.json())
+    assert dv.sources == [up.id] and dv.layout == "dataset"
+    run = (await client.get(f"/v1/runs/{dv.ingest_run_id}")).json()
+    assert run["kind"] == "ingest"
+    async with ctx.db.session() as s:
+        row = await s.get(m.Run, dv.ingest_run_id)
+        assert row is not None
+        assert row.payload["mapping"]["format"] == "hdf5" and set(row.inputs) == {"upload"}
+    got = DatasetVersion.model_validate(
+        (await client.get(f"/v1/datasets/{ds.id}/versions/{dv.version}")).json()
+    )
+    assert got.sources == [up.id]

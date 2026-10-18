@@ -21,6 +21,8 @@ export interface PlotFrameProps {
   exportName?: string;
   className?: string;
   toolbar?: boolean;
+  /** The rendered height the sandbox reports (thumbnails scale the frame to fit). */
+  onHeightChange?: (height: number) => void;
 }
 
 /**
@@ -37,6 +39,7 @@ export function PlotFrame({
   exportName,
   className,
   toolbar = true,
+  onHeightChange,
 }: PlotFrameProps) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const hostRef = useRef<PlotHost | null>(null);
@@ -48,6 +51,8 @@ export function PlotFrame({
   onSelectRef.current = onSelect;
   const exportNameRef = useRef(exportName);
   exportNameRef.current = exportName;
+  const onHeightRef = useRef(onHeightChange);
+  onHeightRef.current = onHeightChange;
 
   useLayoutEffect(() => {
     const frame = frameRef.current;
@@ -57,7 +62,10 @@ export function PlotFrame({
         setStatus("rendered");
         setError(null);
       },
-      onResize: (h) => setFrameHeight(Math.max(MIN_HEIGHT, h)),
+      onResize: (h) => {
+        setFrameHeight(Math.max(MIN_HEIGHT, h));
+        onHeightRef.current?.(Math.max(MIN_HEIGHT, h));
+      },
       onSelect: (items) => onSelectRef.current?.(items),
       onExported: (format, dataUrl) => saveDataUrl(dataUrl, `${exportNameRef.current ?? "plot"}.${format}`),
       onError: (code, message) => {

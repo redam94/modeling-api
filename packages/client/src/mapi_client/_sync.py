@@ -30,6 +30,7 @@ from mapi_spec.api import (
     ExecutorHealth,
     ExecutorUpdate,
     Health,
+    IngestAssembly,
     IngestMapping,
     KillSwitches,
     KillSwitchUpdate,
@@ -68,6 +69,7 @@ from mapi_spec.api import (
     TokenCreate,
     TokenCreated,
     UploadCreate,
+    UploadInspection,
     UploadSession,
     UsageGroupBy,
     UsagePeriod,
@@ -80,15 +82,18 @@ from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
+from mapi_spec.ingest import CoordValue
 from mapi_spec.quotas import QuotaLimits, QuotaScope
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 from mapi_spec.spec import ScoreRequest
 from mapi_spec.tenancy import Capability, ProjectRole, TenantStatus, TrustTier
 from mapi_spec.tokens import DEFAULT_TOKEN_TTL_DAYS, BudgetPeriod, TokenStatus
+from mapi_spec.tree import TreeJoin
 from pydantic import JsonValue
 
 from mapi_client import _calls as calls
+from mapi_client import _calls_m4 as m4calls
 from mapi_client._common import (
     USER_AGENT,
     ScoreResult,
@@ -117,6 +122,13 @@ from mapi_client._m3 import (
 )
 from mapi_client._m3 import signup as _signup
 from mapi_client._m3 import verify_email as _verify_email
+from mapi_client._m4_common import (
+    AssemblyFile,
+    InspectedUpload,
+    assembly_for,
+    is_not_ready,
+    plan_assembly,
+)
 from mapi_client._m35 import (
     CatalogAboutMixin,
     DatasetAboutMixin,
@@ -410,6 +422,10 @@ class Catalog(_Resource, CatalogAboutMixin):
     def plots(self, *, limit: int | None = None) -> Paginator[PlotCatalogEntry]:
         return self._c.page_iter(lambda cur: calls.list_catalog_plots(limit, cur))
 
+    def plot_example(self, plot_id: str, version: str) -> PlotSpec:
+        """A plot recipe rendered on synthetic example data."""
+        return self._c.send(calls.get_catalog_plot_example(plot_id, version))
+
     def schema(self, name: str) -> dict[str, Any]:
         """An exported JSON Schema, e.g. ``modelspec.json``."""
         return self._c.send(calls.get_schema(name))
@@ -457,13 +473,29 @@ class Datasets(_Resource, DatasetAboutMixin):
         self,
         dataset_id: str,
         *,
-        upload_id: str,
-        mapping: IngestMapping,
+        upload_id: str | None = None,
+        mapping: IngestMapping | None = None,
+        assembly: IngestAssembly | None = None,
         message: str | None = None,
         idempotency_key: str | None = None,
     ) -> DatasetVersion:
-        body = DatasetVersionCreate(upload_id=upload_id, mapping=mapping, message=message)
+        """Ingest one upload (``upload_id`` + ``mapping``) or, from M4, several combined into
+        one version (``assembly``) - exactly one of the two."""
+        body = DatasetVersionCreate(
+            upload_id=upload_id, mapping=mapping, assembly=assembly, message=message
+        )
         return self._c.send(calls.create_dataset_version(dataset_id, body, idempotency_key))
+
+    def inspect_upload(
+        self, dataset_id: str, upload_id: str, *, idempotency_key: str | None = None
+    ) -> Run:
+        """Start (or find) the ``inspect`` run listing the groups and arrays of an upload
+        (M4). Read the result with :meth:`upload_inspection` once the run has finished."""
+        return self._c.send(m4calls.inspect_upload(dataset_id, upload_id, idempotency_key))
+
+    def upload_inspection(self, dataset_id: str, upload_id: str) -> UploadInspection:
+        """What the inspect run found (M4); ``NOT_READY`` (409) while it is running."""
+        return self._c.send(m4calls.get_upload_inspection(dataset_id, upload_id))
 
     def versions(self, dataset_id: str, *, limit: int | None = None) -> Paginator[DatasetVersion]:
         return self._c.page_iter(lambda cur: calls.list_dataset_versions(dataset_id, limit, cur))
@@ -497,7 +529,7 @@ class Datasets(_Resource, DatasetAboutMixin):
 
     def upload(
         self,
-        source: str | os.PathLike[str] | xr.Dataset | bytes,
+        source: str | os.PathLike[str] | xr.Dataset | xr.DataTree | bytes,
         *,
         dataset: str | None = None,
         dataset_id: str | None = None,
@@ -508,11 +540,14 @@ class Datasets(_Resource, DatasetAboutMixin):
         timeout: float | None = None,
         idempotency_key: str | None = None,
     ) -> DatasetVersion:
-        """Upload a file (csv, parquet, ``.zarr.zip``, netCDF) or an ``xr.Dataset`` as a
-        new dataset version: upload session → signed PUT → ingest run (→ wait).
+        """Upload a file (csv, parquet, ``.zarr.zip``, netCDF, HDF5), an ``xr.Dataset`` or
+        an ``xr.DataTree`` as a new dataset version: upload session → signed PUT → ingest
+        run (→ wait).
 
         ``dataset`` is a dataset *name* (created when missing); or pass ``dataset_id``.
-        csv/parquet need ``mapping``; self-describing formats default to an empty one.
+        csv/parquet and raw HDF5 (``.h5``/``.hdf5``/``.he5``) need ``mapping``;
+        self-describing formats default to an empty one. Several files make one version
+        with :meth:`upload_files`.
         """
         if (dataset is None) == (dataset_id is None):
             raise ValueError("give exactly one of dataset (a name) or dataset_id")
@@ -535,6 +570,128 @@ class Datasets(_Resource, DatasetAboutMixin):
         if not wait:
             return created
         return self.wait_version(ds_id, created.version, timeout=timeout)
+
+    def ensure_id(self, dataset: str | None, dataset_id: str | None) -> str:
+        """The id of ``dataset_id``, or of the dataset named ``dataset`` (created when
+        missing) - exactly one of the two."""
+        if (dataset is None) == (dataset_id is None):
+            raise ValueError("give exactly one of dataset (a name) or dataset_id")
+        return dataset_id or (self.ensure(str(dataset))).id
+
+    def stage_upload(
+        self,
+        source: str | os.PathLike[str] | xr.Dataset | xr.DataTree | bytes,
+        *,
+        dataset_id: str,
+        filename: str | None = None,
+    ) -> UploadSession:
+        """Upload a file to the dataset's quarantine *without* ingesting it (M4): to
+        :meth:`inspect` it, or to ingest it later with :meth:`create_version`."""
+        return self._stage(dataset_id, upload_source(source, filename=filename))
+
+    def _stage(self, dataset_id: str, src: UploadSource) -> UploadSession:
+        session = self.create_upload(
+            dataset_id, filename=src.filename, size_bytes=src.size, content_type=src.content_type
+        )
+        self._c.put_signed(session, src)
+        return session
+
+    def upload_files(
+        self,
+        files: Sequence[AssemblyFile | str | os.PathLike[str] | xr.Dataset | xr.DataTree | bytes],
+        *,
+        dataset: str | None = None,
+        dataset_id: str | None = None,
+        mapping: IngestMapping | None = None,
+        node: str = "/",
+        concat: str | None = None,
+        labels: Sequence[CoordValue] | None = None,
+        merge: bool = False,
+        join: TreeJoin = "exact",
+        message: str | None = None,
+        wait: bool = True,
+        timeout: float | None = None,
+        idempotency_key: str | None = None,
+    ) -> DatasetVersion:
+        """Upload several files as ONE dataset version (M4, an ``IngestAssembly``).
+
+        Plain items (paths, ``xr.Dataset``/``xr.DataTree``) all go to ``node`` and are
+        combined there: ``concat="year", labels=[2024, 2025]`` stacks them along a dim (one
+        label per file), ``merge=True`` merges their variables on shared coords (``join``
+        ``exact``/``inner``/``outer``). Items given as :class:`~mapi_client.AssemblyFile`
+        carry their own node, mapping and combine rule, e.g. a PSF file at ``/instrument``.
+        ``mapping`` applies to every file whose format it reads (self-describing formats
+        default to an empty one). The assembly is checked before anything is uploaded.
+        """
+        plan = plan_assembly(
+            files, mapping=mapping, node=node, concat=concat, labels=labels, merge=merge,
+            join=join,
+        )  # fmt: skip
+        ds_id = self.ensure_id(dataset, dataset_id)
+        upload_ids = [(self._stage(ds_id, p.upload)).id for p in plan]
+        created = self.create_version(
+            ds_id,
+            assembly=assembly_for(plan, upload_ids),
+            message=message,
+            idempotency_key=idempotency_key or str(uuid.uuid4()),
+        )
+        if not wait:
+            return created
+        return self.wait_version(ds_id, created.version, timeout=timeout)
+
+    def inspect(
+        self,
+        dataset_id: str,
+        upload_id: str,
+        *,
+        timeout: float | None = 300.0,
+        poll_interval: float = 1.0,
+        max_poll_interval: float = 10.0,
+    ) -> UploadInspection:
+        """Inspect an upload (M4): start (or find) its ``inspect`` run, then poll the
+        inspection until it is ready (``NOT_READY`` means "still running"). Raises the run's
+        error when the inspection failed and ``TimeoutError`` after ``timeout`` seconds."""
+        run = self.inspect_upload(dataset_id, upload_id)
+        deadline = None if timeout is None else time.monotonic() + timeout
+        delay = poll_interval
+        while True:
+            err = run_error(run)
+            if err is not None:
+                raise err
+            try:
+                return self.upload_inspection(dataset_id, upload_id)
+            except MapiError as exc:
+                if exc.code is ErrorCode.NOT_FOUND:
+                    # the run may have failed since it was polled: its error says why
+                    err = run_error(self._c.runs.get(run.id))
+                    if err is not None:
+                        raise err from None
+                if not is_not_ready(exc):
+                    raise
+            if deadline is not None and time.monotonic() + delay > deadline:
+                raise TimeoutError(
+                    f"inspection of upload {upload_id} is not ready after {timeout} s"
+                )
+            self._c._sleep(delay)
+            delay = min(delay * 1.5, max_poll_interval)
+            run = self._c.runs.get(run.id)
+
+    def inspect_file(
+        self,
+        source: str | os.PathLike[str] | xr.Dataset | xr.DataTree | bytes,
+        *,
+        dataset: str | None = None,
+        dataset_id: str | None = None,
+        filename: str | None = None,
+        timeout: float | None = 300.0,
+    ) -> InspectedUpload:
+        """Stage a file (:meth:`stage_upload`) and :meth:`inspect` it: the groups and arrays
+        (path, shape, dtype, dims hint) needed to write a raw-HDF5 mapping. Ingest it later
+        with ``create_version(dataset_id, upload_id=found.upload_id, mapping=...)``."""
+        ds_id = self.ensure_id(dataset, dataset_id)
+        session = self.stage_upload(source, dataset_id=ds_id, filename=filename)
+        found = self.inspect(ds_id, session.id, timeout=timeout)
+        return InspectedUpload(session, found)
 
     def artifact(self, dataset_id: str, version: int, name: str) -> ArtifactLink:
         return self._c.send(calls.get_dataset_artifact(dataset_id, version, name))

@@ -66,6 +66,7 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | Module | What it holds |
 |---|---|
 | `schema` | `DimPolicy` (`fixed`/`extend`/`new_levels`), `DimSpec`, `Role`, `VarSpec`, `RaggedSpec`, `DataSchema`, `DataSchemaTemplate` |
+| `tree` | M4 tree datasets: `NodePath`, `TreeSchema` (one `DataSchema` per node, `flat()` merges a node selection), `NodeSelect` (`data.nodes`), `DataLayout` |
 | `effects` | `StepKind`, `SchemaEffect`, `ContextNeed`, `apply_effect`, `propagate` |
 | `spec` | `ModelSpec`, `ScoreRequest`, `Sweep`, `Backtest`, `SBC`, `Campaign` and their blocks |
 | `loader` | strict YAML 1.2/JSON loader, apiVersion upgrades, `canonical_json`, `spec_hash`, `dump_yaml` |

@@ -211,6 +211,7 @@ endpoint. This table does not show the common codes from the [Errors](#errors) s
 | `GET /v1/catalog/models/{model_id}/{version}` | One plugin version (manifest, sanitized schemas, schema template) | — | `ModelCatalogEntry` | 200 | `NOT_FOUND` |
 | `GET /v1/catalog/steps` | Steps | — | `Page[StepCatalogEntry]` | 200 | — |
 | `GET /v1/catalog/plots` | Plot recipes | — | `Page[PlotCatalogEntry]` | 200 | — |
+| `GET /v1/catalog/plots/{plot_id}/{version}/example` | The recipe drawn on synthetic example data (datasets inline), made by the describe run | — | `PlotSpec` | 200 | `NOT_FOUND` |
 | `GET /v1/schemas/{name}` | An exported JSON Schema, for example `modelspec.json`. Monaco and JSON Forms use it | — | JSON Schema | 200 | `NOT_FOUND` |
 
 ### Datasets
@@ -229,10 +230,10 @@ Data goes into the platform in three steps:
 | `GET /v1/datasets` | List the datasets | — | `Page[Dataset]` | 200 | — |
 | `GET /v1/datasets/{dataset_id}` | Get a dataset | — | `Dataset` | 200 | `NOT_FOUND` |
 | `POST /v1/datasets/{dataset_id}/uploads` | Get a signed PUT URL into quarantine | `UploadCreate` | `UploadSession` | 201 | `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `QUOTA_EXCEEDED` |
-| `POST /v1/datasets/{dataset_id}/versions` | Ingest an upload as a new version. This starts an `ingest` run. Accepts `Idempotency-Key`. | `DatasetVersionCreate` | `DatasetVersion` (status `ingesting`) | 202 | `NOT_FOUND`, `CONFLICT` (the upload is not complete, or a version already uses it) |
+| `POST /v1/datasets/{dataset_id}/versions` | Ingest an upload as a new version. This starts an `ingest` run. From v0.8, `assembly` makes one version from several uploads ([tree datasets](#m4)). Accepts `Idempotency-Key`. | `DatasetVersionCreate` | `DatasetVersion` (status `ingesting`) | 202 | `NOT_FOUND`, `CONFLICT` (the upload is not complete, or a version already uses it), `PAYLOAD_TOO_LARGE` (the uploads of an assembly are larger than 5 GB together) |
 | `GET /v1/datasets/{dataset_id}/versions` | List the versions | — | `Page[DatasetVersion]` | 200 | `NOT_FOUND` |
 | `GET /v1/datasets/{dataset_id}/versions/{version}` | Schema, summary, and references to the profile and the preview | — | `DatasetVersion` | 200 | `NOT_FOUND` |
-| `GET /v1/datasets/{dataset_id}/versions/{version}/artifacts/{name}` | Signed URL for `data.zarr.zip`, `schema.json`, `profile.json` or `preview.json` | — | `ArtifactLink` | 200 | `NOT_FOUND` |
+| `GET /v1/datasets/{dataset_id}/versions/{version}/artifacts/{name}` | Signed URL for `data.zarr.zip`, `schema.json`, `profile.json` or `preview.json`. A tree version (v0.8) has `data.tree.zip` and `tree_schema.json` | — | `ArtifactLink` | 200 | `NOT_FOUND` |
 
 ### Specs
 
@@ -875,6 +876,45 @@ check.
 | `POST /v1/validations/{validation_id}:deprecate` | Retire a validated model version (audited with the reason) | `ValidationNote` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `VALIDATION_TRANSITION_INVALID` |
 | `POST /v1/validations/{validation_id}/evidence-pack` | The audit export (JSON, and a signed link to the HTML version) | `EvidencePackRequest` | `EvidencePack` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
 
+## Tree datasets and multi-file versions <span class="mapi-badge">v0.8</span> { #m4 }
+
+A dataset version can hold an `xr.DataTree` (layout `tree`) instead of one `xr.Dataset`
+(layout `dataset`, the default). `DatasetVersion` then has `layout: "tree"`, the
+`tree_schema` (a `TreeSchema`: one `DataSchema` per node such as `/` or `/instrument/psf`)
+and the `sources` it was built from, and `data_schema` is the schema of the root node.
+
+- **Several files in one version.** `DatasetVersionCreate` takes either `upload_id` +
+  `mapping` (one file, as before) or `assembly` (an `IngestAssembly`): each source names its
+  upload, its own `IngestMapping`, the `node` it goes to and how it joins the other sources
+  of that node: `node` (the only source), `concat` (along `concat_dim`, one `concat_label`
+  per file) or `merge` (variables on shared coords, aligned per `join`).
+- **Raw HDF5.** Format `hdf5` needs `mapping.hdf5` (an `Hdf5Mapping`): which HDF5 dataset
+  becomes which variable of which node, with its dims (`Hdf5Var`) and coords (`Hdf5Coord`).
+  To see what is in a file first, inspect the upload (below). NetCDF and xarray-written HDF5
+  files keep format `netcdf`; their groups become nodes.
+- **Inspection.** An `inspect` run reads only the metadata of an upload (after the HDF5
+  safety checks) and lists its groups and arrays. It is idempotent per upload: while an
+  inspection runs, or after it succeeded, the server returns that run. If the run failed or
+  was cancelled, a new request starts a new run. The run has the resource class that an ingest
+  of the upload would get (the smallest class that holds the upload, so S, M or L), interactive
+  priority and the timeout `MAPI_INSPECT_TIMEOUT_S` (300 s).
+- **Assemblies.** The server checks every upload of an `assembly` before it uses any of them:
+  each upload belongs to the dataset, is complete, is used one time and is not in another
+  version. Otherwise it answers `409 CONFLICT` with a pointer to the source
+  (`/body/assembly/sources/<i>/upload_id`), and all the uploads stay available. The uploads of
+  one version are a maximum of 5 GB together (`413 PAYLOAD_TOO_LARGE`). One `ingest` run reads
+  them all.
+- **Unsafe files.** If the HDF5 guard refuses a file, the ingest or inspect run fails with
+  `INGEST_UNSAFE_FILE` (422) in its `problem`, and the version becomes `failed`.
+
+The full guide, with examples, is
+[Tree datasets, HDF5 and multi-file versions](../guides/tree-data.md).
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `POST /v1/datasets/{dataset_id}/uploads/{upload_id}/inspect` | List the groups and arrays of an upload (an `inspect` run). The server returns the current run, or the run of a finished inspection. Accepts `Idempotency-Key`. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (the file did not arrive, the upload expired, or a version used the upload before an inspection), `QUOTA_EXCEEDED` |
+| `GET /v1/datasets/{dataset_id}/uploads/{upload_id}/inspection` | What the inspect run found | — | `UploadInspection` | 200 | `NOT_FOUND` (never inspected, or the run ended without an inspection: the `problem` of the run tells why), `NOT_READY` (409, the run has not finished) |
+
 ## DTO index
 
 All of these models are in `mapi_spec.api`, unless the table gives a different module. Each
@@ -903,4 +943,5 @@ model has a schema in the OpenAPI document and in `export_schemas()` as `api-<Na
 | About cards (v0.5) | `About`, `CatalogAbout`, `ChooserQuestionnaire`, `ChooserResult`, `DatasetAbout`, `DatasetAboutUpdate` (`mapi_spec.about`) |
 | Workflows (v0.5) | `Workflow`, `WorkflowCreate`, `WorkflowUpdate`, `WorkflowRevision`, `WorkflowRevisionCreate`, `WorkflowValidateRequest`, `WorkflowValidation`, `WorkflowRun`, `WorkflowRunCreate`, `NodeRun`, `ScheduleCreate`, `ScheduleUpdate`, `WorkflowSchedule`, `TriggerCreate`, `WorkflowTrigger` (`mapi_spec.workflow`), `NodeImplementation` (`mapi_spec.workflow_nodes`), `WorkflowTemplate` (`mapi_spec.workflow_templates`) |
 | Governance (v0.5) | `GovernanceCheckDef`, `GovernancePolicy`, `GovernancePolicyCreate`, `GovernancePolicyUpdate`, `ValidationRequest`, `ValidationNote`, `ModelValidation`, `CheckResult`, `ApprovalCreate`, `EvidencePackRequest`, `EvidencePack` (`mapi_spec.governance`) |
+| Tree datasets (v0.8) | `TreeSchema`, `NodeSelect` (`mapi_spec.tree`), `IngestAssembly`, `AssemblySource`, `Hdf5Mapping`, `Hdf5Var`, `Hdf5Coord`, `UploadInspection`, `InspectedArray` (`mapi_spec.ingest`) |
 | Explorers and optimisation (v0.5) | `DataExploreRequest`, `ModelExploreRequest`, `ModelCompareRequest` (`mapi_spec.explore`), `Exploration`, `ExplorerIndex` (`mapi_spec.views`), `OptimizeRequest`, `OptimizeResult` (`mapi_spec.optimize`), `Optimization` |

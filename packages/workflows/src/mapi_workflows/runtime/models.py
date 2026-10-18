@@ -781,6 +781,7 @@ def forecast_node(ctx: NodeContext) -> NodeOutcome:
             registry=reg,
             history=mv.data,
             return_full=True,
+            tree=mv.tree,
         )
     except MapiError:
         raise
@@ -841,7 +842,12 @@ def model_residuals(mv: ModelValue, registry: Registry | None = None) -> Residua
     bundle = mv.bundle
     reg = registry or default_registry()
     tree = score_bundle(
-        bundle, _request(bundle.spec, "predict"), data=mv.data, registry=reg, return_full=True
+        bundle,
+        _request(bundle.spec, "predict"),
+        data=mv.data,
+        registry=reg,
+        return_full=True,
+        tree=mv.tree,
     )
     pred = tree["predictions"].to_dataset()
     out_var, _, target = _target_names(bundle)

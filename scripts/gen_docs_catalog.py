@@ -304,21 +304,56 @@ def plots_page() -> str:
     from mapi_sdk import default_registry
 
     entries = sorted(default_registry().catalog().plots, key=lambda e: e.id)
+    images = ROOT / "docs" / "assets" / "plots"
     lines = [
         HEADER,
         "# Plot recipes catalog\n",
         "Generated from every recipe installed through the `mapi.plots` entry point. Name them",
-        "in a spec's `outputs.plots`. See [Plots](../../guides/plots.md) for what each shows.\n",
-        "| Recipe | Version | Title | Persona | Needs groups | Needs representation |",
-        "|---|---|---|---|---|---|",
+        "in a spec's `outputs.plots`. See [Plots](../../guides/plots.md) for how to use them.",
+        "Each picture is the recipe drawn on synthetic example data, as the app's catalog shows",
+        "it.\n",
+        "| Recipe | Version | Title | What it shows | Persona | Needs groups "
+        "| Needs representation |",
+        "|---|---|---|---|---|---|---|",
     ]
     for p in entries:
         groups = ", ".join(f"`{g}`" for g in p.requires_groups) or "–"
         reps = ", ".join(r.value for r in p.requires_representation) or "any"
+        anchor = p.id.replace(".", "-")
+        shows = p.about.summary_plain if p.about else (p.summary or "–")
         lines.append(
-            f"| `{p.id}` | `{p.version}` | {_cell(p.title)} | {p.persona} | {groups} | {reps} |"
+            f"| [`{p.id}`](#{anchor}) | `{p.version}` | {_cell(p.title)} | {_cell(shows)} | "
+            f"{p.persona} | {groups} | {reps} |"
         )
-    return "\n".join(lines) + "\n"
+    lines.append("")
+    for p in entries:
+        a = p.about
+        lines.append(f"## {_cell(a.title if a else p.title)} {{#{p.id.replace('.', '-')}}}\n")
+        lines.append(f"`{p.id}@{p.version}`\n")
+        if a is None:
+            lines.append((p.summary or "No description.") + "\n")
+        else:
+            lines.append(a.summary_plain + "\n")
+        image = images / (p.id.replace(".", "_") + ".png")
+        if image.exists():
+            lines.append(f"![{_cell(p.title)}: an example](../../assets/plots/{image.name})\n")
+        if a is None:
+            continue
+        lines.append(f"**How to read it.** {a.example}\n")
+        for heading, items in (
+            ("Use it when", a.use_when),
+            ("Avoid it when", a.avoid_when),
+            ("What it needs", a.data_needs),
+            ("What is on the chart", a.outputs),
+        ):
+            lines.append(f"**{heading}**\n")
+            lines.extend(f"- {x}" for x in items)
+            lines.append("")
+        if a.expert_notes:
+            lines.append('??? note "For experts"')
+            lines.extend(f"    {line}" if line else "" for line in a.expert_notes.splitlines())
+            lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def spec_page(schemas: Mapping[str, Mapping[str, Any]]) -> str:

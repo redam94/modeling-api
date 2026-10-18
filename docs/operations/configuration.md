@@ -137,6 +137,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 | Variable | Default | Meaning |
 |---|---|---|
 | `MAPI_RENDER_TIMEOUT_S` | `300` | The wall-clock limit of a `POST /v1/plots:render` run. The sandbox stops the run after this time |
+| `MAPI_INSPECT_TIMEOUT_S` | `300` | The wall-clock limit of an upload inspect run (`POST /v1/datasets/{dataset_id}/uploads/{upload_id}/inspect`). The run reads only the metadata of the file |
 | `MAPI_RENDER_PLOTLY_ENABLED` | `false` | Accept Plotly plots for static rendering. This needs kaleido and a Chrome or Chromium in the runner image. The base images do not include them. While this setting is off, the server refuses Plotly renders with `MODE_NOT_SUPPORTED` |
 | `MAPI_EMBED_RATE_PER_MINUTE` | `300` | The public views in each minute for one embed link. More views get `429 RATE_LIMITED` |
 | `MAPI_EMBED_IP_RATE_PER_MINUTE` | `120` | The public embed requests in each minute from one client address, valid or not valid. This makes token guesses slower |
@@ -195,7 +196,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 |---|---|---|
 | `MAPI_CATALOG_PATH` | unset | A catalog JSON that the image build exports. If unset, the worker puts a sandboxed `describe` run in the queue |
 | `MAPI_IMAGE_DIGEST` | `sha256` of `uv.lock` | The digest of the runner image. The catalog cache uses it as the key |
-| `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the local image digest |
+| `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the image digest. When it is unset, the digest of a source checkout also hashes `packages/*/src` and `plugins/*/src`, so `make dev` makes a new catalog after a code change |
 | `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | The EC P-256 key that signs bundle manifests (in place of Cloud KMS). The worker signs and the API verifies, thus the two must load the same file. `mapi-server migrate` makes it |
 | `MAPI_SIGNING_TRUSTED_KEY_PATHS` | none | Old bundle-signing keys (PEM files, public or private, comma-separated) whose signatures still verify. Thus a key rotation does not break the models that the old key signed (`ops/runbooks/rotating-keys.md`) |
 | `MAPI_SIGNING_KEY_CREATE` | `true` | Make the key at the first use if it is missing. Compose turns it off for `api` and `worker`. Thus, if the key is missing, start-up fails, and the server does not mint a new key |

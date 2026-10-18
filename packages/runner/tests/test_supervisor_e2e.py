@@ -10,6 +10,7 @@ import threading
 import pytest
 from mapi_spec.catalog import Catalog
 from mapi_spec.executor import RunEvent, RunEventType, RunKind
+from mapi_spec.plots import PlotExamples
 from mapi_spec.run import (
     CompletePayload,
     ErrorPayload,
@@ -102,6 +103,9 @@ def test_describe_exports_the_catalog(gcs: ShimGcs) -> None:
     assert any(p.id == "core.ppc_fan" for p in catalog.plots)
     info = json.loads(result.output("describe.json"))
     assert info["catalog_digest"].startswith("sha256:")
+    examples = PlotExamples.model_validate_json(result.output("plot_examples.json"))
+    assert set(examples.plots) == {p.ref for p in catalog.plots}
+    assert info["plot_examples"] == len(catalog.plots)
     complete = result.of(RunEventType.COMPLETE)
     assert len(complete) == 1 and complete[0] is result.events[-2]  # then state "done"
 

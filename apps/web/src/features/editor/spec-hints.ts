@@ -8,6 +8,7 @@
  * Each step's `with` and the model's `settings` get that plugin's own settings schema.
  */
 import type { CatalogResponse, DataSchema, Dataset, ModelCatalogEntry, StageSchema, StepCatalogEntry } from "@/api/types";
+import { flatSchema, nodeKey, nodesWithVars, ROOT, type NodeSelection } from "@/features/datasets/tree";
 
 type ModelManifest = ModelCatalogEntry["manifest"];
 
@@ -27,6 +28,8 @@ export interface SpecShape {
   steps: { id: string; use: string }[];
   datasetRef: string | null;
   bind: { dims: Record<string, string>; vars: Record<string, string> };
+  /** M4: `data.nodes` (tree datasets): key → selected node. */
+  nodes: Record<string, NodeSelection>;
 }
 
 export interface HintSources {
@@ -36,6 +39,8 @@ export interface HintSources {
   columns: DataSchema | null;
   /** Per-stage schemas from the last validation (`raw`, then one per step id). */
   stages: StageSchema[];
+  /** M4: the node schemas of that version when it is a tree (`tree_schema.nodes`). */
+  tree?: Record<string, DataSchema> | null;
 }
 
 // ----------------------------------------------------------------------------- parsing
@@ -69,7 +74,29 @@ export function specShape(document: unknown): SpecShape {
     }),
     datasetRef: str(data.dataset),
     bind: { dims: strMap(bind.dims), vars: strMap(bind.vars) },
+    nodes: nodeSelections(data.nodes),
   };
+}
+
+function nodeSelections(v: unknown): Record<string, NodeSelection> {
+  if (!isObj(v)) return {};
+  const out: Record<string, NodeSelection> = {};
+  for (const [key, sel] of Object.entries(v)) {
+    if (!isObj(sel) || typeof sel.path !== "string") continue;
+    const vars = Array.isArray(sel.vars) ? sel.vars.filter((x): x is string => typeof x === "string") : null;
+    out[key] = { path: sel.path, vars, prefix: str(sel.prefix) };
+  }
+  return out;
+}
+
+/**
+ * The names the spec reads from its dataset: a plain version's schema, or (M4) for a tree
+ * version the merge of the nodes in `data.nodes` (the root node when there is none).
+ */
+export function inputColumns(shape: SpecShape, sources: Pick<HintSources, "columns" | "tree">): DataSchema | null {
+  if (!sources.tree) return sources.columns;
+  if (Object.keys(shape.nodes).length) return flatSchema(sources.tree, shape.nodes);
+  return sources.tree[ROOT] ?? sources.columns;
 }
 
 /** `dataset://p/name@v3` → `{ref: "dataset://p/name", version: 3}`; `@latest`/none → `version: null`. */
@@ -156,7 +183,7 @@ export function namesBeforeStep(index: number, shape: SpecShape, sources: HintSo
     const stage = name ? stages.get(name) : undefined;
     if (stage?.data_schema) return namesOf(stage.data_schema);
   }
-  return boundNames(sources.columns, shape.bind);
+  return boundNames(inputColumns(shape, sources), shape.bind);
 }
 
 /** The names the model sees: the last stage. */
@@ -336,7 +363,8 @@ export function enrichSpecSchema(base: unknown, shape: SpecShape, sources: HintS
   // data.dataset and data.bind
   const data = defs.DataBlock;
   addSnippets(prop(data, "dataset"), datasetSnippets(sources.datasets));
-  const columns = namesOf(sources.columns);
+  if (sources.tree) addNodeHints(defs, data, sources.tree);
+  const columns = namesOf(inputColumns(shape, sources));
   const binding = defs.Binding;
   const wanted = templateNames(model);
   for (const [kind, names, canon] of [
@@ -395,6 +423,53 @@ export function enrichSpecSchema(base: unknown, shape: SpecShape, sources: HintS
   return schema;
 }
 
+/** Node paths of a tree dataset as snippets (the nodes that have variables). */
+export function nodeSnippets(tree: Record<string, DataSchema>): Snippet[] {
+  return nodesWithVars(tree).map((p) => {
+    const vars = Object.keys(tree[p]?.vars ?? {});
+    return { label: p, body: p, description: `${vars.length} ${vars.length === 1 ? "variable" : "variables"}: ${vars.slice(0, 6).join(", ")}${vars.length > 6 ? "…" : ""}` };
+  });
+}
+
+/**
+ * M4: `data.nodes` hints for a tree dataset: a suggested key per node (with its `path`
+ * filled in), node paths for `path`, and each node's variables for `vars`.
+ */
+function addNodeHints(defs: Json, data: unknown, tree: Record<string, DataSchema>): void {
+  const paths = nodeSnippets(tree);
+  if (!paths.length) return;
+  addSnippets(prop(defs.NodeSelect, "path"), paths);
+  const allVars: Snippet[] = [];
+  for (const p of nodesWithVars(tree)) {
+    for (const [name, v] of Object.entries(tree[p]?.vars ?? {})) allVars.push({ label: name, body: name, description: `${p} · ${v.dtype}${v.dims.length ? ` [${v.dims.join(", ")}]` : ""}` });
+  }
+  addSnippets(prop(defs.NodeSelect, "vars"), allVars);
+  const nodes = prop(data, "nodes");
+  const block = (Array.isArray(nodes?.anyOf) ? nodes.anyOf : [nodes]).find((s): s is Json => isObj(s) && s.type === "object");
+  if (!nodes || !block) return;
+  const taken: string[] = [];
+  const keyed = nodesWithVars(tree).map((p) => {
+    const key = nodeKey(p, taken);
+    taken.push(key);
+    return [key, p] as const;
+  });
+  block.properties = Object.fromEntries(
+    keyed.map(([key, p]) => [
+      key,
+      {
+        allOf: [{ $ref: "#/$defs/NodeSelect" }],
+        description: `The node \`${p}\` of the dataset (${Object.keys(tree[p]?.vars ?? {}).length} variables)`,
+        defaultSnippets: [{ label: `path: ${p}`, body: { path: p } }],
+        properties: {
+          path: { type: "string", defaultSnippets: [{ label: p, body: p }] },
+          vars: { type: "array", items: { type: "string", defaultSnippets: nameSnippets(namesOf(tree[p]).vars) } },
+        },
+      },
+    ]),
+  );
+  nodes.defaultSnippets = keyed.map(([key, p]) => ({ label: `${key}: ${p}`, description: `Read the node ${p}`, body: { [key]: { path: p } } }));
+}
+
 /** A cheap key of everything `enrichSpecSchema` depends on in the spec, to re-bind only on change. */
 export function hintKey(shape: SpecShape, sources: HintSources): string {
   return JSON.stringify([
@@ -402,6 +477,8 @@ export function hintKey(shape: SpecShape, sources: HintSources): string {
     shape.steps.map((s) => [s.id, pluginId(s.use)]),
     shape.datasetRef,
     shape.bind,
+    shape.nodes,
+    sources.tree ? Object.keys(sources.tree) : null,
     sources.catalog?.digest ?? null,
     sources.datasets.map((d) => d.ref),
     sources.columns ? Object.keys(sources.columns.dims ?? {}).concat(Object.keys(sources.columns.vars ?? {})) : null,

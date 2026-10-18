@@ -1,6 +1,7 @@
 """Every endpoint a program may call has a request builder whose method, path, success
-statuses and project scoping match ``mapi_spec.api.ENDPOINTS`` (the whole v0.5 table: M1, M2,
-M3 and M3.5) and ``ROUTE_ACCESS`` - the contract the server's route table is tested against."""
+statuses and project scoping match ``mapi_spec.api.ALL_ENDPOINTS`` (the v0.5 table: M1, M2,
+M3 and M3.5, plus the M4 rows) and ``ROUTE_ACCESS`` - the contract the server's route table
+is tested against."""
 
 from __future__ import annotations
 
@@ -11,9 +12,11 @@ from typing import Any
 import pytest
 from mapi_client import _calls as c
 from mapi_client import _calls_m3 as m3
+from mapi_client import _calls_m4 as m4
 from mapi_client import _calls_m35 as m35
 from mapi_client._http import Call
 from mapi_spec.api import (
+    ALL_ENDPOINTS,
     ENDPOINTS,
     IDEMPOTENCY_KEY_HEADER,
     PREFER_HEADER,
@@ -127,6 +130,7 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "get_catalog_model": lambda: c.get_catalog_model("mmm.geo", "1.0.0"),
     "list_catalog_steps": lambda: c.list_catalog_steps(None, None),
     "list_catalog_plots": lambda: c.list_catalog_plots(None, None),
+    "get_catalog_plot_example": lambda: c.get_catalog_plot_example("core.ppc", "1.0.0"),
     "get_schema": lambda: c.get_schema("modelspec.json"),
     "create_dataset": lambda: c.create_dataset(DatasetCreate(name="d")),
     "list_datasets": lambda: c.list_datasets(None, None),
@@ -372,10 +376,13 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "decide_validation": lambda: m35.decide_validation(_VAL, _ex(ApprovalCreate)),
     "deprecate_validation": lambda: m35.deprecate_validation(_VAL, _ex(ValidationNote)),
     "export_evidence_pack": lambda: m35.export_evidence_pack(_VAL, _ex(EvidencePackRequest)),
+    # M4 tree datasets: upload inspection
+    "inspect_upload": lambda: m4.inspect_upload("ds_1", "upl_1", None),
+    "get_upload_inspection": lambda: m4.get_upload_inspection("ds_1", "upl_1"),
 }
 
-CLIENT_ENDPOINTS = ENDPOINTS
-"""The table the client covers: every row of the v0.5 API (M1, M2, M3 and M3.5)."""
+CLIENT_ENDPOINTS = ALL_ENDPOINTS
+"""The table the client covers: every row of the contract (the v0.5 API plus the M4 rows)."""
 PROGRAM_ENDPOINTS = tuple(d for d in CLIENT_ENDPOINTS if d.operation_id not in NOT_FOR_PROGRAMS)
 
 
@@ -560,3 +567,13 @@ def test_m3_filters_are_validated() -> None:
     with pytest.raises(ValueError):
         m3.get_endpoint("..")
     assert m3.get_embed("a/b").path == "/v1/embeds/a%2Fb"
+
+
+def test_m4_inspection_calls() -> None:
+    post = m4.inspect_upload("ds 1", "upl_1", "k")
+    assert post.path == "/v1/datasets/ds%201/uploads/upl_1/inspect"
+    assert post.expect == frozenset({200, 202}) and post.json is None and post.idempotent
+    get = m4.get_upload_inspection("ds_1", "upl_1")
+    assert get.path.endswith("/uploads/upl_1/inspection") and get.idempotent
+    with pytest.raises(ValueError):
+        m4.get_upload_inspection("ds_1", "..")

@@ -102,6 +102,9 @@ class RunKind(StrEnum):
     GOVERNANCE = "governance"
     """M3.5: the governance checks of one model version in the sandbox
     (:class:`mapi_spec.governance.GovernanceJob`; output ``governance.json``)."""
+    INSPECT = "inspect"
+    """M4: list the groups and arrays of an upload from its metadata (resource class S, short
+    timeout, no network; :class:`mapi_spec.jobs.InspectJob`, output ``inspection.json``)."""
 
     @property
     def is_parent(self) -> bool:

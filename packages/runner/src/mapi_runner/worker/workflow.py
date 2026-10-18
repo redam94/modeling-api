@@ -27,7 +27,7 @@ from mapi_spec.workflow_nodes import PortType
 from pydantic import ValidationError
 
 from mapi_runner.worker.context import WorkerContext
-from mapi_runner.worker.data import _manifest_from_tree, load_dataset
+from mapi_runner.worker.data import _manifest_from_tree, load_data_and_tree, load_flat_dataset
 
 __all__ = ["run_workflow_node"]
 
@@ -94,18 +94,23 @@ def run_workflow_node(ctx: WorkerContext, job: WorkflowNodeJob) -> None:
         kind = job.input_types.get(name)
         if kind is PortType.MODEL_VERSION:
             bundle = _bundle(ctx, name)
-            data = load_dataset(ctx, name + ".data") if ctx.has_input(name + ".data") else None
+            data, tree = (
+                load_data_and_tree(ctx, bundle.spec.data, name + ".data")
+                if ctx.has_input(name + ".data")
+                else (None, None)
+            )
             ref = refs.get(name)
             value: Value = ModelValue(
                 bundle=bundle,
                 data=data,
+                tree=tree,
                 ref=str(ref) if ref else None,
                 model=f"{bundle.model.manifest.id}@{bundle.model.manifest.version}",
                 settings=dict(bundle.model.settings),
             )
         elif kind is PortType.DATASET or kind is None:
             ref = refs.get(name)
-            value = dataset_value(load_dataset(ctx, name), str(ref) if ref else None)
+            value = dataset_value(load_flat_dataset(ctx, None, name), str(ref) if ref else None)
         else:
             raise MapiError(
                 f"input {name!r} of type {kind.value} must be inline", code=ErrorCode.SCHEMA_INVALID

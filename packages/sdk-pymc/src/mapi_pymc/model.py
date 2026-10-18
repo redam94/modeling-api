@@ -155,6 +155,7 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
         seed: int,
         mode: str | None = None,
         kind: Any = None,
+        tree: xr.DataTree | None = None,
     ) -> BuildContext:
         return BuildContext(
             phase="fit" if phase == "fit" else "score",
@@ -165,13 +166,20 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
             seed=seed,
             mode=mode,
             kind=kind,
+            tree=tree,
         )
 
     # ------------------------------------------------------------------ fit
     def fit(self, ds: xr.Dataset, s: SettingsT, cfg: FitConfig, ctx: FitContext) -> FitOutput:
         seed = cfg.seed if cfg.seed is not None else ctx.seed
         bctx = self._context(
-            "fit", ds, schema=ctx.schema, policies=ctx.policies, fit_coords=ctx.coords, seed=seed
+            "fit",
+            ds,
+            schema=ctx.schema,
+            policies=ctx.policies,
+            fit_coords=ctx.coords,
+            seed=seed,
+            tree=ctx.tree,
         )
         model = self.build_model(ds, s, bctx)
         plan = EnginePlan.from_config(cfg, default_engine=self.default_engine, seed=seed)
@@ -298,6 +306,7 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
             seed=ctx.seed,
             mode=ctx.mode,
             kind=ctx.kind,
+            tree=ctx.tree,
         )
         model = self.build_model(ds, s, bctx)
         ctx.check_cancelled()

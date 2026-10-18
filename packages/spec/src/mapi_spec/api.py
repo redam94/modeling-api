@@ -113,8 +113,15 @@ from mapi_spec.guided import (
     RoleSuggestions,
 )
 from mapi_spec.ingest import (
+    AssemblySource,
     DimMapping,
+    Hdf5Coord,
+    Hdf5Mapping,
+    Hdf5Var,
+    IngestAssembly,
     IngestMapping,
+    InspectedArray,
+    UploadInspection,
     VarMapping,
     WideVarMapping,
 )
@@ -153,6 +160,7 @@ from mapi_spec.tenancy import (
     TrustTier,
 )
 from mapi_spec.tokens import ApiToken, TokenCreate, TokenCreated
+from mapi_spec.tree import DataLayout, TreeSchema
 from mapi_spec.trust import (
     EmailVerify,
     GdprExport,
@@ -213,6 +221,7 @@ __all__ = [
     "M1_ENDPOINTS",
     "M2_ENDPOINTS",
     "M3_ENDPOINTS",
+    "M4_ENDPOINTS",
     "M35_ENDPOINTS",
     "MAX_PREFER_WAIT_SECONDS",
     "PAGE_LIMIT_DEFAULT",
@@ -237,6 +246,7 @@ __all__ = [
     "ApiToken",
     "ApprovalCreate",
     "ArtifactLink",
+    "AssemblySource",
     "AuditEvent",
     "CatalogAbout",
     "CatalogResponse",
@@ -285,9 +295,14 @@ __all__ = [
     "GuidedCompile",
     "GuidedDraft",
     "GuidedTemplate",
+    "Hdf5Coord",
+    "Hdf5Mapping",
+    "Hdf5Var",
     "Health",
     "HealthCheck",
+    "IngestAssembly",
     "IngestMapping",
+    "InspectedArray",
     "KillSwitchUpdate",
     "KillSwitches",
     "Lineage",
@@ -373,6 +388,7 @@ __all__ = [
     "TokenCreated",
     "TriggerCreate",
     "UploadCreate",
+    "UploadInspection",
     "UploadSession",
     "UsageReport",
     "ValidateRequest",
@@ -641,19 +657,49 @@ class UploadSession(_Response):
 
 
 class DatasetVersionCreate(_Request):
-    """Turn a finished upload into a new version via a sandboxed ingest run (202)."""
+    """Turn finished uploads into a new version via a sandboxed ingest run (202).
 
-    upload_id: Id
-    mapping: IngestMapping
+    Exactly one of: ``upload_id`` + ``mapping`` (one file), or ``assembly`` (M4: several
+    files combined per node into one version, see :class:`IngestAssembly`).
+    """
+
+    upload_id: Id | None = None
+    mapping: IngestMapping | None = None
     message: str | None = Field(None, max_length=2000)
+    assembly: IngestAssembly | None = Field(
+        None,
+        description="M4: several uploads combined into one (tree) version",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = _examples(
         {
             "upload_id": _UPLOAD_ID,
             "mapping": IngestMapping.model_json_schema()["examples"][0],
             "message": "Q3 refresh",
-        }
+        },
+        {
+            "assembly": IngestAssembly.model_json_schema()["examples"][0],
+            "message": "2024 and 2025 cubes plus the instrument",
+        },
     )
+
+    @model_validator(mode="after")
+    def _one_source(self) -> DatasetVersionCreate:
+        single = self.upload_id is not None or self.mapping is not None
+        if self.assembly is not None:
+            if single:
+                raise ValueError("give either upload_id and mapping, or assembly - not both")
+        elif self.upload_id is None or self.mapping is None:
+            raise ValueError("give upload_id and mapping (one file), or assembly (several)")
+        return self
+
+    @property
+    def upload_ids(self) -> list[str]:
+        """Every upload this version consumes (source order)."""
+        if self.assembly is not None:
+            return [src.upload_id for src in self.assembly.sources]
+        return [self.upload_id] if self.upload_id is not None else []
 
 
 class DatasetVersionStatus(StrEnum):
@@ -682,6 +728,15 @@ class DatasetVersion(_Response):
     message: str | None = None
     created_at: AwareDatetime
     ready_at: AwareDatetime | None = None
+    layout: DataLayout = Field(
+        "dataset",
+        description="M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is "
+        "then the root node's schema)",
+    )
+    tree_schema: TreeSchema | None = Field(None, description="M4: the schema of a tree version")
+    sources: list[Id] = Field(
+        default_factory=list, description="M4: the uploads the version was built from"
+    )
 
     model_config = _examples(
         {
@@ -703,7 +758,38 @@ class DatasetVersion(_Response):
             "issues": [],
             "created_at": _TS,
             "ready_at": "2026-10-15T09:31:10Z",
-        }
+            "sources": [_UPLOAD_ID],
+        },
+        {
+            "dataset_id": _DS_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "version": 4,
+            "ref": "dataset://default/lens_cubes@v4",
+            "status": "ready",
+            "sha256": _SHA,
+            "size_bytes": 4194304,
+            "data_schema": {},
+            "layout": "tree",
+            "tree_schema": {
+                "nodes": {
+                    "/": {},
+                    "/observations": {
+                        "dims": {"row": {"kind": "index"}, "col": {"kind": "index"}},
+                        "vars": {"image": {"dims": ["row", "col"], "dtype": "float32"}},
+                    },
+                    "/psf": {
+                        "dims": {"prow": {"kind": "index"}, "pcol": {"kind": "index"}},
+                        "vars": {"psf": {"dims": ["prow", "pcol"], "dtype": "float64"}},
+                    },
+                }
+            },
+            "sources": [_UPLOAD_ID, "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"],
+            "ingest_run_id": _RUN_ID,
+            "issues": [],
+            "created_at": _TS,
+            "ready_at": "2026-10-15T09:31:10Z",
+        },
     )
 
 
@@ -1595,6 +1681,10 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "Page[PlotCatalogEntry]", 200, paginated=True, query=_PAGE,
     ),
     EndpointDecl(
+        "GET", "/v1/catalog/plots/{plot_id}/{version}/example", "get_catalog_plot_example",
+        "A plot recipe rendered on synthetic example data", "PlotSpec", 200, errors=_NF,
+    ),
+    EndpointDecl(
         "GET", "/v1/schemas/{name}", "get_schema", "Exported JSON Schema (e.g. modelspec.json)",
         None, 200, errors=_NF,
     ),
@@ -1619,7 +1709,8 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "POST", "/v1/datasets/{dataset_id}/versions", "create_dataset_version",
         "Ingest an upload as a new version (starts an ingest run)", "DatasetVersion", 202,
-        request="DatasetVersionCreate", errors=(*_BODY, *_NF, _E.CONFLICT),
+        request="DatasetVersionCreate",
+        errors=(*_BODY, *_NF, _E.CONFLICT, _E.CAPABILITY_UNSUPPORTED, _E.PAYLOAD_TOO_LARGE),
         headers=("Idempotency-Key",),
     ),
     EndpointDecl(
@@ -3125,11 +3216,28 @@ M35_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 """The M3.5 endpoint table (workflows, governance, explorers, optimisation, About cards;
 additive to :data:`V04_ENDPOINTS`)."""
 
+_UPL = "/v1/datasets/{dataset_id}/uploads/{upload_id}"
+
+M4_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    EndpointDecl(
+        "POST", _UPL + "/inspect", "inspect_upload",
+        "List the groups and arrays of an upload (an inspect run; a finished inspection "
+        "is returned as-is)", "Run", 202,
+        errors=(*_NF, _E.CONFLICT, _E.QUOTA_EXCEEDED), headers=_RUNH,
+    ),
+    EndpointDecl(
+        "GET", _UPL + "/inspection", "get_upload_inspection",
+        "The groups and arrays an inspect run found (409 NOT_READY while it runs)",
+        "UploadInspection", 200, errors=(*_NF, _E.NOT_READY), headers=_PH,
+    ),
+)  # fmt: skip
+"""The M4 endpoint table (tree datasets: upload inspection; part of :data:`ENDPOINTS`)."""
+
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
-ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V04_ENDPOINTS + M35_ENDPOINTS
-"""Every endpoint of the v0.5 API (M1 + M2 + M3 + M3.5); the server serves every row."""
+ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V04_ENDPOINTS + M35_ENDPOINTS + M4_ENDPOINTS
+"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4); the server serves every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
 """Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
@@ -3233,6 +3341,13 @@ _M35_ACCESS: Final[dict[str, RouteAccess]] = {
 capability (or project admin) and is refused to the submitter
 (:func:`mapi_spec.governance.check_approver`); no API token can approve."""
 
+_M4_ACCESS: Final[dict[str, RouteAccess]] = {
+    # an inspect run belongs to the upload's dataset (like the ingest run of a new version)
+    "inspect_upload": _p(_RK.DATASET, _AC.UPDATE),
+    "get_upload_inspection": _p(_RK.DATASET, _AC.READ),
+}
+"""Access rules of :data:`M4_ENDPOINTS`."""
+
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
     "health": _PUBLIC,
@@ -3245,6 +3360,7 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "get_catalog_model": _AUTH,
     "list_catalog_steps": _AUTH,
     "list_catalog_plots": _AUTH,
+    "get_catalog_plot_example": _AUTH,
     "create_dataset": _p(_RK.DATASET, _AC.CREATE),
     "list_datasets": _p(_RK.DATASET, _AC.READ),
     "get_dataset": _p(_RK.DATASET, _AC.READ),
@@ -3382,6 +3498,8 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "admin_retry_tenant_deletion": _op(_RK.TENANT_DELETION, _AC.MANAGE),
     # M3.5 workflows, governance, explorers, optimisation, About cards
     **_M35_ACCESS,
+    # M4 tree datasets
+    **_M4_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).

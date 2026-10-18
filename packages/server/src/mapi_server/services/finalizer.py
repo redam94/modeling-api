@@ -35,20 +35,25 @@ from mapi_spec.coords import CoordSummary, DataSummary
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.guided import ColumnProfile
+from mapi_spec.ingest import MAX_INSPECTION_BYTES, UploadInspection
 from mapi_spec.jobs import (
+    DATATREE_OUTPUT,
     DESCRIBE_OUTPUT,
     FIT_BUNDLE,
     FIT_SIDECARS,
     INGEST_COLUMNS,
     INGEST_DATA,
     INGEST_SCHEMA,
+    INSPECT_OUTPUT,
+    PLOT_EXAMPLES_OUTPUT,
     SIDE_TABLE_PREFIX,
+    TREE_SCHEMA_OUTPUT,
     DescribeJob,
     MetricsSidecar,
 )
 from mapi_spec.loader import canonical_json, spec_hash
 from mapi_spec.optimize import OPTIMIZE_OUTPUT
-from mapi_spec.plots import PlotSpec
+from mapi_spec.plots import MAX_PLOT_EXAMPLES, PlotExamples, PlotSpec
 from mapi_spec.run import (
     MANIFEST_OBJECT_NAME,
     Actor,
@@ -74,10 +79,11 @@ from mapi_spec.storage import (
     dataset_prefix,
     run_prefix,
 )
+from mapi_spec.tree import MAX_TREE_NODES, NodePath, TreeSchema
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata
 from mapi_spec.views import EXPLORE_PREFIX
 from pydantic import TypeAdapter, ValidationError
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -101,6 +107,7 @@ __all__ = [
     "Finalizer",
     "IntegrityError",
     "build_scorecard",
+    "parse_data_summary",
 ]
 
 log = logging.getLogger(__name__)
@@ -110,6 +117,7 @@ log = logging.getLogger(__name__)
 _DIAGNOSTICS = TypeAdapter(list[Diagnostic])
 _METRIC_NAMES = TypeAdapter(dict[MetricName, float])
 _COORDS = TypeAdapter(dict[str, dict[str, CoordSummary]])
+_NODE_SUMMARIES = TypeAdapter(dict[NodePath, DataSummary])
 _MAX_PLOTS = 200
 
 
@@ -342,6 +350,8 @@ class Finalizer:
             return await self._optimize(v)
         if kind is RunKind.GOVERNANCE:
             return await self._governance(v)
+        if kind is RunKind.INSPECT:
+            return await self._inspect(v)
         return await self._outputs_only(v)
 
     # ....................................................................... governance
@@ -642,11 +652,17 @@ class Finalizer:
         for key, ref in sorted((run.inputs or {}).items()):
             if not key.startswith(SIDE_TABLE_PREFIX) or not isinstance(ref, dict):
                 continue
-            stored = m.DatasetVersion.objects[INGEST_DATA]
+            # a side table may be a tree version (M4): its data object is data.tree.zip
+            matches = [
+                (stored["bucket"].astext == str(ref.get("bucket")))
+                & (stored["name"].astext == str(ref.get("name")))
+                for stored in (
+                    m.DatasetVersion.objects[INGEST_DATA],
+                    m.DatasetVersion.objects[DATATREE_OUTPUT],
+                )
+            ]
             stmt = select(m.DatasetVersion).where(
-                m.DatasetVersion.tenant_id == run.tenant_id,
-                stored["bucket"].astext == str(ref.get("bucket")),
-                stored["name"].astext == str(ref.get("name")),
+                m.DatasetVersion.tenant_id == run.tenant_id, or_(*matches)
             )
             dv = (await session.execute(stmt)).scalars().first()
             if dv is not None and dv.sha256:
@@ -770,20 +786,43 @@ class Finalizer:
 
     # ........................................................................... ingest
     async def _ingest(self, v: _Verified) -> RunState | None:
+        """Register the dataset version an ingest run wrote: ``data.zarr.zip`` +
+        ``schema.json`` (dataset layout) or, M4, ``data.tree.zip`` + ``tree_schema.json``
+        (+ ``schema.json``, the root node's schema) for a tree version."""
         run = v.run
-        data = v.objects.get(INGEST_DATA)
+        tree_data = v.objects.get(DATATREE_OUTPUT)
+        flat_data = v.objects.get(INGEST_DATA)
+        if tree_data is not None and flat_data is not None:
+            raise IntegrityError(
+                f"an ingest run uploads {INGEST_DATA} or {DATATREE_OUTPUT}, not both"
+            )
+        layout = "tree" if tree_data is not None else "dataset"
+        data = tree_data if tree_data is not None else flat_data
+        data_name = DATATREE_OUTPUT if tree_data is not None else INGEST_DATA
         schema_meta = v.objects.get(INGEST_SCHEMA)
+        tree_meta = v.objects.get(TREE_SCHEMA_OUTPUT)
         if data is None or schema_meta is None:
             raise IntegrityError(f"an ingest run must upload {INGEST_DATA} and {INGEST_SCHEMA}")
+        if layout == "tree" and tree_meta is None:
+            raise IntegrityError(
+                f"a tree ingest ({DATATREE_OUTPUT}) must upload {TREE_SCHEMA_OUTPUT}"
+            )
+        if layout == "dataset" and tree_meta is not None:
+            raise IntegrityError(f"{TREE_SCHEMA_OUTPUT} belongs to a {DATATREE_OUTPUT} ingest")
         if data.md5_hash is None:
-            raise IntegrityError(f"{INGEST_DATA} has no server-computed MD5")
+            raise IntegrityError(f"{data_name} has no server-computed MD5")
         cap = self.ctx.settings.max_sidecar_bytes
+        tree: TreeSchema | None = None
         try:
             schema = DataSchema.model_validate(
                 await self._read_json(run_bucket(v), schema_meta, cap)
             )
+            if tree_meta is not None:
+                tree = TreeSchema.model_validate(
+                    await self._read_json(run_bucket(v), tree_meta, cap)
+                )
             summary = (
-                DataSummary.model_validate(
+                parse_data_summary(
                     await self._read_json(run_bucket(v), v.objects["summary.json"], cap)
                 )
                 if "summary.json" in v.objects
@@ -798,6 +837,11 @@ class Finalizer:
             raise IntegrityError(
                 "an ingest sidecar does not match its schema", untrusted_text=str(exc)[:8000]
             ) from exc
+        if tree is not None and schema != tree.root:
+            raise IntegrityError(
+                f"{INGEST_SCHEMA} of a tree ingest must be the root node's schema of "
+                f"{TREE_SCHEMA_OUTPUT}"
+            )
         sha_hex = dataset_sha(data)
         prefix = dataset_prefix(run.tenant_id, sha_hex)
         data_bucket = self.ctx.buckets.data
@@ -839,6 +883,8 @@ class Finalizer:
             dv.status = "ready"
             dv.sha256 = f"sha256:{sha_hex}"
             dv.size_bytes = data.size
+            dv.layout = layout
+            dv.tree_schema = tree.model_dump(mode="json") if tree is not None else None
             dv.data_schema = schema.model_dump(mode="json")
             dv.summary = summary.model_dump(mode="json") if summary else None
             dv.profile = ref("profile.json")
@@ -863,6 +909,44 @@ class Finalizer:
                 f"{INGEST_COLUMNS} must be a list of at most {MAX_COLUMN_PROFILES} profiles"
             )
         return [ColumnProfile.model_validate(c).model_dump(mode="json") for c in raw]
+
+    # .......................................................................... inspect
+    async def _inspect(self, v: _Verified) -> RunState | None:
+        """An inspect run must upload a valid ``inspection.json`` (M4; size-capped JSON,
+        validated as :class:`UploadInspection`); it is stored on the upload in the
+        transaction that marks the run succeeded."""
+        meta = v.objects.get(INSPECT_OUTPUT)
+        if meta is None:
+            if v.partial:
+                return await self._commit(v)
+            raise IntegrityError(f"an inspect run must upload {INSPECT_OUTPUT}")
+        cap = min(self.ctx.settings.max_sidecar_bytes, MAX_INSPECTION_BYTES)
+        try:
+            inspection = UploadInspection.model_validate(
+                await self._read_json(run_bucket(v), meta, cap)
+            )
+        except ValidationError as exc:
+            raise IntegrityError(
+                f"{INSPECT_OUTPUT} does not match the UploadInspection schema",
+                untrusted_text=str(exc)[:8000],
+            ) from exc
+        doc = inspection.model_dump(mode="json")
+
+        async def apply(session: AsyncSession, row: m.Run) -> None:
+            # the run names its upload (labels, set by submit_inspect): a primary-key read,
+            # then the upload must still point at this run (never a scan of all uploads)
+            upload_id = (row.labels or {}).get("upload")
+            if not isinstance(upload_id, str):
+                return
+            upload = await session.get(m.Upload, upload_id, with_for_update=True)
+            if (
+                upload is not None  # an upload deleted meanwhile keeps nothing
+                and upload.tenant_id == row.tenant_id
+                and upload.inspect_run_id == row.id
+            ):
+                upload.inspection = doc
+
+        return await self._commit(v, apply)
 
     # .................................................................. translate_priors
     async def _translate_priors(self, v: _Verified) -> RunState | None:
@@ -916,6 +1000,7 @@ class Finalizer:
             raise IntegrityError(
                 "catalog.json does not match the Catalog schema", untrusted_text=str(exc)[:8000]
             ) from exc
+        examples = await self._plot_examples(v)
         try:
             job = DescribeJob.model_validate(v.run.payload)
         except ValidationError:
@@ -931,13 +1016,58 @@ class Finalizer:
                 project_id=row.project_id,
                 describe_run_id=row.id,
                 image_digest=str(image),
+                plot_examples=examples,
             )
 
         return await self._commit(v, apply)
 
+    async def _plot_examples(self, v: _Verified) -> PlotExamples | None:
+        """The run's optional ``plot_examples.json``. Examples only illustrate the catalog,
+        so a bad file is dropped (with a log line) instead of failing the describe run."""
+        meta = v.objects.get(PLOT_EXAMPLES_OUTPUT)
+        if meta is None:
+            return None
+        try:
+            raw = await self._read_json(meta.bucket, meta, MAX_PLOT_EXAMPLES_BYTES)
+            plots = raw.get("plots") if isinstance(raw, dict) else None
+            if not isinstance(plots, dict):
+                raise IntegrityError("plot_examples.json must be a PlotExamples object")
+        except IntegrityError as exc:
+            log.warning("describe run %s: plot examples dropped: %s", v.run.id, exc.detail)
+            return None
+        # each example goes through the same sanitizer as a fit's plots.json
+        kept: dict[str, PlotSpec] = {}
+        for ref, doc in list(plots.items())[:MAX_PLOT_EXAMPLES]:
+            try:
+                spec = sanitize_plot(doc).plot
+                PlotExamples(plots={str(ref): spec})
+                kept[str(ref)] = spec
+            except (SanitizeError, ValidationError) as exc:
+                detail = exc.detail if isinstance(exc, SanitizeError) else str(exc)[:300]
+                log.warning("describe run %s: example %.80r dropped: %s", v.run.id, ref, detail)
+        return PlotExamples(plots=kept)
+
+
+MAX_PLOT_EXAMPLES_BYTES = 16 * 1024 * 1024
+"""Cap on a describe run's ``plot_examples.json``."""
 
 MAX_COLUMN_PROFILES = 100_000
 """Profiles one ``columns.json`` may hold (the ingest caps columns far below this)."""
+
+
+def parse_data_summary(raw: Any) -> DataSummary:
+    """``summary.json``: a :class:`DataSummary`; a tree ingest (M4) may add ``nodes`` (node
+    path -> DataSummary), which are validated and served with the object but not stored on
+    the version (its ``summary`` is the root's, for readers that predate trees)."""
+    if isinstance(raw, dict) and "nodes" in raw:
+        nodes = raw.get("nodes")
+        if not isinstance(nodes, dict) or len(nodes) > MAX_TREE_NODES:
+            raise IntegrityError(
+                f"summary.json 'nodes' must map at most {MAX_TREE_NODES} nodes to summaries"
+            )
+        _NODE_SUMMARIES.validate_python(nodes)
+        raw = {k: val for k, val in raw.items() if k != "nodes"}
+    return DataSummary.model_validate(raw)
 
 
 def _md5(copied: ObjectMeta, source: ObjectMeta) -> str:

@@ -9,6 +9,14 @@ Canonical inputs (dense layout)::
           psf(psf_row, psf_col): constant, float64, the point-spread function
           mask(row, col): mask, bool, True where a pixel is used (setting use_mask)
 
+**Tree datasets** (``capabilities.input = "tree"``). The model also reads a tree dataset
+version (for example an HDF5 or NetCDF file with groups): ``data.nodes`` selects the node(s)
+holding ``image``/``weight`` (and ``mask``) for the flat pipeline input, and when the bound
+tree (``FitContext.tree``) has a ``/psf`` node with ``psf(psf_row, psf_col)``, the fit uses
+that kernel. Otherwise the flat ``psf`` is used, exactly as for a plain dataset. With
+``psf_source: tree`` the flat input does not need ``psf`` at all (select only the image
+node) and the ``/psf`` node is required. Scoring always uses the PSF stored at fit.
+
 The lens galaxy sits near the centre of the cutout. Every pixel is predicted: rays traced
 through an ``subsample`` x ``subsample`` sub-grid of each pixel are bent by a singular
 isothermal ellipsoid (SIE) plus external shear (:mod:`mapi_plugin_science.lens_math`) and
@@ -102,6 +110,7 @@ __all__ = [
     "CRITICAL_CURVES",
     "IMAGE",
     "PSF",
+    "PSF_NODE",
     "WEIGHT",
     "LensLayout",
     "StrongLensModel",
@@ -113,6 +122,8 @@ PSF_ROW, PSF_COL = "psf_row", "psf_col"
 SRC_ROW, SRC_COL = "source_row", "source_col"
 IMAGE, WEIGHT, PSF, MASK = "image", "weight", "psf", "mask"
 CRITICAL_CURVES = "critical_curves"
+PSF_NODE = "/psf"
+"""Node of a tree dataset whose ``psf(psf_row, psf_col)`` the fit uses (M4)."""
 AXIS, ECOMP, LIGHT, COMPONENT = "axis", "ecomp", "light", "component"
 _EMAX = 0.7
 """Ellipticity components are ``0.7 tanh(u / 0.7)``: |e| < 0.99 keeps q > 0."""
@@ -143,6 +154,12 @@ class StrongLensSettings(ModelSettings):
         1e-3, gt=0, lt=1, description="Relative error allowed in the separable PSF expansion"
     )
     psf_max_rank: int = Field(12, ge=1, le=40, description="Most separable PSF terms")
+    psf_source: Literal["auto", "tree"] = Field(
+        "auto",
+        description="Where the PSF comes from: 'auto' uses the /psf node of a tree dataset "
+        "when there is one, else the flat psf variable (which the input then needs); 'tree' "
+        "reads it only from the /psf node, so the flat input needs no psf",
+    )
     theta_e_median: float = Field(1.0, gt=0, description="Prior median of the Einstein radius")
     theta_e_log_sd: float = Field(0.5, gt=0, description="Prior sd of log Einstein radius")
     mass_center_sd: float = Field(0.1, gt=0, description="Prior sd of the mass centre")
@@ -188,13 +205,14 @@ class StrongLensSettings(ModelSettings):
 
 
 _TEMPLATE: dict[str, Any] = {
-    "params": {"use_mask": {"type": "boolean", "default": False}},
+    "params": {
+        "use_mask": {"type": "boolean", "default": False},
+        "psf_source": {"type": "string", "enum": ["auto", "tree"], "default": "auto"},
+    },
     "template": {
         "dims": {
             ROW: {"kind": "integer", "description": "Image rows (row 0 at the bottom)"},
             COL: {"kind": "integer", "description": "Image columns"},
-            PSF_ROW: {"kind": "integer", "description": "Rows of the PSF kernel"},
-            PSF_COL: {"kind": "integer", "description": "Columns of the PSF kernel"},
         },
         "vars": {
             IMAGE: {
@@ -210,15 +228,26 @@ _TEMPLATE: dict[str, Any] = {
                 "role": "weight",
                 "description": "Inverse variance of each pixel; 0 leaves the pixel out",
             },
-            PSF: {
-                "dims": [PSF_ROW, PSF_COL],
-                "dtype": "float64",
-                "role": "constant",
-                "description": "The point-spread function (odd sides, centred)",
-            },
         },
     },
     "cases": [
+        {
+            "when": {"psf_source": "auto"},
+            "merge": {
+                "dims": {
+                    PSF_ROW: {"kind": "integer", "description": "Rows of the PSF kernel"},
+                    PSF_COL: {"kind": "integer", "description": "Columns of the PSF kernel"},
+                },
+                "vars": {
+                    PSF: {
+                        "dims": [PSF_ROW, PSF_COL],
+                        "dtype": "float64",
+                        "role": "constant",
+                        "description": "The point-spread function (odd sides, centred)",
+                    }
+                },
+            },
+        },
         {
             "when": {"use_mask": True},
             "merge": {
@@ -231,7 +260,7 @@ _TEMPLATE: dict[str, Any] = {
                     }
                 }
             },
-        }
+        },
     ],
 }
 
@@ -929,7 +958,8 @@ class StrongLensModel(CustomModel[StrongLensSettings]):
         "A pixel forward model of a galaxy-scale strong gravitational lens: a singular "
         "isothermal ellipsoid with external shear traces every pixel to a Sersic source; the "
         "lens light, a PSF and correlated noise are modelled; the light amplitudes are "
-        "integrated out. Gives the Einstein radius, the unlensed source and critical curves."
+        "integrated out. Gives the Einstein radius, the unlensed source and critical curves. "
+        "Reads plain or tree datasets (the PSF from a /psf node)."
     )
     capabilities = Capabilities(
         inference="mcmc",
@@ -941,6 +971,7 @@ class StrongLensModel(CustomModel[StrongLensSettings]):
         identified_quantities=["theta_E", "e_mass", "xy_mass", "shear"],
         deterministic_given_seed=False,
         checkpointable=True,
+        input="tree",
     )
     schema_template = _TEMPLATE
     outputs: ClassVar[dict[str, Any]] = {
@@ -1014,7 +1045,8 @@ class StrongLensModel(CustomModel[StrongLensSettings]):
     def fit(
         self, ds: xr.Dataset, s: StrongLensSettings, cfg: FitConfig, ctx: FitContext
     ) -> FitOutput:
-        image, weight, psf, mask = _arrays(ds, s, require_target=True)
+        tree_psf = _tree_psf(ctx.tree, s)
+        image, weight, psf, mask = _arrays(ds, s, require_target=True, tree_psf=tree_psf)
         prob = Problem.build(image, weight, psf, s, mask)
         if prob.n_valid < 10:
             raise MapiError("fewer than 10 usable pixels to fit", code=ErrorCode.SCHEMA_INVALID)
@@ -1036,7 +1068,7 @@ class StrongLensModel(CustomModel[StrongLensSettings]):
                 version=self.version,
                 settings=s.model_dump(mode="json"),
                 fit_config=cfg.model_dump(mode="json"),
-                data=ds,
+                data=ds if tree_psf is None else ds.assign({PSF: tree_psf}),
             )
         report = None
         if ctx.on_progress is not None:
@@ -1077,7 +1109,7 @@ class StrongLensModel(CustomModel[StrongLensSettings]):
         )
         const = {
             WEIGHT: ds[WEIGHT].transpose(ROW, COL),
-            PSF: ds[PSF].transpose(PSF_ROW, PSF_COL),
+            PSF: ds[PSF].transpose(PSF_ROW, PSF_COL) if tree_psf is None else tree_psf,
         }
         if mask is not None:
             const[MASK] = ds[MASK].transpose(ROW, COL)
@@ -1097,6 +1129,7 @@ class StrongLensModel(CustomModel[StrongLensSettings]):
             "components": layout.component_names(),
             "psf_rank": prob.psf.rank,
             "psf_error": prob.psf.error,
+            **({"psf_node": PSF_NODE} if tree_psf is not None else {}),
             "n_pixels": prob.n_valid,
             "mode": {
                 "neg_logpost": mode.neg_logpost,
@@ -1406,18 +1439,57 @@ def _laplace_sd(layout: LensLayout, mode: ModeResult, name: str) -> float:
     return float(np.exp(mode.u_map[sl.start]) * sd_u)
 
 
+def _tree_psf(tree: xr.DataTree | None, s: StrongLensSettings) -> xr.DataArray | None:
+    """The ``psf(psf_row, psf_col)`` of the tree's :data:`PSF_NODE`, if it has one.
+
+    ``None`` (use the flat ``psf``) when there is no tree or the node has no ``psf``, unless
+    ``psf_source`` is ``tree``, which requires it.
+    """
+    node = None
+    if tree is not None:
+        name = PSF_NODE.lstrip("/")
+        if name in tree.children:
+            node = tree.children[name].to_dataset(inherit=False)
+    if node is None or PSF not in node:
+        if s.psf_source == "tree":
+            where = "the data is not a tree dataset" if tree is None else "it has none"
+            raise MapiError(
+                f"psf_source is 'tree' but {where}: give {PSF}({PSF_ROW}, {PSF_COL}) in "
+                f"node {PSF_NODE!r}, or set psf_source to 'auto' and give a flat {PSF!r}",
+                code=ErrorCode.SCHEMA_INVALID,
+            )
+        return None
+    da = node[PSF]
+    if set(da.dims) != {PSF_ROW, PSF_COL}:
+        raise MapiError(
+            f"node {PSF_NODE!r}: {PSF!r} must have dims ({PSF_ROW!r}, {PSF_COL!r}), "
+            f"not {tuple(str(d) for d in da.dims)}",
+            code=ErrorCode.SCHEMA_INVALID,
+        )
+    da = da.transpose(PSF_ROW, PSF_COL)
+    coords = {d: np.asarray(da[d].values) for d in (PSF_ROW, PSF_COL) if d in da.coords}
+    return xr.DataArray(np.asarray(da.values, dtype=float), dims=(PSF_ROW, PSF_COL), coords=coords)
+
+
 def _arrays(
-    ds: xr.Dataset, s: StrongLensSettings, *, require_target: bool
+    ds: xr.Dataset,
+    s: StrongLensSettings,
+    *,
+    require_target: bool,
+    tree_psf: xr.DataArray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None]:
-    for d in (ROW, COL, PSF_ROW, PSF_COL):
+    """The image, weight, PSF and mask (``tree_psf`` given: that PSF, not ``ds``'s)."""
+    flat_psf = tree_psf is None
+    for d in (ROW, COL, PSF_ROW, PSF_COL) if flat_psf else (ROW, COL):
         if d not in ds.dims:
             raise MapiError(f"the data has no dim {d!r}", code=ErrorCode.SCHEMA_INVALID)
-    for v in (IMAGE, WEIGHT, PSF):
+    for v in (IMAGE, WEIGHT, PSF) if flat_psf else (IMAGE, WEIGHT):
         if v not in ds and (v != IMAGE or require_target):
             raise MapiError(f"the data has no variable {v!r}", code=ErrorCode.SCHEMA_INVALID)
     image = np.asarray(ds[IMAGE].transpose(ROW, COL).values, dtype=float)
     weight = np.asarray(ds[WEIGHT].transpose(ROW, COL).values, dtype=float)
-    psf = np.asarray(ds[PSF].transpose(PSF_ROW, PSF_COL).values, dtype=float)
+    kernel = ds[PSF].transpose(PSF_ROW, PSF_COL) if tree_psf is None else tree_psf
+    psf = np.asarray(kernel.values, dtype=float)
     if psf.shape[0] % 2 == 0 or psf.shape[1] % 2 == 0:
         raise MapiError("the PSF kernel must have odd sides", code=ErrorCode.SCHEMA_INVALID)
     if not np.all(np.isfinite(psf)) or psf.sum() <= 0:

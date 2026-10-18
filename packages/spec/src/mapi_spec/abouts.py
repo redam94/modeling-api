@@ -1651,6 +1651,8 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "The PSF as a small image with an odd number of rows and columns, for example from "
             "stars in the same image",
             "Optional: a mask of the pixels to use, and the redshifts of the lens and the source",
+            "A plain dataset, or a tree dataset (for example HDF5 or NetCDF groups) with the image "
+            "in one node and the PSF in a /psf node",
         ],
         [
             "The mass of the lens is an isothermal ellipsoid, with an optional external shear",

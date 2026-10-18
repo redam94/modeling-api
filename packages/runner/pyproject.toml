@@ -1,6 +1,6 @@
 [project]
 name = "mapi-runner"
-version = "0.7.0"
+version = "0.8.0"
 description = "Sandboxed run harness (supervisor + worker) for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -23,6 +23,9 @@ dependencies = [
   # M3.5: governance checks and explorer views (stat tests, STL, VIF) in the sandbox.
   "scipy>=1.13",
   "statsmodels>=0.14.4",
+  # M4: NetCDF-4 groups and raw HDF5 uploads (read only after worker.hdf5_guard checks them).
+  "h5py>=3.11",
+  "h5netcdf>=1.4",
 ]
 
 [dependency-groups]

@@ -159,12 +159,53 @@ spec declares each side table with a policy for score time:
 If a step needs a table that does not have sufficient coverage, the step fails with
 `SIDE_TABLE_COVERAGE`.
 
+A side table that is a tree dataset reads one node, which `node` names (v0.8):
+`fx: {ref: dataset://growth/reference@latest, node: /fx}`.
+
+## Tree datasets <span class="mapi-badge">v0.8</span> { #tree-datasets }
+
+A dataset version can also hold an `xr.DataTree`: a tree of **nodes**, each with its own
+variables. Node paths identify the nodes (`/` is the root, `/instrument/psf` a group below
+`/instrument`). NetCDF-4 and HDF5 files with groups give trees, and so do versions made from
+several files. A node sees the coords of the nodes above it. Thus a dim that a node shares
+with a node above it has the same labels and the same `DimSpec`.
+
+A **`TreeSchema`** describes a tree: one `DataSchema` for each node. A node without variables
+(a pure group) has an empty schema.
+
+```yaml
+nodes:
+  /:                                # the shared coords, no variables
+    dims:
+      market: {kind: categorical}
+      date:   {kind: time, policy: extend, freq: W-SUN}
+  /sales:                           # each node declares the dims that its variables use
+    dims:
+      market: {kind: categorical}
+      date:   {kind: time, policy: extend, freq: W-SUN}
+    vars:
+      revenue: {dims: [market, date], dtype: float64, role: target, units: EUR}
+  /media:
+    dims:
+      market:  {kind: categorical}
+      channel: {kind: categorical}
+      date:    {kind: time, policy: extend, freq: W-SUN}
+    vars:
+      spend: {dims: [market, channel, date], dtype: float64, role: spend, units: EUR}
+```
+
+A model still reads one flat `xr.Dataset`. The spec selects nodes in `data.nodes`, and the
+platform merges their variables into that dataset before the pipeline
+(`TreeSchema.flat` statically, `mapi_sdk.tree.select_nodes` on the arrays). A model that
+declares `capabilities.input = "tree"` also gets the whole tree. Refer to
+[Tree datasets, HDF5 and multi-file versions](../guides/tree-data.md).
+
 ## Wire formats
 
 | Format | Use | API |
 |---|---|---|
 | XrJSON | Small payloads, curl, TypeScript: the `Dataset.to_dict()` shape with explicit dtypes and limits | `mapi_sdk.wire.to_xrjson` / `from_xrjson` |
-| zarr zip | Datasets and trees as single objects (zarr v3, deterministic bytes, zstd/blosc only) | `write_zarr_zip`, `read_zarr_zip`, `write_datatree_zip`, `read_datatree_zip` |
+| zarr zip | Datasets and trees as single objects (zarr v3, deterministic bytes, zstd/blosc only). A tree dataset version is a `data.tree.zip` | `write_zarr_zip`, `read_zarr_zip`, `write_datatree_zip`, `read_datatree_zip`, `mapi_sdk.tree.write_tree_zip` / `read_tree_zip` (with the tree limits) |
 | Arrow IPC | Tidy tables for UI views and plots | `mapi_sdk.wire.to_arrow_table` |
 | pickle | **Never**, across all boundaries | – |
 

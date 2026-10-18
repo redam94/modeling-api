@@ -147,8 +147,12 @@ retry the full run automatically. Thus only failures that the supervisor sees it
 The dispatcher writes these documents, and the runner reads them. The two sides import the
 models and the names of the inputs and outputs from `mapi_spec.jobs`. Refer to the
 [run protocol](run-protocol.md#job-payloads-and-object-names). The runner reads inputs with
-HTTP range requests. Each dataset is one object `*.zarr.zip`. The raw schema of a dataset
-comes from one of these sources, in this sequence:
+HTTP range requests. Each dataset is one object: `*.zarr.zip`, or `data.tree.zip` for a
+[tree dataset](../guides/tree-data.md) (v0.8). A tree input can come with a `tree_schema`
+input (the `tree_schema.json` of its version). The runner selects the nodes of
+`data.nodes` and merges them into the flat input of the pipeline. A tree-input model also
+gets the whole tree. The raw schema of a plain dataset comes from one of these sources, in
+this sequence:
 
 1. the `schema` input, if there is one
 2. the zarr root attribute `mapi_schema` (`mapi_spec.jobs.DATASET_SCHEMA_ATTR`). Ingest writes
@@ -157,7 +161,8 @@ comes from one of these sources, in this sequence:
 
 | Kind | `spec` | Inputs | Outputs (relative to the attempt prefix) |
 |---|---|---|---|
-| `ingest` | `IngestMapping`, or `IngestJob` (`{"mapping": …}` or `{"preset": "mff", "mff": {…}}`, and also `dataset` and `source`, which are only for information) | `upload` | `data.zarr.zip`, `schema.json`, `summary.json` (`DataSummary`), `profile.json` (`mapi.profile/v1`, with the `sha256` and `size_bytes` of the data), `preview.json` (`mapi.preview/v1`) |
+| `ingest` | `IngestMapping`, or `IngestJob` (`{"mapping": …}`, `{"preset": "mff", "mff": {…}}` or, from v0.8, `{"assembly": …}`, and also `dataset` and `source`, which are only for information) | `upload`, or `upload.0`, `upload.1`, … (one for each source of an assembly) | `data.zarr.zip`, `schema.json`, `summary.json` (`DataSummary`), `profile.json` (`mapi.profile/v1`, with the `sha256` and `size_bytes` of the data), `preview.json` (`mapi.preview/v1`). A tree version (v0.8) writes `data.tree.zip` and `tree_schema.json` (`TreeSchema`) in place of `data.zarr.zip`. Its `schema.json` is the schema of the root node, `summary.json` adds a summary for each node under `nodes`, and the explorer views of each node are under `ui/explore/nodes/<slug>/` with an index |
+| `inspect` | `InspectJob` (v0.8: `format`, and caps for arrays, HDF5 objects, dims and attributes) | `upload` | `inspection.json` (`UploadInspection`). The run reads only metadata, after the HDF5 guard |
 | `describe` | `DescribeJob` (`{"image_digest": …?}`) | none | `catalog.json` (`Catalog`), `describe.json` (`catalog_digest`, versions) |
 | `validate` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `validation.json` (`ValidateResponse` with the stages that a dry run resolved) |
 | `fit` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `bundle.zarr.zip`, `bundle.manifest.json`, `diagnostics.json`, `plots.json`, `metrics.json`, `coords.json` (`{stage: {dim: CoordSummary}}`), `scorecard.json` (`Scorecard`, v0.4), `evaluation/…`, `ui/thin.zarr.zip`, `ui/summaries.json`, `ui/tree_index.json` (`mapi.tree-index/v1`), `ui/preprocess.json` (`mapi.preprocess/v1`), `ui/grids/*.arrow`, `ui/grids/response_curves.json` (`mapi.response-grid/v1`, v0.4), `ui/plotdata/*.arrow` |
@@ -190,5 +195,14 @@ roles, units and column names in `mff`.
 - `render` needs `vl-convert-python` (Vega-Lite) or `kaleido` (Plotly) in the image. If the
   image does not have them, the run fails with a clear message. The runner does not render
   plots with `data_ref` datasets.
-- netCDF-4 (HDF5) uploads need `h5netcdf` in the image. The runner reads netCDF-3 files with
-  SciPy.
+
+## HDF5 and NetCDF-4 <span class="mapi-badge">v0.8</span>
+
+`h5py` and `h5netcdf` are explicit dependencies of `mapi-runner`. Thus each runner image can
+read NetCDF-4 and HDF5 uploads. The runner reads NetCDF-3 files with SciPy.
+
+Before xarray or h5py opens an HDF5 file, the HDF5 guard (`mapi_runner.worker.hdf5_guard`)
+walks the file with the low-level API of h5py and refuses unsafe files with
+`INGEST_UNSAFE_FILE`. The supervisor sets `HDF5_PLUGIN_PATH` to an empty directory and
+`HDF5_USE_FILE_LOCKING=FALSE` in the environment of the worker. Thus libhdf5 cannot load a
+filter plugin. Refer to [the HDF5 guard](../guides/tree-data.md#security-the-hdf5-guard).

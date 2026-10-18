@@ -110,6 +110,7 @@ _INTERACTIVE_KINDS = frozenset(
         RunKind.DESCRIBE,
         RunKind.TRANSLATE_PRIORS,  # M3: a guided user waits for it while drafting
         RunKind.EXPLORE,  # M3.5: someone is looking at the explorer
+        RunKind.INSPECT,  # M4: someone is mapping an HDF5 upload in the wizard
     }
 )
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -273,6 +274,53 @@ async def test_describe_run_registers_the_catalog(
     async with ctx.db.session() as s:
         snap = await ctx.catalogs.get(s)
     assert snap is not None and snap.source == "describe" and snap.image_digest == image
+
+
+async def test_describe_run_stores_the_sanitized_plot_examples(
+    ctx: ServerContext,
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from mapi_plots.examples import example_inputs
+    from mapi_plots.recipes import get_recipe
+    from mapi_server.services.submit import submit_describe
+
+    data, options = example_inputs()["core.ppc_fan"]
+    good = get_recipe("core.ppc_fan").render(data, **options).model_dump(mode="json")
+    # an example must embed its data: a bundle reference is dropped, the rest is kept
+    bad = {**good, "id": "core.convergence", "datasets": {
+        name: {"kind": "data_ref", "path": "ui/plotdata/x.arrow"} for name in good["datasets"]
+    }}  # fmt: skip
+    examples = tmp_path / "plot_examples.json"
+    examples.write_text(
+        json.dumps({"plots": {"core.ppc_fan@1.0.0": good, "core.convergence@1.0.0": bad}})
+    )
+    ctx.catalogs.image_digest = "sha256:" + "ce" * 32
+    ctx.catalogs.invalidate()
+    async with ctx.db.session() as s:
+        run = await submit_describe(s, ctx)
+        assert run is not None
+        run_id = run.id
+    monkeypatch.setenv("FAKE_RUNNER_CATALOG", str(CATALOG))
+    monkeypatch.setenv("FAKE_RUNNER_PLOT_EXAMPLES", str(examples))
+    run, att = await _finalizing(ctx, run_id)
+    await simulate_outputs(ctx, run, att)
+    assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.SUCCEEDED
+
+    r = await client.get("/v1/catalog/plots/core.ppc_fan/1.0.0/example")
+    assert r.status_code == 200, r.text
+    spec = r.json()
+    assert spec["id"] == "core.ppc_fan" and spec["kind"] == "vega-lite"
+    assert {d["kind"] for d in spec["datasets"].values()} == {"inline_arrow"}
+    # dropped example, unknown version, unknown recipe
+    for path in (
+        "core.convergence/1.0.0",
+        "core.ppc_fan/9.9.9",
+        "core.nope/1.0.0",
+    ):
+        r = await client.get(f"/v1/catalog/plots/{path}/example")
+        assert r.status_code == 404, path
 
 
 async def test_ingest_run_makes_the_dataset_version_ready(

@@ -28,7 +28,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 __all__ = [
@@ -390,6 +390,9 @@ class Upload(_Scoped, Base):
     expires_at: Mapped[datetime] = mapped_column()
     consumed_by_version: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    # M4 (0014): the UploadInspection of an inspect run, and the run computing it
+    inspection: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    inspect_run_id: Mapped[str | None] = mapped_column(String(64))
 
     __table_args__ = (
         CheckConstraint("status in ('pending','uploaded','consumed','expired')", name="status"),
@@ -420,9 +423,19 @@ class DatasetVersion(_Scoped, Base):
     ready_at: Mapped[datetime | None] = mapped_column()
     # columns.json of the ingest run (0007_guided): ColumnProfile per uploaded column
     columns: Mapped[list[Any] | None] = mapped_column(JSONB)
+    # M4 (0014): 'tree' versions hold an xr.DataTree (data.tree.zip + tree_schema)
+    layout: Mapped[str] = mapped_column(
+        String(8), default="dataset", server_default=text("'dataset'")
+    )
+    # json (not jsonb): it keeps the node declaration order TreeSchema.default_node() uses
+    tree_schema: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    sources: Mapped[list[Any]] = mapped_column(
+        default=list, server_default=text("'[]'::jsonb")
+    )  # upload ids the version was built from
 
     __table_args__ = (
         CheckConstraint("status in ('ingesting','ready','failed')", name="status"),
+        CheckConstraint("layout in ('dataset','tree')", name="layout"),
         Index("ix_dataset_versions_sha", "tenant_id", "sha256"),
     )
 
@@ -756,6 +769,8 @@ class Catalog(_Scoped, Base):
     catalog: Mapped[dict[str, Any]] = mapped_column()
     source: Mapped[str] = mapped_column(String(16))
     describe_run_id: Mapped[str | None] = mapped_column(String(64))
+    # PlotExamples JSON (0013); deferred: only the example endpoint reads it
+    plot_examples: Mapped[dict[str, Any] | None] = mapped_column(JSONB, deferred=True)
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
 
     __table_args__ = (CheckConstraint("source in ('file','describe','api')", name="source"),)

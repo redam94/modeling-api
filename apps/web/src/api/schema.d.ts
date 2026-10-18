@@ -603,6 +603,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/catalog/plots/{plot_id}/{version}/example": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Catalog Plot Example
+         * @description The plot recipe rendered on its synthetic example data (made by the describe run,
+         *     datasets inline). ``404`` when the recipe, or its example, does not exist.
+         */
+        get: operations["get_catalog_plot_example"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog/recommendations": {
         parameters: {
             query?: never;
@@ -746,6 +767,50 @@ export interface paths {
         put?: never;
         /** Create Upload */
         post: operations["create_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List the groups and arrays of an upload (an inspect run)
+         * @description List the groups and arrays of an upload (an ``inspect`` run reading metadata only;
+         *     M4). Idempotent per upload: while an inspection runs, or once one succeeded, that run
+         *     is returned instead of starting another (a failed one is started again).
+         */
+        post: operations["inspect_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}/inspection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The groups and arrays an inspect run found
+         * @description What the upload's inspect run found (``409 NOT_READY`` while it runs; ``404`` when
+         *     no inspection was requested or its run ended without one - the run's ``problem`` says
+         *     why it failed).
+         */
+        get: operations["get_upload_inspection"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2887,9 +2952,9 @@ export interface paths {
         };
         /**
          * A signed link to a node output's object
-         * @description A dataset output links to its ``data.zarr.zip``, a model output to its bundle; JSON
-         *     outputs (test results, metrics, tables, reports) are inline in the node and have no
-         *     object (``404``).
+         * @description A dataset output links to its ``data.zarr.zip`` (``data.tree.zip`` for a tree), a
+         *     model output to its bundle; JSON outputs (test results, metrics, tables, reports) are
+         *     inline in the node and have no object (``404``).
          */
         get: operations["get_workflow_node_output"];
         put?: never;
@@ -3259,7 +3324,7 @@ export interface components {
          * @description What an About describes (chooser results and the catalog say which).
          * @enum {string}
          */
-        AboutKind: "model" | "step" | "split" | "template" | "workflow_template" | "node_kind" | "node" | "check" | "dataset" | "spec";
+        AboutKind: "model" | "step" | "split" | "template" | "workflow_template" | "node_kind" | "node" | "check" | "dataset" | "spec" | "plot";
         /**
          * AboutReference
          * @description A source for the expert detail (a paper, a book chapter, library documentation).
@@ -3560,6 +3625,61 @@ export interface components {
              * @enum {string}
              */
             kind: "as_of";
+        };
+        /**
+         * AssemblySource
+         * @description One upload of a multi-file dataset version (M4) and where it goes.
+         *
+         *     The upload is ingested with its own ``mapping`` into node ``node``; a file that is
+         *     itself a tree mounts its nodes *under* ``node`` (file group ``/psf`` at node
+         *     ``/instrument`` becomes ``/instrument/psf``). Sources of the same node are combined by
+         *     ``combine`` (see :data:`CombineRule`).
+         * @example {
+         *       "combine": "concat",
+         *       "concat_dim": "year",
+         *       "concat_label": 2024,
+         *       "mapping": {
+         *         "format": "netcdf"
+         *       },
+         *       "node": "/",
+         *       "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
+         *     }
+         */
+        AssemblySource: {
+            /**
+             * Combine
+             * @default node
+             * @enum {string}
+             */
+            combine?: "node" | "concat" | "merge";
+            /**
+             * Concat Dim
+             * @description combine 'concat': the dim to stack on
+             */
+            concat_dim?: string | null;
+            /**
+             * Concat Label
+             * @description combine 'concat': this file's label along concat_dim
+             */
+            concat_label?: number | string | null;
+            /**
+             * Join
+             * @description How coords align when sources are combined
+             * @default exact
+             * @enum {string}
+             */
+            join?: "exact" | "inner" | "outer";
+            mapping: components["schemas"]["IngestMapping"];
+            /**
+             * Node
+             * @default /
+             */
+            node?: string;
+            /**
+             * Upload Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            upload_id: string;
         };
         /**
          * AuditAction
@@ -4011,6 +4131,13 @@ export interface components {
              * @enum {string}
              */
             inference: "mcmc" | "vi" | "map" | "smc" | "kalman" | "point" | "bootstrap" | "custom";
+            /**
+             * Input
+             * @description M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one
+             * @default dataset
+             * @enum {string}
+             */
+            input?: "dataset" | "tree";
             /** Loo Invalid Reason */
             loo_invalid_reason?: string | null;
             /**
@@ -4824,6 +4951,11 @@ export interface components {
              */
             max_series?: number;
             /**
+             * Node
+             * @description M4: the node of a tree dataset to explore (default: the root, or the first node with variables)
+             */
+            node?: string | null;
+            /**
              * Outlier Threshold
              * @default 3.5
              */
@@ -5097,6 +5229,9 @@ export interface components {
          *       "ref": "dataset://default/eu_media_daily@v3",
          *       "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
          *       "size_bytes": 1048576,
+         *       "sources": [
+         *         "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
+         *       ],
          *       "status": "ready",
          *       "summary": {
          *         "coords": {
@@ -5116,6 +5251,69 @@ export interface components {
          *       "tenant_id": "default",
          *       "version": 3
          *     }
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "data_schema": {},
+         *       "dataset_id": "ds_01jaf3a1b2c3d4e5f6g7h8j9k0",
+         *       "ingest_run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "issues": [],
+         *       "layout": "tree",
+         *       "project_id": "default",
+         *       "ready_at": "2026-10-15T09:31:10Z",
+         *       "ref": "dataset://default/lens_cubes@v4",
+         *       "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *       "size_bytes": 4194304,
+         *       "sources": [
+         *         "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+         *         "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+         *       ],
+         *       "status": "ready",
+         *       "tenant_id": "default",
+         *       "tree_schema": {
+         *         "nodes": {
+         *           "/": {},
+         *           "/observations": {
+         *             "dims": {
+         *               "col": {
+         *                 "kind": "index"
+         *               },
+         *               "row": {
+         *                 "kind": "index"
+         *               }
+         *             },
+         *             "vars": {
+         *               "image": {
+         *                 "dims": [
+         *                   "row",
+         *                   "col"
+         *                 ],
+         *                 "dtype": "float32"
+         *               }
+         *             }
+         *           },
+         *           "/psf": {
+         *             "dims": {
+         *               "pcol": {
+         *                 "kind": "index"
+         *               },
+         *               "prow": {
+         *                 "kind": "index"
+         *               }
+         *             },
+         *             "vars": {
+         *               "psf": {
+         *                 "dims": [
+         *                   "prow",
+         *                   "pcol"
+         *                 ],
+         *                 "dtype": "float64"
+         *               }
+         *             }
+         *           }
+         *         }
+         *       },
+         *       "version": 4
+         *     }
          */
         DatasetVersion: {
             /**
@@ -5133,6 +5331,13 @@ export interface components {
             ingest_run_id?: string | null;
             /** Issues */
             issues?: components["schemas"]["Issue"][];
+            /**
+             * Layout
+             * @description M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is then the root node's schema)
+             * @default dataset
+             * @enum {string}
+             */
+            layout?: "dataset" | "tree";
             /** Message */
             message?: string | null;
             preview?: components["schemas"]["ObjectRef"] | null;
@@ -5150,16 +5355,26 @@ export interface components {
             sha256?: string | null;
             /** Size Bytes */
             size_bytes?: number | null;
+            /**
+             * Sources
+             * @description M4: the uploads the version was built from
+             */
+            sources?: string[];
             status: components["schemas"]["DatasetVersionStatus"];
             summary?: components["schemas"]["DataSummary"] | null;
             /** Tenant Id */
             tenant_id: string;
+            /** @description M4: the schema of a tree version */
+            tree_schema?: components["schemas"]["TreeSchema"] | null;
             /** Version */
             version: number;
         };
         /**
          * DatasetVersionCreate
-         * @description Turn a finished upload into a new version via a sandboxed ingest run (202).
+         * @description Turn finished uploads into a new version via a sandboxed ingest run (202).
+         *
+         *     Exactly one of: ``upload_id`` + ``mapping`` (one file), or ``assembly`` (M4: several
+         *     files combined per node into one version, see :class:`IngestAssembly`).
          * @example {
          *       "mapping": {
          *         "dims": {
@@ -5195,16 +5410,48 @@ export interface components {
          *       "message": "Q3 refresh",
          *       "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
          *     }
+         * @example {
+         *       "assembly": {
+         *         "sources": [
+         *           {
+         *             "combine": "concat",
+         *             "concat_dim": "year",
+         *             "concat_label": 2024,
+         *             "mapping": {
+         *               "format": "netcdf"
+         *             },
+         *             "node": "/",
+         *             "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
+         *           },
+         *           {
+         *             "combine": "concat",
+         *             "concat_dim": "year",
+         *             "concat_label": 2025,
+         *             "mapping": {
+         *               "format": "netcdf"
+         *             },
+         *             "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+         *           },
+         *           {
+         *             "mapping": {
+         *               "format": "netcdf"
+         *             },
+         *             "node": "/instrument",
+         *             "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p2"
+         *           }
+         *         ]
+         *       },
+         *       "message": "2024 and 2025 cubes plus the instrument"
+         *     }
          */
         DatasetVersionCreate: {
-            mapping: components["schemas"]["IngestMapping"];
+            /** @description M4: several uploads combined into one (tree) version */
+            assembly?: components["schemas"]["IngestAssembly"] | null;
+            mapping?: components["schemas"]["IngestMapping"] | null;
             /** Message */
             message?: string | null;
-            /**
-             * Upload Id
-             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
-             */
-            upload_id: string;
+            /** Upload Id */
+            upload_id?: string | null;
         };
         /**
          * DatasetVersionStatus
@@ -6205,13 +6452,18 @@ export interface components {
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
          */
         ErrorPayload: {
             code: components["schemas"]["ErrorCode"];
+            /**
+             * Errors
+             * @description The typed issues the run failed with (M4), e.g. an INGEST_UNSAFE_FILE refusal: their codes are what clients branch on; text the worker reported is untrusted_text
+             */
+            errors?: components["schemas"]["Issue"][];
             failure_class: components["schemas"]["FailureClass"];
             /** Message */
             message: string;
@@ -7004,6 +7256,11 @@ export interface components {
              * @constant
              */
             format?: "mapi.explorer-index/v1";
+            /**
+             * Node
+             * @description M4: the node of a tree dataset explored (absent for a flat dataset)
+             */
+            node?: string | null;
             /**
              * Ref
              * @description dataset://… or model://…
@@ -8188,6 +8445,136 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
+         * Hdf5Coord
+         * @description The coordinate of dim ``dim`` in node ``node`` of a raw HDF5 upload (M4).
+         *
+         *     Exactly one source: ``path`` (a 1-D HDF5 dataset holding the labels), or ``start`` with
+         *     an optional ``step`` (a range: numbers, or a date and a pandas frequency such as
+         *     ``"2024-01-01"`` + ``"W-MON"``), or neither (an integer index ``0..n-1``). ``spec``
+         *     overrides the inferred :class:`~mapi_spec.schema.DimSpec`.
+         * @example {
+         *       "dim": "row",
+         *       "spec": {
+         *         "kind": "float",
+         *         "ordered": true
+         *       },
+         *       "start": 0,
+         *       "step": 0.05
+         *     }
+         * @example {
+         *       "dim": "date",
+         *       "path": "/axes/date",
+         *       "spec": {
+         *         "kind": "time",
+         *         "policy": "extend"
+         *       }
+         *     }
+         */
+        Hdf5Coord: {
+            /** Dim */
+            dim: string;
+            /**
+             * Node
+             * @default /
+             */
+            node?: string;
+            /** Path */
+            path?: string | null;
+            spec?: components["schemas"]["DimSpec"] | null;
+            /** Start */
+            start?: number | string | null;
+            /** Step */
+            step?: number | string | null;
+        };
+        /**
+         * Hdf5Mapping
+         * @description How a raw HDF5 upload becomes a (tree) dataset (M4): which arrays become which
+         *     variables of which node, with which dims and coords. Arrays that are not mapped are
+         *     reported in one warning, never read.
+         * @example {
+         *       "coords": [
+         *         {
+         *           "dim": "row",
+         *           "spec": {
+         *             "kind": "float",
+         *             "ordered": true
+         *           },
+         *           "start": 0,
+         *           "step": 0.05
+         *         }
+         *       ],
+         *       "vars": [
+         *         {
+         *           "dims": [
+         *             "row",
+         *             "col"
+         *           ],
+         *           "name": "image",
+         *           "node": "/",
+         *           "path": "/observations/image",
+         *           "units": "counts"
+         *         },
+         *         {
+         *           "dims": [
+         *             "prow",
+         *             "pcol"
+         *           ],
+         *           "name": "psf",
+         *           "node": "/psf",
+         *           "path": "/psf/kernel"
+         *         }
+         *       ]
+         *     }
+         */
+        Hdf5Mapping: {
+            /** Coords */
+            coords?: components["schemas"]["Hdf5Coord"][];
+            /** Vars */
+            vars: components["schemas"]["Hdf5Var"][];
+        };
+        /**
+         * Hdf5Var
+         * @description A data variable read from one HDF5 dataset of a raw HDF5 upload (M4).
+         *
+         *     ``dims`` names the array's axes in order (its length must equal the array's ``ndim``;
+         *     the sandbox checks it). The variable is stored as ``name`` in tree node ``node``.
+         * @example {
+         *       "dims": [
+         *         "row",
+         *         "col"
+         *       ],
+         *       "name": "image",
+         *       "node": "/",
+         *       "path": "/observations/image",
+         *       "units": "counts"
+         *     }
+         */
+        Hdf5Var: {
+            /** Description */
+            description?: string | null;
+            /** Dims */
+            dims?: string[];
+            /**
+             * Missing
+             * @default forbid
+             * @enum {string}
+             */
+            missing?: "forbid" | "allow" | "mask";
+            /** Name */
+            name: string;
+            /**
+             * Node
+             * @default /
+             */
+            node?: string;
+            /** Path */
+            path: string;
+            /** @default covariate */
+            role?: components["schemas"]["Role"];
+            /** Units */
+            units?: string | null;
+        };
+        /**
          * Health
          * @description ``/healthz`` (process liveness) and ``/readyz`` (dependencies) body.
          * @example {
@@ -8275,11 +8662,53 @@ export interface components {
             periods: number;
         };
         /**
+         * IngestAssembly
+         * @description A dataset version built from several uploads (M4): every source is ingested in the
+         *     same sandboxed run (inputs ``upload.<i>``, ``i`` = the source's index), then combined
+         *     per node. The result is a tree dataset unless every source lands in the root.
+         * @example {
+         *       "sources": [
+         *         {
+         *           "combine": "concat",
+         *           "concat_dim": "year",
+         *           "concat_label": 2024,
+         *           "mapping": {
+         *             "format": "netcdf"
+         *           },
+         *           "node": "/",
+         *           "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
+         *         },
+         *         {
+         *           "combine": "concat",
+         *           "concat_dim": "year",
+         *           "concat_label": 2025,
+         *           "mapping": {
+         *             "format": "netcdf"
+         *           },
+         *           "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+         *         },
+         *         {
+         *           "mapping": {
+         *             "format": "netcdf"
+         *           },
+         *           "node": "/instrument",
+         *           "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p2"
+         *         }
+         *       ]
+         *     }
+         */
+        IngestAssembly: {
+            /** Sources */
+            sources: components["schemas"]["AssemblySource"][];
+        };
+        /**
          * IngestMapping
          * @description How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).
          *
          *     Tabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit
-         *     ``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.
+         *     ``dims``/``vars`` (with groups, they rename/select per node by name). A raw ``hdf5``
+         *     file (M4) needs ``hdf5`` (:class:`Hdf5Mapping`) instead of ``dims``/``vars``. Parsing
+         *     happens only inside a sandboxed ingest run.
          *
          *     With the ``mff`` preset the long table is first pivoted to one column
          *     per ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then
@@ -8378,6 +8807,43 @@ export interface components {
          *       },
          *       "preset": "meridian"
          *     }
+         * @example {
+         *       "format": "hdf5",
+         *       "hdf5": {
+         *         "coords": [
+         *           {
+         *             "dim": "row",
+         *             "spec": {
+         *               "kind": "float",
+         *               "ordered": true
+         *             },
+         *             "start": 0,
+         *             "step": 0.05
+         *           }
+         *         ],
+         *         "vars": [
+         *           {
+         *             "dims": [
+         *               "row",
+         *               "col"
+         *             ],
+         *             "name": "image",
+         *             "node": "/",
+         *             "path": "/observations/image",
+         *             "units": "counts"
+         *           },
+         *           {
+         *             "dims": [
+         *               "prow",
+         *               "pcol"
+         *             ],
+         *             "name": "psf",
+         *             "node": "/psf",
+         *             "path": "/psf/kernel"
+         *           }
+         *         ]
+         *       }
+         *     }
          */
         IngestMapping: {
             /** Dims */
@@ -8388,7 +8854,9 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf";
+            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5";
+            /** @description M4: the arrays, dims and coords of a raw HDF5 upload (format 'hdf5') */
+            hdf5?: components["schemas"]["Hdf5Mapping"] | null;
             /**
              * Layout
              * @default dense
@@ -8536,6 +9004,50 @@ export interface components {
              * @enum {string}
              */
             role: "coord" | "target" | "driver" | "input";
+        };
+        /**
+         * InspectedArray
+         * @description One array of an inspected upload (from its metadata only; no data is read).
+         *
+         *     ``dims_hint`` comes from the file's own dim metadata where there is some (HDF5
+         *     ``DIMENSION_LIST``, zarr ``_ARRAY_DIMENSIONS``, NetCDF dims).
+         * @example {
+         *       "attrs": {
+         *         "units": "counts"
+         *       },
+         *       "chunks": [
+         *         64,
+         *         64
+         *       ],
+         *       "dtype": "float32",
+         *       "filters": [
+         *         "deflate",
+         *         "shuffle"
+         *       ],
+         *       "path": "/observations/image",
+         *       "shape": [
+         *         64,
+         *         64
+         *       ]
+         *     }
+         */
+        InspectedArray: {
+            /** Attrs */
+            attrs?: {
+                [key: string]: string | number | boolean | null;
+            };
+            /** Chunks */
+            chunks?: number[] | null;
+            /** Dims Hint */
+            dims_hint?: string[] | null;
+            /** Dtype */
+            dtype: string;
+            /** Filters */
+            filters?: string[];
+            /** Path */
+            path: string;
+            /** Shape */
+            shape?: number[];
         };
         /**
          * InternalService
@@ -11269,7 +11781,7 @@ export interface components {
          * @description A plot recipe the runner can produce.
          */
         PlotCatalogEntry: {
-            /** @description M3.5: optional About card (plots are chosen from a model, not a catalog) */
+            /** @description The plot's About card: what it shows, how to read it, what it needs */
             about?: components["schemas"]["About"] | null;
             /** Id */
             id: string;
@@ -11283,6 +11795,11 @@ export interface components {
             requires_groups?: string[];
             /** Requires Representation */
             requires_representation?: components["schemas"]["Representation"][];
+            /**
+             * Summary
+             * @description One line on what the chart shows (the recipe's summary)
+             */
+            summary?: string | null;
             /** Title */
             title: string;
             /**
@@ -13074,7 +13591,7 @@ export interface components {
          *     M4): they own child runs and never execute on an executor themselves.
          * @enum {string}
          */
-        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance";
+        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance" | "inspect";
         /**
          * RunRetry
          * @description ``POST /runs/{id}:retry``: a *new* run from a failed one, optionally one class up.
@@ -14920,6 +15437,21 @@ export interface components {
          */
         TokenStatus: "active" | "expired" | "revoked";
         /**
+         * TreeSchema
+         * @description Schema of an ``xr.DataTree``: one :class:`~mapi_spec.schema.DataSchema` per node.
+         *
+         *     Every node's ancestors are present (an empty schema stands for a pure group), a
+         *     dim a node shares with an ancestor has an equal spec (children align with inherited
+         *     coords), and no variable has the name of an ancestor's dim (the inherited coord would
+         *     hide it).
+         */
+        TreeSchema: {
+            /** Nodes */
+            nodes: {
+                [key: string]: components["schemas"]["DataSchema"];
+            };
+        };
+        /**
          * TriggerCreate
          * @description ``POST /v1/workflows/{workflow_id}/triggers``: run when a new version of a dataset
          *     is ready; the version is bound to workflow input ``input``.
@@ -14996,6 +15528,72 @@ export interface components {
             filename: string;
             /** Size Bytes */
             size_bytes: number;
+        };
+        /**
+         * UploadInspection
+         * @description What an ``inspect`` run found in an upload (``inspection.json``; M4): its groups and
+         *     arrays, so a raw HDF5 file can be mapped (:class:`Hdf5Mapping`) and a NetCDF/zarr file's
+         *     groups previewed before ingest.
+         * @example {
+         *       "arrays": [
+         *         {
+         *           "attrs": {
+         *             "units": "counts"
+         *           },
+         *           "chunks": [
+         *             64,
+         *             64
+         *           ],
+         *           "dtype": "float32",
+         *           "filters": [
+         *             "deflate",
+         *             "shuffle"
+         *           ],
+         *           "path": "/observations/image",
+         *           "shape": [
+         *             64,
+         *             64
+         *           ]
+         *         },
+         *         {
+         *           "dtype": "float64",
+         *           "path": "/psf/kernel",
+         *           "shape": [
+         *             9,
+         *             9
+         *           ]
+         *         }
+         *       ],
+         *       "format": "hdf5",
+         *       "groups": [
+         *         "/",
+         *         "/observations",
+         *         "/psf"
+         *       ],
+         *       "size_bytes": 2097152,
+         *       "truncated": false,
+         *       "warnings": []
+         *     }
+         */
+        UploadInspection: {
+            /** Arrays */
+            arrays?: components["schemas"]["InspectedArray"][];
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5";
+            /** Groups */
+            groups?: string[];
+            /** Size Bytes */
+            size_bytes: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated?: boolean;
+            /** Warnings */
+            warnings?: string[];
         };
         /**
          * UploadSession
@@ -18074,6 +18672,74 @@ export interface operations {
             };
         };
     };
+    get_catalog_plot_example: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotSpec"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     recommend_catalog_items: {
         parameters: {
             query?: {
@@ -18530,6 +19196,162 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inspect_upload: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                dataset_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_upload_inspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadInspection"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_READY */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

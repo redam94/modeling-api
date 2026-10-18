@@ -1,0 +1,13 @@
+{
+  "message": "sales of each market (one file each) and the media plan",
+  "assembly": {
+    "sources": [
+      {"upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p1", "mapping": {"format": "netcdf"},
+       "node": "/sales", "combine": "concat", "concat_dim": "market", "concat_label": "NL"},
+      {"upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p2", "mapping": {"format": "netcdf"},
+       "node": "/sales", "combine": "concat", "concat_dim": "market", "concat_label": "DE"},
+      {"upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p3", "mapping": {"format": "netcdf"},
+       "node": "/media"}
+    ]
+  }
+}

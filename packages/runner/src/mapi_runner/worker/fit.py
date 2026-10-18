@@ -34,9 +34,11 @@ from mapi_runner.jobs import BUNDLE_MANIFEST_OUTPUT
 from mapi_runner.worker.checkpoints import RunCheckpointSink
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import (
+    flatten,
     load_dataset,
     load_raw_schema,
     load_side_tables,
+    load_tree_schema,
     supplied_side_tables,
 )
 from mapi_runner.worker.explore import write_model_explorer
@@ -52,9 +54,14 @@ FIT_COORDS = "coords.json"
 
 def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the dataset")
-    data = load_dataset(ctx)
-    schema = load_raw_schema(ctx, data)
-    tables = load_side_tables(ctx)
+    given = load_dataset(ctx)
+    # M4: a tree dataset is flattened per data.nodes (the harness does it again for the fit);
+    # the views below read the flat data, a tree-input model also gets the tree
+    tree_schema = load_tree_schema(ctx, given)
+    data = flatten(given, spec.data, tree_schema)
+    tree = given if isinstance(given, xr.DataTree) else None
+    schema = load_raw_schema(ctx, data) if tree is None else None
+    tables = load_side_tables(ctx, spec)
     check_lift_tests(spec, data)
     sink: RunCheckpointSink | None = None
     if ctx.start.checkpointing:
@@ -64,11 +71,12 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
     ctx.state(RunnerPhase.FIT, "fitting the pipeline and the model")
     bundle = fit_spec(
         spec,
-        data,
+        given,
         tables,
         ctx.registry,
         raw_schema=schema,
         hooks=ctx.fit_hooks(checkpoint_sink=sink, window=(0.0, 0.9)),
+        tree_schema=tree_schema,
     )
     ctx.cancel.check()
     ctx.state(RunnerPhase.PLOTS, "rendering plots and views")
@@ -76,7 +84,7 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
     plots = render_for(
         ctx,
         refs,
-        [bundle.to_tree(), lambda: _evaluation_tree(ctx, spec, data, bundle, tables)],
+        [bundle.to_tree(), lambda: _evaluation_tree(ctx, spec, data, bundle, tables, tree)],
     )
     bundle.plots = externalize_plot_data(ctx, plots)
     write_bundle(ctx, bundle)
@@ -158,9 +166,11 @@ def _evaluation_tree(
     data: xr.Dataset,
     bundle: Bundle,
     tables: dict[str, xr.Dataset],
+    data_tree: xr.DataTree | None = None,
 ) -> xr.DataTree | None:
     """Full predictions + observed values on the holdout (in sample without a split), for
-    plots that need predictions (fan charts, fit vs actual, residuals)."""
+    plots that need predictions (fan charts, fit vs actual, residuals). ``data`` is the flat
+    fit data; ``data_tree`` the tree dataset it came from (M4: handed to tree-input models)."""
     target = bundle.evaluation or bundle
     holdout = _holdout(spec, data, target) if bundle.evaluation is not None else None
     payload = holdout if holdout is not None else data
@@ -192,6 +202,7 @@ def _evaluation_tree(
             registry=ctx.registry,
             metrics=metrics,
             return_full=True,
+            tree=data_tree,
         )
     except Exception as exc:  # plots only: never fail the fit
         ctx.warning(

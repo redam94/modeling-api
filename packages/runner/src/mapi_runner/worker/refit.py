@@ -47,6 +47,8 @@ class Refitter:
     cancel: Any = None
     on_refit: Callable[[int], None] | None = None
     used: int = 0
+    tree: xr.DataTree | None = None
+    """M4: the tree dataset the refit data was selected from (for tree-input models)."""
 
     @property
     def remaining(self) -> int:
@@ -124,4 +126,5 @@ class Refitter:
             hooks=FitHooks(cancel=self.cancel),
             keep_evaluation_bundle=False,
             hash_data=False,
+            tree=self.tree,
         )

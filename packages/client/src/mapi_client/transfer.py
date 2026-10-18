@@ -8,9 +8,13 @@ Every transfer is checked against the CRC32C the storage service computed itself
 (``ArtifactLink.crc32c``; the object resource returned by the PUT). A mismatch raises
 :class:`~mapi_spec.errors.IntegrityFailure` and nothing is kept.
 
-``xr.Dataset`` inputs and ``xr.DataTree`` outputs need the ``xarray`` extra
-(``pip install 'mapi-client[xarray]'``), which brings ``mapi-sdk`` and its validated
+``xr.Dataset`` / ``xr.DataTree`` inputs and ``xr.DataTree`` outputs need the ``xarray``
+extra (``pip install 'mapi-client[xarray]'``), which brings ``mapi-sdk`` and its validated
 zarr-zip reader/writer.
+
+Raw HDF5 files (``.h5``, ``.hdf5``, ``.he5``; format ``hdf5``, M4) are not self-describing:
+they need an :class:`~mapi_spec.ingest.Hdf5Mapping` naming each array's dims. A NetCDF-4 or
+xarray-written ``.h5`` file may instead be ingested with ``IngestMapping(format="netcdf")``.
 """
 
 from __future__ import annotations
@@ -41,8 +45,10 @@ __all__ = [
     "UploadSource",
     "check_put_response",
     "datatree_from_bytes",
+    "datatree_to_bytes",
     "default_mapping",
     "detect_format",
+    "mapping_reads",
     "require_xarray",
     "upload_source",
     "verify_bytes",
@@ -50,7 +56,7 @@ __all__ = [
 ]
 
 CHUNK_SIZE: Final = 1024 * 1024
-UploadFormat = Literal["csv", "parquet", "zarr_zip", "netcdf"]
+UploadFormat = Literal["csv", "parquet", "zarr_zip", "netcdf", "hdf5"]
 
 _SUFFIXES: Final[tuple[tuple[str, UploadFormat, str], ...]] = (
     (".zarr.zip", "zarr_zip", "application/zip"),
@@ -60,6 +66,9 @@ _SUFFIXES: Final[tuple[tuple[str, UploadFormat, str], ...]] = (
     (".pq", "parquet", "application/vnd.apache.parquet"),
     (".nc", "netcdf", "application/x-netcdf"),
     (".nc4", "netcdf", "application/x-netcdf"),
+    (".h5", "hdf5", "application/x-hdf5"),
+    (".hdf5", "hdf5", "application/x-hdf5"),
+    (".he5", "hdf5", "application/x-hdf5"),
 )
 _CONTENT_TYPES: Final[dict[UploadFormat, str]] = {f: ct for _, f, ct in reversed(_SUFFIXES)}
 
@@ -87,6 +96,12 @@ def _is_xr_dataset(obj: Any) -> bool:
     return xr_mod is not None and isinstance(obj, xr_mod.Dataset)
 
 
+def _is_xr_datatree(obj: Any) -> bool:
+    xr_mod = sys.modules.get("xarray")
+    tree_type = getattr(xr_mod, "DataTree", None) if xr_mod is not None else None
+    return tree_type is not None and isinstance(obj, tree_type)
+
+
 def datatree_from_bytes(data: bytes) -> xr.DataTree:
     """Decode a ``*.zarr.zip`` DataTree with the SDK's validating reader."""
     require_xarray()
@@ -100,6 +115,16 @@ def _dataset_bytes(ds: xr.Dataset) -> bytes:
     from mapi_sdk.wire import write_zarr_zip
 
     out = write_zarr_zip(ds)
+    assert out is not None
+    return out
+
+
+def datatree_to_bytes(tree: xr.DataTree) -> bytes:
+    """Encode a ``DataTree`` with the SDK's writer (the ``data.tree.zip`` wire format)."""
+    require_xarray()
+    from mapi_sdk.wire import write_datatree_zip
+
+    out = write_datatree_zip(tree)
     assert out is not None
     return out
 
@@ -119,8 +144,14 @@ def detect_format(filename: str) -> tuple[UploadFormat, str]:
 
 def mapping_reads(mapping_format: str, file_format: UploadFormat) -> bool:
     """Whether an ingest mapping of ``mapping_format`` can read a file of ``file_format``:
-    the same format, or an ``mff`` long table, which is a CSV file."""
-    return mapping_format == file_format or (mapping_format == "mff" and file_format == "csv")
+    the same format, an ``mff`` long table (a CSV file), or - since NetCDF-4 is HDF5 - a
+    ``netcdf`` mapping for a self-describing ``.h5`` file and an ``hdf5`` mapping for a
+    NetCDF-4 file read as raw HDF5."""
+    if mapping_format == file_format:
+        return True
+    if mapping_format == "mff":
+        return file_format == "csv"
+    return {mapping_format, file_format} == {"netcdf", "hdf5"}
 
 
 def default_mapping(fmt: UploadFormat) -> IngestMapping:
@@ -128,6 +159,13 @@ def default_mapping(fmt: UploadFormat) -> IngestMapping:
     if fmt in ("csv", "parquet"):
         raise ValueError(
             f"{fmt} uploads need an IngestMapping that maps columns to dims and variables"
+        )
+    if fmt == "hdf5":
+        raise ValueError(
+            "raw HDF5 uploads need an IngestMapping with an 'hdf5' mapping (Hdf5Mapping) that "
+            "names each array's dims and coords - inspect the file first (datasets.inspect / "
+            "'mapi datasets inspect'); a NetCDF-4 or xarray-written .h5 file can use "
+            "IngestMapping(format='netcdf') instead"
         )
     return IngestMapping(format=fmt)
 
@@ -159,11 +197,18 @@ class UploadSource:
 
 
 def upload_source(
-    source: str | os.PathLike[str] | xr.Dataset | bytes,
+    source: str | os.PathLike[str] | xr.Dataset | xr.DataTree | bytes,
     *,
     filename: str | None = None,
 ) -> UploadSource:
-    """Describe what to upload. An ``xr.Dataset`` is written as a zarr zip in memory."""
+    """Describe what to upload. An ``xr.Dataset`` is written as a zarr zip in memory, an
+    ``xr.DataTree`` as a tree zarr zip (``data.tree.zip``, format ``zarr_zip``)."""
+    if _is_xr_datatree(source):
+        tree_payload = datatree_to_bytes(source)  # type: ignore[arg-type]
+        name = filename or "data.tree.zip"
+        return UploadSource(
+            name, len(tree_payload), "zarr_zip", "application/zip", data=tree_payload
+        )
     if _is_xr_dataset(source):
         payload = _dataset_bytes(source)  # type: ignore[arg-type]
         name = filename or "data.zarr.zip"
@@ -180,7 +225,9 @@ def upload_source(
         name = filename or path.name
         fmt, ctype = detect_format(name)
         return UploadSource(name, path.stat().st_size, fmt, ctype, path=path)
-    raise TypeError("upload a file path, raw bytes with a filename, or an xr.Dataset")
+    raise TypeError(
+        "upload a file path, raw bytes with a filename, an xr.Dataset or an xr.DataTree"
+    )
 
 
 def check_upload_size(src: UploadSource, put: SignedPut) -> None:

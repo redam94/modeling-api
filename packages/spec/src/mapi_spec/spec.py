@@ -32,6 +32,7 @@ from mapi_spec.errors import parse_pointer
 from mapi_spec.refs import DatasetRef, ModelTarget, SpecRef, UseRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.schema import DimPolicy
+from mapi_spec.tree import NodePath, NodeSelect, TreeJoin
 
 __all__ = [
     "API_VERSION",
@@ -60,6 +61,7 @@ __all__ = [
     "Metadata",
     "ModelBlock",
     "ModelSpec",
+    "NodeSelect",
     "OutputsBlock",
     "ScorePolicy",
     "ScoreRequest",
@@ -110,10 +112,18 @@ class ScorePolicy(StrEnum):
 
 
 class SideTable(StrictModel):
-    """A small constant dataset (FX rates, holidays ...) used by steps."""
+    """A small constant dataset (FX rates, holidays ...) used by steps.
+
+    A side table that is a tree dataset (M4) reads ONE node, named by ``node``.
+    """
 
     ref: DatasetRef
     score_policy: ScorePolicy = ScorePolicy.PINNED
+    node: NodePath | None = Field(
+        None,
+        description="M4: the node of a tree dataset to read (needed when the table is a tree)",
+        exclude_if=lambda v: v is None,
+    )
 
 
 class Binding(StrictModel):
@@ -279,13 +289,41 @@ Split = Annotated[
 ]
 
 
+MAX_DATA_NODES = 64
+"""Entries of ``data.nodes`` (nodes of a tree dataset merged into the pipeline input)."""
+
+
 class DataBlock(StrictModel):
-    """The dataset, side tables, binding to canonical names and the split."""
+    """The dataset, side tables, binding to canonical names and the split.
+
+    For a tree dataset (M4), ``nodes`` picks the nodes whose variables are merged into the
+    ONE flat dataset the pipeline sees (:meth:`mapi_spec.tree.TreeSchema.flat`), aligned per
+    ``join``. Without ``nodes`` a tree dataset's root node is read (when it has variables).
+    ``nodes`` on a plain dataset is an error. The binding applies to the merged names.
+    """
 
     dataset: DatasetRef
     side_tables: dict[Name, SideTable] = Field(default_factory=dict, max_length=32)
     bind: Binding = Field(default_factory=Binding)
     split: Split | None = None
+    nodes: dict[Name, NodeSelect] | None = Field(
+        None,
+        min_length=1,
+        max_length=MAX_DATA_NODES,
+        description="M4: tree datasets: the nodes merged into the pipeline input",
+        exclude_if=lambda v: v is None,
+    )
+    join: TreeJoin = Field(
+        "exact",
+        description="M4: how the coords of the selected nodes align (xarray merge join)",
+        exclude_if=lambda v: v == "exact",
+    )
+
+    @model_validator(mode="after")
+    def _join_needs_nodes(self) -> DataBlock:
+        if self.join != "exact" and self.nodes is None:
+            raise ValueError("data.join is only used with data.nodes")
+        return self
 
 
 # ----------------------------------------------------------------------------- pipeline

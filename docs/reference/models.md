@@ -407,7 +407,10 @@ that mode with a Laplace preconditioner.
 **Inputs.** `row` and `col` (integer, fixed, row 0 at the bottom), the target `image(row, col)`,
 the inverse variance `weight(row, col)` (0 leaves a pixel out) and a constant
 `psf(psf_row, psf_col)` with odd sides. With `use_mask: true`, the data also has a bool
-`mask(row, col)`.
+`mask(row, col)`. The model also reads tree datasets (`capabilities.input` is `tree`): select
+the image node in `data.nodes`. When the tree has a `/psf` node with `psf(psf_row, psf_col)`,
+the fit uses that PSF. Otherwise it uses the flat `psf`. With `psf_source: tree`, the flat input
+needs no `psf` and the `/psf` node is required.
 
 **Outputs.** `model_image(row, col)` (a field, grey scale), `source(source_row, source_col)` (the
 source on a source-plane grid), the scalar `einstein_radius` (arcsec) and, when `z_lens` and
@@ -426,6 +429,7 @@ caustic and the cut of each posterior draw as the derived group `critical_curves
 | `n_starts` | 5 | Starts of the search for the mode |
 | `source_grid`, `source_half_width` | 30, 0.45 | Size of the source-plane grid (pixels, arcsec) |
 | `curve_draws` | 100 | Posterior draws with critical curves |
+| `psf_source` | auto | `auto`: the `/psf` node of a tree dataset, else the flat `psf`; `tree`: only the `/psf` node |
 
 The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F814W image of
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the

@@ -107,9 +107,11 @@ without a message. The log above the shutdown shows the reason.
 At its first start against a new environment, the worker logs `no catalog for sha256:…:
 queued describe run`. The catalog contains the steps, models and plot recipes in the runner,
 with their settings schemas and schema effects. A sandboxed `describe` run of the real runner
-makes the catalog. The server keeps it in a cache for each `uv.lock` digest. Thus the server
-builds it again only when the locked dependencies change. Until the catalog is ready, spec
-validation reports that the catalog is not available. This takes some seconds.
+makes the catalog. The server keeps it in a cache for each digest of the environment: the hash
+of `uv.lock` and of the workspace sources (`packages/*/src`, `plugins/*/src`). Thus the
+server builds it again after you change the locked dependencies or the code, when you
+restart `make dev`. Until the catalog is ready, spec validation reports that the catalog is
+not available. This takes some seconds.
 
 Runs use the same isolation as in production, but not the parts that a laptop cannot do. The
 run event `DEV_MODE_ISOLATION` tells that the worker process runs as your user, without a uid

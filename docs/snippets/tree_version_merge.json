@@ -1,0 +1,11 @@
+{
+  "message": "sales and weather on the same markets and weeks",
+  "assembly": {
+    "sources": [
+      {"upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p4", "mapping": {"format": "netcdf"},
+       "combine": "merge", "join": "inner"},
+      {"upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p5", "mapping": {"format": "netcdf"},
+       "combine": "merge", "join": "inner"}
+    ]
+  }
+}

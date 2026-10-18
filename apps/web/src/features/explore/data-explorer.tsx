@@ -48,6 +48,8 @@ export interface DataExplorerProps {
   runId: string | null;
   onRun: (runId: string) => void;
   expert: boolean;
+  /** M4: the node of a tree dataset (its schema is `schema`); `null` for a plain dataset. */
+  node?: string | null;
 }
 
 /** The request of the "compute the rest" button: every section the page does not have yet. */
@@ -275,8 +277,8 @@ function SectionPanel({
 
 // ------------------------------------------------------------------------------ the explorer
 
-export function DataExplorer({ datasetId, version, schema, section, onSection, runId, onRun, expert }: DataExplorerProps) {
-  const target = useMemo((): ExplorerTarget => ({ kind: "dataset", id: datasetId, version }), [datasetId, version]);
+export function DataExplorer({ datasetId, version, schema, section, onSection, runId, onRun, expert, node = null }: DataExplorerProps) {
+  const target = useMemo((): ExplorerTarget => ({ kind: "dataset", id: datasetId, version, node }), [datasetId, version, node]);
   const base = useBaseIndex(target);
   const run = useExploration(runId);
   const start = useStartExploration(target);
@@ -290,7 +292,7 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
   const unit = periodUnit(timeFreq(schema));
 
   const explore = (req: DataExploreRequest) =>
-    start.mutate(req, {
+    start.mutate(node ? { ...req, node } : req, {
       onSuccess: (r) => {
         setOptionsOpen(false);
         onRun(r.exploration.run.id);

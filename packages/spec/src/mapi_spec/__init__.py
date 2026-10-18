@@ -122,10 +122,17 @@ from mapi_spec.guided import (
     suggest_roles,
 )
 from mapi_spec.ingest import (
+    AssemblySource,
+    Hdf5Coord,
+    Hdf5Mapping,
+    Hdf5Var,
+    IngestAssembly,
     IngestMapping,
     IngestPreset,
+    InspectedArray,
     MeridianColumns,
     MffOptions,
+    UploadInspection,
     WideVarMapping,
 )
 from mapi_spec.jsonschema_export import export_schemas
@@ -142,7 +149,14 @@ from mapi_spec.loader import (
     upgrade,
 )
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
-from mapi_spec.plots import DataRef, InlineArrow, PlotBindings, PlotProvenance, PlotSpec
+from mapi_spec.plots import (
+    DataRef,
+    InlineArrow,
+    PlotBindings,
+    PlotExamples,
+    PlotProvenance,
+    PlotSpec,
+)
 from mapi_spec.quotas import (
     PriorityClass,
     QuotaDecision,
@@ -200,6 +214,7 @@ from mapi_spec.spec import (
     Intervention,
     ModelBlock,
     ModelSpec,
+    NodeSelect,
     ScoreRequest,
     SideTable,
     StepCall,
@@ -223,6 +238,20 @@ from mapi_spec.tenancy import (
     can,
 )
 from mapi_spec.tokens import ApiToken, ScopeName, generate_token, parse_token, scope_allows
+from mapi_spec.tree import (
+    MAX_TREE_DEPTH,
+    MAX_TREE_NODES,
+    DataLayout,
+    NodePath,
+    NodeSelectionError,
+    TreeSchema,
+    is_ancestor,
+    node_ancestors,
+    node_depth,
+    node_join,
+    node_name,
+    node_parent,
+)
 from mapi_spec.trust import (
     TenantDeletion,
     VerificationStatus,
@@ -259,7 +288,7 @@ from mapi_spec.xrjson import XrJsonDataset
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.7.0"
+    __version__ = "0.8.0"
 
 __all__ = [
     "API_VERSION",
@@ -269,6 +298,8 @@ __all__ = [
     "EXECUTOR_CONFORMANCE",
     "GOVERNANCE_CHECKS",
     "GUIDED_TEMPLATES",
+    "MAX_TREE_DEPTH",
+    "MAX_TREE_NODES",
     "NODE_IMPLEMENTATIONS",
     "PERMISSIONS",
     "REPRESENTATION_RULES",
@@ -283,6 +314,7 @@ __all__ = [
     "AggregationVerdict",
     "AnyDocument",
     "ApiToken",
+    "AssemblySource",
     "AuditAction",
     "AuditEvent",
     "AuditOutcome",
@@ -306,6 +338,7 @@ __all__ = [
     "CoordSummary",
     "CostLedgerEntry",
     "DataBlock",
+    "DataLayout",
     "DataRef",
     "DataSchema",
     "DataSchemaTemplate",
@@ -335,10 +368,15 @@ __all__ = [
     "GuidedAnswers",
     "GuidedDraft",
     "GuidedTemplate",
+    "Hdf5Coord",
+    "Hdf5Mapping",
+    "Hdf5Var",
     "Horizon",
+    "IngestAssembly",
     "IngestMapping",
     "IngestPreset",
     "InlineArrow",
+    "InspectedArray",
     "Intervention",
     "Issue",
     "KillSwitches",
@@ -356,7 +394,10 @@ __all__ = [
     "ModelVersionRef",
     "NodeImplementation",
     "NodeKind",
+    "NodePath",
     "NodeRun",
+    "NodeSelect",
+    "NodeSelectionError",
     "OptimizeRequest",
     "OptimizeResult",
     "OutputDecl",
@@ -364,6 +405,7 @@ __all__ = [
     "PlotBindings",
     "PlotCatalogEntry",
     "PlotEmbed",
+    "PlotExamples",
     "PlotProvenance",
     "PlotSpec",
     "PolicyCheck",
@@ -414,8 +456,10 @@ __all__ = [
     "Tenant",
     "TenantDeletion",
     "TenantStatus",
+    "TreeSchema",
     "TrustTier",
     "TypicalRuntime",
+    "UploadInspection",
     "UseRef",
     "ValidationEvent",
     "ValidationFailed",
@@ -462,12 +506,18 @@ __all__ = [
     "export_schemas",
     "generate_token",
     "http_status",
+    "is_ancestor",
     "json_pointer",
     "kill_switch_decision",
     "load_document",
     "load_model_spec",
     "load_score_request",
     "load_workflow",
+    "node_ancestors",
+    "node_depth",
+    "node_join",
+    "node_name",
+    "node_parent",
     "parse_document",
     "parse_expression",
     "parse_freq",

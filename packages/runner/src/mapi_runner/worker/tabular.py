@@ -31,7 +31,7 @@ import zlib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 import numpy as np
 import pandas as pd
@@ -45,7 +45,9 @@ __all__ = [
     "IngestLimits",
     "check_zip_archive",
     "column_profiles",
+    "hdf5_superblock_offset",
     "problem",
+    "read_as_hdf5",
     "read_table",
     "sniff",
     "write_profiles",
@@ -57,6 +59,8 @@ ZIP_MAGIC = b"PK\x03\x04"
 GZIP_MAGIC = b"\x1f\x8b"
 BZIP2_MAGIC = b"BZh"
 XZ_MAGIC = b"\xfd7zXZ\x00"
+NETCDF3_MAGICS: Final = (b"CDF\x01", b"CDF\x02", b"CDF\x05")
+"""Classic, 64-bit offset and 64-bit data NetCDF-3 files start with one of these."""
 ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 MAX_HEADER_NAME = 256
 """Column names are at most this long (``IngestMapping`` column refs are)."""
@@ -80,6 +84,17 @@ class IngestLimits:
     """Values of the dense dataset a table pivots to (every combination of the dim labels
     times the variables), checked before it is built; its bytes must also fit
     ``max_uncompressed_bytes`` (the class's scratch budget)."""
+    # M4: tree datasets, HDF5 and multi-file versions
+    max_nodes: int = 256
+    """Nodes of a tree dataset (the root included)."""
+    max_sources: int = 64
+    """Uploads of one multi-file version."""
+    max_hdf5_objects: int = 10_000
+    """Links (groups, datasets) and attributes walked in one HDF5 file (each)."""
+    max_ndim: int = 32
+    """Dims of one array."""
+    max_attr_bytes: int = 65_536
+    """Bytes of one attribute value."""
 
     @classmethod
     def from_job(cls, job: IngestJob) -> IngestLimits:
@@ -89,6 +104,11 @@ class IngestLimits:
             max_cell_chars=job.max_cell_chars,
             max_decompression_ratio=job.max_decompression_ratio,
             max_uncompressed_bytes=job.max_uncompressed_bytes,
+            max_nodes=job.max_nodes,
+            max_sources=job.max_sources,
+            max_hdf5_objects=job.max_hdf5_objects,
+            max_ndim=job.max_ndim,
+            max_attr_bytes=job.max_attr_bytes,
         )
 
     def expansion_budget(self, stored: int) -> int:
@@ -124,6 +144,39 @@ def problem(
 
 def _too_large(message: str, action: str, pointer: str = "") -> MapiError:
     return problem(ErrorCode.PAYLOAD_TOO_LARGE, message, pointer=pointer, action=action)
+
+
+def hdf5_superblock_offset(path: Path) -> int | None:
+    """Where libhdf5 would find the file's superblock, or ``None`` when it is not HDF5.
+
+    libhdf5 looks for the signature at byte 0 and then at every power of two from 512 up
+    (a *user block* of arbitrary bytes may precede it), so a file whose first bytes look
+    like something else (``CDF``...) can still open as HDF5: every one of those offsets is
+    checked, never just the first eight bytes.
+    """
+    size = path.stat().st_size
+    with open(path, "rb") as fh:
+        offset = 0
+        while offset + len(HDF5_MAGIC) <= size:
+            fh.seek(offset)
+            if fh.read(len(HDF5_MAGIC)) == HDF5_MAGIC:
+                return offset
+            offset = 512 if offset == 0 else offset * 2
+    return None
+
+
+def read_as_hdf5(path: Path) -> bool:
+    """True when the runner reads ``path`` as HDF5 (with the guard first, then an HDF5
+    engine): libhdf5 would find a superblock in it (:func:`hdf5_superblock_offset`) and it is
+    not a NetCDF-3 file. A file that starts with the NetCDF-3 magic is read only by the
+    pure-Python NetCDF-3 reader (scipy), which never hands a byte to libhdf5, so HDF5
+    signature bytes that happen to sit in its data at a power-of-two offset do not make it
+    unreadable.
+    """
+    with open(path, "rb") as fh:
+        if fh.read(4) in NETCDF3_MAGICS:
+            return False
+    return hdf5_superblock_offset(path) is not None
 
 
 def sniff(path: Path) -> str:

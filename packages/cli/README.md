@@ -12,6 +12,8 @@ mapi score request.yaml --bundle bundles/geo-mmm --data future.zarr.zip -o resul
 mapi fit spec.yaml --data data.zarr.zip --remote @   # upload, create/revise spec, fit, follow
 mapi runs ls --state running | get RUN | logs RUN | watch RUN | cancel RUN | retry RUN
 mapi datasets ls | upload file.csv --name sales --mapping mapping.yaml
+mapi datasets upload sales_nl.nc sales_de.nc --name sales --concat market=NL,DE   # one version (v0.8)
+mapi datasets inspect lens raw.h5 && mapi datasets ingest lens UPLOAD_ID --mapping hdf5.yaml
 mapi score request.yaml --remote @ --model MODEL_ID --version 1 -o result.zarr.zip
 mapi catalog [models|steps|plots] [--remote @]
 

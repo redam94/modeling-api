@@ -20,7 +20,7 @@ from typing import Any, Protocol, runtime_checkable
 import xarray as xr
 from mapi_spec.catalog import Catalog, ModelCatalogEntry, PlotCatalogEntry
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.plots import PlotSpec
+from mapi_spec.plots import PlotExamples, PlotSpec
 from mapi_spec.refs import UseRef, Version
 
 from mapi_sdk.models import ModelPlugin
@@ -242,6 +242,30 @@ class Registry:
             models=[ModelCatalogEntry(manifest=m.manifest()) for m in self.models()],
             plots=[p.catalog_entry() for p in self.plots()],
         )
+
+    def plot_examples(
+        self, *, on_error: Callable[[str, Exception], None] | None = None
+    ) -> PlotExamples:
+        """Every plot recipe rendered on its synthetic example data, keyed by ``id@version``
+        (recipes without an ``example_spec()`` or without example data are left out).
+
+        A recipe that fails, or whose example is not self-contained, is left out too and
+        reported to ``on_error``: one broken example never hides the others."""
+        out: dict[str, PlotSpec] = {}
+        for p in self.plots():
+            make = getattr(p, "example_spec", None)
+            if make is None:
+                continue
+            ref = p.catalog_entry().ref
+            try:
+                spec = make()
+                if spec is not None:
+                    PlotExamples(plots={ref: spec})
+                    out[ref] = spec
+            except Exception as exc:  # plugin code: report it, keep the rest
+                if on_error is not None:
+                    on_error(ref, exc)
+        return PlotExamples(plots=out)
 
 
 _default: Registry | None = None

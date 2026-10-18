@@ -11,6 +11,7 @@ Built with xarray only (no PyMC), so docs, demos and tests can render the whole 
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import numpy as np
@@ -22,13 +23,17 @@ __all__ = [
     "contributions",
     "counterfactual_tree",
     "decision_dataset",
+    "ensemble_tree",
     "example_inputs",
     "feature_importance_tree",
+    "field_tree",
     "panel_data",
     "plans_dataset",
     "prior_beliefs_dataset",
+    "profile_tree",
     "response_curves",
     "score_tree",
+    "vector_tree",
 ]
 
 GEOS = ["north", "south", "east"]
@@ -274,6 +279,99 @@ def feature_importance_tree() -> xr.DataTree:
     )
 
 
+def field_tree() -> xr.DataTree:
+    """``posterior.intensity(chain, draw, row, col)``: a lensed galaxy, a bright arc at the
+    top left on a 32x32 image. The data fix the arc well and the edges of the image badly
+    (the draws spread more away from the centre); one corner was not observed (NaN)."""
+    rng = _rng(11)
+    yy, xx = np.meshgrid(np.linspace(0, 1, 32), np.linspace(0, 1, 32), indexing="ij")
+    r = np.hypot(xx - 0.55, yy - 0.45)
+    angle = np.arctan2(yy - 0.45, xx - 0.55)
+    arc = np.exp(-((r - 0.3) ** 2) / 0.003) * np.exp(-((angle + 2.3) ** 2) / 0.5)
+    spread = 0.05 + 0.5 * r**2
+    mean = 0.1 + 3.0 * arc + 0.8 * np.exp(-(r**2) / 0.004)
+    draws = mean + rng.normal(size=(CHAINS, 40, 32, 32)) * spread
+    draws = np.clip(draws, 0.0, None)
+    draws[..., :5, -6:] = np.nan
+    da = xr.DataArray(
+        draws,
+        dims=["chain", "draw", "row", "col"],
+        coords={"row": np.linspace(0, 1, 32), "col": np.linspace(0, 1, 32)},
+        name="intensity",
+        attrs={"grid": json.dumps({"y": "row", "x": "col"})},
+    )
+    return xr.DataTree.from_dict(
+        {"/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}), "/posterior": da.to_dataset()}
+    )
+
+
+def vector_tree() -> xr.DataTree:
+    """``posterior.traction(chain, draw, comp, y, x)``: the traction force of a long cell.
+    The forces point inwards and are largest at the two ends; the draws disagree most in
+    the centre, where the force is small."""
+    rng = _rng(12)
+    y, x = np.meshgrid(np.linspace(-1, 1, 14), np.linspace(-1.5, 1.5, 20), indexing="ij")
+    inside = np.exp(-(((x / 1.3) ** 2 + (y / 0.7) ** 2) ** 3))
+    u = -1.6 * x * np.abs(x) * inside
+    v = -0.6 * y * inside
+    noise = 0.08 + 0.35 * np.exp(-(x**2 + y**2) / 0.3)
+    draws = np.stack([u, v])[None, None] + rng.normal(size=(CHAINS, 30, 2, 14, 20)) * noise
+    da = xr.DataArray(
+        draws,
+        dims=["chain", "draw", "comp", "y", "x"],
+        coords={"y": np.linspace(-1, 1, 14), "x": np.linspace(-1.5, 1.5, 20)},
+        name="traction",
+        attrs={"grid": json.dumps({"y": "y", "x": "x", "component": "comp", "origin": "lower"})},
+    )
+    return xr.DataTree.from_dict(
+        {"/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}), "/posterior": da.to_dataset()}
+    )
+
+
+def profile_tree() -> xr.DataTree:
+    """``posterior_predictive.u(chain, draw, t, x)`` and ``observed_data.u(t, x)``: the
+    population along a river on four days. The front moves to the right and the model is
+    less sure of where it is on later days; some points were not measured."""
+    rng = _rng(13)
+    t, xg = np.arange(4), np.linspace(0.0, 1.0, 40)
+    front = 0.2 + 0.18 * t
+    pred = np.empty((CHAINS, 60, 4, 40))
+    for i in t:
+        shift = rng.normal(0, 0.015 * (1 + i), size=(CHAINS, 60, 1))
+        pred[:, :, i] = 1 / (1 + np.exp((xg - front[i] - shift) / 0.04))
+    pred += rng.normal(0, 0.03, size=pred.shape)
+    obs = 1 / (1 + np.exp((xg[None, :] - front[:, None]) / 0.04)) + rng.normal(0, 0.03, (4, 40))
+    obs[:, ::3] = np.nan
+    coords = {"t": t, "x": xg}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior_predictive": xr.Dataset({"u": (("chain", "draw", "t", "x"), pred)}, coords),
+            "/observed_data": xr.Dataset({"u": (("t", "x"), obs)}, coords),
+        }
+    )
+
+
+def ensemble_tree() -> xr.DataTree:
+    """``predictions.y(chain, draw, time)``: 60 simulated outbreaks over 24 weeks. Most
+    peak in week 10, some in week 14; the observed weekly cases are inside the band."""
+    rng = _rng(14)
+    t = pd.date_range("2024-01-07", periods=24, freq="W-SUN")
+    weeks = np.arange(24)
+    peak = np.where(rng.random(60) < 0.75, 10.0, 14.0) + rng.normal(0, 0.6, 60)
+    height = rng.normal(100, 15, 60)
+    walk = height[:, None] * np.exp(-((weeks[None, :] - peak[:, None]) ** 2) / (2 * 2.5**2))
+    walk = (walk + rng.normal(0, 4, walk.shape))[None]
+    obs = 95 * np.exp(-((weeks - 10.5) ** 2) / (2 * 2.6**2)) + rng.normal(0, 4, 24)
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/predictions": xr.Dataset({"y": (("chain", "draw", "time"), walk)}, {"time": t}),
+            "/observed_data": xr.Dataset({"y": (("time",), obs)}, {"time": t}),
+        }
+    )
+
+
 def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     """``{recipe id: (input data, render options)}`` for every bundled recipe."""
     bundle = bundle_tree()
@@ -297,4 +395,8 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "mmm.decomposition": (bundle, {}),
         "mmm.prior_beliefs": ({"prior_beliefs": prior_beliefs_dataset()}, {}),
         "ml.feature_importance": (feature_importance_tree(), {}),
+        "sci.field_map": (field_tree(), {}),
+        "sci.vector_field": (vector_tree(), {}),
+        "sci.profile_bands": (profile_tree(), {}),
+        "sci.ensemble": (ensemble_tree(), {}),
     }

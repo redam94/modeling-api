@@ -22,6 +22,7 @@ from mapi_spec.effects import SchemaEffect
 from mapi_spec.errors import Problem
 from mapi_spec.executor import RunEvent
 from mapi_spec.governance import CheckResult, EvidencePack, GovernancePolicy, ModelValidation
+from mapi_spec.ingest import UploadInspection
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import PlotSpec
 from mapi_spec.run import BundleManifest, OutputManifest, RunSpec
@@ -39,6 +40,7 @@ from mapi_spec.spec import (
 from mapi_spec.splitplan import SplitPlan
 from mapi_spec.stattests import StatTestResult
 from mapi_spec.storage import ObjectMeta, PostPolicy, SignedGet, SignedPut
+from mapi_spec.tree import TreeSchema
 from mapi_spec.views import (
     AcfPacfView,
     BacktestView,
@@ -85,6 +87,8 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "campaign.json": Campaign,
     "dataschema.json": DataSchema,
     "dataschematemplate.json": DataSchemaTemplate,
+    "treeschema.json": TreeSchema,
+    "upload-inspection.json": UploadInspection,
     "datasummary.json": DataSummary,
     "schemaeffect.json": SchemaEffect,
     "modelmanifest.json": ModelManifest,
