@@ -139,6 +139,31 @@ class ModelValue:
     """M4: the tree dataset ``data`` was selected from (a tree-input model scores with it)."""
 
 
+def scoring_tree(mv: ModelValue, dv: DatasetValue | None) -> xr.DataTree | None:
+    """The tree a tree-input model scores ``dv`` with: the tree of the dataset it scores,
+    and the tree it was fitted on only when that dataset has none (or is the fit data)."""
+    if dv is not None and dv.tree is not None:
+        return dv.tree
+    return mv.tree
+
+
+def score_payload(dv: DatasetValue) -> xr.Dataset | xr.DataTree:
+    """What a score of ``dv`` sends: a workflow input tree whole (the model's ``data.nodes``
+    select from it, as at fit time), any other dataset flat."""
+    if dv.tree is not None and dv.root is None:
+        return dv.tree
+    return dv.data
+
+
+def score_rows(dv: DatasetValue, bundle: Bundle) -> xr.Dataset:
+    """``dv`` flat, as the model reads it: the ``data.nodes`` of its spec selected from a
+    workflow input tree (whose ``data`` is only the root node)."""
+    block = bundle.spec.data
+    if dv.tree is not None and dv.root is None and block.nodes:
+        return dv.select(block.nodes, block.join).data
+    return dv.data
+
+
 Value = DatasetValue | ModelValue | dict[str, Any]
 
 

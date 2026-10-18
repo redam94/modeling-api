@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import pytest
 import xarray as xr
 from mapi_sdk.harness import data_hash
@@ -141,3 +142,57 @@ def test_unknown_node_fails_with_its_pointer() -> None:
     assert res.status is WorkflowRunStatus.FAILED
     err = res.node("fit").error
     assert err is not None and err.code is ErrorCode.SCHEMA_INVALID
+
+
+# ------------------------------------------------------------- scoring a new tree dataset
+
+
+def _score_doc() -> dict[str, Any]:
+    fit = {"model": MODEL, "bind": BIND, "nodes": NODES}
+    return {
+        "apiVersion": "mapi/v1",
+        "kind": "Workflow",
+        "metadata": {"name": "tree-score", "project": "demo"},
+        "inputs": {"data": {"type": "dataset"}, "new": {"type": "dataset"}},
+        "nodes": [
+            {"id": "fit", "use": "model.fit", "with": fit, "inputs": {"data": "inputs.data"}},
+            {
+                "id": "new",
+                "use": "model.score",
+                "with": {},
+                "inputs": {"model": "fit.model", "data": "inputs.new"},
+            },
+            {"id": "old", "use": "model.score", "with": {}, "inputs": {"model": "fit.model"}},
+            {
+                "id": "plot",
+                "use": "plot.render",
+                "with": {"recipe": "core.fit_vs_actual", "source": "predictions"},
+                "inputs": {"model": "fit.model", "data": "inputs.new"},
+            },
+        ],
+        "outputs": {"new": "new.scores", "old": "old.scores", "plot": "plot.plot"},
+    }
+
+
+def test_score_uses_the_tree_of_the_scored_dataset() -> None:
+    # the model adds /adjust offset(market): B's offsets are 100 above A's
+    a, b = tree_dataset(), tree_dataset(offset=(105.0, 95.0, 100.0))
+    res = LocalRunner(registry=test_registry()).run(_score_doc(), inputs={"data": a, "new": b})
+    assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
+    new, old = res.values["new"], res.values["old"]
+    assert isinstance(new, DatasetValue) and isinstance(old, DatasetValue)
+    diff = (new.data["y_hat"] - old.data["y_hat"]).values
+    assert np.allclose(diff, 100.0)
+    plot = res.node("plot").result
+    assert plot is not None and plot["source"] == "predictions"
+
+
+def test_plot_data_keeps_the_groups_of_a_tree_input() -> None:
+    from mapi_workflows.runtime.plots import _data_tree
+
+    tree = tree_dataset()
+    v = as_value(tree)
+    assert isinstance(v, DatasetValue)
+    assert _data_tree(v) is tree
+    derived = v.derive(weekly_series(10))
+    assert set(_data_tree(derived).children) == set()

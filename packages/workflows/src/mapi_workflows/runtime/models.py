@@ -67,7 +67,14 @@ from mapi_workflows.runtime.data import (
     time_dim,
     with_schema,
 )
-from mapi_workflows.runtime.values import DatasetValue, ModelValue, NodeContext, NodeOutcome
+from mapi_workflows.runtime.values import (
+    DatasetValue,
+    ModelValue,
+    NodeContext,
+    NodeOutcome,
+    score_rows,
+    scoring_tree,
+)
 from mapi_workflows.specs import MODEL_LABEL, model_spec_document
 from pydantic import JsonValue
 
@@ -851,7 +858,9 @@ def forecast_node(ctx: NodeContext) -> NodeOutcome:
     if policy != "error":
         extra["future_covariates"] = policy
     reg = _registry(ctx)
-    payload = _future_rows(bundle, future.data, tdim_canon) if future is not None else None
+    payload = (
+        _future_rows(bundle, score_rows(future, bundle), tdim_canon) if future is not None else None
+    )
     try:
         req = _request(spec, "forecast", **extra)
         tree = score_bundle(
@@ -861,7 +870,7 @@ def forecast_node(ctx: NodeContext) -> NodeOutcome:
             registry=reg,
             history=mv.data,
             return_full=True,
-            tree=mv.tree,
+            tree=scoring_tree(mv, future),
         )
     except MapiError:
         raise

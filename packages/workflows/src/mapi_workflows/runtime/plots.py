@@ -24,7 +24,15 @@ from mapi_sdk.harness import score_bundle
 from mapi_sdk.registry import Registry
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_workflows.runtime.models import _registry, _request, _target_names
-from mapi_workflows.runtime.values import DatasetValue, ModelValue, NodeContext, NodeOutcome
+from mapi_workflows.runtime.values import (
+    DatasetValue,
+    ModelValue,
+    NodeContext,
+    NodeOutcome,
+    score_payload,
+    score_rows,
+    scoring_tree,
+)
 from pydantic import JsonValue
 
 __all__ = [
@@ -156,28 +164,32 @@ def _with_binding(tree: xr.DataTree, mv: ModelValue) -> xr.DataTree:
 
 
 def fit_predictions_tree(
-    mv: ModelValue, registry: Registry | None, data: xr.Dataset | None = None
+    mv: ModelValue, registry: Registry | None, data: DatasetValue | None = None
 ) -> xr.DataTree:
     """In-sample predictions of a model over ``data`` (default: its fit data) with the
     observed target as ``observed_data``: what fit-versus-actual and residual plots read."""
-    payload = data if data is not None else mv.data
-    if payload is None:
+    flat = data.data if data is not None else mv.data
+    if flat is None:
         raise MapiError(
             "the fit data of the model is not available for its predictions",
             code=ErrorCode.SCHEMA_INVALID,
         )
     bundle = mv.bundle
+    payload: xr.Dataset | xr.DataTree = flat
+    if data is not None:
+        payload = score_payload(data)
+        flat = score_rows(data, bundle)  # the observed target
     tree = score_bundle(
         bundle,
         _request(bundle.spec, "predict"),
         data=payload,
         registry=registry,
         return_full=True,
-        tree=mv.tree,
+        tree=scoring_tree(mv, data),
     )
     _, _, target = _target_names(bundle)
-    if target in payload and "observed_data" not in tree.children:
-        tree["observed_data"] = xr.DataTree(payload[[target]])
+    if target in flat and "observed_data" not in tree.children:
+        tree["observed_data"] = xr.DataTree(flat[[target]])
     return _with_binding(tree, mv)
 
 
@@ -217,7 +229,7 @@ def _sources(ctx: NodeContext, source: str) -> list[TreeSource]:
     if mv is not None and source in ("auto", "model"):
         out.append(("model", lambda: _with_binding(mv.bundle.to_tree(), mv)))
     if mv is not None and source in ("auto", "predictions"):
-        payload = dv.data if dv is not None and source == "predictions" else None
+        payload = dv if dv is not None and source == "predictions" else None
         out.append(("predictions", lambda: fit_predictions_tree(mv, reg, payload)))
     if not out:
         raise MapiError(
@@ -228,6 +240,10 @@ def _sources(ctx: NodeContext, source: str) -> list[TreeSource]:
 
 
 def _data_tree(dv: DatasetValue) -> xr.DataTree:
+    """The dataset as recipes read it: a workflow input tree keeps its groups (geometry,
+    tree, constant_data); a flat or derived dataset is one root node."""
+    if dv.tree is not None and dv.root is None:
+        return dv.tree
     return xr.DataTree(dataset=dv.data)
 
 

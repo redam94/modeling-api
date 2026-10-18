@@ -17,7 +17,15 @@ import xarray as xr
 from mapi_sdk.harness import score_bundle
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_workflows.runtime.models import _future_rows, _registry, _request
-from mapi_workflows.runtime.values import DatasetValue, ModelValue, NodeContext, NodeOutcome
+from mapi_workflows.runtime.values import (
+    DatasetValue,
+    ModelValue,
+    NodeContext,
+    NodeOutcome,
+    score_payload,
+    score_rows,
+    scoring_tree,
+)
 from pydantic import JsonValue
 
 __all__ = ["SCORE_NODES", "score_node"]
@@ -79,10 +87,10 @@ def score_node(ctx: NodeContext) -> NodeOutcome:
     if mode == "forecast":
         tdim = _time_dim(mv)
         extra.setdefault("horizon", {"dim": tdim, "periods": 12})
-        payload = _future_rows(bundle, dv.data, tdim) if dv is not None else None
+        payload = _future_rows(bundle, score_rows(dv, bundle), tdim) if dv is not None else None
         history = mv.data
     else:
-        payload = dv.data if dv is not None else mv.data
+        payload = score_payload(dv) if dv is not None else mv.data
     try:
         req = _request(bundle.spec, mode, **extra)
     except ValueError as exc:
@@ -99,7 +107,7 @@ def score_node(ctx: NodeContext) -> NodeOutcome:
         registry=reg,
         history=history,
         return_full=True,
-        tree=mv.tree,
+        tree=scoring_tree(mv, dv),
     )
     wanted = ctx.params.get("group")
     name, ds = _group(tree, wanted if isinstance(wanted, str) and wanted else None)
