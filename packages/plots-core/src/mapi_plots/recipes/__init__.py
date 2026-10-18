@@ -27,7 +27,10 @@ the runner from a fitted bundle or a score output, so every plugin gets them for
 The MMM domain pack lives in :mod:`mapi_plots.packs.mmm` and the tabular-ML pack
 (``ml.feature_importance``) in :mod:`mapi_plots.packs.ml`, and the scientific-model pack
 (``sci.field_map``, ``sci.vector_field``, ``sci.profile_bands``, ``sci.ensemble``; Plotly) in
-:mod:`mapi_plots.packs.sci`, and the network pack (``net.graph``; Plotly) in
+:mod:`mapi_plots.packs.sci`, with the map, tree and polar recipes in
+:mod:`mapi_plots.packs.sci_maps`, the image and spectrum recipes in
+:mod:`mapi_plots.packs.sci_images` and ``sci.point_pattern`` in
+:mod:`mapi_plots.packs.sci_points`, and the network pack (``net.graph``; Plotly) in
 :mod:`mapi_plots.packs.net`. All are exposed through the
 ``mapi.plots`` entry-point group, so ``mapi_sdk.registry.default_registry()`` finds them.
 """

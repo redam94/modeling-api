@@ -6048,6 +6048,41 @@
      "evaluate": {
       "type": "object",
       "description": "Evaluation block (metrics)"
+     },
+     "nodes": {
+      "type": "object",
+      "maxProperties": 64,
+      "description": "Tree datasets: the nodes merged into the model input (data.nodes: {name: {path, vars?, prefix?}}). If not given, the node reads the root node",
+      "additionalProperties": {
+       "type": "object",
+       "required": [
+        "path"
+       ],
+       "properties": {
+        "path": {
+         "type": "string"
+        },
+        "vars": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        "prefix": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "join": {
+      "type": "string",
+      "enum": [
+       "exact",
+       "inner",
+       "outer"
+      ],
+      "description": "Tree datasets: how the coords of the selected nodes align (data.join)",
+      "default": "exact"
      }
     },
     "required": [
@@ -6166,6 +6201,41 @@
       "type": "boolean",
       "description": "Fit again on each fold (if false, fit one time and roll forward)",
       "default": true
+     },
+     "nodes": {
+      "type": "object",
+      "maxProperties": 64,
+      "description": "Tree datasets: the nodes merged into the model input (data.nodes: {name: {path, vars?, prefix?}}). If not given, the node reads the root node",
+      "additionalProperties": {
+       "type": "object",
+       "required": [
+        "path"
+       ],
+       "properties": {
+        "path": {
+         "type": "string"
+        },
+        "vars": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        "prefix": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "join": {
+      "type": "string",
+      "enum": [
+       "exact",
+       "inner",
+       "outer"
+      ],
+      "description": "Tree datasets: how the coords of the selected nodes align (data.join)",
+      "default": "exact"
      }
     },
     "required": [
@@ -7229,6 +7299,221 @@
    }
   },
   {
+   "id": "model.score",
+   "version": "1.0.0",
+   "kind": "model",
+   "inputs": {
+    "model": {
+     "type": "model_version",
+     "required": true,
+     "multiple": false,
+     "description": ""
+    },
+    "data": {
+     "type": "dataset",
+     "required": false,
+     "multiple": false,
+     "description": "The inputs to score (default: the fit data; for a forecast, the future drivers)"
+    }
+   },
+   "outputs": {
+    "scores": "dataset"
+   },
+   "params_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "mode": {
+      "type": "string",
+      "enum": [
+       "predict",
+       "simulate",
+       "forecast",
+       "counterfactual"
+      ],
+      "description": "The score mode",
+      "default": "predict"
+     },
+     "request": {
+      "type": "object",
+      "description": "More fields of the score request (horizon, output, select, interventions, seed, future_covariates)"
+     },
+     "group": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_/]{0,127}$",
+      "description": "The group of the score result to output (default: predictions, else summary)"
+     }
+    }
+   },
+   "result_fields": {
+    "mode": {
+     "type": "string",
+     "description": "The score mode that the node used"
+    },
+    "n_vars": {
+     "type": "integer",
+     "description": "The number of variables in the output dataset"
+    },
+    "group": {
+     "type": "string",
+     "description": "The group of the score result in the output"
+    },
+    "representation": {
+     "type": "string",
+     "description": "draws, quantiles, interval, moments or point"
+    }
+   },
+   "runs_in": "sandbox",
+   "cacheable": true,
+   "about": {
+    "title": "Score a model",
+    "summary_plain": "Uses a fitted model version to predict, simulate, forecast or test a scenario. It gives the predictions as a dataset for the next steps.",
+    "use_when": [
+     "You want predictions or simulations of a fitted model in the workflow",
+     "A plot or a second model must use the predictions"
+    ],
+    "avoid_when": [
+     "You only want a forecast with a fan chart (use model.forecast)"
+    ],
+    "data_needs": [
+     "A model version and, for new cases, a dataset with their inputs"
+    ],
+    "assumptions": [
+     "The model can do the score mode (look at its score modes)"
+    ],
+    "outputs": [
+     "A dataset with the predictions (draws or a summary)"
+    ],
+    "difficulty": "intermediate",
+    "typical_runtime": "seconds",
+    "example": "Simulate 200 graphs from the fitted network model to check its fit.",
+    "related": [
+     "model.forecast",
+     "plot.render",
+     "model.fit"
+    ],
+    "references": [],
+    "expert_notes": "The node runs the score path of a score run (mapi_sdk.harness.score_bundle) with the full representation. 'request' takes the fields of a ScoreRequest (horizon, output, select, interventions, seed, future_covariates).",
+    "fits": {
+     "goal": [
+      "forecast",
+      "validate_model"
+     ]
+    }
+   }
+  },
+  {
+   "id": "plot.render",
+   "version": "1.0.0",
+   "kind": "plot",
+   "inputs": {
+    "model": {
+     "type": "model_version",
+     "required": false,
+     "multiple": false,
+     "description": "A model version (its bundle and predictions)"
+    },
+    "data": {
+     "type": "dataset",
+     "required": false,
+     "multiple": false,
+     "description": "A dataset, for example the output of model.score"
+    }
+   },
+   "outputs": {
+    "plot": "plot"
+   },
+   "params_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "recipe": {
+      "type": "string",
+      "description": "Plot recipe ref (id or id@range), for example core.ppc_fan",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+(@\\S+)?$"
+     },
+     "settings": {
+      "type": "object",
+      "description": "The settings of the recipe"
+     },
+     "source": {
+      "type": "string",
+      "enum": [
+       "auto",
+       "data",
+       "model",
+       "predictions"
+      ],
+      "description": "Where the recipe reads its data",
+      "default": "auto"
+     },
+     "title": {
+      "type": "string",
+      "maxLength": 300,
+      "description": "The title of the plot (default: the recipe title)"
+     }
+    },
+    "required": [
+     "recipe"
+    ]
+   },
+   "result_fields": {
+    "recipe": {
+     "type": "string",
+     "description": "The recipe that drew the plot (id@version)"
+    },
+    "kind": {
+     "type": "string",
+     "description": "vega-lite or plotly"
+    },
+    "source": {
+     "type": "string",
+     "description": "data, model or predictions"
+    },
+    "bytes": {
+     "type": "integer",
+     "description": "The size of the plot in bytes"
+    }
+   },
+   "runs_in": "sandbox",
+   "cacheable": true,
+   "about": {
+    "title": "Draw a plot",
+    "summary_plain": "Draws a plot from the plot catalog with a model or a dataset of earlier steps. The run shows the plot, and a report can include it.",
+    "use_when": [
+     "You want a chart of a model or of predictions in the run and in the report"
+    ],
+    "avoid_when": [
+     "The Model Explorer already shows the chart that you need"
+    ],
+    "data_needs": [
+     "A model version or a dataset that has the data the recipe needs"
+    ],
+    "assumptions": [
+     "The recipe can read the data (see the About card of the recipe)"
+    ],
+    "outputs": [
+     "A plot that the run and the report show"
+    ],
+    "difficulty": "beginner",
+    "typical_runtime": "seconds",
+    "example": "Draw sci.field_map of the fitted heat plate model.",
+    "related": [
+     "model.score",
+     "report.summary",
+     "model.forecast"
+    ],
+    "references": [],
+    "expert_notes": "The node renders the recipe with mapi_plots.recipes.render_plots and the sanitizer. With 'source: auto' it tries the dataset, the model bundle and then the in-sample predictions of the model with the observed values.",
+    "fits": {
+     "goal": [
+      "validate_model",
+      "forecast"
+     ]
+    }
+   }
+  },
+  {
    "id": "report.summary",
    "version": "1.0.0",
    "kind": "report",
@@ -7256,6 +7541,12 @@
      "required": false,
      "multiple": false,
      "description": ""
+    },
+    "plots": {
+     "type": "plot",
+     "required": false,
+     "multiple": true,
+     "description": "Plots to include in the report"
     }
    },
    "outputs": {
@@ -7518,6 +7809,353 @@
     "fits": {
      "goal": [
       "forecast",
+      "validate_model"
+     ]
+    }
+   }
+  },
+  {
+   "id": "model.summary",
+   "version": "1.0.0",
+   "kind": "model",
+   "inputs": {
+    "model": {
+     "type": "model_version",
+     "required": true,
+     "multiple": false,
+     "description": ""
+    }
+   },
+   "outputs": {
+    "table": "table"
+   },
+   "params_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "vars": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$"
+      },
+      "minItems": 1,
+      "maxItems": 256,
+      "description": "The posterior variables (default: all of them)"
+     },
+     "hdi_prob": {
+      "type": "number",
+      "description": "The probability inside the HDI",
+      "default": 0.94,
+      "minimum": 0.5,
+      "maximum": 0.999
+     }
+    }
+   },
+   "result_fields": {
+    "params": {
+     "type": "object",
+     "description": "For each parameter: mean, sd, hdi_low, hdi_high, rhat and ess_bulk"
+    },
+    "max_rhat": {
+     "type": "number",
+     "description": "The largest R-hat (null if it cannot be measured)"
+    },
+    "min_ess": {
+     "type": "number",
+     "description": "The smallest bulk effective sample size"
+    },
+    "n_divergent": {
+     "type": "integer",
+     "description": "The number of divergent transitions (null if unknown)"
+    },
+    "n_params": {
+     "type": "integer",
+     "description": "The number of summarised values"
+    },
+    "truncated": {
+     "type": "boolean",
+     "description": "True if the node kept only the first 200 values"
+    }
+   },
+   "runs_in": "sandbox",
+   "cacheable": true,
+   "about": {
+    "title": "Summarise the parameters",
+    "summary_plain": "Gives the estimate, the spread and the credible range of each parameter of a fitted Bayesian model, with checks that the sampler converged.",
+    "use_when": [
+     "You want to branch on a parameter, for example when its range excludes zero",
+     "You must stop when the sampler did not converge (R-hat, effective sample size)"
+    ],
+    "avoid_when": [
+     "Models that give only point estimates (the node needs draws)"
+    ],
+    "data_needs": [
+     "A model version with posterior draws"
+    ],
+    "assumptions": [
+     "The draws come from two or more chains (else R-hat is not available)"
+    ],
+    "outputs": [
+     "A table and, for each parameter, the mean, sd, HDI bounds, R-hat and bulk ESS"
+    ],
+    "difficulty": "intermediate",
+    "typical_runtime": "seconds",
+    "example": "slope: mean 0.42, 94% range 0.18 to 0.66, R-hat 1.00. The range excludes zero.",
+    "related": [
+     "model.fit",
+     "governance.check",
+     "evaluate.ppc"
+    ],
+    "references": [
+     {
+      "title": "Vehtari, Gelman, Simpson, Carpenter & Bürkner (2021), Rank-normalization, folding, and localization: an improved R-hat"
+     }
+    ],
+    "expert_notes": "Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of several dims joined by ', '), at most 200 values; read them with nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no sample_stats.",
+    "fits": {
+     "goal": [
+      "validate_model",
+      "explain_drivers"
+     ]
+    }
+   }
+  },
+  {
+   "id": "evaluate.ppc",
+   "version": "1.0.0",
+   "kind": "evaluate",
+   "inputs": {
+    "model": {
+     "type": "model_version",
+     "required": true,
+     "multiple": false,
+     "description": ""
+    }
+   },
+   "outputs": {
+    "metrics": "metrics"
+   },
+   "params_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "statistic": {
+      "type": "string",
+      "enum": [
+       "mean",
+       "sd",
+       "max",
+       "min"
+      ],
+      "description": "The statistic of the p-value",
+      "default": "mean"
+     },
+     "n_draws": {
+      "type": "integer",
+      "description": "The number of predictive draws to use",
+      "default": 400,
+      "minimum": 10,
+      "maximum": 4000
+     },
+     "p_min": {
+      "type": "number",
+      "description": "The smallest p-value (and 1 - p_min the largest) that passes",
+      "default": 0.025,
+      "minimum": 0,
+      "maximum": 0.5
+     },
+     "coverage_tolerance": {
+      "type": "number",
+      "description": "The largest gap between the coverage and its level that passes",
+      "default": 0.1,
+      "minimum": 0,
+      "maximum": 0.5
+     },
+     "pit_ks_max": {
+      "type": "number",
+      "description": "The largest PIT distance that passes (default: 1.36 / sqrt(n))",
+      "minimum": 0,
+      "maximum": 1
+     }
+    }
+   },
+   "result_fields": {
+    "coverage_50": {
+     "type": "number",
+     "description": "The share of observed values in the 50% range"
+    },
+    "coverage_90": {
+     "type": "number",
+     "description": "The share of observed values in the 90% range"
+    },
+    "pit_ks": {
+     "type": "number",
+     "description": "The distance of the PIT values from uniform (0 is best)"
+    },
+    "p_values": {
+     "type": "object",
+     "description": "The p-value of the statistic for each target"
+    },
+    "ok": {
+     "type": "boolean",
+     "description": "True if all the checks pass"
+    },
+    "verdict_plain": {
+     "type": "string",
+     "description": "The verdict in plain words"
+    }
+   },
+   "runs_in": "sandbox",
+   "cacheable": true,
+   "about": {
+    "title": "Check the predictions against the data",
+    "summary_plain": "Simulates new data from a fitted Bayesian model and compares it with the observed data. It shows if the model can make data that looks like the real data.",
+    "use_when": [
+     "After each Bayesian fit, before you trust its ranges",
+     "You must stop a workflow when the model does not agree with the data"
+    ],
+    "avoid_when": [
+     "Models that give only point estimates or summaries (the node needs draws)"
+    ],
+    "data_needs": [
+     "A model version that predicts with draws"
+    ],
+    "assumptions": [
+     "The check uses the fit data, so it is optimistic (a model that overfits can pass)"
+    ],
+    "outputs": [
+     "The coverage of the 50% and 90% ranges, the PIT distance, a p-value and a verdict"
+    ],
+    "difficulty": "intermediate",
+    "typical_runtime": "seconds",
+    "example": "88% of the values are in the 90% range and p = 0.41 for the mean: the check passes.",
+    "related": [
+     "model.fit",
+     "model.summary",
+     "evaluate.metrics"
+    ],
+    "references": [
+     {
+      "title": "Gelman, Meng & Stern (1996), Posterior predictive assessment of model fitness"
+     },
+     {
+      "title": "Gabry et al. (2019), Visualization in Bayesian workflow"
+     }
+    ],
+    "expert_notes": "Posterior predictive draws come from the score path (predict, output kind predictive) on the fit data. coverage_p is the share of observations inside the central p interval of their predictive draws; pit_ks is the Kolmogorov-Smirnov distance of the PIT values P(y_rep < y) + 0.5 P(y_rep = y) from uniform, with the limit 1.36 / sqrt(n) unless pit_ks_max is set; the p-value is P(T(y_rep) >= T(y)) for T = statistic. ok needs both coverages within coverage_tolerance of nominal, the p-value in [p_min, 1 - p_min] and pit_ks under its limit.",
+    "fits": {
+     "goal": [
+      "validate_model"
+     ]
+    }
+   }
+  },
+  {
+   "id": "compare.stacking",
+   "version": "1.0.0",
+   "kind": "compare",
+   "inputs": {
+    "candidates": {
+     "type": "metrics",
+     "required": true,
+     "multiple": true,
+     "description": ""
+    }
+   },
+   "outputs": {
+    "table": "table"
+   },
+   "params_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "metric": {
+      "type": "string",
+      "enum": [
+       "elpd_loo",
+       "elpd_waic"
+      ],
+      "description": "The elpd estimate to use",
+      "default": "elpd_loo"
+     },
+     "method": {
+      "type": "string",
+      "enum": [
+       "stacking",
+       "pseudo_bma_plus"
+      ],
+      "description": "The weights to give",
+      "default": "stacking"
+     },
+     "n_bootstrap": {
+      "type": "integer",
+      "description": "Bootstrap draws for pseudo-BMA+",
+      "default": 1000,
+      "minimum": 100,
+      "maximum": 10000
+     }
+    }
+   },
+   "result_fields": {
+    "weights": {
+     "type": "object",
+     "description": "The weight of each candidate (they sum to 1)"
+    },
+    "pseudo_bma": {
+     "type": "object",
+     "description": "The pseudo-BMA+ weight of each candidate"
+    },
+    "best": {
+     "type": "string",
+     "description": "The candidate with the largest weight"
+    },
+    "method": {
+     "type": "string",
+     "description": "stacking, pseudo_bma_plus, pseudo_bma_se or pseudo_bma"
+    },
+    "note_plain": {
+     "type": "string",
+     "description": "Why the node did not use stacking (null if it did)"
+    }
+   },
+   "runs_in": "sandbox",
+   "cacheable": true,
+   "about": {
+    "title": "Weigh models by their predictions",
+    "summary_plain": "Gives each candidate model a weight from how well it predicts each data point that it did not see. A mix of the models with these weights predicts best.",
+    "use_when": [
+     "You fitted several Bayesian models of the same data and none is clearly best",
+     "You want to average the predictions of the models instead of selecting one"
+    ],
+    "avoid_when": [
+     "The models used different data (the scores are not comparable)"
+    ],
+    "data_needs": [
+     "Metrics of two or more model.fit nodes with evaluate: {metrics: [elpd_loo]}"
+    ],
+    "assumptions": [
+     "All candidates are fitted on the same data points in the same order"
+    ],
+    "outputs": [
+     "A weight for each candidate, the best candidate and a table"
+    ],
+    "difficulty": "expert",
+    "typical_runtime": "seconds",
+    "example": "Weights: bym2 0.71, icar 0.29, iid 0.00.",
+    "related": [
+     "compare.models",
+     "select.best",
+     "model.fit"
+    ],
+    "references": [
+     {
+      "title": "Yao, Vehtari, Simpson & Gelman (2018), Using stacking to average Bayesian predictive distributions"
+     }
+    ],
+    "expert_notes": "Stacking maximises sum_i log sum_k w_k exp(elpd_loo_ik) over the simplex (Yao, Vehtari, Simpson & Gelman 2018), from the pointwise PSIS-LOO values that model.fit stores for data of at most 10 000 points. pseudo_bma (always reported) is pseudo-BMA+: softmax weights averaged over a Bayesian bootstrap of the pointwise elpd. Without pointwise values the weights are pseudo-BMA from elpd ± se (method pseudo_bma_se) or from elpd alone (pseudo_bma), and note_plain says so.",
+    "fits": {
+     "goal": [
       "validate_model"
      ]
     }
@@ -7861,6 +8499,37 @@
     "example": "A one-page summary.",
     "related": [
      "report.summary"
+    ],
+    "references": [],
+    "fits": {}
+   }
+  },
+  {
+   "kind": "node_kind",
+   "id": "kind.plot",
+   "about": {
+    "title": "Plot",
+    "summary_plain": "Draws a plot from the plot catalog in the run, for the run view and the report.",
+    "use_when": [
+     "You want a chart in the run or in the report"
+    ],
+    "avoid_when": [
+     "Nobody reads the chart"
+    ],
+    "data_needs": [
+     "A model version or a dataset"
+    ],
+    "assumptions": [
+     "The recipe can read the data"
+    ],
+    "outputs": [
+     "A plot"
+    ],
+    "difficulty": "beginner",
+    "typical_runtime": "seconds",
+    "example": "Draw the forecast fan chart.",
+    "related": [
+     "plot.render"
     ],
     "references": [],
     "fits": {}
@@ -11990,6 +12659,37 @@
   },
   {
    "kind": "node_kind",
+   "id": "kind.plot",
+   "about": {
+    "title": "Plot",
+    "summary_plain": "Draws a plot from the plot catalog in the run, for the run view and the report.",
+    "use_when": [
+     "You want a chart in the run or in the report"
+    ],
+    "avoid_when": [
+     "Nobody reads the chart"
+    ],
+    "data_needs": [
+     "A model version or a dataset"
+    ],
+    "assumptions": [
+     "The recipe can read the data"
+    ],
+    "outputs": [
+     "A plot"
+    ],
+    "difficulty": "beginner",
+    "typical_runtime": "seconds",
+    "example": "Draw the forecast fan chart.",
+    "related": [
+     "plot.render"
+    ],
+    "references": [],
+    "fits": {}
+   }
+  },
+  {
+   "kind": "node_kind",
    "id": "kind.report",
    "about": {
     "title": "Report",
@@ -13022,7 +13722,8 @@
            140,
            144,
            148
-          ]
+          ],
+          "elpd": null
          },
          {
           "name": "seasonal_naive",
@@ -13146,7 +13847,8 @@
            140,
            144,
            148
-          ]
+          ],
+          "elpd": null
          }
         ],
         "horizons": [
@@ -14282,7 +14984,7 @@
      "child_runs": [
       "run_01jaf3w1x2y3z4a5b6c7d8e9pa"
      ],
-     "cache_key": "sha256:8dfa00c7003d5c990ec376f96efaaadd66efc280ca673933256e539df7d3d4e7",
+     "cache_key": "sha256:bd3473a10a8ec3437a8b905dcbcd49b1fb38ab9c015e8ea6909ad2aeb3450b15",
      "params": {
       "model": "ts.sarimax@^1",
       "settings": {
@@ -14307,7 +15009,8 @@
        "mape",
        "mase"
       ],
-      "refit": true
+      "refit": true,
+      "join": "exact"
      },
      "result": {
       "metrics": {
@@ -14482,7 +15185,8 @@
            140,
            144,
            148
-          ]
+          ],
+          "elpd": null
          }
         ],
         "horizons": [
@@ -14596,7 +15300,7 @@
      "child_runs": [
       "run_01jaf3w1x2y3z4a5b6c7d8e9qa"
      ],
-     "cache_key": "sha256:9cbfa2ec22bf65eb64643f9142fe4596f011649b9c52ccb3eca63c7ae1c601f8",
+     "cache_key": "sha256:e58961138c44955d3381284b9071d49c6d079d96e5b5e0be48ae3566bd860420",
      "params": {
       "model": "ts.sarimax@^1",
       "settings": {
@@ -14620,7 +15324,8 @@
         "mape",
         "coverage_90"
        ]
-      }
+      },
+      "join": "exact"
      },
      "result": {
       "model_version": "model://growth/wf-weekly-readiness-fit@v1",
@@ -14664,7 +15369,8 @@
           "by_fold": [],
           "n_folds": 0,
           "errors": null,
-          "origins": null
+          "origins": null,
+          "elpd": null
          }
         ],
         "horizons": [],
@@ -14691,7 +15397,7 @@
      "status": "succeeded",
      "attempt": 1,
      "child_runs": [],
-     "cache_key": "sha256:0853137623dd508c630db3f065c61c2ef0432461d86c642b4c66c797afbc391e",
+     "cache_key": "sha256:dfccfcfe8469a70c125ee6eb52dd0f34dca7c2b1d69f73b1121dcd700721b40f",
      "params": {
       "metric": "mae",
       "direction": "min"
@@ -15277,7 +15983,7 @@
      "status": "succeeded",
      "attempt": 1,
      "child_runs": [],
-     "cache_key": "sha256:8104efcf2aef971b2ffa344d392c5a31d3d600d44962750e7616447742b7a5de",
+     "cache_key": "sha256:1a90bcbe2034f2e7fb0e6ab50167b1d481b45775a1c20cbecb7b8fa9f6cc14ce",
      "params": {
       "title": "Time-series readiness and ARIMAX"
      },
@@ -15300,7 +16006,8 @@
           "kind": "test",
           "status": "unit_root",
           "text": "The series does not return to a stable level. Use the differences of the series. (p = 0.623, tested at 0.05)",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "Is it stable? (KPSS)",
@@ -15308,7 +16015,8 @@
           "kind": "test",
           "status": "unit_root",
           "text": "The series does not return to a stable level. Use the differences of the series. (p = 0.01, tested at 0.05)",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "Does the series wander? (Phillips-Perron)",
@@ -15316,7 +16024,8 @@
           "kind": "test",
           "status": "unit_root",
           "text": "The series does not return to a stable level. Use the differences of the series. (p = 0.529, tested at 0.05)",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "Wandering or one break? (Zivot-Andrews)",
@@ -15324,7 +16033,8 @@
           "kind": "test",
           "status": "unit_root",
           "text": "The series does not return to a stable level, also with one break. Use the differences of the series. (p = 0.982, tested at 0.05)",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "How strong is the season?",
@@ -15332,7 +16042,8 @@
           "kind": "test",
           "status": "not_seasonal",
           "text": "The test found no clear pattern that repeats.",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "How far back does the past matter? (ACF/PACF)",
@@ -15340,7 +16051,8 @@
           "kind": "test",
           "status": "white_noise",
           "text": "No past period has a relation to the present that is more than chance. (p = 0.923, tested at 0.05)",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "Seasonal difference?",
@@ -15348,7 +16060,8 @@
           "kind": "decision",
           "status": "else",
           "text": "The series has no strong seasonal pattern, so the workflow did not apply a seasonal difference. The condition `nodes.seas.seasonal` was false (nodes.seas.seasonal = False).",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "Difference?",
@@ -15356,7 +16069,8 @@
           "kind": "decision",
           "status": "then",
           "text": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference, so the model uses the change from one period to the next. The condition `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject) and nodes.overdiff.acf[1] > -0.5` was true (nodes.adf.reject = False, nodes.kpss.reject = True, nodes.pp.reject = False, nodes.za.reject = False, nodes.overdiff.acf[1] = 0.00878), so Change from the previous period ran.",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "AR and MA orders",
@@ -15462,7 +16176,8 @@
             ],
             "summary_plain": "ARMA(1,1) has the best AIC (380.5) of 9 fits."
            }
-          }
+          },
+          "plot": null
          },
          {
           "title": "Compare models side by side",
@@ -15795,7 +16510,8 @@
              }
             }
            }
-          }
+          },
+          "plot": null
          },
          {
           "title": "ARIMAX",
@@ -15803,7 +16519,8 @@
           "kind": "metrics",
           "status": null,
           "text": "backtest: COVERAGE_90 84.4%, MAE 1.86, MAPE 1.9%, MASE 0.257, RMSE 2.35 over 4 folds.",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "Naive forecast",
@@ -15811,7 +16528,8 @@
           "kind": "metrics",
           "status": null,
           "text": "naive: MAE 2.04, MAPE 2.1%, MASE 0.282, RMSE 2.47, SMAPE 2.2% over 4 folds; naive (seasonal_naive): MAE 5.21, MAPE 5.4%, MASE 0.741, RMSE 6.07, SMAPE 5.6% over 4 folds.",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "Change from the same period last season",
@@ -15819,7 +16537,8 @@
           "kind": "skipped",
           "status": "skipped",
           "text": "Skipped: branch 'seasonal' took the else path.",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "Select the best model",
@@ -15827,7 +16546,8 @@
           "kind": "selection",
           "status": null,
           "text": "ARIMAX has the best average error (1.86) and is better than all the benchmarks (the strongest, Naive forecast, has 2.04).",
-          "table": null
+          "table": null,
+          "plot": null
          },
          {
           "title": "Selected model",
@@ -15835,7 +16555,8 @@
           "kind": "model",
           "status": null,
           "text": "The model of the workflow is model://growth/wf-weekly-readiness-fit@v1.",
-          "table": null
+          "table": null,
+          "plot": null
          }
         ],
         "model": "model://growth/wf-weekly-readiness-fit@v1"
@@ -15892,7 +16613,8 @@
         "kind": "test",
         "status": "unit_root",
         "text": "The series does not return to a stable level. Use the differences of the series. (p = 0.623, tested at 0.05)",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "Is it stable? (KPSS)",
@@ -15900,7 +16622,8 @@
         "kind": "test",
         "status": "unit_root",
         "text": "The series does not return to a stable level. Use the differences of the series. (p = 0.01, tested at 0.05)",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "Does the series wander? (Phillips-Perron)",
@@ -15908,7 +16631,8 @@
         "kind": "test",
         "status": "unit_root",
         "text": "The series does not return to a stable level. Use the differences of the series. (p = 0.529, tested at 0.05)",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "Wandering or one break? (Zivot-Andrews)",
@@ -15916,7 +16640,8 @@
         "kind": "test",
         "status": "unit_root",
         "text": "The series does not return to a stable level, also with one break. Use the differences of the series. (p = 0.982, tested at 0.05)",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "How strong is the season?",
@@ -15924,7 +16649,8 @@
         "kind": "test",
         "status": "not_seasonal",
         "text": "The test found no clear pattern that repeats.",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "How far back does the past matter? (ACF/PACF)",
@@ -15932,7 +16658,8 @@
         "kind": "test",
         "status": "white_noise",
         "text": "No past period has a relation to the present that is more than chance. (p = 0.923, tested at 0.05)",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "Seasonal difference?",
@@ -15940,7 +16667,8 @@
         "kind": "decision",
         "status": "else",
         "text": "The series has no strong seasonal pattern, so the workflow did not apply a seasonal difference. The condition `nodes.seas.seasonal` was false (nodes.seas.seasonal = False).",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "Difference?",
@@ -15948,7 +16676,8 @@
         "kind": "decision",
         "status": "then",
         "text": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference, so the model uses the change from one period to the next. The condition `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject) and nodes.overdiff.acf[1] > -0.5` was true (nodes.adf.reject = False, nodes.kpss.reject = True, nodes.pp.reject = False, nodes.za.reject = False, nodes.overdiff.acf[1] = 0.00878), so Change from the previous period ran.",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "AR and MA orders",
@@ -16054,7 +16783,8 @@
           ],
           "summary_plain": "ARMA(1,1) has the best AIC (380.5) of 9 fits."
          }
-        }
+        },
+        "plot": null
        },
        {
         "title": "Compare models side by side",
@@ -16387,7 +17117,8 @@
            }
           }
          }
-        }
+        },
+        "plot": null
        },
        {
         "title": "ARIMAX",
@@ -16395,7 +17126,8 @@
         "kind": "metrics",
         "status": null,
         "text": "backtest: COVERAGE_90 84.4%, MAE 1.86, MAPE 1.9%, MASE 0.257, RMSE 2.35 over 4 folds.",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "Naive forecast",
@@ -16403,7 +17135,8 @@
         "kind": "metrics",
         "status": null,
         "text": "naive: MAE 2.04, MAPE 2.1%, MASE 0.282, RMSE 2.47, SMAPE 2.2% over 4 folds; naive (seasonal_naive): MAE 5.21, MAPE 5.4%, MASE 0.741, RMSE 6.07, SMAPE 5.6% over 4 folds.",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "Change from the same period last season",
@@ -16411,7 +17144,8 @@
         "kind": "skipped",
         "status": "skipped",
         "text": "Skipped: branch 'seasonal' took the else path.",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "Select the best model",
@@ -16419,7 +17153,8 @@
         "kind": "selection",
         "status": null,
         "text": "ARIMAX has the best average error (1.86) and is better than all the benchmarks (the strongest, Naive forecast, has 2.04).",
-        "table": null
+        "table": null,
+        "plot": null
        },
        {
         "title": "Selected model",
@@ -16427,7 +17162,8 @@
         "kind": "model",
         "status": null,
         "text": "The model of the workflow is model://growth/wf-weekly-readiness-fit@v1.",
-        "table": null
+        "table": null,
+        "plot": null
        }
       ],
       "model": "model://growth/wf-weekly-readiness-fit@v1"

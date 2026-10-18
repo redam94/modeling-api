@@ -5,6 +5,52 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### M5 phase 1 — Science gallery foundation
+
+#### Added
+- **Core plot recipes** (`mapi_plots.recipes.extras`, Vega-Lite): `core.pair` (corner plot
+  with divergent draws), `core.ridge` (one density for each level, with HDI),
+  `core.rank_matrix` (P(rank = k) and P(row above column)), `core.calibration` (PIT-ECDF
+  difference with a simultaneous envelope, or a reliability diagram for 0/1 targets) and
+  `core.state_sequence` (observed series above the state probabilities).
+- **Science plot recipes** (Plotly): `sci.area_map` (areas as polygons with mean, sd and
+  exceedance panels), `sci.phylogeny` (a tree with tip estimates), `sci.rose` (polar rose or
+  density of angles), `sci.image_residuals`, `sci.ppc_image_grid`, `sci.swatches` (sRGB
+  colour squares, also as a map), `sci.power_spectrum` and `sci.point_pattern` (points with
+  error ellipses over a field).
+- **Network pack** `net` (entry point `mapi.plots: net`): `net.graph`, a node-link drawing
+  and an adjacency matrix of an edge variable `(…, node, node_)`. The catalog shows a
+  "Networks" filter.
+- Each new recipe has an About card, an example in `mapi_plots.examples`, a gallery image and
+  a row in `docs/reference/plots.md`.
+- The plot sandbox applies the theme to polar subplots (`barpolar`, `scatterpolar`).
+- **Workflow nodes:** `model.summary` (posterior summaries, R-hat, ESS, divergences;
+  conditions can read `nodes.s.params[...]`), `evaluate.ppc` (coverage, PIT KS distance,
+  Bayesian p-values), `compare.stacking` (stacking and pseudo-BMA+ weights from the
+  pointwise elpd that `model.fit` now keeps), `model.score` (a score mode as a dataset) and
+  `plot.render` (any catalog recipe as a `plot` output). The new node kind is `plot`.
+- `model.forecast` and `evaluate.residuals` now give their `plot` outputs.
+  `report.summary` has a `plots` input and `plot` sections. The web run view draws the plot
+  outputs of nodes and reports.
+- The SDK `MetricsReport` has an `elpd` field with the pointwise values (up to 10 000
+  points). The server reads it from the fit run of a workflow.
+- `model.fit` and `model.backtest` take `nodes` and `join`, so tree datasets work in
+  workflows. The local runner accepts `xr.DataTree` inputs.
+  `mapi_workflows.testing.science_registry()` registers the science plugin.
+- **Data export** of the science case studies: `python -m mapi_plugin_science.export <case>
+  --challenges <data dir> --out <file.nc>` (and `--list`) writes a file that you can upload.
+  Cases e07, e50, e60 and e80.
+
+#### Changed
+- `mapi-workflows[runtime]` depends on `mapi-plots[recipes]`.
+
+#### Known gaps
+- A backtest of a tree dataset gives the full tree to each fold. A tree-input model that
+  reads its target from the tree can see the test window.
+- `search.grid` has no `nodes` parameter.
+- The HTML report does not show plot sections. Only the JSON report and the web run view
+  show them.
+
 ## [0.8.0] — Tree datasets — 2026-10-18
 
 This release adds datasets that are trees of groups. A NetCDF-4 or HDF5 file keeps its

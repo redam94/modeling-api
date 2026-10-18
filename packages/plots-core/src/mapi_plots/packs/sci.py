@@ -17,7 +17,8 @@ manifest's ``plots``:
 
 The image and spectrum recipes of the pack (``sci.image_residuals``, ``sci.ppc_image_grid``,
 ``sci.swatches``, ``sci.power_spectrum``) are in :mod:`mapi_plots.packs.sci_images`, built on
-the field helpers here; :func:`sci_recipes` lists them too.
+the field helpers here. The map, tree and polar recipes (``sci.area_map``, ``sci.phylogeny``,
+``sci.rose``) are in :mod:`mapi_plots.packs.sci_maps`. :func:`sci_recipes` lists them too.
 
 Inputs are bundle or score trees, as for the core recipes: draws (``chain``/``draw`` or
 ``sample`` dims) in ``posterior``, ``predictions`` or ``posterior_predictive`` and actual values
