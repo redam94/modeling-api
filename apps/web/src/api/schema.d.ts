@@ -804,8 +804,9 @@ export interface paths {
         };
         /**
          * The groups and arrays an inspect run found
-         * @description What the upload's inspect run found (``409 NOT_READY`` while it runs, ``404`` when
-         *     no inspection was requested; a failed inspection answers with its problem's code).
+         * @description What the upload's inspect run found (``409 NOT_READY`` while it runs; ``404`` when
+         *     no inspection was requested or its run ended without one - the run's ``problem`` says
+         *     why it failed).
          */
         get: operations["get_upload_inspection"];
         put?: never;
@@ -6458,6 +6459,11 @@ export interface components {
          */
         ErrorPayload: {
             code: components["schemas"]["ErrorCode"];
+            /**
+             * Errors
+             * @description The typed issues the run failed with (M4), e.g. an INGEST_UNSAFE_FILE refusal: their codes are what clients branch on; text the worker reported is untrusted_text
+             */
+            errors?: components["schemas"]["Issue"][];
             failure_class: components["schemas"]["FailureClass"];
             /** Message */
             message: string;

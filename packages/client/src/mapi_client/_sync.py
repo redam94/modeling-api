@@ -661,6 +661,11 @@ class Datasets(_Resource, DatasetAboutMixin):
             try:
                 return self.upload_inspection(dataset_id, upload_id)
             except MapiError as exc:
+                if exc.code is ErrorCode.NOT_FOUND:
+                    # the run may have failed since it was polled: its error says why
+                    err = run_error(self._c.runs.get(run.id))
+                    if err is not None:
+                        raise err from None
                 if not is_not_ready(exc):
                     raise
             if deadline is not None and time.monotonic() + delay > deadline:

@@ -6291,6 +6291,15 @@
           "code": {
             "$ref": "#/components/schemas/ErrorCode"
           },
+          "errors": {
+            "description": "The typed issues the run failed with (M4), e.g. an INGEST_UNSAFE_FILE refusal: their codes are what clients branch on; text the worker reported is untrusted_text",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "maxItems": 20,
+            "title": "Errors",
+            "type": "array"
+          },
           "failure_class": {
             "$ref": "#/components/schemas/FailureClass"
           },
@@ -31492,7 +31501,7 @@
     },
     "/v1/datasets/{dataset_id}/uploads/{upload_id}/inspection": {
       "get": {
-        "description": "What the upload's inspect run found (``409 NOT_READY`` while it runs, ``404`` when\nno inspection was requested; a failed inspection answers with its problem's code).",
+        "description": "What the upload's inspect run found (``409 NOT_READY`` while it runs; ``404`` when\nno inspection was requested or its run ended without one - the run's ``problem`` says\nwhy it failed).",
         "operationId": "get_upload_inspection",
         "parameters": [
           {

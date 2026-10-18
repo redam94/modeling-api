@@ -464,8 +464,9 @@ async def _current_inspect_run(session: Session, upload: m.Upload) -> m.Run | No
 async def get_upload_inspection(
     ctx: Ctx, session: Session, dataset_id: DatasetId, upload_id: UploadId
 ) -> UploadInspection:
-    """What the upload's inspect run found (``409 NOT_READY`` while it runs, ``404`` when
-    no inspection was requested; a failed inspection answers with its problem's code)."""
+    """What the upload's inspect run found (``409 NOT_READY`` while it runs; ``404`` when
+    no inspection was requested or its run ended without one - the run's ``problem`` says
+    why it failed)."""
     ds = await _dataset(ctx, session, dataset_id)
     upload = await session.get(m.Upload, upload_id)
     if upload is None or upload.dataset_id != ds.id or upload.tenant_id != ds.tenant_id:
