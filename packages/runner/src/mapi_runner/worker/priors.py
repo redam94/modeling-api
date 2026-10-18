@@ -32,7 +32,12 @@ from mapi_spec.run import RunnerPhase
 from mapi_spec.spec import ModelSpec
 
 from mapi_runner.worker.context import WorkerContext
-from mapi_runner.worker.data import load_dataset, load_raw_schema, load_side_tables
+from mapi_runner.worker.data import (
+    load_dataset,
+    load_raw_schema,
+    load_side_tables,
+    load_tree_schema,
+)
 from mapi_runner.worker.plots import render_for
 
 __all__ = ["PRIOR_PLOTS", "preview_tree", "run_translate_priors"]
@@ -101,8 +106,8 @@ def run_translate_priors(ctx: WorkerContext, job: PriorTranslationJob) -> PriorT
         raise MapiError("translate_priors needs a ModelSpec", code=ErrorCode.SCHEMA_INVALID)
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the dataset")
     data = load_dataset(ctx)
-    schema = load_raw_schema(ctx, data)
-    tables = load_side_tables(ctx)
+    schema = load_raw_schema(ctx, data) if isinstance(data, xr.Dataset) else None
+    tables = load_side_tables(ctx, spec)
     ctx.state(RunnerPhase.PREPROCESS, "fitting the preprocessing on all the data")
     stage = prepare_model_stage(
         spec,
@@ -111,6 +116,7 @@ def run_translate_priors(ctx: WorkerContext, job: PriorTranslationJob) -> PriorT
         ctx.registry,
         raw_schema=schema,
         hooks=ctx.fit_hooks(window=(0.0, 0.3)),
+        tree_schema=load_tree_schema(ctx, data),
     )
     ctx.cancel.check()
     ctx.state(RunnerPhase.SAMPLE, "translating business priors")

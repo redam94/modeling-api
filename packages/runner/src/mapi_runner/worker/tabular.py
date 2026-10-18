@@ -80,6 +80,17 @@ class IngestLimits:
     """Values of the dense dataset a table pivots to (every combination of the dim labels
     times the variables), checked before it is built; its bytes must also fit
     ``max_uncompressed_bytes`` (the class's scratch budget)."""
+    # M4: tree datasets, HDF5 and multi-file versions
+    max_nodes: int = 256
+    """Nodes of a tree dataset (the root included)."""
+    max_sources: int = 64
+    """Uploads of one multi-file version."""
+    max_hdf5_objects: int = 10_000
+    """Links (groups, datasets) and attributes walked in one HDF5 file (each)."""
+    max_ndim: int = 32
+    """Dims of one array."""
+    max_attr_bytes: int = 65_536
+    """Bytes of one attribute value."""
 
     @classmethod
     def from_job(cls, job: IngestJob) -> IngestLimits:
@@ -89,6 +100,11 @@ class IngestLimits:
             max_cell_chars=job.max_cell_chars,
             max_decompression_ratio=job.max_decompression_ratio,
             max_uncompressed_bytes=job.max_uncompressed_bytes,
+            max_nodes=job.max_nodes,
+            max_sources=job.max_sources,
+            max_hdf5_objects=job.max_hdf5_objects,
+            max_ndim=job.max_ndim,
+            max_attr_bytes=job.max_attr_bytes,
         )
 
     def expansion_budget(self, stored: int) -> int:

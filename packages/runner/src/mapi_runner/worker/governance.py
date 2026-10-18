@@ -1971,12 +1971,14 @@ def run_governance(ctx: Any, job: GovernanceJob) -> GovernanceReport:
     ``governance.json``."""
     from mapi_spec.jobs import INPUT_EVALUATION, INPUT_EVALUATION_MANIFEST
 
-    from mapi_runner.worker.data import load_bundle, load_dataset, load_side_tables
+    from mapi_runner.worker.data import load_bundle, load_flat_dataset, load_side_tables
 
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the model and its data")
     bundle = load_bundle(ctx)
-    data = load_dataset(ctx)
-    tables = load_side_tables(ctx)
+    data = load_flat_dataset(ctx, bundle.spec.data)  # M4: a tree's nodes per data.nodes
+    # M4: a tree side table reads the node the spec names (plain tables need no spec)
+    has_nodes = any(t.node is not None for t in bundle.spec.data.side_tables.values())
+    tables = load_side_tables(ctx, bundle.spec) if has_nodes else load_side_tables(ctx)
     evaluation = None
     if ctx.has_input(INPUT_EVALUATION):
         evaluation = load_bundle(ctx, INPUT_EVALUATION, INPUT_EVALUATION_MANIFEST)

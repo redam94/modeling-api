@@ -368,6 +368,13 @@ class Supervisor:
         work = os.path.join(self.scratch, "work")
         env = worker_environ(os.environ)
         env["TMPDIR"] = work
+        # M4: libhdf5 must never load a filter plugin a hostile upload names: point its plugin
+        # search path at an empty directory the supervisor owns (the worker also empties the
+        # path in-process before opening any HDF5 file); no file locking on scratch uploads.
+        plugins = os.path.join(self.scratch, "hdf5-plugins")
+        os.makedirs(plugins, mode=0o555, exist_ok=True)
+        env["HDF5_PLUGIN_PATH"] = plugins
+        env["HDF5_USE_FILE_LOCKING"] = "FALSE"
         if self.isolation.drop_privileges:
             env["HOME"] = work
         self.proc = subprocess.Popen(

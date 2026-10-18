@@ -1,4 +1,10 @@
-"""Reading the run's inputs inside the worker: datasets, schemas, side tables, bundles."""
+"""Reading the run's inputs inside the worker: datasets, schemas, side tables, bundles.
+
+M4: a dataset input is a plain ``*.zarr.zip`` or a tree (``data.tree.zip``, nested zarr
+groups). :func:`load_dataset` returns an ``xr.Dataset`` or an ``xr.DataTree`` accordingly;
+:func:`flatten` selects a tree's nodes per a spec's ``data.nodes`` (the flat pipeline
+input) and :func:`load_tree_schema` reads its :class:`~mapi_spec.tree.TreeSchema`.
+"""
 
 from __future__ import annotations
 
@@ -7,53 +13,142 @@ import warnings
 from collections.abc import Iterable
 from dataclasses import replace
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from mapi_sdk.binding import BindingMap
 from mapi_sdk.bundle import BUNDLE_FILE, Bundle, BundleManifest, file_digest
-from mapi_sdk.errors import BundleError, WireFormatError
+from mapi_sdk.errors import BundleError, SchemaValidationError, WireFormatError
+from mapi_sdk.tree import (
+    infer_tree_schema,
+    node_dataset,
+    read_tree_zip,
+    select_nodes,
+    selection_error,
+)
 from mapi_sdk.wire import DEFAULT_LIMITS, loads_xrjson, read_datatree_zip, read_zarr_zip
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.jobs import DATASET_SCHEMA_ATTR
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.schema import DataSchema
-from mapi_spec.spec import ModelSpec, ScorePolicy
+from mapi_spec.spec import DataBlock, ModelSpec, ScorePolicy
+from mapi_spec.tree import ROOT, NodeSelectionError, TreeSchema
 from mapi_spec.xrjson import MAX_XRJSON_BYTES
 from pydantic import ValidationError
 
 from mapi_runner.jobs import INPUT_BUNDLE_MANIFEST, INPUT_SCHEMA, SIDE_TABLE_PREFIX
 from mapi_runner.worker.context import WorkerContext
+from mapi_runner.worker.tree_ingest import TREE_SCHEMA_ATTR, zarr_has_groups
 
 __all__ = [
+    "INPUT_TREE_SCHEMA",
     "SCHEMA_ATTR",
+    "flatten",
     "load_bundle",
     "load_dataset",
+    "load_flat_dataset",
     "load_inline",
     "load_raw_schema",
     "load_side_tables",
+    "load_tree_schema",
+    "side_table_dataset",
     "supplied_side_tables",
 ]
 
 SCHEMA_ATTR = DATASET_SCHEMA_ATTR
+INPUT_TREE_SCHEMA: Final = "tree_schema"
+"""M4: optional input with the TreeSchema of a tree ``dataset`` input (``tree_schema.json``
+of its version); without it the schema stored in the tree, else an inferred one, is used."""
 _MAX_JSON_INPUT = 32 * 1024 * 1024
 
 
-def load_dataset(ctx: WorkerContext, name: str = INPUT_DATASET) -> xr.Dataset:
-    """Download and decode a ``*.zarr.zip`` input (codec/size checks of the wire format)."""
+def load_dataset(ctx: WorkerContext, name: str = INPUT_DATASET) -> xr.Dataset | xr.DataTree:
+    """Download and decode a dataset input: a ``*.zarr.zip`` (codec/size checks of the wire
+    format) as an ``xr.Dataset``, or (M4) a tree dataset (nested groups, ``data.tree.zip``)
+    as an ``xr.DataTree`` under the tree limits."""
     path = ctx.download(name)
     assert path is not None
     try:
+        if zarr_has_groups(path):
+            return read_tree_zip(path)
         return read_zarr_zip(path)
     except WireFormatError as exc:
         raise MapiError(
             f"input {name!r} is not a readable dataset",
-            code=ErrorCode.SCHEMA_INVALID,
+            code=exc.code,
             pointer=f"/inputs/{name}",
             untrusted_text=exc.detail,
         ) from None
+
+
+def load_tree_schema(ctx: WorkerContext, data: xr.Dataset | xr.DataTree) -> TreeSchema | None:
+    """The TreeSchema of a tree input (``None`` for a plain dataset): the ``tree_schema``
+    input, else the one stored in the tree's root attrs, else inferred."""
+    if not isinstance(data, xr.DataTree):
+        return None
+    paths = {node.path for node in data.subtree}
+    if ctx.has_input(INPUT_TREE_SCHEMA):
+        path = ctx.download(INPUT_TREE_SCHEMA)
+        assert path is not None
+        raw = path.read_bytes()
+        if len(raw) > _MAX_JSON_INPUT:
+            raise MapiError("the tree schema input is too large", code=ErrorCode.PAYLOAD_TOO_LARGE)
+        try:
+            given = TreeSchema.model_validate_json(raw)
+        except ValidationError as exc:
+            raise MapiError(
+                "the tree schema input is not a valid TreeSchema",
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer=f"/inputs/{INPUT_TREE_SCHEMA}",
+                untrusted_text=str(exc)[:8000],
+            ) from None
+        if set(given.nodes) == paths:
+            return given
+    stored = data.attrs.get(TREE_SCHEMA_ATTR)
+    if isinstance(stored, str):
+        try:
+            schema = TreeSchema.model_validate_json(stored)
+        except ValidationError:
+            schema = None
+        if schema is not None and set(schema.nodes) == paths:
+            return schema
+    try:
+        return infer_tree_schema(data)
+    except SchemaValidationError as exc:
+        raise MapiError(
+            "the tree dataset cannot be described",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/data",
+            untrusted_text=exc.detail,
+        ) from None
+
+
+def flatten(
+    data: xr.Dataset | xr.DataTree,
+    block: DataBlock | None = None,
+    schema: TreeSchema | None = None,
+) -> xr.Dataset:
+    """The flat dataset a spec's pipeline reads: ``data`` itself, or (a tree) the merge of
+    the nodes ``block.nodes`` selects aligned per ``block.join`` (the root node without
+    ``nodes``). Selection problems are ``SCHEMA_INVALID`` at ``/data/nodes/<key>``."""
+    if isinstance(data, xr.Dataset):
+        return data
+    nodes = block.nodes if block is not None else None
+    join = block.join if block is not None else "exact"
+    try:
+        return select_nodes(data, nodes, join, schema=schema)
+    except NodeSelectionError as exc:
+        raise selection_error(exc) from None
+
+
+def load_flat_dataset(
+    ctx: WorkerContext, block: DataBlock | None = None, name: str = INPUT_DATASET
+) -> xr.Dataset:
+    """:func:`load_dataset` + :func:`flatten` (for runs that only read the flat data)."""
+    data = load_dataset(ctx, name)
+    return flatten(data, block, load_tree_schema(ctx, data))
 
 
 _INLINE_LIMITS = replace(DEFAULT_LIMITS, max_json_bytes=MAX_XRJSON_BYTES + 64 * 1024)
@@ -155,12 +250,43 @@ def load_raw_schema(ctx: WorkerContext, data: xr.Dataset) -> DataSchema | None:
     return None
 
 
-def load_side_tables(ctx: WorkerContext) -> dict[str, xr.Dataset]:
-    """Every ``side.<name>`` input, keyed by ``<name>``."""
-    return {
-        name.removeprefix(SIDE_TABLE_PREFIX): load_dataset(ctx, name)
-        for name in ctx.input_names(SIDE_TABLE_PREFIX)
-    }
+def side_table_dataset(
+    data: xr.Dataset | xr.DataTree, key: str, spec: ModelSpec | None = None
+) -> xr.Dataset:
+    """Side table ``key`` as a dataset: a tree side table reads the ONE node its
+    ``data.side_tables.<key>.node`` names (M4)."""
+    table = spec.data.side_tables.get(key) if spec is not None else None
+    node = table.node if table is not None else None
+    pointer = f"/data/side_tables/{key}/node"
+    if isinstance(data, xr.Dataset):
+        if node not in (None, ROOT):
+            raise MapiError(
+                f"side table {key!r} is a plain dataset: it has no node {node!r}",
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer=pointer,
+            )
+        return data
+    if node is None:
+        raise MapiError(
+            f"side table {key!r} is a tree dataset: name the node to read in "
+            f"data.side_tables.{key}.node",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer=pointer,
+        )
+    try:
+        return node_dataset(data, node)
+    except NodeSelectionError as exc:
+        raise MapiError(str(exc)[:2000], code=ErrorCode.SCHEMA_INVALID, pointer=pointer) from None
+
+
+def load_side_tables(ctx: WorkerContext, spec: ModelSpec | None = None) -> dict[str, xr.Dataset]:
+    """Every ``side.<name>`` input, keyed by ``<name>`` (a tree side table: the node
+    ``spec`` names for it)."""
+    out: dict[str, xr.Dataset] = {}
+    for name in ctx.input_names(SIDE_TABLE_PREFIX):
+        key = name.removeprefix(SIDE_TABLE_PREFIX)
+        out[key] = side_table_dataset(load_dataset(ctx, name), key, spec)
+    return out
 
 
 def supplied_side_tables(spec: ModelSpec, available: Iterable[str]) -> dict[str, str]:
