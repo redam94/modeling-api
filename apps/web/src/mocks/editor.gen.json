@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:efc56e4e7a3f559032a845046cacf2d6da702d334152e3856dc3654a5d7d5fff",
+  "digest": "sha256:979feab8723e7e0fdd86a40cd42a1c5ed1dff2d8562c78ca5bff38d7632acfae",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -2422,7 +2422,8 @@
        "A cutout of the image with the lens galaxy at the centre",
        "The inverse variance (weight) of each pixel",
        "The PSF as a small image with an odd number of rows and columns, for example from stars in the same image",
-       "Optional: a mask of the pixels to use, and the redshifts of the lens and the source"
+       "Optional: a mask of the pixels to use, and the redshifts of the lens and the source",
+       "A plain dataset, or a tree dataset (for example HDF5 or NetCDF groups) with the image in one node and the PSF in a /psf node"
       ],
       "difficulty": "expert",
       "example": "An HST image of the lens SDSS J1627-0053 gives an Einstein radius of 1.22 arcsec and a mass of 2.3e11 solar masses inside this radius.",
@@ -2491,6 +2492,7 @@
        "shear"
       ],
       "inference": "mcmc",
+      "input": "tree",
       "loo_invalid_reason": "the light amplitudes are integrated out over all pixels and the whitened noise couples neighbouring pixels, so pointwise leave-one-out is not defined",
       "loo_valid": false,
       "owns": [],
@@ -2514,7 +2516,7 @@
        "units": "arcsec"
       }
      ],
-     "description": "A pixel forward model of a galaxy-scale strong gravitational lens: a singular isothermal ellipsoid with external shear traces every pixel to a Sersic source; the lens light, a PSF and correlated noise are modelled; the light amplitudes are integrated out. Gives the Einstein radius, the unlensed source and critical curves.",
+     "description": "A pixel forward model of a galaxy-scale strong gravitational lens: a singular isothermal ellipsoid with external shear traces every pixel to a Sersic source; the lens light, a PSF and correlated noise are modelled; the light amplitudes are integrated out. Gives the Einstein radius, the unlensed source and critical curves. Reads plain or tree datasets (the PSF from a /psf node).",
      "fit_schema": {},
      "id": "sci.strong_lens",
      "outputs": {
@@ -2574,6 +2576,34 @@
       "cases": [
        {
         "merge": {
+         "dims": {
+          "psf_col": {
+           "description": "Columns of the PSF kernel",
+           "kind": "integer"
+          },
+          "psf_row": {
+           "description": "Rows of the PSF kernel",
+           "kind": "integer"
+          }
+         },
+         "vars": {
+          "psf": {
+           "description": "The point-spread function (odd sides, centred)",
+           "dims": [
+            "psf_row",
+            "psf_col"
+           ],
+           "dtype": "float64",
+           "role": "constant"
+          }
+         }
+        },
+        "when": {
+         "psf_source": "auto"
+        }
+       },
+       {
+        "merge": {
          "vars": {
           "mask": {
            "description": "True where the pixel is used in the fit",
@@ -2592,6 +2622,15 @@
        }
       ],
       "params": {
+       "psf_source": {
+        "default": "auto",
+        "enum": [
+         "auto",
+         "tree"
+        ],
+        "required": false,
+        "type": "string"
+       },
        "use_mask": {
         "default": false,
         "required": false,
@@ -2602,14 +2641,6 @@
        "dims": {
         "col": {
          "description": "Image columns",
-         "kind": "integer"
-        },
-        "psf_col": {
-         "description": "Columns of the PSF kernel",
-         "kind": "integer"
-        },
-        "psf_row": {
-         "description": "Rows of the PSF kernel",
          "kind": "integer"
         },
         "row": {
@@ -2627,15 +2658,6 @@
          "dtype": "float64",
          "missing": "allow",
          "role": "target"
-        },
-        "psf": {
-         "description": "The point-spread function (odd sides, centred)",
-         "dims": [
-          "psf_row",
-          "psf_col"
-         ],
-         "dtype": "float64",
-         "role": "constant"
         },
         "weight": {
          "description": "Inverse variance of each pixel; 0 leaves the pixel out",
@@ -2790,6 +2812,16 @@
         "minimum": 1,
         "title": "Psf Max Rank",
         "type": "integer"
+       },
+       "psf_source": {
+        "default": "auto",
+        "description": "Where the PSF comes from: 'auto' uses the /psf node of a tree dataset when there is one, else the flat psf variable (which the input then needs); 'tree' reads it only from the /psf node, so the flat input needs no psf",
+        "enum": [
+         "auto",
+         "tree"
+        ],
+        "title": "Psf Source",
+        "type": "string"
        },
        "psf_tolerance": {
         "default": 0.001,
