@@ -62,7 +62,7 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
-from mapi_plugin_science import kpp_data, lens_data, lgcp_data, traction_data
+from mapi_plugin_science import kpp_data, lens_data, lgcp_data, storm_data, traction_data
 from mapi_plugin_science.challenges import CHALLENGES_ENV
 
 __all__ = [
@@ -364,6 +364,17 @@ outputs: {{plots: [core.convergence, core.posterior_forest, sci.field_map]}}
 """
 
 
+def _storm_spec(data: ExportData) -> str:
+    assert isinstance(data, xr.Dataset)
+    if "offset_adu" in data.attrs:
+        return storm_data.challenges_spec(data)
+    # synthetic: the simulated camera's offset and gain
+    return storm_data.STORM_SPEC_YAML.replace(
+        "dataset://microscopy/storm_synthetic@latest",
+        "dataset://microscopy/dannhauser2022_unc13_dstorm@latest",
+    )
+
+
 _register(
     ExportCase(
         case="e07",
@@ -422,6 +433,22 @@ _register(
         project="astronomy",
         dataset="slacs_j1627_f814w",
         spec=lens_data.SLACS_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e58",
+        title="Raw dSTORM frames of Unc-13 at a synapse (single-molecule localisation)",
+        notebook="E58_storm_localization_microscopy.py",
+        model="sci.storm_localisation",
+        files=(storm_data.CHALLENGES_FILE,),
+        loader=lambda d: storm_data.from_challenges(d / storm_data.CHALLENGES_FILE),
+        synthetic=lambda: storm_data.storm_dataset(),
+        schema=storm_data.STORM_SCHEMA,
+        project="microscopy",
+        dataset="dannhauser2022_unc13_dstorm",
+        spec=_storm_spec,
     )
 )
 
