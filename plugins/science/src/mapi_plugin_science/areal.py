@@ -258,8 +258,10 @@ def scaling_factor(w: np.ndarray) -> float:
     """The BYM2 scaling factor: the geometric mean of ``diag(pinv(D - W))`` (NaN when the
     graph has an area without neighbours)."""
     q = np.diag(w.sum(1)) - w
-    with np.errstate(divide="ignore", invalid="ignore"):
-        return float(np.exp(np.mean(np.log(np.diag(np.linalg.pinv(q))))))
+    var = np.diag(np.linalg.pinv(q))
+    if not (var > 1e-12).all():  # an isolated area: its variance is 0 (or -0 by rounding)
+        return math.nan
+    return float(np.exp(np.mean(np.log(var))))
 
 
 def morans_i(z: np.ndarray, w: np.ndarray) -> float:
