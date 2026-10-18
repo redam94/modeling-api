@@ -91,7 +91,7 @@ export function DataExplorerPage() {
                 id="explore-node"
                 value={node}
                 onChange={(e) => void navigate({ search: (prev) => ({ ...prev, node: e.target.value, run: undefined }), replace: true })}
-                className="w-64 font-mono"
+                className="w-80 max-w-full font-mono"
               >
                 {nodeOptions.map((p) => (
                   <option key={p} value={p}>

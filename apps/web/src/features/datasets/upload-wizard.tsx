@@ -348,8 +348,10 @@ function CombineSummary({ sources }: { sources: Source[] }) {
           <li key={node} className="flex flex-wrap items-baseline gap-1.5">
             <Mono className="font-semibold">{node}</Mono>
             <span className="text-muted-foreground">
-              {group.length === 1 && group[0]!.placement.combine === "node"
-                ? "←"
+              {group[0]!.placement.combine === "node"
+                ? group.length === 1
+                  ? "←"
+                  : "← select how these files combine:"
                 : group[0]!.placement.combine === "concat"
                   ? `← stacked along ${group[0]!.placement.concatDim || "?"}:`
                   : `← merged (${group[0]!.placement.join}):`}

@@ -427,7 +427,7 @@ export function enrichSpecSchema(base: unknown, shape: SpecShape, sources: HintS
 export function nodeSnippets(tree: Record<string, DataSchema>): Snippet[] {
   return nodesWithVars(tree).map((p) => {
     const vars = Object.keys(tree[p]?.vars ?? {});
-    return { label: p, body: p, description: `${vars.length} variables: ${vars.slice(0, 6).join(", ")}${vars.length > 6 ? "…" : ""}` };
+    return { label: p, body: p, description: `${vars.length} ${vars.length === 1 ? "variable" : "variables"}: ${vars.slice(0, 6).join(", ")}${vars.length > 6 ? "…" : ""}` };
   });
 }
 

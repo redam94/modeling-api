@@ -251,7 +251,7 @@ export function buildGroups({
           key: `node:${p}`,
           title: p,
           id: key,
-          detail: `${vars.length} variables: ${vars.join(", ")}`,
+          detail: `${vars.length} ${vars.length === 1 ? "variable" : "variables"}: ${vars.join(", ")}`,
           current: selected.has(p),
           keywords: vars.join(" "),
           apply: () => applied(setPath(text, ["data", "nodes", key], { path: p }), onText, "Node added", `data.nodes.${key} reads ${p}`),
