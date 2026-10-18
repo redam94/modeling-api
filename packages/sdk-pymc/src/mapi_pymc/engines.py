@@ -22,6 +22,13 @@
 
 Every engine reports progress through one callback ``(fraction, message)`` where the
 message names the chain (``"chain 2/4: sampling 150/500, 0 divergences"``).
+
+**Start points.** By default every MCMC chain starts at the model's initial point with a
+random jitter. A plugin whose posterior has a trap near the default start (a mixture whose
+components all switch off) sets :attr:`EnginePlan.initvals` (values on the constrained scale,
+by free variable name, as ``pm.sample(initvals=...)``) and ``jitter=False`` with
+``dataclasses.replace(plan, ...)``: every chain then starts at exactly that point (``pymc``,
+``nutpie`` and the external NUTS bridges; ``map``, ``advi`` and ``pathfinder`` ignore both).
 """
 
 from __future__ import annotations
@@ -118,6 +125,10 @@ class EnginePlan:
     seed: int = 0
     target_accept: float | None = None
     checkpoint_every: int | None = None
+    initvals: Mapping[str, Any] | None = None
+    """Start values by free variable name (constrained scale); ``None``: the model's own."""
+    jitter: bool = True
+    """Jitter the start of each chain (``False``: every chain starts at the same point)."""
 
     @classmethod
     def from_config(
@@ -234,6 +245,11 @@ def run_engine(model: pm.Model, plan: EnginePlan, hooks: EngineHooks | None = No
     raise MapiError(f"unknown fit engine {plan.engine!r}", code=ErrorCode.SETTINGS_INVALID)
 
 
+def _start_kwargs(plan: EnginePlan) -> dict[str, Any]:
+    """``initvals`` for ``pm.init_nuts`` / ``pm.sample`` (empty when the plan sets none)."""
+    return {"initvals": dict(plan.initvals)} if plan.initvals else {}
+
+
 # ===================================================================================== pymc
 
 
@@ -255,13 +271,13 @@ def _sample_pymc(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Engin
         return _sample_pymc_compound(model, plan, hooks)
     seeds = np.random.SeedSequence(plan.seed).spawn(plan.chains + 1)
     init_seeds = [int(s.generate_state(1)[0] % (2**31)) for s in seeds[: plan.chains]]
-    kwargs: dict[str, Any] = {}
+    kwargs: dict[str, Any] = _start_kwargs(plan)
     if plan.target_accept is not None:
         kwargs["target_accept"] = plan.target_accept
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         initial_points, step = pm.init_nuts(
-            init="jitter+adapt_diag",
+            init="jitter+adapt_diag" if plan.jitter else "adapt_diag",
             chains=plan.chains,
             model=model,
             random_seed=init_seeds,
@@ -512,7 +528,9 @@ def _sample_pymc_compound(model: pm.Model, plan: EnginePlan, hooks: EngineHooks)
             ).message(),
         )
 
-    kwargs: dict[str, Any] = {}
+    kwargs: dict[str, Any] = _start_kwargs(plan)
+    if not plan.jitter:
+        kwargs["init"] = "adapt_diag"
     if plan.target_accept is not None:
         kwargs["target_accept"] = plan.target_accept
     with model, warnings.catch_warnings():
@@ -568,7 +586,11 @@ def _sample_nutpie(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Eng
             hooks.info(notes[-1])
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        compiled = nutpie.compile_pymc_model(model)
+        compiled = nutpie.compile_pymc_model(
+            model,
+            initial_points=dict(plan.initvals) if plan.initvals else None,
+            jitter_rvs=None if plan.jitter else set(),
+        )
     kwargs: dict[str, Any] = {
         "draws": plan.draws,
         "tune": plan.tune,
@@ -648,7 +670,9 @@ def _save_snapshot(hooks: EngineHooks, plan: EnginePlan, snap: xr.DataTree, done
 
 
 def _sample_external(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> EngineResult:
-    kwargs: dict[str, Any] = {}
+    kwargs: dict[str, Any] = _start_kwargs(plan)
+    if not plan.jitter:
+        kwargs["init"] = "adapt_diag"
     if plan.target_accept is not None:
         kwargs["target_accept"] = plan.target_accept
     hooks.report(0.0, f"sampling with {plan.engine}", force=True)
