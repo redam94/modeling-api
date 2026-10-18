@@ -36,6 +36,7 @@ export const MODEL_SECTION_META: Record<ModelSection, SectionMeta> = {
   response_curves: { title: "Response curves", question: "What does more spend give?", group: "What it learned" },
   irf: { title: "Impulse responses", question: "How does a shock to one series change the other series?", group: "What it learned" },
   fevd: { title: "Variance decomposition", question: "Which shocks cause the uncertainty of each series?", group: "What it learned" },
+  fields: { title: "Fields", question: "What does the model show on its grid, and where is it not sure?", group: "What it learned" },
   forecast: { title: "Forecast", question: "What comes next?", group: "Looking ahead" },
   backtest: { title: "Backtest", question: "How well does it forecast the past?", group: "Can you trust it?" },
   comparison: { title: "Comparison", question: "Is it better than other versions?", group: "Looking ahead" },

@@ -19,11 +19,16 @@ screens are exercised against what a server really returns:
 * **Budget optimisation**: the mmm-framework planning result of the MMM.
 
 It also writes ``src/features/explore/views.gen.ts``: TypeScript types of every explorer view
-(:mod:`mapi_spec.views`), generated with openapi-typescript from the Pydantic schemas.
+(:mod:`mapi_spec.views`), generated with openapi-typescript from the Pydantic schemas, and
+``src/mocks/fields.gen.json``: the ``fields`` view of a demo model (``demo-fields``) computed
+by the runner's section function from synthetic posterior draws of three gridded outputs (a
+framed log intensity, a vector field and a space-time density), without a fit.
 
 Usage::
 
     uv run python apps/web/scripts/gen_explorer_fixtures.py           # refit and rewrite (minutes)
+    uv run python apps/web/scripts/gen_explorer_fixtures.py --types   # only views.gen.ts
+    uv run python apps/web/scripts/gen_explorer_fixtures.py --fields  # only fields.gen.json
     uv run python apps/web/scripts/gen_explorer_fixtures.py --check   # contracts only (seconds)
 
 Writing needs the runner, the plugins and pnpm. ``--check`` needs only ``mapi_spec``: every
@@ -61,6 +66,7 @@ from mapi_spec.views import (
     DistributionsView,
     ExplorerIndex,
     FevdView,
+    FieldsView,
     FitVsActualView,
     GroupComparisonView,
     IrfView,
@@ -83,6 +89,8 @@ from pydantic.json_schema import models_json_schema
 WEB: Final = Path(__file__).resolve().parent.parent
 OUT: Final = WEB / "src" / "mocks" / "explorer.gen.json"
 TYPES: Final = WEB / "src" / "features" / "explore" / "views.gen.ts"
+FIELDS_OUT: Final = WEB / "src" / "mocks" / "fields.gen.json"
+FIELDS_REF: Final = "model://default/demo-fields@v1"
 
 #: One model per section view (``format`` tags differ, so the reader dispatches on them).
 VIEW_MODELS: Final[dict[str, type[BaseModel]]] = {
@@ -107,6 +115,7 @@ VIEW_MODELS: Final[dict[str, type[BaseModel]]] = {
     "response_curves": ResponseCurvesView,
     "irf": IrfView,
     "fevd": FevdView,
+    "fields": FieldsView,
     "forecast": ModelForecastView,
     "backtest": BacktestView,
     "comparison": ComparisonView,
@@ -610,6 +619,114 @@ def _models() -> tuple[dict[str, Any], dict[str, Any]]:
     return out, optimize
 
 
+def _fields_demo() -> dict[str, Any]:
+    """The demo model's fit-time explorer part: only ``fields``, from synthetic draws."""
+    from types import SimpleNamespace
+
+    import numpy as np
+    import xarray as xr
+    from mapi_runner.worker.explore_model import FIT_SECTIONS, ModelContext, fields
+    from mapi_spec.capabilities import OutputDecl, Representation
+    from mapi_spec.views import ExplorerSectionRef, explore_view_name
+
+    rng = np.random.default_rng(20261017)
+    n = 10  # posterior draws (one chain)
+    # a log-Gaussian Cox process intensity: a hot spot that drifts east over six periods
+    rows, cols, periods = np.arange(32), np.arange(48), np.arange(2019, 2025)
+    yy, xx = np.meshgrid(rows, cols, indexing="ij")
+    base = 0.6 * np.sin(xx / 7.0) * np.cos(yy / 9.0)
+    lam = np.empty((1, n, len(periods), len(rows), len(cols)))
+    for k in range(n):
+        wobble = 0.25 * rng.standard_normal((len(rows), len(cols)))
+        for t in range(len(periods)):
+            cx, cy = 10 + 5 * t + rng.normal(0, 0.8), 16 + rng.normal(0, 0.8)
+            spot = 2.2 * np.exp(-((xx - cx) ** 2 + (yy - cy) ** 2) / 40.0)
+            lam[0, k, t] = np.exp(-1.0 + base + spot + wobble + 0.1 * rng.standard_normal())
+    # a traction field: a contracting cell (inward vectors around an ellipse)
+    g = np.linspace(-1, 1, 24)
+    gy, gx = np.meshgrid(g, g, indexing="ij")
+    r2 = (gx / 0.7) ** 2 + (gy / 0.45) ** 2
+    ring = np.exp(-((np.sqrt(r2) - 1.0) ** 2) / 0.05)
+    trac = np.empty((1, n, 2, 24, 24))
+    for k in range(n):
+        s = 120 * (1 + 0.15 * rng.standard_normal())
+        trac[0, k, 0] = -s * gx * ring + 6 * rng.standard_normal((24, 24))
+        trac[0, k, 1] = -s * gy * ring + 6 * rng.standard_normal((24, 24))
+    # a Fisher-KPP front: density over time (rows) and space (columns)
+    t_, x_ = np.linspace(0, 10, 30), np.linspace(0, 60, 60)
+    dens = np.empty((1, n, 30, 60))
+    for k in range(n):
+        speed, width = 4.0 + 0.3 * rng.standard_normal(), 2.5 + 0.2 * rng.standard_normal()
+        front = 8 + speed * t_[:, None]
+        dens[0, k] = 1 / (1 + np.exp((x_[None, :] - front) / width))
+    pred = xr.Dataset(
+        {
+            "intensity": (("chain", "draw", "period", "row", "col"), lam),
+            "traction": (("chain", "draw", "component", "ty", "tx"), trac),
+            "density": (("chain", "draw", "t", "x"), dens),
+        },
+        coords={
+            "period": periods,
+            "component": ["x", "y"],
+            "ty": np.round(g, 3),
+            "tx": np.round(g, 3),
+            "t": np.round(t_, 3),
+            "x": np.round(x_, 2),
+        },
+    )
+    outputs = {
+        "intensity": {
+            "dims": ["period", "row", "col"],
+            "units": "events/cell",
+            "description": "Expected number of events in each cell and period.",
+            "grid": {"y": "row", "x": "col", "frame": "period", "log": True},
+        },
+        "traction": {
+            "dims": ["component", "ty", "tx"],
+            "units": "Pa",
+            "description": "Traction that the cell applies to the substrate.",
+            "grid": {"y": "ty", "x": "tx", "component": "component", "colormap": "magma",
+                     "origin": "lower"},
+        },
+        "density": {
+            "dims": ["t", "x"],
+            "description": "Population density, as a fraction of the carrying capacity.",
+            "grid": {"y": "t", "x": "x", "colormap": "cividis", "origin": "lower"},
+        },
+    }  # fmt: skip
+    manifest = SimpleNamespace(
+        outputs={k: OutputDecl.model_validate(v) for k, v in outputs.items()},
+        capabilities=SimpleNamespace(representation=Representation.DRAWS),
+    )
+    bundle = SimpleNamespace(
+        model=SimpleNamespace(manifest=manifest, groups={}, derived={}),
+        binding=SimpleNamespace(to_dataset=lambda name: name),
+    )
+    ctx = ModelContext(bundle, xr.Dataset(), None)  # type: ignore[arg-type]
+    ctx._scored = pred
+    view = fields(ctx).model_dump(mode="json", exclude_none=True)
+    refs = [
+        ExplorerSectionRef(section=s, view=explore_view_name(s))
+        if s == "fields"
+        else ExplorerSectionRef(
+            section=s,
+            view=explore_view_name(s),
+            status="skipped",
+            message_plain="Not available: this demo model has only fields.",
+        )
+        for s in FIT_SECTIONS
+    ]
+    index = ExplorerIndex.model_validate({"target": "model", "ref": FIELDS_REF, "sections": refs})
+    empty = ExplorerIndex.model_validate({"target": "model", "ref": FIELDS_REF, "sections": []})
+    return {
+        "ref": FIELDS_REF,
+        "fit": {"index": index.model_dump(mode="json", exclude_none=True),
+                "views": {"fields": view}, "plots": {}},
+        "explore": {"index": empty.model_dump(mode="json", exclude_none=True), "views": {},
+                    "plots": {}},
+    }  # fmt: skip
+
+
 def _write_types() -> None:
     """``views.gen.ts`` from the view schemas (openapi-typescript, as ``schema.d.ts``)."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -641,6 +758,11 @@ def _write_types() -> None:
     )
     TYPES.parent.mkdir(parents=True, exist_ok=True)
     TYPES.write_text(header + body, "utf-8")
+
+
+def _write_fields() -> None:
+    doc = _round(_fields_demo())
+    FIELDS_OUT.write_text(json.dumps(doc, separators=(",", ":"), sort_keys=True) + "\n", "utf-8")
 
 
 def render() -> str:
@@ -691,12 +813,18 @@ def check() -> list[str]:
         problems.append("the built-in About cards changed")
     if not TYPES.exists() or f"schema-sha256: {_schema_hash()}" not in TYPES.read_text("utf-8"):
         problems.append("the explorer view types are stale")
+    if FIELDS_OUT.exists():
+        views("demo fields", json.loads(FIELDS_OUT.read_text("utf-8"))["fit"])
+    else:
+        problems.append(f"{FIELDS_OUT} is missing")
     return problems
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail if the fixtures are stale")
+    parser.add_argument("--types", action="store_true", help="write only views.gen.ts")
+    parser.add_argument("--fields", action="store_true", help="write only fields.gen.json")
     args = parser.parse_args(argv)
     if args.check:
         problems = check()
@@ -706,8 +834,18 @@ def main(argv: list[str] | None = None) -> int:
             print("run: uv run python apps/web/scripts/gen_explorer_fixtures.py", file=sys.stderr)
         return 1 if problems else 0
     warnings.filterwarnings("ignore")
+    if args.types or args.fields:
+        if args.types:
+            _write_types()
+            print(f"wrote {TYPES.relative_to(WEB)}")
+        if args.fields:
+            _write_fields()
+            print(f"wrote {FIELDS_OUT.relative_to(WEB)}")
+        return 0
     _write_types()
+    _write_fields()
     OUT.write_text(render(), "utf-8")
+    print(f"wrote {FIELDS_OUT.relative_to(WEB)}")
     print(f"wrote {OUT.relative_to(WEB)} ({OUT.stat().st_size // 1024} KiB)")
     print(f"wrote {TYPES.relative_to(WEB)}")
     return 0

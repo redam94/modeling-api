@@ -1033,11 +1033,13 @@ EXPLORER_RECIPES: Final[dict[str, Callable[[Mapping[str, Any]], list[Plot]]]] = 
     "mapi.model-explorer.response-curves/v1": _response_curves,
     "mapi.model-explorer.irf/v1": _irf,
     "mapi.model-explorer.fevd/v1": _fevd,
+    "mapi.model-explorer.fields/v1": lambda _v: [],
     "mapi.model-explorer.forecast/v1": _forecast,
     "mapi.model-explorer.backtest/v1": _backtest,
     "mapi.model-explorer.comparison/v1": _comparison,
 }
-"""View ``format`` -> recipe (the diagnostics view is a table; it has no plot)."""
+"""View ``format`` -> recipe (the diagnostics view is a table and the fields view has its own
+canvas viewer in the web app; they have no plot)."""
 
 
 def explorer_plots(view: Mapping[str, Any]) -> list[Plot]:

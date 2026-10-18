@@ -332,7 +332,7 @@ See [Governance](../../concepts/governance.md).
 
 ::: mapi_spec.views
     options:
-      members: [ExplorerIndex, ExplorerSectionRef, explore_view_name, DataOverviewView, DistributionsView, TimeSeriesView, MissingnessView, OutliersView, CorrelationView, CrossCorrelationView, AcfPacfView, StationarityView, StlView, VifView, GroupComparisonView, QualityView, ParamTableView, ModelDiagnosticsView, FitVsActualView, ResidualDiagnosticsView, DecompositionView, ResponseCurvesView, IrfView, FevdView, ModelForecastView, BacktestView, ComparisonView]
+      members: [ExplorerIndex, ExplorerSectionRef, explore_view_name, DataOverviewView, DistributionsView, TimeSeriesView, MissingnessView, OutliersView, CorrelationView, CrossCorrelationView, AcfPacfView, StationarityView, StlView, VifView, GroupComparisonView, QualityView, ParamTableView, ModelDiagnosticsView, FitVsActualView, ResidualDiagnosticsView, DecompositionView, ResponseCurvesView, IrfView, FevdView, FieldsView, FieldEntry, FieldFrame, FieldRaster, FieldArrows, decode_raster, ModelForecastView, BacktestView, ComparisonView]
       heading_level: 3
 
 ::: mapi_spec.optimize

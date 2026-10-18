@@ -95,7 +95,7 @@ class ModelExploreRequest(RequestModel):
     backtest section (fits run as child runs)."""
 
     sections: list[ModelSection] = Field(
-        default_factory=_all_model_sections, min_length=1, max_length=11
+        default_factory=_all_model_sections, min_length=1, max_length=12
     )
     compare_with: list[str] = Field(default_factory=list, max_length=10)
     backtest: SplitPlan | None = None
@@ -132,7 +132,7 @@ class ModelCompareRequest(RequestModel):
 
     models: list[str] = Field(..., min_length=2, max_length=11, description="model:// refs")
     sections: list[ModelSection] = Field(
-        default_factory=_comparison_only, min_length=1, max_length=11
+        default_factory=_comparison_only, min_length=1, max_length=12
     )
     backtest: SplitPlan | None = None
     horizon: int | None = Field(None, ge=1, le=520)

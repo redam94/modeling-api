@@ -128,7 +128,7 @@ mapi explore compare model://growth/sales-arimax@v2 model://growth/sales-ets@v1 
 ## Views written at fit
 
 Each fit writes `params`, `diagnostics`, `fit`, `residuals`, `decomposition`,
-`response_curves`, `irf` and `fevd`. The fit lists the sections that do not apply to the model
+`response_curves`, `irf`, `fevd` and `fields`. The fit lists the sections that do not apply to the model
 as `skipped`, with the reason. Read the index and the views through the UI route of the model
 version:
 
@@ -186,6 +186,7 @@ view does not include the tests. It gives a warning. For more sections, add
 | `response_curves` | Mean contribution for each channel at each spend level, with a 90% band | MMMs with a response grid |
 | `irf` | Impulse responses (response × shock × horizon) with bands | VAR, VARMAX, VECM |
 | `fevd` | Forecast-error variance decomposition | VAR, VARMAX, VECM |
+| `fields` | Each output on a 2-D grid as an image: the mean, the sd, the mean÷sd, the 5% and 95% quantiles and some posterior draws for each frame, with arrows for a vector field. Play the draws to see some possible fields that agree with the data | models with an output that has a `grid` (maps, images, space-time fields) |
 | `forecast` | A forecast fan over `horizon` periods after the history. The drivers stay at their last values | models that forecast |
 | `backtest` | New fits on a rolling-origin or expanding-window plan: metrics for each fold and horizon, against "same as last period" and "same as last season" | models over time |
 | `comparison` | More than one version side by side (above) | all |

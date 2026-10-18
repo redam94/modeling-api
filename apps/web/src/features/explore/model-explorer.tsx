@@ -1,7 +1,7 @@
 /**
  * The Model Explorer of one model version (M3.5): what the model learned, whether it can be
  * trusted and what it expects next. The fit wrote the parameter, diagnostic, fit, residual,
- * contribution, response-curve and IRF/FEVD views; forecasts and backtests come from an
+ * contribution, response-curve, IRF/FEVD and field views; forecasts and backtests come from an
  * explore run started here. Governance evidence and lineage complete the picture.
  */
 import { Link } from "@tanstack/react-router";
@@ -25,16 +25,16 @@ import { mergeSections, useBaseIndex, useExploration, useSectionView, useStartEx
 import { ExplorerNav, RecipePlots, RunBanner, SectionGate, type NavEntry } from "./explorer-shell";
 import { GovernancePanel } from "./governance-panel";
 import { LineagePanel } from "./lineage-panel";
-import { BacktestSection, DecompositionSection, DiagnosticsSection, FevdSection, FitSection, ForecastSection, IrfSection, ParamsSection, ResidualsSection, ResponseCurvesSection } from "./model-sections";
+import { BacktestSection, DecompositionSection, DiagnosticsSection, FevdSection, FieldsSection, FitSection, ForecastSection, IrfSection, ParamsSection, ResidualsSection, ResponseCurvesSection } from "./model-sections";
 import { diagnosticsReading, fitReading } from "./plain";
 import { MODEL_SECTION_META } from "./sections-meta";
 import { num, PlainSummary, SectionCard } from "./ui";
-import type { ModelSection, SectionViews } from "./views";
+import { FIT_SECTIONS, type ExplorerIndexView, type ModelSection, type SectionViews } from "./views";
 
 export type ModelTab = Exclude<ModelSection, "comparison"> | "summary" | "governance" | "lineage";
 
 /** The view sections the explorer lists (comparison has its own page). */
-export const MODEL_ORDER: readonly Exclude<ModelSection, "comparison">[] = ["params", "decomposition", "response_curves", "irf", "fevd", "diagnostics", "fit", "residuals", "backtest", "forecast"];
+export const MODEL_ORDER: readonly Exclude<ModelSection, "comparison">[] = ["params", "decomposition", "response_curves", "irf", "fevd", "fields", "diagnostics", "fit", "residuals", "backtest", "forecast"];
 
 const ON_DEMAND: readonly ModelSection[] = ["forecast", "backtest"];
 
@@ -68,7 +68,7 @@ function ModelOptionsDialog({ open, onOpenChange, initial, onRun, pending }: { o
   const hs = parseHorizons(horizons);
   const needsPlan = sections.includes("backtest");
   const valid = sections.length > 0 && (!needsPlan || hs.length > 0) && horizon >= 1 && horizon <= 520;
-  const choices: ModelSection[] = ["forecast", "backtest", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd"];
+  const choices: ModelSection[] = ["forecast", "backtest", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd", "fields"];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide>
@@ -173,6 +173,8 @@ function SectionContent({ section, view, expert }: { section: ModelSection; view
       return <IrfSection view={view as SectionViews["irf"]} expert={expert} />;
     case "fevd":
       return <FevdSection view={view as SectionViews["fevd"]} expert={expert} />;
+    case "fields":
+      return <FieldsSection view={view as SectionViews["fields"]} expert={expert} />;
     case "forecast":
       return <ForecastSection view={view as SectionViews["forecast"]} expert={expert} />;
     case "backtest":
@@ -250,6 +252,19 @@ function SummaryPanel({ mv, target, states, runId, expert, onSection }: { mv: Mo
 
 // ------------------------------------------------------------------------------ the explorer
 
+/**
+ * A fit-time section that a loaded fit index does not list comes from a fit that is older than
+ * the section (for example `fields`): the version has no such view, so it does not apply. Only
+ * the on-demand sections stay "missing" (an explore run computes them).
+ */
+export function fitOnlyAbsent<T extends ModelSection>(states: SectionState<T>[], base: ExplorerIndexView | null | undefined): SectionState<T>[] {
+  if (!base) return states;
+  return states.map((s) =>
+    s.status === "missing" && FIT_SECTIONS.includes(s.section) && !ON_DEMAND.includes(s.section) ? { ...s, status: "skipped", message: "The fit of this version did not make this view." } : s,
+  );
+}
+
+
 export interface ModelExplorerProps {
   mv: ModelVersion;
   modelId: string;
@@ -269,7 +284,7 @@ export function ModelExplorer({ mv, modelId, version, tab, onTab, runId, onRun, 
   const grants = useGrants();
   const canRun = can(grants, "create", "run");
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const states = useMemo(() => mergeSections(MODEL_ORDER, base.data, run.data), [base.data, run.data]);
+  const states = useMemo(() => fitOnlyAbsent(mergeSections(MODEL_ORDER, base.data, run.data), base.data), [base.data, run.data]);
   const byId = new Map(states.map((s) => [s.section, s]));
   const missing = states.filter((s) => s.status === "missing").map((s) => s.section);
   const running = Boolean(run.data && !run.data.done) || start.isPending;

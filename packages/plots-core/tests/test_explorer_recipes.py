@@ -33,7 +33,7 @@ def _check(view: dict[str, object]) -> list[dict[str, object]]:
 
 
 def test_recipes_cover_every_view_format() -> None:
-    assert len(EXPLORER_RECIPES) == 24
+    assert len(EXPLORER_RECIPES) == 25
     assert explorer_plots({"format": "mapi.unknown/v1"}) == []
     assert explorer_plots({"format": "mapi.model-explorer.diagnostics/v1"}) == []
 

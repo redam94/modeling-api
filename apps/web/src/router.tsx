@@ -162,7 +162,7 @@ const catalogRoute = createRoute({
 
 // M3.5: the explorers, model comparison, budget optimisation and Help me choose.
 export const DATA_EXPLORER_TABS = ["overview", "distributions", "timeseries", "missingness", "outliers", "correlation", "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality"] as const;
-export const MODEL_EXPLORER_TABS = ["summary", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd", "forecast", "backtest", "governance", "lineage"] as const;
+export const MODEL_EXPLORER_TABS = ["summary", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd", "fields", "forecast", "backtest", "governance", "lineage"] as const;
 
 const exploreDataRoute = createRoute({
   getParentRoute: () => rootRoute,
