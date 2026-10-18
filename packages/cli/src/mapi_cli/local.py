@@ -19,6 +19,7 @@ from mapi_spec.errors import ErrorCode, MapiError, error_from_problem
 from mapi_spec.executor import ExecState, ExecStatus, RunEvent, RunKind, RunSubmit
 from mapi_spec.loader import parse_text
 from mapi_spec.schema import DataSchema
+from mapi_spec.tree import TreeSchema
 
 if TYPE_CHECKING:
     import xarray as xr
@@ -26,11 +27,13 @@ if TYPE_CHECKING:
 
 __all__ = [
     "LocalRun",
+    "is_tree_zip",
     "load_registry",
     "parse_assignments",
     "raw_schema",
     "read_dataset",
     "read_schema_file",
+    "read_tree_schemas",
     "run_inproc",
 ]
 
@@ -60,6 +63,25 @@ def read_dataset(path: Path) -> xr.Dataset:
     from mapi_sdk.wire import read_zarr_zip
 
     return read_zarr_zip(path)
+
+
+def is_tree_zip(path: Path) -> bool:
+    """A tree dataset (``*.tree.zip``, as ``data.tree.zip`` of a tree version)."""
+    return path.name.lower().endswith(".tree.zip")
+
+
+def read_tree_schemas(path: Path, schema_file: Path | None = None) -> tuple[DataSchema, TreeSchema]:
+    """The root schema and the tree schema of a local ``*.tree.zip`` (read with the SDK's
+    validating reader): the schema the ingest stored, else one inferred per node. An
+    explicit ``schema_file`` replaces the root schema."""
+    if not path.is_file():
+        raise FileNotFoundError(f"{path} is not a file")
+    from mapi_sdk.tree import infer_tree_schema, read_tree_zip, stored_tree_schema
+
+    tree = read_tree_zip(path)
+    tree_schema = stored_tree_schema(tree) or infer_tree_schema(tree)
+    root = read_schema_file(schema_file) if schema_file is not None else tree_schema.root
+    return root, tree_schema
 
 
 def read_schema_file(path: Path) -> DataSchema:
