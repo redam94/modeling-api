@@ -1,0 +1,18 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: storm-localisation-synthetic, project: microscopy, labels: {corpus: e58}}
+data:
+  dataset: dataset://microscopy/storm_synthetic@latest
+model:
+  use: sci.storm_localisation@^1
+  settings:
+    pixel_nm: 127
+    offset_adu: 457
+    scale_adu: 13.8
+    max_spots: 100
+    score_draws: 40
+    ppc_draws: 20
+    render_px_nm: 16
+  fit: {seed: 58, tune: 1000, draws: 1000, chains: 4, engine: pymc, keep: {log_likelihood: true}}
+evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
+outputs: {plots: [core.convergence, sci.point_pattern, sci.image_residuals, sci.field_map]}
