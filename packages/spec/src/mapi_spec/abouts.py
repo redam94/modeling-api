@@ -1761,8 +1761,10 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
                 "Naturalist",
                 None,
             ),
-            ("Pagel (1999), Inferring the historical patterns of biological evolution, Nature",
-             None),
+            (
+                "Pagel (1999), Inferring the historical patterns of biological evolution, Nature",
+                None,
+            ),
             (
                 "Street, Navarrete, Reader and Laland (2017), Coevolution of cultural "
                 "intelligence, extended life history, sociality, and brain size in primates, "

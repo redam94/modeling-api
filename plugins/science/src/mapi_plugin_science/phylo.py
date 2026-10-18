@@ -183,8 +183,10 @@ class PhyloRegressionSettings(ModelSettings):
         if bad:
             raise ValueError(f"predictor names {bad} are reserved")
         for name in v:
-            if not name or not (name[0].isalpha() or name[0] == "_") or not all(
-                c.isalnum() or c == "_" for c in name
+            if (
+                not name
+                or not (name[0].isalpha() or name[0] == "_")
+                or not all(c.isalnum() or c == "_" for c in name)
             ):
                 raise ValueError(f"predictor name {name!r} is not a valid variable name")
         return v
@@ -211,8 +213,7 @@ _TEMPLATE: dict[str, Any] = {
                 "dtype": "float64",
                 "role": "target",
                 "missing": "allow",
-                "description": "The trait to explain; missing values are predicted from "
-                "relatives",
+                "description": "The trait to explain; missing values are predicted from relatives",
             },
             "{*predictors as p}": {
                 "dims": [SPECIES_DIM],
@@ -442,10 +443,7 @@ def to_newick(tree: PhyloTree, digits: int = 6) -> str:
     kids = tree.children()
 
     def rec(v: int) -> str:
-        if not kids[v]:
-            body = tree.labels[v]
-        else:
-            body = "(" + ",".join(rec(c) for c in kids[v]) + ")"
+        body = tree.labels[v] if not kids[v] else "(" + ",".join(rec(c) for c in kids[v]) + ")"
         if tree.parent[v] < 0:
             return body
         return f"{body}:{tree.length[v]:.{digits}g}"
@@ -684,7 +682,9 @@ class PhyloRegressionModel(CustomModel[PhyloRegressionSettings]):
         try:
             tips = tree.tip_positions(labels.tolist())
         except KeyError as exc:
-            raise _err(f"species without a tip of the same label in the tree: {exc}", "/data")
+            raise _err(
+                f"species without a tip of the same label in the tree: {exc}", "/data"
+            ) from None
         x = _transform_x(ds, s)
         if TARGET in ds:
             y = _values(ds, TARGET)
@@ -934,8 +934,9 @@ class PhyloRegressionModel(CustomModel[PhyloRegressionSettings]):
         x = np.asarray(const[X_VAR].transpose(SPECIES_DIM, PREDICTOR_DIM).values, dtype=float)
         raw = np.asarray(obs[TARGET].sel({SPECIES_DIM: labels}).values, dtype=float)
         yv = _log(raw, TARGET) if s.log_target else raw
-        y = (yv - float(fitted.learned["y_center"])) / float(fitted.learned["y_scale"])
-        depth = float(fitted.learned["tree_depth"])  # type: ignore[arg-type]
+        learned: dict[str, Any] = dict(fitted.learned)
+        y = (yv - float(learned["y_center"])) / float(learned["y_scale"])
+        depth = float(learned["tree_depth"])
         r, dn = _distance(tree.shared_length(tips), depth)
         return _Design(labels, tips, x, y, r, dn, tree, depth)
 
@@ -961,7 +962,7 @@ class PhyloRegressionModel(CustomModel[PhyloRegressionSettings]):
         try:
             new_tips = fit.tree.tip_positions(labels.tolist())
         except KeyError as exc:
-            raise _err(f"species without a tip in the fitted tree: {exc}", "/data")
+            raise _err(f"species without a tip in the fitted tree: {exc}", "/data") from None
         learned = dict(fitted.learned)
         xc = np.asarray(learned["x_center"], dtype=float)
         xs = np.asarray(learned["x_scale"], dtype=float)

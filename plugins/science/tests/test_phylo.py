@@ -139,8 +139,9 @@ def test_shared_length_is_the_depth_of_the_common_ancestor() -> None:
     np.testing.assert_allclose(back.shared_length(back.tip_positions(["a", "b", "c", "d"])), want)
     # pruning a tip keeps the others' shared lengths
     pruned = tree.prune(["a", "c", "d"])
+    keep = [0, 2, 3]
     np.testing.assert_allclose(
-        pruned.shared_length(pruned.tip_positions(["a", "c", "d"])), want[np.ix_([0, 2, 3], [0, 2, 3])]
+        pruned.shared_length(pruned.tip_positions(["a", "c", "d"])), want[np.ix_(keep, keep)]
     )
 
 
@@ -371,8 +372,9 @@ def test_phylo_regression_passes_the_contract_kit(registry: Registry) -> None:
         "plots_sanitize",
     } <= ran, report.summary()
     notes = {r.name: r.detail for r in report.results}
-    assert "sci.phylogeny" in notes["plots_sanitize"] and "not applicable" not in (
-        notes["plots_sanitize"].split("sci.phylogeny")[0][-40:]
+    assert (
+        "sci.phylogeny" in notes["plots_sanitize"]
+        and "not applicable" not in (notes["plots_sanitize"].split("sci.phylogeny")[0][-40:])
     ), notes["plots_sanitize"]
     print(report.summary())
 
@@ -459,8 +461,8 @@ def test_real_primates_lambda_fit_matches_the_notebook(registry: Registry) -> No
     assert CSV is not None
     ds = from_challenges(CSV)
     spec = PRIMATES_SPEC_YAML.replace(
-        "tune: 1000, draws: 1000, chains: 4, engine: nutpie", "tune: 500, draws: 500, chains: 2, "
-        "engine: pymc"
+        "tune: 1000, draws: 1000, chains: 4, engine: nutpie",
+        "tune: 500, draws: 500, chains: 2, engine: pymc",
     )
     b = fit_spec(spec, ds, registry=registry, raw_schema=PHYLO_SCHEMA)
     ref = challenges_reference()["lambda"]

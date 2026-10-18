@@ -150,7 +150,7 @@ def random_tree(n_tips: int, *, depth: float = 50.0, seed: int = 0) -> PhyloTree
     split = np.full(n, np.nan)  # time a node splits (a tip: the present)
     root = n - 1
     split[root] = 0.0
-    nxt_tip, nxt_inner = 0, n - 2
+    nxt_inner = n - 2
     # two lineages leave the root; each lineage splits at rate 1 until n_tips are alive
     alive = [-1, -2]  # open lineages (placeholders) with their parent
     owner = {-1: root, -2: root}
@@ -167,9 +167,7 @@ def random_tree(n_tips: int, *, depth: float = 50.0, seed: int = 0) -> PhyloTree
             owner[k] = node
             k -= 1
     end = t + rng.exponential(1.0 / len(alive))
-    for lin in alive:
-        node = nxt_tip
-        nxt_tip += 1
+    for node, lin in enumerate(alive):
         parent[node] = owner[lin]
         split[node] = end
     born = np.where(parent >= 0, split[np.maximum(parent, 0)], 0.0)
@@ -207,7 +205,9 @@ def phylo_dataset(
         n: 0.5 * (chol @ rng.standard_normal(r.shape[0])) + 0.85 * rng.standard_normal(r.shape[0])
         for n in names
     }
-    params = {k: np.atleast_1d(float(p[k])) for k in ("sigma", "lam", "eta2", "rho") if k in p}
+    params: dict[str, np.ndarray] = {
+        k: np.atleast_1d(float(p[k])) for k in ("sigma", "lam", "eta2", "rho") if k in p
+    }
     k = covariance(kind, r, dn, params)[0]
     resid = np.linalg.cholesky(k + 1e-9 * np.eye(k.shape[0])) @ rng.standard_normal(k.shape[0])
     logs = {n: x[n] + c0 for n, c0 in zip(names, (7.0, 1.5), strict=True)}
