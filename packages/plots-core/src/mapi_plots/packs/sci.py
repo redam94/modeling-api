@@ -11,7 +11,9 @@ manifest's ``plots``:
 * ``sci.profile_bands``: median and 50 / 90 % bands of an output along one dim, one curve per
   level of a second dim, observed points and a slider that shows one level at a time;
 * ``sci.ensemble``: a spaghetti of posterior draws along one dim, the 90 % band, the median
-  and the observed points.
+  and the observed points;
+* ``sci.point_pattern`` (:mod:`mapi_plots.packs.sci_points`): points such as localisations or
+  events with error ellipses over an optional image or intensity field.
 
 The image and spectrum recipes of the pack (``sci.image_residuals``, ``sci.ppc_image_grid``,
 ``sci.swatches``, ``sci.power_spectrum``) are in :mod:`mapi_plots.packs.sci_images`, built on
@@ -1450,6 +1452,7 @@ def sci_recipes() -> list[Recipe[Any]]:
     """The scientific-model pack (entry point ``mapi.plots: sci``)."""
     from mapi_plots.packs.sci_images import sci_image_recipes
     from mapi_plots.packs.sci_maps import sci_map_recipes
+    from mapi_plots.packs.sci_points import point_pattern
 
     return [
         field_map,
@@ -1458,4 +1461,5 @@ def sci_recipes() -> list[Recipe[Any]]:
         ensemble,
         *sci_map_recipes(),
         *sci_image_recipes(),
+        point_pattern,
     ]

@@ -182,6 +182,7 @@ def test_pack_is_in_the_catalog() -> None:
         "sci.swatches",
         "sci.power_spectrum",
     } <= set(ids)
+    assert "sci.point_pattern" in ids
     assert set(ids) <= {r.id for r in all_recipes()}
     assert get_recipe("sci.field_map") is field_map
     assert all(r.summary and r.tags[0] == "sci" for r in sci_recipes())
