@@ -9,7 +9,11 @@ Ported from the pymc-challenges case studies:
 * ``sci.traction_force`` - a Gaussian inverse problem in Fourier space that recovers a 2-D
   traction field from a displacement field, with exact posterior draws (E60);
 * ``sci.strong_lens`` - a pixel forward model of a galaxy-scale strong lens, with a
-  pixelated source and critical curves per draw (E80).
+  pixelated source and critical curves per draw (E80);
+* ``sci.circular_regression`` - directions and times of day on the circle: a von Mises
+  regression with a canonical link on harmonics of the hour and the day of year (or a
+  projected normal, or a mixture of two regimes), and log-Fourier activity densities with
+  overlaps (E81, Santa Barbara winds and Barro Colorado camera traps).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -18,6 +22,7 @@ Every plugin registers through the ``mapi.models`` entry point
 
 from importlib import metadata as _metadata
 
+from mapi_plugin_science.circular import CircularRegressionModel, CircularRegressionSettings
 from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
 from mapi_plugin_science.lens import StrongLensModel, StrongLensSettings
 from mapi_plugin_science.lgcp import LGCPGridModel, LGCPGridSettings
@@ -28,11 +33,19 @@ try:
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
     __version__ = "0.8.0"
 
-PLUGINS = (LGCPGridModel, FisherKPPModel, TractionForceModel, StrongLensModel)
+PLUGINS = (
+    LGCPGridModel,
+    FisherKPPModel,
+    TractionForceModel,
+    StrongLensModel,
+    CircularRegressionModel,
+)
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
 __all__ = [
     "PLUGINS",
+    "CircularRegressionModel",
+    "CircularRegressionSettings",
     "FisherKPPModel",
     "FisherKPPSettings",
     "LGCPGridModel",

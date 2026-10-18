@@ -1705,6 +1705,89 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "experience": ["expert"],
         },
     ),
+    "sci.circular_regression": _a(
+        "Directions and times of day",
+        "Finds how a direction or a time of day changes with the hour and the season, for "
+        "example where the wind comes from. It also shows when each animal species is "
+        "active and how much two species are active at the same time.",
+        [
+            "Your values are angles: wind directions, compass bearings or times of day",
+            "You want the most probable direction for each hour and season, with a range",
+            "You want the daily activity of animals from camera-trap times, or the overlap of "
+            "two species",
+        ],
+        [
+            "The values are not on a circle (for example a temperature)",
+            "You need the speed of the wind as well as its direction (the model uses only the "
+            "direction)",
+            "The wind is calm (a calm has no direction: remove those rows first)",
+            "You need forecasts of the next hours from the last values (the model uses only the "
+            "hour and the day of the year)",
+        ],
+        [
+            "One row for each report or record, with the angle in degrees, radians or hours",
+            "For directions: the hour of the day (0 to 24) and the day of the year of each row",
+            "For activity: the group (species) of each record",
+        ],
+        [
+            "The hour of the day and the day of the year change the direction smoothly (a few "
+            "harmonics of each)",
+            "Rows are independent when the hour and the season are known",
+            "Activity: the density over the day is smooth, and an animal is fully active at "
+            "the peak of its curve",
+        ],
+        [
+            "The mean direction and the mean resultant length for each row and for each block "
+            "of hours or each group",
+            "The density of the angles around the circle for each block or group, with a range",
+            "Simulated angles for new hours and days",
+            "Activity: the fraction of the day each group is active, and the overlap of each "
+            "pair of groups",
+        ],
+        _X,
+        _MIN,
+        "Hourly winds at Santa Barbara airport come from the west-southwest in the "
+        "afternoon (the sea breeze) and from the east at night. The ocelot and the agouti "
+        "share only 30% of their daily activity.",
+        related=["sci.lgcp_grid"],
+        expert="pymc-challenges E81. Von Mises regression with the canonical link: natural "
+        "parameters eta = F B, log p = eta . (cos t, sin t) - log(2 pi I0(|eta|)), concave in B "
+        "(no wrapped prior, no seam at +-pi, no second mode of the tan-half link). F holds an "
+        "intercept and harmonics of the hour and the day of year plus their products (19 "
+        "features by default). Kinds: von_mises, projected_normal (angle of N(F B, I)), "
+        "regime_mixture (two von Mises regimes on fewer features, the second one's "
+        "probability through a logistic gate on all features, labels anchored by the prior "
+        "directions), activity (log-Fourier density per group, a_k, b_k ~ N(0, (tau/k)^2), "
+        "fitted through the trigonometric moments). Priors N(0, 2) on intercepts and N(0, 1) "
+        "on the other coefficients. Pointwise log densities (per radian) support elpd_loo "
+        "across kinds. Activity level 1 / (2 pi max f) (Rowcliffe et al. 2014), overlap "
+        "Delta = int min(f_i, f_j).",
+        refs=[
+            (
+                "Fisher (1993), Statistical analysis of circular data, Cambridge University "
+                "Press",
+                None,
+            ),
+            (
+                "Rowcliffe et al. (2014), Quantifying levels of animal activity using camera "
+                "trap data, Methods in Ecology and Evolution",
+                "https://doi.org/10.1111/2041-210X.12278",
+            ),
+            (
+                "Ridout and Linkie (2009), Estimating overlap of daily activity patterns from "
+                "camera trap data, JABES",
+                "https://doi.org/10.1198/jabes.2009.08038",
+            ),
+        ],
+        fits={
+            "goal": ["explain_drivers", "predict_values"],
+            "data_shape": ["table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -1719,7 +1802,13 @@ SURVIVING_MODEL_IDS: Final[frozenset[str]] = frozenset(
 the scikit-learn models of ``mapi-sklearn``)."""
 
 SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
-    {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens"}
+    {
+        "sci.lgcp_grid",
+        "sci.fisher_kpp",
+        "sci.traction_force",
+        "sci.strong_lens",
+        "sci.circular_regression",
+    }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
 problems ported from the pymc-challenges case studies)."""
