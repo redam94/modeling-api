@@ -565,6 +565,8 @@ photon-transfer curve of the full 200 × 200 field. `challenges_settings(ds)` gi
 values as settings. The detector finds 4,192 blobs, as in the notebook. With
 `amplitude_band: [0.45, 0.55]` and `max_spots: 1`, the fit is the spot of the notebook (blob
 12, frame 5): x = 4.46 ± 0.05 px, about 2,160 photons, a PSF sd of 125 nm and a position error
-of 7 nm. 200 spots take approximately one minute with nutpie (4 chains of 1,000 draws). The
-model does not do the multi-emitter selection, the Laplace fits for the full movie or the
+of 7 nm. 200 spots take approximately one minute with nutpie (4 chains of 1,000 draws). On
+these frames, `kind: plane` has more than one mode for approximately 8 % of the spots (spots
+at the edge of the crop, or near a bright spot outside the patch). Then the chains do not
+agree. Use `flat` for these frames. The model does not do the multi-emitter selection, the Laplace fits for the full movie or the
 blink counting of the notebook.
