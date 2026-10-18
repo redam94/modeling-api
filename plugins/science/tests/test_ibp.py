@@ -342,6 +342,31 @@ def test_predict_returns_images_features_and_ownership(
     )
 
 
+@pytest.mark.parametrize("body", ["mode: predict\n", "mode: predict\noutput: {kind: predictive}\n"])
+def test_image_recipes_render_on_score_trees(
+    bundle: Bundle, strokes: xr.Dataset, registry: Registry, body: str
+) -> None:
+    """The ``grid`` attrs of score outputs follow the binding to the dataset's dim names
+    (``row``/``col``), so the field map can draw a score tree, which has no manifest. (The
+    PPC and residual recipes also need ``observed_data``, which no score tree carries.)"""
+    from mapi_plots.recipes import render_plots
+
+    tree = score_bundle(bundle, _req(body), strokes, registry=registry, return_full=True)
+    pred = tree["predictions"].to_dataset()
+    for var, frame in (("ink_hat", "digit"), ("features", "feature")):
+        grid = json.loads(pred[var].attrs["grid"])
+        assert (grid["y"], grid["x"], grid["frame"]) == ("row", "col", frame)
+    for ref, opts in (
+        ("sci.field_map", {}),
+        ("sci.field_map", {"var": "features"}),
+        ("sci.field_map", {"var": "ink_hat"}),
+    ):
+        out = render_plots(tree, [ref], registry=registry, options={ref: opts} if opts else None)
+        assert out.plots, (ref, opts, [i.untrusted_text for i in out.issues])
+    out = render_plots(tree, ["sci.ppc_image_grid"], registry=registry)
+    assert not out.plots and "observed" in (out.issues[0].untrusted_text or "")
+
+
 def test_predictive_draws_are_seeded_and_noisy(
     bundle: Bundle, strokes: xr.Dataset, registry: Registry
 ) -> None:
@@ -477,6 +502,7 @@ def test_real_digits_fit_and_complete_the_test_writers(registry: Registry) -> No
     assert held["images"] == 200
     assert held["rmse"] < 0.31  # notebook 0.283; PPCA-10 0.291, the average digit ~0.37
     assert held["lpd_per_image"] > -3.0  # notebook -0.3 nats per digit
-    assert np.isfinite(b.metrics.values["elpd_loo"])
+    elpd = b.metrics.values["elpd_loo"]
+    assert elpd is not None and np.isfinite(elpd)
     codes = {d.code for d in IBPFeaturesModel().diagnostics(b.model, ds)}
     assert "TRUNCATION_BINDS" in codes  # pi_8 ~ 0.3: K = 8 is too few, as in the notebook
