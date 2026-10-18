@@ -82,6 +82,31 @@ async def _cached(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+def _check_explore_node(dv: m.DatasetVersion, node: str | None) -> None:
+    """M4: the Data Explorer's ``node`` must be a node of the version (a plain dataset has
+    only the root) - checked before a run is spent on it."""
+    from mapi_spec.tree import ROOT
+
+    from mapi_server.services.specs import tree_schema_of
+
+    if node is None:
+        return
+    tree = tree_schema_of(dv)
+    if tree is None and node != ROOT:
+        raise MapiError(
+            f"dataset version v{dv.version} is not a tree: it has no node {node!r}",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/node",
+        )
+    if tree is not None and node not in tree.nodes:
+        raise MapiError(
+            f"dataset version v{dv.version} has no node {node!r} "
+            f"(nodes: {', '.join(list(tree.nodes)[:20])})",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/node",
+        )
+
+
 async def submit_dataset_explore(
     session: AsyncSession,
     ctx: ServerContext,
@@ -98,6 +123,7 @@ async def submit_dataset_explore(
             f"dataset version v{dv.version} is {dv.status}; only ready versions can be explored",
             code=ErrorCode.CONFLICT,
         )
+    _check_explore_node(dv, body.node)
     ref = f"dataset://{ds.project_id}/{ds.name}@v{dv.version}"
     job = ExploreJob(target="dataset", ref=ref, data=body)
     payload = job.model_dump(mode="json", exclude_none=True)
