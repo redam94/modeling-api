@@ -28,7 +28,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 __all__ = [
@@ -427,7 +427,8 @@ class DatasetVersion(_Scoped, Base):
     layout: Mapped[str] = mapped_column(
         String(8), default="dataset", server_default=text("'dataset'")
     )
-    tree_schema: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # json (not jsonb): it keeps the node declaration order TreeSchema.default_node() uses
+    tree_schema: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     sources: Mapped[list[Any]] = mapped_column(
         default=list, server_default=text("'[]'::jsonb")
     )  # upload ids the version was built from

@@ -9,7 +9,9 @@ M4 tree datasets (``mapi_spec.tree``):
 * ``dataset_versions.layout``: ``dataset`` (one ``xr.Dataset``, every version before this
   revision) or ``tree`` (an ``xr.DataTree`` in ``data.tree.zip``), checked;
 * ``dataset_versions.tree_schema``: the :class:`~mapi_spec.tree.TreeSchema` of a tree
-  version (``NULL`` for dataset-layout versions);
+  version (``NULL`` for dataset-layout versions). It is ``json``, not ``jsonb``: ``jsonb``
+  reorders object keys, and the node order is meaningful (the first node with variables
+  is the one viewers open);
 * ``dataset_versions.sources``: the upload ids a version was built from (a JSONB list;
   back-filled with ``[upload_id]`` for every existing version that has one);
 * ``uploads.inspection``: the :class:`~mapi_spec.ingest.UploadInspection` an ``inspect`` run
@@ -49,7 +51,8 @@ def upgrade() -> None:
     op.create_check_constraint(
         op.f("ck_dataset_versions_layout"), "dataset_versions", "layout in ('dataset','tree')"
     )
-    op.add_column("dataset_versions", sa.Column("tree_schema", _jsonb(), nullable=True))
+    # json, not jsonb: the node order is the tree's declaration order (default_node())
+    op.add_column("dataset_versions", sa.Column("tree_schema", postgresql.JSON(), nullable=True))
     op.add_column(
         "dataset_versions",
         sa.Column("sources", _jsonb(), server_default=sa.text("'[]'::jsonb"), nullable=False),
