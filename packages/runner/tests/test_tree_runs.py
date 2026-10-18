@@ -116,6 +116,46 @@ def test_fit_and_score_a_tree_input_model_from_a_tree_version(
     assert "summary" in out.children
 
 
+def test_evaluate_explore_and_govern_a_tree_input_model_from_a_tree_version(
+    gcs: ShimGcs, tree_version: tuple[str, str]
+) -> None:
+    """The runs off the score path (evaluate, Model Explorer, governance) read the tree
+    version, select its nodes and give the tree-input model its tree."""
+    fit = run_supervisor(
+        make_run(gcs, RunKind.FIT, _spec(), inputs={"dataset": tree_version}), registry=TOY
+    )
+    _ok(fit)
+    runs = gcs.buckets.runs
+    model = {
+        "bundle": (runs, fit.run.prefix + "bundle.zarr.zip"),
+        "bundle.manifest": (runs, fit.run.prefix + "bundle.manifest.json"),
+        "dataset": tree_version,
+    }
+    evaluate = run_supervisor(
+        make_run(gcs, RunKind.EVALUATE, {"metrics": ["rmse"]}, inputs=model), registry=TOY
+    )
+    _ok(evaluate)
+    assert json.loads(evaluate.output("metrics.json"))["values"]["rmse"] is not None
+    job = {
+        "target": "model",
+        "ref": "model://growth/toy-tree@v1",
+        "model": {"sections": ["fit"]},
+    }
+    explore = run_supervisor(make_run(gcs, RunKind.EXPLORE, job, inputs=model), registry=TOY)
+    _ok(explore)
+    sections = json.loads(explore.output("ui/explore/index.json"))["sections"]
+    assert [(x["section"], x["status"]) for x in sections] == [("fit", "ok")]
+    gov = {
+        "model_ref": "model://growth/toy-tree@v1",
+        "checks": [{"check": "residuals.whiteness", "severity": "warning"}],
+    }
+    governance = run_supervisor(make_run(gcs, RunKind.GOVERNANCE, gov, inputs=model), registry=TOY)
+    _ok(governance)
+    report = json.loads(governance.output("governance.json"))
+    assert report["results"][0]["check"] == "residuals.whiteness"
+    assert report["results"][0]["status"] != "error", report["results"][0]
+
+
 def test_validate_reports_a_bad_node_selection_as_an_issue(
     gcs: ShimGcs, tree_version: tuple[str, str]
 ) -> None:
