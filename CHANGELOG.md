@@ -49,8 +49,9 @@ milestone releases are tagged on `main`.
   (node, concat with a dim and a label, or merge with a join). The page checks the assembly
   and shows every problem before the upload. A raw HDF5 file is inspected first; an array
   browser (path, shape, dtype, dims, filters, warnings) lets you map arrays to variables,
-  with dims, roles, units and a coord for each dim (an array of the file, a start and step,
-  or an index). NetCDF and Zarr files can be inspected to preview their groups.
+  with dims, roles, units, a missing-value rule and a coord for each dim (an array of the
+  file, a start and step, or an index). Each problem shows next to the input it is about, in
+  a live region that a screen reader announces. NetCDF and Zarr files can be inspected to preview their groups.
 - **Web app:** the version page of a tree dataset has a Nodes tab (the node tree, the schema
   and coords of each node, and the preview of the default node). The Data Explorer takes
   `?node=` and has a node picker. The spec editor completes `data.nodes` (node keys, paths and
