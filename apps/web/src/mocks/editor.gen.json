@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:866a3184c0fa8886c4b8d36deee2cfce84b5de7b5b69d09d4fa4aa12b8e4ab2b",
+  "digest": "sha256:2a0611a5cb752b73f42bc638ab2e5e616003089516e9908987ac6bc84a26526a",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -1808,6 +1808,1609 @@
     "manifest": {
      "about": {
       "assumptions": [
+       "The count of an area is Poisson around its expected count times its relative risk",
+       "Neighbouring areas have similar risks (kind icar, car or bym2), or the areas are independent (kind iid)",
+       "An island is linked to the area with the closest border, unless you change the islands setting",
+       "The covariate has the same effect in every area"
+      ],
+      "avoid_when": [
+       "You have the location of each case, not counts for each area (use a point model)",
+       "The values are not counts, for example a mean income for each area",
+       "You must predict areas that are not on the map (the graph has only the fitted areas)",
+       "The data change over time and you want a forecast"
+      ],
+      "data_needs": [
+       "A count of cases and an expected count (age-standardised) for each area",
+       "One covariate for each area, for example a percentage",
+       "Which areas are neighbours (an adjacency matrix), for example from shared borders",
+       "The outline of each area (polygon points), for the maps and to link islands"
+      ],
+      "difficulty": "expert",
+      "example": "Map lip cancer in the 56 districts of Scotland from 1975 to 1980. Get the smoothed relative risk of each district, find the 19 districts where the risk is surely above the national level, and see the effect of outdoor work fall from 1.96 to 1.5 per 10 points when neighbours share their risk.",
+      "expert_notes": "Poisson(E_i exp(b0 + b1 x_i + u_i)) with x = (covariate - mean) / covariate_scale (pymc-challenges E18). kind: poisson (u = 0), iid (u = sigma theta), icar (sigma pm.ICAR(W), soft sum-to-zero), car (pm.CAR with alpha ~ U(0, 1), tau = 1 / sigma^2; alpha piles up near 1 and b0 mixes slowly) or bym2 (Riebler et al. 2016: u = sigma (sqrt(rho / s) phi + sqrt(1 - rho) theta), s = geometric mean of diag(pinv(D - W)), rho ~ Beta(1, 1)). b0, b1 ~ N(0, 1), sigma ~ HalfNormal(1). islands: link_nearest joins each area without neighbours (then each separate piece) to the area with the closest polygon vertex; isolate keeps them (iid and icar only: an isolated ICAR node has a flat prior); error refuses. The pointwise log-likelihood is always kept, so elpd_loo compares the kinds (Pareto k is often high: one parameter per area). A mask_block split over area holds districts out of the likelihood but keeps them in the graph (leave-areas-out). simulate draws new area effects per draw with a hand-written ICAR sampler (eigenvectors of the Laplacian), as pm.ICAR cannot be forward-sampled. On the Scottish data the AFF effect drops from 0.67 (iid) to about 0.4 (spatial kinds): spatial confounding.",
+      "fits": {
+       "data_shape": [
+        "grid",
+        "table"
+       ],
+       "experience": [
+        "intermediate",
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "map_fields",
+        "explain_drivers"
+       ],
+       "speed": [
+        "seconds",
+        "minutes"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The smoothed relative risk of each area, with a range",
+       "The probability that the relative risk of each area is above 1",
+       "The expected cases of each area, and new counts and maps (simulate)",
+       "The effect of the covariate, the size of the area effects and the share of them that follows the map (rho, kind bym2)"
+      ],
+      "references": [
+       {
+        "title": "Riebler et al. (2016), An intuitive Bayesian spatial model for disease mapping that accounts for scaling",
+        "url": "https://arxiv.org/abs/1601.01180"
+       },
+       {
+        "title": "Besag, York and Molli\u00e9 (1991), Bayesian image restoration, with two applications in spatial statistics"
+       },
+       {
+        "title": "Clayton and Kaldor (1987), Empirical Bayes estimates of age-standardized relative risks for use in disease mapping"
+       }
+      ],
+      "related": [
+       "sci.lgcp_grid",
+       "tabular.hierarchical_glm"
+      ],
+      "summary_plain": "Estimates the risk of a disease in each area of a map (a district or a county) from small counts, and uses the neighbouring areas to make the estimates of small areas more stable. It also gives the probability that the risk of each area is above the national level.",
+      "title": "Disease risk on a map of areas",
+      "typical_runtime": "seconds",
+      "use_when": [
+       "You have counts of cases and expected counts for each area of a map",
+       "Some areas are small, so their raw rates are noisy",
+       "You want a map of the risk and of the areas where it is surely high",
+       "You want to know if a cause (a covariate) explains the map, and how much the answer changes when the areas share their risk with their neighbours"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "b0",
+       "b1",
+       "sigma",
+       "rho",
+       "rr"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [],
+     "description": "Counts of a disease in areas (districts, counties) against their expected counts, with a covariate and area effects that borrow strength from neighbouring areas: an ICAR, a proper CAR, BYM2 (a scaled ICAR mixed with independent noise) or iid effects. Outputs the smoothed relative risk of each area, the probability that it is above 1, and the expected counts. The polygons and the graph go into the bundle for the maps.",
+     "fit_schema": {},
+     "id": "sci.areal_bym2",
+     "outputs": {
+      "cases": {
+       "description": "Cases in each area: the expected count expected * rr, or a Poisson draw",
+       "dims": [
+        "area"
+       ],
+       "units_of": "cases"
+      },
+      "effect": {
+       "description": "The area effect u on the log relative risk (what the covariate does not explain)",
+       "dims": [
+        "area"
+       ],
+       "units": "1"
+      },
+      "p_exceed": {
+       "description": "1 when rr is above exceed_threshold in a draw, else 0: the mean over draws is the probability P(rr > threshold)",
+       "dims": [
+        "area"
+       ],
+       "units": "probability"
+      },
+      "rr": {
+       "description": "Relative risk of each area (1 = the reference rate)",
+       "dims": [
+        "area"
+       ],
+       "units": "1"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.area_map",
+      "net.graph",
+      "core.ridge"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 30,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {},
+      "template": {
+       "dims": {
+        "area": {
+         "description": "The areas (districts, counties): the nodes of the graph",
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "area_": {
+         "description": "The same areas, as the second axis of the adjacency matrix",
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "vertex": {
+         "description": "Vertices of the polygon outlines (NaN padded)",
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "adjacency": {
+         "bounds": [
+          0,
+          1
+         ],
+         "dims": [
+          "area",
+          "area_"
+         ],
+         "dtype": "int64",
+         "role": "constant"
+        },
+        "cases": {
+         "bounds": [
+          0,
+          null
+         ],
+         "dims": [
+          "area"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target",
+         "units": "cases"
+        },
+        "covariate": {
+         "dims": [
+          "area"
+         ],
+         "dtype": "float64",
+         "role": "covariate"
+        },
+        "expected": {
+         "bounds": [
+          0,
+          null
+         ],
+         "dims": [
+          "area"
+         ],
+         "dtype": "float64",
+         "role": "exposure",
+         "units": "cases"
+        },
+        "ring_x": {
+         "dims": [
+          "area",
+          "vertex"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "constant"
+        },
+        "ring_y": {
+         "dims": [
+          "area",
+          "vertex"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "constant"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.areal_bym2``.",
+      "properties": {
+       "center_covariate": {
+        "default": true,
+        "description": "Subtract the mean of the covariate",
+        "title": "Center Covariate",
+        "type": "boolean"
+       },
+       "covariate_scale": {
+        "default": 10.0,
+        "description": "Divide the centred covariate by this (b1 is the effect of one unit)",
+        "exclusiveMinimum": 0,
+        "title": "Covariate Scale",
+        "type": "number"
+       },
+       "exceed_threshold": {
+        "default": 1.0,
+        "description": "p_exceed is the probability that rr is above this value",
+        "exclusiveMinimum": 0,
+        "title": "Exceed Threshold",
+        "type": "number"
+       },
+       "intercept_sd": {
+        "default": 1.0,
+        "description": "Prior sd of the intercept b0",
+        "exclusiveMinimum": 0,
+        "title": "Intercept Sd",
+        "type": "number"
+       },
+       "islands": {
+        "default": "link_nearest",
+        "description": "Areas without neighbours: link_nearest links each to the area with the closest boundary; isolate keeps them alone (iid and icar only); error stops (x-ui-level: basic)",
+        "enum": [
+         "link_nearest",
+         "isolate",
+         "error"
+        ],
+        "title": "Islands",
+        "type": "string"
+       },
+       "kind": {
+        "default": "bym2",
+        "description": "Prior of the area effects: poisson (none), iid, icar, car (proper CAR) or bym2 (ICAR plus iid with a mixing share rho) (x-ui-level: basic)",
+        "enum": [
+         "poisson",
+         "iid",
+         "icar",
+         "car",
+         "bym2"
+        ],
+        "title": "Kind",
+        "type": "string"
+       },
+       "rho_alpha": {
+        "default": 1.0,
+        "description": "Beta prior of rho (bym2): first shape",
+        "exclusiveMinimum": 0,
+        "title": "Rho Alpha",
+        "type": "number"
+       },
+       "rho_beta": {
+        "default": 1.0,
+        "description": "Beta prior of rho (bym2): second shape",
+        "exclusiveMinimum": 0,
+        "title": "Rho Beta",
+        "type": "number"
+       },
+       "sigma_scale": {
+        "default": 1.0,
+        "description": "Half-normal scale of sigma, the sd of the area effects",
+        "exclusiveMinimum": 0,
+        "title": "Sigma Scale",
+        "type": "number"
+       },
+       "slope_sd": {
+        "default": 1.0,
+        "description": "Prior sd of the covariate effect b1",
+        "exclusiveMinimum": 0,
+        "title": "Slope Sd",
+        "type": "number"
+       }
+      },
+      "title": "ArealBYM2Settings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The hour of the day and the day of the year change the direction smoothly (a few harmonics of each)",
+       "Rows are independent when the hour and the season are known",
+       "Activity: the density over the day is smooth, and an animal is fully active at the peak of its curve"
+      ],
+      "avoid_when": [
+       "The values are not on a circle (for example a temperature)",
+       "You need the speed of the wind as well as its direction (the model uses only the direction)",
+       "The wind is calm (a calm has no direction: remove those rows first)",
+       "You need forecasts of the next hours from the last values (the model uses only the hour and the day of the year)"
+      ],
+      "data_needs": [
+       "One row for each report or record, with the angle in degrees, radians or hours",
+       "For directions: the hour of the day (0 to 24) and the day of the year of each row",
+       "For activity: the group (species) of each record"
+      ],
+      "difficulty": "expert",
+      "example": "Hourly winds at Santa Barbara airport come from the west-southwest in the afternoon (the sea breeze) and from the east at night. The ocelot and the agouti share only 30% of their daily activity.",
+      "expert_notes": "pymc-challenges E81. Von Mises regression with the canonical link: natural parameters eta = F B, log p = eta . (cos t, sin t) - log(2 pi I0(|eta|)), concave in B (no wrapped prior, no seam at +-pi, no second mode of the tan-half link). F holds an intercept and harmonics of the hour and the day of year plus their products (19 features by default). Kinds: von_mises, projected_normal (angle of N(F B, I)), regime_mixture (two von Mises regimes on fewer features, the second one's probability through a logistic gate on all features, labels anchored by the prior directions), activity (log-Fourier density per group, a_k, b_k ~ N(0, (tau/k)^2), fitted through the trigonometric moments, tau ~ HalfNormal(2)). Priors N(0, 2) on intercepts and N(0, 1) on the other coefficients; regime_mixture instead centres each regime intercept on 2 (cos mu_r, sin mu_r) with sd 1, gives the gate intercept N(0, 1.5) and the other coefficients N(0, 1). Pointwise log densities (per radian) support elpd_loo across kinds. Activity level 1 / (2 pi max f) (Rowcliffe et al. 2014), overlap Delta = int min(f_i, f_j).",
+      "fits": {
+       "data_shape": [
+        "table"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "explain_drivers",
+        "predict_values"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The mean direction and the mean resultant length for each row and for each block of hours or each group",
+       "The density of the angles around the circle for each block or group, with a range",
+       "Simulated angles for new hours and days",
+       "Activity: the fraction of the day each group is active, and the overlap of each pair of groups"
+      ],
+      "references": [
+       {
+        "title": "Fisher (1993), Statistical analysis of circular data, Cambridge University Press"
+       },
+       {
+        "title": "Rowcliffe et al. (2014), Quantifying levels of animal activity using camera trap data, Methods in Ecology and Evolution",
+        "url": "https://doi.org/10.1111/2041-210X.12278"
+       },
+       {
+        "title": "Ridout and Linkie (2009), Estimating overlap of daily activity patterns from camera trap data, JABES",
+        "url": "https://doi.org/10.1198/jabes.2009.08038"
+       }
+      ],
+      "related": [
+       "sci.lgcp_grid"
+      ],
+      "summary_plain": "Finds how a direction or a time of day changes with the hour and the season, for example where the wind comes from. It also shows when each animal species is active and how much two species are active at the same time.",
+      "title": "Directions and times of day",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "Your values are angles: wind directions, compass bearings or times of day",
+       "You want the most probable direction for each hour and season, with a range",
+       "You want the daily activity of animals from camera-trap times, or the overlap of two species"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "mean_direction",
+       "resultant_length",
+       "density"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [],
+     "description": "Angles (wind directions, times of day) on the circle. Regression kinds put the hour of day and the day of year into harmonic features and use a von Mises with a canonical link (or a projected normal, or a mixture of two regimes with a gate); kind activity fits a log-Fourier density per group (camera-trap times) with activity levels and overlaps. Outputs are mean directions, resultant lengths and predictive densities by block of the day or by group.",
+     "fit_schema": {},
+     "id": "sci.circular_regression",
+     "outputs": {
+      "activity_level": {
+       "description": "kind activity: fraction of the day the group is active, 1 / (2 pi max f)",
+       "dims": [
+        "frame"
+       ],
+       "units": "1"
+      },
+      "density": {
+       "description": "Predictive density per unit of the direction on a grid of angles, for each block of the day (regression) or group (activity)",
+       "dims": [
+        "frame",
+        "angle"
+       ],
+       "grid": {
+        "colormap": "viridis",
+        "log": false,
+        "origin": "lower",
+        "x": "angle",
+        "y": "frame"
+       },
+       "units": "1/unit"
+      },
+      "direction_hat": {
+       "description": "Mean direction of the row's predictive distribution (expected), or a simulated angle (predictive), from 0 to one turn",
+       "dims": [
+        "obs"
+       ],
+       "units_of": "direction"
+      },
+      "mean_direction": {
+       "description": "Direction of the mean resultant vector of each frame",
+       "dims": [
+        "frame"
+       ],
+       "units_of": "direction"
+      },
+      "overlap": {
+       "description": "kind activity: coefficient of overlap of the activity densities of two groups",
+       "dims": [
+        "frame",
+        "frame_"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "log": false,
+        "origin": "upper",
+        "x": "frame_",
+        "y": "frame"
+       },
+       "units": "1"
+      },
+      "resultant": {
+       "description": "Mean resultant length of the row's predictive distribution (1: one direction, 0: no preferred direction)",
+       "dims": [
+        "obs"
+       ],
+       "units": "1"
+      },
+      "resultant_length": {
+       "description": "Length of the mean resultant vector of each frame",
+       "dims": [
+        "frame"
+       ],
+       "units": "1"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.rose",
+      "sci.profile_bands",
+      "sci.field_map"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 60,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "vars": {
+          "day": {
+           "bounds": [
+            0,
+            367
+           ],
+           "dims": [
+            "obs"
+           ],
+           "dtype": "float64",
+           "role": "covariate",
+           "units": "d"
+          },
+          "hour": {
+           "bounds": [
+            0,
+            24
+           ],
+           "dims": [
+            "obs"
+           ],
+           "dtype": "float64",
+           "role": "covariate",
+           "units": "h"
+          }
+         }
+        },
+        "when": {
+         "kind": "projected_normal"
+        }
+       },
+       {
+        "merge": {
+         "vars": {
+          "day": {
+           "bounds": [
+            0,
+            367
+           ],
+           "dims": [
+            "obs"
+           ],
+           "dtype": "float64",
+           "role": "covariate",
+           "units": "d"
+          },
+          "hour": {
+           "bounds": [
+            0,
+            24
+           ],
+           "dims": [
+            "obs"
+           ],
+           "dtype": "float64",
+           "role": "covariate",
+           "units": "h"
+          }
+         }
+        },
+        "when": {
+         "kind": "regime_mixture"
+        }
+       },
+       {
+        "merge": {
+         "vars": {
+          "day": {
+           "bounds": [
+            0,
+            367
+           ],
+           "dims": [
+            "obs"
+           ],
+           "dtype": "float64",
+           "role": "covariate",
+           "units": "d"
+          },
+          "hour": {
+           "bounds": [
+            0,
+            24
+           ],
+           "dims": [
+            "obs"
+           ],
+           "dtype": "float64",
+           "role": "covariate",
+           "units": "h"
+          }
+         }
+        },
+        "when": {
+         "kind": "von_mises"
+        }
+       },
+       {
+        "merge": {
+         "dims": {
+          "{group_dim}": {
+           "kind": "categorical",
+           "policy": "fixed"
+          }
+         },
+         "vars": {
+          "{group_dim}_idx": {
+           "dims": [
+            "obs"
+           ],
+           "dtype": "int64",
+           "index_of": "{group_dim}",
+           "role": "index"
+          }
+         }
+        },
+        "when": {
+         "kind": "activity"
+        }
+       }
+      ],
+      "params": {
+       "group_dim": {
+        "default": "group",
+        "required": false,
+        "type": "string"
+       },
+       "kind": {
+        "default": "von_mises",
+        "enum": [
+         "von_mises",
+         "projected_normal",
+         "regime_mixture",
+         "activity"
+        ],
+        "required": false,
+        "type": "string"
+       }
+      },
+      "template": {
+       "dims": {
+        "obs": {
+         "description": "One row per report or record",
+         "kind": "integer",
+         "policy": "extend"
+        }
+       },
+       "layout": "long",
+       "vars": {
+        "direction": {
+         "dims": [
+          "obs"
+         ],
+         "dtype": "float64",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.circular_regression`` (see the module docstring).",
+      "properties": {
+       "angle_points": {
+        "default": 72,
+        "description": "Angles of the density output",
+        "maximum": 720,
+        "minimum": 8,
+        "title": "Angle Points",
+        "type": "integer"
+       },
+       "annual_harmonics": {
+        "default": 2,
+        "description": "Harmonics of the day of year",
+        "maximum": 6,
+        "minimum": 0,
+        "title": "Annual Harmonics",
+        "type": "integer"
+       },
+       "coef_sd": {
+        "default": 1.0,
+        "description": "Prior sd of the other coefficients",
+        "exclusiveMinimum": 0,
+        "title": "Coef Sd",
+        "type": "number"
+       },
+       "daily_harmonics": {
+        "default": 3,
+        "description": "Harmonics of the hour of day",
+        "maximum": 8,
+        "minimum": 0,
+        "title": "Daily Harmonics",
+        "type": "integer"
+       },
+       "frames": {
+        "default": 8,
+        "description": "Regression kinds: blocks of the day for density and mean_direction (8: three hours each)",
+        "maximum": 48,
+        "minimum": 1,
+        "title": "Frames",
+        "type": "integer"
+       },
+       "gate_intercept_sd": {
+        "default": 1.5,
+        "description": "Prior sd of the gate intercept",
+        "exclusiveMinimum": 0,
+        "title": "Gate Intercept Sd",
+        "type": "number"
+       },
+       "grid_points": {
+        "default": 256,
+        "description": "activity: angles of the normalising sum",
+        "maximum": 4096,
+        "minimum": 32,
+        "title": "Grid Points",
+        "type": "integer"
+       },
+       "group_dim": {
+        "default": "group",
+        "description": "kind activity: the dim of the groups (species); the index variable is <group_dim>_idx",
+        "pattern": "^[a-z][a-z0-9_]{0,40}$",
+        "title": "Group Dim",
+        "type": "string"
+       },
+       "harmonics": {
+        "default": 16,
+        "description": "activity: Fourier harmonics",
+        "maximum": 64,
+        "minimum": 1,
+        "title": "Harmonics",
+        "type": "integer"
+       },
+       "interaction_harmonics": {
+        "default": 2,
+        "description": "Daily harmonics multiplied by the first annual harmonic (the daily cycle changes with the season)",
+        "maximum": 8,
+        "minimum": 0,
+        "title": "Interaction Harmonics",
+        "type": "integer"
+       },
+       "intercept_sd": {
+        "default": 2.0,
+        "description": "Prior sd of the intercepts (not used by regime_mixture)",
+        "exclusiveMinimum": 0,
+        "title": "Intercept Sd",
+        "type": "number"
+       },
+       "kind": {
+        "default": "von_mises",
+        "description": "von_mises (canonical link), projected_normal, regime_mixture (two von Mises regimes with a gate), or activity (a log-Fourier density per group) (x-ui-level: basic)",
+        "enum": [
+         "von_mises",
+         "projected_normal",
+         "regime_mixture",
+         "activity"
+        ],
+        "title": "Kind",
+        "type": "string"
+       },
+       "regime_annual_harmonics": {
+        "default": 1,
+        "maximum": 6,
+        "minimum": 0,
+        "title": "Regime Annual Harmonics",
+        "type": "integer"
+       },
+       "regime_daily_harmonics": {
+        "default": 2,
+        "maximum": 8,
+        "minimum": 0,
+        "title": "Regime Daily Harmonics",
+        "type": "integer"
+       },
+       "regime_directions_deg": {
+        "description": "regime_mixture: prior mean direction of each regime (degrees, in the units' own orientation)",
+        "items": {
+         "type": "number"
+        },
+        "maxItems": 2,
+        "minItems": 2,
+        "title": "Regime Directions Deg",
+        "type": "array"
+       },
+       "regime_names": {
+        "description": "regime_mixture: names of the two regimes",
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 2,
+        "minItems": 2,
+        "title": "Regime Names",
+        "type": "array"
+       },
+       "regime_strength": {
+        "default": 2.0,
+        "description": "regime_mixture: prior mean concentration of each regime",
+        "exclusiveMinimum": 0,
+        "title": "Regime Strength",
+        "type": "number"
+       },
+       "rows_per_frame": {
+        "default": 200,
+        "description": "Scored rows averaged per frame for the density",
+        "maximum": 20000,
+        "minimum": 1,
+        "title": "Rows Per Frame",
+        "type": "integer"
+       },
+       "score_draws": {
+        "default": 400,
+        "description": "Posterior draws kept per score (evenly spaced)",
+        "maximum": 20000,
+        "minimum": 1,
+        "title": "Score Draws",
+        "type": "integer"
+       },
+       "tau_sd": {
+        "default": 2.0,
+        "description": "activity: half-normal scale of tau",
+        "exclusiveMinimum": 0,
+        "title": "Tau Sd",
+        "type": "number"
+       },
+       "units": {
+        "default": "degrees",
+        "description": "Units of the direction: degrees, radians or hours (a time of day) (x-ui-level: basic)",
+        "enum": [
+         "degrees",
+         "radians",
+         "hours"
+        ],
+        "title": "Units",
+        "type": "string"
+       }
+      },
+      "title": "CircularRegressionSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The sky is a Gaussian random field with the same statistics in all directions",
+       "The power in each bin is the reference power times a free factor",
+       "The noise is Gaussian and independent from pixel to pixel",
+       "The patch is flat. The model adds a border without data so that the edges need not repeat"
+      ],
+      "avoid_when": [
+       "The patch is large (more than about 20 degrees): the flat-sky approximation fails",
+       "The map has strong foreground residuals outside the mask",
+       "You need polarisation or lensing (the model has temperature only)"
+      ],
+      "data_needs": [
+       "A temperature map on a regular grid of pixels in uK, with NaN where the mask removes a pixel",
+       "The noise sd of each pixel",
+       "A reference spectrum D_ell (for example the Planck best fit) for multipoles 0, 1, 2, ... and optionally the pixel window of the source map",
+       "The pixel size and the beam width of the map"
+      ],
+      "difficulty": "expert",
+      "example": "The Planck SMICA map around the Large Magellanic Cloud (16 % of the pixels masked) gives a pixel sd of 2.5 uK where there are data and about 90 uK in the hole. Its amplitude is within 2 % of the Planck spectrum.",
+      "expert_notes": "Field-level inference on a flat periodic torus (the raster plus an unobserved border). The Hartley coefficients of the sky are independent Gaussians with the reference spectrum folded through the beam, the pixel windows and aliasing, times exp(q_b) per bandpower bin (flat prior on q_b). A Wandelt-Eriksen Gibbs sampler alternates a constrained realisation by preconditioned conjugate gradients (dense preconditioner on the large scales), an inverse-gamma draw of each bandpower and a non-centred rescaling move (Metropolis). NumPy and FFTs only, no NUTS. The amplitude and tilt come from the exact Gaussian posterior of a linear model of the binned q_b. No pointwise LOO: all pixels share one latent field.",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "map_fields",
+        "fit_physics"
+       ],
+       "uncertainty": [
+        "essential"
+       ]
+      },
+      "outputs": [
+       "Probable sky maps (constrained realisations) with a mean and an sd for each pixel",
+       "The bandpowers (D_ell in uK^2) and their ratio to the reference",
+       "The amplitude and the tilt of the spectrum relative to the reference",
+       "Simulated maps of other patches with the same spectrum"
+      ],
+      "references": [
+       {
+        "title": "Wandelt, Larson & Lakshminarayanan (2004), Global, exact cosmic microwave background data analysis using Gibbs sampling",
+        "url": "https://arxiv.org/abs/astro-ph/0310080"
+       },
+       {
+        "title": "Eriksen et al. (2004), Power spectrum estimation from high-resolution maps by Gibbs sampling",
+        "url": "https://arxiv.org/abs/astro-ph/0407028"
+       },
+       {
+        "title": "Jewell, Levin & Anderson (2004), Application of Monte Carlo algorithms to the Bayesian analysis of the cosmic microwave background",
+        "url": "https://arxiv.org/abs/astro-ph/0209560"
+       },
+       {
+        "title": "Planck Collaboration (2020), Planck 2018 results IV: diffuse component separation",
+        "url": "https://arxiv.org/abs/1807.06208"
+       }
+      ],
+      "related": [
+       "sci.traction_force",
+       "sci.strong_lens"
+      ],
+      "summary_plain": "Fills the masked holes of a map of the cosmic microwave background with skies that agree with the data, and measures how strong the sky is at each angular scale. It shows how sure it is at each pixel.",
+      "title": "Sky map behind a mask (CMB)",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have a temperature map of the CMB on a small flat patch, with a mask and a noise level for each pixel",
+       "You want to know what the sky looks like behind the mask, with a range for each pixel",
+       "You need the power spectrum of the patch in bins (bandpowers) without the bias that a mask gives to a simple estimate"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": false,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "q",
+       "bandpower",
+       "log_amplitude",
+       "tilt"
+      ],
+      "inference": "mcmc",
+      "loo_invalid_reason": "every pixel depends on one latent sky field with tens of thousands of parameters, so pointwise leave-one-out is not defined; compare variants by their bandpowers, amplitude and tilt",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [
+      {
+       "cache": "fit",
+       "description": "Posterior mean (the Wiener filter averaged over the spectrum) and sd of each pixel over every kept Gibbs draw",
+       "dims": [
+        "stat",
+        "row",
+        "col"
+       ],
+       "name": "sky_moments",
+       "units": "uK"
+      }
+     ],
+     "description": "Field-level inference of a masked CMB temperature map: every pixel of the sky on a periodic flat patch is sampled jointly with the bandpowers by a Wandelt-Eriksen Gibbs sampler (constrained realisations by preconditioned conjugate gradients, an inverse-gamma bandpower step and a rescaling move). Gives the Wiener-filtered map, sky draws behind the mask, a per-pixel sd and the bandpowers.",
+     "fit_schema": {},
+     "id": "sci.cmb_field",
+     "outputs": {
+      "bandpower": {
+       "description": "Bandpower D_ell of each bin",
+       "dims": [
+        "bin"
+       ],
+       "units": "uK^2"
+      },
+      "bandpower_ratio": {
+       "description": "Bandpower over the reference bandpower, exp(q)",
+       "dims": [
+        "bin"
+       ],
+       "units": "1"
+      },
+      "log_amplitude": {
+       "description": "Log amplitude of the bandpowers relative to the reference",
+       "dims": [],
+       "units": "1"
+      },
+      "sky": {
+       "description": "Posterior draws of the beamed sky (constrained realisations; unconstrained skies with the posterior spectrum for simulate)",
+       "dims": [
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "diverging",
+        "log": false,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units": "uK"
+      },
+      "temperature_hat": {
+       "description": "The sky draw (expected), plus noise with noise_sd (predictive)",
+       "dims": [
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "diverging",
+        "log": false,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units_of": "temperature"
+      },
+      "tilt": {
+       "description": "Tilt of the bandpowers relative to the reference, at tilt_pivot",
+       "dims": [],
+       "units": "1"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "sci.power_spectrum",
+      "sci.field_map",
+      "sci.image_residuals",
+      "sci.ppc_image_grid"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 60,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "vars": {
+          "pixel_window": {
+           "description": "Pixel window of the source map at each multipole",
+           "dims": [
+            "multipole"
+           ],
+           "dtype": "float64",
+           "role": "constant"
+          }
+         }
+        },
+        "when": {
+         "pixel_window": true
+        }
+       }
+      ],
+      "params": {
+       "pixel_window": {
+        "default": false,
+        "required": false,
+        "type": "boolean"
+       }
+      },
+      "template": {
+       "dims": {
+        "col": {
+         "description": "Map columns",
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "multipole": {
+         "description": "Multipole ell = 0, 1, 2, ... of the reference spectrum",
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "row": {
+         "description": "Map rows (bottom up)",
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "noise_sd": {
+         "description": "Noise sd of each pixel (uK)",
+         "dims": [
+          "row",
+          "col"
+         ],
+         "dtype": "float64",
+         "role": "weight"
+        },
+        "reference_dl": {
+         "description": "Reference spectrum D_ell = ell (ell + 1) C_ell / 2 pi (uK^2)",
+         "dims": [
+          "multipole"
+         ],
+         "dtype": "float64",
+         "role": "constant"
+        },
+        "temperature": {
+         "description": "CMB temperature of each pixel (uK); NaN where masked",
+         "dims": [
+          "row",
+          "col"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.cmb_field``: the instrument, the bins and the Gibbs sampler.",
+      "properties": {
+       "beam_fwhm_arcmin": {
+        "default": 5.0,
+        "description": "FWHM of the Gaussian beam of the map (arcmin)",
+        "maximum": 600,
+        "minimum": 0,
+        "title": "Beam Fwhm Arcmin",
+        "type": "number"
+       },
+       "bin_edges": {
+        "description": "Multipole edges of the bandpower bins (x-ui-level: basic)",
+        "items": {
+         "type": "number"
+        },
+        "maxItems": 101,
+        "minItems": 2,
+        "title": "Bin Edges",
+        "type": "array"
+       },
+       "border": {
+        "default": 8,
+        "description": "Unobserved pixels around the raster on the periodic torus",
+        "maximum": 128,
+        "minimum": 0,
+        "title": "Border",
+        "type": "integer"
+       },
+       "cg_max_iter": {
+        "default": 5000,
+        "description": "Most CG iterations per solve",
+        "maximum": 100000,
+        "minimum": 10,
+        "title": "Cg Max Iter",
+        "type": "integer"
+       },
+       "cg_tol": {
+        "default": 1e-05,
+        "description": "Relative residual that stops CG",
+        "exclusiveMinimum": 0,
+        "maximum": 0.1,
+        "title": "Cg Tol",
+        "type": "number"
+       },
+       "ell_dense": {
+        "default": 300.0,
+        "description": "Modes below this multipole get the dense CG preconditioner",
+        "minimum": 0,
+        "title": "Ell Dense",
+        "type": "number"
+       },
+       "field_draws": {
+        "default": 40,
+        "description": "Sky maps drawn per score (over all chains)",
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Field Draws",
+        "type": "integer"
+       },
+       "mean_prior_sd": {
+        "default": 100.0,
+        "description": "Prior sd of the patch mean (uK)",
+        "exclusiveMinimum": 0,
+        "title": "Mean Prior Sd",
+        "type": "number"
+       },
+       "n_alias": {
+        "default": 3,
+        "description": "Aliased replicas folded into the prior power",
+        "maximum": 6,
+        "minimum": 0,
+        "title": "N Alias",
+        "type": "integer"
+       },
+       "pixel_arcmin": {
+        "default": 7.5,
+        "description": "Side of a map pixel (arcmin) (x-ui-level: basic)",
+        "exclusiveMinimum": 0,
+        "maximum": 600,
+        "title": "Pixel Arcmin",
+        "type": "number"
+       },
+       "pixel_subsamples": {
+        "default": 8,
+        "description": "Point samples per pixel side that the map pixels average (box window; 1 = none)",
+        "maximum": 64,
+        "minimum": 1,
+        "title": "Pixel Subsamples",
+        "type": "integer"
+       },
+       "pixel_window": {
+        "default": false,
+        "description": "The data has a pixel_window(multipole) variable (for example the HEALPix window of the source map)",
+        "title": "Pixel Window",
+        "type": "boolean"
+       },
+       "projection": {
+        "default": "gnomonic",
+        "description": "gnomonic: correct the multipoles for the mean stretch of a tangent-plane projection; flat: no correction (x-ui-level: basic)",
+        "enum": [
+         "gnomonic",
+         "flat"
+        ],
+        "title": "Projection",
+        "type": "string"
+       },
+       "q_init_sd": {
+        "default": 0.3,
+        "description": "Sd of the dispersed chain starts",
+        "maximum": 3,
+        "minimum": 0,
+        "title": "Q Init Sd",
+        "type": "number"
+       },
+       "rescale": {
+        "default": true,
+        "description": "Use the non-centred rescaling move",
+        "title": "Rescale",
+        "type": "boolean"
+       },
+       "tilt_max_ell": {
+        "default": 1450.0,
+        "description": "Bins with a centre at or above this are left out of the tilt",
+        "exclusiveMinimum": 0,
+        "title": "Tilt Max Ell",
+        "type": "number"
+       },
+       "tilt_pivot": {
+        "default": 500.0,
+        "description": "Pivot multipole of the tilt",
+        "exclusiveMinimum": 0,
+        "title": "Tilt Pivot",
+        "type": "number"
+       },
+       "tilt_prior_sd": {
+        "default": 0.5,
+        "description": "Prior sd of log amplitude and tilt",
+        "exclusiveMinimum": 0,
+        "title": "Tilt Prior Sd",
+        "type": "number"
+       }
+      },
+      "title": "CMBFieldSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "Each word has a region in colour space with a smooth shape",
+       "The speakers share the shapes. Each speaker can use a word more or less and move its boundaries (setting kind: hierarchical)",
+       "Given the speaker, each chip is named independently of the other chips",
+       "A missing answer does not depend on the chip or the word"
+      ],
+      "avoid_when": [
+       "You have more than one language in the data (fit one language at a time)",
+       "The words are not colour names, or the items do not have a colour",
+       "You want to know which chip is the best example of a word (the model gives the chip that the most speakers agree on, which is a different thing)",
+       "You have more than 40 different words (merge the rare words into one word first)"
+      ],
+      "data_needs": [
+       "The word that each speaker gave to each chip (an empty cell when there is no answer)",
+       "The CIELAB colour (L*, a*, b*) of each chip",
+       "The row and the column of each chip on the palette (for the maps)"
+      ],
+      "difficulty": "intermediate",
+      "example": "The 29 Nafaanra speakers of the World Color Survey use four words. Nine speakers that the model did not see are named correctly for 88% of the chips.",
+      "expert_notes": "Multinomial logistic regression on 10 standardised quadratic CIELAB features (1, L, a, b, L^2, a^2, b^2, ab, La, Lb), the well-conditioned natural form of Gaussian categories (pymc-challenges E77). W ~ ZeroSumNormal(3) over terms. kind: hierarchical adds speaker effects on the intercept and the linear weights, W_s = W + sd z_s with sd ~ HalfNormal(1) and z ~ ZeroSumNormal(1) (non-centred). The likelihood is a potential over the observed responses (pooled: the chip x term count table). features: grid_line / grid_circle are the printed-grid variants (hue as a line or a circle) for an elpd_loo ladder. New speakers get fresh effects per draw (new-level strategy hyperprior); the language-level shares average 20 simulated speakers per draw. Pointwise log-likelihood is per chip (leave-one-chip-out). Effective categories = exp(I(chip; term)).",
+      "fits": {
+       "data_shape": [
+        "choices",
+        "grid"
+       ],
+       "experience": [
+        "intermediate",
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "understand_choices",
+        "map_fields"
+       ],
+       "speed": [
+        "minutes"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The probability of each word for each speaker and chip, also for new speakers",
+       "A map of each word on the palette: the share of speakers who use it, with a range",
+       "The palette in the colour of the most probable word of each chip",
+       "The effective number of colour categories, for one speaker and for the language"
+      ],
+      "references": [
+       {
+        "title": "Kay, Berlin, Maffi, Merrifield & Cook (2009), The World Color Survey, CSLI Publications",
+        "url": "https://linguistics.berkeley.edu/wcs/"
+       },
+       {
+        "title": "Kay & Regier (2003), Resolving the question of color naming universals, PNAS 100:9085-9089",
+        "url": "https://doi.org/10.1073/pnas.1532837100"
+       }
+      ],
+      "related": [
+       "choice.multinomial_logit"
+      ],
+      "summary_plain": "Shows how the speakers of one language name colour chips: which word each speaker is likely to use for each chip, and a map of the words on the chip palette.",
+      "title": "How people name colours",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "Each speaker of a language named each chip of a colour palette once",
+       "You want to know where the boundaries between the colour words are, with a range",
+       "You want to predict how a new speaker will name the chips",
+       "You want to know how many colour categories the language really has"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "W",
+       "sd"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [],
+     "description": "Colour naming in one language (World Color Survey): the probability that a speaker gives each term to each colour chip, as a softmax over quadratic CIELAB logits with zero-sum weights, pooled or with speaker-level intercepts and linear weights. Predicts new speakers and maps each term's share of speakers on the chip palette.",
+     "fit_schema": {},
+     "id": "sci.colour_naming",
+     "outputs": {
+      "k_eff_language": {
+       "description": "Effective number of categories of the language (all speakers)",
+       "dims": [],
+       "units": "categories"
+      },
+      "k_eff_speaker": {
+       "description": "Effective number of categories of one speaker",
+       "dims": [],
+       "units": "categories"
+      },
+      "mode_term_rgb": {
+       "description": "Each chip in the display colour of its most probable term in the draw (the posterised map)",
+       "dims": [
+        "chip",
+        "rgb"
+       ],
+       "units": "sRGB"
+      },
+      "p_name": {
+       "description": "Probability that the speaker gives the term to the chip (new speakers: fresh effects per draw); predictive: one sampled term per draw",
+       "dims": [
+        "speaker",
+        "chip",
+        "term"
+       ],
+       "units": "probability"
+      },
+      "p_term": {
+       "description": "Share of the language's speakers who give the term to the chip, on the palette grid (cells without a chip: empty in the posterior, 0 in scores)",
+       "dims": [
+        "term",
+        "lightness",
+        "hue"
+       ],
+       "grid": {
+        "colormap": "viridis",
+        "frame": "term",
+        "log": false,
+        "origin": "upper",
+        "x": "hue",
+        "y": "lightness"
+       },
+       "units": "probability"
+      },
+      "p_top": {
+       "description": "Share of speakers who give the chip the term that is most probable on average",
+       "dims": [
+        "chip"
+       ],
+       "units": "probability"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.swatches",
+      "sci.field_map"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 60,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {},
+      "template": {
+       "dims": {
+        "chip": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "speaker": {
+         "kind": "categorical",
+         "new_level_strategy": "hyperprior",
+         "policy": "new_levels"
+        }
+       },
+       "vars": {
+        "grid_col": {
+         "description": "Hue column of the chip on the palette (0 = greys)",
+         "dims": [
+          "chip"
+         ],
+         "dtype": "int64",
+         "role": "covariate"
+        },
+        "grid_row": {
+         "description": "Row of the chip on the palette (WCS: A-J as 0-9)",
+         "dims": [
+          "chip"
+         ],
+         "dtype": "int64",
+         "role": "covariate"
+        },
+        "lab_a": {
+         "description": "CIELAB a* of the chip",
+         "dims": [
+          "chip"
+         ],
+         "dtype": "float64",
+         "role": "covariate"
+        },
+        "lab_b": {
+         "description": "CIELAB b* of the chip",
+         "dims": [
+          "chip"
+         ],
+         "dtype": "float64",
+         "role": "covariate"
+        },
+        "lab_l": {
+         "description": "CIELAB L* of the chip",
+         "dims": [
+          "chip"
+         ],
+         "dtype": "float64",
+         "role": "covariate"
+        },
+        "naming": {
+         "description": "The term each speaker gave each chip ('' = no answer)",
+         "dims": [
+          "speaker",
+          "chip"
+         ],
+         "dtype": "str",
+         "missing": "allow",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.colour_naming``.",
+      "properties": {
+       "features": {
+        "default": "cielab",
+        "description": "cielab: a quadratic surface in CIELAB; grid_line / grid_circle: on the printed palette, with the hue column as a line or as a circle (x-ui-level: basic)",
+        "enum": [
+         "cielab",
+         "grid_line",
+         "grid_circle"
+        ],
+        "title": "Features",
+        "type": "string"
+       },
+       "hue_columns": {
+        "anyOf": [
+         {
+          "maximum": 200,
+          "minimum": 2,
+          "type": "integer"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Hue columns around the circle (default: the largest grid_col; grid_circle only)",
+        "title": "Hue Columns"
+       },
+       "kind": {
+        "default": "hierarchical",
+        "description": "hierarchical: every speaker has their own intercept and linear weights around the language's; pooled: all speakers share one naming (x-ui-level: basic)",
+        "enum": [
+         "hierarchical",
+         "pooled"
+        ],
+        "title": "Kind",
+        "type": "string"
+       },
+       "n_random": {
+        "default": 4,
+        "description": "Leading features with speaker effects (4: the intercept and L, a, b)",
+        "maximum": 10,
+        "minimum": 1,
+        "title": "N Random",
+        "type": "integer"
+       },
+       "new_speakers": {
+        "default": 20,
+        "description": "Simulated new speakers per draw for the language-level shares",
+        "maximum": 200,
+        "minimum": 1,
+        "title": "New Speakers",
+        "type": "integer"
+       },
+       "score_draws": {
+        "default": 200,
+        "description": "Posterior draws used by one score request",
+        "maximum": 4000,
+        "minimum": 10,
+        "title": "Score Draws",
+        "type": "integer"
+       },
+       "sd_scale": {
+        "default": 1.0,
+        "description": "Half-normal scale of the between-speaker sds",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Sd Scale",
+        "type": "number"
+       },
+       "w_sd": {
+        "default": 3.0,
+        "description": "Prior sd of the zero-sum weights",
+        "exclusiveMinimum": 0,
+        "maximum": 20,
+        "title": "W Sd",
+        "type": "number"
+       }
+      },
+      "title": "ColourNamingSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
        "Cells move at random and divide until the columns are full",
        "No cells go in or out at the two edges of the image",
        "All columns have the same maximum number of cells",
@@ -2076,6 +3679,970 @@
        }
       },
       "title": "FisherKPPSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The variables have a joint normal distribution after the fit centres and scales them",
+       "A link is present when the partial correlation is larger than the threshold (0.1 by default)",
+       "With kind neighbourhood: most variables have only a few direct links"
+      ],
+      "avoid_when": [
+       "You need the direction of each link (cause and effect): the network has no arrows",
+       "The samples come from different conditions or treatments (fit each one separately)",
+       "The relations are strongly curved or the values have very long tails (the model sees only straight-line relations)",
+       "You have more than about 50 variables (the fit becomes slow)"
+      ],
+      "data_needs": [
+       "One value for each variable in each sample, with no missing values",
+       "Samples that are independent and come from one condition",
+       "Optional: a known network as a matrix of 0 and 1, to compare with"
+      ],
+      "difficulty": "intermediate",
+      "example": "Measure 11 proteins in 853 T cells. Get 8 links with a probability above 0.5, for example Erk with Akt and Raf with Mek. Compare them with the 20 links of the published signalling network: 7 of the 8 are in it.",
+      "expert_notes": "Gaussian graphical model (pymc-challenges E19). kind dense: z ~ MvNormal(mu, L L^T) on the standardised data, L ~ LKJCholeskyCov(eta = 2, sd ~ Exponential(1)), mu ~ Normal(0, 1); the precision Omega = L^-T L^-1 comes from a triangular solve and the partial correlations rho_jk = -Omega_jk / sqrt(Omega_jj Omega_kk) are deterministics. An edge is |rho| > delta (default 0.1), so P(edge) = P(|rho| > delta | data). The LKJ prior is a dense-graph prior (83% prior probability for each edge in 11 dimensions). kind neighbourhood: Meinshausen-Buhlmann neighbourhood selection, one regularised horseshoe regression per variable in one model (tau0 = p0 / (P - 1 - p0) / sqrt(n), c^2 ~ InvGamma(2, 2)), with AND, OR or symmetric rho = sign(B_jk) sqrt(B_jk B_kj) rules; it conditions on the other variables, so it scores only the graph. A horseshoe directly on Omega is not offered: most of its prior is not positive definite. Pointwise log-likelihood per sample: joint (dense) or the sum of the full conditionals (both kinds, comparable by elpd_loo).",
+      "fits": {
+       "data_shape": [
+        "table"
+       ],
+       "experience": [
+        "intermediate",
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "explain_drivers"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The partial correlation of each pair of variables, with a range",
+       "The probability of a link for each pair (a matrix and a network)",
+       "With kind dense: values for new samples, and simulated samples",
+       "A score for each sample to compare models (elpd_loo)"
+      ],
+      "references": [
+       {
+        "title": "Sachs et al. (2005), Causal protein-signaling networks derived from multiparameter single-cell data, Science",
+        "url": "https://doi.org/10.1126/science.1105809"
+       },
+       {
+        "title": "Meinshausen and Buhlmann (2006), High-dimensional graphs and variable selection with the lasso, Annals of Statistics",
+        "url": "https://doi.org/10.1214/009053606000000281"
+       },
+       {
+        "title": "Piironen and Vehtari (2017), Sparsity information and regularization in the horseshoe and other shrinkage priors",
+        "url": "https://arxiv.org/abs/1707.01694"
+       }
+      ],
+      "related": [
+       "sci.lgcp_grid"
+      ],
+      "summary_plain": "Finds which variables are directly linked to each other when the effect of all the other variables is removed. It gives the probability of each link and shows the links as a network.",
+      "title": "Direct links between measured variables",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You measured the same set of variables on many samples, for example proteins in single cells",
+       "You want to know which pairs are linked directly, not only through other variables",
+       "You want a probability for each link, and a network to compare with a known one"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "pcor",
+       "edge_prob"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [],
+     "description": "Learns which variables are directly linked: partial correlations (the correlation of two variables given all the others) and the probability of an edge, P(|rho| > threshold). kind dense is a multivariate normal with an LKJ prior on the correlations (it also predicts and simulates new samples); kind neighbourhood is a sparse horseshoe regression of each variable on the others with AND/OR symmetrisation.",
+     "fit_schema": {},
+     "id": "sci.graphical_model",
+     "outputs": {
+      "edge_prob": {
+       "description": "Edge indicator per draw (|partial correlation| > threshold); its mean over the draws is the edge probability",
+       "dims": [
+        "var",
+        "var_"
+       ],
+       "grid": {
+        "colormap": "viridis",
+        "log": false,
+        "origin": "upper",
+        "x": "var_",
+        "y": "var"
+       },
+       "units": "1"
+      },
+      "pcor": {
+       "description": "Partial correlation of each pair of variables given all the others (unit diagonal)",
+       "dims": [
+        "var",
+        "var_"
+       ],
+       "grid": {
+        "colormap": "diverging",
+        "log": false,
+        "origin": "upper",
+        "x": "var_",
+        "y": "var"
+       },
+       "units": "1"
+      },
+      "value": {
+       "description": "dense only: the values of each cell (a draw from the model with kind predictive or mode simulate)",
+       "dims": [
+        "cell",
+        "var"
+       ],
+       "units_of": "value"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "net.graph",
+      "sci.field_map"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "dims": {
+          "var_": {
+           "description": "The variables again (the second node of a pair)",
+           "kind": "categorical",
+           "policy": "fixed"
+          }
+         },
+         "vars": {
+          "reference": {
+           "description": "A known network to compare with (1 = edge)",
+           "dims": [
+            "var",
+            "var_"
+           ],
+           "dtype": "int64",
+           "role": "constant"
+          }
+         }
+        },
+        "when": {
+         "reference": true
+        }
+       }
+      ],
+      "params": {
+       "reference": {
+        "default": false,
+        "required": false,
+        "type": "boolean"
+       }
+      },
+      "template": {
+       "dims": {
+        "cell": {
+         "description": "Exchangeable samples (cells); new ones may be scored",
+         "kind": "integer",
+         "new_level_strategy": "pooled",
+         "policy": "new_levels"
+        },
+        "var": {
+         "description": "The measured variables: the nodes of the graph",
+         "kind": "categorical",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "value": {
+         "description": "The measured value of each variable in each cell",
+         "dims": [
+          "cell",
+          "var"
+         ],
+         "dtype": "float64",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.graphical_model``.",
+      "properties": {
+       "edge_rule": {
+        "default": "and",
+        "description": "neighbourhood: an edge when both coefficients pass the threshold (and), either one (or), or their symmetric combination (rho)",
+        "enum": [
+         "and",
+         "or",
+         "rho"
+        ],
+        "title": "Edge Rule",
+        "type": "string"
+       },
+       "expected_neighbours": {
+        "default": 2.0,
+        "description": "neighbourhood: prior guess p0 of the neighbours of each variable (sets the global horseshoe scale)",
+        "exclusiveMinimum": 0,
+        "title": "Expected Neighbours",
+        "type": "number"
+       },
+       "kind": {
+        "default": "dense",
+        "description": "dense: one multivariate normal with an LKJ prior (predicts and simulates cells); neighbourhood: sparse horseshoe regressions of each variable on the others (x-ui-level: basic)",
+        "enum": [
+         "dense",
+         "neighbourhood"
+        ],
+        "title": "Kind",
+        "type": "string"
+       },
+       "lkj_eta": {
+        "default": 2.0,
+        "description": "dense: LKJ shape of the correlation prior",
+        "exclusiveMinimum": 0,
+        "title": "Lkj Eta",
+        "type": "number"
+       },
+       "log_likelihood": {
+        "default": "auto",
+        "description": "Pointwise log-likelihood kept for elpd_loo: joint (dense only) or conditional (each variable given the others; both kinds). auto: joint for dense, conditional for neighbourhood",
+        "enum": [
+         "auto",
+         "joint",
+         "conditional"
+        ],
+        "title": "Log Likelihood",
+        "type": "string"
+       },
+       "mean_sd": {
+        "default": 1.0,
+        "description": "dense: sd of the Normal prior of the means",
+        "exclusiveMinimum": 0,
+        "title": "Mean Sd",
+        "type": "number"
+       },
+       "reference": {
+        "default": false,
+        "description": "The data has a known network reference(var, var_) (1 = edge) that the plots compare with (x-ui-level: basic)",
+        "title": "Reference",
+        "type": "boolean"
+       },
+       "sd_rate": {
+        "default": 1.0,
+        "description": "dense: rate of the Exponential prior of the standardised sds",
+        "exclusiveMinimum": 0,
+        "title": "Sd Rate",
+        "type": "number"
+       },
+       "slab_alpha": {
+        "default": 2.0,
+        "description": "neighbourhood: c^2 ~ InvGamma(alpha, beta)",
+        "exclusiveMinimum": 0,
+        "title": "Slab Alpha",
+        "type": "number"
+       },
+       "slab_beta": {
+        "default": 2.0,
+        "description": "neighbourhood: c^2 ~ InvGamma(alpha, beta)",
+        "exclusiveMinimum": 0,
+        "title": "Slab Beta",
+        "type": "number"
+       },
+       "standardise": {
+        "default": true,
+        "description": "Centre and scale each variable with the mean and sd of the fit data",
+        "title": "Standardise",
+        "type": "boolean"
+       },
+       "threshold": {
+        "default": 0.1,
+        "description": "Relevance threshold delta: an edge is |partial correlation| > delta (x-ui-level: basic)",
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0,
+        "title": "Threshold",
+        "type": "number"
+       }
+      },
+      "title": "GraphicalModelSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The plate is at a steady temperature in each run",
+       "Heat moves in the plane of the plate and goes out through the two faces and the edges",
+       "The room temperature does not change, and the heat loss is proportional to the temperature above the room",
+       "The sensor noise is the same for all sensors"
+      ],
+      "avoid_when": [
+       "The temperatures change with time and you have no steady readings",
+       "The plate is thick, or it is not flat",
+       "The grid cells are not square, or the positions do not have equal steps",
+       "Much of the heat goes out by radiation at high temperatures (the model is linear)"
+      ],
+      "data_needs": [
+       "A square grid of cells over the plate, with the positions of the cell centers in cm",
+       "One run for each heater layout: the power in W that goes into each cell",
+       "The sensor readings in degC for each run. Cells without a sensor are empty",
+       "Optional: a map of the cells with insulation on the back face"
+      ],
+      "difficulty": "expert",
+      "example": "Three runs with one 10 W heater each and twelve sensors on a 40 x 20 cm brass plate give a conduction of about 59 W/m/K and a heat-spreading length of 12.8 cm.",
+      "expert_notes": "2-D steady heat equation k delta lap(u) - h (1 + m_back) u + eta q = 0 with edge loss h_edge (pymc-challenges E51), discretised by finite volumes on square cells: A(theta) u = eta q, A = -k delta L + diag(h (1 + m_back) dx^2 + h_edge delta dx n_edge), solved for each run inside the model with pytensor.tensor.linalg.solve (gradients through the solve). Readings ~ Normal(T_room + u, sigma) at the finite cells only; the pointwise log-likelihood has one value per reading (LOO is valid). Priors: k ~ LogNormal(log 50, 0.5), h ~ LogNormal(log 10, 0.5), h_edge ~ LogNormal(log 10, 0.7), eta ~ Beta(40, 4), sigma ~ HalfNormal(0.5). The field is linear in the heater powers, so one fit predicts any new layout. k, h and eta are strongly correlated (rises depend on eta/k and eta/h); h_edge is weakly identified from interior sensors (its E51 interval misses the truth).",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "map_fields",
+        "fit_physics"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The temperature map of each run, and of new heater layouts, with a range",
+       "The conduction, the face and edge heat loss, and the heater efficiency",
+       "The heat-spreading length in cm: how far heat goes from one heater",
+       "Simulated sensor readings with noise"
+      ],
+      "references": [
+       {
+        "title": "Incropera, DeWitt, Bergman and Lavine, Fundamentals of Heat and Mass Transfer (extended surfaces and fins)"
+       },
+       {
+        "title": "Patankar (1980), Numerical Heat Transfer and Fluid Flow (the finite-volume method)"
+       }
+      ],
+      "related": [
+       "sci.fisher_kpp",
+       "sci.traction_force"
+      ],
+      "summary_plain": "Learns how a metal plate moves and loses heat from a few temperature sensors. It then predicts the temperature map of the plate for a new layout of heaters, with a range.",
+      "title": "Temperature of a heated plate",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You heat a flat plate and measure its temperature at some points",
+       "You want the heat properties of the plate: conduction, heat loss and the part of the heater power that goes into the plate",
+       "You want to know the temperature map before you build a new heater layout"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "k",
+       "h",
+       "eta",
+       "spread_length"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [],
+     "description": "Thermocouple readings of a heated plate as the 2-D steady heat equation: conduction k, face loss h, edge loss h_edge and heater efficiency eta, with a finite-volume linear system solved inside the model for each run. Outputs are the temperature field of each run (or of any new heater layout) and the heat-spreading length sqrt(k delta / 2h).",
+     "fit_schema": {},
+     "id": "sci.heat_plate",
+     "outputs": {
+      "field": {
+       "description": "Temperature of each cell (degC): the steady field, or a simulated thermocouple reading",
+       "dims": [
+        "run",
+        "y",
+        "x"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "frame": "run",
+        "log": false,
+        "origin": "lower",
+        "x": "x",
+        "y": "y"
+       },
+       "units_of": "temperature"
+      },
+      "spread_length": {
+       "description": "Heat-spreading length sqrt(k delta / 2h)",
+       "dims": [],
+       "units": "cm"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "core.pair",
+      "sci.field_map",
+      "sci.image_residuals"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "vars": {
+          "insulation": {
+           "description": "True where the back face of the cell is insulated",
+           "dims": [
+            "y",
+            "x"
+           ],
+           "dtype": "bool",
+           "role": "covariate"
+          }
+         }
+        },
+        "when": {
+         "use_insulation": true
+        }
+       }
+      ],
+      "params": {
+       "use_insulation": {
+        "default": false,
+        "required": false,
+        "type": "boolean"
+       }
+      },
+      "template": {
+       "dims": {
+        "run": {
+         "description": "One run of the plate with one heater layout (score new runs to predict new layouts)",
+         "kind": "categorical",
+         "new_level_strategy": "pooled",
+         "policy": "new_levels"
+        },
+        "x": {
+         "description": "Centre of each column of cells (cm, the same step as y)",
+         "kind": "float",
+         "policy": "fixed"
+        },
+        "y": {
+         "description": "Centre of each row of cells (cm, equal steps)",
+         "kind": "float",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "heater_power": {
+         "bounds": [
+          0,
+          null
+         ],
+         "description": "Electrical power put into each cell by the heaters",
+         "dims": [
+          "run",
+          "y",
+          "x"
+         ],
+         "dtype": "float64",
+         "role": "covariate",
+         "units": "W"
+        },
+        "temperature": {
+         "description": "Thermocouple reading of each cell (NaN where there is none)",
+         "dims": [
+          "run",
+          "y",
+          "x"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target",
+         "units": "degC"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.heat_plate`` (k in W/m/K, h and h_edge in W/m^2/K).",
+      "properties": {
+       "eta_alpha": {
+        "default": 40.0,
+        "description": "Beta prior of the heater efficiency: alpha",
+        "exclusiveMinimum": 0,
+        "title": "Eta Alpha",
+        "type": "number"
+       },
+       "eta_beta": {
+        "default": 4.0,
+        "description": "Beta prior of the heater efficiency: beta",
+        "exclusiveMinimum": 0,
+        "title": "Eta Beta",
+        "type": "number"
+       },
+       "h_edge_log_sd": {
+        "default": 0.7,
+        "description": "Log-scale sd of the prior of h_edge",
+        "exclusiveMinimum": 0,
+        "title": "H Edge Log Sd",
+        "type": "number"
+       },
+       "h_edge_median": {
+        "default": 10.0,
+        "description": "Prior median of the edge coefficient",
+        "exclusiveMinimum": 0,
+        "title": "H Edge Median",
+        "type": "number"
+       },
+       "h_log_sd": {
+        "default": 0.5,
+        "description": "Log-scale sd of the prior of h",
+        "exclusiveMinimum": 0,
+        "title": "H Log Sd",
+        "type": "number"
+       },
+       "h_median": {
+        "default": 10.0,
+        "description": "Prior median of the face coefficient h",
+        "exclusiveMinimum": 0,
+        "title": "H Median",
+        "type": "number"
+       },
+       "insulated_back_loss": {
+        "default": 0.1,
+        "description": "Back-face loss under insulation as a fraction of the bare loss",
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Insulated Back Loss",
+        "type": "number"
+       },
+       "k_log_sd": {
+        "default": 0.5,
+        "description": "Log-scale sd of the prior of k",
+        "exclusiveMinimum": 0,
+        "title": "K Log Sd",
+        "type": "number"
+       },
+       "k_median": {
+        "default": 50.0,
+        "description": "Prior median of the conductivity k",
+        "exclusiveMinimum": 0,
+        "title": "K Median",
+        "type": "number"
+       },
+       "room_temperature": {
+        "default": 20.0,
+        "description": "Temperature of the room in degC: the plate without heat (x-ui-level: basic)",
+        "maximum": 1000,
+        "minimum": -100,
+        "title": "Room Temperature",
+        "type": "number"
+       },
+       "sigma_scale": {
+        "default": 0.5,
+        "description": "Half-normal scale of the thermocouple noise sd (degC)",
+        "exclusiveMinimum": 0,
+        "title": "Sigma Scale",
+        "type": "number"
+       },
+       "thickness_mm": {
+        "default": 5.0,
+        "description": "Thickness of the plate in mm (x-ui-level: basic)",
+        "exclusiveMinimum": 0,
+        "maximum": 1000,
+        "title": "Thickness Mm",
+        "type": "number"
+       },
+       "use_insulation": {
+        "default": false,
+        "description": "The data has a bool insulation(y, x): True where the back face is insulated (x-ui-level: basic)",
+        "title": "Use Insulation",
+        "type": "boolean"
+       }
+      },
+      "title": "HeatPlateSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "Each image owns each part or not. The parts add to the average image",
+       "The pixel noise is the same at all pixels (noise_sd sets the level of detail)",
+       "At most n_features parts. Earlier parts are more frequent"
+      ],
+      "avoid_when": [
+       "The images are large, or they need more than about 10 parts (each part doubles the time)",
+       "You need one stable answer about each part: different chains often find different parts, so the convergence checks can show warnings",
+       "The pixels are counts with many exact zeros and you need correct ranges for each pixel (the noise model is Gaussian)"
+      ],
+      "data_needs": [
+       "Images on one grid of rows and columns, with the ink of each pixel from 0 to 1",
+       "Empty values for the pixels the model must not see",
+       "Optional: a mask that hides pixels from the fit but keeps them for comparison"
+      ],
+      "difficulty": "expert",
+      "example": "With 8 parts, 300 handwritten digits complete the hidden bottom half of 200 digits by other writers with an error of 0.28 ink units.",
+      "expert_notes": "Linear-Gaussian latent feature model x = mu + z A + e with a stick-breaking Indian buffet process prior (Teh, Gorur & Ghahramani 2007) truncated at K features. The binary matrix is summed out exactly over the 2^K patterns of each image (a logsumexp Potential over the seen pixels), so NUTS samples A, the sticks, alpha and sigma_A (and sigma_X for kind free_noise). Every chain starts without jitter at half of K random centred images with nu = 0.8, because the default start can collapse to no features. The posterior over A is multimodal: chains often disagree on pi (r-hat 1.15-1.9 in the E31 notebook), the convergence diagnostics warn, and TRUNCATION_BINDS warns when the last pi is not small. Completions use the exact pattern posterior of each image given its seen pixels. Pointwise log-likelihood per image supports elpd_loo between K, noise levels and kinds.",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "map_fields"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The image of each part, and how frequent each part is",
+       "For each image, the probability that it owns each part",
+       "The completed images with a range for each pixel",
+       "The log-likelihood of each image, to compare variants with elpd_loo"
+      ],
+      "references": [
+       {
+        "title": "Griffiths & Ghahramani (2011), The Indian buffet process: an introduction and review",
+        "url": "https://jmlr.org/papers/v12/griffiths11a.html"
+       },
+       {
+        "title": "Teh, Gorur & Ghahramani (2007), Stick-breaking construction for the Indian buffet process",
+        "url": "https://proceedings.mlr.press/v2/teh07a.html"
+       },
+       {
+        "title": "Alpaydin & Kaynak (1998), Optical recognition of handwritten digits, UCI Machine Learning Repository",
+        "url": "https://doi.org/10.24432/C50P49"
+       }
+      ],
+      "related": [
+       "sci.strong_lens"
+      ],
+      "summary_plain": "Finds a small set of parts that many images share, for example strokes of handwritten digits. Each image is the average image plus the parts it has, and the model fills in the pixels that you hide.",
+      "title": "Shared parts of small images",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have many small images of the same size (up to about 100 pixels each)",
+       "You want to see which parts the images share and which images have each part",
+       "You want to complete images with missing pixels, for example the bottom half of a digit"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "alpha",
+       "sigma_A",
+       "ink_hat"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "Latent binary features of small images (handwritten digits): every image is the average image plus the features it owns. A stick-breaking Indian buffet process truncated at K features, with every image's binary pattern summed out over 2^K patterns, so NUTS samples the feature images and their probabilities. Outputs are the feature images, which images own them, and completions of unseen pixels.",
+     "fit_schema": {},
+     "id": "sci.ibp_features",
+     "outputs": {
+      "feature_prob": {
+       "description": "Probability pi_k that an image owns feature k",
+       "dims": [
+        "feature"
+       ],
+       "units": "1"
+      },
+      "features": {
+       "description": "Feature images: the ink a feature adds to (or removes from) the average image",
+       "dims": [
+        "feature",
+        "y",
+        "x"
+       ],
+       "grid": {
+        "colormap": "diverging",
+        "frame": "feature",
+        "log": false,
+        "origin": "upper",
+        "x": "x",
+        "y": "y"
+       },
+       "units": "ink"
+      },
+      "ink_hat": {
+       "description": "Expected image given the seen pixels (completion where unseen), or a draw of pattern and noise",
+       "dims": [
+        "digit",
+        "y",
+        "x"
+       ],
+       "grid": {
+        "colormap": "gray",
+        "frame": "digit",
+        "log": false,
+        "origin": "upper",
+        "x": "x",
+        "y": "y"
+       },
+       "units_of": "ink"
+      },
+      "owns": {
+       "description": "Probability that each image owns each feature, given its seen pixels",
+       "dims": [
+        "digit",
+        "feature"
+       ],
+       "units": "1"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.field_map",
+      "sci.ppc_image_grid",
+      "sci.image_residuals"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 180,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "vars": {
+          "shown": {
+           "description": "False hides the pixel from the fit (held out)",
+           "dims": [
+            "digit",
+            "y",
+            "x"
+           ],
+           "dtype": "bool",
+           "role": "mask"
+          }
+         }
+        },
+        "when": {
+         "shown_mask": true
+        }
+       }
+      ],
+      "params": {
+       "shown_mask": {
+        "default": false,
+        "required": false,
+        "type": "boolean"
+       }
+      },
+      "template": {
+       "dims": {
+        "digit": {
+         "description": "One small image (a digit) per level",
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "x": {
+         "description": "Pixel column",
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "y": {
+         "description": "Pixel row (top = 0)",
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "ink": {
+         "description": "Ink of each pixel (0 blank, 1 full); empty = not seen",
+         "dims": [
+          "digit",
+          "y",
+          "x"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target",
+         "units": "ink"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.ibp_features`` (ink on a 0-1 scale).",
+      "properties": {
+       "alpha_rate": {
+        "default": 1.0,
+        "description": "Gamma rate of the IBP mass alpha",
+        "exclusiveMinimum": 0,
+        "title": "Alpha Rate",
+        "type": "number"
+       },
+       "alpha_shape": {
+        "default": 1.0,
+        "description": "Gamma shape of the IBP mass alpha",
+        "exclusiveMinimum": 0,
+        "title": "Alpha Shape",
+        "type": "number"
+       },
+       "feature_scale_sd": {
+        "default": 1.0,
+        "description": "HalfNormal scale of sigma_A",
+        "exclusiveMinimum": 0,
+        "title": "Feature Scale Sd",
+        "type": "number"
+       },
+       "kind": {
+        "default": "fixed_noise",
+        "description": "fixed_noise keeps the pixel noise at noise_sd (the notebook); free_noise learns it (x-ui-level: basic)",
+        "enum": [
+         "fixed_noise",
+         "free_noise"
+        ],
+        "title": "Kind",
+        "type": "string"
+       },
+       "n_features": {
+        "default": 8,
+        "description": "Truncation K: the largest number of features. Each image sums over 2^K patterns, so each extra feature doubles the cost (x-ui-level: basic)",
+        "maximum": 10,
+        "minimum": 1,
+        "title": "N Features",
+        "type": "integer"
+       },
+       "noise_sd": {
+        "default": 0.25,
+        "description": "Pixel noise sigma_X (ink units). It sets the resolution: a smaller value makes more features worth keeping (x-ui-level: basic)",
+        "exclusiveMinimum": 0,
+        "title": "Noise Sd",
+        "type": "number"
+       },
+       "score_draws": {
+        "default": 200,
+        "description": "Posterior draws (spread over the chains) per score",
+        "maximum": 4000,
+        "minimum": 1,
+        "title": "Score Draws",
+        "type": "integer"
+       },
+       "shown_mask": {
+        "default": false,
+        "description": "The data has a shown(digit, y, x) mask: pixels where it is False are hidden from the fit (held-out halves)",
+        "title": "Shown Mask",
+        "type": "boolean"
+       },
+       "start": {
+        "default": "digits",
+        "description": "digits: every chain starts at half of K random images with nu = 0.8 and no jitter (avoids the 'no features' trap); default: the jittered platform start",
+        "enum": [
+         "digits",
+         "default"
+        ],
+        "title": "Start",
+        "type": "string"
+       },
+       "truncation_warn": {
+        "default": 0.05,
+        "description": "Warn when the posterior mean of the last feature probability is above this",
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0,
+        "title": "Truncation Warn",
+        "type": "number"
+       }
+      },
+      "title": "IBPFeaturesSettings",
       "type": "object"
      },
      "version": "1.0.0"
@@ -2399,6 +4966,1139 @@
        }
       },
       "title": "LGCPGridSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "Each pair has a tie or not, and the two directions are the same",
+       "When the model knows the pair values, the activity of the two nodes and their places on the map, the pairs are independent",
+       "Nodes near each other on the hidden map have more ties"
+      ],
+      "avoid_when": [
+       "The ties have a direction (A chose B, but B did not choose A)",
+       "The ties are counts or weights, not yes or no",
+       "You need ties for a new node that was not in the fit",
+       "The network has many thousands of nodes (the model looks at every pair)"
+      ],
+      "data_needs": [
+       "A square table with 1 for a tie, 0 for no tie and an empty cell when you do not know",
+       "Optional: values for each pair, for example 1 when the two are in the same office",
+       "Optional: a group code for each node, for colors in the plots"
+      ],
+      "difficulty": "expert",
+      "example": "Use the coworker network of the 71 lawyers of a law firm. A shared office adds about 2.5 to the log odds of a tie, and the hidden map puts the offices and the two types of law in different places.",
+      "expert_notes": "Undirected dyad logistic model (pymc-challenges E21): tie_ij ~ Bernoulli(logit^-1(alpha + x_ij beta + s_i + s_j - ||z_i - z_j||)) over the observed pairs i < j. kind covariates drops s and z, kind sociality drops z; covariates: false drops x. Priors: alpha ~ N(-2, 2), beta ~ N(0, 1), s = sigma_s s_raw with sigma_s ~ HalfNormal(1), z = sigma_z z_raw (latent_dims, default 2) with sigma_z ~ HalfNormal(2), all non-centred. The likelihood is invariant to rotation, reflection and translation of z, so the raw draws do not mix (r_hat of about 1.5 without covariates); every draw is aligned by generalised Procrustes analysis to a reference kept in the bundle, and convergence is judged on the aligned positions. The pointwise log-likelihood is stored per dyad (leave-one-dyad-out PSIS-LOO), so a workflow can compare the kinds. Mixed-membership block models of the notebook are not ported. On Lazega: elpd_loo -1060 (Erdos-Renyi), -894 (covariates), -764 (sociality), -761 (latent space).",
+      "fits": {
+       "data_shape": [
+        "table"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "explain_drivers",
+        "predict_values"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The chance of a tie for each pair, with a range (a square map)",
+       "The change in the log odds of a tie for each pair value",
+       "The activity of each node and its place on the hidden map, with a range",
+       "Simulated networks and their statistics, to compare with the data"
+      ],
+      "references": [
+       {
+        "title": "Hoff, Raftery and Handcock (2002), Latent space approaches to social network analysis, Journal of the American Statistical Association",
+        "url": "https://doi.org/10.1198/016214502388618906"
+       },
+       {
+        "title": "Lazega (2001), The Collegial Phenomenon: The Social Mechanisms of Cooperation among Peers in a Corporate Law Partnership, Oxford University Press"
+       }
+      ],
+      "related": [
+       "sci.lgcp_grid"
+      ],
+      "summary_plain": "Explains which pairs of people (or other nodes) have a tie, from what they have in common, how active each one is and a hidden map of the group. It gives the chance of a tie for every pair, with a range.",
+      "title": "Who works with whom in a network",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have a table of ties between pairs, for example who worked with whom",
+       "You want to know how much a shared office or team adds to the chance of a tie",
+       "You want the chance of a tie for pairs that you did not observe",
+       "You want a map that puts nodes with many shared ties near each other"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "alpha",
+       "beta",
+       "sigma_s",
+       "sigma_z",
+       "position",
+       "tie_prob"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [],
+     "description": "An undirected graph (who works with whom) as one Bernoulli tie for each pair of nodes. The log odds add pair covariates (homophily), a sociality effect per node and, for kind latent_space, minus the distance between latent positions. Outputs are the tie probability of every pair, the positions (aligned by Procrustes), the sociality, simulated graphs and their statistics.",
+     "fit_schema": {},
+     "id": "sci.network_latent_space",
+     "outputs": {
+      "degree": {
+       "description": "Ties of each node with the scored nodes (node_ of the score data; all nodes for the degree in the graph): expected, or in a simulated graph",
+       "dims": [
+        "node"
+       ],
+       "units": "ties"
+      },
+      "graph_stat": {
+       "description": "Statistics of each simulated graph of the whole node set (density, sd_degree, max_degree, isolates, triangles, transitivity, esp0, mean_geodesic, unreachable); mode simulate or kind predictive",
+       "dims": [
+        "statistic"
+       ],
+       "units": "statistic"
+      },
+      "position": {
+       "description": "Latent position, aligned by Procrustes (kind latent_space)",
+       "dims": [
+        "node",
+        "latent_dim"
+       ],
+       "units": "latent units"
+      },
+      "sociality": {
+       "description": "How much more often the node has ties with anyone (kind sociality or latent_space)",
+       "dims": [
+        "node"
+       ],
+       "units": "log odds"
+      },
+      "tie": {
+       "description": "The tie: its probability, or a simulated graph (kind predictive, mode simulate)",
+       "dims": [
+        "node",
+        "node_"
+       ],
+       "grid": {
+        "colormap": "gray",
+        "log": false,
+        "origin": "upper",
+        "x": "node_",
+        "y": "node"
+       },
+       "units_of": "tie"
+      },
+      "tie_prob": {
+       "description": "Probability of a tie between the two nodes (0 on the diagonal)",
+       "dims": [
+        "node",
+        "node_"
+       ],
+       "grid": {
+        "colormap": "viridis",
+        "log": false,
+        "origin": "upper",
+        "x": "node_",
+        "y": "node"
+       },
+       "units": "probability"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "net.graph",
+      "sci.field_map"
+     ],
+     "resources": {
+      "default_class": "M",
+      "est_fit_seconds": 60,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "dims": {
+          "cov": {
+           "description": "The covariates of a pair",
+           "kind": "categorical",
+           "policy": "fixed"
+          }
+         },
+         "vars": {
+          "dyad_cov": {
+           "description": "Covariates of each pair, for example 1 when the two nodes are in the same group",
+           "dims": [
+            "node",
+            "node_",
+            "cov"
+           ],
+           "dtype": "float64"
+          }
+         }
+        },
+        "when": {
+         "covariates": true
+        }
+       },
+       {
+        "merge": {
+         "vars": {
+          "node_group": {
+           "description": "A group code of each node, used for colours in plots",
+           "dims": [
+            "node"
+           ],
+           "dtype": "int64",
+           "role": "constant"
+          }
+         }
+        },
+        "when": {
+         "node_groups": true
+        }
+       }
+      ],
+      "params": {
+       "covariates": {
+        "default": true,
+        "required": false,
+        "type": "boolean"
+       },
+       "node_groups": {
+        "default": false,
+        "required": false,
+        "type": "boolean"
+       }
+      },
+      "template": {
+       "dims": {
+        "node": {
+         "description": "The nodes (actors)",
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "node_": {
+         "description": "The second node of a pair (the same labels as node)",
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "tie": {
+         "bounds": [
+          0,
+          1
+         ],
+         "description": "1 when the two nodes have a tie, 0 when not, missing when not observed (symmetric)",
+         "dims": [
+          "node",
+          "node_"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.network_latent_space`` (all effects on the log-odds scale).",
+      "properties": {
+       "alpha_mu": {
+        "default": -2.0,
+        "description": "Prior mean of the intercept alpha",
+        "title": "Alpha Mu",
+        "type": "number"
+       },
+       "alpha_sigma": {
+        "default": 2.0,
+        "description": "Prior sd of the intercept alpha",
+        "exclusiveMinimum": 0,
+        "title": "Alpha Sigma",
+        "type": "number"
+       },
+       "beta_sigma": {
+        "default": 1.0,
+        "description": "Prior sd of each covariate effect",
+        "exclusiveMinimum": 0,
+        "title": "Beta Sigma",
+        "type": "number"
+       },
+       "covariates": {
+        "default": true,
+        "description": "Use the pair covariates dyad_cov(node, node_, cov); false leaves them out (x-ui-level: basic)",
+        "title": "Covariates",
+        "type": "boolean"
+       },
+       "kind": {
+        "default": "latent_space",
+        "description": "Model of the log odds: covariates only, + a sociality effect per node, + latent positions (x-ui-level: basic)",
+        "enum": [
+         "covariates",
+         "sociality",
+         "latent_space"
+        ],
+        "title": "Kind",
+        "type": "string"
+       },
+       "latent_dims": {
+        "default": 2,
+        "description": "Dimensions of the latent space",
+        "maximum": 3,
+        "minimum": 1,
+        "title": "Latent Dims",
+        "type": "integer"
+       },
+       "latent_scale": {
+        "default": 2.0,
+        "description": "Scale of the HalfNormal prior of sigma_z",
+        "exclusiveMinimum": 0,
+        "title": "Latent Scale",
+        "type": "number"
+       },
+       "node_groups": {
+        "default": false,
+        "description": "The data has node_group(node), a group code kept for the plots",
+        "title": "Node Groups",
+        "type": "boolean"
+       },
+       "procrustes_iters": {
+        "default": 10,
+        "description": "Passes of generalised Procrustes alignment",
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Procrustes Iters",
+        "type": "integer"
+       },
+       "sociality_scale": {
+        "default": 1.0,
+        "description": "Scale of the HalfNormal prior of sigma_s",
+        "exclusiveMinimum": 0,
+        "title": "Sociality Scale",
+        "type": "number"
+       }
+      },
+      "title": "NetworkLatentSpaceSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The traits change at random along the branches of the tree (Brownian motion), with a species part (lambda) or a pull to an optimum (ou)",
+       "The slopes are the same in all parts of the tree",
+       "The trait and the predictors are positive when the log is taken"
+      ],
+      "avoid_when": [
+       "You do not have a tree with branch lengths for the species",
+       "You have many measurements of each species and the spread inside a species is important (the model uses one value for each species)",
+       "Some species do not have a value of a predictor (remove them first)",
+       "You have more than about 2000 species (each step uses a dense matrix)"
+      ],
+      "data_needs": [
+       "One value of the trait for each species (it can be missing for some species)",
+       "One value of each predictor for each species, with no missing values",
+       "The tree as one row for each node: the parent node, the branch length and the label of each tip, with tip labels equal to the species names"
+      ],
+      "difficulty": "expert",
+      "example": "Use the brain volume, body mass and group size of 186 primates on a tree of 73 million years. With the tree, the slope of group size drops from 0.12 to about 0.03.",
+      "expert_notes": "Phylogenetic generalised least squares in PyMC (pymc-challenges E23): trait ~ MvNormal(a + X b, K) on log, standardised values; a ~ N(0, 1), b ~ N(0, 0.5). K from the shared branch length C = A diag(l) A^T, R = C / T: iid sigma^2 I; brownian sigma^2 R; lambda sigma^2 (lam R + (1 - lam) I), lam ~ Beta(1, 1); ou eta2 exp(-rho D / 2T), with the prior on the identified Brownian rate eta2 rho by default. Missing traits are predicted by Gaussian conditioning on the observed species. log_likelihood holds the leave-one-out conditional density from Q = K^-1 (one inverse for each draw), so elpd_loo compares the kinds; the marginal density gives the opposite ranking. Sampled with NUTS on dense O(N^3) factorisations.",
+      "fits": {
+       "data_shape": [
+        "table"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "explain_drivers",
+        "predict_values"
+       ],
+       "speed": [
+        "seconds",
+        "minutes"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The slope of each predictor, with a range",
+       "The trait of each species predicted from its relatives, with a range",
+       "The part of the variation that follows the tree (lambda)",
+       "A score for each species that lets you compare the kinds of model (elpd_loo)"
+      ],
+      "references": [
+       {
+        "title": "Felsenstein (1985), Phylogenies and the comparative method, The American Naturalist"
+       },
+       {
+        "title": "Pagel (1999), Inferring the historical patterns of biological evolution, Nature"
+       },
+       {
+        "title": "Street, Navarrete, Reader and Laland (2017), Coevolution of cultural intelligence, extended life history, sociality, and brain size in primates, PNAS"
+       },
+       {
+        "title": "Burkner, Gabry and Vehtari (2021), Efficient leave-one-out cross-validation for Bayesian non-factorized normal and Student-t models, Computational Statistics",
+        "url": "https://arxiv.org/abs/1810.10559"
+       }
+      ],
+      "related": [
+       "sci.lgcp_grid"
+      ],
+      "summary_plain": "Measures how one trait of species changes with other traits when related species are alike because they share ancestors. It also predicts a missing trait of a species from its relatives.",
+      "title": "Traits of related species",
+      "typical_runtime": "seconds",
+      "use_when": [
+       "You have one value of a trait for each species and a family tree of the species",
+       "You want a slope across species that does not count shared ancestry many times",
+       "You want to fill in a trait that some species do not have, from their relatives",
+       "You want to compare models of how traits change along the tree"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "slope",
+       "intercept",
+       "sigma",
+       "lam",
+       "rate"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [],
+     "description": "A regression of one trait of species on other traits whose residuals are correlated by a phylogeny: i.i.d., Brownian motion, Pagel's lambda or Ornstein-Uhlenbeck on the shared branch length of the tree. Predicts a missing trait from relatives and stores the leave-one-out conditional log density for elpd_loo.",
+     "fit_schema": {},
+     "id": "sci.phylo_regression",
+     "outputs": {
+      "slope": {
+       "description": "Slope of each predictor (sd of the trait per sd of the predictor when standardised)",
+       "dims": [
+        "predictor"
+       ],
+       "units": "1"
+      },
+      "trait": {
+       "description": "The trait of each species predicted from its relatives (Gaussian conditioning on the other species; the median when the trait is logged), or a draw with the conditional noise",
+       "dims": [
+        "species"
+       ],
+       "units_of": "trait"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.phylogeny"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 30,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "predictors": {
+        "default": [
+         "body",
+         "group_size"
+        ],
+        "required": false,
+        "type": "string_list"
+       }
+      },
+      "template": {
+       "dims": {
+        "node": {
+         "description": "Every node of the tree (tips and internal nodes)",
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "species": {
+         "description": "One level per species; the labels are tip labels of the tree",
+         "kind": "categorical",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "branch_length": {
+         "description": "Length of the branch above the node (time, e.g. Myr)",
+         "dims": [
+          "node"
+         ],
+         "dtype": "float64",
+         "role": "constant"
+        },
+        "is_tip": {
+         "description": "True for a tip (a species), false for an internal node",
+         "dims": [
+          "node"
+         ],
+         "dtype": "bool",
+         "role": "constant"
+        },
+        "parent": {
+         "description": "Position of the parent node; -1 at the root",
+         "dims": [
+          "node"
+         ],
+         "dtype": "int64",
+         "role": "constant"
+        },
+        "tip_label": {
+         "description": "The species label of each tip (empty for internal nodes)",
+         "dims": [
+          "node"
+         ],
+         "dtype": "str",
+         "role": "constant"
+        },
+        "trait": {
+         "description": "The trait to explain; missing values are predicted from relatives",
+         "dims": [
+          "species"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        },
+        "{*predictors as p}": {
+         "description": "A predictor of the trait",
+         "dims": [
+          "species"
+         ],
+         "dtype": "float64",
+         "role": "covariate"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.phylo_regression``.",
+      "properties": {
+       "eta2_sd": {
+        "default": 5.0,
+        "description": "ou (variance): HalfNormal sd of eta2",
+        "exclusiveMinimum": 0,
+        "title": "Eta2 Sd",
+        "type": "number"
+       },
+       "intercept_sd": {
+        "default": 1.0,
+        "description": "Prior sd of the intercept",
+        "exclusiveMinimum": 0,
+        "title": "Intercept Sd",
+        "type": "number"
+       },
+       "jitter": {
+        "default": 1e-06,
+        "description": "ou: added to the diagonal of K",
+        "maximum": 0.01,
+        "minimum": 0,
+        "title": "Jitter",
+        "type": "number"
+       },
+       "kind": {
+        "default": "lambda",
+        "description": "Residual correlation: iid (no tree), brownian (Brownian motion on the tree), lambda (Pagel's lambda: tree part plus a species part) or ou (Ornstein-Uhlenbeck) (x-ui-level: basic)",
+        "enum": [
+         "iid",
+         "brownian",
+         "lambda",
+         "ou"
+        ],
+        "title": "Kind",
+        "type": "string"
+       },
+       "lambda_alpha": {
+        "default": 1.0,
+        "description": "Beta prior of lambda: first shape",
+        "exclusiveMinimum": 0,
+        "title": "Lambda Alpha",
+        "type": "number"
+       },
+       "lambda_beta": {
+        "default": 1.0,
+        "description": "Beta prior of lambda: second shape",
+        "exclusiveMinimum": 0,
+        "title": "Lambda Beta",
+        "type": "number"
+       },
+       "log_predictors": {
+        "default": true,
+        "description": "Take the log of each predictor (they must be positive)",
+        "title": "Log Predictors",
+        "type": "boolean"
+       },
+       "log_target": {
+        "default": true,
+        "description": "Take the log of the trait (it must be positive)",
+        "title": "Log Target",
+        "type": "boolean"
+       },
+       "ou_parameterisation": {
+        "default": "rate",
+        "description": "ou: put the prior on the Brownian rate eta2*rho (rate, recommended) or on eta2 and rho (variance)",
+        "enum": [
+         "rate",
+         "variance"
+        ],
+        "title": "Ou Parameterisation",
+        "type": "string"
+       },
+       "predictors": {
+        "description": "Names of the predictor variables on the species dim (x-ui-level: basic)",
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 16,
+        "title": "Predictors",
+        "type": "array"
+       },
+       "rate_sd": {
+        "default": 1.0,
+        "description": "ou (rate): HalfNormal sd of eta2*rho",
+        "exclusiveMinimum": 0,
+        "title": "Rate Sd",
+        "type": "number"
+       },
+       "rho_sd": {
+        "default": 5.0,
+        "description": "ou: HalfNormal sd of rho (pull to the optimum)",
+        "exclusiveMinimum": 0,
+        "title": "Rho Sd",
+        "type": "number"
+       },
+       "sigma_rate": {
+        "default": 1.0,
+        "description": "Rate of the exponential prior of sigma",
+        "exclusiveMinimum": 0,
+        "title": "Sigma Rate",
+        "type": "number"
+       },
+       "slope_sd": {
+        "default": 0.5,
+        "description": "Prior sd of each slope",
+        "exclusiveMinimum": 0,
+        "title": "Slope Sd",
+        "type": "number"
+       },
+       "standardise": {
+        "default": true,
+        "description": "Centre and scale the trait and the predictors by the fitted species (the slopes are then in sd of the trait per sd of the predictor)",
+        "title": "Standardise",
+        "type": "boolean"
+       }
+      },
+      "title": "PhyloRegressionSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The image of one molecule is a Gaussian spot on a flat (or sloped) background",
+       "Each camera pixel counts photons with the extra noise of an EMCCD gain register (half of the photons count)",
+       "Each fitted spot holds one molecule and no other spot is near it"
+      ],
+      "avoid_when": [
+       "The spots in a frame touch each other (the model fits one molecule in each spot)",
+       "The frames came from an sCMOS camera with a different gain for each pixel",
+       "The molecules are out of focus or you need their depth (3-D)",
+       "You need all spots of a long recording (the model fits a sample of isolated spots)"
+      ],
+      "data_needs": [
+       "The raw camera counts (ADU) of each frame, on a grid of whole pixels",
+       "The size of a camera pixel in the sample, in nm",
+       "The camera offset and gain. Or frames with a range of background brightness, so that the model can measure them"
+      ],
+      "difficulty": "expert",
+      "example": "200 isolated spots of a dSTORM recording of the protein Unc-13 at a synapse give positions with a median error of 7.5 nm and about 2,900 photons in each spot.",
+      "expert_notes": "Batched single-emitter localisation (one emitter per 11 x 11 patch, every spot with its own position, photons, background and PSF sd) with a pixel-integrated Gaussian PSF (erf) and a Poisson likelihood of the EMCCD effective counts z = (ADU - offset) / (2 g), mean photons / 2. Detection, the photon-transfer calibration (np.polyfit of the robust temporal variance against the median) and the patch extraction run in NumPy and scipy.ndimage at fit time. kind plane adds a log-linear background slope per patch, so elpd_loo (per pixel, fit.keep.log_likelihood) can compare the two backgrounds. Multi-emitter model selection, the Laplace fitter of the notebook and blink counting are not part of the model.",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "map_fields",
+        "fit_physics"
+       ],
+       "uncertainty": [
+        "essential"
+       ]
+      },
+      "outputs": [
+       "The position of each molecule in nm, with a range",
+       "The photons, the background and the width of each spot",
+       "A super-resolution image of the positions",
+       "The model image of each spot, to compare with the data"
+      ],
+      "references": [
+       {
+        "title": "Mortensen et al. (2010), Optimized localization analysis for single-molecule tracking and super-resolution microscopy",
+        "url": "https://doi.org/10.1038/nmeth.1447"
+       },
+       {
+        "title": "Rust, Bates & Zhuang (2006), Sub-diffraction-limit imaging by stochastic optical reconstruction microscopy (STORM)",
+        "url": "https://doi.org/10.1038/nmeth929"
+       },
+       {
+        "title": "Dannhaeuser et al. (2022), Endogenous tagging of Unc-13 reveals nanoscale reorganization at active zones during presynaptic homeostatic potentiation",
+        "url": "https://doi.org/10.3389/fncel.2022.1074304"
+       }
+      ],
+      "related": [
+       "sci.strong_lens",
+       "sci.traction_force"
+      ],
+      "summary_plain": "Finds single glowing molecules in raw frames of a STORM or PALM microscope and measures the position of each one to a few nanometres, with an error bar. It also makes a super-resolution image from the positions.",
+      "title": "Molecule positions in STORM images",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have raw camera frames of a STORM, PALM or dSTORM recording (EMCCD camera)",
+       "You need the position of each molecule with an error bar in nm",
+       "You want a super-resolution image where each point shows its own error"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "x",
+       "y",
+       "photons",
+       "psf_sd"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "Single-molecule localisation microscopy (STORM/PALM): finds isolated spots in raw EMCCD frames and fits each with a pixel-integrated Gaussian PSF on a background, with Poisson counts after the camera's photon-transfer calibration. Outputs are positions with nm error bars, photons, the PSF width, a super-resolved render and the fitted patches.",
+     "fit_schema": {},
+     "id": "sci.storm_localisation",
+     "outputs": {
+      "background": {
+       "description": "Background at the centre of each patch",
+       "dims": [
+        "spot"
+       ],
+       "units": "photons/px"
+      },
+      "frames_hat": {
+       "description": "Camera image (ADU): the fitted spots on the background",
+       "dims": [
+        "frame",
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "gray",
+        "frame": "frame",
+        "log": false,
+        "origin": "upper",
+        "x": "col",
+        "y": "row"
+       },
+       "units_of": "frames"
+      },
+      "patch_fit": {
+       "description": "Expected effective counts (photons / 2) of each fitted patch, or Poisson draws",
+       "dims": [
+        "spot",
+        "py",
+        "px"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "frame": "spot",
+        "log": false,
+        "origin": "upper",
+        "x": "px",
+        "y": "py"
+       },
+       "units": "counts"
+      },
+      "photons": {
+       "description": "Photons that each molecule emitted into the frame",
+       "dims": [
+        "spot"
+       ],
+       "units": "photons"
+      },
+      "psf_sd": {
+       "description": "PSF sd of each spot",
+       "dims": [
+        "spot"
+       ],
+       "units": "nm"
+      },
+      "render": {
+       "description": "Super-resolved image: the spots at the drawn positions, blurred by half a render pixel",
+       "dims": [
+        "render_y",
+        "render_x"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "log": false,
+        "origin": "upper",
+        "x": "render_x",
+        "y": "render_y"
+       },
+       "units": "localisations"
+      },
+      "x": {
+       "description": "Column position of each spot",
+       "dims": [
+        "spot"
+       ],
+       "units": "nm"
+      },
+      "y": {
+       "description": "Row position of each spot",
+       "dims": [
+        "spot"
+       ],
+       "units": "nm"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "sci.point_pattern",
+      "sci.image_residuals",
+      "sci.field_map"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 120,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {},
+      "template": {
+       "dims": {
+        "col": {
+         "description": "Pixel column",
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "frame": {
+         "description": "Camera frame",
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "row": {
+         "description": "Pixel row",
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "frames": {
+         "bounds": [
+          0,
+          null
+         ],
+         "description": "Raw camera counts of each frame",
+         "dims": [
+          "frame",
+          "row",
+          "col"
+         ],
+         "dtype": "int32",
+         "role": "target",
+         "units": "ADU"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.storm_localisation``: camera, detection, priors and outputs.",
+      "properties": {
+       "amplitude_band": {
+        "default": [
+         0.0,
+         1.0
+        ],
+        "description": "Quantile band of blob amplitude that is fitted (0, 1: every isolated blob)",
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "number"
+         }
+        ],
+        "title": "Amplitude Band",
+        "type": "array"
+       },
+       "background_log_sd": {
+        "default": 0.5,
+        "description": "Log-scale prior sd of the background",
+        "exclusiveMinimum": 0,
+        "title": "Background Log Sd",
+        "type": "number"
+       },
+       "background_photons": {
+        "anyOf": [
+         {
+          "exclusiveMinimum": 0,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Prior median of the background (photons per pixel); unset: twice the median effective count of the movie",
+        "title": "Background Photons"
+       },
+       "gradient_sd": {
+        "default": 0.05,
+        "description": "Prior sd of the background slopes (log per px; kind plane)",
+        "exclusiveMinimum": 0,
+        "title": "Gradient Sd",
+        "type": "number"
+       },
+       "kind": {
+        "default": "flat",
+        "description": "Background in each patch: flat (one value) or plane (a value and a slope in x and y) (x-ui-level: basic)",
+        "enum": [
+         "flat",
+         "plane"
+        ],
+        "title": "Kind",
+        "type": "string"
+       },
+       "max_blob_px": {
+        "default": 39,
+        "description": "Most pixels of a fitted blob",
+        "minimum": 1,
+        "title": "Max Blob Px",
+        "type": "integer"
+       },
+       "max_spots": {
+        "default": 200,
+        "description": "Isolated spots fitted, evenly spaced in frame order (x-ui-level: basic)",
+        "maximum": 5000,
+        "minimum": 1,
+        "title": "Max Spots",
+        "type": "integer"
+       },
+       "min_blob_px": {
+        "default": 13,
+        "description": "Fewest pixels of a fitted blob",
+        "minimum": 1,
+        "title": "Min Blob Px",
+        "type": "integer"
+       },
+       "offset_adu": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Camera offset (ADU). Set it with scale_adu; unset, both come from the photon-transfer curve of the frames",
+        "title": "Offset Adu"
+       },
+       "patch_px": {
+        "default": 11,
+        "description": "Side of each fitted patch (odd, px)",
+        "maximum": 31,
+        "minimum": 5,
+        "title": "Patch Px",
+        "type": "integer"
+       },
+       "photons_log_sd": {
+        "default": 1.0,
+        "description": "Log-scale prior sd of the photons",
+        "exclusiveMinimum": 0,
+        "title": "Photons Log Sd",
+        "type": "number"
+       },
+       "photons_median": {
+        "default": 1500.0,
+        "description": "Prior median of the photons per spot",
+        "exclusiveMinimum": 0,
+        "title": "Photons Median",
+        "type": "number"
+       },
+       "pixel_nm": {
+        "default": 100.0,
+        "description": "Size of one camera pixel in the sample (nm) (x-ui-level: basic)",
+        "exclusiveMinimum": 0,
+        "title": "Pixel Nm",
+        "type": "number"
+       },
+       "position_sd_px": {
+        "default": 2.0,
+        "description": "Prior sd of the position around the blob centre (px)",
+        "exclusiveMinimum": 0,
+        "title": "Position Sd Px",
+        "type": "number"
+       },
+       "ppc_draws": {
+        "default": 20,
+        "description": "Predictive patch draws kept in the bundle (0: none)",
+        "maximum": 200,
+        "minimum": 0,
+        "title": "Ppc Draws",
+        "type": "integer"
+       },
+       "psf_log_sd": {
+        "default": 0.2,
+        "description": "Log-scale prior sd of the PSF sd",
+        "exclusiveMinimum": 0,
+        "title": "Psf Log Sd",
+        "type": "number"
+       },
+       "psf_sd_px": {
+        "default": 1.0,
+        "description": "Prior median of the PSF sd (px)",
+        "exclusiveMinimum": 0,
+        "title": "Psf Sd Px",
+        "type": "number"
+       },
+       "render_px_nm": {
+        "default": 16.0,
+        "description": "Pixel size of the super-resolved render (nm)",
+        "exclusiveMinimum": 0,
+        "title": "Render Px Nm",
+        "type": "number"
+       },
+       "scale_adu": {
+        "anyOf": [
+         {
+          "exclusiveMinimum": 0,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "ADU per effective count: twice the EM gain (the photon-transfer slope)",
+        "title": "Scale Adu"
+       },
+       "score_draws": {
+        "default": 40,
+        "description": "Posterior draws in each score (over all chains)",
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Score Draws",
+        "type": "integer"
+       },
+       "smooth_px": {
+        "default": 1.0,
+        "description": "Gaussian smoothing before detection (px)",
+        "exclusiveMinimum": 0,
+        "title": "Smooth Px",
+        "type": "number"
+       },
+       "threshold_sd": {
+        "default": 5.0,
+        "description": "Detection threshold (robust noise sds)",
+        "exclusiveMinimum": 0,
+        "title": "Threshold Sd",
+        "type": "number"
+       }
+      },
+      "title": "StormLocalisationSettings",
       "type": "object"
      },
      "version": "1.0.0"
@@ -3242,6 +6942,378 @@
        }
       },
       "title": "TractionForceSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The pattern starts from a uniform state with small random noise in each pixel",
+       "The images are taken while the pattern is still small (a few percent of the mean level), so its growth is linear",
+       "The camera noise is independent from pixel to pixel",
+       "The square repeats at its edges (the Fourier transform uses this)"
+      ],
+      "avoid_when": [
+       "You have only one image of a pattern that is already fully formed (it gives only the wavelength)",
+       "The images are not square, have gaps or are not periodic at the edges",
+       "The chemistry is not an activator and a substrate of the Schnakenberg type"
+      ],
+      "data_needs": [
+       "Images of the activator on a square grid of pixels at some early times, with the time since the start",
+       "The side of the square in the length unit of the model (the activator diffuses at a rate of 1 in this unit)"
+      ],
+      "difficulty": "expert",
+      "example": "Four noisy 128 x 128 images at t = 4, 8, 12 and 16 recover a diffusion ratio of 20 to within about 12% and a wavelength of 13 length units.",
+      "expert_notes": "Schnakenberg kinetics u_t = g (a - u + u^2 v) + lap u, v_t = g (b - u^2 v) + d lap v (pymc-challenges E61 part A). Linearised about the uniform state, each Fourier mode of the activator images is complex Gaussian with C(k) = s0^2 U U^T + sigma^2 I, U the first row of exp(A(k) t) from a closed-form 2 x 2 matrix exponential; modes are independent and grouped by integer |k|^2 into summed outer products, and a Woodbury identity reduces the likelihood to 2 x 2 algebra (a pm.Potential). Only |k|^2 < k2_max enters. Priors: s ~ LogNormal(0, 0.5), rho ~ Beta(2, 5), d ~ LogNormal(log 10, 1), g ~ LogNormal(0, 0.7), s0 and sigma ~ LogNormal(log 1e-3, 1.5). NUTS samples a parameterisation whitened by the Laplace approximation at the mode. Predictions condition each mode on the fitted images; simulate runs a semi-implicit spectral solver per draw. Pointwise log-likelihood per Fourier mode (PSIS-LOO over modes).",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "fit_physics",
+        "map_fields"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The supply rates a and b, the diffusion ratio d and the reaction scale, with a range",
+       "The growth rate of each wavenumber (the dispersion relation) and the wavelength",
+       "The probability that the Turing conditions hold, and a map of it over the supply rates",
+       "Predicted and simulated pattern images, and the pattern after it has settled"
+      ],
+      "references": [
+       {
+        "title": "Turing (1952), The chemical basis of morphogenesis",
+        "url": "https://doi.org/10.1098/rstb.1952.0012"
+       },
+       {
+        "title": "Schnakenberg (1979), Simple chemical reaction systems with limit cycle behaviour",
+        "url": "https://doi.org/10.1016/0022-5193(79)90042-0"
+       },
+       {
+        "title": "Murray (2003), Mathematical Biology II: Spatial Models and Biomedical Applications"
+       }
+      ],
+      "related": [
+       "sci.fisher_kpp",
+       "sci.traction_force"
+      ],
+      "summary_plain": "Measures the reaction and diffusion rates of two chemicals that make spots or stripes, from images taken while the pattern starts to grow. It also gives the expected spacing of the pattern and the probability that the chemicals can make a pattern at all.",
+      "title": "Turing patterns from early images",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have images of a pattern (spots or stripes) taken while it is still faint",
+       "You want the rates of an activator and an inhibitor (or substrate) system, with a range",
+       "You want to know if the rates satisfy the Turing conditions, and the expected wavelength of the pattern"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "d",
+       "g",
+       "s",
+       "s0",
+       "sigma"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [],
+     "description": "Turing patterns: recovers the reaction and diffusion rates of a Schnakenberg activator-substrate system from early images of a growing pattern. The likelihood is exact for the linearised dynamics (independent complex Gaussian Fourier modes, a Woodbury identity per wavenumber). Gives the dispersion relation, the pattern wavelength, P(Turing conditions hold) and simulated patterns from a spectral solver.",
+     "fit_schema": {},
+     "id": "sci.turing_pattern",
+     "outputs": {
+      "growth": {
+       "description": "Dispersion relation: growth rate Re lambda(k) of a mode with wavenumber k",
+       "dims": [
+        "wavenumber"
+       ],
+       "units": "1/time"
+      },
+      "p_turing": {
+       "description": "1 when the Turing conditions hold for the draw (the mean is the probability)",
+       "dims": [],
+       "units": "probability"
+      },
+      "pattern": {
+       "description": "Activator field at the requested times: a draw given the fitted images (predict), or a new pattern from the nonlinear solver (simulate)",
+       "dims": [
+        "t",
+        "y",
+        "x"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "frame": "t",
+        "log": false,
+        "origin": "lower",
+        "x": "x",
+        "y": "y"
+       },
+       "units_of": "activator"
+      },
+      "settled": {
+       "description": "Simulate only: the pattern of each run at settle_time",
+       "dims": [
+        "y",
+        "x"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "log": false,
+        "origin": "lower",
+        "x": "x",
+        "y": "y"
+       },
+       "units_of": "activator"
+      },
+      "turing_space": {
+       "description": "1 where the supply rates (a, b) are Turing unstable at the draw's diffusion ratio (the mean is P(Turing))",
+       "dims": [
+        "b_supply",
+        "a_supply"
+       ],
+       "grid": {
+        "colormap": "viridis",
+        "log": false,
+        "origin": "lower",
+        "x": "a_supply",
+        "y": "b_supply"
+       },
+       "units": "probability"
+      },
+      "wavelength": {
+       "description": "Wavelength 2 pi / k_m of the fastest-growing mode",
+       "dims": [],
+       "units": "length"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.field_map",
+      "sci.ppc_image_grid",
+      "sci.profile_bands"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 120,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "max_extension": {
+        "default": 2,
+        "required": false,
+        "type": "integer"
+       }
+      },
+      "template": {
+       "dims": {
+        "t": {
+         "description": "Time since the uniform state was perturbed",
+         "kind": "float",
+         "max_extension": "{max_extension}",
+         "ordered": true,
+         "policy": "extend"
+        },
+        "x": {
+         "description": "Pixel column",
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "y": {
+         "description": "Pixel row",
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "activator": {
+         "description": "Activator concentration in each pixel (early, small pattern)",
+         "dims": [
+          "t",
+          "y",
+          "x"
+         ],
+         "dtype": "float64",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.turing_pattern`` (dimensionless Schnakenberg units).",
+      "properties": {
+       "a_max": {
+        "default": 0.6,
+        "description": "Largest supply rate a of the Turing-space map",
+        "exclusiveMinimum": 0,
+        "title": "A Max",
+        "type": "number"
+       },
+       "b_max": {
+        "default": 3.0,
+        "description": "Largest supply rate b of the Turing-space map",
+        "exclusiveMinimum": 0,
+        "title": "B Max",
+        "type": "number"
+       },
+       "box_length": {
+        "default": 100.0,
+        "description": "Side of the square image in the length unit of the model (the activator diffuses with D = 1 in these units) (x-ui-level: basic)",
+        "exclusiveMinimum": 0,
+        "title": "Box Length",
+        "type": "number"
+       },
+       "camera_noise_median": {
+        "default": 0.001,
+        "description": "Prior median of the camera noise sd sigma",
+        "exclusiveMinimum": 0,
+        "title": "Camera Noise Median",
+        "type": "number"
+       },
+       "d_log_sd": {
+        "default": 1.0,
+        "description": "Log-scale sd of the prior of d",
+        "exclusiveMinimum": 0,
+        "title": "D Log Sd",
+        "type": "number"
+       },
+       "d_median": {
+        "default": 10.0,
+        "description": "Prior median of the diffusion ratio d",
+        "exclusiveMinimum": 0,
+        "title": "D Median",
+        "type": "number"
+       },
+       "field_draws": {
+        "default": 40,
+        "description": "Posterior draws per score (over all chains)",
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Field Draws",
+        "type": "integer"
+       },
+       "initial_noise_median": {
+        "default": 0.001,
+        "description": "Prior median of the initial noise sd s0",
+        "exclusiveMinimum": 0,
+        "title": "Initial Noise Median",
+        "type": "number"
+       },
+       "k2_max": {
+        "default": 1.5,
+        "description": "Use only the Fourier modes with |k|^2 below this value; faster modes have decayed below the camera noise (x-ui-level: basic)",
+        "exclusiveMinimum": 0,
+        "title": "K2 Max",
+        "type": "number"
+       },
+       "max_extension": {
+        "default": 2,
+        "description": "Image times a prediction may reach past the last fitted time (the linear theory holds only while the pattern is small)",
+        "maximum": 100,
+        "minimum": 0,
+        "title": "Max Extension",
+        "type": "integer"
+       },
+       "precondition": {
+        "default": true,
+        "description": "Sample a parameterisation whitened at the posterior mode (Laplace approximation); the model is the same. False samples the notebook's parameters directly (needs a long warm-up, for example tune 1500)",
+        "title": "Precondition",
+        "type": "boolean"
+       },
+       "settle_time": {
+        "default": 300.0,
+        "description": "Time of the settled pattern in simulate",
+        "exclusiveMinimum": 0,
+        "maximum": 5000.0,
+        "title": "Settle Time",
+        "type": "number"
+       },
+       "simulate_draws": {
+        "default": 4,
+        "description": "Nonlinear simulations per simulate score (each one is a full PDE run)",
+        "maximum": 200,
+        "minimum": 1,
+        "title": "Simulate Draws",
+        "type": "integer"
+       },
+       "simulate_dt": {
+        "anyOf": [
+         {
+          "exclusiveMinimum": 0,
+          "maximum": 0.1,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Time step of the spectral solver in simulate (default: min(0.025, 0.1 / (g (1 + s^2))))",
+        "title": "Simulate Dt"
+       },
+       "supply_points": {
+        "default": 60,
+        "description": "Grid points along a and b of the Turing-space map",
+        "maximum": 300,
+        "minimum": 5,
+        "title": "Supply Points",
+        "type": "integer"
+       },
+       "wavenumber_max": {
+        "default": 1.2,
+        "description": "Largest wavenumber of the dispersion relation output",
+        "exclusiveMinimum": 0,
+        "title": "Wavenumber Max",
+        "type": "number"
+       },
+       "wavenumber_points": {
+        "default": 120,
+        "description": "Points of the dispersion relation output",
+        "maximum": 2000,
+        "minimum": 10,
+        "title": "Wavenumber Points",
+        "type": "integer"
+       }
+      },
+      "title": "TuringPatternSettings",
       "type": "object"
      },
      "version": "1.0.0"

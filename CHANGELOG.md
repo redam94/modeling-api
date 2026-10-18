@@ -5,6 +5,59 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### M5 phase 2 — Science gallery models
+
+#### Added
+- **Eleven science models** in `mapi-plugin-science`, ported from the pymc-challenges case
+  studies. Each has an About card, a section in `docs/reference/models.md`, a conformance
+  fixture, a data export case and tests against the real data of its notebook:
+  - `sci.heat_plate` (E51): the 2-D steady heat equation of a heated plate, a finite-volume
+    system solved in the model graph; predicts the field of new heater layouts.
+  - `sci.turing_pattern` (E61 part A): Schnakenberg rates from early images of a growing
+    Turing pattern, with the exact Fourier-mode likelihood, the dispersion relation,
+    P(Turing) and simulated patterns.
+  - `sci.storm_localisation` (E58): single-molecule localisation in raw EMCCD STORM frames,
+    with camera calibration, spot detection, a batched pixel-integrated Gaussian PSF fit and
+    a super-resolved render kept in the bundle.
+  - `sci.ibp_features` (E31): latent binary features of small images (truncated Indian
+    buffet process with the patterns summed out).
+  - `sci.colour_naming` (E77): colour naming of one World Color Survey language, pooled or
+    with speaker effects.
+  - `sci.cmb_field` (E79): field-level inference of a masked CMB map with a Wandelt-Eriksen
+    Gibbs sampler (sky draws behind the mask and bandpowers).
+  - `sci.areal_bym2` (E18): disease mapping on a graph of areas with iid, ICAR, proper CAR or
+    BYM2 effects.
+  - `sci.network_latent_space` (E21): ties of a graph from pair covariates, sociality and
+    Procrustes-aligned latent positions.
+  - `sci.graphical_model` (E19): a Gaussian graphical model, dense LKJ or horseshoe
+    neighbourhood selection, with edge probabilities.
+  - `sci.phylo_regression` (E23): regression on a phylogeny with iid, Brownian, Pagel lambda
+    or OU residuals.
+  - `sci.circular_regression` (E81): von Mises, projected normal and regime-mixture
+    regression of angles, and log-Fourier activity densities with overlaps.
+- Export cases e18, e19, e21, e23, e31, e51, e58, e61, e77, e79 and e81. A case whose
+  notebook simulates its data (E51, E61) needs no data directory.
+
+#### Changed
+- `BindingMap` rewrites the dim names in a variable's `grid` attr when it renames dims, so
+  the `sci.*` image recipes find the grid of a score tree after a `data.bind`.
+- `EnginePlan` (`mapi-pymc`) has `initvals` and `jitter`: a plugin can start every MCMC
+  chain at one given point (`pymc`, `nutpie` and the external NUTS bridges).
+  `sci.ibp_features` uses it to avoid a start where all its features switch off.
+
+#### Fixed
+- `python -m mapi_plugin_science.export --list` lists every case (a case registered after
+  the `__main__` guard was missing from the command line).
+
+#### Known gaps
+- `sci.turing_pattern`: the notebook-sized fit takes about 5 min and mixes slowly (r_hat
+  about 1.02, bulk ESS about 180 for rho and g).
+- `sci.network_latent_space`: the latent-space fit with covariates (model c) warns at 4 × 1000
+  draws (max r_hat 1.08, bulk ESS 46); it needs more draws or tuning.
+- `sci.areal_bym2`: a forecast request with a horizon on the categorical `area` dim fails in
+  the harness with a type error instead of `MODE_NOT_SUPPORTED`.
+- `sci.network_latent_space`: evaluate metrics include the diagonal (self-tie) cells.
+
 ### M5 phase 1 — Science gallery foundation
 
 #### Added
