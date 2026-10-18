@@ -50,6 +50,7 @@ FIXTURES: list[str] = [
     "e21_network",
     "e19_ggm",
     "e23_phylo",
+    "e81_circular",
 ]
 
 DEFERRED: dict[str, str] = {

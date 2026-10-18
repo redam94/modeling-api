@@ -34,7 +34,11 @@ Ported from the pymc-challenges case studies:
   protein signalling);
 * ``sci.phylo_regression`` - a regression across species whose residuals are correlated by
   a phylogeny (i.i.d., Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck), with traits
-  predicted from relatives (E23, primate brains).
+  predicted from relatives (E23, primate brains);
+* ``sci.circular_regression`` - directions and times of day on the circle: a von Mises
+  regression with a canonical link on harmonics of the hour and the day of year (or a
+  projected normal, or a mixture of two regimes), and log-Fourier activity densities with
+  overlaps (E81, Santa Barbara winds and Barro Colorado camera traps).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -44,6 +48,7 @@ Every plugin registers through the ``mapi.models`` entry point
 from importlib import metadata as _metadata
 
 from mapi_plugin_science.areal import ArealBYM2Model, ArealBYM2Settings
+from mapi_plugin_science.circular import CircularRegressionModel, CircularRegressionSettings
 from mapi_plugin_science.cmb import CMBFieldModel, CMBFieldSettings
 from mapi_plugin_science.colour_naming import ColourNamingModel, ColourNamingSettings
 from mapi_plugin_science.ggm import GraphicalModel, GraphicalModelSettings
@@ -78,6 +83,7 @@ PLUGINS = (
     NetworkLatentSpaceModel,
     GraphicalModel,
     PhyloRegressionModel,
+    CircularRegressionModel,
 )
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
@@ -87,6 +93,8 @@ __all__ = [
     "ArealBYM2Settings",
     "CMBFieldModel",
     "CMBFieldSettings",
+    "CircularRegressionModel",
+    "CircularRegressionSettings",
     "ColourNamingModel",
     "ColourNamingSettings",
     "FisherKPPModel",

@@ -134,6 +134,7 @@ def test_cards_cover_the_surviving_catalog_and_the_planned_engines() -> None:
         "sci.network_latent_space",
         "sci.graphical_model",
         "sci.phylo_regression",
+        "sci.circular_regression",
     } == SCIENCE_MODEL_IDS
     assert set(MODEL_ABOUTS) == SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS | SCIENCE_MODEL_IDS
     for template in GUIDED_TEMPLATES.values():

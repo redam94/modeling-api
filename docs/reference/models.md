@@ -44,6 +44,7 @@ each lift likelihood.
 | `sci.network_latent_space@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e21_network` |
 | `sci.graphical_model@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e19_ggm` |
 | `sci.phylo_regression@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e23_phylo` |
+| `sci.circular_regression@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e81_circular` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -307,21 +308,12 @@ For a text target, the server skips numeric metrics, for example `mape`.
 ## Scientific models (`mapi-plugin-science`)
 
 These plugins come from the case studies of
-[pymc-challenges](https://github.com/redam94/pymc-challenges). Their data are maps, images and
-fields on a regular grid, or the areas of a map. Their outputs have a range for each cell or
-area. Each output that is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the
-column dim `x`, an optional `frame` dim and an optional `component` dim for a vector field). The
-platform then shows the output in two places:
 [pymc-challenges](https://github.com/redam94/pymc-challenges). Most of their data are maps,
-images and fields on a regular grid (`sci.network_latent_space` reads a graph). Their outputs
-are fields with a range for each cell. Each output that is a field declares a `grid`
-(`OutputDecl.grid`: the row dim `y`, the column dim `x`, an optional `frame` dim and an
-optional `component` dim for a vector field). The platform then shows the output in two
-places:
-[pymc-challenges](https://github.com/redam94/pymc-challenges). Most of their data are maps,
-images and fields on a regular grid, and their outputs are fields with a range for each cell.
-`sci.graphical_model` learns a network of variables, and its matrix outputs are also fields. Each output that
-is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the column dim `x`, an
+images and fields on a regular grid. Some read other shapes: the areas of a map
+(`sci.areal_bym2`), a graph of nodes (`sci.network_latent_space`), a network of variables
+(`sci.graphical_model`), a phylogeny (`sci.phylo_regression`) or angles
+(`sci.circular_regression`). Their outputs have a range for each cell, area or node. Each output
+that is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the column dim `x`, an
 optional `frame` dim and an optional `component` dim for a vector field). The platform then
 shows the output in two places:
 
@@ -383,6 +375,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e21` | `sci.network_latent_space` | `lazega_cowork.txt`, `lazega_attributes.txt` | `sociology/lazega_coworkers` |
 | `e19` | `sci.graphical_model` | `sachs2005.txt`, `sachs2005_consensus.txt` | `biology/sachs_cd3cd28` |
 | `e23` | `sci.phylo_regression` | `primates301.csv`, `primates301_tree.rda` | `biology/primates301` |
+| `e81` | `sci.circular_regression` | `asos_ksba_2021_2023.csv.gz` | `meteorology/ksba_wind_2021_2023` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -1225,3 +1218,100 @@ draws), the `lambda` fit gives a group-size slope of 0.027 ± 0.020 and `lam` = 
 no single root or has a cycle, a predictor has missing values, a value is not positive for a
 log, or fewer than 3 species have a trait value. `UNSEEN_LEVELS` when a score requests a
 species that the fit did not see.
+
+### `sci.circular_regression` — directions and times of day (E81)
+
+The data are angles: the direction that a wind comes from, or the time of day of a
+photograph. 359 degrees is next to 1 degree, and 23:59 is next to 00:01. Thus the model uses
+densities on the circle, as the E81 case study does. It has four kinds:
+
+- `von_mises` (default). The hour of the day and the day of the year are features: an
+  intercept, `cos` and `sin` of `k 2π h / 24` and of `k 2π d / 365.25`, and the products of the
+  first daily harmonics with the first annual harmonic. The defaults give 19 features `F`. The
+  natural parameters of a von Mises are `η = F B` (the canonical link). The mean direction is
+  `atan2(η₂, η₁)` and the concentration is `|η|`. This model has one mode. It has no wrapped
+  prior and no seam at ±π.
+- `projected_normal`. The angle of a vector `z ~ N(F B, I)`.
+- `regime_mixture`. Two von Mises regimes (for example the easterly night wind and the
+  westerly sea breeze). Each regime uses fewer features. A logistic gate on all features gives
+  the probability of the second regime. The prior directions of the regimes keep their labels.
+- `activity`. A log-Fourier density for each group (species):
+  `log f(θ) = Σ aₖ cos kθ + bₖ sin kθ − log Z`, with the prior `aₖ, bₖ ~ N(0, (τ/k)²)`. The
+  model uses only the sums of `cos kθ` and `sin kθ` for each group.
+
+The priors of `von_mises` and `projected_normal` are N(0, `intercept_sd` = 2) on the
+intercepts and N(0, `coef_sd` = 1) on the other coefficients. `regime_mixture` does not use
+`intercept_sd`, as in the notebook. The intercept of regime r has the prior
+N(`regime_strength` (cos μᵣ, sin μᵣ), 1), with μᵣ from `regime_directions_deg`. The gate
+intercept has the prior N(0, `gate_intercept_sd` = 1.5). The other coefficients of the regimes
+and of the gate have the prior N(0, `coef_sd`). NUTS samples the coefficients. With `fit.keep.log_likelihood: true`, the bundle keeps the log density of
+each row (per radian). Thus `elpd_loo` compares the kinds on the same rows, for example in a
+workflow ladder `von_mises` → `projected_normal` → `regime_mixture`.
+
+**Inputs.** `obs` (integer, policy `extend`, one row for each report) and the target
+`direction(obs)` in `units`. The regression kinds also need `hour(obs)` (hours since midnight,
+0 to 24) and `day(obs)` (days since 1 January). The kind `activity` needs a categorical dim
+(`group_dim`, fixed) and the index `<group_dim>_idx(obs)`. Remove rows with no direction (a calm
+wind has no direction) before the fit.
+
+**Outputs.**
+
+- `direction_hat(obs)`: the mean direction of the row, in `units` from 0 to one turn. With
+  `kind: predictive` and in `simulate` mode, it is one simulated angle.
+- `resultant(obs)`: the mean resultant length of the row (1: one direction, 0: no preferred
+  direction).
+- `density(frame, angle)`: the density per unit of `units` on `angle_points` angles (a field:
+  frames on the rows, angles on the columns). For the regression kinds, a frame is a block of
+  `24 / frames` hours. Its density is the mean of the densities of up to `rows_per_frame` fit
+  rows in that block (the rose diagram of the model). For `activity`, a frame is a group.
+- `mean_direction(frame)` and `resultant_length(frame)`: the mean resultant vector of each
+  frame.
+- `activity` only: `activity_level(frame)` (`1 / (2π max f)`, the part of the day that the
+  group is active) and `overlap(frame, frame_)` (the area under the lower of two densities, a
+  field).
+
+The fit also keeps the fields `density(frame, angle)` and, for `activity`, `overlap(frame,
+frame_)` in the posterior. They have the same values as in a score. Thus `sci.field_map` and
+`sci.profile_bands` show the densities (and, with `var: overlap`, the overlaps) in the plots
+of a fit run.
+
+With `fit.keep.posterior_predictive`, the bundle keeps simulated angles `theta` (radians, 0 to
+2π) and the observed `theta` in `observed_data`. `sci.rose` uses them in its default
+settings: it shows the observed rose with the range of the model. The default settings use
+the orientation of mathematics: 0 is at the right (east) and the angles increase
+anticlockwise. Thus a wind from the west (270°) is at the bottom. For a compass or a clock (0
+at the top, clockwise), pass `clockwise: true` to `sci.rose` in a `plot.render` step or in the
+plots request. For the density of each frame, use `sci.rose` with `var: density`, `frame:
+frame` and `units` set to the units of the data. The default rose of a score result reads
+`direction_hat`, which is in the units of the data, as radians. Pass `var: direction_hat` and
+`units` set to the units of the data.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kind` | `von_mises` | `von_mises`, `projected_normal`, `regime_mixture` or `activity` |
+| `units` | `degrees` | Units of the direction: `degrees`, `radians` or `hours` |
+| `daily_harmonics`, `annual_harmonics` | 3, 2 | Harmonics of the hour and of the day of the year |
+| `interaction_harmonics` | 2 | Daily harmonics multiplied by the first annual harmonic |
+| `intercept_sd`, `coef_sd` | 2, 1 | Prior sd of the intercepts (not for `regime_mixture`) and of the other coefficients |
+| `regime_directions_deg`, `regime_names` | [90, 250], [easterly, westerly] | `regime_mixture`: prior directions and names of the two regimes |
+| `regime_daily_harmonics`, `regime_annual_harmonics` | 2, 1 | `regime_mixture`: features of each regime |
+| `regime_strength` | 2 | `regime_mixture`: prior mean concentration of each regime (the length of the prior mean of its intercept) |
+| `gate_intercept_sd` | 1.5 | `regime_mixture`: prior sd of the gate intercept |
+| `group_dim` | `group` | `activity`: the dim of the groups |
+| `harmonics`, `tau_sd`, `grid_points` | 16, 2, 256 | `activity`: Fourier terms, prior scale of `τ`, angles of the sum for `Z` |
+| `frames`, `angle_points`, `rows_per_frame` | 8, 72, 200 | Blocks of the day, angles and fit rows of the `density` output |
+| `score_draws` | 400 | Posterior draws for each score |
+
+`from_challenges` reads the hourly wind reports of Santa Barbara airport (2021–2023). It removes
+the calm reports and uses Pacific standard time (UTC − 8). `ksba_spec_yaml(ds)` holds out 2023 as
+the notebook does. On the 12,023 reports of 2021–2022, `elpd_loo` is −17,385 (the notebook:
+−17,385). The mean log score of 2023 is −1.517 for each report (the notebook: −1.517).
+`from_challenges_activity` reads the camera-trap times of Barro Colorado Island for the ocelot
+and five species that it hunts. With `BCI_SPEC_YAML`, the overlap of the ocelot and the agouti
+is 0.30 (the notebook: 0.30).
+
+Platform holdout metrics such as `rmse` and `coverage_90` are linear. They are not correct for
+angles. Use `elpd_loo`, or `CircularRegressionModel().holdout_log_score(bundle.model, ds)` for
+the log score of held-out rows. Errors: `SCHEMA_INVALID` for a missing direction, an hour out of
+range or a bad group index; `MISSING_FUTURE_COVARIATE` when the score data have no `hour` or
+`day`; `SETTINGS_INVALID` for more interaction harmonics than daily harmonics.

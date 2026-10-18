@@ -2,7 +2,8 @@
 
 Scientific model plugins for modeling-api (`sci.*`, entry point `mapi.models: science`). They
 are ports of the case studies of [pymc-challenges](https://github.com/redam94/pymc-challenges).
-Their data are maps, images, fields on a regular grid and networks of variables.
+Most of their data are maps, images and fields on a regular grid. Some read the areas of a map,
+a graph, a network of variables, a phylogeny or angles (directions and times of day).
 
 | Plugin | Model | Representation | Score modes |
 |---|---|---|---|
@@ -20,6 +21,7 @@ Their data are maps, images, fields on a regular grid and networks of variables.
 | `sci.network_latent_space@1` | Ties between the nodes of a graph: pair covariates, sociality and Procrustes-aligned latent positions (E21) | draws | predict, simulate, evaluate |
 | `sci.graphical_model@1` | Gaussian graphical model: partial correlations and edge probabilities, dense LKJ or horseshoe neighbourhood selection (E19) | draws | predict, simulate, evaluate |
 | `sci.phylo_regression@1` | Regression across species with residuals correlated by a phylogeny: iid, Brownian, Pagel's lambda or OU (E23) | draws | predict, simulate, evaluate |
+| `sci.circular_regression@1` | Von Mises regression with a canonical link on harmonics of the hour and the day of year, and log-Fourier activity densities (E81) | draws | predict, simulate, evaluate |
 
 Outputs that are fields declare a `grid` (`OutputDecl.grid`). The Model Explorer shows them in
 its **Fields** section, and the `sci.*` plot recipes draw them.

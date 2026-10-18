@@ -17,6 +17,7 @@ EXPECTED_IDS = {
     "sci.network_latent_space",
     "sci.graphical_model",
     "sci.phylo_regression",
+    "sci.circular_regression",
 }
 
 

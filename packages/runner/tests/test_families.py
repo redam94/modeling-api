@@ -57,6 +57,7 @@ EXPECTED: dict[str, tuple[str, set[str], tuple[Any, ...]]] = {
     "e21_network": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
     "e19_ggm": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
     "e23_phylo": ("sci", {"params", "diagnostics"}, (_SLOW,)),
+    "e81_circular": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
 }
 CHEAP_CHECKS = (
     "convergence",
