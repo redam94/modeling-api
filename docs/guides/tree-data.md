@@ -191,8 +191,8 @@ The three rules are:
 | `combine` | Sources in the node | What the ingest does |
 |---|---|---|
 | `node` (the default) | One | Puts the file at the node. A file that is a tree puts its groups *below* the node: group `/psf` of a file at node `/instrument` becomes `/instrument/psf` |
-| `concat` | Two or more | Stacks the files along a **new** dim `concat_dim`. Each file gives one label, for example one file for each market or each year. The files must have the same variables over the same dims |
-| `merge` | Two or more | Merges the variables of the files on their shared coords. A variable that is in two files must have the same values where the files overlap |
+| `concat` | One or more (the CLI asks for two or more) | Stacks the files along a **new** dim `concat_dim`. Each file gives one label, for example one file for each market or each year. The files must have the same variables over the same dims |
+| `merge` | One or more (the CLI asks for two or more) | Merges the variables of the files on their shared coords. A variable that is in two files must have the same values where the files overlap |
 
 All sources of one node use the same rule. Sources of a `concat` use the same `concat_dim`
 and different labels (all numbers, or all text). Sources of a `concat` or a `merge` use the
@@ -312,6 +312,12 @@ before the pipeline:
 --8<-- "tree_spec.yaml"
 ```
 
+!!! note "The model of this example"
+    `toy.tree_linear` is a reference model of the SDK test kit (`mapi_sdk.testing.toy`). The
+    documentation tests use it to check and fit this spec. The platform and the CLI catalog do
+    not have it, so `mapi check` reports `REF_UNRESOLVED` for it. Put a model of your platform
+    in `model.use` (`mapi catalog` lists them).
+
 Each entry of `data.nodes` is a `NodeSelect`:
 
 | Field | Meaning |
@@ -330,15 +336,17 @@ The rules of the merge are:
   missing values.
 - `data.bind` applies to the merged names (for example `plan_spend`).
 
-Static validation (`mapi spec check`, `POST /v1/specs:validate`) uses the `tree_schema` of the
-version. It finds an unknown node or variable, a name clash and dims that are not the same
+Static validation (`mapi check --remote`, `POST /v1/specs:validate`) uses the `tree_schema` of
+the version. A local `mapi check spec.yaml --data lens.tree.zip` reads the tree schema of the
+local tree dataset in the same way. It finds an unknown node or variable, a name clash and dims that are not the same
 before a run starts. These rules also apply:
 
 - If a spec reads a tree dataset without `data.nodes`, the platform reads the root node. If
   the root has no variables, validation reports `SCHEMA_INVALID`: "this dataset is a tree:
   pick nodes in data.nodes".
 - `data.nodes` on a plain dataset is an error.
-- `data.join` without `data.nodes` is an error.
+- A `data.join` other than `exact` without `data.nodes` is an error. (`exact` is the default
+  and has no effect without nodes.)
 
 The same merge is available in Python:
 
@@ -409,8 +417,9 @@ before. With the setting `psf_source: tree`, a spec can select only the image no
 | Decoded size of all the sources | The scratch budget of the ingest run | `IngestJob.max_uncompressed_bytes` |
 | Variables of one HDF5 mapping | 1,024 | `Hdf5Mapping.vars` |
 | Coords of one HDF5 mapping | 64 | `Hdf5Mapping.coords` |
-| Characters in an HDF5 path | 1,024 | `Hdf5Var.path`, `Hdf5Coord.path` |
-| HDF5 objects (links and attributes) in one file | 10,000 | `IngestJob.max_hdf5_objects` |
+| Characters in an HDF5 path | 1,025: the leading `/` and 1,024 more | `Hdf5Var.path`, `Hdf5Coord.path` |
+| HDF5 links (groups and datasets) in one file | 10,000 | `IngestJob.max_hdf5_objects` |
+| HDF5 attributes in one file | 10,000, a separate count from the links (self-describing NetCDF: 64 for each variable the ingest accepts, if that is more) | `IngestJob.max_hdf5_objects`, `IngestJob.max_columns` |
 | Dims of one array | 32 | `IngestJob.max_ndim` |
 | Bytes of one attribute value | 64 KiB (self-describing NetCDF: the file size) | `IngestJob.max_attr_bytes` |
 | Group levels in one HDF5 file | 32 | The HDF5 guard |
@@ -440,10 +449,10 @@ refuses these files with `INGEST_UNSAFE_FILE` (422):
 | Datasets with external raw storage | The bytes of the dataset are in a different file |
 | Virtual datasets | A virtual dataset is a mosaic of other files |
 | Filters that are not deflate (gzip), shuffle, fletcher32, scaleoffset, nbit or lzf | Other filters, szip included, can load plugin code. The runner also points `HDF5_PLUGIN_PATH` at an empty directory |
-| A user block larger than 64 KiB | The guard finds the HDF5 superblock at each offset where libhdf5 looks for it (0, 512, 1024, …). Thus a file that starts with other bytes, for example a fake NetCDF-3 header, is still checked |
+| A user block larger than 64 KiB | The guard finds the HDF5 superblock at each offset where libhdf5 looks for it (0, 512, 1024, …). Thus a file that starts with other bytes is still checked. A file that starts with the NetCDF-3 magic (`CDF`) is read only by the NetCDF-3 reader of scipy, which never calls libhdf5. Thus a fake NetCDF-3 header cannot take an HDF5 file past the guard, and a NetCDF-3 file whose values hold the HDF5 signature still ingests |
 | Too many objects, groups too deep, too many dims, attributes too large | Each of them can make a reader use too much memory or time |
 | Arrays that declare more bytes than the budget of the run, or one chunk larger than the budget | A small compressed file can expand to a very large array |
-| Variable-length sequences, compound, array, reference and opaque data types | Their size has no limit that the guard can find. Variable-length text is accepted, because the file size limits it |
+| Variable-length sequences, compound, array, reference and opaque data types | Their size has no limit that the guard can find. Variable-length text is accepted, because the file size limits it. Before the guard reads a text attribute, its worst case (elements × file size) must fit the budget of the run |
 
 The guard also checks self-describing NetCDF-4 files. For these files, the cap of one
 attribute is the file size, and a variable can have 64 attributes, as before v0.8. The

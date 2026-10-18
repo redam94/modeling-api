@@ -137,7 +137,9 @@ file with `INGEST_UNSAFE_FILE` when the file has:
 - filters other than deflate, shuffle, fletcher32, scaleoffset, nbit and lzf (no szip, no
   plugins);
 - a user block larger than 64 KiB. The guard looks for the HDF5 superblock at each offset
-  where libhdf5 looks for it. Thus a file that starts with other bytes is still checked;
+  where libhdf5 looks for it. Thus a file that starts with other bytes is still checked. A
+  file that starts with the NetCDF-3 magic is read only by scipy's NetCDF-3 reader, which
+  never calls libhdf5;
 - too many objects or attributes, groups deeper than 32 levels, arrays with too many dims or
   attribute values that are too large;
 - arrays that declare more bytes than the budget of the run;

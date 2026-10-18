@@ -42,7 +42,7 @@ execution: {resource_class: M, timeout: 45m}
 | `data.dataset` | `dataset://<project>/<name>@latest|vN|sha256:<hex>` — The API pins it to an exact version when you submit |
 | `data.side_tables` | Small constant datasets (FX, holidays). `score_policy` is `pinned`, `latest` or `supplied`. A side table that is a tree dataset reads one node: `node: /fx` (v0.8) |
 | `data.nodes` | v0.8, tree datasets only. The nodes whose variables make the flat input of the pipeline: `{key: {path, vars?, prefix?}}`, a maximum of 64 entries. Refer to [Tree datasets in a spec](#tree-datasets-in-a-spec) |
-| `data.join` | v0.8, only with `data.nodes`. How the labels of the selected nodes align: `exact` (the default), `inner` or `outer` |
+| `data.join` | v0.8, used only with `data.nodes` (a value other than `exact` without them is an error). How the labels of the selected nodes align: `exact` (the default), `inner` or `outer` |
 | `data.bind` | Maps **canonical** names (the names that plugins and steps use) to **dataset** names. By default, the outputs get the dataset names again |
 | `data.split` | `time_holdout`, `last_per_group`, `as_of`, `leave_group_out` or `mask_block`. The split occurs at `after_step` |
 | `pipeline` | Steps in sequence: `{id, use: <id>@<semver range>, with: {...}}` |
@@ -61,6 +61,12 @@ merges their variables before the pipeline:
 --8<-- "tree_spec.yaml"
 ```
 
+!!! note "The model of this example"
+    `toy.tree_linear` is a reference model of the SDK test kit (`mapi_sdk.testing.toy`). The
+    documentation tests use it to check and fit this spec. The platform and the CLI catalog do
+    not have it, so `mapi check` reports `REF_UNRESOLVED` for it. Put a model of your platform
+    in `model.use` (`mapi catalog` lists them).
+
 | Field of an entry | Meaning |
 |---|---|
 | `path` | The node path (`/` is the root) |
@@ -74,7 +80,8 @@ merges their variables before the pipeline:
 - Without `data.nodes`, a spec on a tree dataset reads the root node. If the root has no
   variables, validation reports `SCHEMA_INVALID` ("this dataset is a tree: pick nodes in
   data.nodes").
-- `data.nodes` on a plain dataset, and `data.join` without `data.nodes`, are errors.
+- `data.nodes` on a plain dataset is an error. So is a `data.join` other than `exact` without
+  `data.nodes` (`exact` is the default and has no effect without nodes).
 
 Static validation uses the `tree_schema` of the dataset version. Thus it finds these problems
 before a run starts.
@@ -97,7 +104,7 @@ because the step learns its state from the holdout.
 
 ## Validation messages
 
-`mapi spec check` and `POST /v1/specs:validate` return all the problems at the same time.
+`mapi check` and `POST /v1/specs:validate` return all the problems at the same time.
 Each problem has a stable `code` and a JSON pointer to the incorrect field:
 
 ```json

@@ -14,6 +14,6 @@ data:
   split: {kind: time_holdout, dim: time, last: 4}
 pipeline: []
 model:
-  use: toy.tree_linear@^1
+  use: toy.tree_linear@^1                 # test-only reference model (mapi_sdk.testing.toy)
   fit: {mode: evaluate_then_refit, seed: 3}
 evaluate: {metrics: [rmse]}

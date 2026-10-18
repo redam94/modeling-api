@@ -895,7 +895,8 @@ and the `sources` it was built from, and `data_schema` is the schema of the root
 - **Inspection.** An `inspect` run reads only the metadata of an upload (after the HDF5
   safety checks) and lists its groups and arrays. It is idempotent per upload: while an
   inspection runs, or after it succeeded, the server returns that run. If the run failed or
-  was cancelled, a new request starts a new run. The run has resource class S, interactive
+  was cancelled, a new request starts a new run. The run has the resource class that an ingest
+  of the upload would get (the smallest class that holds the upload, so S, M or L), interactive
   priority and the timeout `MAPI_INSPECT_TIMEOUT_S` (300 s).
 - **Assemblies.** The server checks every upload of an `assembly` before it uses any of them:
   each upload belongs to the dataset, is complete, is used one time and is not in another

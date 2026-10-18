@@ -91,6 +91,8 @@ milestone releases are tagged on `main`.
 ### Fixed
 - The ingest ignored the groups of a NetCDF-4 file without a warning. Now each group becomes a
   node of a tree dataset, and the ingest never drops a group.
+- A local `mapi check spec.yaml --data lens.tree.zip` validates `data.nodes` against the tree
+  schema of the local tree dataset. Before, it read only the root and refused `data.nodes`.
 - The plot sandbox refused every `sci.*` plot: its client-side check did not allow Plotly's
   `<extra>` tag in hover templates, which the server's sanitizer keeps.
 
@@ -103,8 +105,11 @@ milestone releases are tagged on `main`.
   64 KiB, too many objects or dims, deep groups, large attributes, arrays that declare more
   bytes than the run budget, and data types whose size has no limit. The worker runs with an
   empty `HDF5_PLUGIN_PATH`. The guard finds the HDF5 superblock behind a user block at each
-  offset that libhdf5 uses. Thus a file that starts with a fake NetCDF-3 header cannot skip
-  the guard.
+  offset that libhdf5 uses. A file that starts with the NetCDF-3 magic goes only to the
+  NetCDF-3 reader of scipy, which never calls libhdf5. Thus a fake NetCDF-3 header cannot take
+  an HDF5 file past the guard, and a NetCDF-3 file whose values hold the HDF5 signature still
+  ingests. Before the guard reads a variable-length text attribute, the worst case of the read
+  (elements × file size) must fit the budget of the run.
 - The worker returns the typed refusals of the guard as the error of the run, with the names
   from the file only in `untrusted_text`.
 
