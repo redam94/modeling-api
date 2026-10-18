@@ -49,7 +49,13 @@ from mapi_workflows.binding import (
     canonical_steps,
     model_input_schema,
 )
-from mapi_workflows.payloads import MetricsCandidate, MetricsPayload, TablePayload, clean_number
+from mapi_workflows.payloads import (
+    ElpdPayload,
+    MetricsCandidate,
+    MetricsPayload,
+    TablePayload,
+    clean_number,
+)
 from mapi_workflows.runtime.data import (
     data_error,
     label_of,
@@ -69,6 +75,7 @@ __all__ = [
     "Residuals",
     "backtest_model",
     "build_spec",
+    "elpd_of",
     "fit_burn_in",
     "fold_metrics",
     "forecast_errors",
@@ -192,6 +199,13 @@ def _metrics_of(bundle: Bundle) -> dict[str, float | None]:
     return {k: clean_number(v) for k, v in (bundle.metrics.values or {}).items()}
 
 
+def elpd_of(bundle: Bundle) -> dict[str, ElpdPayload] | None:
+    """The bundle's elpd estimates (with pointwise values) for a metrics candidate."""
+    detail = getattr(bundle.metrics, "elpd", None) or {}
+    out = {k: ElpdPayload.model_validate(v.model_dump()) for k, v in detail.items()}
+    return out or None
+
+
 def _scorecard(bundle: Bundle) -> str:
     sev = {str(getattr(d, "severity", "info")) for d in bundle.diagnostics}
     if "error" in sev:
@@ -270,6 +284,7 @@ def fit_node(ctx: NodeContext) -> NodeOutcome:
         model=str(ctx.params.get("model")),
         settings=dict(spec.model.settings),
         metrics=metrics,
+        elpd=elpd_of(bundle),
     )
     result: dict[str, JsonValue] = {
         "model_version": ref,

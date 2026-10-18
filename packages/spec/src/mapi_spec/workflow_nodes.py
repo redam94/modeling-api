@@ -18,9 +18,11 @@ split          ``split.holdout``, ``rolling_origin``, ``expanding_window``, ``bl
                ``purged_kfold``, ``geo_holdout``, ``nested`` (:mod:`mapi_spec.splitplan`)
 search         ``search.arma_order``, ``sarima_order``, ``var_lag_order``, ``coint_rank``,
                ``grid``
-model          ``model.fit`` (any catalog model id), ``model.backtest``, ``model.forecast``
-evaluate       ``evaluate.metrics``, ``evaluate.baseline``, ``evaluate.residuals``
-compare        ``compare.models``, ``compare.diebold_mariano``
+model          ``model.fit`` (any catalog model id), ``model.backtest``, ``model.forecast``,
+               ``model.summary``
+evaluate       ``evaluate.metrics``, ``evaluate.baseline``, ``evaluate.residuals``,
+               ``evaluate.ppc``
+compare        ``compare.models``, ``compare.diebold_mariano``, ``compare.stacking``
 select         ``select.best``, ``select.threshold``
 governance     ``governance.policy``, ``governance.check``
 report         ``report.summary``, ``report.evidence_pack``
@@ -1507,6 +1509,118 @@ _node("subworkflow.run", NodeKind.SUBWORKFLOW, _a(
            "params": {"type": "object",
                       "description": "The parameters to give to the other workflow"}},
    required=["workflow"], inputs={}, runs_in="child_run")  # fmt: skip
+
+
+# ============================================================== M5: nodes on posterior draws
+
+_node("model.summary", NodeKind.MODEL, _a(
+    "Summarise the parameters",
+    "Gives the estimate, the spread and the credible range of each parameter of a fitted "
+    "Bayesian model, with checks that the sampler converged.",
+    ["You want to branch on a parameter, for example when its range excludes zero",
+     "You must stop when the sampler did not converge (R-hat, effective sample size)"],
+    ["Models that give only point estimates (the node needs draws)"],
+    ["A model version with posterior draws"],
+    ["The draws come from two or more chains (else R-hat is not available)"],
+    ["A table and, for each parameter, the mean, sd, HDI bounds, R-hat and bulk ESS"],
+    _I, _SEC, "slope: mean 0.42, 94% range 0.18 to 0.66, R-hat 1.00. The range excludes zero.",
+    related=["model.fit", "governance.check", "evaluate.ppc"],
+    fits={"goal": ["validate_model", "explain_drivers"]},
+    expert="Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari "
+    "et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives "
+    "the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of "
+    "several dims joined by ', '), at most 200 values; read them with "
+    "nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no "
+    "sample_stats.",
+    refs=[("Vehtari, Gelman, Simpson, Carpenter & Bürkner (2021), Rank-normalization, "
+           "folding, and localization: an improved R-hat", None)],
+), params={"vars": _vars("The posterior variables (default: all of them)"),
+           "hdi_prob": _num("The probability inside the HDI", 0.94, 0.5, 0.999)},
+   inputs={"model": PortSpec(type=PortType.MODEL_VERSION)},
+   outputs={"table": PortType.TABLE},
+   fields={"params": _f("object", "For each parameter: mean, sd, hdi_low, hdi_high, rhat "
+                                  "and ess_bulk"),
+           "max_rhat": _f("number", "The largest R-hat (null if it cannot be measured)"),
+           "min_ess": _f("number", "The smallest bulk effective sample size"),
+           "n_divergent": _f("integer", "The number of divergent transitions (null if "
+                                        "unknown)"),
+           "n_params": _f("integer", "The number of summarised values"),
+           "truncated": _f("boolean", "True if the node kept only the first 200 values")},
+   )  # fmt: skip
+
+_node("evaluate.ppc", NodeKind.EVALUATE, _a(
+    "Check the predictions against the data",
+    "Simulates new data from a fitted Bayesian model and compares it with the observed data. "
+    "It shows if the model can make data that looks like the real data.",
+    ["After each Bayesian fit, before you trust its ranges",
+     "You must stop a workflow when the model does not agree with the data"],
+    ["Models that give only point estimates or summaries (the node needs draws)"],
+    ["A model version that predicts with draws"],
+    ["The check uses the fit data, so it is optimistic (a model that overfits can pass)"],
+    ["The coverage of the 50% and 90% ranges, the PIT distance, a p-value and a verdict"],
+    _I, _SEC, "88% of the values are in the 90% range and p = 0.41 for the mean: the "
+    "check passes.",
+    related=["model.fit", "model.summary", "evaluate.metrics"],
+    fits={"goal": ["validate_model"]},
+    expert="Posterior predictive draws come from the score path (predict, output kind "
+    "predictive) on the fit data. coverage_p is the share of observations inside the "
+    "central p interval of their predictive draws; pit_ks is the Kolmogorov-Smirnov "
+    "distance of the PIT values P(y_rep < y) + 0.5 P(y_rep = y) from uniform, with the "
+    "limit 1.36 / sqrt(n) unless pit_ks_max is set; the p-value is P(T(y_rep) >= T(y)) for "
+    "T = statistic. ok needs both coverages within coverage_tolerance of nominal, the "
+    "p-value in [p_min, 1 - p_min] and pit_ks under its limit.",
+    refs=[("Gelman, Meng & Stern (1996), Posterior predictive assessment of model fitness",
+           None), ("Gabry et al. (2019), Visualization in Bayesian workflow", None)],
+), params={"statistic": _enum("The statistic of the p-value", ["mean", "sd", "max", "min"],
+                              "mean"),
+           "n_draws": _int("The number of predictive draws to use", 400, 10, 4000),
+           "p_min": _num("The smallest p-value (and 1 - p_min the largest) that passes",
+                         0.025, 0, 0.5),
+           "coverage_tolerance": _num("The largest gap between the coverage and its level "
+                                      "that passes", 0.1, 0, 0.5),
+           "pit_ks_max": _num("The largest PIT distance that passes (default: 1.36 / "
+                              "sqrt(n))", None, 0, 1)},
+   inputs={"model": PortSpec(type=PortType.MODEL_VERSION)},
+   outputs={"metrics": PortType.METRICS},
+   fields={"coverage_50": _f("number", "The share of observed values in the 50% range"),
+           "coverage_90": _f("number", "The share of observed values in the 90% range"),
+           "pit_ks": _f("number", "The distance of the PIT values from uniform (0 is best)"),
+           "p_values": _f("object", "The p-value of the statistic for each target"),
+           "ok": _f("boolean", "True if all the checks pass"),
+           "verdict_plain": _f("string", "The verdict in plain words")})  # fmt: skip
+
+_node("compare.stacking", NodeKind.COMPARE, _a(
+    "Weigh models by their predictions",
+    "Gives each candidate model a weight from how well it predicts each data point that it "
+    "did not see. A mix of the models with these weights predicts best.",
+    ["You fitted several Bayesian models of the same data and none is clearly best",
+     "You want to average the predictions of the models instead of selecting one"],
+    ["The models used different data (the scores are not comparable)"],
+    ["Metrics of two or more model.fit nodes with evaluate: {metrics: [elpd_loo]}"],
+    ["All candidates are fitted on the same data points in the same order"],
+    ["A weight for each candidate, the best candidate and a table"],
+    _X, _SEC, "Weights: bym2 0.71, icar 0.29, iid 0.00.",
+    related=["compare.models", "select.best", "model.fit"],
+    fits={"goal": ["validate_model"]},
+    expert="Stacking maximises sum_i log sum_k w_k exp(elpd_loo_ik) over the simplex (Yao, "
+    "Vehtari, Simpson & Gelman 2018), from the pointwise PSIS-LOO values that model.fit "
+    "stores for data of at most 10 000 points. pseudo_bma (always reported) is pseudo-BMA+: "
+    "softmax weights averaged over a Bayesian bootstrap of the pointwise elpd. Without "
+    "pointwise values the weights are pseudo-BMA from elpd ± se (method pseudo_bma_se) or "
+    "from elpd alone (pseudo_bma), and note_plain says so.",
+    refs=[("Yao, Vehtari, Simpson & Gelman (2018), Using stacking to average Bayesian "
+           "predictive distributions", None)],
+), params={"metric": _enum("The elpd estimate to use", ["elpd_loo", "elpd_waic"], "elpd_loo"),
+           "method": _enum("The weights to give", ["stacking", "pseudo_bma_plus"], "stacking"),
+           "n_bootstrap": _int("Bootstrap draws for pseudo-BMA+", 1000, 100, 10000)},
+   inputs={"candidates": PortSpec(type=PortType.METRICS, multiple=True)},
+   outputs={"table": PortType.TABLE},
+   fields={"weights": _f("object", "The weight of each candidate (they sum to 1)"),
+           "pseudo_bma": _f("object", "The pseudo-BMA+ weight of each candidate"),
+           "best": _f("string", "The candidate with the largest weight"),
+           "method": _f("string", "stacking, pseudo_bma_plus, pseudo_bma_se or pseudo_bma"),
+           "note_plain": _f("string", "Why the node did not use stacking (null if it did)")},
+   )  # fmt: skip
 
 
 NODE_IMPLEMENTATIONS: Final[dict[str, NodeImplementation]] = {n.id: n for n in _NODES}
