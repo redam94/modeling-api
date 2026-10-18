@@ -62,7 +62,7 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
-from mapi_plugin_science import kpp_data, lens_data, lgcp_data, traction_data
+from mapi_plugin_science import ibp_data, kpp_data, lens_data, lgcp_data, traction_data
 from mapi_plugin_science.challenges import CHALLENGES_ENV
 
 __all__ = [
@@ -422,6 +422,21 @@ _register(
         project="astronomy",
         dataset="slacs_j1627_f814w",
         spec=lens_data.SLACS_SPEC_YAML,
+    )
+)
+_register(
+    ExportCase(
+        case="e31",
+        title="Handwritten digits (UCI optdigits), latent binary features",
+        notebook="E31_indian_buffet_process.py",
+        model="sci.ibp_features",
+        files=(ibp_data.CHALLENGES_FILE, ibp_data.CHALLENGES_TEST_FILE),
+        loader=lambda d: ibp_data.from_challenges(d / ibp_data.CHALLENGES_FILE),
+        synthetic=lambda: ibp_data.ibp_dataset(),
+        schema=ibp_data.IBP_SCHEMA,
+        project="vision",
+        dataset="optdigits_e31",
+        spec=ibp_data.DIGITS_SPEC_YAML,
     )
 )
 

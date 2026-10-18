@@ -1705,6 +1705,83 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "experience": ["expert"],
         },
     ),
+    "sci.ibp_features": _a(
+        "Shared parts of small images",
+        "Finds a small set of parts that many images share, for example strokes of "
+        "handwritten digits. Each image is the average image plus the parts it has, and the "
+        "model fills in the pixels that you hide.",
+        [
+            "You have many small images of the same size (up to about 100 pixels each)",
+            "You want to see which parts the images share and which images have each part",
+            "You want to complete images with missing pixels, for example the bottom half of "
+            "a digit",
+        ],
+        [
+            "The images are large, or they need more than about 10 parts (each part doubles "
+            "the time)",
+            "You need one stable answer about each part: different chains often find different "
+            "parts, so the convergence checks can show warnings",
+            "The pixels are counts with many exact zeros and you need correct ranges for each "
+            "pixel (the noise model is Gaussian)",
+        ],
+        [
+            "Images on one grid of rows and columns, with the ink of each pixel from 0 to 1",
+            "Empty values for the pixels the model must not see",
+            "Optional: a mask that hides pixels from the fit but keeps them for comparison",
+        ],
+        [
+            "Each image owns each part or not. The parts add to the average image",
+            "The pixel noise is the same at all pixels (noise_sd sets the level of detail)",
+            "At most n_features parts. Earlier parts are more frequent",
+        ],
+        [
+            "The image of each part, and how frequent each part is",
+            "For each image, the probability that it owns each part",
+            "The completed images with a range for each pixel",
+            "The log-likelihood of each image, to compare variants with elpd_loo",
+        ],
+        _X,
+        _MIN,
+        "With 8 parts, 300 handwritten digits complete the hidden bottom half of 200 digits by "
+        "other writers with an error of 0.28 ink units.",
+        related=["sci.strong_lens"],
+        expert="Linear-Gaussian latent feature model x = mu + z A + e with a stick-breaking "
+        "Indian buffet process prior (Teh, Gorur & Ghahramani 2007) truncated at K features. "
+        "The binary matrix is summed out exactly over the 2^K patterns of each image (a "
+        "logsumexp Potential over the seen pixels), so NUTS samples A, the sticks, alpha and "
+        "sigma_A (and sigma_X for kind free_noise). Every chain starts without jitter at half "
+        "of K random centred images with nu = 0.8, because the default start can collapse to "
+        "no features. The posterior over A is multimodal: chains often disagree on pi (r-hat "
+        "1.15-1.9 in the E31 notebook), the convergence diagnostics warn, and "
+        "TRUNCATION_BINDS warns when the last pi is not small. Completions use the exact "
+        "pattern posterior of each image given its seen pixels. Pointwise log-likelihood per "
+        "image supports elpd_loo between K, noise levels and kinds.",
+        refs=[
+            (
+                "Griffiths & Ghahramani (2011), The Indian buffet process: an introduction and "
+                "review",
+                "https://jmlr.org/papers/v12/griffiths11a.html",
+            ),
+            (
+                "Teh, Gorur & Ghahramani (2007), Stick-breaking construction for the Indian "
+                "buffet process",
+                "https://proceedings.mlr.press/v2/teh07a.html",
+            ),
+            (
+                "Alpaydin & Kaynak (1998), Optical recognition of handwritten digits, UCI "
+                "Machine Learning Repository",
+                "https://doi.org/10.24432/C50P49",
+            ),
+        ],
+        fits={
+            "goal": ["map_fields"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -1719,7 +1796,13 @@ SURVIVING_MODEL_IDS: Final[frozenset[str]] = frozenset(
 the scikit-learn models of ``mapi-sklearn``)."""
 
 SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
-    {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens"}
+    {
+        "sci.lgcp_grid",
+        "sci.fisher_kpp",
+        "sci.traction_force",
+        "sci.strong_lens",
+        "sci.ibp_features",
+    }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
 problems ported from the pymc-challenges case studies)."""
