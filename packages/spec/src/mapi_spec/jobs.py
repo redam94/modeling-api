@@ -6,7 +6,9 @@ and the runner (which reads RunSpecs and writes outputs).
 kind       ``RunSpec.spec``                             inputs (``RunSpec.inputs`` names)
 ========== ============================================ ======================================
 ingest     :class:`IngestJob` (a bare ``IngestMapping`` ``upload`` (the raw file; ``dataset``
-           is also accepted)                            is accepted as a fallback)
+           is also accepted)                            is accepted as a fallback); M4
+                                                        assemblies: ``upload.<i>`` per source
+inspect    :class:`InspectJob` (M4)                     ``upload``; output ``inspection.json``
 describe   :class:`DescribeJob`                         none
 validate   a ``ModelSpec`` document                     ``dataset``, optional ``schema``,
                                                         ``side.<name>``
@@ -38,7 +40,8 @@ governance :class:`~mapi_spec.governance.Governance-    ``bundle``, ``bundle.man
 
 ``workflow`` runs are parents (the orchestrator walks the DAG) and never execute.
 
-Datasets are single-object ``*.zarr.zip`` files. A dataset's raw schema comes from the
+Datasets are single-object ``*.zarr.zip`` files (M4: a tree dataset is a ``data.tree.zip``
+with a ``tree_schema.json``; see :mod:`mapi_spec.tree`). A dataset's raw schema comes from the
 ``schema`` input, else the zarr root attribute ``mapi_schema`` (written by ingest), else it is
 inferred. ``bundle`` is the ``bundle.zarr.zip`` of a fit and ``bundle.manifest`` the SDK
 bundle manifest that the fit uploaded as ``bundle.manifest.json``.
@@ -60,17 +63,25 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
 from mapi_spec.explore import ExploreJob
 from mapi_spec.governance import GOVERNANCE_OUTPUT, GovernanceJob
-from mapi_spec.ingest import MffOptions
+from mapi_spec.ingest import (
+    MAX_ASSEMBLY_SOURCES,
+    MAX_INSPECT_ARRAYS,
+    IngestAssembly,
+    IngestFormat,
+    MffOptions,
+)
 from mapi_spec.loader import parse_document
 from mapi_spec.optimize import OPTIMIZE_OUTPUT, OptimizeJob
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.tree import MAX_TREE_NODES
 from mapi_spec.workflow import NODE_RESULT_OUTPUT, WorkflowNodeJob
 
 __all__ = [
     "BUNDLE_MANIFEST_OUTPUT",
     "DATASET_OUTPUTS",
     "DATASET_SCHEMA_ATTR",
+    "DATATREE_OUTPUT",
     "DESCRIBE_OUTPUT",
     "FIT_BUNDLE",
     "FIT_SIDECARS",
@@ -90,6 +101,8 @@ __all__ = [
     "INPUT_SCENARIO",
     "INPUT_SCHEMA",
     "INPUT_UPLOAD",
+    "INPUT_UPLOAD_PREFIX",
+    "INSPECT_OUTPUT",
     "MAX_PLOT_DATA_INPUTS",
     "NODE_RESULT_OUTPUT",
     "OPTIMIZE_OUTPUT",
@@ -100,6 +113,8 @@ __all__ = [
     "SCORE_INPUTS",
     "SCORE_OUTPUT",
     "SIDE_TABLE_PREFIX",
+    "TREE_DATASET_OUTPUTS",
+    "TREE_SCHEMA_OUTPUT",
     "DeriveJob",
     "DescribeJob",
     "EvaluateJob",
@@ -107,6 +122,7 @@ __all__ = [
     "GovernanceJob",
     "IngestJob",
     "IngestSource",
+    "InspectJob",
     "Job",
     "MetricsSidecar",
     "MffOptions",
@@ -120,10 +136,14 @@ __all__ = [
     "plot_data_input",
     "render_output",
     "side_table_input",
+    "upload_input",
 ]
 
 # ------------------------------------------------------------------------------- input names
 INPUT_UPLOAD: Final = "upload"
+INPUT_UPLOAD_PREFIX: Final = "upload."
+"""M4 (``ingest`` with an :class:`~mapi_spec.ingest.IngestAssembly`): ``upload.<i>`` is the
+raw file of source ``i``."""
 INPUT_SCHEMA: Final = "schema"
 INPUT_SCENARIO: Final = "scenario"
 INPUT_BUNDLE_MANIFEST: Final = "bundle.manifest"
@@ -165,6 +185,13 @@ def render_output(plot_id: str, fmt: str) -> str:
     return f"{RENDER_OUTPUT_PREFIX}{plot_id}.{fmt}"
 
 
+def upload_input(index: int) -> str:
+    """The input name of assembly source ``index`` (``upload.<index>``; M4)."""
+    if not 0 <= index < MAX_ASSEMBLY_SOURCES:
+        raise ValueError(f"an assembly has at most {MAX_ASSEMBLY_SOURCES} sources")
+    return f"{INPUT_UPLOAD_PREFIX}{index}"
+
+
 def side_table_input(name: str) -> str:
     """The input name of side table ``name`` (``side.<name>``)."""
     if not _SIDE_NAME.match(name):
@@ -190,6 +217,18 @@ DATASET_OUTPUTS: Final = (INGEST_DATA, INGEST_SCHEMA, *INGEST_OPTIONAL)
 CoordPlan checks of score payloads), the profile, the UI preview and (M3) ``columns.json``:
 one :class:`~mapi_spec.guided.ColumnProfile` per column of the uploaded table (for MFF
 uploads: per pivoted ``VariableName``), which Guided role detection reads."""
+
+DATATREE_OUTPUT: Final = "data.tree.zip"
+"""M4: the data of a tree-layout version (an ``xr.DataTree`` zarr zip, written with
+``mapi_sdk.wire.write_datatree_zip``). A tree version also writes ``schema.json`` (the root
+node's schema, possibly empty) so readers that predate trees fail soft."""
+TREE_SCHEMA_OUTPUT: Final = "tree_schema.json"
+"""M4: the :class:`~mapi_spec.tree.TreeSchema` of a tree-layout version."""
+TREE_DATASET_OUTPUTS: Final = (DATATREE_OUTPUT, TREE_SCHEMA_OUTPUT, INGEST_SCHEMA, *INGEST_OPTIONAL)
+"""What an ingest run uploads for a tree-layout version (dataset-layout versions keep
+:data:`DATASET_OUTPUTS`)."""
+INSPECT_OUTPUT: Final = "inspection.json"
+"""M4: the :class:`~mapi_spec.ingest.UploadInspection` an ``inspect`` run writes."""
 
 FIT_BUNDLE: Final = "bundle.zarr.zip"
 FIT_SIDECARS: Final = ("diagnostics.json", "metrics.json", "plots.json", "coords.json")
@@ -249,12 +288,67 @@ class IngestJob(StrictModel):
         None, max_length=512, description="dataset://project/name@vN being created (lineage)"
     )
     source: IngestSource | None = None
+    # M4 fields are left out of serialized jobs unless used, so older runners keep
+    # accepting the jobs they understand
+    assembly: IngestAssembly | None = Field(
+        None,
+        description="M4: a multi-file version (inputs upload.<i>, one per source)",
+        exclude_if=lambda v: v is None,
+    )
+    max_nodes: int = Field(
+        MAX_TREE_NODES,
+        ge=1,
+        le=MAX_TREE_NODES,
+        description="M4: nodes of a tree dataset",
+        exclude_if=lambda v: v == MAX_TREE_NODES,
+    )
+    max_sources: int = Field(
+        MAX_ASSEMBLY_SOURCES,
+        ge=1,
+        le=MAX_ASSEMBLY_SOURCES,
+        description="M4: sources of an assembly",
+        exclude_if=lambda v: v == MAX_ASSEMBLY_SOURCES,
+    )
+    max_hdf5_objects: int = Field(
+        10_000,
+        ge=1,
+        le=1_000_000,
+        description="M4: groups, datasets and links walked in one HDF5 file",
+        exclude_if=lambda v: v == 10_000,
+    )
+    max_ndim: int = Field(
+        32, ge=1, le=64, description="M4: dims of one array", exclude_if=lambda v: v == 32
+    )
+    max_attr_bytes: int = Field(
+        65_536,
+        ge=64,
+        le=16 * 1024**2,
+        description="M4: bytes of one attribute value",
+        exclude_if=lambda v: v == 65_536,
+    )
 
     @model_validator(mode="after")
     def _one_of(self) -> IngestJob:
-        if (self.mapping is None) == (self.preset is None):
-            raise ValueError("give exactly one of 'mapping' or 'preset'")
+        given = sum(x is not None for x in (self.mapping, self.preset, self.assembly))
+        if given != 1:
+            raise ValueError("give exactly one of 'mapping', 'preset' or 'assembly'")
+        if self.assembly is not None and len(self.assembly.sources) > self.max_sources:
+            raise ValueError(f"the assembly has more than max_sources ({self.max_sources})")
         return self
+
+
+class InspectJob(StrictModel):
+    """An ``inspect`` run (M4): list the groups and arrays of the ``upload`` input from its
+    metadata (after the HDF5 safety checks), never its array data. Output:
+    ``inspection.json`` (:class:`~mapi_spec.ingest.UploadInspection`)."""
+
+    format: IngestFormat | None = Field(None, description="Default: sniffed from the bytes")
+    max_arrays: int = Field(MAX_INSPECT_ARRAYS, ge=1, le=MAX_INSPECT_ARRAYS)
+    max_hdf5_objects: int = Field(10_000, ge=1, le=1_000_000)
+    max_ndim: int = Field(32, ge=1, le=64)
+    max_attr_bytes: int = Field(65_536, ge=64, le=16 * 1024**2)
+    max_uncompressed_bytes: int = Field(8 * 1024**3, ge=1)
+    source: IngestSource | None = None
 
 
 class DescribeJob(StrictModel):
@@ -313,6 +407,7 @@ class RenderJob(StrictModel):
 
 Job = (
     IngestJob
+    | InspectJob
     | DescribeJob
     | ModelSpec
     | ScoreJob
@@ -385,6 +480,8 @@ def parse_job(kind: RunKind, spec: dict[str, Any]) -> Job:
             if "format" in spec:
                 return IngestJob(mapping=IngestMapping.model_validate(spec))
             return IngestJob.model_validate(spec)
+        if kind is RunKind.INSPECT:
+            return InspectJob.model_validate(spec)
         if kind is RunKind.DESCRIBE:
             return DescribeJob.model_validate(spec)
         if kind in (RunKind.FIT, RunKind.VALIDATE):

@@ -17,6 +17,7 @@ from pydantic import Field, model_validator
 from mapi_spec._dto import RequestModel, dto_examples
 from mapi_spec._types import Name, StrictModel
 from mapi_spec.splitplan import SplitPlan
+from mapi_spec.tree import NodePath
 from mapi_spec.views import (
     MAX_EXPLORE_LAGS,
     DataSection,
@@ -72,6 +73,12 @@ class DataExploreRequest(RequestModel):
         "driver's AR model, so a peak is not just two smooth series moving together)",
     )
     max_series: int = Field(50, ge=1, le=200)
+    node: NodePath | None = Field(
+        None,
+        description="M4: the node of a tree dataset to explore (default: the root, or the "
+        "first node with variables)",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = dto_examples(
         {
