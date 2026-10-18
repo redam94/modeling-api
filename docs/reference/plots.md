@@ -329,6 +329,10 @@ Notes on the image and spectrum recipes (`mapi_plots.packs.sci_images`):
   in those units.
 - `sci.swatches` writes the colours as `#rrggbb` text in the dataset. The plot sandbox does
   not change these colours in dark mode, because they are data.
+- Colours that a recipe takes from a colour scale (the groups of `net.graph` and
+  `sci.point_pattern`, the classes of `sci.area_map`, the curves of `sci.profile_bands`) are
+  also data. They do not change in dark mode, as a colour scale does not. All other colours
+  come from the palette and have a dark variant.
 
 Statistics of `sci.field_map`:
 

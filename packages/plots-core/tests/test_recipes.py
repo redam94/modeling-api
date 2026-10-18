@@ -798,16 +798,42 @@ _COLOUR = re.compile(r"^(#[0-9a-fA-F]{3,8}|white|black|red|blue|green|gray|grey|
 _LIGHT_CARD, _DARK_CARD = "#ffffff", "#1b212d"
 
 
-def _colours(node: Any, out: set[str]) -> set[str]:
+_SCALE_COLOUR = re.compile(r"^rgba?\([0-9., ]+\)$")
+# Colours sampled from a colour scale encode data (a category or a value), as a colorscale
+# does, so the sandbox does not swap them in dark mode. Only these trace keys may hold them.
+_DATA_COLOUR_KEYS = {
+    ("net.graph", "marker.color"),  # node groups (category_colours)
+    ("sci.point_pattern", "marker.color"),  # point groups (category_colours)
+    ("sci.area_map", "fillcolor"),  # the value class of each area
+    ("sci.profile_bands", "fillcolor"),  # one colour for each curve of `by`
+    ("sci.profile_bands", "line.color"),
+    ("sci.profile_bands", "marker.color"),
+    ("sci.vector_field", "line.color"),  # arrows: dark or light by the field underneath
+}
+
+
+def _colours(
+    node: Any, out: set[str], scale: set[tuple[str, ...]] | None = None, path: tuple[str, ...] = ()
+) -> set[str]:
+    """Explicit colours of a spec. A Vega-Lite ``data`` block and the ``datasets`` hold data;
+    a Plotly ``data`` holds the traces, which are searched too (``scale`` collects the key
+    paths of colours sampled from a colour scale)."""
     if isinstance(node, dict):
+        if set(node) == {"$ref"}:
+            return out
         for k, v in node.items():
-            if k not in ("data", "datasets"):
-                _colours(v, out)
+            if k == "datasets" or k == "colorscale":
+                continue
+            if k == "data" and not (path == () and isinstance(v, list) and scale is not None):
+                continue
+            _colours(v, out, scale, (*path, k))
     elif isinstance(node, list):
         for v in node:
-            _colours(v, out)
+            _colours(v, out, scale, path)
     elif isinstance(node, str) and _COLOUR.match(node):
         out.add(node.lower())
+    elif isinstance(node, str) and scale is not None and _SCALE_COLOUR.match(node):
+        scale.add(path)
     return out
 
 
@@ -830,11 +856,16 @@ def test_recipes_use_only_palette_colours_and_every_one_has_a_dark_variant() -> 
     from mapi_plots.palette import PALETTE, dark_variants
 
     used: set[str] = set()
+    scale_keys: set[tuple[str, str]] = set()
     for recipe_id, (data, options) in EXAMPLES.items():
-        _colours(get_recipe(recipe_id).render(data, **options).spec, used)
+        plot = get_recipe(recipe_id).render(data, **options)
+        paths: set[tuple[str, ...]] = set()
+        _colours(plot.spec, used, paths if plot.kind == "plotly" else None)
+        scale_keys |= {(recipe_id, ".".join(p[1:])) for p in paths}
     variants = dark_variants()
     assert used, "the recipes use no explicit colours at all?"
     assert used <= set(variants), sorted(used - set(variants))
+    assert scale_keys <= _DATA_COLOUR_KEYS, sorted(scale_keys - _DATA_COLOUR_KEYS)
     for role, swatch in PALETTE.items():
         assert variants[swatch.light] == swatch.dark, role
         if swatch.legible:  # strokes, dots and text: WCAG 3:1 for graphics on both cards
