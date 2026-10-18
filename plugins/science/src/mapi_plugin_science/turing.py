@@ -202,7 +202,7 @@ def expm2(a11: Any, a12: Any, a21: Any, a22: Any, t: float, *, lib: Any = np) ->
 
 
 def _response(
-    s: Any, rho: Any, d: Any, g: Any, q: Any, times: Sequence[float], lib: Any = np
+    s: Any, rho: Any, d: Any, g: Any, q: Any, times: Sequence[float] | np.ndarray, lib: Any = np
 ) -> list[tuple[Any, Any]]:
     """``U[i] = (e11, e12)``: the first row of ``exp(A(q) t_i)`` for each time."""
     fu, fv, gu, gv = jacobian(s, rho)
