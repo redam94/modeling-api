@@ -636,3 +636,223 @@ async def test_a_dataset_runspec_has_no_layouts(ctx: ServerContext) -> None:
         )
         rs = await build_runspec(ctx.store, run=run, attempt=att, runs_bucket=ctx.buckets.runs)
     assert rs.input_layouts == {} and "input_layouts" not in rs.model_dump(mode="json")
+
+
+# ======================================================================== review fixes
+
+
+async def test_inspect_gets_the_class_an_ingest_of_the_upload_would(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
+
+    s_cap = RESOURCE_CLASSES[ResourceClass.S].max_dataset_bytes
+    ds = await _dataset(client)
+    up = await _upload(client, ctx, ds, size=s_cap + 1)
+    r = await client.post(f"/v1/datasets/{ds}/uploads/{up.id}/inspect")
+    assert r.status_code == 202, r.text
+    assert r.json()["resource_class"] == "M"
+    async with ctx.db.session() as s:
+        row = await s.get(m.Run, r.json()["id"])
+        assert row is not None
+        scratch = RESOURCE_CLASSES[ResourceClass.M].scratch_bytes
+        assert row.payload["max_uncompressed_bytes"] == scratch
+
+
+async def test_an_inspection_is_stored_only_on_the_upload_its_run_names(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    ds = await _dataset(client)
+    up = await _upload(client, ctx, ds)
+    run_id = (await client.post(f"/v1/datasets/{ds}/uploads/{up.id}/inspect")).json()["id"]
+    run, att = await _finalizing(ctx, run_id)
+    async with ctx.db.session() as s:  # the upload moved on to another inspect run
+        row = await s.get(m.Upload, up.id)
+        assert row is not None
+        row.inspect_run_id = "run_other"
+    await simulate_outputs(ctx, run, att)
+    assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.SUCCEEDED
+    async with ctx.db.session() as s:
+        row = await s.get(m.Upload, up.id)
+        assert row is not None and row.inspection is None
+        row.inspect_run_id = run_id  # (the label, not a scan, finds it)
+    other_ds = await _dataset(client, "other")
+    other = await _upload(client, ctx, other_ds)
+    second = (await client.post(f"/v1/datasets/{other_ds}/uploads/{other.id}/inspect")).json()
+    run2, att2 = await _finalizing(ctx, second["id"])
+    await simulate_outputs(ctx, run2, att2)
+    assert await Finalizer(ctx).finalize(run2.id, att2.attempt) is RunState.SUCCEEDED
+    r = await client.get(f"/v1/datasets/{other_ds}/uploads/{other.id}/inspection")
+    assert r.status_code == 200, r.text
+
+
+async def test_the_data_explorer_node_is_checked_before_a_run(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    from mapi_server_testkit.builders import ready_dataset
+
+    tree_ds, _ = await _ready_tree(ctx, "cube")
+    plain_ds, _ = await ready_dataset(ctx, "flat")
+    body = {"sections": ["overview"]}
+
+    async def explore(ds_id: str, node: str | None) -> httpx.Response:
+        payload = body if node is None else {**body, "node": node}
+        return await client.post(f"/v1/datasets/{ds_id}/versions/1/explore", json=payload)
+
+    r = await explore(tree_ds.id, "/nope")
+    assert r.status_code == 422 and r.json()["code"] == "SCHEMA_INVALID", r.text
+    assert r.json()["errors"][0]["pointer"] == "/node"
+    r = await explore(plain_ds.id, "/series")
+    assert r.status_code == 422 and r.json()["code"] == "SCHEMA_INVALID", r.text
+    async with ctx.db.session() as s:
+        assert not await s.scalar(
+            select(func.count()).select_from(m.Run).where(m.Run.kind == "explore")
+        )
+    assert (await explore(tree_ds.id, "/series")).status_code == 202
+    assert (await explore(plain_ds.id, "/")).status_code == 202
+
+
+@pytest.mark.parametrize(
+    ("table", "message"),
+    [
+        ("{ref: dataset://default/cube@latest}", "is a tree dataset"),
+        ("{ref: dataset://default/cube@latest, node: /nope}", "has no node"),
+        ("{ref: dataset://default/co2@latest, node: /series}", "is a plain dataset"),
+        ("{ref: dataset://default/cube@latest, node: /series}", None),
+    ],
+)
+async def test_a_side_table_node_is_checked_statically(
+    client: httpx.AsyncClient, ctx: ServerContext, table: str, message: str | None
+) -> None:
+    from mapi_server_testkit.builders import ready_dataset
+
+    await ready_dataset(ctx, "co2")
+    await _ready_tree(ctx, "cube")
+    yaml = TREND_SPEC.replace(
+        "  dataset: dataset://default/co2@latest\n",
+        f"  dataset: dataset://default/co2@latest\n  side_tables:\n    extra: {table}\n",
+    )
+    r = await client.post("/v1/specs:validate", json={"yaml": yaml})
+    assert r.status_code == 200, r.text
+    found = [i for i in r.json()["issues"] if i["pointer"] == "/data/side_tables/extra/node"]
+    if message is None:
+        assert not found, found
+    else:
+        assert found and message in found[0]["message"], r.json()["issues"]
+
+
+async def test_a_worker_refusal_keeps_its_typed_code(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """The worker's INGEST_UNSAFE_FILE issue reaches the run's problem.errors and the failed
+    version's issues (problem.code stays the failure class's code)."""
+    from mapi_server.services.reconciler import Reconciler
+    from mapi_server.services.runs import _ingest_failed
+    from mapi_spec.errors import ErrorCode, Issue, Problem
+    from mapi_spec.run import ErrorPayload, FailureClass
+
+    payload = ErrorPayload(
+        code=ErrorCode.USER_CODE_ERROR,
+        failure_class=FailureClass.USER,
+        message="the run failed with INGEST_UNSAFE_FILE (as reported by the worker)",
+        errors=[
+            Issue(
+                code=ErrorCode.INGEST_UNSAFE_FILE,
+                pointer="/upload",
+                message="The upload was refused: it is unsafe to read",
+                untrusted_text="the file has an external link",
+            )
+        ],
+    )
+    ds, dv = await _assembled_version(client, ctx)
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, dv.ingest_run_id)
+        assert run is not None
+        att = m.RunAttempt(error_payload=payload.model_dump(mode="json"))
+        problem = Reconciler.__new__(Reconciler)._problem(run, att, 3, FailureClass.USER)
+        assert problem.code is ErrorCode.USER_CODE_ERROR
+        assert [e.code for e in problem.errors] == [ErrorCode.INGEST_UNSAFE_FILE]
+        run.problem = Problem.model_validate(problem.model_dump()).model_dump(mode="json")
+        await _ingest_failed(s, run)
+    r = await client.get(f"/v1/datasets/{ds}/versions/{dv.version}")
+    body = r.json()
+    assert body["status"] == "failed"
+    assert [i["code"] for i in body["issues"]] == ["INGEST_UNSAFE_FILE"], body["issues"]
+
+
+async def test_a_workflow_node_can_output_a_tree_dataset(
+    client: httpx.AsyncClient, ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A node writing data.tree.zip + tree_schema.json + a tree summary.json (with ``nodes``)
+    registers a tree version, and its output link serves data.tree.zip."""
+    import re
+
+    import xarray as xr
+    from mapi_sdk.wire import read_zarr_zip, write_datatree_zip
+    from mapi_server_testkit import workflows as wft
+    from mapi_spec.workflow import WorkflowRunStatus
+    from mapi_workflows.testing import weekly_series
+
+    original = wft._node_outputs
+
+    async def tree_outputs(c: ServerContext, run: m.Run) -> dict[str, tuple[bytes, str]]:
+        out = await original(c, run)
+        for name in list(out):
+            hit = re.fullmatch(r"out/([^/]+)/data\.zarr\.zip", name)
+            if hit is None:
+                continue
+            base = f"out/{hit.group(1)}/"
+            data, ctype = out.pop(name)
+            ds = read_zarr_zip(data)
+            raw = write_datatree_zip(xr.DataTree(ds))
+            assert raw is not None
+            out[base + "data.tree.zip"] = (raw, ctype)
+            schema = json.loads(out[base + "schema.json"][0])
+            out[base + "tree_schema.json"] = (
+                json.dumps({"nodes": {"/": schema}}).encode(),
+                "application/json",
+            )
+            if base + "summary.json" in out:
+                summary = json.loads(out[base + "summary.json"][0])
+                out[base + "summary.json"] = (
+                    json.dumps({**summary, "nodes": {"/": summary}}).encode(),
+                    "application/json",
+                )
+            side = json.loads(out["node_result.json"][0])
+            for ref in side["outputs"].values():
+                if ref.get("object") == name:
+                    ref["object"] = base + "data.tree.zip"
+            out["node_result.json"] = (json.dumps(side).encode(), "application/json")
+        return out
+
+    monkeypatch.setattr(wft, "_node_outputs", tree_outputs)
+    await wft.put_dataset(ctx, "sales", weekly_series(60))
+    doc = {
+        "apiVersion": "mapi/v1",
+        "kind": "Workflow",
+        "metadata": {"name": "treeout", "project": "default"},
+        "inputs": {"data": {"type": "dataset"}},
+        "nodes": [{"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"}}],
+    }
+    wf = (await client.post("/v1/workflows", json={"document": doc})).json()
+    run = (
+        await client.post(
+            f"/v1/workflows/{wf['id']}/runs",
+            json={"inputs": {"data": "dataset://default/sales@latest"}},
+        )
+    ).json()
+    status = await wft.drive(ctx, run["run_id"])
+    view = (await client.get(f"/v1/workflow-runs/{run['run_id']}")).json()
+    assert status is WorkflowRunStatus.SUCCEEDED, json.dumps(view["nodes"])[:3000]
+    ref = view["nodes"][0]["outputs"]["data"]["ref"]
+    name = ref.split("//default/")[1].split("@")[0]
+    async with ctx.db.session() as s:
+        dv = (
+            await s.execute(select(m.DatasetVersion).join(m.Dataset).where(m.Dataset.name == name))
+        ).scalar_one()
+        assert dv.layout == "tree" and dv.tree_schema is not None
+        assert "data.tree.zip" in dv.objects and dv.summary is not None
+        assert "nodes" not in dv.summary
+    r = await client.get(f"/v1/workflow-runs/{run['run_id']}/nodes/diff/outputs/data")
+    assert r.status_code == 200, r.text
+    assert r.json()["name"] == "data.tree.zip"

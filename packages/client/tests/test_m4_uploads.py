@@ -315,11 +315,39 @@ def test_inspect_raises_the_failed_run_and_times_out(client: Client, api: respx.
 
 def test_inspect_does_not_swallow_other_errors(client: Client, api: respx.MockRouter) -> None:
     api.post(f"{UPLOAD}/inspect").respond(202, json=_run("running"))
+    api.get(f"{V1}/runs/{_run('running')['id']}").respond(200, json=_run("running"))
     problem = Problem.from_code(ErrorCode.NOT_FOUND, "no such upload")
     api.get(f"{UPLOAD}/inspection").respond(404, json=problem.model_dump(mode="json"))
     with pytest.raises(MapiError) as exc:
         client.datasets.inspect(DS, "upl_0")
     assert exc.value.code is ErrorCode.NOT_FOUND
+
+
+def test_inspect_raises_the_run_error_when_it_failed_between_polls(
+    client: Client, api: respx.MockRouter
+) -> None:
+    # the run was running when polled, then failed: the inspection answers 404 and the
+    # caller gets the run's own error, not NOT_FOUND
+    api.post(f"{UPLOAD}/inspect").respond(202, json=_run("running"))
+    failed = ex(Run, 1, kind="inspect")
+    runs = api.get(f"{V1}/runs/{_run('running')['id']}").respond(200, json=failed)
+    problem = Problem.from_code(ErrorCode.NOT_FOUND, "upload inspection")
+    api.get(f"{UPLOAD}/inspection").respond(404, json=problem.model_dump(mode="json"))
+    with pytest.raises(MapiError) as exc:
+        client.datasets.inspect(DS, "upl_0")
+    assert exc.value.code is not ErrorCode.NOT_FOUND and runs.call_count == 1
+
+
+async def test_async_inspect_raises_the_run_error_when_it_failed_between_polls(
+    aclient: AsyncClient, api: respx.MockRouter
+) -> None:
+    api.post(f"{UPLOAD}/inspect").respond(202, json=_run("running"))
+    api.get(f"{V1}/runs/{_run('running')['id']}").respond(200, json=ex(Run, 1, kind="inspect"))
+    problem = Problem.from_code(ErrorCode.NOT_FOUND, "upload inspection")
+    api.get(f"{UPLOAD}/inspection").respond(404, json=problem.model_dump(mode="json"))
+    with pytest.raises(MapiError) as exc:
+        await aclient.datasets.inspect(DS, "upl_0")
+    assert exc.value.code is not ErrorCode.NOT_FOUND
 
 
 def test_inspect_file_stages_without_ingesting(
