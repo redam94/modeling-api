@@ -198,7 +198,7 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
       const body = (await request.json()) as { filename: string; content_type: string; size_bytes: number };
       // Each upload gets its own id (M4: several files make one version).
       const id = `upl_01jaf3d1e2f3g4h5j6k7m8n9p${state.tree.uploads.size}`;
-      state.tree.uploads.set(id, { filename: body.filename, bytes: null, inspectRunId: null, polls: 0 });
+      state.tree.uploads.set(id, { filename: body.filename, bytes: null, inspectRunId: null, polls: 0, attempts: 0 });
       const session: UploadSession = {
         ...fx.dataset,
         id,
