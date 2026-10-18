@@ -582,12 +582,6 @@ def assemble(assembly: IngestAssembly, uploads: Sequence[Upload], limits: Ingest
             nodes[final] = contrib[0][1]
         if src.join == "outer" and len(contrib) > 1:
             outer.append(final)
-    cap = min(limits.max_nodes, MAX_TREE_NODES)
-    if len(nodes) > cap:
-        raise _too_large(
-            f"the sources make {len(nodes):,} nodes; a tree dataset has at most {cap:,}",
-            "/assembly",
-        )
     total = 0
     for path, ds in nodes.items():
         if len(ds.data_vars) > limits.max_columns:
@@ -605,6 +599,13 @@ def assemble(assembly: IngestAssembly, uploads: Sequence[Upload], limits: Ingest
             action="Combine fewer files, or split the dataset.",
         )
     tree = tree_from_nodes(nodes, "/assembly")
+    cap = min(limits.max_nodes, MAX_TREE_NODES)
+    count = sum(1 for _ in tree.subtree)
+    if count > cap:
+        raise _too_large(
+            f"the sources make {count:,} nodes; a tree dataset has at most {cap:,}",
+            "/assembly",
+        )
     var_meta, dim_meta = _source_meta(uploads, contributors)
     layouts = {(u.schema.layout if isinstance(u.schema, DataSchema) else "dense") for u in uploads}
     schema = schema_for_nodes(
