@@ -107,6 +107,7 @@ __all__ = [
     "Finalizer",
     "IntegrityError",
     "build_scorecard",
+    "parse_data_summary",
 ]
 
 log = logging.getLogger(__name__)
@@ -821,7 +822,9 @@ class Finalizer:
                     await self._read_json(run_bucket(v), tree_meta, cap)
                 )
             summary = (
-                _summary(await self._read_json(run_bucket(v), v.objects["summary.json"], cap))
+                parse_data_summary(
+                    await self._read_json(run_bucket(v), v.objects["summary.json"], cap)
+                )
                 if "summary.json" in v.objects
                 else None
             )
@@ -930,14 +933,17 @@ class Finalizer:
         doc = inspection.model_dump(mode="json")
 
         async def apply(session: AsyncSession, row: m.Run) -> None:
-            upload = (
-                await session.execute(
-                    select(m.Upload)
-                    .where(m.Upload.tenant_id == row.tenant_id, m.Upload.inspect_run_id == row.id)
-                    .with_for_update()
-                )
-            ).scalar_one_or_none()
-            if upload is not None:  # an upload deleted meanwhile keeps nothing
+            # the run names its upload (labels, set by submit_inspect): a primary-key read,
+            # then the upload must still point at this run (never a scan of all uploads)
+            upload_id = (row.labels or {}).get("upload")
+            if not isinstance(upload_id, str):
+                return
+            upload = await session.get(m.Upload, upload_id, with_for_update=True)
+            if (
+                upload is not None  # an upload deleted meanwhile keeps nothing
+                and upload.tenant_id == row.tenant_id
+                and upload.inspect_run_id == row.id
+            ):
                 upload.inspection = doc
 
         return await self._commit(v, apply)
@@ -1049,7 +1055,7 @@ MAX_COLUMN_PROFILES = 100_000
 """Profiles one ``columns.json`` may hold (the ingest caps columns far below this)."""
 
 
-def _summary(raw: Any) -> DataSummary:
+def parse_data_summary(raw: Any) -> DataSummary:
     """``summary.json``: a :class:`DataSummary`; a tree ingest (M4) may add ``nodes`` (node
     path -> DataSummary), which are validated and served with the object but not stored on
     the version (its ``summary`` is the root's, for readers that predate trees)."""

@@ -37,7 +37,6 @@ from typing import Any, Final
 
 from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
 from mapi_spec.api import new_id
-from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, MapiError, Problem, ValidationFailed
 from mapi_spec.executor import RunKind
 from mapi_spec.governance import GovernancePolicy
@@ -93,7 +92,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.bundles import verified_bundle_object
-from mapi_server.services.finalizer import dataset_sha
+from mapi_server.services.finalizer import IntegrityError, dataset_sha, parse_data_summary
 from mapi_server.services.runs import Scope, apply_transition, create_run, now
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.specs import (
@@ -1324,10 +1323,9 @@ class WorkflowOrchestrator:
                         ErrorCode.INTEGRITY_FAILURE,
                         f"dataset output {port!r}: schema.json is not the root node's schema",
                     )
+            # a tree output's summary.json adds its nodes' summaries (as an ingest's does)
             summary = (
-                DataSummary.model_validate(
-                    await self._read_json(outputs_meta[base + "summary.json"], cap)
-                )
+                parse_data_summary(await self._read_json(outputs_meta[base + "summary.json"], cap))
                 if base + "summary.json" in outputs_meta
                 else None
             )
@@ -1336,7 +1334,7 @@ class WorkflowOrchestrator:
                 if base + "meta.json" in outputs_meta
                 else {}
             )
-        except (ValidationError, KeyError) as exc:
+        except (ValidationError, KeyError, IntegrityError) as exc:
             raise _NodeFailure(
                 ErrorCode.INTEGRITY_FAILURE, f"dataset output {port!r} is invalid", str(exc)
             ) from None

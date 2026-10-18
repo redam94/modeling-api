@@ -719,9 +719,12 @@ async def submit_inspect(
     generation: int,
 ) -> m.Run:
     """An ``inspect`` run (M4) listing the groups and arrays of ``upload`` from its metadata:
-    resource class S, the short ``inspect_timeout_s``, interactive priority. The caller
+    the short ``inspect_timeout_s``, interactive priority, and the resource class an ingest
+    of the upload would get (its whole file is downloaded and its declared arrays must fit
+    the same scratch budget, so a file ingest accepts is never refused here). The caller
     records the run on the upload (``inspect_run_id``)."""
-    scratch = RESOURCE_CLASSES[ResourceClass.S].scratch_bytes
+    resource_class = class_for_size(upload.size_bytes) or ResourceClass.L
+    scratch = RESOURCE_CLASSES[resource_class].scratch_bytes
     caps: dict[str, Any] = {} if scratch is None else {"max_uncompressed_bytes": scratch}
     job = InspectJob(
         source=IngestSource(
@@ -736,7 +739,7 @@ async def submit_inspect(
         session,
         ctx.scope,
         kind=RunKind.INSPECT,
-        resource_class=ResourceClass.S,
+        resource_class=resource_class,
         timeout_s=ctx.settings.inspect_timeout_s,
         payload=payload,
         inputs={INPUT_UPLOAD: StoredRef(upload.bucket, upload.object_name, generation)},
