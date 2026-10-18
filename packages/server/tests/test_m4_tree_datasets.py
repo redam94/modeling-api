@@ -436,6 +436,11 @@ async def test_a_bad_inspection_fails_the_run(
     async with ctx.db.session() as s:
         row = await s.get(m.Upload, up.id)
         assert row is not None and row.inspection is None
+    # the upload owns its inspect run: a stand-alone retry is refused with where to ask
+    r = await client.post(f"/v1/runs/{run_id}:retry", json={})
+    assert r.status_code == 409 and f"uploads/{up.id}/inspect" in r.json()["detail"], r.text
+    again = await client.post(f"/v1/datasets/{ds}/uploads/{up.id}/inspect")
+    assert again.status_code == 202 and again.json()["id"] != run_id
 
 
 async def test_inspect_needs_dataset_update_and_stays_in_its_project(

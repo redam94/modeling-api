@@ -572,9 +572,10 @@ async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate)
 
 
 async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
-    """Workflow runs, their node runs and governance runs are driven by their owner (the
-    workflow orchestrator, a validation): a stand-alone retry would be a run nobody
-    collects, so it is refused (``CONFLICT``) with where to start again instead."""
+    """Workflow runs, their node runs, governance runs and (M4) inspect runs are driven by
+    their owner (the workflow orchestrator, a validation, an upload): a stand-alone retry
+    would be a run nobody collects, so it is refused (``CONFLICT``) with where to start
+    again instead."""
     kind = RunKind(old.kind)
     if kind in (RunKind.WORKFLOW, RunKind.WORKFLOW_NODE):
         workflow_id: object = (old.payload or {}).get("workflow_id")
@@ -586,6 +587,13 @@ async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
         raise Conflict(
             f"{kind.value} runs are not retried one by one: start the workflow again "
             f"({where}); unchanged nodes are reused from the cache"
+        )
+    if kind is RunKind.INSPECT:
+        # M4: the upload records its inspect run; ask the upload instead
+        upload = (old.labels or {}).get("upload") or "{upload_id}"
+        raise Conflict(
+            "inspect runs are not retried one by one: inspect the upload again "
+            f"(POST /v1/datasets/{old.dataset_id or '{dataset_id}'}/uploads/{upload}/inspect)"
         )
     if kind is RunKind.GOVERNANCE:
         validation = (old.labels or {}).get("validation")
