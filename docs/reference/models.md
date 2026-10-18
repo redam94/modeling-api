@@ -491,7 +491,7 @@ selects `K`:
 | `iid` | None: `sigma² I` (the tree is not used) |
 | `brownian` | Brownian motion along the branches: `sigma² R` (`R` = shared length ÷ tree depth) |
 | `lambda` | Pagel's lambda: `sigma² (lam R + (1 - lam) I)`, a tree part and a species part |
-| `ou` | Ornstein-Uhlenbeck: `eta2 exp(-rho D)` on the distance `D` through the tree |
+| `ou` | Ornstein-Uhlenbeck: `eta2 exp(-rho D / 2T)` on the distance `D` through the tree (`T` = tree depth) |
 
 For `ou`, the data identify only the Brownian rate `rate = eta2 rho`. Thus the default prior
 is on `rate` (`ou_parameterisation: rate`). This removes the ridge of the `(eta2, rho)`
@@ -508,8 +508,10 @@ label. The tree can have unary nodes.
 by Gaussian conditioning, in the units of the target. For a fitted species, the prediction
 leaves that species out. For a species without a trait value, it uses all fitted species.
 With `log_target`, the expected value is the conditional median. `slope(predictor)`: the
-slopes. The fit also keeps `posterior/trait_hat(species)` (the same predictions, for the
-`sci.phylogeny` plot) and the tree in `constant_data`.
+slopes. If the score data changes a fitted species' predictors, its prediction moves by the
+change in its regression mean. The fit also keeps `posterior_predictive/trait(species)` (the
+same predictions as conditional means, beside `observed_data/trait` for the `sci.phylogeny`
+plot) and the tree in `constant_data`.
 
 **Score modes.** `predict` and `evaluate` predict each requested species from its relatives.
 `simulate` draws new traits for the requested species from the fitted parameters, without
@@ -532,6 +534,7 @@ species gives the opposite ranking.
 | `lambda_alpha`, `lambda_beta` | 1, 1 | Beta prior of `lam` |
 | `ou_parameterisation` | `rate` | `rate`: prior on `eta2 rho`; `variance`: priors on `eta2` and `rho` |
 | `rate_sd`, `rho_sd`, `eta2_sd` | 1, 5, 5 | Half-normal prior sd for the `ou` parameters |
+| `jitter` | 1e-6 | `ou`: added to the diagonal of `K` |
 
 `from_challenges` reads `primates301.csv` and the tree `primates301_tree.rda` (an R
 `ape::phylo` object). It reads the R file without R. `read_tree` also reads Newick files. The

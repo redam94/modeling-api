@@ -33,7 +33,7 @@ def check_fit(bundle: Bundle, data: xr.Dataset) -> None:
         draws = slope.sel(predictor=name).values.ravel()
         lo, hi = np.quantile(draws, [0.005, 0.995])
         assert lo < value < hi, f"slope {name}: truth {value} outside [{lo:.3f}, {hi:.3f}]"
-    hat = groups["posterior"]["trait_hat"]
+    hat = groups["posterior_predictive"]["trait"]
     assert hat.sizes["species"] == data.sizes["species"]
     assert bool(np.isfinite(hat).all())
 

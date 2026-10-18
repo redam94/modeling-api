@@ -48,7 +48,9 @@ the precision ``Q = K_OO^-1`` of the observed set (Sundararajan and Keerthi 2001
 and for a species without an observed trait ``N(mu_i + K_iO g, K_ii - K_iO Q K_Oi)``. The
 output ``trait`` is this conditional prediction in the units of the target (back-transformed
 from the log scale when ``log_target``: then ``expected`` is the conditional median). The fit
-keeps the same quantity as ``posterior/trait_hat`` for the tree plot.
+keeps the same quantity as ``posterior_predictive/trait`` (conditional means, no noise), so
+the tree plot finds it next to ``observed_data/trait``. When the score data changes the
+predictors of a fitted species, its leave-one-out mean moves by the change in ``mu_i``.
 
 **Pointwise LOO.** ``log_likelihood/trait`` holds ``log p(y_i | y_-i, theta)`` per draw and
 observed species (one inverse per draw), so PSIS-LOO (``elpd_loo``) compares the kinds
@@ -127,7 +129,6 @@ TIP_LABEL = "tip_label"
 TREE_VARS = (PARENT, BRANCH_LENGTH, IS_TIP, TIP_LABEL)
 X_VAR = "predictors"
 """Constant data: the standardised predictors ``(species, predictor)`` of the fitted species."""
-TRAIT_HAT = "trait_hat"
 """Posterior: the conditional prediction of every fitted species (target units)."""
 
 Kind = Literal["iid", "brownian", "lambda", "ou"]
@@ -818,13 +819,21 @@ class PhyloRegressionModel(CustomModel[PhyloRegressionSettings]):
         hat, loglik = self._fit_conditionals(d, s, posterior, learned, ctx)
         chain, draw = posterior["chain"].values, posterior["draw"].values
         shape = (chain.size, draw.size)
-        posterior[TRAIT_HAT] = (
-            ("chain", "draw", SPECIES_DIM),
-            hat.reshape(*shape, -1).astype(np.float32),
-        )
-        posterior = posterior.assign_coords({SPECIES_DIM: d.labels})
         o = d.observed
         groups: dict[str, xr.Dataset] = {"posterior": _clean(posterior, result.engine)}
+        # the conditional predictions sit under the target's name, beside observed_data/trait
+        groups["posterior_predictive"] = _clean(
+            xr.Dataset(
+                {
+                    TARGET: (
+                        ("chain", "draw", SPECIES_DIM),
+                        hat.reshape(*shape, -1).astype(np.float32),
+                    )
+                },
+                coords={"chain": chain, "draw": draw, SPECIES_DIM: d.labels},
+            ),
+            result.engine,
+        )
         stats = result.group("sample_stats")
         if stats is not None:
             keep = [
@@ -1012,7 +1021,10 @@ class PhyloRegressionModel(CustomModel[PhyloRegressionSettings]):
             if seen.size:
                 lm, lv, _ = conditional_loo(fit.y[o], mu_o[sl], k[:, :no, :no])
                 where = np.searchsorted(o, in_obs[seen])
-                mean[:, seen], var[:, seen] = lm[:, where], lv[:, where]
+                # the LOO residual is fixed by the fitted data; the score predictors move
+                # only the species' own regression mean
+                shift = mu_n[sl][:, seen] - mu_o[sl][:, where]
+                mean[:, seen], var[:, seen] = lm[:, where] + shift, lv[:, where]
             if ctx.kind == "predictive":
                 mean = mean + np.sqrt(var) * rng.standard_normal(mean.shape)
             out[sl] = mean

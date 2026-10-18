@@ -278,7 +278,9 @@ def test_fit_recovers_the_truth_and_stores_pointwise_loo(
     assert ll.dims == ("chain", "draw", "species") and ll.sizes["species"] == n_obs
     assert bool(np.isfinite(ll).all())
     assert set(groups["constant_data"].data_vars) >= {"parent", "tip_label", "predictors"}
-    assert post["trait_hat"].sizes["species"] == species.sizes["species"]
+    assert "trait_hat" not in post  # derived predictions stay out of the parameter forest
+    hat = groups["posterior_predictive"]["trait"]
+    assert hat.sizes["species"] == species.sizes["species"]
     m = bundle.metrics
     assert m.values["elpd_loo"] is not None and m.values["coverage_90"] >= 0.5
     assert bundle.model.learned["kind"] == "lambda"
@@ -325,9 +327,47 @@ def test_simulate_draws_new_traits_for_a_subset(
     np.testing.assert_array_equal(sim["species"].values, some["species"].values)
 
 
-def test_counterfactual_and_forecast_are_refused(
+def test_predict_follows_changed_predictors_of_fitted_species(
     bundle: Bundle, species: xr.Dataset, registry: Registry
 ) -> None:
+    """Regression: a fitted species' leave-one-out mean used the fitted predictors, so a
+    request that changed them returned the old prediction unchanged."""
+    x = species.drop_vars("brain")
+    base = score_bundle(bundle, _req("mode: predict\n"), x, registry=registry,
+                        return_full=True)["predictions"].to_dataset()["brain"]  # fmt: skip
+    x5 = x.copy(deep=True)
+    x5["body"] = x5["body"] * 5.0
+    alt = score_bundle(bundle, _req("mode: predict\n"), x5, registry=registry,
+                       return_full=True)["predictions"].to_dataset()["brain"]  # fmt: skip
+    learned = bundle.model.learned
+    s = list(bundle.model.groups["posterior"]["slope"]["predictor"].values)
+    i = s.index("body")
+    slope = bundle.model.groups["posterior"]["slope"].sel(predictor="body")
+    # log target and log predictors: every species moves by slope * log 5 / x_scale * y_scale
+    want = (slope * np.log(5.0) / float(np.asarray(learned["x_scale"])[i])
+            * float(learned["y_scale"]))  # fmt: skip
+    got = np.log(alt) - np.log(base)
+    observed = species["brain"].notnull().values
+    assert observed.any() and (~observed).any()
+    for mask in (observed, ~observed):
+        np.testing.assert_allclose(
+            got.isel(species=np.flatnonzero(mask)).values,
+            np.broadcast_to(want.values[..., None], (*want.shape, int(mask.sum()))),
+            rtol=1e-6, atol=1e-6,
+        )  # fmt: skip
+
+
+def test_phylogeny_plot_shows_the_observed_trait(bundle: Bundle) -> None:
+    from mapi_plots.recipes import render_plots
+
+    out = render_plots(bundle.to_tree(), ["sci.phylogeny"])
+    assert not out.issues, out.issues
+    (plot,) = out.plots
+    text = str(plot.model_dump() if hasattr(plot, "model_dump") else plot)
+    assert "observed" in text and "trait_hat" not in text
+
+
+def test_counterfactual_is_refused(bundle: Bundle, species: xr.Dataset, registry: Registry) -> None:
     with pytest.raises(MapiError) as err:
         score_bundle(bundle, _req("mode: counterfactual\ninterventions: [{var: body, "
                                   "multiply: 1.1}]\n"), species.drop_vars("brain"),
