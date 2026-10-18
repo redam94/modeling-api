@@ -62,7 +62,7 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
-from mapi_plugin_science import kpp_data, lens_data, lgcp_data, traction_data
+from mapi_plugin_science import colour_naming_data, kpp_data, lens_data, lgcp_data, traction_data
 from mapi_plugin_science.challenges import CHALLENGES_ENV
 
 __all__ = [
@@ -422,6 +422,22 @@ _register(
         project="astronomy",
         dataset="slacs_j1627_f814w",
         spec=lens_data.SLACS_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e77",
+        title="Colour naming in Nafaanra (World Color Survey)",
+        notebook="E77_colour_naming.py",
+        model="sci.colour_naming",
+        files=colour_naming_data.CHALLENGES_FILES,
+        loader=lambda d: colour_naming_data.from_challenges(d / colour_naming_data.CHALLENGES_FILE),
+        synthetic=lambda: colour_naming_data.naming_dataset(),
+        schema=colour_naming_data.NAMING_SCHEMA,
+        project="linguistics",
+        dataset="wcs_nafaanra",
+        spec=colour_naming_data.NAFAANRA_SPEC_YAML,
     )
 )
 
