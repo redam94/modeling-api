@@ -500,6 +500,71 @@ notice. You can also use `@latest`. If a workflow runs itself, directly or throu
 different workflow, it fails with `WORKFLOW_INVALID`. Sub-workflows can go a maximum of 8
 levels deep.
 
+### Score a model and draw plots
+
+```yaml
+- id: sims
+  use: model.score
+  inputs: {model: fit0.model}
+  with: {mode: predict}             # predict, simulate, forecast or counterfactual
+- id: fan
+  use: plot.render
+  label: Fit and forecast
+  inputs: {data: sims.scores}
+  with: {recipe: core.ppc_fan, settings: {levels: [0.5, 0.9]}}
+- id: fields
+  use: plot.render
+  inputs: {model: fit0.model}
+  with: {recipe: sci.field_map, source: auto}
+- id: fc
+  use: model.forecast
+  inputs: {model: fit0.model}
+  with: {horizon: 8}
+- id: report
+  use: report.summary
+  inputs: {tests: [adf.result], plots: [fan.plot, fields.plot, fc.plot]}
+```
+
+`model.score` runs a score mode of the model, the same as a score run. `request` gives the
+other fields of the score request (`horizon`, `output`, `select`, `interventions`, `seed`,
+`future_covariates`). Without `data`, the node scores the fit data. For a forecast, `data`
+gives the future drivers, and the default horizon is 12 periods. The `scores` output is a
+dataset: the draws if the model gives draws, else the `summary` (statistics along a `stat`
+dimension). To get a different group of the score result, set `group` (for example
+`predictions`). Result fields: `mode`, `n_vars`, `group` and `representation`. If the model
+cannot do the mode, the node fails with `CAPABILITY_UNSUPPORTED`.
+
+`plot.render` draws a recipe of the [plot catalog](../reference/plots.md). Put the id in
+`recipe` (`core.ppc_fan` or `core.ppc_fan@^1`), and the settings of the recipe in `settings`.
+All recipe ids of the catalog work, plugin recipes too. The node needs a `model` or a `data`
+input, or both. With `source: auto` (the default), it tries these inputs in this sequence:
+
+1. The dataset on `data` (for example the `scores` of `model.score`).
+2. The bundle of the model on `model` (posterior draws, observed data).
+3. The in-sample predictions of the model, with the observed target as `observed_data`.
+
+Set `source` to `data`, `model` or `predictions` to use only one of them. The result fields
+are `recipe` (the id and version that drew the plot), `kind` (`vega-lite` or `plotly`),
+`source` and `bytes`. If no input has the data that the recipe needs, the node fails with
+`SCHEMA_INVALID`, and the reason of each input is in the error. An unknown recipe id fails
+with `REF_UNRESOLVED`. A plot that is larger than 1 MiB fails with `PAYLOAD_TOO_LARGE`: use
+fewer draws, panels or frames in the settings of the recipe.
+
+`model.forecast` also draws its fan chart (`core.ppc_fan`) on its `plot` output.
+`evaluate.residuals` draws the errors over time (`core.residuals_over_time`). If these plots
+cannot be drawn, the node gives a warning and has no `plot` output. Its other outputs do not
+change.
+
+`report.summary` adds a `plot` section for each plot on its `plots` port. The section
+contains the plot (`plot`) and its caption (`text`). A plot that is larger than 256 KB, or
+plots after the first 1 MiB of plots, stay in the node output. Then the section tells which
+node has the plot. The run view in the web app shows the plots of the nodes and of the
+report.
+
+A plot output is a `PlotSpec` document with its datasets in the document (`inline_arrow`).
+The sandbox puts a plot of up to 256 KB in the node result. It writes a larger plot to
+`out/<port>.json`, and the server reads it back (up to `MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES`).
+
 ### Failures, retries and time limits
 
 ```yaml
@@ -531,7 +596,7 @@ The control plane never decodes your data. Each node implementation declares whe
 | Runs in | Nodes | How |
 |---|---|---|
 | The orchestrator | `branch.if`, `compare.models`, `select.best`, `select.threshold`, `report.summary`, `report.evidence_pack` | Only on the JSON results of upstream nodes, in the API process. There is no child run and no cost. |
-| A sandboxed `workflow_node` run | tests, transforms, splits, order searches, `model.backtest`, `model.forecast`, `evaluate.*`, `compare.diebold_mariano`, `governance.*` | A child run on the same executor and isolation as fits. It reads its inputs through signed URLs that are pinned to a generation. It writes a result. The finalizer does a check of that result. |
+| A sandboxed `workflow_node` run | tests, transforms, splits, order searches, `model.backtest`, `model.forecast`, `model.score`, `plot.render`, `evaluate.*`, `compare.diebold_mariano`, `governance.*` | A child run on the same executor and isolation as fits. It reads its inputs through signed URLs that are pinned to a generation. It writes a result. The finalizer does a check of that result. |
 | A child `fit` run | `model.fit`, and the winner of `search.grid` (after a `workflow_node` run scored the grid) | A usual fit of a stored spec with the name `wf-<workflow>-<node>`. Thus the model version is a usual model version (scoring, endpoints, approvals). |
 | A child workflow run | `subworkflow.run` | The child workflow, with its own nodes. |
 
@@ -652,8 +717,6 @@ row-level security, as all other data are.
 
 ## Known limitations in v0.5
 
-- The nodes `evaluate.residuals` and `model.forecast` do not make plot outputs yet. They make
-  their tables and results.
 - Detrending, STL adjustment and lag/lead features are not separate nodes. Use
   `transform.steps` with the preprocessing steps of the catalog.
 - In the web editor, each browser keeps the node positions as a view preference. The document

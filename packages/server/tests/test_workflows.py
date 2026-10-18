@@ -35,6 +35,7 @@ from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.scorecard import CheckThresholds
 from mapi_spec.webhooks import WebhookEventType
 from mapi_spec.workflow import WorkflowRunStatus
+from mapi_spec.workflow_nodes import NODE_IMPLEMENTATIONS
 from mapi_spec.workflow_templates import TS_READINESS_ARIMAX
 from mapi_workflows.testing import weekly_series
 from sqlalchemy import func, select
@@ -95,7 +96,7 @@ async def _start(client: httpx.AsyncClient, wf_id: str, **body: Any) -> dict[str
 async def test_node_catalog_and_template_gallery(client: httpx.AsyncClient) -> None:
     page = (await client.get("/v1/catalog/workflow-nodes", params={"limit": 200})).json()
     ids = [n["id"] for n in page["items"]]
-    assert "test.adf" in ids and "model.fit" in ids and len(ids) == 51
+    assert "test.adf" in ids and "model.fit" in ids and len(ids) == len(NODE_IMPLEMENTATIONS)
     tests = (await client.get("/v1/catalog/workflow-nodes", params={"kind": "test"})).json()
     assert all(n["kind"] == "test" for n in tests["items"])
     adf = (await client.get("/v1/catalog/workflow-nodes/test.adf")).json()
@@ -814,3 +815,51 @@ async def test_a_model_fitted_on_a_non_replayable_transform_is_labelled(
         assert rev.document["metadata"]["labels"][DATA_SPACE_LABEL] == TRANSFORMED_SPACE
         mv = (await s.execute(select(m.ModelVersion))).scalars().one()
         assert mv.score_meta is not None and mv.score_meta["data_space"] == "transformed"
+
+
+# ================================================================================ plots (M5)
+
+
+async def test_plot_nodes_run_in_the_sandbox_and_reach_the_report(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """``plot.render``, ``model.score`` and the forecast's plot are ordinary
+    ``workflow_node`` runs; ``report.summary`` embeds their plots in ``plot`` sections."""
+    await put_dataset(ctx, "sales", weekly_series(80))
+    doc = _doc(
+        [
+            {
+                "id": "fit",
+                "use": "model.fit",
+                "inputs": {"data": "inputs.data"},
+                "with": {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
+            },
+            {"id": "scores", "use": "model.score", "inputs": {"model": "fit.model"}},
+            {
+                "id": "fan",
+                "use": "plot.render",
+                "inputs": {"data": "scores.scores"},
+                "with": {"recipe": "core.ppc_fan"},
+            },
+            {
+                "id": "fc",
+                "use": "model.forecast",
+                "inputs": {"model": "fit.model"},
+                "with": {"horizon": 4},
+            },
+            {"id": "report", "use": "report.summary", "inputs": {"plots": ["fan.plot", "fc.plot"]}},
+        ],
+        name="plots",
+    )
+    wf = await _create(client, doc)
+    run = await _start(client, wf["id"])
+    assert await drive(ctx, run["run_id"]) is WorkflowRunStatus.SUCCEEDED
+    view = (await client.get(f"/v1/workflow-runs/{run['run_id']}")).json()
+    nodes = {n["node_id"]: n for n in view["nodes"]}
+    assert nodes["fan"]["kind"] == "plot" and nodes["fan"]["result"]["kind"] == "vega-lite"
+    assert nodes["fan"]["outputs"]["plot"]["inline"]["id"] == "core.ppc_fan"
+    assert nodes["scores"]["outputs"]["scores"]["ref"].startswith("dataset://default/")
+    assert nodes["fc"]["outputs"]["plot"]["inline"]["id"] == "core.ppc_fan"
+    report = nodes["report"]["outputs"]["report"]["inline"]
+    plots = [s for s in report["sections"] if s["kind"] == "plot"]
+    assert [s["node_id"] for s in plots] == ["fan", "fc"] and all(s["plot"] for s in plots)
