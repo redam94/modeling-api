@@ -16,6 +16,7 @@ from mapi_sdk.errors import PayloadLimitError, SchemaValidationError, WireFormat
 from mapi_sdk.testing import toy
 from mapi_sdk.tree import (
     TREE_LIMITS,
+    TREE_SCHEMA_ATTR,
     check_tree,
     infer_tree_schema,
     node_dataset,
@@ -23,10 +24,12 @@ from mapi_sdk.tree import (
     select_nodes,
     selection_error,
     selection_schema,
+    stored_tree_schema,
     validate_tree,
     write_tree_zip,
 )
 from mapi_spec.errors import ErrorCode
+from mapi_spec.schema import DimSpec
 from mapi_spec.tree import MAX_TREE_NODES, NodeSelect, NodeSelectionError, TreeSchema
 
 TIME = pd.date_range("2024-01-07", periods=6, freq="W-SUN").as_unit("ns")
@@ -246,17 +249,73 @@ def test_exact_join_without_labels_checks_sizes() -> None:
         select_nodes(t, {"p": {"path": "/p"}, "q": {"path": "/q"}})
 
 
-def test_conflicting_non_index_coords_refuse_to_merge() -> None:
+def test_conflicting_non_index_coords_are_left_out() -> None:
+    # non-index coords are not in the schema, so TreeSchema.flat accepts this selection:
+    # the runtime must too (the differing coord is dropped, an agreeing one kept)
     t = xr.DataTree.from_dict(
         {
             "/": xr.Dataset(coords={"t": [0, 1]}),
-            "/p": xr.Dataset({"a": (("t",), [1.0, 2.0])}, coords={"label": (("t",), ["u", "v"])}),
-            "/q": xr.Dataset({"b": (("t",), [1.0, 2.0])}, coords={"label": (("t",), ["u", "w"])}),
+            "/p": xr.Dataset(
+                {"a": (("t",), [1.0, 2.0])},
+                coords={"label": (("t",), ["u", "v"]), "same": (("t",), [5, 6])},
+            ),
+            "/q": xr.Dataset(
+                {"b": (("t",), [1.0, 2.0])},
+                coords={"label": (("t",), ["u", "w"]), "same": (("t",), [5, 6])},
+            ),
         }
     )
-    with pytest.raises(NodeSelectionError) as err:
-        select_nodes(t, {"p": {"path": "/p"}, "q": {"path": "/q"}})
-    assert "cannot be merged" in str(err.value)
+    sel = {"p": {"path": "/p"}, "q": {"path": "/q"}}
+    infer_tree_schema(t).flat({k: NodeSelect.model_validate(v) for k, v in sel.items()})
+    flat = select_nodes(t, sel)
+    assert set(flat.data_vars) == {"a", "b"}
+    assert "label" not in flat.coords
+    assert flat["same"].values.tolist() == [5, 6]
+
+
+def test_non_index_coord_named_like_a_selected_variable_is_left_out() -> None:
+    t = xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(coords={"week": [1, 2, 3]}),
+            "/a": xr.Dataset(
+                {"sales": (("week",), [1.0, 2.0, 3.0])},
+                coords={"fiscal": (("week",), [10, 11, 12])},
+            ),
+            "/b": xr.Dataset({"fiscal": (("week",), [7.0, 8.0, 9.0])}),
+        }
+    )
+    sel = {"a": {"path": "/a"}, "b": {"path": "/b"}}
+    flat = select_nodes(t, sel)
+    assert flat["fiscal"].values.tolist() == [7.0, 8.0, 9.0]
+    assert "fiscal" in flat.data_vars
+
+
+def test_select_nodes_prefers_the_stored_schema() -> None:
+    # /media misses a week: inferred per node its freq is None, /sales' is W-SUN, and the
+    # dims would "differ"; the schema the ingest stored declares both, as fit used it
+    weeks = pd.date_range("2024-01-07", periods=6, freq="W-SUN")
+    t = xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(),
+            "/sales": xr.Dataset({"y": (("date",), np.arange(6.0))}, coords={"date": weeks}),
+            "/media": xr.Dataset(
+                {"tv": (("date",), np.arange(5.0))}, coords={"date": weeks.delete(3)}
+            ),
+        }
+    )
+    inferred = infer_tree_schema(t)
+    sel = {"s": {"path": "/sales"}, "m": {"path": "/media"}}
+    with pytest.raises(NodeSelectionError):
+        select_nodes(t, sel, "inner")
+    declared = DimSpec(kind="time", freq="W-SUN")
+    nodes = {
+        p: n.model_copy(update={"dims": {d: declared for d in n.dims}})
+        for p, n in inferred.nodes.items()
+    }
+    t.attrs[TREE_SCHEMA_ATTR] = TreeSchema(nodes=nodes).model_dump_json()
+    assert stored_tree_schema(t) is not None
+    flat = select_nodes(t, sel, "inner")
+    assert flat.sizes["date"] == 5
 
 
 def test_selection_schema_matches_the_flat_dataset() -> None:

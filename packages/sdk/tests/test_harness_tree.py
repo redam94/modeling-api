@@ -227,6 +227,65 @@ def test_counterfactual_scenario_tree(registry: Registry, tree: xr.DataTree) -> 
     np.testing.assert_allclose((plain["y_hat"] - base["y_hat"]).sel(market="NL").values, 10.0)
 
 
+def test_evaluation_fit_sees_only_the_training_part_of_the_tree(
+    registry: Registry, tree: xr.DataTree
+) -> None:
+    seen = _Seen()
+    reg = registry.copy()
+    reg.register_model(_spy(toy.TreeLinearModel, seen), replace=True)
+    fit_spec(toy.tree_spec(), tree, registry=reg)  # time_holdout: last 4 of 40 weeks
+    fits = [t["sales"].to_dataset(inherit=True).sizes["time"] for t in seen.fit if t is not None]
+    assert fits == [36, 40]  # the evaluation fit never sees the holdout's targets
+    evaluation = seen.score[0]
+    assert evaluation is not None
+    assert evaluation["sales"].to_dataset(inherit=True).sizes["time"] == 4
+    assert "adjust" in evaluation.children  # nodes without the split dim stay whole
+
+
+def test_interventions_reach_the_tree_of_a_tree_model(
+    registry: Registry, tree: xr.DataTree
+) -> None:
+    seen = _Seen()
+    reg = registry.copy()
+    reg.register_model(_spy(toy.TreeLinearModel, seen), replace=True)
+    b = fit_spec(toy.tree_spec(split=False), tree, registry=reg)
+    seen.score.clear()
+    score_bundle(
+        b,
+        req(
+            "mode: counterfactual\n"
+            "interventions:\n  - {var: spend, sel: {channel: tv}, multiply: 2.0}\n"
+        ),
+        tree,
+        registry=reg,
+    )
+    main, baseline = seen.score
+    assert main is not None and baseline is not None
+    got = main["media"].to_dataset(inherit=True)["spend"]
+    base = baseline["media"].to_dataset(inherit=True)["spend"]
+    np.testing.assert_allclose(got.sel(channel="tv").values, 2 * base.sel(channel="tv").values)
+    np.testing.assert_allclose(got.sel(channel="search").values, base.sel(channel="search").values)
+    # the payload tree itself is untouched
+    original = tree["media"].to_dataset(inherit=True)["spend"]
+    np.testing.assert_allclose(
+        original.rename({"market": "geo", "date": "time"}).transpose(*base.dims).values,
+        base.values,
+    )
+
+
+def test_fit_spec_tree_stands_in_for_flat_data(
+    registry: Registry, tree: xr.DataTree, flat: xr.Dataset
+) -> None:
+    # a refit on data already selected from a tree (governance, explorer backtests) gives
+    # a tree-input model the tree it would otherwise lose
+    seen = _Seen()
+    reg = registry.copy()
+    reg.register_model(_spy(toy.TreeLinearModel, seen), replace=True)
+    b = fit_spec(toy.tree_spec(split=False), flat, registry=reg, tree=tree)
+    assert seen.fit[-1] is not None
+    np.testing.assert_allclose(b.model.group("adjust")["offset"].values, [5.0, -5.0, 0.0])
+
+
 def test_score_payload_tree_errors(registry: Registry, tree: xr.DataTree) -> None:
     b = fit_spec(toy.tree_spec("toy.linear@^1", split=False), tree, registry=registry)
     broken = tree.copy()

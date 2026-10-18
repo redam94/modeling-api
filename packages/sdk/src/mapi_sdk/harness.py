@@ -28,6 +28,7 @@ also gets the whole tree, bound per node, as ``FitContext.tree`` / ``ScoreContex
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -72,7 +73,7 @@ from mapi_spec.spec import (
     ScoreRequest,
     Split,
 )
-from mapi_spec.tree import NodeSelectionError, TreeSchema
+from mapi_spec.tree import ROOT, NodeSelect, NodeSelectionError, TreeSchema
 from mapi_spec.validate import ResolvedSpec, apply_defaults, validate_spec
 
 from mapi_sdk._util import json_safe, normalise_dataset
@@ -114,7 +115,13 @@ from mapi_sdk.summarise import (
     summarise,
     thin_index,
 )
-from mapi_sdk.tree import infer_tree_schema, select_nodes, selection_error, selection_schema
+from mapi_sdk.tree import (
+    infer_tree_schema,
+    select_nodes,
+    selection_error,
+    selection_schema,
+    stored_tree_schema,
+)
 from mapi_sdk.wire import write_datatree_zip, write_zarr_zip
 
 __all__ = [
@@ -202,8 +209,10 @@ def _tree_input(
     data: xr.Dataset | xr.DataTree,
     raw_schema: DataSchema | None,
     tree_schema: TreeSchema | None,
+    tree: xr.DataTree | None = None,
 ) -> _TreeInput:
-    """Flatten a tree dataset per ``spec.data.nodes`` (plain datasets pass through)."""
+    """Flatten a tree dataset per ``spec.data.nodes`` (plain datasets pass through; a flat
+    dataset selected from a tree earlier may bring that ``tree`` along)."""
     if not isinstance(data, xr.DataTree):
         if tree_schema is not None:
             raise MapiError(
@@ -211,16 +220,150 @@ def _tree_input(
                 code=ErrorCode.SCHEMA_INVALID,
                 pointer="/data",
             )
-        return _TreeInput(data, raw_schema, None, spec)
+        return _TreeInput(data, raw_schema, tree, _flat_spec(spec) if tree else spec)
     block = spec.data
     try:
-        schema = tree_schema if tree_schema is not None else infer_tree_schema(data)
+        schema = tree_schema if tree_schema is not None else _schema_of(data)
         flat = select_nodes(data, block.nodes, block.join, schema=schema)
         if raw_schema is None:
             raw_schema = selection_schema(schema, block.nodes, data=flat, join=block.join)
     except NodeSelectionError as exc:
         raise selection_error(exc) from None
     return _TreeInput(flat, raw_schema, data, _flat_spec(spec))
+
+
+def _schema_of(tree: xr.DataTree) -> TreeSchema:
+    """A tree's schema: the stored one (what its ingest declared), else an inferred one."""
+    return stored_tree_schema(tree) or infer_tree_schema(tree)
+
+
+def _flat_sources(block: DataBlock, tree: xr.DataTree) -> dict[str, tuple[str, str]]:
+    """Flat variable (dataset name) -> ``(node path, variable)`` of the tree it comes from,
+    per ``block.nodes`` (the root's variables without it)."""
+    selection: Mapping[str, NodeSelect] = block.nodes or {"root": NodeSelect(path=ROOT)}
+    out: dict[str, tuple[str, str]] = {}
+    for sel in selection.values():
+        node = _tree_node(tree, sel.path)
+        if node is None:
+            continue
+        own = node.to_dataset(inherit=False)
+        names = list(sel.vars) if sel.vars is not None else [str(v) for v in own.data_vars]
+        for name in names:
+            out[f"{sel.prefix or ''}{name}"] = (sel.path, name)
+    return out
+
+
+def _tree_node(tree: xr.DataTree, path: str) -> xr.DataTree | None:
+    if path == ROOT:
+        return tree
+    try:
+        node = tree[path.lstrip("/")]
+    except KeyError:
+        return None
+    return node if isinstance(node, xr.DataTree) else None
+
+
+def _rebuild(tree: xr.DataTree, nodes: Mapping[str, xr.Dataset]) -> xr.DataTree:
+    """``tree`` with some nodes' own datasets replaced (attrs kept)."""
+    parts = {n.path: nodes.get(n.path, n.to_dataset(inherit=False)) for n in tree.subtree}
+    return xr.DataTree.from_dict(parts)
+
+
+def _split_tree(
+    tree: xr.DataTree | None,
+    part: xr.Dataset,
+    binding: BindingMap,
+    block: DataBlock,
+    *,
+    mask: xr.DataArray | None = None,
+    targets: Sequence[str] = (),
+) -> xr.DataTree | None:
+    """The part of ``tree`` (dataset names) a split keeps: along every dim of ``part``
+    (canonical names) the tree shares, only ``part``'s labels; with ``mask`` (a cell-level
+    split) the flat ``targets`` are hidden in their nodes where it is true. A tree-input
+    model fitted on the training data must not see the holdout through its tree."""
+    if tree is None:
+        return None
+    labels = {binding.to_dataset(str(d)): part.indexes[d] for d in part.dims if d in part.indexes}
+    nodes: dict[str, xr.Dataset] = {}
+    for node in tree.subtree:
+        full = node.to_dataset(inherit=True)
+        own = node.to_dataset(inherit=False)
+        sel = {}
+        for dim, keep in labels.items():
+            if dim in full.indexes and dim in own.dims:
+                hit = np.asarray(full.indexes[dim].isin(keep))
+                if not hit.all():
+                    sel[dim] = np.flatnonzero(hit)
+        if sel:
+            cut = full.isel(sel)
+            nodes[node.path] = cut.drop_vars([str(v) for v in cut.variables if v not in own])
+    out = _rebuild(tree, nodes) if nodes else tree
+    if mask is None or not targets:
+        return out
+    renames = {str(d): binding.to_dataset(str(d)) for d in mask.dims}
+    hide = mask.drop_vars([str(c) for c in mask.coords if c not in mask.dims])
+    hide = hide.rename({k: v for k, v in renames.items() if k != v})
+    sources = _flat_sources(block, out)
+    masked: dict[str, xr.Dataset] = {}
+    for target in targets:
+        src = sources.get(target)
+        if src is None:
+            continue
+        path, name = src
+        holder = _tree_node(out, path)
+        assert holder is not None
+        full = holder.to_dataset(inherit=True)
+        if name not in full.data_vars or not set(hide.dims) <= set(full[name].dims):
+            continue
+        cond = hide.reindex_like(full[name], fill_value=False) if hide.indexes else hide
+        own = masked.get(path, holder.to_dataset(inherit=False))
+        own[name] = full[name].where(~cond.astype(bool)).variable
+        masked[path] = own
+    return _rebuild(out, masked) if masked else out
+
+
+def _intervene_tree(
+    tree: xr.DataTree, req: ScoreRequest, binding: BindingMap, block: DataBlock
+) -> xr.DataTree:
+    """The interventions of ``req`` applied to the variables of ``tree`` (dataset names)
+    the flat payload's intervened variables come from, so a tree-input model reading its
+    features from ``ScoreContext.tree`` sees the same scenario as the flat payload."""
+    sources = _flat_sources(block, tree)
+    nodes: dict[str, xr.Dataset] = {}
+    for iv in req.interventions:
+        src = sources.get(binding.to_dataset(binding.to_canonical(iv.var)))
+        if src is None:
+            continue
+        path, name = src
+        node = _tree_node(tree, path)
+        assert node is not None
+        full = node.to_dataset(inherit=True)
+        own = nodes.get(path, node.to_dataset(inherit=False))
+        if name not in own.data_vars:
+            continue
+        da = own[name].copy()
+        da = da.assign_coords({d: full[d] for d in da.dims if d in full.indexes})
+        cond = xr.ones_like(da, dtype=bool)
+        for raw_dim, sel in iv.sel.items():
+            dim = binding.to_dataset(binding.to_canonical(raw_dim))
+            if dim not in da.dims or dim not in da.coords:
+                break
+            labels = np.asarray(sel if isinstance(sel, list) else [sel])
+            if da[dim].dtype.kind == "M":
+                labels = labels.astype("datetime64[ns]")
+            cond = cond & da[dim].isin(labels)
+        else:
+            if iv.multiply is not None:
+                new = da * iv.multiply
+            elif iv.add is not None:
+                new = da + iv.add
+            else:
+                assert iv.set_ is not None
+                new = xr.full_like(da, iv.set_, dtype=float)
+            own[name] = new.where(cond, da).variable
+            nodes[path] = own
+    return _rebuild(tree, nodes) if nodes else tree
 
 
 def _payload(
@@ -236,7 +379,8 @@ def _payload(
             pointer="/inputs_stage",
         )
     try:
-        flat = select_nodes(ds, block.nodes, block.join)
+        # the stored schema (what fit used), not a per-node inference that may differ
+        flat = select_nodes(ds, block.nodes, block.join, schema=_schema_of(ds))
     except NodeSelectionError as exc:
         err = selection_error(exc)
         err.pointer = f"/{what}"
@@ -335,6 +479,7 @@ def fit_spec(
     keep_evaluation_bundle: bool = True,
     hash_data: bool = True,
     tree_schema: TreeSchema | None = None,
+    tree: xr.DataTree | None = None,
 ) -> Bundle:
     """Fit ``spec`` on ``data`` and return the production :class:`~mapi_sdk.bundle.Bundle`.
 
@@ -345,12 +490,16 @@ def fit_spec(
     ``data`` may be a tree dataset (M4): the nodes ``spec.data.nodes`` selects are merged
     into the flat dataset the pipeline reads (:func:`mapi_sdk.tree.select_nodes`);
     ``tree_schema`` describes the tree (inferred when omitted) and ``raw_schema``, if given,
-    the merged flat dataset. A tree-input model also gets the bound tree (``ctx.tree``).
+    the merged flat dataset. A tree-input model also gets the bound tree (``ctx.tree``);
+    ``tree`` (dataset names) stands in for it when ``data`` was already selected from a tree
+    (a refit on modified flat data). With a ``data.split`` the evaluation fit and the
+    holdout score see only their part of the tree.
     """
     spec = load_model_spec(spec) if isinstance(spec, str) else spec
     registry = registry or default_registry()
     hooks = hooks or FitHooks()
-    given = _tree_input(spec, data, raw_schema, tree_schema)
+    from_tree = isinstance(data, xr.DataTree)
+    given = _tree_input(spec, data, raw_schema, tree_schema, tree)
     data = normalise_dataset(given.flat)
     resolved, schema, issues = _resolve(given.spec, registry, data, given.raw_schema)
     check_dataset(schema, data)
@@ -379,7 +528,9 @@ def fit_spec(
         side_tables=tables,
         seed=spec.model.fit.seed or 0,
         hooks=hooks,
-        data_hash=data_hash(given.tree if given.tree is not None else data) if hash_data else None,
+        data_hash=data_hash(given.tree if from_tree and given.tree is not None else data)
+        if hash_data
+        else None,
         validation_issues=issues,
         tree=given.tree,
         bound_tree=_bound_tree(
@@ -417,8 +568,18 @@ def fit_spec(
     sr = split_dataset(prefix.data, split, schema=resolved.stages.get(split_stage), seed=env.seed)
     _check_recursion(resolved, split, sr)
     hooks.progress(0.15, "split the data")
+    binding = BindingMap(resolved.binding)
+    train_tree = _split_tree(
+        env.tree, sr.train, binding, spec.data, mask=sr.holdout_mask, targets=schema.targets
+    )
     evaluation = _fit_from(
-        env, prefix, sr.train, start=split_stage, role="evaluation", progress=(0.15, 0.45)
+        env,
+        prefix,
+        sr.train,
+        start=split_stage,
+        role="evaluation",
+        progress=(0.15, 0.45),
+        bound_tree=_bound_tree(train_tree, binding, env.bound_tree is not None),
     )
     hooks.progress(0.45, "fitted on the training data")
     metrics = _evaluate(env, evaluation, sr, split_stage)
@@ -496,7 +657,10 @@ def _fit_from(
     start: str,
     role: Literal["production", "evaluation"],
     progress: tuple[float, float] = (0.0, 1.0),
+    bound_tree: xr.DataTree | None = None,
 ) -> Bundle:
+    if bound_tree is not None:  # the part of the tree this fit may see (a split)
+        env = dataclasses.replace(env, bound_tree=bound_tree)
     hooks = env.hooks
     rest = env.pipeline.fit(
         ds,
@@ -963,10 +1127,20 @@ def _evaluate(env: _FitEnv, evaluation: Bundle, sr: SplitResult, split_stage: st
             dims=[fdim],
             coords={fdim: sr.holdout[fdim].values} if fdim in sr.holdout.coords else None,
         )
+    binding = BindingMap(env.resolved.binding)
+    payload_tree = _split_tree(env.tree, sr.holdout, binding, env.spec.data)
     if sr.is_masked and any(s.depends_on_target for s in env.resolved.steps):
         # cell-level split: held-out targets must not feed target-dependent features
         # (lags of y) - score the target-masked data, compare against the full data
         payload, observed = sr.train, sr.holdout
+        payload_tree = _split_tree(
+            env.tree,
+            sr.train,
+            binding,
+            env.spec.data,
+            mask=sr.holdout_mask,
+            targets=env.raw_schema.targets,
+        )
     tree = score_bundle(
         evaluation,
         req,
@@ -976,7 +1150,7 @@ def _evaluate(env: _FitEnv, evaluation: Bundle, sr: SplitResult, split_stage: st
         metrics=[m for m in names if not m.startswith("elpd_")],
         metric_mask=mask,
         observed=observed,
-        tree=env.tree,
+        tree=payload_tree,
     )
     report = MetricsReport.model_validate_json(tree.attrs["metrics"])
     report.split = json_safe(
@@ -1523,6 +1697,8 @@ def score_bundle(
     scored_tree = scenario_tree if scenario_tree is not None else data_tree
     if req.interventions:
         scored = _apply_interventions(scored, req, binding)
+        if wants_tree and scored_tree is not None:
+            scored_tree = _intervene_tree(scored_tree, req, binding, block)
     main = run(scored, scored_tree)
     issues += main.issues
     if observed is not None:

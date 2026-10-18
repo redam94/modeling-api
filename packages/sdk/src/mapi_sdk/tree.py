@@ -51,6 +51,7 @@ from mapi_sdk.wire import DEFAULT_LIMITS, WireLimits, read_datatree_zip, write_d
 
 __all__ = [
     "TREE_LIMITS",
+    "TREE_SCHEMA_ATTR",
     "NodesArg",
     "check_tree",
     "infer_tree_schema",
@@ -59,6 +60,7 @@ __all__ = [
     "select_nodes",
     "selection_error",
     "selection_schema",
+    "stored_tree_schema",
     "validate_tree",
     "write_tree_zip",
 ]
@@ -73,6 +75,10 @@ NodesArg = Mapping[str, NodeSelect | Mapping[str, Any]] | None
 the default (the root node, when it has variables)."""
 
 _JOINS: frozenset[str] = frozenset({"exact", "inner", "outer"})
+
+TREE_SCHEMA_ATTR = "mapi_tree_schema"
+"""Root attribute of a tree dataset version (``data.tree.zip``) holding its TreeSchema
+(JSON), as ``mapi_schema`` holds a plain dataset's."""
 
 
 # ------------------------------------------------------------------------------ nodes
@@ -133,6 +139,21 @@ def node_dataset(tree: xr.DataTree, path: str = ROOT) -> xr.Dataset:
 
 
 # ----------------------------------------------------------------------------- schema
+
+
+def stored_tree_schema(tree: xr.DataTree) -> TreeSchema | None:
+    """The TreeSchema stored in ``tree``'s root attrs (:data:`TREE_SCHEMA_ATTR`, written by
+    the ingest), or ``None`` when there is none, it is invalid or its nodes are not the
+    tree's. The stored schema keeps what the upload's mapping declared (dim specs a
+    per-node inference cannot recover), so every reader prefers it to inferring one."""
+    raw = tree.attrs.get(TREE_SCHEMA_ATTR)
+    if not isinstance(raw, str):
+        return None
+    try:
+        schema = TreeSchema.model_validate_json(raw)
+    except ValueError:
+        return None
+    return schema if set(schema.nodes) == set(_nodes(tree)) else None
 
 
 def infer_tree_schema(
@@ -293,16 +314,21 @@ def select_nodes(
     ``nodes=None`` reads the root node (an error when the root holds no variables).
 
     The rules and errors are those of :meth:`TreeSchema.flat
-    <mapi_spec.tree.TreeSchema.flat>` (checked first on ``schema``, inferred from ``tree``
-    when omitted): unknown nodes or variables, a variable produced twice, a variable
-    named like a selected dim, dims whose spec differs between nodes, mixed layouts.
-    Coordinate values then align per ``join`` (``exact``: equal labels, else an error;
-    ``inner``: shared labels; ``outer``: all labels, missing values elsewhere). Every
-    problem raises :class:`~mapi_spec.tree.NodeSelectionError` (``key`` names the entry).
+    <mapi_spec.tree.TreeSchema.flat>` (checked first on ``schema``; when omitted, the one
+    stored in the tree (:func:`stored_tree_schema`), else one inferred from it): unknown
+    nodes or variables, a variable produced twice, a variable named like a selected dim,
+    dims whose spec differs between nodes, mixed layouts. Coordinate values then align
+    per ``join`` (``exact``: equal labels, else an error; ``inner``: shared labels;
+    ``outer``: all labels, missing values elsewhere). Every problem raises
+    :class:`~mapi_spec.tree.NodeSelectionError` (``key`` names the entry).
+
+    Non-index coords are not part of the schema, so they never make a selection fail: one
+    named like a selected variable, or differing between nodes, is left out.
     """
     if join not in _JOINS:
         raise NodeSelectionError(f"join must be one of {sorted(_JOINS)}, not {join!r}")
-    schema = schema if schema is not None else infer_tree_schema(tree)
+    if schema is None:
+        schema = stored_tree_schema(tree) or infer_tree_schema(tree)
     selection = _selection(nodes)
     if selection is None:
         selection = _default_selection(schema)
@@ -332,19 +358,57 @@ def select_nodes(
         parts.append((key, part))
     if join == "exact":
         _check_exact(parts)
+    cores: list[xr.Dataset] = []
+    aux: list[xr.DataArray] = []
+    for _, p in parts:
+        extra = [str(n) for n in p.coords if n not in p.xindexes]
+        cores.append(p.drop_vars(extra) if extra else p)
+        aux.extend(p.coords[n] for n in extra)
     try:
         merged = xr.merge(
-            [p for _, p in parts],
+            cores,
             join=join,
             compat="no_conflicts",
             combine_attrs="drop_conflicts",
         )
     except (ValueError, KeyError) as exc:
         raise NodeSelectionError(f"the selected nodes cannot be merged: {str(exc)[:500]}") from None
+    merged = _with_aux_coords(merged, aux)
     merged.attrs = {}
     if not merged.data_vars:
         raise NodeSelectionError("the selected nodes hold no variables")
     return normalise_dataset(merged)
+
+
+def _with_aux_coords(merged: xr.Dataset, aux: list[xr.DataArray]) -> xr.Dataset:
+    """``merged`` plus the selected nodes' non-index coords that fit it: aligned to its
+    labels, and left out when one is named like a variable or differs between nodes."""
+    added: dict[str, xr.Variable] = {}
+    dropped: set[str] = set()
+    for coord in aux:
+        name = str(coord.name)
+        if name in dropped or (name in merged.variables and name not in added):
+            continue
+        try:
+            labels = {
+                d: merged.indexes[d]
+                for d in coord.dims
+                if d in coord.indexes and d in merged.indexes
+            }
+            var = (coord.reindex(labels) if labels else coord).variable
+            if any(merged.sizes.get(d, -1) != n for d, n in var.sizes.items()):
+                raise ValueError("the coord does not fit the merged dims")
+        except (ValueError, KeyError, TypeError):
+            dropped.add(name)
+            added.pop(name, None)
+            continue
+        if name in added:
+            if not added[name].equals(var):
+                dropped.add(name)
+                del added[name]
+            continue
+        added[name] = var
+    return merged.assign_coords(added) if added else merged
 
 
 def selection_schema(
