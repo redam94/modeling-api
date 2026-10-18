@@ -477,5 +477,6 @@ def test_real_digits_fit_and_complete_the_test_writers(registry: Registry) -> No
     assert held["images"] == 200
     assert held["rmse"] < 0.31  # notebook 0.283; PPCA-10 0.291, the average digit ~0.37
     assert held["lpd_per_image"] > -3.0  # notebook -0.3 nats per digit
+    assert np.isfinite(b.metrics.values["elpd_loo"])
     codes = {d.code for d in IBPFeaturesModel().diagnostics(b.model, ds)}
     assert "TRUNCATION_BINDS" in codes  # pi_8 ~ 0.3: K = 8 is too few, as in the notebook

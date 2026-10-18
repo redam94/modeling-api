@@ -105,13 +105,13 @@ model:
     draws: 1000
     chains: 4
     keep: {log_likelihood: true, posterior_predictive: {thin: 100}}
-evaluate: {metrics: [rmse, mae]}
+evaluate: {metrics: [elpd_loo]}
 outputs:
   plots: [core.convergence, core.posterior_forest, sci.field_map, sci.ppc_image_grid]
 """
 """E31 at the notebook's settings: K = 8, sigma_X = 0.25, 4 chains of 1000 after 1000 warm-up
 steps. The bottom halves of the 200 test digits are hidden; ``learned.heldout`` scores
-their completion."""
+their completion. There is no split, so the only metric is ``elpd_loo`` (per image)."""
 
 IBP_TRUTH: dict[str, Any] = {"pi": (0.6, 0.45, 0.3), "noise_sd": 0.15, "level": 0.2}
 """Generating values of :func:`ibp_dataset`: feature probabilities, pixel noise and the ink
