@@ -27,7 +27,7 @@ others::
         ExportCase(
             case="e18",
             title="Disease mapping of lip cancer in Scotland",
-            notebook="E18_areal_disease_mapping.py",
+            notebook="E18_areal_models_icar_bym2.py",
             model="sci.areal_bym2",
             files=(areal_data.CHALLENGES_FILE,),
             loader=lambda d: areal_data.from_challenges(d / areal_data.CHALLENGES_FILE),
@@ -62,7 +62,7 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
-from mapi_plugin_science import kpp_data, lens_data, lgcp_data, traction_data
+from mapi_plugin_science import areal_data, kpp_data, lens_data, lgcp_data, traction_data
 from mapi_plugin_science.challenges import CHALLENGES_ENV
 
 __all__ = [
@@ -422,6 +422,22 @@ _register(
         project="astronomy",
         dataset="slacs_j1627_f814w",
         spec=lens_data.SLACS_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e18",
+        title="Lip cancer in the districts of Scotland (disease mapping)",
+        notebook="E18_areal_models_icar_bym2.py",
+        model="sci.areal_bym2",
+        files=(areal_data.CHALLENGES_FILE,),
+        loader=lambda d: areal_data.from_challenges(d / areal_data.CHALLENGES_FILE),
+        synthetic=lambda: areal_data.areal_dataset(),
+        schema=areal_data.AREAL_SCHEMA,
+        project="epidemiology",
+        dataset="scotland_lip_cancer",
+        spec=areal_data.SCOTLAND_SPEC_YAML,
     )
 )
 

@@ -1,0 +1,28 @@
+# E18: the smoothed map, predictive counts, new maps (simulate) and typed refusals.
+- name: predict_map
+  request: {mode: predict, output: {draws: 5}}
+  payload: fit_data
+  expect:
+    groups: [summary, draws]
+    vars: [cases, rr, p_exceed, effect]
+    sizes: {district: 43}
+- name: predict_predictive
+  request: {mode: predict, output: {kind: predictive}}
+  payload: fit_data
+  expect: {vars: [cases], sizes: {district: 43}}
+- name: simulate_new_maps
+  request: {mode: simulate, output: {kind: predictive}}
+  payload: fit_data
+  expect: {vars: [cases, rr, effect], sizes: {district: 43}}
+- name: predict_two_areas
+  request: {mode: predict, output: {summary: [mean, q5, q95]}}
+  payload: two_areas
+  expect: {sizes: {district: 2, stat: 3}}
+- name: new_area
+  request: {mode: predict}
+  payload: new_area
+  expect_error: UNSEEN_LEVELS
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: aff, multiply: 1.1}]}
+  payload: fit_data
+  expect_error: MODE_NOT_SUPPORTED

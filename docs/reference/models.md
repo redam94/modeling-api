@@ -34,6 +34,7 @@ each lift likelihood.
 | `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
 | `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
 | `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
+| `sci.areal_bym2@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e18_areal` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -298,8 +299,8 @@ For a text target, the server skips numeric metrics, for example `mape`.
 
 These plugins come from the case studies of
 [pymc-challenges](https://github.com/redam94/pymc-challenges). Their data are maps, images and
-fields on a regular grid. Their outputs are fields with a range for each cell. Each output that
-is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the column dim `x`, an
+fields on a regular grid, or the areas of a map. Their outputs have a range for each cell or
+area. Each output that is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the column dim `x`, an
 optional `frame` dim and an optional `component` dim for a vector field). The platform then
 shows the output in two places:
 
@@ -348,6 +349,7 @@ the suggested spec. That spec reads the suggested dataset name
 | Case | Model | Data file in `data/` | Suggested dataset |
 |---|---|---|---|
 | `e07` | `sci.lgcp_grid` | `oklahoma_quakes.csv` | `geoscience/oklahoma_quakes_grid` |
+| `e18` | `sci.areal_bym2` | `scotland_lip.geojson` | `epidemiology/scotland_lip_cancer` |
 | `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
 | `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
 | `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
@@ -380,6 +382,86 @@ and `total(period)`. The sum of `rate` over the cells is equal to `total`.
 
 `from_challenges` puts the Oklahoma earthquake catalogue into 12 × 9 cells of 25 km for each
 quarter from 2009 to 2019. A fit on 2009–2017 takes approximately one minute with nutpie.
+
+### `sci.areal_bym2` — disease risk on a map of areas (E18)
+
+A disease map for counts in areas (districts, counties). The count of each area is Poisson
+around its expected count times a relative risk `rr`. The log of `rr` is an intercept, plus a
+covariate effect, plus an area effect `u`. The `kind` setting selects the prior of `u`:
+
+| `kind` | Area effect `u` |
+|---|---|
+| `poisson` | No area effect |
+| `iid` | Independent effects with sd `sigma` |
+| `icar` | An intrinsic CAR (ICAR) on the graph of neighbours: each effect is close to the mean of its neighbours |
+| `car` | A proper CAR with `alpha ~ Uniform(0, 1)`. `alpha` is often near 1, and then the intercept mixes slowly |
+| `bym2` | A scaled ICAR plus independent effects. `sigma` is the total sd and `rho` is the share that follows the map |
+
+For `bym2`, the model divides the ICAR by the square root of the scaling factor `s` of the graph
+(the geometric mean of the diagonal of the generalised inverse of the graph Laplacian). Thus
+`sigma` and `rho` have the same meaning on every map. The fit always keeps the log-likelihood of
+each area, so `elpd_loo` compares the kinds. Many Pareto k values are high, because each area has
+its own effect.
+
+**Inputs.** `area` and `area_` (categorical, fixed: the same areas twice), `vertex` (integer,
+fixed), the target `cases(area)` (missing values are permitted), `expected(area)` (the expected
+count, for example age-standardised), one `covariate(area)`, `adjacency(area, area_)` (1 for
+neighbours) and the polygon outlines `ring_x(area, vertex)` and `ring_y(area, vertex)` (NaN
+padded; a NaN inside a row starts a new ring).
+
+**Islands.** An area without neighbours makes the BYM2 scaling factor undefined, and under an
+ICAR its effect gets no information from other areas. The `islands` setting selects what
+happens:
+
+- `link_nearest` (default): the model links each such area to the area with the closest polygon
+  vertex. Then it links each remaining separate piece of the graph in the same way. The links
+  are in `learned["links"]`.
+- `isolate`: the graph stays as it is. Only `iid` and `icar` accept this.
+- `error`: a graph with more than one piece stops the fit with `SCHEMA_INVALID`.
+
+**Outputs.** `cases(area)` (the expected count `expected × rr`, or a Poisson draw), `rr(area)`
+(the relative risk), `p_exceed(area)` (1 when `rr` is more than `exceed_threshold` in a draw,
+so its mean is the probability) and `effect(area)` (`u`). The bundle keeps the map for the plots
+in `constant_data`: `ring_x`, `ring_y`, `adjacency` (the graph that the model used, with the
+links), `centroid(area, xy)` and `smr(area)` (observed ÷ expected). Thus `sci.area_map` draws
+the maps (use `observed: smr` for the raw ratio) and `net.graph` draws the graph at the
+centroids.
+
+**Score modes.** A score needs only the area labels. `expected` and `covariate` come from the
+fit when the payload does not give them. A payload can change them (for example, a different
+covariate). `simulate` draws a new map of area effects for each draw from the fitted `sigma`,
+`rho` and `alpha`, and then new counts. A hand-written sampler draws the ICAR, because
+`pm.ICAR` cannot draw values. Areas that are not in the fit stop the score with
+`UNSEEN_LEVELS`.
+
+**Leave-areas-out.** A `mask_block` split over `area` removes the counts of the held-out areas
+from the likelihood, but the areas stay in the graph. The model then predicts them from their
+neighbours.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kind` | `bym2` | `poisson`, `iid`, `icar`, `car` or `bym2` |
+| `islands` | `link_nearest` | `link_nearest`, `isolate` or `error` |
+| `covariate_scale` | 10 | The model divides the centred covariate by this value. `b1` is the effect of one unit |
+| `center_covariate` | true | Subtract the mean of the covariate |
+| `intercept_sd`, `slope_sd` | 1, 1 | Prior sd of `b0` and `b1` |
+| `sigma_scale` | 1 | Half-normal scale of `sigma` |
+| `rho_alpha`, `rho_beta` | 1, 1 | Beta prior of `rho` (`bym2`) |
+| `exceed_threshold` | 1 | The threshold of `p_exceed` |
+
+`from_challenges` reads `scotland_lip.geojson`: the 56 districts of Scotland with the lip cancer
+cases from 1975 to 1980, the expected cases and `aff` (the percentage of workers in agriculture,
+fishing and forestry). The adjacency is queen contiguity from the polygons (117 edges), as in the
+notebook. Orkney, Shetland and the Western Isles have no neighbours, and `link_nearest` links
+them to Caithness, Orkney and Ross-Cromarty. Use `graph="rook"` for shared border segments, or
+`graph="published"` for the hand-edited WinBUGS list of `scotland_lip_adjacency.csv`. With
+`kind: bym2` the AFF effect `b1` is 0.41 (0.67 with `iid`), `rho` is about 0.8, and 19 districts
+have `P(rr > 1) > 0.95`. The fit takes a few seconds.
+
+Typed errors: `SETTINGS_INVALID` for `bym2` or `car` on a graph with more than one piece, and for
+`simulate` of an ICAR with isolated areas. `SCHEMA_INVALID` for counts that are not whole
+non-negative numbers, for an expected count that is not more than zero, and for a graph with
+islands when `islands` is `error`.
 
 ### `sci.fisher_kpp` — a reaction-diffusion PDE (E50)
 
