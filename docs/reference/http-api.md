@@ -230,10 +230,10 @@ Data goes into the platform in three steps:
 | `GET /v1/datasets` | List the datasets | — | `Page[Dataset]` | 200 | — |
 | `GET /v1/datasets/{dataset_id}` | Get a dataset | — | `Dataset` | 200 | `NOT_FOUND` |
 | `POST /v1/datasets/{dataset_id}/uploads` | Get a signed PUT URL into quarantine | `UploadCreate` | `UploadSession` | 201 | `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `QUOTA_EXCEEDED` |
-| `POST /v1/datasets/{dataset_id}/versions` | Ingest an upload as a new version. This starts an `ingest` run. Accepts `Idempotency-Key`. | `DatasetVersionCreate` | `DatasetVersion` (status `ingesting`) | 202 | `NOT_FOUND`, `CONFLICT` (the upload is not complete, or a version already uses it) |
+| `POST /v1/datasets/{dataset_id}/versions` | Ingest an upload as a new version. This starts an `ingest` run. From v0.8, `assembly` makes one version from several uploads ([tree datasets](#m4)). Accepts `Idempotency-Key`. | `DatasetVersionCreate` | `DatasetVersion` (status `ingesting`) | 202 | `NOT_FOUND`, `CONFLICT` (the upload is not complete, or a version already uses it), `PAYLOAD_TOO_LARGE` (the uploads of an assembly are larger than 5 GB together) |
 | `GET /v1/datasets/{dataset_id}/versions` | List the versions | — | `Page[DatasetVersion]` | 200 | `NOT_FOUND` |
 | `GET /v1/datasets/{dataset_id}/versions/{version}` | Schema, summary, and references to the profile and the preview | — | `DatasetVersion` | 200 | `NOT_FOUND` |
-| `GET /v1/datasets/{dataset_id}/versions/{version}/artifacts/{name}` | Signed URL for `data.zarr.zip`, `schema.json`, `profile.json` or `preview.json` | — | `ArtifactLink` | 200 | `NOT_FOUND` |
+| `GET /v1/datasets/{dataset_id}/versions/{version}/artifacts/{name}` | Signed URL for `data.zarr.zip`, `schema.json`, `profile.json` or `preview.json`. A tree version (v0.8) has `data.tree.zip` and `tree_schema.json` | — | `ArtifactLink` | 200 | `NOT_FOUND` |
 
 ### Specs
 
@@ -893,13 +893,26 @@ and the `sources` it was built from, and `data_schema` is the schema of the root
   To see what is in a file first, inspect the upload (below). NetCDF and xarray-written HDF5
   files keep format `netcdf`; their groups become nodes.
 - **Inspection.** An `inspect` run reads only the metadata of an upload (after the HDF5
-  safety checks) and lists its groups and arrays. It is idempotent per upload: a finished
-  inspection is returned as it is.
+  safety checks) and lists its groups and arrays. It is idempotent per upload: while an
+  inspection runs, or after it succeeded, the server returns that run. If the run failed or
+  was cancelled, a new request starts a new run. The run has resource class S, interactive
+  priority and the timeout `MAPI_INSPECT_TIMEOUT_S` (300 s).
+- **Assemblies.** The server checks every upload of an `assembly` before it uses any of them:
+  each upload belongs to the dataset, is complete, is used one time and is not in another
+  version. Otherwise it answers `409 CONFLICT` with a pointer to the source
+  (`/body/assembly/sources/<i>/upload_id`), and all the uploads stay available. The uploads of
+  one version are a maximum of 5 GB together (`413 PAYLOAD_TOO_LARGE`). One `ingest` run reads
+  them all.
+- **Unsafe files.** If the HDF5 guard refuses a file, the ingest or inspect run fails with
+  `INGEST_UNSAFE_FILE` (422) in its `problem`, and the version becomes `failed`.
+
+The full guide, with examples, is
+[Tree datasets, HDF5 and multi-file versions](../guides/tree-data.md).
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `POST /v1/datasets/{dataset_id}/uploads/{upload_id}/inspect` | List the groups and arrays of an upload (an `inspect` run). Accepts `Idempotency-Key`. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (the upload is not complete), `QUOTA_EXCEEDED` |
-| `GET /v1/datasets/{dataset_id}/uploads/{upload_id}/inspection` | What the inspect run found | — | `UploadInspection` | 200 | `NOT_FOUND` (never inspected), `NOT_READY` (409, the run has not finished) |
+| `POST /v1/datasets/{dataset_id}/uploads/{upload_id}/inspect` | List the groups and arrays of an upload (an `inspect` run). The server returns the current run, or the run of a finished inspection. Accepts `Idempotency-Key`. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (the file did not arrive, the upload expired, or a version used the upload before an inspection), `QUOTA_EXCEEDED` |
+| `GET /v1/datasets/{dataset_id}/uploads/{upload_id}/inspection` | What the inspect run found | — | `UploadInspection` | 200 | `NOT_FOUND` (never inspected, or the run ended without an inspection: the `problem` of the run tells why), `NOT_READY` (409, the run has not finished) |
 
 ## DTO index
 

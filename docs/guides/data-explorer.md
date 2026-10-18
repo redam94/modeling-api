@@ -95,6 +95,14 @@ with its `status`:
 The plots for a section are at `ui/explore/plots/<section>.json`. This file is a list of
 PlotSpecs to render in the plot sandbox.
 
+**Tree datasets** <span class="mapi-badge">v0.8</span>. For a
+[tree dataset](tree-data.md), `ui/explore/` holds the views of the default node: the root, or
+the first node with variables. The views of each node with variables are under
+`ui/explore/nodes/<slug>/`, where the slug is `~root` for the root, or the node path with `~`
+in place of `/` (`sales~weekly` for `/sales/weekly`). `ui/explore/nodes/index.json` gives the
+default node and the index of each node. An explore run takes `"node": "/sales"` in its
+request. The default is the default node.
+
 ## Everything else, on demand
 
 The heavier sections run as an **explore run**. These sections are `stl`, `stationarity`,
