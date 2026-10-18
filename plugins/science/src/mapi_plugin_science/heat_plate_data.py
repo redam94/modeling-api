@@ -99,15 +99,16 @@ model:
     tune: 1000
     draws: 1000
     chains: 4
-    engine: pymc
+    engine: nutpie
     target_accept: 0.9
     keep: {log_likelihood: true}
-evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
+evaluate: {metrics: [elpd_loo]}
 outputs:
   plots: [core.convergence, core.posterior_forest, core.pair, sci.field_map, sci.image_residuals]
 """
-"""The E51 calibration with the notebook's sampler settings (``pm.sample`` defaults,
-``target_accept=0.9``, seed 51), fitted in sample on all three runs."""
+"""The E51 calibration with the notebook's sampler settings (4 x 1000 draws after 1000
+tuning steps, ``target_accept=0.9``, seed 51), fitted in sample on all three runs (about
+45 s with nutpie). Three runs leave no run to hold out, so the spec asks for LOO only."""
 
 HEAT_TRUTH: dict[str, float] = {"k": 60.0, "h": 9.0, "h_edge": 15.0, "eta": 0.93, "sigma": 0.2}
 """The notebook's ``THETA_TRUE`` plus the thermocouple noise sd (degC)."""
