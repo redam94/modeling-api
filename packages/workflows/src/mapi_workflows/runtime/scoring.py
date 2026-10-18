@@ -84,6 +84,7 @@ def score_node(ctx: NodeContext) -> NodeOutcome:
     bundle = mv.bundle
     reg = _registry(ctx)
     history = None
+    payload: xr.Dataset | xr.DataTree | None
     if mode == "forecast":
         tdim = _time_dim(mv)
         extra.setdefault("horizon", {"dim": tdim, "periods": 12})
