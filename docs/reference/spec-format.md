@@ -51,7 +51,7 @@ execution: {resource_class: M, timeout: 45m}
 | `evaluate` | Holdout metrics (`elpd_loo`, `coverage_90`, `mape`, `rmse`, ...) |
 | `execution` | The resource class (`S`, `M`, `L`, `XL`) and the timeout (`45m`, `1h30m`). Each class has a limit for the input data that a run reads (dataset plus side tables): S 0.5 GB, M 2 GB, L 5 GB, XL 50 GB. If the data is larger, validation reports `PAYLOAD_TOO_LARGE` at `/execution/resource_class`. The message gives the class that fits. Ingest runs select the smallest class that holds the upload. |
 
-## Tree datasets in a spec <span class="mapi-badge">v0.8</span>
+## Tree datasets in a spec <span class="mapi-badge">v0.8</span> { #tree-datasets-in-a-spec }
 
 A [tree dataset](../guides/tree-data.md) has nodes, for example `/sales` and `/media`. Steps
 and most models read one flat dataset. `data.nodes` selects the nodes, and the platform

@@ -162,7 +162,7 @@ If a step needs a table that does not have sufficient coverage, the step fails w
 A side table that is a tree dataset reads one node, which `node` names (v0.8):
 `fx: {ref: dataset://growth/reference@latest, node: /fx}`.
 
-## Tree datasets <span class="mapi-badge">v0.8</span>
+## Tree datasets <span class="mapi-badge">v0.8</span> { #tree-datasets }
 
 A dataset version can also hold an `xr.DataTree`: a tree of **nodes**, each with its own
 variables. Node paths identify the nodes (`/` is the root, `/instrument/psf` a group below

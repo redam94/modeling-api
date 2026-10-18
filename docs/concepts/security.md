@@ -122,7 +122,7 @@ environment, signed events, limits and output verification. But the boundary bet
 account and the model code is only as strong as the process separation of Python. Think of a
 local run as the same as a run of the plugin in a notebook.
 
-### Uploads and the HDF5 guard <span class="mapi-badge">v0.8</span>
+### Uploads and the HDF5 guard <span class="mapi-badge">v0.8</span> { #uploads-and-the-hdf5-guard }
 
 Only an ingest or inspect run in the sandbox opens an upload. The API never parses it. HDF5
 (and NetCDF-4, which is HDF5) has features that can make a reader open other files, load
