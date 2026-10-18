@@ -2,8 +2,17 @@ from __future__ import annotations
 
 import mapi_plugin_science
 
+EXPECTED_IDS = {
+    "sci.lgcp_grid",
+    "sci.fisher_kpp",
+    "sci.traction_force",
+    "sci.strong_lens",
+    "sci.graphical_model",
+}
+
 
 def test_plugins_tuple() -> None:
     ids = {p.id for p in mapi_plugin_science.PLUGINS}
-    assert {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens"}
-    assert "sci.graphical_model" in ids <= ids
+    # Exact match and no duplicates: dropping or repeating a plugin fails here.
+    assert ids == EXPECTED_IDS
+    assert len(mapi_plugin_science.PLUGINS) == len(EXPECTED_IDS)
