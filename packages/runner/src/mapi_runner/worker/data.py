@@ -27,6 +27,7 @@ from mapi_sdk.tree import (
     read_tree_zip,
     select_nodes,
     selection_error,
+    stored_tree_schema,
 )
 from mapi_sdk.wire import DEFAULT_LIMITS, loads_xrjson, read_datatree_zip, read_zarr_zip
 from mapi_spec.errors import ErrorCode, MapiError
@@ -40,13 +41,14 @@ from pydantic import ValidationError
 
 from mapi_runner.jobs import INPUT_BUNDLE_MANIFEST, INPUT_SCHEMA, SIDE_TABLE_PREFIX
 from mapi_runner.worker.context import WorkerContext
-from mapi_runner.worker.tree_ingest import TREE_SCHEMA_ATTR, zarr_has_groups
+from mapi_runner.worker.tree_ingest import zarr_has_groups
 
 __all__ = [
     "INPUT_TREE_SCHEMA",
     "SCHEMA_ATTR",
     "flatten",
     "load_bundle",
+    "load_data_and_tree",
     "load_dataset",
     "load_flat_dataset",
     "load_inline",
@@ -106,14 +108,9 @@ def load_tree_schema(ctx: WorkerContext, data: xr.Dataset | xr.DataTree) -> Tree
             ) from None
         if set(given.nodes) == paths:
             return given
-    stored = data.attrs.get(TREE_SCHEMA_ATTR)
-    if isinstance(stored, str):
-        try:
-            schema = TreeSchema.model_validate_json(stored)
-        except ValidationError:
-            schema = None
-        if schema is not None and set(schema.nodes) == paths:
-            return schema
+    stored = stored_tree_schema(data)
+    if stored is not None:
+        return stored
     try:
         return infer_tree_schema(data)
     except SchemaValidationError as exc:
@@ -149,6 +146,16 @@ def load_flat_dataset(
     """:func:`load_dataset` + :func:`flatten` (for runs that only read the flat data)."""
     data = load_dataset(ctx, name)
     return flatten(data, block, load_tree_schema(ctx, data))
+
+
+def load_data_and_tree(
+    ctx: WorkerContext, block: DataBlock | None = None, name: str = INPUT_DATASET
+) -> tuple[xr.Dataset, xr.DataTree | None]:
+    """:func:`load_flat_dataset`, plus the tree it was selected from (``None`` for a plain
+    dataset): runs that score a tree-input model hand it to the model (M4)."""
+    data = load_dataset(ctx, name)
+    flat = flatten(data, block, load_tree_schema(ctx, data))
+    return flat, data if isinstance(data, xr.DataTree) else None
 
 
 _INLINE_LIMITS = replace(DEFAULT_LIMITS, max_json_bytes=MAX_XRJSON_BYTES + 64 * 1024)

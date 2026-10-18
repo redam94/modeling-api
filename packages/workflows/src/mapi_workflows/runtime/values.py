@@ -85,6 +85,8 @@ class ModelValue:
     model: str | None = None
     """The catalog model ref it was fitted with (``ts.sarimax@1.0.0``)."""
     settings: dict[str, JsonValue] = field(default_factory=dict)
+    tree: xr.DataTree | None = None
+    """M4: the tree dataset ``data`` was selected from (a tree-input model scores with it)."""
 
 
 Value = DatasetValue | ModelValue | dict[str, Any]

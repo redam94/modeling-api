@@ -149,6 +149,8 @@ class ModelContext:
     compare: list[tuple[str, Bundle]] = field(default_factory=list)
     evaluation: Bundle | None = None
     refitter: Refitter | None = None
+    tree: xr.DataTree | None = None
+    """M4: the tree dataset ``data`` was selected from (a tree-input model scores with it)."""
     _pred: list[Prediction] | None = None
     _scored: xr.Dataset | None = None
     _plugin: dict[str, BaseModel] | None = None
@@ -181,7 +183,11 @@ class ModelContext:
     def predictions(self) -> list[Prediction]:
         if self._pred is None:
             self._pred = predict(
-                self.bundle, self.data, self.registry, side_tables=self.side_tables
+                self.bundle,
+                self.data,
+                self.registry,
+                side_tables=self.side_tables,
+                tree=self.tree,
             )
             if not self._pred:
                 raise SectionSkipped("the predictions of the model do not align with its target")
@@ -210,6 +216,7 @@ class ModelContext:
                 side_tables=self.side_tables,
                 registry=self.registry,
                 return_full=True,
+                tree=self.tree,
             )
             node = tree["predictions"]
             assert isinstance(node, xr.DataTree)
@@ -880,6 +887,7 @@ def forecast(c: ModelContext) -> ModelForecastView:
         registry=c.registry,
         return_full=True,
         history=c.data,
+        tree=c.tree,
     )
     node = tree["predictions"]
     assert isinstance(node, xr.DataTree)
@@ -1035,7 +1043,7 @@ def backtest(c: ModelContext) -> BacktestView:
         test = c.data.isel({t: slice(f.train_start, f.test_stop)})
         try:
             b = c.refitter.fit(train, spec)
-            preds = predict(b, test, c.registry, side_tables=c.side_tables)
+            preds = predict(b, test, c.registry, side_tables=c.side_tables, tree=c.tree)
         except Exception as exc:
             warn.append(f"fold {f.index}: {type(exc).__name__}: {str(exc)[:200]}")
             continue
@@ -1133,7 +1141,7 @@ def comparison(c: ModelContext) -> ComparisonView:
         for ref, b in models:
             trained = b.evaluation or b
             try:
-                preds = predict(trained, c.data, c.registry, side_tables=c.side_tables)
+                preds = predict(trained, c.data, c.registry, side_tables=c.side_tables, tree=c.tree)
             except Exception as exc:
                 warn.append(f"{ref}: could not score the shared holdout ({type(exc).__name__})")
                 continue

@@ -307,7 +307,11 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
         tree = _without_full(tree)
     plots = job.plots if job.plots is not None else _DEFAULT_PLOTS.get(job.request.mode, [])
     try:
-        flat = None if data is None else flatten(data, bundle.spec.data)
+        flat = (
+            None
+            if data is None
+            else flatten(data, bundle.spec.data, load_tree_schema(ctx, data))
+        )
         actuals = actuals_tables(bundle, job.request, flat, tree)
     except (ValueError, KeyError) as exc:  # the comparison is a convenience; the score stands
         ctx.warning("VIEW_FAILED", f"the actuals were not added to the summary: {exc}"[:500])

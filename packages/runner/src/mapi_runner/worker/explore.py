@@ -238,8 +238,8 @@ def run_explore(ctx: WorkerContext, job: ExploreJob) -> ExplorerIndex:
     """An ``explore`` run (see the module docstring)."""
     from mapi_runner.worker.data import (
         load_bundle,
+        load_data_and_tree,
         load_dataset,
-        load_flat_dataset,
         load_raw_schema,
         load_side_tables,
     )
@@ -266,7 +266,8 @@ def run_explore(ctx: WorkerContext, job: ExploreJob) -> ExplorerIndex:
     assert job.model is not None
     req: ModelExploreRequest = job.model
     bundle = load_bundle(ctx)
-    data = load_flat_dataset(ctx, bundle.spec.data)  # M4: a tree's nodes per data.nodes
+    # M4: a tree's nodes per data.nodes, and the tree itself for a tree-input model
+    data, tree = load_data_and_tree(ctx, bundle.spec.data)
     tables = load_side_tables(ctx, bundle.spec)
     evaluation = (
         load_bundle(ctx, INPUT_EVALUATION, INPUT_EVALUATION_MANIFEST)
@@ -279,7 +280,7 @@ def run_explore(ctx: WorkerContext, job: ExploreJob) -> ExplorerIndex:
         if ctx.has_input(name):
             compare.append((ref, load_bundle(ctx, name, f"{name}.manifest")))
     refitter = Refitter(
-        bundle, ctx.registry, _BACKTEST_BUDGET, side_tables=tables, cancel=ctx.cancel
+        bundle, ctx.registry, _BACKTEST_BUDGET, side_tables=tables, cancel=ctx.cancel, tree=tree
     )
     mcontext = ModelContext(
         bundle,
@@ -291,6 +292,7 @@ def run_explore(ctx: WorkerContext, job: ExploreJob) -> ExplorerIndex:
         compare=compare,
         evaluation=evaluation,
         refitter=refitter,
+        tree=tree,
     )
     ctx.state(RunnerPhase.FIT, f"computing {len(req.sections)} explorer sections")
     index = write_sections(
