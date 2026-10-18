@@ -390,6 +390,9 @@ class Upload(_Scoped, Base):
     expires_at: Mapped[datetime] = mapped_column()
     consumed_by_version: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    # M4 (0014): the UploadInspection of an inspect run, and the run computing it
+    inspection: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    inspect_run_id: Mapped[str | None] = mapped_column(String(64))
 
     __table_args__ = (
         CheckConstraint("status in ('pending','uploaded','consumed','expired')", name="status"),
@@ -420,9 +423,18 @@ class DatasetVersion(_Scoped, Base):
     ready_at: Mapped[datetime | None] = mapped_column()
     # columns.json of the ingest run (0007_guided): ColumnProfile per uploaded column
     columns: Mapped[list[Any] | None] = mapped_column(JSONB)
+    # M4 (0014): 'tree' versions hold an xr.DataTree (data.tree.zip + tree_schema)
+    layout: Mapped[str] = mapped_column(
+        String(8), default="dataset", server_default=text("'dataset'")
+    )
+    tree_schema: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    sources: Mapped[list[Any]] = mapped_column(
+        default=list, server_default=text("'[]'::jsonb")
+    )  # upload ids the version was built from
 
     __table_args__ = (
         CheckConstraint("status in ('ingesting','ready','failed')", name="status"),
+        CheckConstraint("layout in ('dataset','tree')", name="layout"),
         Index("ix_dataset_versions_sha", "tenant_id", "sha256"),
     )
 
