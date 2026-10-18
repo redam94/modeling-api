@@ -20,6 +20,7 @@ import xarray as xr
 
 __all__ = [
     "bundle_tree",
+    "calibration_tree",
     "contributions",
     "counterfactual_tree",
     "decision_dataset",
@@ -27,10 +28,12 @@ __all__ = [
     "example_inputs",
     "feature_importance_tree",
     "field_tree",
+    "group_effects_tree",
     "panel_data",
     "plans_dataset",
     "prior_beliefs_dataset",
     "profile_tree",
+    "regime_tree",
     "response_curves",
     "score_tree",
     "vector_tree",
@@ -372,6 +375,78 @@ def ensemble_tree() -> xr.DataTree:
     )
 
 
+def calibration_tree(binary: bool = False) -> xr.DataTree:
+    """``posterior_predictive.y(chain, draw, obs)`` and ``observed_data.y(obs)`` for 200
+    observations. The model's ranges are too narrow: the data spread 1.4 times more than the
+    predictions. With ``binary``, ``y`` is 0/1 and the model is too sure at both ends."""
+    rng = _rng(17)
+    n = 200
+    mu = rng.normal(0.0, 2.0, n)
+    coords = {"obs": np.arange(n)}
+    if binary:
+        p_true = 1 / (1 + np.exp(-mu))
+        y = (rng.random(n) < p_true).astype(float)
+        p_model = 1 / (1 + np.exp(-1.6 * mu))
+        draws = (rng.random((CHAINS, DRAWS, n)) < p_model).astype(float)
+    else:
+        y = mu + 1.4 * rng.standard_normal(n)
+        draws = mu + rng.standard_normal((CHAINS, DRAWS, n))
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-calibration"}),
+            "/posterior_predictive": xr.Dataset({"y": (("chain", "draw", "obs"), draws)}, coords),
+            "/observed_data": xr.Dataset({"y": (("obs",), y)}, coords),
+        }
+    )
+
+
+def group_effects_tree() -> xr.DataTree:
+    """``posterior.effect(chain, draw, school)``: the effect of a programme in eight
+    schools (the classic hierarchical example). School A is clearly the best, the middle
+    schools overlap, and the small schools have wide ranges."""
+    rng = _rng(15)
+    schools = list("ABCDEFGH")
+    centre = np.array([14.0, 8.0, 6.0, 7.5, 4.0, 5.5, 10.0, 8.5])
+    spread = np.array([3.0, 4.0, 6.0, 4.5, 3.5, 5.0, 3.5, 7.0])
+    draws = centre + spread * rng.standard_normal((CHAINS, DRAWS, 8))
+    post = xr.Dataset(
+        {"effect": (("chain", "draw", "school"), draws)},
+        coords={"chain": np.arange(CHAINS), "draw": np.arange(DRAWS), "school": schools},
+    )
+    return xr.DataTree.from_dict(
+        {"/": xr.Dataset(attrs={"bundle_id": "bundle-groups"}), "/posterior": post}
+    )
+
+
+def regime_tree() -> xr.DataTree:
+    """``posterior.state_prob(chain, draw, state, time)`` and ``observed_data.y(time)``: a
+    two-state market (calm, volatile) over 150 days. The volatile spells are clear; the model
+    is unsure at the switches."""
+    rng = _rng(16)
+    n = 150
+    truth = np.zeros(n, dtype=int)
+    truth[40:65] = 1
+    truth[100:120] = 1
+    y = np.where(truth == 1, 3.0, 0.8) * rng.standard_normal(n)
+    logit = np.where(truth == 1, 2.5, -2.5)
+    for edge in (40, 65, 100, 120):  # softer at the switches
+        idx = np.arange(max(0, edge - 3), min(n, edge + 3))
+        logit[idx] *= np.abs(idx - edge + 0.5) / 3.5
+    p1 = 1 / (1 + np.exp(-(logit[None, None] + 0.6 * rng.standard_normal((CHAINS, 40, n)))))
+    probs = np.stack([1 - p1, p1], axis=2)
+    days = pd.date_range("2024-01-01", periods=n, freq="D")
+    coords = {"state": ["calm", "volatile"], "time": days}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-regimes"}),
+            "/posterior": xr.Dataset(
+                {"state_prob": (("chain", "draw", "state", "time"), probs)}, coords
+            ),
+            "/observed_data": xr.Dataset({"y": (("time",), y)}, {"time": days}),
+        }
+    )
+
+
 def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     """``{recipe id: (input data, render options)}`` for every bundled recipe."""
     bundle = bundle_tree()
@@ -399,4 +474,9 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "sci.vector_field": (vector_tree(), {}),
         "sci.profile_bands": (profile_tree(), {}),
         "sci.ensemble": (ensemble_tree(), {}),
+        "core.pair": (bundle, {}),
+        "core.ridge": (group_effects_tree(), {}),
+        "core.rank_matrix": (group_effects_tree(), {}),
+        "core.calibration": (calibration_tree(), {}),
+        "core.state_sequence": (regime_tree(), {}),
     }
