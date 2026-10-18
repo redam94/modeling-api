@@ -25,10 +25,11 @@ export const KIND_META: Record<AboutKind, { label: string; plural: string }> = {
   check: { label: "Governance check", plural: "Governance checks" },
   dataset: { label: "Dataset", plural: "Datasets" },
   spec: { label: "Spec", plural: "Specs" },
+  plot: { label: "Plot", plural: "Plots" },
 };
 
 /** The order the catalog browser lists kinds in (things people start from first). */
-export const KIND_ORDER: readonly AboutKind[] = ["template", "model", "workflow_template", "step", "split", "check", "node", "node_kind"];
+export const KIND_ORDER: readonly AboutKind[] = ["template", "model", "workflow_template", "step", "split", "plot", "check", "node", "node_kind"];
 
 /**
  * The catalog id of a reference with a version range or pin (`mmm.bayesian@^1`,

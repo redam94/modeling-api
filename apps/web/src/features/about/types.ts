@@ -25,4 +25,4 @@ export type TypicalRuntime = S["TypicalRuntime"];
 export type ChooserAnswers = Record<string, string[]>;
 
 /** The kinds "Help me choose" ranks (`kind` of `GET /v1/catalog/recommendations`). */
-export type ChooserKind = Exclude<AboutKind, "dataset" | "spec" | "split" | "node_kind">;
+export type ChooserKind = Exclude<AboutKind, "dataset" | "spec" | "split" | "node_kind" | "plot">;

@@ -42,13 +42,14 @@ from mapi_spec.jobs import (
     INGEST_COLUMNS,
     INGEST_DATA,
     INGEST_SCHEMA,
+    PLOT_EXAMPLES_OUTPUT,
     SIDE_TABLE_PREFIX,
     DescribeJob,
     MetricsSidecar,
 )
 from mapi_spec.loader import canonical_json, spec_hash
 from mapi_spec.optimize import OPTIMIZE_OUTPUT
-from mapi_spec.plots import PlotSpec
+from mapi_spec.plots import MAX_PLOT_EXAMPLES, PlotExamples, PlotSpec
 from mapi_spec.run import (
     MANIFEST_OBJECT_NAME,
     Actor,
@@ -916,6 +917,7 @@ class Finalizer:
             raise IntegrityError(
                 "catalog.json does not match the Catalog schema", untrusted_text=str(exc)[:8000]
             ) from exc
+        examples = await self._plot_examples(v)
         try:
             job = DescribeJob.model_validate(v.run.payload)
         except ValidationError:
@@ -931,10 +933,40 @@ class Finalizer:
                 project_id=row.project_id,
                 describe_run_id=row.id,
                 image_digest=str(image),
+                plot_examples=examples,
             )
 
         return await self._commit(v, apply)
 
+    async def _plot_examples(self, v: _Verified) -> PlotExamples | None:
+        """The run's optional ``plot_examples.json``. Examples only illustrate the catalog,
+        so a bad file is dropped (with a log line) instead of failing the describe run."""
+        meta = v.objects.get(PLOT_EXAMPLES_OUTPUT)
+        if meta is None:
+            return None
+        try:
+            raw = await self._read_json(meta.bucket, meta, MAX_PLOT_EXAMPLES_BYTES)
+            plots = raw.get("plots") if isinstance(raw, dict) else None
+            if not isinstance(plots, dict):
+                raise IntegrityError("plot_examples.json must be a PlotExamples object")
+        except IntegrityError as exc:
+            log.warning("describe run %s: plot examples dropped: %s", v.run.id, exc.detail)
+            return None
+        # each example goes through the same sanitizer as a fit's plots.json
+        kept: dict[str, PlotSpec] = {}
+        for ref, doc in list(plots.items())[:MAX_PLOT_EXAMPLES]:
+            try:
+                spec = sanitize_plot(doc).plot
+                PlotExamples(plots={str(ref): spec})
+                kept[str(ref)] = spec
+            except (SanitizeError, ValidationError) as exc:
+                detail = exc.detail if isinstance(exc, SanitizeError) else str(exc)[:300]
+                log.warning("describe run %s: example %.80r dropped: %s", v.run.id, ref, detail)
+        return PlotExamples(plots=kept)
+
+
+MAX_PLOT_EXAMPLES_BYTES = 16 * 1024 * 1024
+"""Cap on a describe run's ``plot_examples.json``."""
 
 MAX_COLUMN_PROFILES = 100_000
 """Profiles one ``columns.json`` may hold (the ingest caps columns far below this)."""

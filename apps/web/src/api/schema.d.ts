@@ -603,6 +603,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/catalog/plots/{plot_id}/{version}/example": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Catalog Plot Example
+         * @description The plot recipe rendered on its synthetic example data (made by the describe run,
+         *     datasets inline). ``404`` when the recipe, or its example, does not exist.
+         */
+        get: operations["get_catalog_plot_example"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog/recommendations": {
         parameters: {
             query?: never;
@@ -3259,7 +3280,7 @@ export interface components {
          * @description What an About describes (chooser results and the catalog say which).
          * @enum {string}
          */
-        AboutKind: "model" | "step" | "split" | "template" | "workflow_template" | "node_kind" | "node" | "check" | "dataset" | "spec";
+        AboutKind: "model" | "step" | "split" | "template" | "workflow_template" | "node_kind" | "node" | "check" | "dataset" | "spec" | "plot";
         /**
          * AboutReference
          * @description A source for the expert detail (a paper, a book chapter, library documentation).
@@ -11269,7 +11290,7 @@ export interface components {
          * @description A plot recipe the runner can produce.
          */
         PlotCatalogEntry: {
-            /** @description M3.5: optional About card (plots are chosen from a model, not a catalog) */
+            /** @description The plot's About card: what it shows, how to read it, what it needs */
             about?: components["schemas"]["About"] | null;
             /** Id */
             id: string;
@@ -11283,6 +11304,11 @@ export interface components {
             requires_groups?: string[];
             /** Requires Representation */
             requires_representation?: components["schemas"]["Representation"][];
+            /**
+             * Summary
+             * @description One line on what the chart shows (the recipe's summary)
+             */
+            summary?: string | null;
             /** Title */
             title: string;
             /**
@@ -18070,6 +18096,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_catalog_plot_example: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotSpec"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

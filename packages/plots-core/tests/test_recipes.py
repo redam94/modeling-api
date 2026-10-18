@@ -63,8 +63,8 @@ def caption(plot: PlotSpec) -> str:
 
 
 def check_plot(plot: PlotSpec, recipe: Recipe[Any]) -> None:
-    """The contract every recipe output satisfies."""
-    assert plot.kind == "vega-lite"
+    """The contract every recipe output satisfies (the sci pack draws with Plotly)."""
+    assert plot.kind == ("plotly" if recipe.id.startswith("sci.") else "vega-lite")
     assert plot.id == recipe.id
     assert plot.provenance.recipe == recipe.ref
     assert plot.persona == recipe.persona
@@ -85,8 +85,8 @@ def test_catalog_covers_the_plan() -> None:
     ids = {r.id for r in all_recipes()}
     assert ids >= PLAN_IDS
     assert len(ids) == len(all_recipes())
-    sci = {r.id for r in sci_recipes()}  # Plotly: covered by test_sci_recipes.py
-    assert set(EXAMPLES) == ids - sci
+    sci = {r.id for r in sci_recipes()}
+    assert set(EXAMPLES) == ids  # every recipe has example data (the catalog renders it)
     packs = {r.id for r in mmm_recipes()} | {r.id for r in ml_recipes()} | sci
     assert {r.id for r in standard_recipes()} | packs == ids
     catalog = Catalog(plots=[r.catalog_entry() for r in all_recipes()])

@@ -756,6 +756,8 @@ class Catalog(_Scoped, Base):
     catalog: Mapped[dict[str, Any]] = mapped_column()
     source: Mapped[str] = mapped_column(String(16))
     describe_run_id: Mapped[str | None] = mapped_column(String(64))
+    # PlotExamples JSON (0013); deferred: only the example endpoint reads it
+    plot_examples: Mapped[dict[str, Any] | None] = mapped_column(JSONB, deferred=True)
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
 
     __table_args__ = (CheckConstraint("source in ('file','describe','api')", name="source"),)

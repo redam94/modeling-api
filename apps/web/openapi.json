@@ -179,7 +179,8 @@
           "node",
           "check",
           "dataset",
-          "spec"
+          "spec",
+          "plot"
         ],
         "title": "AboutKind",
         "type": "string"
@@ -16018,7 +16019,7 @@
                 "type": "null"
               }
             ],
-            "description": "M3.5: optional About card (plots are chosen from a model, not a catalog)"
+            "description": "The plot's About card: what it shows, how to read it, what it needs"
           },
           "id": {
             "title": "Id",
@@ -16047,6 +16048,19 @@
             },
             "title": "Requires Representation",
             "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One line on what the chart shows (the recipe's summary)",
+            "title": "Summary"
           },
           "title": {
             "maxLength": 200,
@@ -29400,6 +29414,150 @@
           }
         },
         "summary": "List Catalog Plots",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/v1/catalog/plots/{plot_id}/{version}/example": {
+      "get": {
+        "description": "The plot recipe rendered on its synthetic example data (made by the describe run,\ndatasets inline). ``404`` when the recipe, or its example, does not exist.",
+        "operationId": "get_catalog_plot_example",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plot_id",
+            "required": true,
+            "schema": {
+              "title": "Plot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlotSpec"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Get Catalog Plot Example",
         "tags": [
           "catalog"
         ]

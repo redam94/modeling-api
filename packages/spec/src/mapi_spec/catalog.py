@@ -154,9 +154,15 @@ class PlotCatalogEntry(StrictModel):
     requires_representation: list[Representation] = Field(default_factory=list)
     requires_groups: list[str] = Field(default_factory=list)
     yanked: bool = False
+    summary: str | None = Field(
+        None,
+        max_length=300,
+        description="One line on what the chart shows (the recipe's summary)",
+        exclude_if=lambda v: v is None,
+    )
     about: About | None = Field(
         None,
-        description="M3.5: optional About card (plots are chosen from a model, not a catalog)",
+        description="The plot's About card: what it shows, how to read it, what it needs",
         exclude_if=lambda v: v is None,
     )
 

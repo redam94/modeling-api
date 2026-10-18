@@ -371,6 +371,12 @@ const TILE_TRACES = new Set([
 
 /** Plotly renders a pseudo-HTML subset in text; only b, i, br, sub and sup are allowed. */
 const UNSAFE_PLOTLY_TEXT = /<\/?(?!(?:b|i|br|sub|sup)\s*\/?\s*>)[a-z!]|javascript:/i;
+/** Hover templates may also use `<extra>` (Plotly's secondary hover box), as the server allows. */
+const UNSAFE_PLOTLY_HOVERTEMPLATE = /<\/?(?!(?:b|i|br|sub|sup|extra)\s*\/?\s*>)[a-z!]|javascript:/i;
+
+function unsafePlotlyText(key: string | null, text: string): boolean {
+  return (key?.startsWith("hovertemplate") ? UNSAFE_PLOTLY_HOVERTEMPLATE : UNSAFE_PLOTLY_TEXT).test(text);
+}
 
 function escapePointer(key: string): string {
   return key.replace(/~/g, "~0").replace(/\//g, "~1");
@@ -386,7 +392,7 @@ export function findUnsafeConstructs(kind: PlotKind, spec: unknown): string[] {
   const walk = (node: unknown, path: string, parentKey: string | null): void => {
     if (Array.isArray(node)) {
       node.forEach((x, i) => {
-        if (kind === "plotly" && typeof x === "string" && UNSAFE_PLOTLY_TEXT.test(x)) {
+        if (kind === "plotly" && typeof x === "string" && unsafePlotlyText(parentKey, x)) {
           issues.push(`${path}/${i}`);
         }
         walk(x, `${path}/${i}`, parentKey);
@@ -413,7 +419,7 @@ export function findUnsafeConstructs(kind: PlotKind, spec: unknown): string[] {
         else if (key === "source" && typeof value === "string" && /^(https?:|\/\/)/i.test(value)) {
           issues.push(here);
         } else if ((key === "href" || key === "link") && typeof value === "string") issues.push(here);
-        else if (typeof value === "string" && UNSAFE_PLOTLY_TEXT.test(value)) issues.push(here);
+        else if (typeof value === "string" && unsafePlotlyText(key, value)) issues.push(here);
       }
       walk(value, here, key);
     }

@@ -102,6 +102,7 @@ class AboutKind(StrEnum):
     CHECK = "check"
     DATASET = "dataset"
     SPEC = "spec"
+    PLOT = "plot"
 
 
 class AboutReference(StrictModel):

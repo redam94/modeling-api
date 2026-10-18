@@ -17,11 +17,13 @@ from typing import Any
 
 from mapi_spec.catalog import Catalog
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.plots import PlotExamples, PlotSpec
 from mapi_spec.run import catalog_digest
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import undefer
 
 from mapi_server.db import models as m
 from mapi_server.jsonlimits import loads_limited
@@ -72,6 +74,7 @@ class CatalogService:
         self.image_digest = image_digest
         self.catalog_path = catalog_path
         self._cached: CatalogSnapshot | None = None
+        self._examples: PlotExamples | None = None
 
     def _snapshot(self, row: m.Catalog) -> CatalogSnapshot:
         cat = Catalog.model_validate(row.catalog)
@@ -106,8 +109,12 @@ class CatalogService:
         project_id: str,
         describe_run_id: str | None = None,
         image_digest: str | None = None,
+        plot_examples: PlotExamples | None = None,
     ) -> CatalogSnapshot:
-        """Insert the catalog for an image digest (first writer wins; it is immutable)."""
+        """Insert the catalog for an image digest (first writer wins; it is immutable).
+
+        ``plot_examples`` (from the same describe run) are stored with it, and only with
+        it: a catalog that is already stored keeps the examples it has."""
         digest = catalog_digest(catalog)
         image = image_digest or self.image_digest
         stmt = (
@@ -120,6 +127,11 @@ class CatalogService:
                 describe_run_id=describe_run_id,
                 tenant_id=tenant_id,
                 project_id=project_id,
+                plot_examples=(
+                    None
+                    if plot_examples is None
+                    else plot_examples.model_dump(mode="json", exclude_none=True)
+                ),
             )
             .on_conflict_do_nothing(index_elements=["image_digest"])
         )
@@ -145,5 +157,27 @@ class CatalogService:
             session, catalog, source="file", tenant_id=tenant_id, project_id=project_id
         )
 
+    async def example(self, session: AsyncSession, ref: str) -> PlotSpec | None:
+        """The example render of plot recipe ``ref`` (``id@version``) for this image digest;
+        ``None`` when the catalog (or the recipe) has none."""
+        if self._examples is None:
+            row = (
+                await session.execute(
+                    select(m.Catalog)
+                    .options(undefer(m.Catalog.plot_examples))
+                    .where(m.Catalog.image_digest == self.image_digest)
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                return None
+            # validated by the finalizer; an unreadable value is treated as "no examples"
+            try:
+                self._examples = PlotExamples.model_validate(row.plot_examples or {})
+            except ValidationError:
+                log.warning("unreadable plot examples for image %s", self.image_digest)
+                self._examples = PlotExamples()
+        return self._examples.plots.get(ref)
+
     def invalidate(self) -> None:
         self._cached = None
+        self._examples = None

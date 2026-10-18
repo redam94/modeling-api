@@ -7,9 +7,11 @@ import { Search, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 
+import { useCatalog } from "@/api/queries";
 import { EmptyState, ErrorNotice, LoadingRows } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Input, NativeSelect } from "@/components/ui/primitives";
+import { PlotExample } from "@/features/plots/plot-example";
 import { cn } from "@/lib/utils";
 
 import { AboutDialog, AboutTile } from "./about-card";
@@ -30,6 +32,15 @@ export function filterAbouts(items: readonly CatalogAbout[], f: { kind: AboutKin
       return words.every((w) => hay.includes(w));
     })
     .sort((a, b) => rank(a.kind) - rank(b.kind) || a.about.title.localeCompare(b.about.title));
+}
+
+/** A plot card's example: the latest catalog version of the recipe. */
+function CatalogPlotExample({ id, title }: { id: string; title: string }) {
+  const catalog = useCatalog();
+  const versions = (catalog.data?.plots ?? []).filter((p) => p.id === id && !p.yanked).map((p) => p.version ?? "1.0.0");
+  const version = versions.sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).at(-1);
+  if (!version) return null;
+  return <PlotExample id={id} version={version} title={title} height={320} className="rounded-lg border p-2" />;
 }
 
 export function CatalogBrowser({ selected, onSelect }: { selected: string | null; onSelect: (key: string | null) => void }) {
@@ -112,7 +123,8 @@ export function CatalogBrowser({ selected, onSelect }: { selected: string | null
           id={entry.id}
           open
           onOpenChange={(o) => (o ? undefined : onSelect(null))}
-          actions={<StartButton kind={entry.kind} id={entry.id} />}
+          actions={entry.kind === "plot" ? undefined : <StartButton kind={entry.kind} id={entry.id} />}
+          media={entry.kind === "plot" ? <CatalogPlotExample id={entry.id} title={entry.about.title} /> : undefined}
         />
       ) : null}
     </div>

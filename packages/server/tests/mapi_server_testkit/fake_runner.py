@@ -176,7 +176,10 @@ def outputs_for(rs: RunSpec, mode: str) -> dict[str, tuple[bytes, str]]:
         }  # fmt: skip
     if kind == "describe":
         path = os.environ["FAKE_RUNNER_CATALOG"]
-        return {"catalog.json": (Path(path).read_bytes(), "application/json")}
+        out = {"catalog.json": (Path(path).read_bytes(), "application/json")}
+        if examples := os.environ.get("FAKE_RUNNER_PLOT_EXAMPLES"):
+            out["plot_examples.json"] = (Path(examples).read_bytes(), "application/json")
+        return out
     if kind == "score":
         return {
             "result.json": js({"ok": True, "kind": kind}),
