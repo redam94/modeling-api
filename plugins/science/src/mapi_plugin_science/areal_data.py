@@ -244,9 +244,9 @@ def from_challenges(
         table = pd.read_csv(path.with_name(ADJACENCY_FILE))
         if "ADJ" not in table.columns or len(table) != len(rings):
             raise ValueError(f"{path.with_name(ADJACENCY_FILE)}: no ADJ column for every district")
-        if "CODENO" in table.columns and "CODENO" in props.columns:
-            if not (table["CODENO"].to_numpy() == props["CODENO"].to_numpy()).all():
-                raise ValueError("the neighbour list is not in the order of the polygons")
+        same = {"CODENO"} <= set(table.columns) & set(props.columns)
+        if same and not (table["CODENO"].to_numpy() == props["CODENO"].to_numpy()).all():
+            raise ValueError("the neighbour list is not in the order of the polygons")
         adj = np.zeros((len(rings), len(rings)), dtype=np.int64)
         for i, nbrs in enumerate(table["ADJ"]):
             adj[i, np.asarray(json.loads(nbrs), dtype=int) - 1] = 1

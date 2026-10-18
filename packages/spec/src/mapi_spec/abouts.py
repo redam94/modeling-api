@@ -1721,8 +1721,7 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
         [
             "You have the location of each case, not counts for each area (use a point model)",
             "The values are not counts, for example a mean income for each area",
-            "You must predict areas that are not on the map (the graph has only the fitted "
-            "areas)",
+            "You must predict areas that are not on the map (the graph has only the fitted areas)",
             "The data change over time and you want a forecast",
         ],
         [

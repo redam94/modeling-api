@@ -4,13 +4,15 @@ plots fed from the bundle, recovery on a synthetic map and the Scottish lip-canc
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 import scipy.special
 import xarray as xr
+from mapi_plots.recipes import render_plots
 from mapi_plugin_science.areal import (
     ADJACENCY,
-    AREA_DIM,
     OBS_DIM,
     ArealBYM2Model,
     ArealBYM2Settings,
@@ -34,7 +36,6 @@ from mapi_plugin_science.areal_data import (
     square_rings,
 )
 from mapi_plugin_science.challenges import challenges_file
-from mapi_plots.recipes import render_plots
 from mapi_pymc.context import BuildContext
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import fit_spec, score_bundle
@@ -43,13 +44,14 @@ from mapi_sdk.schema import validate_dataset
 from mapi_sdk.testing import ModelFixture, check_model
 from mapi_spec import load_model_spec, load_score_request, validate_spec
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.spec import ScoreRequest
 
 CHALLENGES = challenges_file(CHALLENGES_FILE)
 HEADER = "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://sci/areal\n"
 CANON = {"district": "area", "district_": "area_", "aff": "covariate"}
 
 
-def _req(body: str) -> object:
+def _req(body: str) -> ScoreRequest:
     return load_score_request(HEADER + body)
 
 
@@ -57,7 +59,9 @@ def _spec(settings: str, *, split: bool = False, fit: str = "") -> str:
     """The tiny spec with other settings (and no holdout unless ``split``)."""
     spec = AREAL_SPEC_YAML.replace("{kind: bym2, islands: link_nearest}", settings)
     if not split:
-        spec = spec.replace("  split: {kind: mask_block, dims: [area], fraction: 0.15, seed: 18}\n", "")
+        spec = spec.replace(
+            "  split: {kind: mask_block, dims: [area], fraction: 0.15, seed: 18}\n", ""
+        )
         spec = spec.replace("mode: evaluate_then_refit, ", "mode: train_only, ")
     if fit:
         spec = spec.replace("tune: 300, draws: 150", fit)
@@ -85,9 +89,9 @@ def _canon(ds: xr.Dataset) -> xr.Dataset:
     return ds.rename(CANON)
 
 
-def _build(ds: xr.Dataset, **settings: object) -> object:
+def _build(ds: xr.Dataset, **settings: Any) -> Any:
     canon = _canon(ds)
-    s = ArealBYM2Settings(**settings)  # type: ignore[arg-type]
+    s = ArealBYM2Settings(**settings)
     return ArealBYM2Model().build(canon, s, BuildContext(phase="fit", ds=canon))
 
 
@@ -108,7 +112,8 @@ def test_manifest_declares_area_outputs_and_the_map_plots() -> None:
     assert schema.vars["cases"].missing == "allow"
     assert set(schema.vars) == {"cases", "expected", "covariate", "adjacency", "ring_x", "ring_y"}
     assert {"sci.area_map", "net.graph", "core.ridge"} <= set(man.plots)
-    assert set(man.settings_schema["properties"]["kind"]["enum"]) == {
+    props: Any = man.settings_schema["properties"]
+    assert set(props["kind"]["enum"]) == {
         "poisson", "iid", "icar", "car", "bym2",
     }  # fmt: skip
 
@@ -208,8 +213,8 @@ def test_bym2_graph_matches_the_numpy_twin(dataset: xr.Dataset) -> None:
         "b0": 0.2, "b1": -0.3, "sigma_log__": np.log(0.7), "rho_logodds__": 0.4,
         "phi": rng.normal(size=n), "theta": rng.normal(size=n),
     }  # fmt: skip
-    (rr_graph,) = model.replace_rvs_by_values([model["rr"]])  # type: ignore[attr-defined]
-    fn = model.compile_fn(rr_graph, inputs=model.value_vars, on_unused_input="ignore")  # type: ignore[attr-defined]
+    (rr_graph,) = model.replace_rvs_by_values([model["rr"]])
+    fn = model.compile_fn(rr_graph, inputs=model.value_vars, on_unused_input="ignore")
     rr = fn(point)
     g = area_graph(dataset["adjacency"].values, dataset["ring_x"].values,
                    dataset["ring_y"].values, "link_nearest")  # fmt: skip
@@ -234,8 +239,8 @@ def test_every_kind_builds_with_a_finite_density(
     dataset: xr.Dataset, kind: str, free: set[str]
 ) -> None:
     model = _build(dataset, kind=kind)
-    assert {rv.name for rv in model.free_RVs} == free  # type: ignore[attr-defined]
-    logp = model.point_logps()  # type: ignore[attr-defined]
+    assert {rv.name for rv in model.free_RVs} == free
+    logp = model.point_logps()
     assert all(np.isfinite(v) for v in logp.values()), logp
 
 
@@ -247,7 +252,7 @@ def test_islands_isolate_is_refused_where_the_graph_must_be_connected(dataset: x
         assert err.value.pointer == "/model/settings/islands"
     # the ICAR samples with the island alone: a flat prior for it (E18 failure 1, quietly)
     model = _build(dataset, kind="icar", islands="isolate")
-    assert np.isfinite(model.point_logps()["phi"])  # type: ignore[attr-defined]
+    assert np.isfinite(model.point_logps()["phi"])
 
 
 @pytest.mark.parametrize(
@@ -289,7 +294,9 @@ def test_fit_recovers_the_truth_and_keeps_the_map_in_the_bundle(
     n = dataset.sizes["district"]
     assert const["ring_x"].dims == ("area", "vertex") and const.sizes["area"] == n
     adj = const[ADJACENCY]
-    assert adj.dims == ("area", "area_") and int(adj.values.sum()) // 2 == 132  # 131 queen edges + 1 link
+    assert (
+        adj.dims == ("area", "area_") and int(adj.values.sum()) // 2 == 132
+    )  # 131 queen edges + 1 link
     assert const["centroid"].dims == ("area", "xy") and bool(np.isfinite(const["centroid"]).all())
     np.testing.assert_allclose(
         const["smr"].values, dataset["cases"].values / dataset["expected"].values
@@ -300,7 +307,7 @@ def test_fit_recovers_the_truth_and_keeps_the_map_in_the_bundle(
     assert 0 < float(learned["scaling_factor"]) < 1  # type: ignore[arg-type]
     # the pointwise log-likelihood is always kept: elpd_loo works without a keep block
     assert bundle.model.groups["log_likelihood"]["cases"].dims == ("chain", "draw", "area")
-    assert np.isfinite(bundle.metrics.values["elpd_loo"])
+    assert np.isfinite(float(bundle.metrics.values["elpd_loo"] or np.nan))
     assert bundle.metrics.elpd["elpd_loo"].n == n
 
 
@@ -318,7 +325,7 @@ def test_leave_areas_out_keeps_the_held_out_areas_in_the_graph(
     assert ev.model.learned["n_observed"] == n - len(held)
     values = bundle.metrics.values
     assert bundle.metrics.n_holdout == len(held)
-    assert values["coverage_90"] >= 0.5 and values["rmse"] > 0
+    assert (values["coverage_90"] or 0.0) >= 0.5 and (values["rmse"] or 0.0) > 0
 
 
 # ------------------------------------------------------------------------------- score
@@ -426,8 +433,10 @@ def test_unsupported_modes_and_unknown_areas_are_refused(
     with pytest.raises(MapiError) as err:
         _score(bundle, registry, body, dataset.drop_vars("cases"))
     assert err.value.code is ErrorCode.MODE_NOT_SUPPORTED
-    new = dataset.drop_vars("cases").isel(district=[0]).assign_coords(
-        district=["Atlantis"], district_=dataset["district"].values
+    new = (
+        dataset.drop_vars("cases")
+        .isel(district=[0])
+        .assign_coords(district=["Atlantis"], district_=dataset["district"].values)
     )
     with pytest.raises(MapiError) as err:
         _score(bundle, registry, "mode: predict\n", new)
@@ -485,7 +494,11 @@ def test_from_challenges_reads_the_scottish_districts() -> None:
                    "link_nearest", ds["district"].values)  # fmt: skip
     names = ds["district"].values
     links = {(str(names[i]), str(names[j])) for i, j, _ in g.links}
-    assert links == {("Okney", "Caithness"), ("Shetland", "Okney"), ("WesternIsles", "Ross-Cromarty")}
+    assert links == {
+        ("Okney", "Caithness"),
+        ("Shetland", "Okney"),
+        ("WesternIsles", "Ross-Cromarty"),
+    }
     assert g.w.sum() // 2 == 120 and scaling_factor(g.w) == pytest.approx(0.632, abs=1e-3)
 
 
@@ -509,5 +522,5 @@ def test_real_data_bym2_reproduces_the_notebook(registry: Registry) -> None:
     assert abs(float(post["rho"].mean()) - ref["rho"]) < 0.08
     p_exceed = (post["rr"] > 1).mean(("chain", "draw")).values
     assert 17 <= int((p_exceed > 0.95).sum()) <= 21  # the notebook: 19
-    assert -156 < b.metrics.values["elpd_loo"] < -150  # the notebook: -152.7
+    assert -156 < (b.metrics.values["elpd_loo"] or 0.0) < -150  # the notebook: -152.7
     assert int(b.model.groups["sample_stats"]["diverging"].sum()) == 0

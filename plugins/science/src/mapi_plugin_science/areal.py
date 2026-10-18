@@ -47,6 +47,7 @@ observed areas (dim ``area__obs``), and the holdout is predicted from the neighb
 from __future__ import annotations
 
 import hashlib
+import itertools
 import math
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
@@ -76,9 +77,9 @@ __all__ = [
     "RING_Y",
     "TARGET",
     "VERTEX_DIM",
+    "AreaGraph",
     "ArealBYM2Model",
     "ArealBYM2Settings",
-    "AreaGraph",
     "area_graph",
     "boundary_distance",
     "contiguity",
@@ -122,7 +123,9 @@ class ArealBYM2Settings(ModelSettings):
         "(x-ui-level: basic)",
     )
     covariate_scale: float = Field(
-        10.0, gt=0, description="Divide the centred covariate by this (b1 is the effect of one unit)"
+        10.0,
+        gt=0,
+        description="Divide the centred covariate by this (b1 is the effect of one unit)",
     )
     center_covariate: bool = Field(True, description="Subtract the mean of the covariate")
     intercept_sd: float = Field(1.0, gt=0, description="Prior sd of the intercept b0")
@@ -232,7 +235,7 @@ def contiguity(
             if rule == "queen":
                 keys.update(k)
             else:
-                keys.update(frozenset(e) for e in zip(k[:-1], k[1:], strict=True) if e[0] != e[1])
+                keys.update(frozenset(e) for e in itertools.pairwise(k) if e[0] != e[1])
         sets.append(keys)
     n = len(sets)
     w = np.zeros((n, n), dtype=np.int64)
@@ -320,7 +323,11 @@ def area_graph(
     if islands == "error" and n_comp > 1:
         raise MapiError(
             f"the adjacency has {n_comp} separate pieces"
-            + (f" and areas without neighbours ({', '.join(name(i) for i in alone)})" if alone else "")
+            + (
+                f" and areas without neighbours ({', '.join(name(i) for i in alone)})"
+                if alone
+                else ""
+            )
             + "; link them in the data or set islands: link_nearest",
             code=ErrorCode.SCHEMA_INVALID,
             pointer=f"/data/{ADJACENCY}",
@@ -671,7 +678,9 @@ class ArealBYM2Model(PyMCModel[ArealBYM2Settings]):
         post = fitted.posterior
         fit_labels = [str(v) for v in const[AREA_DIM].values]
         pos = {v: i for i, v in enumerate(fit_labels)}
-        labels = np.asarray(ds[AREA_DIM].values) if AREA_DIM in ds.coords else np.asarray(fit_labels)
+        labels = (
+            np.asarray(ds[AREA_DIM].values) if AREA_DIM in ds.coords else np.asarray(fit_labels)
+        )
         try:
             idx = np.array([pos[str(v)] for v in labels], dtype=int)
         except KeyError as exc:  # pragma: no cover - the coordinate plan refuses new areas

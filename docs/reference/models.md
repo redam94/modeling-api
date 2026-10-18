@@ -300,9 +300,9 @@ For a text target, the server skips numeric metrics, for example `mape`.
 These plugins come from the case studies of
 [pymc-challenges](https://github.com/redam94/pymc-challenges). Their data are maps, images and
 fields on a regular grid, or the areas of a map. Their outputs have a range for each cell or
-area. Each output that is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the column dim `x`, an
-optional `frame` dim and an optional `component` dim for a vector field). The platform then
-shows the output in two places:
+area. Each output that is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the
+column dim `x`, an optional `frame` dim and an optional `component` dim for a vector field). The
+platform then shows the output in two places:
 
 - The **Fields** section of the Model Explorer. It shows the mean, the sd, mean ÷ sd, the 5% and
   95% maps and single draws, with a frame slider and a draw player.
