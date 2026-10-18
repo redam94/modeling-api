@@ -28,8 +28,10 @@ translated, so the raw ``z_raw`` draws do not converge (r_hat far above 1) altho
 distance does. After the fit, every draw is centred and rotated onto a common reference by
 generalised Procrustes analysis (:func:`procrustes`). The aligned draws are the posterior
 variable ``position(node, latent_dim)``; the reference configuration of the last pass is
-kept as ``constant_data/position_ref``. The convergence diagnostics of the fit look at the
-identified quantities (``position``, not ``z_raw``).
+kept as ``constant_data/position_ref``. The raw ``z_raw`` and ``s_raw`` then leave the
+posterior (``position`` and ``sociality`` hold them; the distances are unchanged), so the
+convergence diagnostics and the declared plots see only identified quantities, in the order
+``alpha, beta, sigma_s, sigma_z, sociality, position, tie_prob``.
 
 **Log-likelihood.** The observed variable is ``tie`` over the dim ``dyad`` (one entry per
 observed pair, ``i < j``, row-major), so ``elpd_loo`` is leave-one-dyad-out. The pairs are
@@ -39,9 +41,12 @@ the same data uses the same dyads in the same order, so a workflow can compare t
 **Scores** are computed in NumPy from the posterior (the twin of the PyMC graph):
 ``tie_prob`` and the expected ``tie`` are the tie probabilities of every pair of the score
 data, ``kind: predictive`` and ``mode: simulate`` draw whole symmetric graphs (common random
-numbers on the pair, so a subset of nodes gets the same ties), ``degree`` sums a row and
-``graph_stat`` gives whole-graph statistics of every simulated graph (posterior predictive
-checks: transitivity, shared partners, geodesics).
+numbers on the pair, so a subset of nodes gets the same ties), ``degree`` sums a row over
+the scored ``node_`` labels (the ties *with the scored nodes*: on a subset that is not the
+degree in the whole graph) and ``graph_stat`` gives whole-graph statistics of every simulated
+graph (posterior predictive checks: transitivity, shared partners, geodesics). ``graph_stat``
+needs simulated graphs of the whole node set of the fit; asking for it by name in
+``output.vars`` otherwise is refused (``CAPABILITY_UNSUPPORTED``).
 """
 
 from __future__ import annotations
@@ -428,7 +433,8 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
         "degree": {
             "dims": [NODE_DIM],
             "units": "ties",
-            "description": "Ties of each node: expected, or in a simulated graph",
+            "description": "Ties of each node with the scored nodes (node_ of the score "
+            "data; all nodes for the degree in the graph): expected, or in a simulated graph",
         },
         "sociality": {
             "dims": [NODE_DIM],
@@ -444,8 +450,9 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
         "graph_stat": {
             "dims": [STAT_DIM],
             "units": "statistic",
-            "description": "Statistics of each simulated graph (density, sd_degree, "
-            "max_degree, isolates, triangles, transitivity, esp0, mean_geodesic, unreachable)",
+            "description": "Statistics of each simulated graph of the whole node set "
+            "(density, sd_degree, max_degree, isolates, triangles, transitivity, esp0, "
+            "mean_geodesic, unreachable); mode simulate or kind predictive",
         },
     }
     plots = (
@@ -618,7 +625,6 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
                 {GROUP: xr.DataArray(np.asarray(grp_da.values).astype(np.int64),
                                      dims=(NODE_DIM,), coords={NODE_DIM: nodes})}
             )  # fmt: skip
-        free = [str(v) for v in post.data_vars if v in _FREE]
         if s.kind == "latent_space":
             z = _flat(post, "z_raw", NODE_DIM, Z_DIM) * _flat(post, "sigma_z")[:, None, None]
             aligned, ref = procrustes(z, s.procrustes_iters)
@@ -635,7 +641,13 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
                 {POSITION_REF: xr.DataArray(ref, dims=(NODE_DIM, LATENT_DIM),
                                             coords={NODE_DIM: nodes, LATENT_DIM: labels})}
             )  # fmt: skip
-            free = [v for v in free if v != "z_raw"] + ["position"]
+        # the raw draws leave the posterior: z_raw rotates freely (r_hat far above 1 although
+        # every distance converges) and s_raw is sociality / sigma_s. Distances, and so every
+        # probability, are the same from the aligned positions. The order puts the
+        # identified scalars first for core.posterior_forest and core.convergence.
+        post = post.drop_vars([v for v in _RAW if v in post.data_vars])
+        post = post[[v for v in _ORDER if v in post.data_vars]]
+        free = [str(v) for v in post.data_vars]
         post = post.assign(tie_prob=self._fit_probabilities(ds, s, nodes, post))
         groups["posterior"] = post
         groups["constant_data"] = const
@@ -643,7 +655,7 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
             # always kept: leave-one-dyad-out elpd is how the kinds are compared
             groups["log_likelihood"] = self._log_likelihood(ds, s, nodes, post, const)
         if out.diagnostics:
-            # r-hat and ESS on the identified quantities: the raw z_raw draws rotate freely
+            # r-hat and ESS on the identified quantities (position, not the raw z_raw)
             out.diagnostics = convergence_diagnostics(
                 post, groups.get("sample_stats"), var_names=free
             )
@@ -672,9 +684,7 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
             x = self.covariates(ds, nodes)[0]
             beta = _flat(post, "beta", COV_DIM)
         soc = _flat(post, "sociality", NODE_DIM) if "sociality" in post else None
-        z = None
-        if "z_raw" in post:
-            z = _flat(post, "z_raw", NODE_DIM, Z_DIM) * _flat(post, "sigma_z")[:, None, None]
+        z = _positions(post)
         prob = pair_probabilities(
             _flat(post, "alpha"), idx, idx, x=x, beta=beta, sociality=soc, z=z,
             dtype=np.float32,
@@ -705,9 +715,7 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
             x = self.covariates(ds, nodes)[0][i, j]
             beta = _flat(post, "beta", COV_DIM)
         soc = _flat(post, "sociality", NODE_DIM) if "sociality" in post else None
-        z = None
-        if "z_raw" in post:
-            z = _flat(post, "z_raw", NODE_DIM, Z_DIM) * _flat(post, "sigma_z")[:, None, None]
+        z = _positions(post)
         eta = dyad_eta(_flat(post, "alpha"), i, j, x=x, beta=beta, sociality=soc, z=z)
         ll = -np.logaddexp(0.0, np.where(y == 1, -eta, eta))
         chains, draws = post.sizes["chain"], post.sizes["draw"]
@@ -752,9 +760,7 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
         alpha = _flat(post, "alpha")
         beta = _flat(post, "beta", COV_DIM) if s.covariates else None
         soc = _flat(post, "sociality", NODE_DIM) if "sociality" in post else None
-        z = None
-        if "z_raw" in post:
-            z = _flat(post, "z_raw", NODE_DIM, Z_DIM) * _flat(post, "sigma_z")[:, None, None]
+        z = _positions(post)
         x = None
         if s.covariates:
             fit_cov = np.asarray(post[COV_DIM].values)
@@ -777,15 +783,29 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
             )
         }
         stats = None
-        if noisy:
-            n_fit = fit_nodes.size
-            ties = np.empty_like(prob)
-            full = (
-                na == n_fit
-                and nb == n_fit
-                and set(ia.tolist()) == set(range(n_fit))
-                and bool(np.isfinite(prob).all())
+        n_fit = fit_nodes.size
+        # the platform pads a subset of the fixed nodes to the whole node set (covariates 0
+        # in the padding) and flags the nodes that were sent: only those are scored nodes
+        want_row = self._requested(ds, NODE_DIM, na)
+        want_col = self._requested(ds, PAIR_DIM, nb)
+        full = (
+            na == n_fit
+            and nb == n_fit
+            and bool(want_row.all() and want_col.all())
+            and set(ia.tolist()) == set(range(n_fit))
+            and set(ib.tolist()) == set(range(n_fit))
+            and bool(np.isfinite(prob).all())
+        )
+        if "graph_stat" in req.output.vars and not (noisy and full):
+            raise MapiError(
+                "graph_stat needs simulated graphs of every node of the fit (mode simulate or "
+                f"output kind predictive, and all {n_fit} nodes in node and node_); got "
+                f"{na} x {nb} nodes" + ("" if noisy else ", expected probabilities"),
+                code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                pointer=f"/output/vars/{list(req.output.vars).index('graph_stat')}",
             )
+        if noisy:
+            ties = np.empty_like(prob)
             stats = np.full((n_s, len(GRAPH_STATS)), np.nan) if full else None
             # uniforms of the unordered pair, in fit positions: subsets get the same ties
             lo, hi = np.minimum(ii, jj), np.maximum(ii, jj)
@@ -808,8 +828,9 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
         arrays["tie"] = xr.DataArray(
             tie.reshape(*shape, na, nb), dims=dims, coords=node_coords, attrs=attrs
         )
+        # ties with the scored nodes (the whole graph only when every node is scored)
         arrays["degree"] = xr.DataArray(
-            np.nansum(tie, axis=-1).reshape(*shape, na),
+            np.nansum(np.where(want_col, tie, 0.0), axis=-1).reshape(*shape, na),
             dims=("chain", "draw", NODE_DIM),
             coords={NODE_DIM: rows},
             attrs=dict(attrs),
@@ -837,6 +858,14 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
             )
         pred = xr.Dataset(arrays, coords={"chain": chain, "draw": draw})
         return xr.DataTree.from_dict({PREDICTIONS: pred})
+
+    @staticmethod
+    def _requested(ds: xr.Dataset, dim: str, size: int) -> np.ndarray:
+        """Which labels of ``dim`` the score data sent (all, without the platform's flag)."""
+        flag = f"{dim}__requested"
+        if flag in ds.coords:
+            return np.asarray(ds[flag].values, dtype=bool)
+        return np.ones(size, dtype=bool)
 
     @staticmethod
     def _labels(ds: xr.Dataset, dim: str, default: np.ndarray) -> np.ndarray:
@@ -896,8 +925,20 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
         return x
 
 
-_FREE = frozenset({"alpha", "beta", "sigma_s", "s_raw", "sigma_z", "z_raw"})
-"""The free random variables of :meth:`NetworkLatentSpaceModel.build`."""
+_RAW = ("s_raw", "z_raw")
+"""Free variables of :meth:`NetworkLatentSpaceModel.build` that the fit drops from the
+posterior after the alignment (``sociality`` and ``position`` hold them)."""
+_ORDER = ("alpha", "beta", "sigma_s", "sigma_z", "sociality", "position")
+"""Order of the posterior variables (``tie_prob`` is added last)."""
+
+
+def _positions(post: xr.Dataset) -> np.ndarray | None:
+    """The aligned positions ``(samples, node, latent_dim)``, or ``None`` (no latent space).
+    Alignment is a rotation, reflection and translation, so the distances are those of
+    ``sigma_z * z_raw``."""
+    if "position" not in post:
+        return None
+    return _flat(post, "position", NODE_DIM, LATENT_DIM)
 
 
 def _flat(post: xr.Dataset, name: str, *dims: str) -> np.ndarray:

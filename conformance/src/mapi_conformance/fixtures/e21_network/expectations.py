@@ -51,10 +51,11 @@ def check_fit(bundle: Bundle, data: xr.Dataset) -> None:
     ll = groups["log_likelihood"]["tie"]
     assert ll.sizes[DYAD_DIM] == obs.size, "one log-likelihood value per dyad"
     post = groups["posterior"]
-    z = (post["z_raw"] * post["sigma_z"]).transpose("chain", "draw", "node", "z_axis").values
+    assert "z_raw" not in post and "s_raw" not in post, "raw draws leave the posterior"
+    z = post["position"].transpose("chain", "draw", "node", "latent_dim").values
     s = z.shape[0] * z.shape[1]
     again = align_to(z.reshape(s, n, -1), groups["constant_data"][POSITION_REF].values)
-    np.testing.assert_allclose(again, post["position"].values.reshape(s, n, -1), atol=1e-8)
+    np.testing.assert_allclose(again, z.reshape(s, n, -1), atol=1e-8)
     for name, true in NETWORK_TRUTH["beta"].items():
         draws = post["beta"].sel(cov=name).values.ravel()
         lo, hi = np.quantile(draws, [0.005, 0.995])

@@ -255,15 +255,21 @@ def test_fit_keeps_dyads_positions_and_loglik(bundle: Bundle, graph: xr.Dataset)
     pos = post["position"]
     assert pos.dims == ("chain", "draw", "node", "latent_dim")
     np.testing.assert_allclose(pos.mean("node").values, 0.0, atol=1e-10)  # centred draws
-    z = (post["z_raw"] * post["sigma_z"]).transpose("chain", "draw", "node", "z_axis").values
+    z = pos.transpose("chain", "draw", "node", "latent_dim").values
     s, d = z.shape[0] * z.shape[1], z.shape[-1]
+    # already aligned onto the reference: aligning again is the identity
     again = align_to(z.reshape(s, n, d), const[POSITION_REF].values)
-    np.testing.assert_allclose(again, pos.values.reshape(s, n, d), atol=1e-10)
+    np.testing.assert_allclose(again, z.reshape(s, n, d), atol=1e-8)
+    # the raw draws are gone and the identified scalars come first (plots read this order)
+    assert list(post.data_vars) == [
+        "alpha", "beta", "sigma_s", "sigma_z", "sociality", "position", "tie_prob"
+    ]  # fmt: skip
+    assert "z_axis" not in post.dims
     tp = post["tie_prob"]  # the field that plots and the Explorer read from the bundle
     assert tp.dims == ("chain", "draw", "node", "node_") and tp.dtype == np.float32
     np.testing.assert_allclose(tp.values, np.swapaxes(tp.values, -1, -2), atol=1e-6)
-    diag_vars = {dg.var for dg in bundle.diagnostics if dg.code == "RHAT"}
-    assert "z_raw" not in diag_vars  # convergence is judged on identified quantities
+    diag_vars = {dg.var for dg in bundle.diagnostics if dg.var}
+    assert not diag_vars & {"z_raw", "s_raw"}  # convergence is judged on identified quantities
     assert bundle.model.learned["kind"] == "latent_space"
     assert bundle.evaluation is not None
     assert bundle.evaluation.model.learned["n_dyads_held_out"] > 0
@@ -309,13 +315,13 @@ def test_predict_gives_symmetric_tie_probabilities(
     # one pair by hand from the posterior
     post = bundle.model.posterior
     a, b = 2, 7
-    z = (post["z_raw"] * post["sigma_z"]).isel(node=[a, b])
+    z = post["position"].isel(node=[a, b])  # distances of the aligned draws
     eta = (
         post["alpha"]
         + (post["beta"] * graph["homophily"].isel(lawyer=a, lawyer_=b).values).sum("cov")
         + post["sociality"].isel(node=a)
         + post["sociality"].isel(node=b)
-        - np.sqrt(((z.isel(node=0) - z.isel(node=1)) ** 2).sum("z_axis") + 1e-6)
+        - np.sqrt(((z.isel(node=0) - z.isel(node=1)) ** 2).sum("latent_dim") + 1e-6)
     )
     np.testing.assert_allclose(p[:, :, a, b], expit(eta.values), rtol=1e-10)
     deg = pred["degree"].mean(("chain", "draw")).values
@@ -358,6 +364,49 @@ def test_simulate_draws_graphs_and_their_statistics(
     np.testing.assert_array_equal(
         part["cowork"].transpose("chain", "draw", "lawyer", "lawyer_").values, g[:, :, :10, :10]
     )
+    # degree on a subset counts the ties with the scored nodes only (documented), and
+    # graph_stat, a whole-graph statistic, is not computed for a subset
+    np.testing.assert_array_equal(part["degree"].values, g[:, :, :10, :10].sum(-1))
+    assert "graph_stat" not in part
+
+
+@pytest.mark.slow
+def test_graph_stat_by_name_needs_whole_simulated_graphs(
+    bundle: Bundle, graph: xr.Dataset, registry: Registry
+) -> None:
+    """Asked for by name, graph_stat is refused where it would be silently left out."""
+    payload = graph.drop_vars("cowork")
+    sub = payload.isel(lawyer=slice(0, 10), lawyer_=slice(0, 10))
+    sim = "mode: simulate\noutput: {kind: predictive, vars: [graph_stat, degree]}\n"
+    for body, data in ((sim, sub), ("mode: predict\noutput: {vars: [graph_stat]}\n", payload)):
+        err = _codes(lambda b=body, d=data: score_bundle(bundle, _req(b), d, registry=registry))
+        assert err is ErrorCode.CAPABILITY_UNSUPPORTED
+    whole = score_bundle(bundle, _req(sim), payload, registry=registry, return_full=True)
+    pred = whole["predictions"].to_dataset()
+    assert set(pred.data_vars) == {"graph_stat", "degree"}
+
+
+@pytest.mark.slow
+def test_declared_plots_see_only_identified_quantities(bundle: Bundle) -> None:
+    """core.convergence and core.posterior_forest read the whole posterior: no raw z_raw or
+    s_raw, and the scale parameters are in the forest."""
+    import base64
+
+    import pyarrow as pa
+    from mapi_plots.recipes import render_plots
+
+    tree = bundle.to_tree()
+    conv = render_plots(tree, ["core.convergence"])
+    assert not conv.issues
+    caption = conv.plots[0].model_dump(mode="json")["caption_plain"]
+    assert "z_raw" not in caption and "s_raw" not in caption
+    forest = render_plots(tree, ["core.posterior_forest"])
+    assert not forest.issues
+    data = forest.plots[0].model_dump(mode="json")["datasets"]["forest"]["data"]
+    rows = pa.ipc.open_stream(base64.b64decode(data)).read_all().to_pandas()
+    names = set(rows["variable"].astype(str))
+    assert {"alpha", "beta", "sigma_s", "sigma_z", "sociality"} <= names
+    assert not names & {"z_raw", "s_raw"}
 
 
 @pytest.mark.slow

@@ -495,8 +495,11 @@ two) or `latent_space` (all three). With `covariates: false`, the model has no p
 The distances do not change when the positions turn, flip or move together. Thus the raw
 positions `z_raw` do not converge, but each distance does. After the fit, the model aligns each
 draw to one reference with Procrustes analysis. The aligned draws are the posterior variable
-`position`. The reference is `constant_data/position_ref`. The convergence diagnostics use
-`position`, not `z_raw`.
+`position`. The reference is `constant_data/position_ref`. The fit then drops the raw draws
+`z_raw` and `s_raw` from the posterior (`position` and `sociality` hold them, with the same
+distances). Thus the convergence diagnostics and the plots `core.convergence` and
+`core.posterior_forest` use only identified quantities: `alpha`, `beta`, `sigma_s`, `sigma_z`,
+`sociality`, `position` and `tie_prob`, in that order.
 
 **Inputs.** `node` and `node_` (the same labels, fixed) and the target `tie(node, node_)`: 1
 for a tie, 0 for no tie, and a missing value when you do not know. The matrix must be
@@ -511,12 +514,17 @@ the plots.
 - `tie(node, node_)`: the probability, or a simulated graph with `kind: predictive` and in
   `simulate` mode. The graphs are symmetric. The random numbers belong to the pair, so a
   subset of the nodes gets the same ties.
-- `degree(node)`: the ties of each node (expected, or in a simulated graph).
+- `degree(node)`: the ties of each node with the scored nodes (the `node_` labels of the
+  score data), expected or in a simulated graph. Score all the nodes for the degree in the
+  graph: on a subset, `degree` counts only the ties inside the subset.
 - `sociality(node)` and `position(node, latent_dim)`, when the kind has them.
 - `graph_stat(statistic)`: statistics of each simulated graph (`density`, `sd_degree`,
   `max_degree`, `isolates`, `triangles`, `transitivity`, `esp0`, `mean_geodesic`,
   `unreachable`). `esp0` is the number of ties whose two nodes have no shared neighbour.
-  Compare them with the statistics of the data (posterior predictive checks).
+  Compare them with the statistics of the data (posterior predictive checks). The statistics
+  need simulated graphs of all the nodes of the fit. A request that names `graph_stat` in
+  `output.vars` for a subset of the nodes, or for expected probabilities, fails with
+  `CAPABILITY_UNSUPPORTED`.
 
 The posterior also keeps `tie_prob` (float32) for the plots of the fit, and
 `constant_data/adjacency` keeps the observed matrix. The fit always keeps the log-likelihood of
