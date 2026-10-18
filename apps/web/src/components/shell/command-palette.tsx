@@ -124,7 +124,7 @@ export function CommandPalette() {
             aria-expanded="true"
             aria-controls="palette-list"
             aria-activedescendant={commands[active] ? `cmd-${commands[active].id}` : undefined}
-            placeholder="Go to a page, or paste a run / dataset / spec / model id"
+            placeholder="Type a page name, or paste the id of a run, dataset, spec or model"
             className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             value={query}
             onChange={(e) => {
@@ -170,7 +170,7 @@ const SHORTCUTS: [string[], string][] = [
   [["⌘", "B"], "Collapse the sidebar"],
   ...[...EXPERT_NAV, SETTINGS_NAV].map((n): [string[], string] => [["g", n.chord], `Go to ${n.label}`]),
   [["⌘", "S"], "Editor: save revision"],
-  [["⌘", "Enter"], "Editor: validate now"],
+  [["⌘", "Enter"], "Editor: validate the spec now"],
 ];
 
 export function ShortcutsDialog() {
@@ -180,7 +180,7 @@ export function ShortcutsDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogTitle>Keyboard shortcuts</DialogTitle>
-        <DialogDescription>Single keys work when no text field has focus.</DialogDescription>
+        <DialogDescription>Single-key shortcuts work only when no text field has the focus.</DialogDescription>
         <dl className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-2 text-[13px]">
           {SHORTCUTS.map(([keys, label]) => (
             <div key={label} className="contents">

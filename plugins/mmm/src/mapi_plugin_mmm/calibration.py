@@ -189,8 +189,8 @@ def _factor(to_original: ToOriginal | None, da: xr.DataArray, src: str) -> tuple
     if not (linear and constant) or a.flat[0] <= 0:
         raise MapiError(
             f"business priors and lift tests need {src!r} in its business units up to one "
-            "constant factor; the pipeline transforms it non-linearly or per cell (the "
-            "mmm-framework model owns scaling: drop the scaling steps)",
+            "constant factor. The pipeline transforms it non-linearly or per cell (the "
+            "mmm-framework model owns scaling, thus remove the scaling steps)",
             code=ErrorCode.CALIBRATION_UNSUPPORTED,
             pointer="/pipeline",
         )
@@ -228,8 +228,8 @@ def _range(
         return lo, hi
     issues.append(
         _issue(
-            f"the range for {label!r} starts at 0, which a log-normal prior cannot reach; it "
-            f"was read as [{hi / _ZERO_LOW_RATIO:.3g}, {hi:.3g}]",
+            f"the range for {label!r} starts at 0, but a log-normal prior cannot have 0. The "
+            f"server uses [{hi / _ZERO_LOW_RATIO:.3g}, {hi:.3g}]",
             pointer=pointer,
             severity=Severity.INFO,
         )
@@ -275,7 +275,7 @@ def translate_business_priors(
                     f"the data has no channel {label!r}",
                     pointer=here,
                     severity=Severity.ERROR,
-                    action="Use the channel names exactly as they appear in the data.",
+                    action="Use the channel names exactly as they are in the data.",
                 )
             )
             continue
@@ -292,11 +292,11 @@ def translate_business_priors(
                 issues.append(
                     _issue(
                         f"channel {label!r} has no spend in the fit window (or the KPI total "
-                        "is not positive), so its share of the KPI cannot be set by a prior",
+                        "is not positive). Thus a prior cannot set its share of the KPI",
                         pointer=here + "/contribution_share",
                         severity=Severity.ERROR,
-                        action="Leave the channel out of business priors until it has spend "
-                        "in the data.",
+                        action="Do not put the channel in business priors until it has "
+                        "spend in the data.",
                     )
                 )
                 continue
@@ -313,7 +313,7 @@ def translate_business_priors(
                 _issue(
                     f"the {what.replace('_', ' ')} range for {label!r} is "
                     + ("narrower" if sigma < SIGMA_MIN else "wider")
-                    + " than a prior can usefully state; its spread was set to "
+                    + " than a useful prior. The server set its spread to "
                     f"{sigma_c:g} on the log scale",
                     pointer=here,
                     severity=Severity.WARNING,
@@ -413,8 +413,8 @@ def _solve_baseline(
         sd = lo_sd
         note = (
             "the trend, seasonality and controls alone make the baseline share vary more "
-            f"than the stated range [{lo:.3g}, {hi:.3g}]; the intercept prior was made as "
-            "narrow as possible"
+            f"than the stated range [{lo:.3g}, {hi:.3g}]. The server made the intercept prior "
+            "as narrow as possible"
         )
     elif width(hi_sd) <= want:
         sd = hi_sd
@@ -637,7 +637,7 @@ def _lift_checks(
             out.append(
                 _issue(
                     f"the lift test on {test.channel!r} implies an ROI of {implied:.3g}, "
-                    f"outside the 90% prior range [{lo:.3g}, {hi:.3g}]; the fit will weigh "
+                    f"outside the 90% prior range [{lo:.3g}, {hi:.3g}]. The fit will use "
                     "both",
                     pointer=here,
                     severity=Severity.INFO,
@@ -785,7 +785,7 @@ def lift_measurements(
             else:
                 skipped[tid] = (
                     f"a partial cut of {cut / window_spend:.0%} of the window's spend measures "
-                    "the return below today's spend, and the model can only be calibrated "
+                    "the return below the current spend. You can calibrate the model only "
                     "on the return above it (an increase in spend) or on a full holdout"
                 )
                 continue

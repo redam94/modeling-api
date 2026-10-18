@@ -92,7 +92,7 @@ def test_benchmarks_residuals_accuracy_and_data(
     signal: GovernanceEnv, noise: GovernanceEnv
 ) -> None:
     st, skill, msg = _run(signal, "baseline.beats_naive")
-    assert st is CheckStatus.PASS and skill is not None and skill > 0.5 and "held-out" in msg
+    assert st is CheckStatus.PASS and skill is not None and skill > 0.5 and "holdout" in msg
     st, p, _ = _run(signal, "residuals.whiteness")
     assert st is CheckStatus.PASS and p is not None and p > 0.05
     st, mape, _ = _run(signal, "holdout.accuracy")

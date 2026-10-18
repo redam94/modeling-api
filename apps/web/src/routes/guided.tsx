@@ -38,13 +38,13 @@ export function GuidedPage() {
     <div className="mx-auto grid w-full max-w-6xl gap-8">
       <PageHeader
         title="What do you want to learn?"
-        description="Pick the question closest to yours. We'll ask a few plain questions about your spreadsheet, fit a model in a secure sandbox and explain what it found - no statistics needed."
+        description="Select the question that is nearest to your question. The app asks you some simple questions about your spreadsheet. Then it fits a model in a secure sandbox and tells you what the model found. You do not need to know statistics."
       />
-      <ChooserTeaser title="Not sure which one fits? Help me choose" />
+      <ChooserTeaser title="Which one is best for you? Help me choose" />
       <TemplatePicker />
       <section aria-labelledby="sessions-h" className="grid gap-3">
         <h2 id="sessions-h" className="text-[15px] font-semibold tracking-tight">
-          Continue where you left off
+          Continue a saved analysis
         </h2>
         <SessionList />
       </section>
@@ -86,7 +86,7 @@ export function GuidedNewPage() {
           </Button>
         }
       >
-        The link may be out of date.
+        The link is possibly out of date. Select a template from the list.
       </EmptyState>
     );
   }
@@ -120,11 +120,11 @@ function SessionGate({ specId, children }: { specId: string; children: (s: Guide
           </Button>
         }
       >
-        Its specification was written by hand, so there are no Guided steps for it.
+        A person wrote its spec by hand. Guided mode has no steps for it.
       </EmptyState>
     );
   }
-  if (state.error) return <ErrorNotice error={state.error} title="This analysis could not be loaded" />;
+  if (state.error) return <ErrorNotice error={state.error} title="The app could not load this analysis" />;
   if (!state.session) return <LoadingRows rows={6} />;
   return <>{children(state.session)}</>;
 }

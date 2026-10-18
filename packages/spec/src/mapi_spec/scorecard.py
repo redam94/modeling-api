@@ -107,7 +107,7 @@ class ScorecardItem(ResponseModel):
             "code": "RHAT_OK",
             "status": "pass",
             "title": "Chains agree",
-            "message_plain": "All chains converged to the same answer.",
+            "message_plain": "All chains got the same answer.",
             "metric": "r_hat_max",
             "value": 1.004,
             "threshold": 1.01,
@@ -116,11 +116,11 @@ class ScorecardItem(ResponseModel):
             "code": "HOLDOUT_MAPE",
             "status": "warn",
             "title": "Holdout error",
-            "message_plain": "Forecasts were off by 14% on the held-out periods.",
+            "message_plain": "The forecast error on the holdout periods was 14%.",
             "metric": "mape",
             "value": 0.14,
             "threshold": 0.1,
-            "suggested_action": "Check the last weeks of data for gaps or one-off events.",
+            "suggested_action": "Look for gaps or one-time events in the last weeks of data.",
             "check": "holdout.mape",
             "category": "holdout",
             "docs_anchor": "check-holdout-mape",
@@ -147,7 +147,7 @@ class Scorecard(ResponseModel):
                     "code": "RHAT_OK",
                     "status": "pass",
                     "title": "Chains agree",
-                    "message_plain": "All chains converged to the same answer.",
+                    "message_plain": "All chains got the same answer.",
                     "metric": "r_hat_max",
                     "value": 1.004,
                     "threshold": 1.01,
@@ -156,11 +156,11 @@ class Scorecard(ResponseModel):
                     "code": "HOLDOUT_MAPE",
                     "status": "warn",
                     "title": "Holdout error",
-                    "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+                    "message_plain": "The forecast error on the last 8 weeks was 14%.",
                     "metric": "mape",
                     "value": 0.14,
                     "threshold": 0.1,
-                    "suggested_action": "Add holidays or check data for the last weeks.",
+                    "suggested_action": "Add holidays, or look at the data for the last weeks.",
                 },
             ],
         }
@@ -255,112 +255,122 @@ SCORECARD_CHECKS: Final[dict[str, ScorecardCheck]] = {
     for c in (
         _c("convergence.rhat", "convergence", "RHAT", "Chains agree", "r_hat_max", _MAX,
            1.01, 1.05, (
-               "All chains converged to the same answer (R-hat {value}).",
-               "The chains mostly agree, but not fully (R-hat {value}).",
-               "The chains disagree (R-hat {value}): the results are not reliable.",
-               "Run more tuning and draws, or simplify the model.",
+               "All chains got the same answer (R-hat {value}).",
+               "The chains agree, but not fully (R-hat {value}).",
+               "The chains do not agree (R-hat {value}). The results are not reliable.",
+               "Increase the tuning steps and the draws, or make the model simpler.",
            )),
         _c("convergence.ess", "convergence", "ESS", "Enough independent draws", "ess_bulk_min",
            _MIN, 400, 100, (
-               "There are enough independent draws ({value}) for stable numbers.",
-               "Only {value} independent draws: numbers may move a little between runs.",
-               "Only {value} independent draws: the numbers are not stable.",
+               "There are enough independent draws ({value}) for stable results.",
+               "There are only {value} independent draws. The results can change a little "
+               "from one run to the next.",
+               "There are only {value} independent draws. The results are not stable.",
                "Increase the number of draws.",
            ), "int"),
-        _c("convergence.divergences", "convergence", "DIVERGENCES", "Sampler stayed on track",
+        _c("convergence.divergences", "convergence", "DIVERGENCES", "The sampler had no problems",
            "divergence_rate", _MAX, 0.0, 0.01, (
-               "The sampler explored the model without problems.",
-               "The sampler struggled in a few places ({value} of draws).",
-               "The sampler struggled often ({value} of draws): the results may be biased.",
-               "Raise target_accept, or use more informative priors.",
+               "The sampler had no problems with the model.",
+               "The sampler had problems in a small part of the draws ({value}).",
+               "The sampler had problems in many draws ({value}). The results can be biased.",
+               "Increase target_accept, or use priors that give more information.",
            ), "pct"),
         _c("holdout.mape", "holdout", "HOLDOUT_MAPE", "Holdout error", "mape", _MAX,
            0.10, 0.25, (
-               "Forecasts were off by {value} on the held-out periods.",
-               "Forecasts were off by {value} on the held-out periods.",
-               "Forecasts were off by {value} on the held-out periods: too far to trust.",
-               "Check the last periods of data for gaps or one-off events, and add holidays "
+               "The forecast error on the holdout periods was {value}.",
+               "The forecast error on the holdout periods was {value}.",
+               "The forecast error on the holdout periods was {value}. This error is too large.",
+               "Look for gaps or one-time events in the last periods of data. Add holidays "
                "or controls that explain them.",
            ), "pct"),
-        _c("holdout.coverage_90", "holdout", "HOLDOUT_COVERAGE", "Uncertainty is honest",
+        _c("holdout.coverage_90", "holdout", "HOLDOUT_COVERAGE", "The uncertainty is correct",
            "coverage_90", _BAND, 0.10, 0.25, (
-               "{value} of held-out values fell inside the 90% range, as expected.",
-               "{value} of held-out values fell inside the 90% range (expected 90%).",
-               "Only {value} of held-out values fell inside the 90% range: the uncertainty "
-               "is misleading.",
-               "Look for trends or shifts the model does not capture.",
+               "{value} of the holdout values were in the 90% range. This is correct.",
+               "{value} of the holdout values were in the 90% range. The target is 90%.",
+               "Only {value} of the holdout values were in the 90% range. The uncertainty "
+               "is not correct.",
+               "Look for trends or shifts that the model does not show.",
            ), "pct", target=0.90),
-        _c("holdout.hit_rate", "holdout", "HOLDOUT_HIT_RATE", "Beats a naive guess",
+        _c("holdout.hit_rate", "holdout", "HOLDOUT_HIT_RATE", "Better than a simple guess",
            "accuracy_lift", _MIN, 0.02, -0.10, (
-               "On held-out trips the model's top pick beat always guessing the most popular "
-               "product by {value}.",
-               "On held-out trips the model's top pick was about as good as always guessing "
-               "the most popular product ({value} difference).",
-               "On held-out trips the model's top pick did worse than always guessing the "
-               "most popular product ({value} difference): its predicted choices are not "
-               "reliable.",
-               "Add what drives the choice for every product (price, promotions, displays), "
-               "or collect more trips per customer.",
+               "On the holdout trips, the top choice of the model was correct {value} more "
+               "often than a guess of the most popular product.",
+               "On the holdout trips, the top choice of the model was correct about as often "
+               "as a guess of the most popular product ({value} difference).",
+               "On the holdout trips, the top choice of the model was correct less often than "
+               "a guess of the most popular product ({value} difference). Its predicted "
+               "choices are not reliable.",
+               "Add the drivers of the choice for each product (price, promotions, displays). "
+               "Or get more trips for each customer.",
            ), "pct"),
         _c("plausibility.negative_roi", "plausibility", "NEGATIVE_ROI", "No channel loses money",
            "negative_roi_share", _MAX, 0.10, 0.50, (
-               "No channel is likely to have a negative return.",
-               "A channel has a {value} chance of a negative return.",
-               "A channel more likely loses than makes money ({value} chance).",
-               "Check the channel's spend data, or state an ROI range in business priors.",
+               "No channel has a high probability of a negative return.",
+               "A channel has a {value} probability of a negative return.",
+               "A channel probably loses money ({value} probability).",
+               "Do a check of the spend data of the channel. Or give an ROI range in the "
+               "business priors.",
            ), "pct"),
-        _c("plausibility.roi_absurd", "plausibility", "ROI_ABSURD", "Returns are believable",
+        _c("plausibility.roi_absurd", "plausibility", "ROI_ABSURD", "Returns are not too high",
            "roi_max", _MAX, 20.0, 100.0, (
-               "The highest channel return ({value} per unit spent) is believable.",
-               "A channel returns {value} per unit spent, which is unusually high.",
-               "A channel returns {value} per unit spent, which is not believable.",
-               "Check spend units and gaps, or state an ROI range in business priors.",
+               "The highest return of a channel ({value} for each unit of spend) is in the "
+               "usual range.",
+               "A channel returns {value} for each unit of spend. This is higher than usual.",
+               "A channel returns {value} for each unit of spend. This is too high to be "
+               "correct.",
+               "Do a check of the spend units and the gaps. Or give an ROI range in the "
+               "business priors.",
            )),
         _c("plausibility.share_outlier", "plausibility", "SHARE_OUTLIER",
-           "No channel dominates", "max_channel_share", _MAX, 0.60, 0.90, (
+           "No channel is too large", "max_channel_share", _MAX, 0.60, 0.90, (
                "No single channel explains most of the KPI.",
-               "One channel explains {value} of the KPI, more than usual.",
-               "One channel explains {value} of the KPI, which is not plausible.",
-               "Check for a missing control (price, promotions, seasonality).",
+               "One channel explains {value} of the KPI. This is more than usual.",
+               "One channel explains {value} of the KPI. This is too high to be correct.",
+               "Look for a missing control (price, promotions, seasonality).",
            ), "pct"),
         _c("plausibility.baseline_share", "plausibility", "BASELINE_SHARE",
-           "Baseline is plausible", "baseline_share", _BAND, 0.40, 0.48, (
-               "The baseline (KPI without media) is {value}, a plausible share.",
-               "The baseline (KPI without media) is {value}, an unusual share.",
-               "The baseline (KPI without media) is {value}, which is not plausible.",
-               "State a baseline share in business priors, or review the controls.",
+           "The baseline is in the usual range", "baseline_share", _BAND, 0.40, 0.48, (
+               "The baseline (the KPI without media) is {value}. This share is in the usual "
+               "range.",
+               "The baseline (the KPI without media) is {value}. This share is unusual.",
+               "The baseline (the KPI without media) is {value}. This share is too far from "
+               "the usual range.",
+               "Give a baseline share in the business priors. Or do a check of the controls.",
            ), "pct", target=0.50),
         _c("plausibility.prior_overlap", "plausibility", "PRIOR_OVERLAP",
-           "The data informed the model", "prior_overlap_max", _MAX, 0.90, 0.99, (
-               "The data moved every parameter away from its prior.",
-               "A parameter barely moved from its prior ({value} overlap): the data says "
-               "little about it.",
-               "A parameter did not move from its prior at all ({value} overlap): its value "
-               "comes from the assumptions, not the data.",
-               "Add data that varies the driver (or a lift test), or state a business prior "
-               "you trust for it.",
+           "The data changed the model", "prior_overlap_max", _MAX, 0.90, 0.99, (
+               "The data moved each parameter away from its prior.",
+               "A parameter moved only a small distance from its prior ({value} overlap). "
+               "The data gives little information about it.",
+               "A parameter did not move from its prior ({value} overlap). Its value comes "
+               "from the assumptions, not from the data.",
+               "Add data where the driver changes, or add a lift test. Or give a business "
+               "prior that you trust for the driver.",
            ), "pct"),
         _c("data.missing", "data", "DATA_MISSING", "Few missing values", "missing_fraction",
            _MAX, 0.05, 0.30, (
                "Only {value} of the values are missing.",
                "{value} of the values are missing.",
-               "{value} of the values are missing: too many to model reliably.",
-               "Fill the gaps in the source data, or drop the affected series.",
+               "{value} of the values are missing. This is too many for a reliable model.",
+               "Fill the gaps in the source data, or remove the series that have gaps.",
            ), "pct"),
         _c("data.history", "data", "DATA_HISTORY", "Enough history", "history_years", _MIN,
            2.0, 1.0, (
-               "There are {value} years of history, enough to learn seasonality.",
-               "Only {value} years of history: seasonal effects are uncertain.",
-               "Only {value} years of history: too short to separate media from seasonality.",
-               "Add more history if you have it.",
+               "There are {value} years of history. This is enough to find the seasonality.",
+               "There are only {value} years of history. The seasonal effects are not "
+               "certain.",
+               "There are only {value} years of history. This is not sufficient to separate "
+               "media from seasonality.",
+               "If you have more history, add it.",
            ), "years"),
-        _c("data.spend_variation", "data", "SPEND_VARIATION", "Spend varies enough",
+        _c("data.spend_variation", "data", "SPEND_VARIATION", "Spend changes enough",
            "spend_cv_min", _MIN, 0.10, 0.02, (
-               "Every channel's spend varies enough to measure its effect.",
-               "A channel's spend barely varies ({value}): its effect is uncertain.",
-               "A channel's spend never really changes ({value}): its effect cannot be "
-               "measured from this data.",
-               "Add a lift test for the channel, or state its ROI in business priors.",
+               "The spend of each channel changes sufficiently to measure its effect.",
+               "The spend of a channel changes very little ({value}). Its effect is not "
+               "certain.",
+               "The spend of a channel almost never changes ({value}). You cannot measure "
+               "its effect from this data.",
+               "Add a lift test for the channel, or give its ROI in the business priors.",
            ), "pct"),
     )
 }  # fmt: skip
@@ -468,7 +478,7 @@ class PromotionGateDecision(ResponseModel):
                 {
                     "code": "SCORECARD_WARN",
                     "outcome": "needs_override",
-                    "message_plain": "Holdout error: forecasts were off by 14%.",
+                    "message_plain": "Holdout error: the forecast error was 14%.",
                     "check": "holdout.mape",
                 }
             ],
@@ -517,27 +527,28 @@ def promotion_gate(
         )
 
     if partial:
-        add("PARTIAL_MODEL", GateOutcome.BLOCKED, "The fit was interrupted before it finished.")
+        add("PARTIAL_MODEL", GateOutcome.BLOCKED, "The fit stopped before it was complete.")
     if require_validated and validation_status != "validated":
         state = (validation_status or "not submitted").replace("_", " ")
         add(
             "NOT_VALIDATED",
             GateOutcome.BLOCKED,
-            "The governance policy requires a validated model; this version is "
+            "The governance policy accepts only a validated model. This version is "
             f"{state}. Submit it for validation first.",
         )
     if fit_mode == "train_only" and not allow_train_only:
         add(
             "TRAIN_ONLY",
             GateOutcome.BLOCKED,
-            "The model was fitted without its holdout data; endpoints need a refit on all data.",
+            "The fit did not use the holdout data. For an endpoint, fit the model again on all "
+            "the data.",
         )
     if schema_breaks and schema_change != "allow":
         add(
             "SCHEMA_CHANGE",
             GateOutcome.BLOCKED if schema_change == "block" else GateOutcome.NEEDS_OVERRIDE,
-            "The model expects different input than the endpoint's callers send: "
-            + "; ".join(schema_breaks),
+            "The model needs inputs that are different from the inputs that the callers of "
+            "the endpoint send: " + "; ".join(schema_breaks),
         )
     failing: list[str] = []
     if scorecard is None:
@@ -565,9 +576,9 @@ def promotion_gate(
             add(
                 "NOT_EVALUATED",
                 GateOutcome.NEEDS_OVERRIDE,
-                "The model was never scored on held-out data, so its forecast error is "
-                f"unknown ({why}). Add a holdout split (data.split) and holdout metrics "
-                "(evaluate.metrics), then refit.",
+                "The model has no score on holdout data, so its forecast error is not "
+                f"known ({why}). Add a holdout split (data.split) and holdout metrics "
+                "(evaluate.metrics). Then fit the model again.",
                 check,
             )
         for check in dict.fromkeys(required_checks):
@@ -579,7 +590,7 @@ def promotion_gate(
             add(
                 "NOT_EVALUATED",
                 GateOutcome.NEEDS_OVERRIDE,
-                f"{title}: this check could not be run ({why}).",
+                f"{title}: the check did not run ({why}).",
                 check,
             )
         if scorecard.overall != "pass" and not any(

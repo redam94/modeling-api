@@ -1,8 +1,8 @@
 # API reference
 
-Generated from the docstrings of the Apache-2.0 packages with
-[mkdocstrings](https://mkdocstrings.github.io/). The pages list the modules a model author,
-data scientist or integrator uses; private helpers (names starting with `_`) are left out.
+[mkdocstrings](https://mkdocstrings.github.io/) makes these pages from the docstrings of the
+Apache-2.0 packages. The pages show the modules that model authors, data scientists and
+integrators use. The pages do not show private helpers (names that start with `_`).
 
 | Package | Import | Use it for |
 |---|---|---|
@@ -15,6 +15,6 @@ data scientist or integrator uses; private helpers (names starting with `_`) are
 | [`mapi-client`](client.md) | `mapi_client` | The Python client: every API call, sync and async, workflows, governance, explorers |
 
 !!! tip "Stable surface"
-    Import from the package root (`from mapi_sdk import fit_spec`) where a name is re-exported
-    there; submodule paths below are documented for completeness and may move between minor
-    versions before 1.0.
+    If the package root exports a name again, import the name from the package root
+    (`from mapi_sdk import fit_spec`). This page also shows the paths of the submodules.
+    Before version 1.0, these paths can change between minor versions.

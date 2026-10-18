@@ -43,7 +43,7 @@ if not verify_signature(raw_body, request.headers["Mapi-Signature"], secret):
 export function WebhookStatusBadge({ webhook }: { webhook: Webhook }) {
   if (webhook.active) return <Badge variant="success">active</Badge>;
   return (
-    <Badge variant={webhook.disabled_reason ? "danger" : "outline"} title={webhook.disabled_reason ?? "Disabled by an admin"}>
+    <Badge variant={webhook.disabled_reason ? "danger" : "outline"} title={webhook.disabled_reason ?? "An admin disabled this webhook."}>
       {webhook.disabled_reason ? "disabled automatically" : "disabled"}
     </Badge>
   );
@@ -101,8 +101,8 @@ export function WebhooksSection({ onCreate }: { onCreate?: () => void }) {
   );
   if (!canRead) {
     return (
-      <EmptyState icon={<WebhookIcon />} title="Webhooks are managed by project admins">
-        A webhook calls a URL when something happens in this project - a run finishes, a model is ready, an endpoint is promoted. Ask a project admin to set one up.
+      <EmptyState icon={<WebhookIcon />} title="Only project admins can manage webhooks">
+        A webhook calls a URL when an event occurs in this project. For example, a run finishes, a model is ready or an endpoint is promoted. Ask a project admin to make a webhook.
       </EmptyState>
     );
   }
@@ -111,7 +111,7 @@ export function WebhooksSection({ onCreate }: { onCreate?: () => void }) {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-[68ch] text-muted-foreground">
-          Webhooks call your URL when something happens in this project. Every delivery is signed (<Mono>Mapi-Signature</Mono>), retried with backoff and logged.
+          Webhooks call your URL when an event occurs in this project. The platform signs each delivery (<Mono>Mapi-Signature</Mono>), tries it again with backoff and records it in a log.
         </p>
         <Button onClick={openCreate} disabled={!canCreate}>
           <Plus /> New webhook
@@ -142,7 +142,7 @@ function WebhooksTable({ columns, onRowClick, onCreate, canCreate }: { columns: 
         ) : (
           <EmptyState
             icon={<Bell />}
-            title="No webhooks yet"
+            title="This project has no webhooks"
             action={
               canCreate ? (
                 <Button onClick={onCreate}>
@@ -151,7 +151,7 @@ function WebhooksTable({ columns, onRowClick, onCreate, canCreate }: { columns: 
               ) : null
             }
           >
-            Hear about finished runs, ready models and promotions in your own systems, without polling.
+            Create a webhook to send finished runs, ready models and promotions to your own systems. Your systems do not have to poll.
           </EmptyState>
         )
       }
@@ -200,9 +200,9 @@ export function CreateWebhookDialog({ initialEvents, onClose, onCreated }: { ini
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent wide>
         <DialogTitle>New webhook</DialogTitle>
-        <DialogDescription>The platform POSTs a signed JSON envelope to your URL for each event you pick. Envelopes carry ids and states, never data values or secrets.</DialogDescription>
+        <DialogDescription>For each event that you select, the platform POSTs a signed JSON envelope to your URL. Envelopes contain ids and states. They never contain data values or secrets.</DialogDescription>
         <form className="grid gap-5" onSubmit={submit} noValidate>
-          <Field label="URL" htmlFor="wh-url" error={shown.url ?? blocked} hint="https on port 443 or 8443, on a public host. Internal and private addresses are refused.">
+          <Field label="URL" htmlFor="wh-url" error={shown.url ?? blocked} hint="Type an https URL on port 443 or 8443, on a public host. The platform refuses internal and private addresses.">
             <Input id="wh-url" type="url" autoFocus className="font-mono" placeholder="https://hooks.example.com/mapi" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
           </Field>
           <Field label="Description (optional)" htmlFor="wh-desc" error={shown.description}>
@@ -238,8 +238,8 @@ export function WebhookSecretDialog({ created, rotated = false, onClose }: { cre
       title={rotated ? "Copy the new signing secret" : "Copy the signing secret now"}
       description={
         <>
-          This is the only time the secret for <Mono>{created.webhook.url}</Mono> is shown. Your receiver verifies every delivery with it.
-          {rotated ? " The old secret keeps signing for 24 hours, so you can switch over without dropping events." : ""}
+          The app shows the secret for <Mono>{created.webhook.url}</Mono> only one time. Your receiver uses it to verify each delivery.
+          {rotated ? " The old secret continues to sign deliveries for 24 hours. Change your receiver to the new secret in this time, and you will not lose events." : ""}
         </>
       }
       label="Signing secret"
@@ -252,7 +252,7 @@ export function WebhookSecretDialog({ created, rotated = false, onClose }: { cre
         <div className="mt-2">
           <CodeBlock code={VERIFY_SNIPPET} label="Signature check" language="python" />
           <p className="mt-2 text-xs text-muted-foreground">
-            <Mono>v1</Mono> is the hex HMAC-SHA256 of <Mono>&lt;t&gt;.&lt;raw body&gt;</Mono>; compare in constant time and refuse timestamps more than 300 s off.
+            <Mono>v1</Mono> is the hex HMAC-SHA256 of <Mono>&lt;t&gt;.&lt;raw body&gt;</Mono>. Compare the values in constant time. Refuse timestamps that are more than 300 s different from your clock.
           </p>
         </div>
       </details>
@@ -270,7 +270,7 @@ export function AutoDisabledNotice({ webhook }: { webhook: Webhook }) {
       <div className="grid gap-1">
         <p className="font-semibold">This webhook was disabled automatically</p>
         <p className="text-muted-foreground">{webhook.disabled_reason}</p>
-        <p className="text-[13px]">Fix the receiver, then enable the webhook again: that resets the failure count. Events while it was disabled were not queued.</p>
+        <p className="text-[13px]">Repair the receiver, then enable the webhook again. This sets the failure count to zero. The platform did not queue the events that occurred while the webhook was disabled.</p>
       </div>
     </div>
   );
@@ -305,8 +305,8 @@ export function WebhookSettings({ webhook }: { webhook: Webhook }) {
               update.mutate(
                 { active },
                 {
-                  onSuccess: () => toast.success(active ? "Webhook enabled" : "Webhook disabled", active ? "The failure count was reset." : undefined),
-                  onError: (e) => toast.error("Change failed", errorMessage(e)),
+                  onSuccess: () => toast.success(active ? "Webhook enabled" : "Webhook disabled", active ? "The failure count is now zero." : undefined),
+                  onError: (e) => toast.error("The change did not save", errorMessage(e)),
                 },
               )
             }
@@ -323,7 +323,7 @@ export function WebhookSettings({ webhook }: { webhook: Webhook }) {
           <Button
             size="sm"
             disabled={!dirty || !events.length || update.isPending}
-            onClick={() => update.mutate({ events }, { onSuccess: () => toast.success("Events saved"), onError: (e) => toast.error("Save failed", errorMessage(e)) })}
+            onClick={() => update.mutate({ events }, { onSuccess: () => toast.success("Events saved"), onError: (e) => toast.error("The events did not save", errorMessage(e)) })}
           >
             Save events
           </Button>
@@ -336,7 +336,7 @@ export function WebhookSettings({ webhook }: { webhook: Webhook }) {
         <Dialog open onOpenChange={(o) => !o && setRotating(false)}>
           <DialogContent>
             <DialogTitle>Rotate the signing secret?</DialogTitle>
-            <DialogDescription>A new secret is shown once. Deliveries carry a signature from both secrets for 24 hours, then only from the new one.</DialogDescription>
+            <DialogDescription>The app shows the new secret one time. For 24 hours, deliveries have a signature from each secret. After that, they have a signature from the new secret only.</DialogDescription>
             {rotate.isError ? <ErrorNotice error={rotate.error} /> : null}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setRotating(false)}>
@@ -412,7 +412,7 @@ function DeliveryRow({ d, onReplay, canReplay, replaying, open, onToggle }: { d:
               {d.error ? <p className="text-destructive">{d.error}</p> : null}
               {d.response_excerpt ? (
                 <div>
-                  <p className="text-xs text-muted-foreground">Your receiver answered (untrusted, first 1 KiB):</p>
+                  <p className="text-xs text-muted-foreground">The answer from your receiver (untrusted, first 1 KiB):</p>
                   <UntrustedText text={d.response_excerpt} className="mt-1" maxHeight="10rem" />
                 </div>
               ) : null}
@@ -446,7 +446,7 @@ export function DeliveryLog({ webhook }: { webhook: Webhook }) {
       <CardHeader>
         <div>
           <CardTitle>Delivery log</CardTitle>
-          <CardDescription>Every try, newest first. Failed deliveries are retried after {RETRY_SCHEDULE.join(", ")}.</CardDescription>
+          <CardDescription>This log shows each try, with the newest first. The platform tries failed deliveries again after {RETRY_SCHEDULE.join(", ")}.</CardDescription>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <NativeSelect aria-label="Filter deliveries by status" className="h-8 w-40" value={status} onChange={(e) => setStatus(e.target.value as DeliveryStatus | "")}>
@@ -462,10 +462,10 @@ export function DeliveryLog({ webhook }: { webhook: Webhook }) {
             disabled={!canReplay || !newest || pending !== null}
             title={
               !webhook.active
-                ? "Enable the webhook first"
+                ? "Enable the webhook first."
                 : !newest
-                  ? "Nothing was delivered yet: deliveries start with the next subscribed event in the project"
-                  : `Send the newest event (${newest.event_type}) again, to check your receiver`
+                  ? "The platform did not deliver an event yet. Deliveries start with the next subscribed event in the project."
+                  : `Send the newest event (${newest.event_type}) again to test your receiver.`
             }
             onClick={() => newest && doReplay(newest, "Newest event resent")}
           >
@@ -500,9 +500,9 @@ export function DeliveryLog({ webhook }: { webhook: Webhook }) {
                 </TBody>
               </Table>
             ) : (
-              <EmptyState icon={<Send />} title={status ? "No deliveries with this status" : "Nothing delivered yet"}>
-                Deliveries appear here as soon as a subscribed event happens in the project. There is no synthetic test event: to check your receiver, cause
-                one (finish a fit or a score, or promote an endpoint), then use Resend newest whenever you change the receiver.
+              <EmptyState icon={<Send />} title={status ? "No deliveries have this status" : "The platform did not deliver an event yet"}>
+                Deliveries show here when a subscribed event occurs in the project. There is no test event. To test your receiver, cause an event: finish a fit
+                or a score, or promote an endpoint. When you change the receiver, click Resend newest.
               </EmptyState>
             )
           }
@@ -519,7 +519,7 @@ export function DeleteWebhookDialog({ webhook, onClose, onDeleted }: { webhook: 
       <DialogContent>
         <DialogTitle>Delete this webhook?</DialogTitle>
         <DialogDescription>
-          <Mono>{webhook.url}</Mono> stops receiving events at once, and its delivery log is deleted.
+          <Mono>{webhook.url}</Mono> will not get events after this. The app deletes its delivery log.
         </DialogDescription>
         {del.isError ? <ErrorNotice error={del.error} /> : null}
         <DialogFooter>

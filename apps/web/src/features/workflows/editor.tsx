@@ -303,7 +303,7 @@ export function WorkflowEditor({
               />
               {textError ? (
                 <p role="alert" className="text-[13px] text-destructive">
-                  The canvas shows the last readable version: {textError}
+                  The text has an error: {textError}. Correct the text. Until then, the canvas shows the last correct version.
                 </p>
               ) : null}
             </div>
@@ -349,8 +349,8 @@ export function WorkflowEditor({
           <DialogTitle>{baseRevision ? `Save revision ${baseRevision + 1}` : "Create the workflow"}</DialogTitle>
           <DialogDescription>
             {errors.length
-              ? `The document has ${errors.length} problem${errors.length === 1 ? "" : "s"}. It is saved so you can fix it later, but it cannot run until a revision without problems is saved.`
-              : "The server checks the document again when it is saved."}
+              ? `The document has ${errors.length} problem${errors.length === 1 ? "" : "s"}. You can save it now and correct it later. It cannot run until you save a revision that has no problems.`
+              : "The server checks the document again when you save it."}
           </DialogDescription>
           <form className="grid gap-4" onSubmit={(e) => void save(e)}>
             <Field label="What changed (optional)" htmlFor="wf-save-message">
@@ -359,7 +359,7 @@ export function WorkflowEditor({
             {saveError ? (
               saveError instanceof ApiError && saveError.code === "CONFLICT" ? (
                 <p role="alert" className="text-[13px] text-warning">
-                  Someone saved a newer revision meanwhile. Your draft is kept: open the Revisions tab to compare, then save again on top of the latest.
+                  Another person saved a newer revision. The app keeps your draft. Open the Revisions tab to compare the revisions. Then save again on the latest revision.
                 </p>
               ) : (
                 <ErrorNotice error={saveError} title="The workflow was not saved" />

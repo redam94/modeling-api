@@ -74,7 +74,7 @@ describe("local profiling", () => {
 
   it("explains broken headers in plain words", () => {
     expect(tableProblems(tableFromText("a,a\n1,2\n"))[0]).toContain('Two columns are both called "a"');
-    expect(tableProblems(tableFromText("a,b\n"))).toContain("The file has a header but no rows of data.");
+    expect(tableProblems(tableFromText("a,b\n"))).toContain("The file has a header but no rows of data. Add the data to the file.");
     expect(profilesFromNames(["week", "revenue", "market"]).map((p) => p.dtype)).toEqual(["date", "number", "string"]);
   });
 });
@@ -167,7 +167,7 @@ describe("business priors", () => {
     expect(valueAt(withCalibration(doc, null, []), "/calibration")).toBeUndefined();
     expect(doc.calibration.prior_translation_run).toBe("run_old"); // the input is not mutated
     expect(beliefsKey(bp, [])).not.toBe(beliefsKey(null, []));
-    expect(coverageSentence(0.79, 0.8)).toBe("79% of what the model believes falls inside your range, close to the 80% you stated.");
+    expect(coverageSentence(0.79, 0.8)).toBe("79% of the model's belief is in your range. This is close to the 80% that you stated.");
     expect(coverageSentence(0.6, 0.8)).toContain("below");
   });
 });
@@ -193,8 +193,8 @@ describe("promotion gate preview (mapi_spec.scorecard.promotion_gate)", () => {
     const skipped = previewGate({ overall: "pass", items: [holdout], skipped: { "data.history": "no time dim" } }, { requiredChecks: ["holdout.mape", "data.history"] });
     expect(skipped.reasons?.map((r) => [r.code, r.check])).toEqual([["NOT_EVALUATED", "data.history"]]);
     expect(previewGate({ overall: "pass", items: [holdout] }).outcome).toBe("allowed");
-    expect(gateSentence("needs_override", false)).toContain("a project admin has to approve");
-    expect(gateSentence("needs_override", true)).toContain("As a project admin you can approve it anyway");
+    expect(gateSentence("needs_override", false)).toContain("A project admin must approve");
+    expect(gateSentence("needs_override", true)).toContain("As a project admin, you can approve the model");
   });
 });
 
@@ -242,7 +242,7 @@ describe("plain words", () => {
     expect(etaText(30)).toBe("less than a minute left");
     expect(etaText(600)).toBe("about 10 minutes left");
     expect(phaseSlot("fit")).toBe(phaseSlot("sample"));
-    expect(stateText("queued")).toBe("Waiting to start");
+    expect(stateText("queued")).toBe("In the queue");
     expect(stateText("queued", true)).toBe("Running");
   });
 });
@@ -296,7 +296,7 @@ describe("holdoutFraction", () => {
 describe("baselineSentence", () => {
   it("does not print impossible shares when the prior has no view on the baseline", async () => {
     const { baselineSentence } = await import("./steps/priors-step");
-    expect(baselineSentence([-1.64, 2.71], 0.5)).toContain("the model has no view yet");
+    expect(baselineSentence([-1.64, 2.71], 0.5)).toContain("The model has no view yet");
     expect(baselineSentence([-1.64, 2.71], 0.5)).not.toContain("-164%");
     expect(baselineSentence([0.55, 0.8], 0.7)).toBe("between 55% and 80%.");
     expect(baselineSentence(null, 0.7)).toBe("about 70%.");
@@ -359,15 +359,15 @@ describe("an unfinished experiment (M3 review)", () => {
     const rows = [newLiftRow("tv"), { ...newLiftRow("search"), start: "2025-06-01", end: "2025-05-01", spendDelta: "-40,000", kpiDelta: "-90000", se: "25000" }];
     const { problems } = toLiftTests(rows, ["tv", "search"]);
     expect(liftSummary(problems, rows)).toEqual([
-      "Experiment 1 still needs the first day, the last day, the spend change, the measured change and its uncertainty. Fill them in, or remove the experiment.",
-      "Experiment 2 still needs a last day after the first. Fill them in, or remove the experiment.",
+      "Experiment 1 still needs the first day, the last day, the spend change, the measured change and its uncertainty. Type the missing values, or remove the experiment.",
+      "Experiment 2 still needs a last day after the first. Type the missing values, or remove the experiment.",
     ]);
     expect(liftSummary([], rows)).toEqual([]);
   });
 
   it("uses placeholders that cannot pass for data", async () => {
     const { LIFT_PLACEHOLDERS } = await import("./priors");
-    for (const p of Object.values(LIFT_PLACEHOLDERS)) expect(p).toMatch(/^e\.g\. /);
+    for (const p of Object.values(LIFT_PLACEHOLDERS)) expect(p).toMatch(/^For example /);
   });
 });
 
@@ -375,13 +375,13 @@ describe("the upload hint (M3 review)", () => {
   it("describes the data each template needs, and the MMM presets only for the marketing mix", async () => {
     const { dataShapePlain } = await import("./session");
     const mmm = dataShapePlain(tpl("geo_mmm"));
-    expect(mmm).toMatch(/one row per week \(or day\) and market/);
+    expect(mmm).toMatch(/one row for each week \(or day\) and market/);
     expect(mmm).toMatch(/MFF/);
     expect(mmm).toMatch(/Meridian/);
     const choice = dataShapePlain(tpl("customer_choice"));
-    expect(choice).toMatch(/one row per shopping trip/);
+    expect(choice).toMatch(/one row for each shopping trip/);
     expect(choice).not.toMatch(/MFF|Meridian|market/);
-    expect(dataShapePlain(tpl("store_demand"))).toMatch(/one row per store and week/);
+    expect(dataShapePlain(tpl("store_demand"))).toMatch(/one row for each store and week/);
     expect(dataShapePlain(tpl("weekly_forecast"))).not.toMatch(/MFF|market/);
     expect(dataShapePlain({ family: "other" as GuidedTemplate["family"], description_plain: "Anything." })).toMatch(/^A CSV or Parquet file/);
   });

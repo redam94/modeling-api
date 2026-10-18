@@ -153,8 +153,8 @@ def fill_future_covariates(
         if hist is None or dim not in hist.dims:
             if policy is not FutureCovariates.ZERO:
                 raise MapiError(
-                    f"cannot extend {name!r} with {policy.value!r}: the fitted history is not "
-                    "available to this score run",
+                    f"cannot extend {name!r} with {policy.value!r}. This score run cannot get "
+                    "the fitted history",
                     code=ErrorCode.MISSING_FUTURE_COVARIATE,
                     pointer="/future_covariates",
                 )
@@ -198,7 +198,7 @@ def fill_future_covariates(
                         pointer="/future_covariates",
                         message=f"{name!r} has no value a whole number of seasons before "
                         f"{int(gaps.any(axis=tuple(range(1, gaps.ndim))).sum())} horizon "
-                        "period(s); its last value was carried forward there",
+                        "period(s). The server used its last value on these periods",
                     )
                 )
             out = dated
@@ -210,7 +210,7 @@ def fill_future_covariates(
                         severity=Severity.WARNING,
                         pointer="/future_covariates",
                         message=f"{name!r} has less than one season of history "
-                        f"({values.shape[0]} periods); its last value was carried forward",
+                        f"({values.shape[0]} periods). The server used its last value",
                     )
                 )
             out = np.broadcast_to(_last_finite(values)[None, ...], (steps, *values.shape[1:]))
@@ -224,7 +224,8 @@ def fill_future_covariates(
             code=ErrorCode.MISSING_FUTURE_COVARIATE,
             severity=Severity.INFO,
             pointer="/future_covariates",
-            message=f"future values of {sorted(filled)} were filled with {policy.value!r}",
+            message=f"the server filled the future values of {sorted(filled)} with "
+            f"{policy.value!r}",
         ),
     )
     return payload.assign(filled), issues
@@ -325,7 +326,8 @@ def fill_future_rows(
                             severity=Severity.WARNING,
                             pointer="/future_covariates",
                             message=f"{name!r} has no value a whole number of seasons before "
-                            "some periods to forecast; its last value was carried forward there",
+                            "some periods to forecast. The server used its last value on these "
+                            "periods",
                         )
                     )
                     dated = carried if dated is None else np.where(np.isnan(dated), carried, dated)
@@ -345,7 +347,8 @@ def fill_future_rows(
                 code=ErrorCode.MISSING_FUTURE_COVARIATE,
                 severity=Severity.INFO,
                 pointer="/future_covariates",
-                message=f"empty future values of {sorted(done)} were filled with {policy.value!r}",
+                message=f"the server filled the empty future values of {sorted(done)} with "
+                f"{policy.value!r}",
             ),
         )
     return out, issues

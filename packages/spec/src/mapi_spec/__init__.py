@@ -43,6 +43,7 @@ from mapi_spec.capabilities import (
     Capabilities,
     DerivedDecl,
     Diagnostic,
+    GridDecl,
     ModelManifest,
     OutputDecl,
     OutputSelector,
@@ -258,7 +259,7 @@ from mapi_spec.xrjson import XrJsonDataset
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.6.0"
+    __version__ = "0.7.0"
 
 __all__ = [
     "API_VERSION",
@@ -330,6 +331,7 @@ __all__ = [
     "FutureCovariates",
     "GateOutcome",
     "GovernancePolicy",
+    "GridDecl",
     "GuidedAnswers",
     "GuidedDraft",
     "GuidedTemplate",

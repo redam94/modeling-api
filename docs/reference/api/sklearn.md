@@ -1,7 +1,7 @@
 # `mapi_sklearn`
 
-scikit-learn and xgboost models: write `estimator()`, get stacking, safe persistence and
-uncertainty.
+This package is for scikit-learn and xgboost models. You write `estimator()`. The package gives
+stacking, safe persistence and uncertainty.
 
 ## Base classes
 

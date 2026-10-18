@@ -7,7 +7,7 @@ import { STARTER_SPEC } from "@/features/editor/starter";
 import { initialMappings, toIngestMapping, validateMappings } from "./datasets/mapping";
 import { buildPipeline, schemaDelta } from "./editor/pipeline";
 import { missingnessHeatmap, quickChart, stateArrayPlot } from "./plots/builtin-specs";
-import { buildScoreRequest, defaultScoreForm, parseSel, sideTableOptions } from "./score/request";
+import { REPRESENTATIONS, buildScoreRequest, defaultScoreForm, parseSel, sideTableOptions } from "./score/request";
 
 describe("buildPipeline", () => {
   it("joins the document with stages, resolved steps, split and issues", () => {
@@ -47,6 +47,7 @@ describe("score request", () => {
       mode: "forecast",
       inputs_stage: "scale_spend",
       horizon: { dim: "time", periods: 8 },
+      future_covariates: "carry_last",
       scenario: "dataset://default/plan_2027h1@v1",
       interventions: [{ var: "spend", sel: { channel: "meta", geo: ["de", "fr"] }, multiply: 1.2 }],
       output: { kind: "expected", summary: ["mean", "hdi_90"], draws: 0, units: "original", names: "dataset", vars: ["y_hat"] },
@@ -54,8 +55,20 @@ describe("score request", () => {
     });
   });
 
-  it("sends the payload dataset and the non-empty side tables", () => {
-    const form = { ...defaultScoreForm(), data: " dataset://default/e33_future@v1 ", sideTables: { fx: "dataset://default/fx_daily@v1", holidays: " " } };
+  it("refuses summaries and draws the model's representation cannot give", () => {
+    const form = { ...defaultScoreForm(), output: { ...defaultScoreForm().output, draws: "10" } };
+    const out = buildScoreRequest(form, "model://default/m@v1", "quantiles");
+    expect("problems" in out && out.problems.map((p) => p.field).sort()).toEqual(["draws", "summary"]);
+    const ok = buildScoreRequest({ ...form, output: { ...form.output, draws: "0", summary: REPRESENTATIONS.quantiles.defaults } }, "model://default/m@v1", "quantiles");
+    expect("request" in ok && ok.request.output?.summary).toEqual(["median", "q5", "q95"]);
+    // Unknown representation (an older version): the server decides.
+    expect("request" in buildScoreRequest(form, "model://default/m@v1")).toBe(true);
+  });
+
+  it("sends the payload dataset (only when it is the source) and the non-empty side tables", () => {
+    const typed = buildScoreRequest({ ...defaultScoreForm(), data: "dataset://default/e33_future@v1" }, "model://default/m@v1");
+    expect("request" in typed && typed.request.data).toBeUndefined();
+    const form = { ...defaultScoreForm(), source: "dataset" as const, data: " dataset://default/e33_future@v1 ", sideTables: { fx: "dataset://default/fx_daily@v1", holidays: " " } };
     const out = buildScoreRequest(form, "model://default/eu-geo-mmm@v1");
     expect("request" in out && out.request.data).toBe("dataset://default/e33_future@v1");
     expect("request" in out && out.request.side_tables).toEqual({ fx: "dataset://default/fx_daily@v1" });
@@ -82,7 +95,7 @@ describe("score request", () => {
 
   it("parses selections with typed values", () => {
     expect(parseSel("a=1, 2; b=true; c=x")).toEqual({ a: [1, 2], b: [true], c: ["x"] });
-    expect(parseSel("bad dim=1")).toMatch(/not a valid dim/);
+    expect(parseSel("bad dim=1")).toMatch(/not a correct dim name/);
   });
 });
 
@@ -101,8 +114,8 @@ describe("ingest mapping", () => {
   it("flags duplicate and invalid names and a missing dim", () => {
     const m = initialMappings(["a", "b"], [["1", "2"]]).map((x) => ({ ...x, as: "var" as const, name: "dup" }));
     const problems = validateMappings(m).map((p) => p.message);
-    expect(problems.some((p) => p.includes("at least one column as a dim"))).toBe(true);
-    expect(problems.some((p) => p.includes("used twice"))).toBe(true);
+    expect(problems.some((p) => p.includes("one or more columns as a dim"))).toBe(true);
+    expect(problems.some((p) => p.includes("Two columns use the name"))).toBe(true);
   });
 });
 

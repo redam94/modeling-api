@@ -21,6 +21,7 @@ from mapi_spec.about import (
 from mapi_spec.abouts import (
     MODEL_ABOUTS,
     PLANNED_MODEL_IDS,
+    SCIENCE_MODEL_IDS,
     SPLIT_ABOUTS,
     STEP_ABOUTS,
     SURVIVING_MODEL_IDS,
@@ -118,7 +119,13 @@ def test_cards_cover_the_surviving_catalog_and_the_planned_engines() -> None:
             "ts.arima", "ts.var", "ts.varmax", "ts.vecm", "ts.ecm", "ts.ardl", "ts.ets",
             "ts.unobserved_components", "ts.dynamic_factor", "ts.markov_switching",
             "ts.theta"} == set(PLANNED_MODEL_IDS)  # fmt: skip
-    assert set(MODEL_ABOUTS) == SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS  # nothing else
+    assert {
+        "sci.lgcp_grid",
+        "sci.fisher_kpp",
+        "sci.traction_force",
+        "sci.strong_lens",
+    } == SCIENCE_MODEL_IDS
+    assert set(MODEL_ABOUTS) == SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS | SCIENCE_MODEL_IDS
     for template in GUIDED_TEMPLATES.values():
         assert template.about == TEMPLATE_ABOUTS[template.id]
 
@@ -271,7 +278,7 @@ def test_items_not_made_for_the_goal_are_never_recommended() -> None:
     steps = [(AboutKind.STEP, k, v) for k, v in STEP_ABOUTS.items()]
     broadened = recommend(answers, _models(), fallback=steps, limit=5)
     assert broadened.items and all(r.kind is AboutKind.STEP for r in broadened.items)
-    assert all("Suits: check or prepare my data" in r.reasons_plain for r in broadened.items)
+    assert all("Suits: examine or prepare my data" in r.reasons_plain for r in broadened.items)
     assert not any("Not made for" in c for r in broadened.items for c in r.cautions_plain)
     # when a starting point fits, the fallback is not used
     fc = chooser_answers_from_query({"goal": ["forecast"]})

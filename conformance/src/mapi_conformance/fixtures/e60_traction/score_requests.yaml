@@ -1,0 +1,29 @@
+# E60: exact field draws on the fitted raster; pixel subsets; typed errors off the raster.
+- name: predict_field
+  request: {mode: predict, output: {summary: [mean, sd, q5, q95], draws: 5}}
+  payload: fit_data
+  expect:
+    groups: [summary, draws]
+    vars: [traction, displacement_hat, strain_energy, contractility]
+    sizes: {component: 2, stat: 4}
+- name: predictive_displacements
+  request: {mode: predict, output: {kind: predictive}}
+  payload: fit_data
+  expect: {vars: [displacement_hat, traction]}
+- name: pixel_window
+  request: {mode: predict}
+  payload: corner
+  expect: {sizes: {row: 8, col: 8, component: 2}}
+- name: rows_outside_the_raster
+  request: {mode: predict}
+  payload: outside
+  expect_error: UNSEEN_LEVELS
+- name: third_component
+  request: {mode: predict}
+  payload: z_component
+  expect_error: UNSEEN_LEVELS
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: displacement, multiply: 1.1}]}
+  payload: fit_data
+  drop_targets: false
+  expect_error: MODE_NOT_SUPPORTED

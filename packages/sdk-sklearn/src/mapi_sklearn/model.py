@@ -602,9 +602,9 @@ class SklearnQuantileModel[SettingsT: QuantileSettings](SklearnModel[SettingsT])
                 if s.uncertainty.rearrange
                 else "left as is"
             ),
-            "Some predicted ranges were out of order and have been put back in order."
+            "Some predicted ranges were not in the correct order. The model sorted them."
             if crossed
-            else "Predicted quantiles are in order.",
+            else "The predicted quantiles are in the correct order.",
             value=frac,
             threshold=0.05,
         )
@@ -699,7 +699,7 @@ class SklearnBootstrapModel[SettingsT: BootstrapSettings](SklearnModel[SettingsT
             "info",
             f"{n} bootstrap replicates ({'cluster by ' + unc.by if unc.by else 'rows'}); "
             f"out-of-bag residual sd {float(np.std(pool)):.4g} from {pool.size} residuals",
-            f"The model was refitted {n} times on resampled data to measure its uncertainty.",
+            f"The model was fit again {n} times on resampled data to measure its uncertainty.",
             value=float(np.std(pool)),
         )
         return _FitResult(models, groups=groups, diagnostics=[diag])
@@ -775,8 +775,8 @@ class SklearnConformalModel[SettingsT: ConformalSettings](SklearnModel[SettingsT
             f"split conformal: {int(cal.sum())} calibration rows ({unc.calibration_by}), "
             f"radius {radius:.4g} for alpha={unc.alpha}"
             + ("; point model refitted on all rows" if unc.refit else ""),
-            f"Prediction ranges are sized so about {1 - unc.alpha:.0%} of new values fall "
-            "inside them.",
+            f"The prediction ranges have a size that puts about {1 - unc.alpha:.0%} of new "
+            "values in them.",
             value=radius,
         )
         return _FitResult([("point", est)], learned=learned, diagnostics=[diag])
@@ -876,7 +876,7 @@ def _fit_diagnostics(design: Design, warned: Sequence[str]) -> list[Diagnostic]:
                 "ROWS_DROPPED",
                 "info" if only_target else "warning",
                 f"{total} of {design.n_cells} rows were not used for training ({reasons})",
-                f"{total} rows were left out of training because values were missing.",
+                f"The training did not use {total} rows because they have missing values.",
                 value=float(total),
             )
         )
@@ -886,7 +886,7 @@ def _fit_diagnostics(design: Design, warned: Sequence[str]) -> list[Diagnostic]:
                 "ESTIMATOR_WARNING",
                 "warning",
                 msg,
-                "The estimator reported a problem while fitting; check its settings.",
+                "The estimator reported a problem during the fit. Do a check of its settings.",
             )
         )
     return out

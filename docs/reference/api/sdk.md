@@ -1,6 +1,7 @@
 # `mapi_sdk`
 
-The xarray runtime. Runs in notebooks and runner images, never in the control plane.
+This package is the xarray runtime. It runs in notebooks and in runner images. It never runs in
+the control plane.
 
 ## Fit and score
 

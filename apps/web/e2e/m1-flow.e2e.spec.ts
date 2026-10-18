@@ -166,7 +166,7 @@ test.describe("@e2e M1: fit, inspect and score an E33 geo MMM from the UI", () =
     const scorecard = page.getByRole("heading", { name: "Scorecard" }).locator("xpath=ancestor::section[1]");
     await expect(scorecard).toBeVisible();
     // the runner's scorecard (v0.4): one item per catalog check, titled in plain words
-    await expect(scorecard.getByText("Sampler stayed on track", { exact: true })).toBeVisible();
+    await expect(scorecard.getByText("The sampler had no problems", { exact: true })).toBeVisible();
     await expect(page.getByText(/^scorecard (pass|warn|fail)$/)).toBeVisible();
     await expect(page.getByText("coverage_90", { exact: true }).first()).toBeVisible();
     await shot(page, "05-scorecard");

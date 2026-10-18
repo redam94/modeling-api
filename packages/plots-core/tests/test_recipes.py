@@ -18,6 +18,7 @@ from mapi_plots import examples as ex  # noqa: E402
 from mapi_plots.convert import arrow_to_frame  # noqa: E402
 from mapi_plots.packs.ml import ml_recipes  # noqa: E402
 from mapi_plots.packs.mmm import mmm_recipes  # noqa: E402
+from mapi_plots.packs.sci import sci_recipes  # noqa: E402
 from mapi_plots.recipes import (  # noqa: E402
     Recipe,
     RecipeDataError,
@@ -84,8 +85,9 @@ def test_catalog_covers_the_plan() -> None:
     ids = {r.id for r in all_recipes()}
     assert ids >= PLAN_IDS
     assert len(ids) == len(all_recipes())
-    assert set(EXAMPLES) == ids
-    packs = {r.id for r in mmm_recipes()} | {r.id for r in ml_recipes()}
+    sci = {r.id for r in sci_recipes()}  # Plotly: covered by test_sci_recipes.py
+    assert set(EXAMPLES) == ids - sci
+    packs = {r.id for r in mmm_recipes()} | {r.id for r in ml_recipes()} | sci
     assert {r.id for r in standard_recipes()} | packs == ids
     catalog = Catalog(plots=[r.catalog_entry() for r in all_recipes()])
     assert catalog.resolve_plot("core.ppc_fan@^1") is not None
@@ -166,7 +168,7 @@ def test_data_overview_series_missingness_and_groups() -> None:
     assert rev["missing"].max() == pytest.approx(1 / 3)
     groups = frame(plot, "groups")
     assert dict(zip(groups.group, groups.n, strict=True))["north"] == 19
-    assert "summed over channel" in caption(plot)
+    assert "sum over channel" in caption(plot)
 
 
 def test_data_overview_without_time_or_facets() -> None:
@@ -334,14 +336,14 @@ def test_fan_from_summary_and_explicit_split() -> None:
     assert pd.Timestamp(fan["split"].iloc[0]) == pd.Timestamp("2024-03-03")
     np.testing.assert_allclose(fan["hi_90"] - fan["lo_90"], 30.0, rtol=1e-5)
     assert "After it" in caption(plot)
-    assert "the shaded bands are the 50% and 90% intervals" in caption(plot)
+    assert "The shaded bands are the 50% and 90% intervals" in caption(plot)
     # a summary with a 90% interval only: no empty 50% band layer, an honest caption
     only90 = tree["summary"].to_dataset().sel(stat=["mean", "hdi_90_lower", "hdi_90_upper"])
     plot = get_recipe("core.ppc_fan").render({"summary": only90}, point="mean")
     only = frame(plot, "fan")
     assert "lo_50" not in only.columns or only["lo_50"].isna().all()
     assert "lo_50" not in json.dumps(plot.spec)
-    assert "the shaded band is the 90% interval." in caption(plot)
+    assert "The shaded band is the 90% interval." in caption(plot)
 
 
 def test_fan_split_from_attrs_and_no_facet() -> None:
@@ -504,7 +506,7 @@ def test_decomposition_point_estimates_and_vars() -> None:
     unsure = xr.Dataset(
         {"x": (("chain", "draw", "week"), rng.standard_normal((2, 50, 4)))}, coords={"week": weeks}
     )
-    assert "uncertain" in caption(
+    assert "not certain" in caption(
         get_recipe("core.decomposition").render({"contributions": unsure})
     )
 
@@ -563,7 +565,7 @@ def test_model_comparison_from_precomputed_table() -> None:
     comp = frame(plot, "comparison")
     assert comp["model"].astype(str).tolist() == ["a", "c", "b"]
     assert set(comp["ic"].astype(str)) == {"loo"}
-    assert "negligible" in caption(plot)
+    assert "very small difference" in caption(plot)
     wider = table.assign(elpd_loo=("model", [-100.0, -120.0, -110.0]))
     assert "clear difference" in caption(render({"comparison": wider}))
     unsure = table.assign(

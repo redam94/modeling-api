@@ -83,7 +83,7 @@ function Detail({ selected, onClose }: { selected: Selected | null; onClose: () 
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent wide>
         <DialogTitle className="font-mono">{title}</DialogTitle>
-        <DialogDescription>Static catalog metadata; the control plane validates specs against it without running plugin code.</DialogDescription>
+        <DialogDescription>This is static catalog metadata. The control plane uses it to do a check of specs. It does not run plugin code.</DialogDescription>
         {body}
       </DialogContent>
     </Dialog>
@@ -99,7 +99,7 @@ export function CatalogPage() {
     <>
       <PageHeader
         title="Catalog"
-        description="Everything you can pick - models, preparation steps, splits, guided analyses, workflow templates and nodes, governance checks - in plain words, plus the technical catalog of plugins, steps and plot recipes."
+        description="This page tells you, in plain words, about all the items that you can select. These are models, preparation steps, splits, guided analyses, workflow templates, workflow nodes and governance checks. The page also shows the technical catalog of plugins, steps and plot recipes."
         meta={catalog.data ? <Mono title={catalog.data.digest}>digest {catalog.data.digest.slice(0, 19)}</Mono> : null}
       />
       <QueryView query={catalog}>

@@ -201,7 +201,7 @@ def test_binding_errors(catalog: Catalog) -> None:
     d["data"]["bind"]["vars"]["spend"] = "channel"
     res = _run(catalog, d)
     msgs = {i.pointer: i.message for i in res.issues if i.code is ErrorCode.BINDING_INVALID}
-    assert msgs["/data/bind/dims/geo"] == "dataset has no dim named 'region'"
+    assert msgs["/data/bind/dims/geo"] == "the dataset has no dim with the name 'region'"
     assert "it is a dim" in msgs["/data/bind/vars/spend"]
     assert res.stages[0].schema is None
 
@@ -211,7 +211,7 @@ def test_binding_collision(catalog: Catalog) -> None:
     raw["vars"]["y"] = {"dims": ["market"], "dtype": "float64"}
     res = _run(catalog, _e33(), raw)
     issue = _find(res, ErrorCode.BINDING_INVALID)
-    assert issue.pointer == "/data/bind/vars/y" and "collides" in issue.message
+    assert issue.pointer == "/data/bind/vars/y" and "is the same as an unbound" in issue.message
 
 
 def test_step_input_checks(catalog: Catalog) -> None:
@@ -284,7 +284,7 @@ def test_model_dtype_kind_and_role_mismatch(catalog: Catalog) -> None:
     msgs = [(i.severity, i.message) for i in res.issues]
     assert any("dtype float64" in m for s, m in msgs if s is Severity.ERROR)
     # the model's template decides the target role; the override is reported, not warned
-    assert any("treated as role 'target'" in m for s, m in msgs if s is Severity.INFO)
+    assert any("uses the role 'target'" in m for s, m in msgs if s is Severity.INFO)
     assert any("kind 'categorical'" in m for _, m in msgs)
 
 

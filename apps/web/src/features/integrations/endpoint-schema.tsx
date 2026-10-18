@@ -55,7 +55,7 @@ function SchemaTables({ schema }: { schema: EndpointSchema }) {
           ["Forecasts extend", snap.horizon_dim ? <Mono key="h">{snap.horizon_dim}</Mono> : "—"],
           ["Needed in the future", snap.future_required?.length ? <Mono key="f">{snap.future_required.join(", ")}</Mono> : "Nothing beyond the horizon"],
           ...(snap.horizon_dim && (snap.score_modes ?? []).includes("forecast")
-            ? ([["Actuals", snap.conditions_on_actuals ? "A forecast can carry your latest actuals: the model updates its state with them (no refit) and forecasts from the last one" : "Forecasts start at the end of the fitted history; target values in a forecast are refused"]] as [string, string][])
+            ? ([["Actuals", snap.conditions_on_actuals ? "A forecast can contain your latest actuals. The model updates its state with them and forecasts from the last actual. It does not fit again." : "Forecasts start at the end of the fitted history. The endpoint refuses target values in a forecast."]] as [string, string][])
             : []),
           ["Inputs at stage", <Mono key="s">{snap.inputs_stage ?? "raw"}</Mono>],
           ["Inline data", `up to ${formatBytes(schema.max_inline_bytes ?? 5 * 1024 * 1024)} of XrJSON per call`],
@@ -145,7 +145,7 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
         error={parsed.error}
         hint={
           <>
-            An <Mono>EndpointScoreCall</Mono>: the example validates as is. <Mono>data</Mono> and <Mono>scenario</Mono> take <Mono>dataset://</Mono> references or inline XrJSON.
+            Type an <Mono>EndpointScoreCall</Mono>. The example is valid with no changes. <Mono>data</Mono> and <Mono>scenario</Mono> accept <Mono>dataset://</Mono> references or inline XrJSON.
           </>
         }
       >
@@ -165,7 +165,7 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
         </Button>
         <Button
           disabled={!body || busy || !canRun}
-          title={canRun ? "Runs a real score (spends compute)" : "Scoring needs the runner role"}
+          title={canRun ? "Starts a real score. This uses compute." : "You need the runner role to score."}
           onClick={() => {
             if (!body) return;
             validate.reset();
@@ -179,10 +179,10 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
             Reset to the example
           </Button>
         ) : null}
-        <span className="text-xs text-muted-foreground">Validate runs only the static checks; Score starts a real run (up to 30 s wait).</span>
+        <span className="text-xs text-muted-foreground">Validate does only the static checks. Score starts a real run and waits for a maximum of 30 s.</span>
       </div>
       <section aria-label="Try it result" aria-live="polite" className="grid gap-2">
-        {validate.isError ? <ErrorNotice error={validate.error} title="The call could not be checked" /> : null}
+        {validate.isError ? <ErrorNotice error={validate.error} title="The app could not do a check of the call" /> : null}
         {validate.data ? (
           validate.data.valid ? (
             <div className="grid gap-2 rounded-lg border border-success/30 bg-success/6 p-3">
@@ -192,14 +192,14 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
               {validate.data.issues?.length ? <IssueList issues={validate.data.issues} /> : null}
               {validate.data.request ? (
                 <details>
-                  <summary className="cursor-pointer text-xs text-muted-foreground">The score request it becomes</summary>
+                  <summary className="cursor-pointer text-xs text-muted-foreground">The score request that the call makes</summary>
                   <JsonBlock value={validate.data.request} className="mt-2" maxHeight="16rem" />
                 </details>
               ) : null}
             </div>
           ) : (
             <div className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-3" role="alert">
-              <p className="font-medium">The call would be refused</p>
+              <p className="font-medium">The endpoint will refuse the call</p>
               <IssueList issues={validate.data.issues ?? []} />
             </div>
           )
@@ -248,7 +248,7 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
                 ))}
               </ul>
             ) : (
-              <p className="text-[13px] text-muted-foreground">The run page shows its progress and outputs once it finishes.</p>
+              <p className="text-[13px] text-muted-foreground">The run page shows the progress of the run. It shows the outputs when the run finishes.</p>
             )}
           </div>
         ) : null}
@@ -276,8 +276,8 @@ export function SnippetView({ snippet }: { snippet: Snippet }) {
 }
 
 const SNIPPET_NOTES: Partial<Record<SnippetLanguage, string>> = {
-  notebook: "Open in a notebook: paste this cell into Jupyter or marimo. It scores the endpoint with the Python client and shows the result as an xarray Dataset.",
-  apps_script: "Paste into Extensions > Apps Script of a Google Sheet; it scores the rows of an Input sheet (or the example) and writes the summary table to a Result sheet.",
+  notebook: "Paste this cell into Jupyter or marimo. The cell scores the endpoint with the Python client and shows the result as an xarray Dataset.",
+  apps_script: "Paste the code into Extensions > Apps Script of a Google Sheet. It scores the rows of an Input sheet, or the example. It writes the summary table to a Result sheet.",
 };
 
 export function SnippetTabs({ endpoint }: { endpoint: Endpoint }) {
@@ -326,7 +326,7 @@ export function EndpointSchemaPanel({ endpoint }: { endpoint: Endpoint }) {
         <CardHeader>
           <div>
             <CardTitle>What to send</CardTitle>
-            <CardDescription>The input contract of r{endpoint.revision}, frozen when it was promoted.</CardDescription>
+            <CardDescription>The input contract of r{endpoint.revision}. It did not change after the promotion.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -339,7 +339,7 @@ export function EndpointSchemaPanel({ endpoint }: { endpoint: Endpoint }) {
             <CardTitle className="flex items-center gap-2">
               <FlaskConical className="size-4" /> Try it
             </CardTitle>
-            <CardDescription>Check or run the example call against the live endpoint, as an integration would.</CardDescription>
+            <CardDescription>Do a check of the example call, or run it, on the live endpoint. An integration does the same.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -356,7 +356,7 @@ export function EndpointSnippetsPanel({ endpoint }: { endpoint: Endpoint }) {
       <CardHeader className="flex-wrap">
         <div>
           <CardTitle>Snippets</CardTitle>
-          <CardDescription>Ready-to-run code with the example call. Snippets never contain a secret: they read the token from MAPI_TOKEN (a script property in Apps Script).</CardDescription>
+          <CardDescription>Code that you can run with the example call. Snippets never contain a secret. They read the token from MAPI_TOKEN (a script property in Apps Script).</CardDescription>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link to="/tokens" search={{ preset: `score:${endpoint.alias}` }}>

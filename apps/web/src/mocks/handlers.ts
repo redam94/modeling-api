@@ -160,9 +160,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),
     http.get(`${API}/readyz`, () =>
-      HttpResponse.json({ status: "ok", version: "0.6.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
+      HttpResponse.json({ status: "ok", version: "0.7.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
-    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.6.0-mock", contract_version: "0.2" })),
+    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.7.0-mock", contract_version: "0.2" })),
     // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real.
     http.get(`${API}/v1/catalog`, () => HttpResponse.json(editorGen.catalog)),
     http.get(`${API}/v1/schemas/:name`, ({ params }) =>
@@ -316,6 +316,10 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     http.get(`${API}/v1/models/:id`, ({ params }) => (params.id === fx.MODEL_ID ? HttpResponse.json(fx.model) : problem(404, "NOT_FOUND", "Not found"))),
     http.get(`${API}/v1/models/:id/versions`, () => page([fx.modelVersion])),
     http.get(`${API}/v1/models/:id/versions/:v`, ({ params }) => (params.v === "1" ? HttpResponse.json(fx.modelVersion) : problem(404, "NOT_FOUND", "Not found"))),
+    // The input contract of eu-geo-mmm v1, as the server builds it (editor.gen.json).
+    http.get(`${API}/v1/models/:id/versions/:v/inputs`, ({ params }) =>
+      params.v === "1" ? HttpResponse.json(editorGen.model_inputs) : problem(404, "NOT_FOUND", "Not found"),
+    ),
     http.get(`${API}/v1/models/:id/versions/:v/plots`, () => page(fx.plotItems)),
     http.get(`${API}/v1/models/:id/versions/:v/plots/:plotId`, () => HttpResponse.json(fx.plotSpec)),
     http.get(new RegExp(`^${API_RE}/v1/models/[^/]+/versions/\\d+/artifacts/(.+)$`), ({ request }) => {

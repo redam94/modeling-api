@@ -109,9 +109,9 @@ def _root(dv: DatasetValue) -> tuple[DatasetValue, list[dict[str, JsonValue]], l
             dv,
             [],
             [
-                "the model is fitted on data changed by a transform that has no preprocessing-step "
-                "equivalent (" + "; ".join(dv.notes[-3:]) + "): its forecasts are in that space "
-                "and it cannot update a forecast with actuals"
+                "a transform with no equivalent preprocessing step changed the fit data of the "
+                "model (" + "; ".join(dv.notes[-3:]) + "). Its forecasts are on that changed "
+                "scale, and it cannot update a forecast with actuals"
             ],
         )
     return dv, [], []
@@ -163,7 +163,7 @@ def build_spec(
         spec = ModelSpec.model_validate(doc)
     except ValueError as exc:
         raise MapiError(
-            "the model node's settings do not make a valid spec",
+            "the settings of the model node do not make a valid spec. Correct the settings.",
             code=ErrorCode.WORKFLOW_INVALID,
             untrusted_text=str(exc)[:4000],
         ) from None
@@ -247,7 +247,7 @@ def fit_node(ctx: NodeContext) -> NodeOutcome:
     if plan is not None:
         inner = plan.get("plan") if isinstance(plan.get("plan"), dict) else None
         if not inner or inner.get("kind") != "holdout":
-            raise data_error("model.fit takes a holdout plan (split.holdout) as its split")
+            raise data_error("model.fit accepts only a holdout plan (split.holdout) as its split")
         split = inner.get("split")
     spec, base, warns = build_spec(
         ctx.params, dv, name=ctx.node_id, split=split, registry=_registry(ctx)
@@ -837,7 +837,7 @@ def fit_burn_in(bundle: Bundle) -> int:
 def model_residuals(mv: ModelValue, registry: Registry | None = None) -> Residuals:
     """``actual - fitted`` over the fit data, through the score path (``predict``)."""
     if mv.data is None:
-        raise data_error("the model's fit data is not available for residual checks")
+        raise data_error("the fit data of the model is not available for the residual checks")
     bundle = mv.bundle
     reg = registry or default_registry()
     tree = score_bundle(
@@ -984,7 +984,7 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
             if best is None or key < best[0]:
                 best = (key, settings)
         if best is None:
-            raise data_error(f"no grid point could be scored on {metric!r}")
+            raise data_error(f"no grid point has a score for {metric!r}")
         best_settings = best[1]
         best_score = best[0] if direction == "min" else -best[0]
         result = {}
@@ -1065,7 +1065,7 @@ def _nested_grid(
             if best_i is None or sign * score < best_i[0]:
                 best_i = (sign * score, i)
         if best_i is None:
-            raise data_error(f"no grid point could be scored on the inner folds of outer fold {j}")
+            raise data_error(f"no grid point has a score on the inner folds of outer fold {j}")
         pick = best_i[1]
         picks.append(pick)
         one = {k: v for k, v in fold.items() if k != "inner"}
@@ -1078,7 +1078,7 @@ def _nested_grid(
         outer_scores.append(float(s) if s is not None else math.nan)
     honest = fold_metrics(outer_fcs).get(metric)
     if honest is None or not math.isfinite(honest):
-        raise data_error(f"the outer folds could not be scored on {metric!r}")
+        raise data_error(f"the outer folds have no score for {metric!r}")
     counts = {i: picks.count(i) for i in set(picks)}
     final = min(
         counts,

@@ -1,7 +1,7 @@
 # `mapi_steps`
 
-The built-in `core.*` steps. For every step's settings, see the generated
-[steps catalog](../generated/steps-catalog.md).
+This package has the built-in `core.*` steps. For the settings of each step, read the
+generated [steps catalog](../generated/steps-catalog.md).
 
 ::: mapi_steps
     options:

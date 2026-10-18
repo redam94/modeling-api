@@ -1421,6 +1421,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/models/{model_id}/versions/{version}/inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What a score call can send: the input contract and the input table
+         * @description The input contract of the version (the one an endpoint serving it would freeze): the
+         *     input dims and variables under the spec's canonical names, which are needed on future
+         *     periods, the fitted coordinates, and the input table with ``periods`` periods after the
+         *     fit (1-200) for a model that forecasts.
+         */
+        get: operations["get_model_inputs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/models/{model_id}/versions/{version}/plots": {
         parameters: {
             query?: never;
@@ -1557,7 +1580,9 @@ export interface paths {
         /**
          * Score Model
          * @description Score with replayed preprocessing. ``Prefer: wait=N`` (≤ 60) waits up to N s:
-         *     200 with output links if the run finished, else 202 with the run.
+         *     200 with output links if the run finished, else 202 with the run. ``inline`` data is
+         *     checked against the version's input contract (``GET …/inputs``) and stored as a run
+         *     input, as an endpoint's inline payloads are.
          */
         post: operations["score_model"];
         delete?: never;
@@ -3689,7 +3714,7 @@ export interface components {
          *       "arm": "then",
          *       "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
          *       "decided_at": "2026-10-15T09:30:00Z",
-         *       "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+         *       "explain_plain": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference.",
          *       "inputs": {
          *         "nodes.adf.p_value": 0.57,
          *         "nodes.kpss.reject": true,
@@ -4252,7 +4277,7 @@ export interface components {
          *           "name": "permutation_scores"
          *         }
          *       ],
-         *       "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *       "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
          *       "metric": "permutation_p_value",
          *       "severity": "blocking",
          *       "status": "pass",
@@ -4419,8 +4444,8 @@ export interface components {
          *           "id": "weekly_forecast",
          *           "kind": "template",
          *           "reasons_plain": [
-         *             "Made for forecasting",
-         *             "Works on one series"
+         *             "Suits: forecast the future",
+         *             "Suits: one number over time"
          *           ],
          *           "score": 0.92,
          *           "summary_plain": "Forecasts one weekly number a few months ahead, with a range of likely values.",
@@ -5719,7 +5744,7 @@ export interface components {
          *           {
          *             "check": "holdout.mape",
          *             "code": "SCORECARD_WARN",
-         *             "message_plain": "Holdout error: forecasts were off by 14%.",
+         *             "message_plain": "Holdout error: the forecast error was 14%.",
          *             "outcome": "needs_override"
          *           }
          *         ],
@@ -6159,10 +6184,10 @@ export interface components {
          *       "issues": [
          *         {
          *           "code": "MISSING_FUTURE_COVARIATE",
-         *           "message": "forecasting needs future values of ['spend'] at stage 'raw'",
+         *           "message": "the forecast needs future values of ['spend'] at stage 'raw'",
          *           "pointer": "/scenario",
          *           "severity": "error",
-         *           "suggested_action": "Provide them in a scenario dataset."
+         *           "suggested_action": "Supply them in a scenario dataset."
          *         }
          *       ],
          *       "valid": false
@@ -6311,7 +6336,7 @@ export interface components {
          *                 "name": "permutation_scores"
          *               }
          *             ],
-         *             "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *             "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
          *             "metric": "permutation_p_value",
          *             "severity": "blocking",
          *             "status": "pass",
@@ -7500,7 +7525,7 @@ export interface components {
          *         "holdout",
          *         "time_series"
          *       ],
-         *       "title": "Beats simple benchmarks",
+         *       "title": "Better than simple benchmarks",
          *       "warn": 0.05
          *     }
          */
@@ -7755,6 +7780,44 @@ export interface components {
              * @default true
              */
             require_validated_for_promotion?: boolean;
+        };
+        /**
+         * GridDecl
+         * @description How to draw an output as a 2-D field (an image, a map, a vector field).
+         *
+         *     ``y`` and ``x`` are the dims of the raster rows and columns; ``y`` runs top to bottom
+         *     unless ``origin`` is ``lower``. ``frame`` names a third dim with one raster per level
+         *     (years, eras, times); ``component`` names a dim of length two that holds the ``(x, y)``
+         *     components of a vector field. Every other dim of the output is reduced over the
+         *     posterior draws only, never over space.
+         */
+        GridDecl: {
+            /**
+             * Colormap
+             * @default viridis
+             * @enum {string}
+             */
+            colormap?: "viridis" | "magma" | "cividis" | "gray" | "diverging";
+            /** Component */
+            component?: string | null;
+            /** Frame */
+            frame?: string | null;
+            /**
+             * Log
+             * @description Draw log10 of the value (for counts and intensities)
+             * @default false
+             */
+            log?: boolean;
+            /**
+             * Origin
+             * @default upper
+             * @enum {string}
+             */
+            origin?: "upper" | "lower";
+            /** X */
+            x: string;
+            /** Y */
+            y: string;
         };
         /**
          * GuidedAnswers
@@ -8401,7 +8464,7 @@ export interface components {
          *           "role": "coord"
          *         },
          *         {
-         *           "description": "The actual; leave empty for the periods to forecast",
+         *           "description": "The actual (leave empty for the periods to forecast)",
          *           "dims": [
          *             "t"
          *           ],
@@ -8409,7 +8472,7 @@ export interface components {
          *           "role": "target"
          *         },
          *         {
-         *           "description": "Needed on every period, the periods to forecast included",
+         *           "description": "Necessary on each period, also on the periods to forecast",
          *           "dims": [
          *             "t"
          *           ],
@@ -9434,7 +9497,7 @@ export interface components {
              */
             models: string[];
             /** Sections */
-            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "forecast" | "backtest" | "comparison")[];
+            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "fields" | "forecast" | "backtest" | "comparison")[];
         };
         /**
          * ModelExploreRequest
@@ -9478,7 +9541,149 @@ export interface components {
              */
             max_params?: number;
             /** Sections */
-            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "forecast" | "backtest" | "comparison")[];
+            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "fields" | "forecast" | "backtest" | "comparison")[];
+        };
+        /**
+         * ModelInputSchema
+         * @description ``GET /v1/models/{model_id}/versions/{version}/inputs``: what a score call of one model
+         *     version can send - the same input contract an endpoint serving the version would freeze
+         *     (:func:`~mapi_server.services.endpoints.snapshot_for`) and its input table.
+         *
+         *     The names are the spec's canonical ones (``data.bind`` applied), which inline payloads
+         *     (``ScoreCall.inline``) use. ``fit_coords`` tell a caller what the model saw: the fitted
+         *     periods and every level of the other dims.
+         * @example {
+         *       "input_table": {
+         *         "columns": [
+         *           {
+         *             "description": "The period (yyyy-MM-dd)",
+         *             "freq": "MS",
+         *             "name": "t",
+         *             "role": "coord"
+         *           },
+         *           {
+         *             "description": "The actual (leave empty for the periods to forecast)",
+         *             "dims": [
+         *               "t"
+         *             ],
+         *             "name": "y",
+         *             "role": "target"
+         *           },
+         *           {
+         *             "description": "Necessary on each period, also on the periods to forecast",
+         *             "dims": [
+         *               "t"
+         *             ],
+         *             "name": "price",
+         *             "role": "driver"
+         *           }
+         *         ],
+         *         "conditions_on_actuals": true,
+         *         "horizon_dim": "t",
+         *         "rows": [
+         *           [
+         *             "1961-01-01",
+         *             null,
+         *             null
+         *           ],
+         *           [
+         *             "1961-02-01",
+         *             null,
+         *             null
+         *           ]
+         *         ]
+         *       },
+         *       "model_ref": "model://growth/eu-geo-mmm@v3",
+         *       "snapshot": {
+         *         "fit_coords": {
+         *           "channel": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "search",
+         *               "tv"
+         *             ]
+         *           },
+         *           "date": {
+         *             "end": "2025-12-30",
+         *             "freq": "D",
+         *             "kind": "time",
+         *             "size": 730,
+         *             "start": "2024-01-01"
+         *           },
+         *           "market": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "de",
+         *               "fr"
+         *             ]
+         *           }
+         *         },
+         *         "future_required": [
+         *           "spend_local"
+         *         ],
+         *         "horizon_dim": "time",
+         *         "input_schema": {
+         *           "dims": {
+         *             "channel": {
+         *               "kind": "categorical"
+         *             },
+         *             "date": {
+         *               "freq": "D",
+         *               "kind": "time",
+         *               "policy": "extend"
+         *             },
+         *             "market": {
+         *               "kind": "categorical",
+         *               "new_level_strategy": "pooled",
+         *               "policy": "new_levels"
+         *             }
+         *           },
+         *           "vars": {
+         *             "revenue_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "role": "target"
+         *             },
+         *             "spend_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "channel",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "future_required": true,
+         *               "role": "spend"
+         *             }
+         *           }
+         *         },
+         *         "inputs_stage": "raw",
+         *         "representation": "draws",
+         *         "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *         "score_modes": [
+         *           "counterfactual",
+         *           "evaluate",
+         *           "forecast",
+         *           "predict"
+         *         ]
+         *       }
+         *     }
+         */
+        ModelInputSchema: {
+            /** @description The inline input as a long table, with the periods after the fit */
+            input_table?: components["schemas"]["InputTable"] | null;
+            /**
+             * Max Inline Bytes
+             * @default 5242880
+             */
+            max_inline_bytes?: number;
+            /** Model Ref */
+            model_ref: string;
+            snapshot: components["schemas"]["EndpointSchemaSnapshot"];
         };
         /**
          * ModelManifest
@@ -9563,7 +9768,7 @@ export interface components {
          *               "name": "permutation_scores"
          *             }
          *           ],
-         *           "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *           "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
          *           "metric": "permutation_p_value",
          *           "severity": "blocking",
          *           "status": "pass",
@@ -9721,7 +9926,7 @@ export interface components {
          *         "items": [
          *           {
          *             "code": "RHAT_OK",
-         *             "message_plain": "All chains converged to the same answer.",
+         *             "message_plain": "All chains got the same answer.",
          *             "metric": "r_hat_max",
          *             "status": "pass",
          *             "threshold": 1.01,
@@ -9730,10 +9935,10 @@ export interface components {
          *           },
          *           {
          *             "code": "HOLDOUT_MAPE",
-         *             "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+         *             "message_plain": "The forecast error on the last 8 weeks was 14%.",
          *             "metric": "mape",
          *             "status": "warn",
-         *             "suggested_action": "Add holidays or check data for the last weeks.",
+         *             "suggested_action": "Add holidays, or look at the data for the last weeks.",
          *             "threshold": 0.1,
          *             "title": "Holdout error",
          *             "value": 0.14
@@ -10402,6 +10607,8 @@ export interface components {
              * @description The output also carries every dim of this input variable (e.g. 'y' for models whose data dims come from settings, such as the sklearn row dims)
              */
             dims_of?: string | null;
+            /** @description Draw the output as a 2-D field (Model Explorer 'fields' section) */
+            grid?: components["schemas"]["GridDecl"] | null;
             /** Units */
             units?: string | null;
             /**
@@ -12126,7 +12333,7 @@ export interface components {
          *         {
          *           "check": "holdout.mape",
          *           "code": "SCORECARD_WARN",
-         *           "message_plain": "Holdout error: forecasts were off by 14%.",
+         *           "message_plain": "Holdout error: the forecast error was 14%.",
          *           "outcome": "needs_override"
          *         }
          *       ],
@@ -13071,6 +13278,8 @@ export interface components {
          *
          *     Send ``Prefer: wait=N`` (N ≤ 60) to wait for the result: the response is 200 with
          *     outputs if the run finished in time, else 202 with the run (poll it or follow its SSE).
+         *     ``inline`` carries ``data``/``scenario`` typed in instead of named as datasets; the
+         *     request then names neither.
          * @example {
          *       "request": {
          *         "apiVersion": "mapi/v1",
@@ -13092,6 +13301,7 @@ export interface components {
          *     }
          */
         ScoreCall: {
+            inline?: components["schemas"]["ScoreInline"] | null;
             /** Labels */
             labels?: {
                 [key: string]: string;
@@ -13148,6 +13358,53 @@ export interface components {
             outputs?: components["schemas"]["ArtifactLink"][];
             run: components["schemas"]["Run"];
             summary?: components["schemas"]["ScoreSummary"] | null;
+        };
+        /**
+         * ScoreInline
+         * @description Values typed in rather than uploaded: small XrJSON datasets (up to 5 MB each) under
+         *     the spec's canonical names, checked against the version's input contract
+         *     (``GET …/inputs``) and stored as run inputs, as an endpoint's inline payloads are.
+         * @example {
+         *       "data": {
+         *         "coords": {
+         *           "market": {
+         *             "data": [
+         *               "de"
+         *             ],
+         *             "dims": [
+         *               "market"
+         *             ]
+         *           },
+         *           "time": {
+         *             "data": [
+         *               "2026-01-04",
+         *               "2026-01-11"
+         *             ],
+         *             "dims": [
+         *               "time"
+         *             ]
+         *           }
+         *         },
+         *         "data_vars": {
+         *           "spend": {
+         *             "data": [
+         *               [
+         *                 1200,
+         *                 1350
+         *               ]
+         *             ],
+         *             "dims": [
+         *               "market",
+         *               "time"
+         *             ]
+         *           }
+         *         }
+         *       }
+         *     }
+         */
+        ScoreInline: {
+            data?: components["schemas"]["XrJsonDataset"] | null;
+            scenario?: components["schemas"]["XrJsonDataset"] | null;
         };
         /**
          * ScorePolicy
@@ -13214,7 +13471,8 @@ export interface components {
          *     zarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the
          *     ``score.zarr.zip`` output for everything). ``conditioning`` (forecasts): what the
          *     forecast was conditioned on - the end of the fitted history and the actuals the request
-         *     supplied (:mod:`mapi_spec.actuals`).
+         *     supplied (:mod:`mapi_spec.actuals`); ``actuals`` holds those values next to the
+         *     predictions they compare with.
          * @example {
          *       "tables": [
          *         {
@@ -13298,6 +13556,11 @@ export interface components {
          *     }
          */
         ScoreSummary: {
+            /**
+             * Actuals
+             * @description Forecasts with actuals: the actuals the request supplied, as tables named after the prediction variable they compare with (its coordinate columns, then `actual`), in the output's names and original units. Predictions on those periods are one-step-ahead: what the model expected before seeing each actual
+             */
+            actuals?: components["schemas"]["ScoreSummaryTable"][];
             conditioning?: components["schemas"]["ForecastConditioning"] | null;
             /** Tables */
             tables?: components["schemas"]["ScoreSummaryTable"][];
@@ -13346,7 +13609,7 @@ export interface components {
          *       "items": [
          *         {
          *           "code": "RHAT_OK",
-         *           "message_plain": "All chains converged to the same answer.",
+         *           "message_plain": "All chains got the same answer.",
          *           "metric": "r_hat_max",
          *           "status": "pass",
          *           "threshold": 1.01,
@@ -13355,10 +13618,10 @@ export interface components {
          *         },
          *         {
          *           "code": "HOLDOUT_MAPE",
-         *           "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+         *           "message_plain": "The forecast error on the last 8 weeks was 14%.",
          *           "metric": "mape",
          *           "status": "warn",
-         *           "suggested_action": "Add holidays or check data for the last weeks.",
+         *           "suggested_action": "Add holidays, or look at the data for the last weeks.",
          *           "threshold": 0.1,
          *           "title": "Holdout error",
          *           "value": 0.14
@@ -13387,7 +13650,7 @@ export interface components {
          * ScorecardItem
          * @example {
          *       "code": "RHAT_OK",
-         *       "message_plain": "All chains converged to the same answer.",
+         *       "message_plain": "All chains got the same answer.",
          *       "metric": "r_hat_max",
          *       "status": "pass",
          *       "threshold": 1.01,
@@ -13399,10 +13662,10 @@ export interface components {
          *       "check": "holdout.mape",
          *       "code": "HOLDOUT_MAPE",
          *       "docs_anchor": "check-holdout-mape",
-         *       "message_plain": "Forecasts were off by 14% on the held-out periods.",
+         *       "message_plain": "The forecast error on the holdout periods was 14%.",
          *       "metric": "mape",
          *       "status": "warn",
-         *       "suggested_action": "Check the last weeks of data for gaps or one-off events.",
+         *       "suggested_action": "Look for gaps or one-time events in the last weeks of data.",
          *       "threshold": 0.1,
          *       "title": "Holdout error",
          *       "value": 0.14
@@ -15953,7 +16216,7 @@ export interface components {
          *           "arm": "then",
          *           "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
          *           "decided_at": "2026-10-15T09:30:00Z",
-         *           "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+         *           "explain_plain": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference.",
          *           "inputs": {
          *             "nodes.adf.p_value": 0.57,
          *             "nodes.kpss.reject": true,
@@ -20261,6 +20524,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_model_inputs: {
+        parameters: {
+            query?: {
+                periods?: number;
+            };
+            header?: never;
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelInputSchema"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -199,7 +199,7 @@ export function notValidatedProblem(state: GovernanceState, modelVersionId: stri
   const latest = [...state.validations.values()].map((m) => m.v).filter((v) => v.model_id === MODEL_ID && v.version === 1).sort((a, b) => (b.submitted_at ?? "").localeCompare(a.submitted_at ?? ""))[0];
   if (latest?.status === "validated") return null;
   const status = (latest?.status ?? "not submitted").replace(/_/g, " ");
-  const message = `The governance policy requires a validated model; this version is ${status}. Submit it for validation first.`;
+  const message = `The governance policy accepts only a validated model. This version is ${status}. Submit it for validation first.`;
   return problem(409, "NOT_VALIDATED", "The model version is not validated", message, [
     { code: "NOT_VALIDATED", pointer: "", message, severity: "error", context: { gate_code: "NOT_VALIDATED", check: null } },
   ]);
@@ -388,7 +388,7 @@ export function createGovernanceHandlers(
             check: c.check,
             status: "skipped" as const,
             severity: c.severity ?? "blocking",
-            message_plain: "Not applicable: the model has no test period (add a data split and refit).",
+            message_plain: "Not applicable: the model has no test period (add a data split and fit the model again).",
             evidence: [],
             params: {},
           },

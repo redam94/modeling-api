@@ -1,24 +1,24 @@
 {
  "catalog": {
-  "digest": "sha256:97354b6ff53d333fdf6726255903ec79d8496235aa9db1feb259193e51e0e95e",
+  "digest": "sha256:cdc2e51d1e31e83d5581e8c8157f1ff6e9bcc750058e8aadb62e96ec803f7fba",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
     "manifest": {
      "about": {
       "assumptions": [
-       "Customers pick the option they like best given price and promotion",
-       "Taste differences between households are stable over time"
+       "Customers select the option that they like best for the given price and promotion",
+       "Differences in taste between households are stable over time"
       ],
       "avoid_when": [
        "You only have total sales, not individual choices"
       ],
       "data_needs": [
-       "One row per trip: the product chosen and each product's price and promotion"
+       "One row for each trip: the product that the customer selected, and the price and promotion of each product"
       ],
       "difficulty": "intermediate",
-      "example": "A 10% cut in Brand A's price moves its share from 30% to 36%.",
-      "expert_notes": "Conditional (McFadden) logit over alternative-specific covariates with household random effects; Bayesian-bootstrap draws over households.",
+      "example": "A 10% decrease in the price of Brand A increases its share from 30% to 36%.",
+      "expert_notes": "Conditional (McFadden) logit over alternative-specific covariates with household random effects. Bayesian-bootstrap draws over households.",
       "fits": {
        "data_shape": [
         "choices"
@@ -32,9 +32,9 @@
        ]
       },
       "outputs": [
-       "How sensitive choices are to price and promotion",
+       "How sensitive the choices are to price and promotion",
        "Predicted choice shares",
-       "What-if shares under new prices"
+       "What-if shares for new prices"
       ],
       "references": [
        {
@@ -44,12 +44,12 @@
       "related": [
        "core.last_per_group"
       ],
-      "summary_plain": "Explains which product a customer picks on each shopping trip and how price and promotions change that choice.",
+      "summary_plain": "Explains which product a customer selects on each shopping trip, and how price and promotions change that choice.",
       "title": "Customer choice",
       "typical_runtime": "minutes",
       "use_when": [
-       "You have purchase records with the price of every product on offer",
-       "You want to test a price change before making it"
+       "You have purchase records with the price of each product on offer",
+       "You want to test a price change before you make it"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -263,20 +263,20 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Advertising has a lingering effect and diminishing returns",
-       "Things that drive both spend and sales are included as controls"
+       "Advertising has an effect that continues for some time, and diminishing returns",
+       "The controls include the factors that change both spend and sales"
       ],
       "avoid_when": [
-       "Spend barely changes over time (the effect cannot be measured)",
+       "Spend changes very little over time (the model cannot measure the effect)",
        "You have less than a year of history",
        "You need answers in seconds (use the fast frequentist version)"
       ],
       "data_needs": [
-       "Weekly (or daily) sales, spend per channel, and optional controls such as price"
+       "Weekly (or daily) sales, spend for each channel, and optional controls such as price"
       ],
       "difficulty": "intermediate",
-      "example": "TV returns 2.1 euros per euro spent (range 1.4 to 2.9) and search 3.4.",
-      "expert_notes": "mmm-framework BayesianMMM: geometric/Weibull adstock, Hill or logistic saturation, trend options, Fourier seasonality, hierarchical pooling over geos and products (MFF panels); priors from business beliefs; lift tests as calibration likelihood; NUTS via PyMC, nutpie or numpyro.",
+      "example": "TV returns 2.1 euros for each euro of spend (range 1.4 to 2.9) and search returns 3.4.",
+      "expert_notes": "mmm-framework BayesianMMM: geometric/Weibull adstock, Hill or logistic saturation, trend options, Fourier seasonality, and hierarchical pooling over geos and products (MFF panels). Priors come from business beliefs. Lift tests are a calibration likelihood. NUTS through PyMC, nutpie or numpyro.",
       "fits": {
        "data_shape": [
         "one_series",
@@ -303,7 +303,7 @@
        ]
       },
       "outputs": [
-       "Contribution and return per channel with ranges",
+       "Contribution and return for each channel, with ranges",
        "Response curves",
        "Budget plans and what-if answers"
       ],
@@ -322,13 +322,13 @@
        "mmm.multivariate",
        "core.resample"
       ],
-      "summary_plain": "Measures how much each marketing channel adds to your sales, in total or per market, and shows what would happen if you moved budget between channels.",
+      "summary_plain": "Measures how much each marketing channel adds to your sales, in total or for each market. It also shows what occurs if you move budget between channels.",
       "title": "Marketing mix model",
       "typical_runtime": "long",
       "use_when": [
-       "You have two or more years of weekly sales and spend per channel",
+       "You have two or more years of weekly sales and spend for each channel",
        "You want to know the return of each channel and plan budgets",
-       "You have results per market or product and want them modelled together"
+       "You have results for each market or product and you want one model for all of them"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -1116,19 +1116,19 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Carry-over and saturation settings are searched over a grid",
+       "The model searches a grid for the carry-over and saturation settings",
        "Channel effects are not negative"
       ],
       "avoid_when": [
        "Decisions depend on the full uncertainty of the answer (use the Bayesian model)",
-       "You want to bring in business beliefs or lift tests"
+       "You want to add business beliefs or lift tests"
       ],
       "data_needs": [
-       "Weekly sales and spend per channel"
+       "Weekly sales and spend for each channel"
       ],
       "difficulty": "beginner",
-      "example": "A first read in 5 seconds: TV 28% of sales, search 12%.",
-      "expert_notes": "mmm-framework frequentist ridge / constrained least squares with a grid search over transform parameters; block-bootstrap replicates (at least 20) are the draws of every output, so its ranges are confidence intervals, not posteriors.",
+      "example": "A first result in 5 seconds: TV 28% of sales, search 12%.",
+      "expert_notes": "mmm-framework frequentist ridge / constrained least squares with a grid search over transform parameters. Block-bootstrap replicates (a minimum of 20) are the draws of each output, so its ranges are confidence intervals, not posteriors.",
       "fits": {
        "data_shape": [
         "one_series",
@@ -1146,7 +1146,7 @@
        ]
       },
       "outputs": [
-       "Contribution and return per channel, with bootstrap ranges"
+       "Contribution and return for each channel, with bootstrap ranges"
       ],
       "references": [
        {
@@ -1157,7 +1157,7 @@
       "related": [
        "mmm.bayesian"
       ],
-      "summary_plain": "Gives a quick first estimate of each channel's contribution in seconds, with simpler ranges (from resampling the data) instead of a full Bayesian model's uncertainty.",
+      "summary_plain": "Gives a quick first estimate of the contribution of each channel in seconds. Its ranges (from resampled data) are simpler than the uncertainty of a full Bayesian model.",
       "title": "Fast marketing mix model",
       "typical_runtime": "seconds",
       "use_when": [
@@ -1808,8 +1808,1420 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Rows you predict look like the rows the model learnt from",
-       "Resampling whole groups captures how uncertain the model is"
+       "Cells move at random and divide until the columns are full",
+       "No cells go in or out at the two edges of the image",
+       "All columns have the same maximum number of cells",
+       "With the delay setting, the cells start slowly after the scratch"
+      ],
+      "avoid_when": [
+       "The columns do not have equal width",
+       "You have positions of single cells, not counts (count them in columns first)",
+       "The cells move in a direction, for example to a chemical signal (the model has only random movement)",
+       "You need a forecast further ahead than the model permits without a new fit"
+      ],
+      "data_needs": [
+       "A count of cells for each column and each time, with the time in whole hours",
+       "Columns of equal width, with the position of the center of each column in um",
+       "Counts at the first time for all columns (the model starts from them)"
+      ],
+      "difficulty": "expert",
+      "example": "Count PC-3 cells in 38 columns of 50 um at 0, 12, 24, 36 and 48 hours. Get the speed of the cell front (about 27 um per hour) and forecast the counts at 60 hours.",
+      "expert_notes": "Fisher-KPP reaction-diffusion u_t = a(t) (D u_xx + lam u (1 - u)), a(t) = tanh(beta t) with the delay setting, else 1 (pymc-challenges E50). Method of lines: finite-volume Laplacian with zero-flux boundaries, explicit Euler steps of 1/steps_per_hour hours in pytensor.scan. The PDE starts from the counts at the first fitted time (conditioned on, not in the likelihood, kept in the bundle). Counts are Poisson with mean K u. Priors: D ~ LogNormal(log 1000, 1) um^2/h, lam ~ LogNormal(log 0.05, 1) 1/h, K ~ Normal(122, 15), beta ~ LogNormal(log 0.1, 1) 1/h. The fit refuses settings where D dt / dx^2 > 1/2 at the 99% prior quantile of D (CFL bound). wave_speed = 2 sqrt(D lam). Without the delay, D is biased low by a factor of about four on the PC-3 data, and LOO prefers the delay model.",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "fit_physics",
+        "forecast"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The expected cells for each column and time, with a range (a map over time and position)",
+       "The speed of the cell front in um per hour, with a range",
+       "The rates of movement and division, and the maximum cells in a column",
+       "Forecasts of the counts for the next times"
+      ],
+      "references": [
+       {
+        "title": "Jin et al. (2016), Reproducibility of scratch assays is affected by the initial degree of confluence, Journal of Theoretical Biology"
+       },
+       {
+        "title": "Simpson, Murphy and Maclaren (2024), likelihood analysis of the PC-3 scratch assay counts with a delayed Fisher-KPP model"
+       }
+      ],
+      "related": [
+       "sci.lgcp_grid"
+      ],
+      "summary_plain": "Measures how fast cells move and divide when they close a scratch in a layer of cells. It also shows the speed of the cell front and forecasts the counts at later hours, with a range.",
+      "title": "Cells that close a wound",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have counts of cells in columns across a scratch at some times",
+       "You want to know how fast the cells move and how fast they divide",
+       "You want the speed at which the wound closes, with a range"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "wave_speed",
+       "D",
+       "lam"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "forecast",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "Cell counts across a closing wound (a scratch assay) as a Fisher-KPP reaction-diffusion equation: cells move with diffusivity D, divide logistically at rate lam up to a capacity K, optionally after a start-up delay. The PDE runs inside the model from the counts at the first time; outputs are the expected density field (a kymograph over time and position) and the front speed 2 sqrt(D lam).",
+     "fit_schema": {},
+     "id": "sci.fisher_kpp",
+     "outputs": {
+      "density": {
+       "description": "Cells per column: the expected count K u(x, t), or a Poisson draw",
+       "dims": [
+        "t",
+        "x"
+       ],
+       "grid": {
+        "colormap": "viridis",
+        "log": false,
+        "origin": "lower",
+        "x": "x",
+        "y": "t"
+       },
+       "units_of": "count"
+      },
+      "wave_speed": {
+       "description": "Speed of the travelling invasion front, 2 sqrt(D lam)",
+       "dims": [],
+       "units": "um/h"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.profile_bands",
+      "sci.field_map"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "max_extension": {
+        "default": 4,
+        "required": false,
+        "type": "integer"
+       }
+      },
+      "template": {
+       "dims": {
+        "t": {
+         "description": "Hours since the start of the assay",
+         "kind": "integer",
+         "max_extension": "{max_extension}",
+         "policy": "extend"
+        },
+        "x": {
+         "description": "Centre of each column across the wound (um, equal spacing)",
+         "kind": "float",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "count": {
+         "bounds": [
+          0,
+          null
+         ],
+         "dims": [
+          "t",
+          "x"
+         ],
+         "dtype": "int64",
+         "role": "target",
+         "units": "cells"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.fisher_kpp`` (D in um^2/h, rates in 1/h, K in cells per column).",
+      "properties": {
+       "capacity_mu": {
+        "default": 122.0,
+        "description": "Prior mean of K (cells per column)",
+        "exclusiveMinimum": 0,
+        "title": "Capacity Mu",
+        "type": "number"
+       },
+       "capacity_sigma": {
+        "default": 15.0,
+        "description": "Prior sd of K",
+        "exclusiveMinimum": 0,
+        "title": "Capacity Sigma",
+        "type": "number"
+       },
+       "cfl_quantile": {
+        "default": 0.99,
+        "description": "Quantile of the prior of D that must satisfy D dt / dx^2 <= 1/2",
+        "exclusiveMaximum": 1.0,
+        "exclusiveMinimum": 0.5,
+        "title": "Cfl Quantile",
+        "type": "number"
+       },
+       "delay": {
+        "default": true,
+        "description": "Multiply movement and growth by tanh(beta t): the cells start slowly after the scratch (x-ui-level: basic)",
+        "title": "Delay",
+        "type": "boolean"
+       },
+       "delay_rate_log_sd": {
+        "default": 1.0,
+        "description": "Log-scale sd of the prior of beta",
+        "exclusiveMinimum": 0,
+        "title": "Delay Rate Log Sd",
+        "type": "number"
+       },
+       "delay_rate_median": {
+        "default": 0.1,
+        "description": "Prior median of beta (1/h)",
+        "exclusiveMinimum": 0,
+        "title": "Delay Rate Median",
+        "type": "number"
+       },
+       "diffusivity_log_sd": {
+        "default": 1.0,
+        "description": "Log-scale sd of the prior of D",
+        "exclusiveMinimum": 0,
+        "title": "Diffusivity Log Sd",
+        "type": "number"
+       },
+       "diffusivity_median": {
+        "default": 1000.0,
+        "description": "Prior median of D (um^2/h)",
+        "exclusiveMinimum": 0,
+        "title": "Diffusivity Median",
+        "type": "number"
+       },
+       "growth_log_sd": {
+        "default": 1.0,
+        "description": "Log-scale sd of the prior of lam",
+        "exclusiveMinimum": 0,
+        "title": "Growth Log Sd",
+        "type": "number"
+       },
+       "growth_median": {
+        "default": 0.05,
+        "description": "Prior median of lam (1/h)",
+        "exclusiveMinimum": 0,
+        "title": "Growth Median",
+        "type": "number"
+       },
+       "initial_floor": {
+        "default": 0.1,
+        "description": "Smallest initial count, so an empty column can still fill",
+        "exclusiveMinimum": 0,
+        "title": "Initial Floor",
+        "type": "number"
+       },
+       "max_extension": {
+        "default": 4,
+        "description": "Observation periods a forecast may reach past the last fitted time",
+        "maximum": 1000,
+        "minimum": 0,
+        "title": "Max Extension",
+        "type": "integer"
+       },
+       "steps_per_hour": {
+        "default": 10,
+        "description": "Explicit Euler steps per hour; more steps are slower but stable for a larger diffusivity (x-ui-level: basic)",
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Steps Per Hour",
+        "type": "integer"
+       }
+      },
+      "title": "FisherKPPSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The rate changes smoothly from one cell to the cells near it",
+       "The map changes only from one era (a group of periods) to the next",
+       "The total for the full grid changes gradually from one period to the next",
+       "Events can occur in groups (more variation than a constant rate gives)"
+      ],
+      "avoid_when": [
+       "You have exact locations and want a model for each point (bin them into cells first)",
+       "The grid has thousands of cells (the fit becomes too slow)",
+       "You must know what occurs if a cause changes, such as a new policy (the model has no columns for causes)",
+       "You need a forecast further ahead than the model permits without a new fit"
+      ],
+      "data_needs": [
+       "A count of events for each cell and each period (quarters, months or years)",
+       "Cells of equal size, with the row and column number of each cell"
+      ],
+      "difficulty": "expert",
+      "example": "Count the earthquakes in each 25 km cell for each quarter from 2009 to 2017. Then forecast the map and the total for 2018 and 2019 with a 90% range.",
+      "expert_notes": "Log-Gaussian Cox process on a space-time grid (pymc-challenges E07, rung 4). log rate = alpha + g_t + log softmax over cells of f_era(s): the total per period (exp(alpha + g_t), g a centred Gaussian random walk) is separate from the share of each cell, so the field cannot inflate the total. f is a 2-D Hilbert-space GP (Matern-5/2, product basis of m_row x m_col sine functions, boundary factor c) whose basis coefficients follow a random walk over eras, anchored at the busiest fit era. Negative binomial counts (prior on 1/phi). The random-walk steps and the era coefficients cover max_extension periods after the fit, so forecasts use posterior draws of their prior. Lengthscale prior: inverse gamma with 90% of its mass between ell_lower_km and ell_upper_km.",
+      "fits": {
+       "data_shape": [
+        "grid",
+        "panel"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "monthly"
+       ],
+       "goal": [
+        "map_fields",
+        "forecast"
+       ],
+       "history": [
+        "medium",
+        "long"
+       ],
+       "speed": [
+        "minutes",
+        "can_wait"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The expected events for each cell and period, with a range",
+       "The expected total for each period, with a range",
+       "Forecasts of the map and of the total for the next periods"
+      ],
+      "references": [
+       {
+        "title": "Moller, Syversveen and Waagepetersen (1998), Log Gaussian Cox processes",
+        "url": "https://doi.org/10.1111/1467-9469.00115"
+       },
+       {
+        "title": "Riutort-Mayol et al. (2022), Practical Hilbert space approximate Bayesian Gaussian processes",
+        "url": "https://arxiv.org/abs/2004.11408"
+       }
+      ],
+      "related": [
+       "ts.hsgp_trend"
+      ],
+      "summary_plain": "Finds where and when events such as earthquakes occur more often. It counts the events in each cell of a map for each period, and it forecasts the next periods with a range.",
+      "title": "Event counts on a map over time",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have counts of events in each cell of a regular grid for each period",
+       "The area with many events moves or changes over time",
+       "You want a map of the expected rate and a map of the uncertainty"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "alpha",
+       "sigma_g",
+       "ell",
+       "eta0",
+       "eta_d",
+       "inv_phi"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "forecast",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "A log-Gaussian Cox process for event counts on a regular space-time grid: a random-walk total per period times a smooth 2-D map (Mat\u00e9rn-5/2 HSGP) that can change from era to era, with negative-binomial counts. Forecasts reach at most max_extension periods past the fit.",
+     "fit_schema": {},
+     "id": "sci.lgcp_grid",
+     "outputs": {
+      "rate": {
+       "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+       "dims": [
+        "period",
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "frame": "period",
+        "log": true,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units_of": "count"
+      },
+      "total": {
+       "description": "Expected events per period in the whole grid",
+       "dims": [
+        "period"
+       ],
+       "units_of": "count"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "core.ppc_fan",
+      "sci.field_map",
+      "sci.ensemble"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 120,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "max_extension": {
+        "default": 8,
+        "required": false,
+        "type": "integer"
+       }
+      },
+      "template": {
+       "dims": {
+        "col": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "period": {
+         "kind": "time",
+         "max_extension": "{max_extension}",
+         "policy": "extend"
+        },
+        "row": {
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "count": {
+         "dims": [
+          "period",
+          "row",
+          "col"
+         ],
+         "dtype": "int64",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.lgcp_grid`` (lengthscales are in km).",
+      "properties": {
+       "alpha_sigma": {
+        "default": 1.5,
+        "description": "Sd of the log total per period (centred on the fit mean)",
+        "exclusiveMinimum": 0,
+        "title": "Alpha Sigma",
+        "type": "number"
+       },
+       "anchor": {
+        "default": "busiest",
+        "description": "The era whose map gets the marginal prior; the other eras walk away from it (busiest = the fit era with the most events)",
+        "enum": [
+         "busiest",
+         "first",
+         "last"
+        ],
+        "title": "Anchor",
+        "type": "string"
+       },
+       "c": {
+        "default": 1.5,
+        "description": "HSGP boundary factor",
+        "exclusiveMinimum": 1.0,
+        "maximum": 5.0,
+        "title": "C",
+        "type": "number"
+       },
+       "cell_km": {
+        "default": 25.0,
+        "description": "Width of one grid cell in km",
+        "exclusiveMinimum": 0,
+        "title": "Cell Km",
+        "type": "number"
+       },
+       "ell_lower_km": {
+        "default": 15.0,
+        "description": "5% quantile of the lengthscale prior",
+        "exclusiveMinimum": 0,
+        "title": "Ell Lower Km",
+        "type": "number"
+       },
+       "ell_upper_km": {
+        "default": 100.0,
+        "description": "95% quantile of the lengthscale prior",
+        "exclusiveMinimum": 0,
+        "title": "Ell Upper Km",
+        "type": "number"
+       },
+       "era_periods": {
+        "default": 4,
+        "description": "Periods in one era: the spatial field changes from era to era (4 quarters = one map per year)",
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Era Periods",
+        "type": "integer"
+       },
+       "eta0_scale": {
+        "default": 2.0,
+        "description": "Half-normal scale of the anchor map",
+        "exclusiveMinimum": 0,
+        "title": "Eta0 Scale",
+        "type": "number"
+       },
+       "eta_d_scale": {
+        "default": 1.0,
+        "description": "Half-normal scale of the era increments",
+        "exclusiveMinimum": 0,
+        "title": "Eta D Scale",
+        "type": "number"
+       },
+       "field": {
+        "default": "era_walk",
+        "description": "era_walk: a new map each era (a random walk of maps); static: one map for all periods (the separable model)",
+        "enum": [
+         "era_walk",
+         "static"
+        ],
+        "title": "Field",
+        "type": "string"
+       },
+       "inv_phi_rate": {
+        "default": 1.0,
+        "description": "Exponential rate of 1/phi (0 = Poisson)",
+        "exclusiveMinimum": 0,
+        "title": "Inv Phi Rate",
+        "type": "number"
+       },
+       "likelihood": {
+        "default": "negbin",
+        "enum": [
+         "negbin",
+         "poisson"
+        ],
+        "title": "Likelihood",
+        "type": "string"
+       },
+       "m_col": {
+        "default": 14,
+        "description": "HSGP basis functions along columns",
+        "maximum": 60,
+        "minimum": 2,
+        "title": "M Col",
+        "type": "integer"
+       },
+       "m_row": {
+        "default": 10,
+        "description": "HSGP basis functions along rows",
+        "maximum": 60,
+        "minimum": 2,
+        "title": "M Row",
+        "type": "integer"
+       },
+       "max_extension": {
+        "default": 8,
+        "description": "Periods a forecast may reach past the fitted range without a refit (x-ui-level: basic)",
+        "maximum": 400,
+        "minimum": 1,
+        "title": "Max Extension",
+        "type": "integer"
+       },
+       "sigma_g_scale": {
+        "default": 0.5,
+        "description": "Half-normal scale of the RW step",
+        "exclusiveMinimum": 0,
+        "title": "Sigma G Scale",
+        "type": "number"
+       }
+      },
+      "title": "LGCPGridSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The mass of the lens is an isothermal ellipsoid, with an optional external shear",
+       "The light of the lens galaxy and of the source are smooth elliptical profiles",
+       "The noise is Gaussian. Neighbouring pixels can have a correlated noise"
+      ],
+      "avoid_when": [
+       "The lens is a group or a cluster of galaxies, or the image has many lenses",
+       "You do not have a point-spread function (PSF) or a noise value for each pixel",
+       "You need the slope of the mass profile (one image cannot give it)"
+      ],
+      "data_needs": [
+       "A cutout of the image with the lens galaxy at the centre",
+       "The inverse variance (weight) of each pixel",
+       "The PSF as a small image with an odd number of rows and columns, for example from stars in the same image",
+       "Optional: a mask of the pixels to use, and the redshifts of the lens and the source"
+      ],
+      "difficulty": "expert",
+      "example": "An HST image of the lens SDSS J1627-0053 gives an Einstein radius of 1.22 arcsec and a mass of 2.3e11 solar masses inside this radius.",
+      "expert_notes": "Pixel forward model in PyTensor: a singular isothermal ellipsoid (Kormann et al. 1994) plus external shear, ray tracing on a sub-pixel grid, Sersic lens light and source, and PSF convolution as a separable SVD expansion (matrix products only). A separable lag-one correlation of the noise (drizzled images) is whitened exactly. The linear light amplitudes are integrated out in closed form and drawn after the fit from their conditional Gaussian. A staged optimisation finds the mode (lens light with sigma clipping, the Einstein radius from the ring profile, then starts around the lens axis). NUTS samples a parameterisation whitened by the Laplace approximation at that mode. Critical curves and caustics are analytic for each direction. The mass-sheet degeneracy is not broken: only the mass inside the Einstein radius is robust. No pointwise LOO.",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "map_fields",
+        "fit_physics"
+       ],
+       "uncertainty": [
+        "essential"
+       ]
+      },
+      "outputs": [
+       "The Einstein radius, and the mass inside it when you give the two redshifts",
+       "The predicted image, and simulated images with noise",
+       "An image of the source galaxy without the lens",
+       "The critical curves and the caustics for posterior draws"
+      ],
+      "references": [
+       {
+        "title": "Kormann, Schneider & Bartelmann (1994), Isothermal elliptical gravitational lens models"
+       },
+       {
+        "title": "Bolton et al. (2008), The Sloan Lens ACS Survey V: the full ACS strong-lens sample",
+        "url": "https://arxiv.org/abs/0805.1931"
+       },
+       {
+        "title": "Suyu et al. (2006), A Bayesian analysis of regularized source inversions in gravitational lensing",
+        "url": "https://arxiv.org/abs/astro-ph/0601493"
+       }
+      ],
+      "related": [
+       "sci.traction_force"
+      ],
+      "summary_plain": "Measures the mass of a galaxy that bends the light of a more distant galaxy into a ring or arcs. It predicts each pixel of the telescope image and shows the distant galaxy without the lens.",
+      "title": "Gravitational lens from an image",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have a telescope image of one lens galaxy with a ring or arcs around it",
+       "You need the Einstein radius and the mass inside it, with a range",
+       "You want to see the source galaxy without the lens, and the critical curves of the lens"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": false,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "theta_E",
+       "e_mass",
+       "xy_mass",
+       "shear"
+      ],
+      "inference": "mcmc",
+      "loo_invalid_reason": "the light amplitudes are integrated out over all pixels and the whitened noise couples neighbouring pixels, so pointwise leave-one-out is not defined",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict",
+       "simulate"
+      ]
+     },
+     "derived": [
+      {
+       "cache": "fit",
+       "description": "Tangential critical curve (image plane), its caustic and the cut (source plane) for posterior draws, in arcsec and grid pixel indices",
+       "dims": [
+        "sample",
+        "curve_point"
+       ],
+       "name": "critical_curves",
+       "units": "arcsec"
+      }
+     ],
+     "description": "A pixel forward model of a galaxy-scale strong gravitational lens: a singular isothermal ellipsoid with external shear traces every pixel to a Sersic source; the lens light, a PSF and correlated noise are modelled; the light amplitudes are integrated out. Gives the Einstein radius, the unlensed source and critical curves.",
+     "fit_schema": {},
+     "id": "sci.strong_lens",
+     "outputs": {
+      "einstein_mass": {
+       "description": "Mass inside the Einstein radius (needs z_lens and z_source)",
+       "dims": [],
+       "units": "solar_mass"
+      },
+      "einstein_radius": {
+       "description": "Einstein radius of the isothermal ellipsoid",
+       "dims": [],
+       "units": "arcsec"
+      },
+      "model_image": {
+       "description": "Expected image (lens light, lensed source, sky, PSF), or a simulated observation with noise",
+       "dims": [
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "gray",
+        "log": false,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units_of": "image"
+      },
+      "source": {
+       "description": "The unlensed source (parametric Sersic of each draw) on a source-plane grid",
+       "dims": [
+        "source_row",
+        "source_col"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "log": false,
+        "origin": "lower",
+        "x": "source_col",
+        "y": "source_row"
+       },
+       "units_of": "image"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.field_map"
+     ],
+     "resources": {
+      "default_class": "M",
+      "est_fit_seconds": 600,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "vars": {
+          "mask": {
+           "description": "True where the pixel is used in the fit",
+           "dims": [
+            "row",
+            "col"
+           ],
+           "dtype": "bool",
+           "role": "mask"
+          }
+         }
+        },
+        "when": {
+         "use_mask": true
+        }
+       }
+      ],
+      "params": {
+       "use_mask": {
+        "default": false,
+        "required": false,
+        "type": "boolean"
+       }
+      },
+      "template": {
+       "dims": {
+        "col": {
+         "description": "Image columns",
+         "kind": "integer"
+        },
+        "psf_col": {
+         "description": "Columns of the PSF kernel",
+         "kind": "integer"
+        },
+        "psf_row": {
+         "description": "Rows of the PSF kernel",
+         "kind": "integer"
+        },
+        "row": {
+         "description": "Image rows (row 0 at the bottom)",
+         "kind": "integer"
+        }
+       },
+       "vars": {
+        "image": {
+         "description": "Surface brightness of each pixel (for example electrons/s)",
+         "dims": [
+          "row",
+          "col"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        },
+        "psf": {
+         "description": "The point-spread function (odd sides, centred)",
+         "dims": [
+          "psf_row",
+          "psf_col"
+         ],
+         "dtype": "float64",
+         "role": "constant"
+        },
+        "weight": {
+         "description": "Inverse variance of each pixel; 0 leaves the pixel out",
+         "dims": [
+          "row",
+          "col"
+         ],
+         "dtype": "float64",
+         "role": "weight"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.strong_lens`` (angles in arcsec).",
+      "properties": {
+       "curve_draws": {
+        "default": 100,
+        "description": "Posterior draws with cached critical curves",
+        "maximum": 2000,
+        "minimum": 1,
+        "title": "Curve Draws",
+        "type": "integer"
+       },
+       "curve_points": {
+        "default": 128,
+        "description": "Points per critical curve",
+        "maximum": 2048,
+        "minimum": 16,
+        "title": "Curve Points",
+        "type": "integer"
+       },
+       "ellipticity_sd": {
+        "default": 0.2,
+        "description": "Prior sd of ellipticity components",
+        "exclusiveMinimum": 0,
+        "title": "Ellipticity Sd",
+        "type": "number"
+       },
+       "external_shear": {
+        "default": true,
+        "description": "Add an external shear to the lens",
+        "title": "External Shear",
+        "type": "boolean"
+       },
+       "fit_noise_scale": {
+        "default": true,
+        "description": "Scale the noise map by a free factor",
+        "title": "Fit Noise Scale",
+        "type": "boolean"
+       },
+       "h0": {
+        "default": 70.0,
+        "description": "Hubble constant (km/s/Mpc)",
+        "exclusiveMinimum": 0,
+        "title": "H0",
+        "type": "number"
+       },
+       "lens_light_components": {
+        "default": 2,
+        "description": "Concentric Sersic profiles for the lens galaxy's light",
+        "maximum": 2,
+        "minimum": 0,
+        "title": "Lens Light Components",
+        "type": "integer"
+       },
+       "light_center_sd": {
+        "default": 0.1,
+        "description": "Prior sd of the light centre",
+        "exclusiveMinimum": 0,
+        "title": "Light Center Sd",
+        "type": "number"
+       },
+       "light_size_medians": {
+        "default": [
+         0.5,
+         1.5
+        ],
+        "description": "Prior medians of the lens-light half-light radii",
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "number"
+         }
+        ],
+        "title": "Light Size Medians",
+        "type": "array"
+       },
+       "mass_center_sd": {
+        "default": 0.1,
+        "description": "Prior sd of the mass centre",
+        "exclusiveMinimum": 0,
+        "title": "Mass Center Sd",
+        "type": "number"
+       },
+       "max_iter": {
+        "default": 3000,
+        "description": "Iterations per optimisation",
+        "maximum": 100000,
+        "minimum": 10,
+        "title": "Max Iter",
+        "type": "integer"
+       },
+       "n_starts": {
+        "default": 5,
+        "description": "Starts of the full-model optimisation (source positions)",
+        "maximum": 9,
+        "minimum": 1,
+        "title": "N Starts",
+        "type": "integer"
+       },
+       "noise_correlation": {
+        "default": 0.0,
+        "description": "Lag-one correlation of the noise between neighbouring pixels (separable rows x columns; drizzled images have about 0.2). 0 treats pixels as independent",
+        "exclusiveMaximum": 0.45,
+        "minimum": 0.0,
+        "title": "Noise Correlation",
+        "type": "number"
+       },
+       "noise_scale_log_sd": {
+        "default": 0.2,
+        "description": "Prior sd of log noise scale",
+        "exclusiveMinimum": 0,
+        "title": "Noise Scale Log Sd",
+        "type": "number"
+       },
+       "omega_m": {
+        "default": 0.3,
+        "description": "Matter density (flat LCDM)",
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0,
+        "title": "Omega M",
+        "type": "number"
+       },
+       "pixel_scale": {
+        "default": 0.05,
+        "description": "Pixel size in arcsec",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Pixel Scale",
+        "type": "number"
+       },
+       "psf_max_rank": {
+        "default": 12,
+        "description": "Most separable PSF terms",
+        "maximum": 40,
+        "minimum": 1,
+        "title": "Psf Max Rank",
+        "type": "integer"
+       },
+       "psf_tolerance": {
+        "default": 0.001,
+        "description": "Relative error allowed in the separable PSF expansion",
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0,
+        "title": "Psf Tolerance",
+        "type": "number"
+       },
+       "shear_sd": {
+        "default": 0.05,
+        "description": "Prior sd of the shear components",
+        "exclusiveMinimum": 0,
+        "title": "Shear Sd",
+        "type": "number"
+       },
+       "source_grid": {
+        "default": 30,
+        "description": "Source-plane grid side (pixels)",
+        "maximum": 128,
+        "minimum": 4,
+        "title": "Source Grid",
+        "type": "integer"
+       },
+       "source_half_width": {
+        "default": 0.45,
+        "description": "Half-width of the source-plane grid (arcsec)",
+        "exclusiveMinimum": 0,
+        "title": "Source Half Width",
+        "type": "number"
+       },
+       "source_offset_sd": {
+        "default": 0.3,
+        "description": "Prior sd of the source position",
+        "exclusiveMinimum": 0,
+        "title": "Source Offset Sd",
+        "type": "number"
+       },
+       "source_size_median": {
+        "default": 0.2,
+        "description": "Prior median source radius",
+        "exclusiveMinimum": 0,
+        "title": "Source Size Median",
+        "type": "number"
+       },
+       "subsample": {
+        "default": 2,
+        "description": "Rays per pixel along each axis (sub-pixel sampling)",
+        "maximum": 4,
+        "minimum": 1,
+        "title": "Subsample",
+        "type": "integer"
+       },
+       "theta_e_log_sd": {
+        "default": 0.5,
+        "description": "Prior sd of log Einstein radius",
+        "exclusiveMinimum": 0,
+        "title": "Theta E Log Sd",
+        "type": "number"
+       },
+       "theta_e_median": {
+        "default": 1.0,
+        "description": "Prior median of the Einstein radius",
+        "exclusiveMinimum": 0,
+        "title": "Theta E Median",
+        "type": "number"
+       },
+       "theta_e_start": {
+        "anyOf": [
+         {
+          "exclusiveMinimum": 0,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Start the optimisation at this Einstein radius instead of the radius of the ring found in the light-subtracted image",
+        "title": "Theta E Start"
+       },
+       "use_mask": {
+        "default": false,
+        "description": "The data has a bool mask(row, col) of pixels",
+        "title": "Use Mask",
+        "type": "boolean"
+       },
+       "z_lens": {
+        "anyOf": [
+         {
+          "exclusiveMinimum": 0,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Lens redshift (for the mass)",
+        "title": "Z Lens"
+       },
+       "z_source": {
+        "anyOf": [
+         {
+          "exclusiveMinimum": 0,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Source redshift (for the mass)",
+        "title": "Z Source"
+       }
+      },
+      "title": "StrongLensSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The gel is a linear elastic solid and its stiffness is known (or known to a given percentage)",
+       "The force map is smooth and has the same statistical properties in all of the image",
+       "The noise in the displacements is independent from pixel to pixel",
+       "The image repeats at its edges (the Fourier transform uses this)"
+      ],
+      "avoid_when": [
+       "The displacement map has gaps (the model needs a value at each pixel)",
+       "The gel is not much thicker than the cells are wide",
+       "The forces occur only at a few small adhesions and you need sharp peaks"
+      ],
+      "data_needs": [
+       "A displacement map with x and y components on a regular grid of pixels",
+       "The grid spacing, the stiffness (Young's modulus) and the Poisson ratio of the gel",
+       "Optional: a mask of the area under the cells"
+      ],
+      "difficulty": "expert",
+      "example": "The gel movement under a colony of seven cells on a 49 kPa gel gives a strain energy of 271 fJ and a contractility of 2.17 uN.",
+      "expert_notes": "Fourier-transform traction cytometry (FTTC) as a Gaussian inverse problem. The Boussinesq Green's function of an elastic half-space is diagonal in longitudinal and transverse Fourier modes. The prior spectrum is white (Tikhonov), squared exponential or Matern. NUTS samples the noise sd and the spectrum hyperparameters with the field integrated out (closed-form marginal likelihood per mode). At score time, exact joint draws of the field come from two FFTs per hyperparameter draw. An optional lognormal uncertainty of Young's modulus scales each draw. A diagnostic compares the data power in the finest modes with the model (correlated PIV noise makes the ranges too narrow).",
+      "fits": {
+       "data_shape": [
+        "grid"
+       ],
+       "experience": [
+        "expert"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "map_fields",
+        "fit_physics"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "Probable force maps (traction, in Pa) with a mean, a spread and a 90% range for each pixel",
+       "The displacement map that each force map causes",
+       "The strain energy (fJ) and the contractility (uN) inside the mask, with a range"
+      ],
+      "references": [
+       {
+        "title": "Butler et al. (2002), Traction fields, moments, and strain energy that cells exert on their surroundings",
+        "url": "https://doi.org/10.1152/ajpcell.00270.2001"
+       },
+       {
+        "title": "Huang et al. (2019), Traction force microscopy with optimized regularization and automated Bayesian parameter selection",
+        "url": "https://doi.org/10.1038/s41598-018-36896-x"
+       },
+       {
+        "title": "Bauer et al. (2021), pyTFM: a tool for traction force and monolayer stress microscopy",
+        "url": "https://doi.org/10.1371/journal.pcbi.1008364"
+       }
+      ],
+      "related": [
+       "sci.strong_lens"
+      ],
+      "summary_plain": "Calculates the forces that cells apply to a soft gel from the measured movement of the gel surface. It gives a range of probable force maps.",
+      "title": "Cell forces from gel movement",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have a map of the gel movement under a cell or a colony (bead tracking or PIV)",
+       "You need the strain energy or the contractility of the cells with a range",
+       "You want to know which smoothness of the force map the data support"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "noise_sd",
+       "traction_sd",
+       "lengthscale",
+       "smoothness"
+      ],
+      "inference": "mcmc",
+      "loo_invalid_reason": "the likelihood is a potential over Fourier modes of the whole raster; pixels are not conditionally independent, so pointwise leave-one-out is not defined",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "Traction force microscopy: recovers the 2-D traction field under a cell from the displacement field of the gel. A Gaussian prior in Fourier space (white, squared exponential or Matern spectrum); NUTS on the hyperparameters with the field integrated out, then exact posterior draws of the field.",
+     "fit_schema": {},
+     "id": "sci.traction_force",
+     "outputs": {
+      "contractility": {
+       "description": "Sum of the forces towards the force epicentre, inside the mask",
+       "dims": [],
+       "units": "uN"
+      },
+      "displacement_hat": {
+       "description": "Displacement of each traction draw (expected), plus noise (predictive)",
+       "dims": [
+        "component",
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "viridis",
+        "component": "component",
+        "log": false,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units_of": "displacement"
+      },
+      "strain_energy": {
+       "description": "Elastic energy the cell put into the gel, inside the force mask",
+       "dims": [],
+       "units": "fJ"
+      },
+      "traction": {
+       "description": "Joint posterior draws of the traction field",
+       "dims": [
+        "component",
+        "row",
+        "col"
+       ],
+       "grid": {
+        "colormap": "magma",
+        "component": "component",
+        "log": false,
+        "origin": "lower",
+        "x": "col",
+        "y": "row"
+       },
+       "units": "Pa"
+      }
+     },
+     "plots": [
+      "core.convergence",
+      "core.posterior_forest",
+      "sci.vector_field"
+     ],
+     "resources": {
+      "default_class": "S",
+      "est_fit_seconds": 180,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "vars": {
+          "force_mask": {
+           "description": "Region that strain energy and contractility cover",
+           "dims": [
+            "row",
+            "col"
+           ],
+           "dtype": "bool",
+           "role": "mask"
+          }
+         }
+        },
+        "when": {
+         "force_mask": true
+        }
+       }
+      ],
+      "params": {
+       "force_mask": {
+        "default": false,
+        "required": false,
+        "type": "boolean"
+       }
+      },
+      "template": {
+       "dims": {
+        "col": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "component": {
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "row": {
+         "kind": "integer",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "displacement": {
+         "description": "Displacement of the gel surface (x and y components)",
+         "dims": [
+          "component",
+          "row",
+          "col"
+         ],
+         "dtype": "float64",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``sci.traction_force``: the gel, the prior spectrum and the draws.",
+      "properties": {
+       "field_draws": {
+        "default": 100,
+        "description": "Traction fields drawn per score (over all chains)",
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Field Draws",
+        "type": "integer"
+       },
+       "force_mask": {
+        "default": false,
+        "description": "The data has a force_mask(row, col) variable: strain energy and contractility are summed inside it (else over the whole grid)",
+        "title": "Force Mask",
+        "type": "boolean"
+       },
+       "grid_um": {
+        "default": 1.0,
+        "description": "Grid spacing of the displacement raster (um)",
+        "exclusiveMinimum": 0,
+        "title": "Grid Um",
+        "type": "number"
+       },
+       "lengthscale_um": {
+        "default": 5.0,
+        "description": "Prior median of the length scale (um; smooth and matern)",
+        "exclusiveMinimum": 0,
+        "title": "Lengthscale Um",
+        "type": "number"
+       },
+       "noise_um": {
+        "default": 0.01,
+        "description": "Prior median of the noise sd (um)",
+        "exclusiveMinimum": 0,
+        "title": "Noise Um",
+        "type": "number"
+       },
+       "poisson": {
+        "default": 0.49,
+        "description": "Poisson ratio of the gel",
+        "exclusiveMaximum": 0.5,
+        "minimum": 0,
+        "title": "Poisson",
+        "type": "number"
+       },
+       "prior": {
+        "default": "matern",
+        "description": "Prior spectrum of the tractions: white (Tikhonov), smooth (squared exponential) or matern ((1 + k^2 l^2)^-alpha)",
+        "enum": [
+         "white",
+         "smooth",
+         "matern"
+        ],
+        "title": "Prior",
+        "type": "string"
+       },
+       "traction_pa": {
+        "default": 300.0,
+        "description": "Prior median of the traction scale (Pa)",
+        "exclusiveMinimum": 0,
+        "title": "Traction Pa",
+        "type": "number"
+       },
+       "young_cv": {
+        "default": 0.0,
+        "description": "Relative uncertainty of Young's modulus (lognormal sd); 0 = known exactly",
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Young Cv",
+        "type": "number"
+       },
+       "young_pa": {
+        "default": 10000.0,
+        "description": "Young's modulus of the gel (Pa)",
+        "exclusiveMinimum": 0,
+        "title": "Young Pa",
+        "type": "number"
+       }
+      },
+      "title": "TractionForceSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The rows that you predict are similar to the rows that the model learned from",
+       "A resample of full groups shows how uncertain the model is"
       ],
       "avoid_when": [
        "You need results in seconds on a very large table (it fits many models)"
@@ -1818,8 +3230,8 @@
        "A table of the number to predict and the columns that explain it"
       ],
       "difficulty": "intermediate",
-      "example": "A range for next month's total sales across 300 stores.",
-      "expert_notes": "A bootstrap ensemble (optionally resampling whole groups with 'by'); each replicate is a joint draw, so aggregation is valid (draws representation).",
+      "example": "A range for the total sales of next month across 300 stores.",
+      "expert_notes": "A bootstrap ensemble (with an optional resample of full groups with 'by'). Each replicate is a joint draw, so aggregation is valid (draws representation).",
       "fits": {
        "data_shape": [
         "table",
@@ -1837,20 +3249,20 @@
        ]
       },
       "outputs": [
-       "Many joint simulated predictions per row",
-       "Ranges for any total"
+       "Many joint simulated predictions for each row",
+       "Ranges for all totals"
       ],
       "references": [],
       "related": [
        "sklearn.tabular_quantiles",
        "sklearn.tabular_regressor"
       ],
-      "summary_plain": "Fits the same method many times on resampled data, which gives ranges that stay correct when you add predictions up into totals.",
+      "summary_plain": "Fits the same method many times on resampled data. This gives ranges that stay correct when you add predictions into totals.",
       "title": "Predict a number with ranges you can add up",
       "typical_runtime": "minutes",
       "use_when": [
-       "You need a range for totals (all stores, a whole region)",
-       "The data has groups (stores) that should be resampled together"
+       "You need a range for totals (all stores, a full region)",
+       "The data has groups (stores) that the resample must keep together"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -3746,7 +5158,7 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Rows you score look like the rows the model learnt from"
+       "The rows that you score are similar to the rows that the model learned from"
       ],
       "avoid_when": [
        "The result is a number or has more than two outcomes"
@@ -3755,8 +5167,8 @@
        "A table with a yes/no column and the columns that explain it"
       ],
       "difficulty": "beginner",
-      "example": "The chance each customer orders again next month, to decide who gets a voucher.",
-      "expert_notes": "An allow-listed scikit-learn or xgboost binary classifier on stacked rows; point representation of the positive-class probability.",
+      "example": "The probability that each customer orders again next month, to decide who gets a voucher.",
+      "expert_notes": "An allow-listed scikit-learn or xgboost binary classifier on stacked rows. Point representation of the positive-class probability.",
       "fits": {
        "data_shape": [
         "table",
@@ -3779,12 +5191,12 @@
        "sklearn.tabular_regressor",
        "choice.multinomial_logit"
       ],
-      "summary_plain": "Estimates the chance that something happens for each row of a table, such as a customer buying again or an order arriving late.",
+      "summary_plain": "Estimates the probability that something occurs for each row of a table. For example, a customer buys again or an order arrives late.",
       "title": "Predict yes or no",
       "typical_runtime": "seconds",
       "use_when": [
        "The result is yes or no for each row",
-       "You want a probability to rank or target rows"
+       "You want a probability to put rows in order or to select rows"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -5666,18 +7078,18 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "New rows behave like the rows kept aside for sizing the ranges"
+       "New rows behave like the rows that the model kept to set the size of the ranges"
       ],
       "avoid_when": [
        "You need ranges for totals (use the bootstrap version)",
-       "You have very little data (part of it is kept aside to size the ranges)"
+       "You have very little data (the model keeps a part of it to set the size of the ranges)"
       ],
       "data_needs": [
        "A table of the number to predict and the columns that explain it"
       ],
       "difficulty": "intermediate",
-      "example": "Ranges that hold next week's demand for 90% of store-product pairs.",
-      "expert_notes": "Split-conformal prediction intervals at level 1 - alpha with a calibration fraction; marginal per-cell coverage; interval representation (not aggregatable).",
+      "example": "Ranges that contain the demand of next week for 90% of store-product pairs.",
+      "expert_notes": "Split-conformal prediction intervals at level 1 - alpha with a calibration fraction. Marginal coverage for each cell. Interval representation (you cannot aggregate it).",
       "fits": {
        "data_shape": [
         "table",
@@ -5695,18 +7107,18 @@
        ]
       },
       "outputs": [
-       "One prediction and a range per row"
+       "One prediction and a range for each row"
       ],
       "references": [],
       "related": [
        "sklearn.tabular_quantiles",
        "sklearn.tabular_regressor"
       ],
-      "summary_plain": "Predicts a number for each row with a range that contains the true value about as often as you ask for, such as nine times out of ten.",
+      "summary_plain": "Predicts a number for each row with a range. The range contains the true value about as frequently as you ask, such as nine times in ten.",
       "title": "Predict a number with a guaranteed range",
       "typical_runtime": "seconds",
       "use_when": [
-       "You need ranges whose coverage you can rely on, row by row",
+       "You need ranges with a coverage that you can trust for each row",
        "You do not want to make assumptions about the shape of the errors"
       ]
      },
@@ -7590,17 +9002,17 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Rows you predict look like the rows the model learnt from"
+       "The rows that you predict are similar to the rows that the model learned from"
       ],
       "avoid_when": [
-       "You need to add predictions up into totals with a range (ranges per row cannot be added)"
+       "You need to add predictions into totals with a range (you cannot add the ranges of rows)"
       ],
       "data_needs": [
        "A table of the number to predict and the columns that explain it"
       ],
       "difficulty": "intermediate",
-      "example": "Plan stock at the 90% level: the high estimate of next week's demand per store.",
-      "expert_notes": "xgboost multi-quantile regression or one scikit-learn quantile model per level; quantile representation (per-cell quantiles cannot be aggregated across cells).",
+      "example": "Plan stock at the 90% level: the high estimate of the demand of next week for each store.",
+      "expert_notes": "xgboost multi-quantile regression or one scikit-learn quantile model for each level. Quantile representation (you cannot aggregate the quantiles of cells across cells).",
       "fits": {
        "data_shape": [
         "table",
@@ -7619,19 +9031,19 @@
        ]
       },
       "outputs": [
-       "A low, middle and high prediction per row"
+       "A low, middle and high prediction for each row"
       ],
       "references": [],
       "related": [
        "sklearn.tabular_regressor",
        "sklearn.tabular_bootstrap"
       ],
-      "summary_plain": "Predicts a low, middle and high value for each row of a table, so you see how sure the prediction is.",
+      "summary_plain": "Predicts a low, middle and high value for each row of a table. These values show how certain the prediction is.",
       "title": "Predict a number with a low and high estimate",
       "typical_runtime": "seconds",
       "use_when": [
-       "You need a best and worst case per store, product or customer",
-       "Stock or staffing decisions depend on the high or low end"
+       "You need a best case and a worst case for each store, product or customer",
+       "Stock or staff decisions depend on the high end or the low end"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -9500,19 +10912,19 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Rows you predict look like the rows the model learnt from",
-       "Future values of the drivers are known when you forecast"
+       "The rows that you predict are similar to the rows that the model learned from",
+       "You know the future values of the drivers when you forecast"
       ],
       "avoid_when": [
-       "You need a range of likely values (use the quantile, bootstrap or conformal versions)",
-       "You have a single short series over time"
+       "You need a range of probable values (use the quantile, bootstrap or conformal versions)",
+       "You have one short series over time"
       ],
       "data_needs": [
        "A table of the number to predict and the columns that explain it"
       ],
       "difficulty": "beginner",
-      "example": "Predict next week's units per store and product from planned prices with gradient boosting.",
-      "expert_notes": "An allow-listed scikit-learn or xgboost regressor on rows stacked from the labelled dims (coordinates become features); point representation; exact linear or counterfactual-zeroing contributions; models stored as skops or xgboost JSON.",
+      "example": "Predict the units of next week for each store and product from planned prices, with gradient boosting.",
+      "expert_notes": "An allow-listed scikit-learn or xgboost regressor on rows stacked from the labelled dims (coordinates become features). Point representation. Exact linear or counterfactual-zeroing contributions. The server stores models as skops or xgboost JSON.",
       "fits": {
        "data_shape": [
         "table",
@@ -9530,8 +10942,8 @@
        ]
       },
       "outputs": [
-       "One prediction per row",
-       "Each driver's contribution (linear and tree models)"
+       "One prediction for each row",
+       "The contribution of each driver (linear and tree models)"
       ],
       "references": [],
       "related": [
@@ -9539,11 +10951,11 @@
        "sklearn.tabular_conformal",
        "core.one_hot"
       ],
-      "summary_plain": "Predicts a number for each row of a table, such as a store and week, from the other columns, using a well-known machine-learning method you pick.",
+      "summary_plain": "Predicts a number for each row of a table, such as a store and week, from the other columns. It uses a well-known machine-learning method that you select.",
       "title": "Predict a number from a table",
       "typical_runtime": "seconds",
       "use_when": [
-       "You have many rows with drivers (price, promotion, weather) and want one best guess per row",
+       "You have many rows with drivers (price, promotion, weather) and you want one best estimate for each row",
        "You want to see how much each driver adds to a prediction"
       ]
      },
@@ -11415,18 +12827,18 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Groups are alike enough that sharing information is sensible",
-       "Effects are additive on the model's scale"
+       "Groups are sufficiently similar to share information",
+       "Effects are additive on the scale of the model"
       ],
       "avoid_when": [
-       "You have a single series over time"
+       "You have one series over time"
       ],
       "data_needs": [
-       "One row per observation with a group label and predictors"
+       "One row for each observation with a group label and predictors"
       ],
       "difficulty": "intermediate",
-      "example": "Radon levels per house, with each county's baseline pulled towards the state average when the county has few houses.",
-      "expert_notes": "Bayesian hierarchical GLM (PyMC, NUTS): partially pooled group intercepts and optional slopes; group-level covariates in the mean; new levels drawn from the fitted hyperprior.",
+      "example": "Radon levels for each house. If a county has few houses, its baseline moves towards the state average.",
+      "expert_notes": "Bayesian hierarchical GLM (PyMC, NUTS). Partially pooled group intercepts and optional slopes. Group-level covariates in the mean. The model draws new levels from the fitted hyperprior.",
       "fits": {
        "data_shape": [
         "table",
@@ -11445,19 +12857,19 @@
        ]
       },
       "outputs": [
-       "Effects per group with ranges",
+       "Effects for each group with ranges",
        "Predictions for new groups"
       ],
       "references": [],
       "related": [
        "core.encode_levels"
       ],
-      "summary_plain": "Estimates a separate baseline for every group, such as a county or a store, while letting small groups borrow strength from the others.",
+      "summary_plain": "Estimates a separate baseline for each group, such as a county or a store. Small groups get help from the data of the other groups.",
       "title": "Group effects with sharing",
       "typical_runtime": "minutes",
       "use_when": [
-       "Groups have very different amounts of data",
-       "You want to predict for groups you have not seen yet"
+       "Groups have very different quantities of data",
+       "You want to predict for groups that the model did not see"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -11670,19 +13082,19 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Future values of the drivers are known when you forecast",
-       "Stores the model has not seen behave like the average store"
+       "You know the future values of the drivers when you forecast",
+       "Stores that the model did not see behave like the average store"
       ],
       "avoid_when": [
-       "You need to add predictions up into totals with a range (ranges cannot be added)",
-       "You have a single short series"
+       "You need to add predictions into totals with a range (you cannot add ranges)",
+       "You have one short series"
       ],
       "data_needs": [
-       "A table of the number to predict and its drivers, per store and week"
+       "A table of the number to predict and its drivers, for each store and week"
       ],
       "difficulty": "beginner",
-      "example": "Predict next week's units for 300 stores from planned prices and promotions.",
-      "expert_notes": "Gradient-boosted quantile regression (xgboost or sklearn) on stacked rows; coordinates become categorical features; direct multi-horizon forecasting; quantile representation (no cross-cell aggregation).",
+      "example": "Predict the units of next week for 300 stores from planned prices and promotions.",
+      "expert_notes": "Gradient-boosted quantile regression (xgboost or sklearn) on stacked rows. Coordinates become categorical features. Direct multi-horizon forecasting. Quantile representation (no cross-cell aggregation).",
       "fits": {
        "data_shape": [
         "panel",
@@ -11703,7 +13115,7 @@
        ]
       },
       "outputs": [
-       "A median forecast with low and high values per cell",
+       "A median forecast with low and high values for each cell",
        "Feature importance"
       ],
       "references": [],
@@ -11711,11 +13123,11 @@
        "core.calendar",
        "core.one_hot"
       ],
-      "summary_plain": "Predicts a number for each store, product and week from prices, promotions and the calendar, with a low and a high estimate.",
+      "summary_plain": "Predicts a number for each store, product and week from prices, promotions and the calendar. It gives a low and a high estimate.",
       "title": "Demand by store and week",
       "typical_runtime": "seconds",
       "use_when": [
-       "You have many stores or products and want a forecast for each",
+       "You have many stores or products and you want a forecast for each",
        "Prices, promotions or stock explain demand"
       ]
      },
@@ -12757,18 +14169,18 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Drivers affect the result, not the other way round",
+       "The drivers change the result, but the result does not change the drivers",
        "The series vary around stable levels or share a long-run relationship"
       ],
       "avoid_when": [
-       "Effects are immediate only (a simple regression is enough)"
+       "Effects are only immediate (a simple regression is sufficient)"
       ],
       "data_needs": [
        "One result and one or more drivers over time"
       ],
       "difficulty": "intermediate",
-      "example": "A promotion lifts sales 8% in its week and 3% the week after.",
-      "expert_notes": "statsmodels ARDL with lag orders chosen by information criterion (ardl_select_order).",
+      "example": "A promotion increases sales by 8% in its week and by 3% in the next week.",
+      "expert_notes": "statsmodels ARDL with lag orders that an information criterion selects (ardl_select_order).",
       "fits": {
        "data_shape": [
         "one_series"
@@ -12782,9 +14194,9 @@
        ]
       },
       "outputs": [
-       "Effects per lag",
+       "Effects for each lag",
        "Long-run multipliers",
-       "Forecasts given future drivers"
+       "Forecasts for given future drivers"
       ],
       "references": [
        {
@@ -12796,11 +14208,11 @@
        "ts.ecm",
        "ts.sarimax"
       ],
-      "summary_plain": "Explains a series from its own past and the current and past values of drivers, so you can see how an effect builds up over several periods.",
+      "summary_plain": "Explains a series from its past and from the current and past values of drivers. You can see how an effect increases over several periods.",
       "title": "Effects that build up over time",
       "typical_runtime": "seconds",
       "use_when": [
-       "A driver's effect is spread over several periods"
+       "The effect of a driver spreads over several periods"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -13042,7 +14454,7 @@
        "One number over time at a regular frequency"
       ],
       "difficulty": "intermediate",
-      "example": "Forecast monthly sales 6 months ahead from the last few years of sales.",
+      "example": "Forecast monthly sales 6 months ahead from the sales of recent years.",
       "expert_notes": "statsmodels ARIMA(p,d,q)(P,D,Q)s (state space) without exog.",
       "fits": {
        "data_shape": [
@@ -13079,12 +14491,12 @@
        "search.arma_order",
        "test.adf"
       ],
-      "summary_plain": "Forecasts a series from its own recent past and trend, without outside drivers.",
+      "summary_plain": "Forecasts a series from its recent past and trend, without outside drivers.",
       "title": "Forecast from past values",
       "typical_runtime": "seconds",
       "use_when": [
-       "You have only the series itself",
-       "You want a solid, well-known forecasting method"
+       "You have only the series",
+       "You want a reliable, well-known forecast method"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -13324,7 +14736,7 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "A few common factors explain most of the joint movement"
+       "Some common factors explain most of the joint movement"
       ],
       "avoid_when": [
        "You have one or two series"
@@ -13333,8 +14745,8 @@
        "Many numbers over time at the same frequency"
       ],
       "difficulty": "expert",
-      "example": "Twenty category sales series follow one 'consumer mood' factor.",
-      "expert_notes": "statsmodels DynamicFactor (state space; factors follow a VAR).",
+      "example": "Twenty series of category sales follow one 'consumer mood' factor.",
+      "expert_notes": "statsmodels DynamicFactor (state space; the factors follow a VAR).",
       "fits": {
        "data_shape": [
         "several_series",
@@ -13347,7 +14759,7 @@
       },
       "outputs": [
        "The common factors over time",
-       "How strongly each series follows them",
+       "How much each series follows them",
        "Forecasts"
       ],
       "references": [
@@ -13359,11 +14771,11 @@
       "related": [
        "ts.var"
       ],
-      "summary_plain": "Finds a few hidden forces that move many series together, such as the overall economy behind sales in many categories.",
+      "summary_plain": "Finds a few hidden forces that move many series together, such as the general economy behind the sales in many categories.",
       "title": "Common movements across many series",
       "typical_runtime": "minutes",
       "use_when": [
-       "You have many related series and want their shared drivers"
+       "You have many related series and you want their shared drivers"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -13591,17 +15003,17 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Drivers affect the result, not the other way round"
+       "The drivers change the result, but the result does not change the drivers"
       ],
       "avoid_when": [
-       "Neither the result nor the drivers trend (a regression with lags is enough)"
+       "The result and the drivers do not have a trend (a regression with lags is sufficient)"
       ],
       "data_needs": [
        "One result and one or more drivers over time"
       ],
       "difficulty": "expert",
-      "example": "A 1% price rise cuts sales 0.4% at once and 1.1% in the long run.",
-      "expert_notes": "Single-equation error-correction model in UECM form (statsmodels UECM); Pesaran-Shin-Smith bounds test for a levels relationship.",
+      "example": "A 1% price increase decreases sales by 0.4% immediately and by 1.1% in the long run.",
+      "expert_notes": "Single-equation error-correction model in UECM form (statsmodels UECM). Pesaran-Shin-Smith bounds test for a levels relationship.",
       "fits": {
        "data_shape": [
         "one_series"
@@ -13621,7 +15033,7 @@
       "outputs": [
        "Short-run and long-run effects",
        "Speed of adjustment",
-       "A bounds test verdict"
+       "A bounds test result"
       ],
       "references": [
        {
@@ -13637,12 +15049,12 @@
        "ts.vecm",
        "test.engle_granger"
       ],
-      "summary_plain": "Separates the short-term effect of a driver from its long-term effect on one series, and tests whether a long-run relationship exists at all.",
+      "summary_plain": "Separates the short-term effect of a driver from its long-term effect on one series. It also tests if a long-run relationship exists.",
       "title": "Long-run and short-run effects",
       "typical_runtime": "seconds",
       "use_when": [
-       "One result and a few drivers trend together",
-       "You want both the immediate and the lasting effect of a driver"
+       "One result and some drivers have the same trend",
+       "You want both the immediate effect and the lasting effect of a driver"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -13889,7 +15301,7 @@
       ],
       "difficulty": "beginner",
       "example": "Forecast monthly demand 12 months ahead with a damped trend.",
-      "expert_notes": "statsmodels ETSModel (error, trend, seasonal; additive or multiplicative; damped trend) with simulation-based prediction intervals.",
+      "expert_notes": "statsmodels ETSModel (error, trend, seasonal; additive or multiplicative; damped trend), with prediction intervals from simulation.",
       "fits": {
        "data_shape": [
         "one_series"
@@ -13924,12 +15336,12 @@
        "ts.arima",
        "evaluate.baseline"
       ],
-      "summary_plain": "Forecasts a series by giving recent values more weight than older ones, with optional trend and seasonality, and is quick and robust.",
+      "summary_plain": "Forecasts a series and gives recent values more weight than older values. It has an optional trend and seasonality, and it is quick and robust.",
       "title": "Exponential smoothing forecast",
       "typical_runtime": "seconds",
       "use_when": [
        "You need a fast, reliable baseline forecast",
-       "The level, trend and seasonality shift slowly"
+       "The level, trend and seasonality change slowly"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -14165,18 +15577,18 @@
      "about": {
       "assumptions": [
        "Each state has its own typical level and spread",
-       "The chance of switching depends only on the current state"
+       "The probability of a change of state depends only on the current state"
       ],
       "avoid_when": [
-       "Behaviour changes smoothly rather than in jumps",
+       "Behaviour changes smoothly, not in jumps",
        "You have very short sequences"
       ],
       "data_needs": [
        "One or more sequences of measurements over time"
       ],
       "difficulty": "expert",
-      "example": "An animal's track splits into resting and travelling phases.",
-      "expert_notes": "K-state Gaussian HMM; states marginalised with the forward algorithm in PyMC; terminal state stored for forecast and filter; label switching fixed by ordering.",
+      "example": "The track of an animal divides into rest phases and travel phases.",
+      "expert_notes": "K-state Gaussian HMM. The forward algorithm in PyMC marginalises the states. The terminal state is stored for forecast and filter. Ordering fixes label switching.",
       "fits": {
        "data_shape": [
         "one_series",
@@ -14191,19 +15603,19 @@
        ]
       },
       "outputs": [
-       "The likely state of each period",
-       "How often states switch",
+       "The probable state of each period",
+       "How frequently the states change",
        "Forecasts"
       ],
       "references": [],
       "related": [
        "ts.markov_switching"
       ],
-      "summary_plain": "Finds a small number of hidden states, such as calm and busy periods, that a series switches between, and says which state each period was probably in.",
+      "summary_plain": "Finds a small number of hidden states, such as calm periods and busy periods, that a series changes between. It tells you the probable state of each period.",
       "title": "Hidden states over time",
       "typical_runtime": "minutes",
       "use_when": [
-       "Your series seems to switch between distinct modes"
+       "Your series seems to change between distinct modes"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -14382,15 +15794,15 @@
        "The seasonal pattern repeats"
       ],
       "avoid_when": [
-       "You have many related series (forecast them together or per store)",
-       "You need to forecast further ahead than the model allows without refitting"
+       "You have many related series (forecast them together or for each store)",
+       "You need a forecast further ahead than the model permits without a new fit"
       ],
       "data_needs": [
        "One number over time at a regular frequency"
       ],
       "difficulty": "beginner",
       "example": "Forecast weekly website visits 26 weeks ahead with a 90% range.",
-      "expert_notes": "Hilbert-space Gaussian process (HSGP) trend with optional linear drift and Fourier seasonality (PyMC, NUTS); forecasts limited to max_extension periods.",
+      "expert_notes": "Hilbert-space Gaussian process (HSGP) trend with optional linear drift and Fourier seasonality (PyMC, NUTS). Forecasts are limited to max_extension periods.",
       "fits": {
        "data_shape": [
         "one_series"
@@ -14427,7 +15839,7 @@
        "ts.ets",
        "ts.sarimax"
       ],
-      "summary_plain": "Forecasts one regular series with a smooth, flexible trend and a repeating seasonal pattern, and gives a range of likely values.",
+      "summary_plain": "Forecasts one regular series with a smooth, flexible trend and a repeating seasonal pattern. It gives a range of probable values.",
       "title": "Smooth trend forecast",
       "typical_runtime": "minutes",
       "use_when": [
@@ -14641,17 +16053,17 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "A small number of regimes; switching depends only on the current regime"
+       "There is a small number of regimes. A change of regime depends only on the current regime"
       ],
       "avoid_when": [
        "Changes are gradual",
        "You have little history"
       ],
       "data_needs": [
-       "One number over time, plus optional drivers"
+       "One number over time, and optional drivers"
       ],
       "difficulty": "expert",
-      "example": "Demand switches between a normal and a promotion-driven regime.",
+      "example": "Demand changes between a normal regime and a regime that promotions cause.",
       "expert_notes": "statsmodels MarkovRegression / MarkovAutoregression (Hamilton filter, EM then BFGS).",
       "fits": {
        "data_shape": [
@@ -14662,8 +16074,8 @@
        ]
       },
       "outputs": [
-       "Probability of each regime per period",
-       "Behaviour per regime"
+       "The probability of each regime for each period",
+       "Behaviour in each regime"
       ],
       "references": [
        {
@@ -14678,12 +16090,12 @@
        "ts.gaussian_hmm",
        "test.cusum"
       ],
-      "summary_plain": "Detects whether a series switches between regimes, such as high-growth and low-growth periods, and estimates the behaviour in each.",
-      "title": "Switching between regimes",
+      "summary_plain": "Finds if a series changes between regimes, such as periods of high growth and low growth. It estimates the behaviour in each regime.",
+      "title": "Changes between regimes",
       "typical_runtime": "seconds",
       "use_when": [
        "Behaviour seems to jump between distinct modes",
-       "You want the probability of being in each mode now"
+       "You want the probability of each mode now"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -14943,14 +16355,14 @@
       ],
       "avoid_when": [
        "You have less than about 50 periods",
-       "Several series drive each other (use VAR)"
+       "Two or more series change each other (use VAR)"
       ],
       "data_needs": [
-       "One number over time at a regular frequency, plus optional driver columns known for the future"
+       "One number over time at a regular frequency, and optional driver columns that you know for the future"
       ],
       "difficulty": "intermediate",
-      "example": "Forecast weekly orders 12 weeks ahead from orders in recent weeks and planned discounts.",
-      "expert_notes": "statsmodels SARIMAX (state space): ARIMA(p,d,q)(P,D,Q)s with exogenous regressors; exact likelihood via the Kalman filter; prediction intervals as quantiles; future exog required for forecasts.",
+      "example": "Forecast weekly orders 12 weeks ahead from the orders of recent weeks and planned discounts.",
+      "expert_notes": "statsmodels SARIMAX (state space): ARIMA(p,d,q)(P,D,Q)s with exogenous regressors. Exact likelihood through the Kalman filter. Prediction intervals as quantiles. Forecasts need future exog.",
       "fits": {
        "data_shape": [
         "one_series"
@@ -14999,12 +16411,12 @@
        "test.adf",
        "transform.difference"
       ],
-      "summary_plain": "Forecasts a series from its own recent past, its seasonal pattern and outside drivers you know ahead, such as planned prices or holidays.",
+      "summary_plain": "Forecasts a series from its recent past, its seasonal pattern and outside drivers that you know in advance, such as planned prices or holidays.",
       "title": "Forecast with past values and drivers",
       "typical_runtime": "seconds",
       "use_when": [
-       "You forecast one regular series a few periods ahead",
-       "Known future drivers (prices, promotions, holidays) matter"
+       "You forecast one regular series some periods ahead",
+       "Known future drivers (prices, promotions, holidays) are important"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -15283,14 +16695,14 @@
        "The recent trend continues"
       ],
       "avoid_when": [
-       "Outside drivers matter a lot",
+       "Outside drivers are very important",
        "You need detailed explanations"
       ],
       "data_needs": [
-       "One number over time (seasonality is removed and put back automatically)"
+       "One number over time (the model removes the seasonality and puts it back automatically)"
       ],
       "difficulty": "beginner",
-      "example": "A theta forecast of monthly sales to beat before using anything more complex.",
+      "example": "A theta forecast of monthly sales that other models must beat before you use them.",
       "expert_notes": "statsmodels ThetaModel (Assimakopoulos-Nikolopoulos; equivalent to SES with drift) with optional seasonal decomposition.",
       "fits": {
        "data_shape": [
@@ -15316,11 +16728,11 @@
        "ts.ets",
        "evaluate.baseline"
       ],
-      "summary_plain": "Forecasts a series by combining a straight-line trend with smoothed recent values, a simple method that is hard to beat.",
+      "summary_plain": "Forecasts a series with a combination of a straight-line trend and smoothed recent values. This simple method is hard to beat.",
       "title": "Simple strong baseline",
       "typical_runtime": "instant",
       "use_when": [
-       "You want a strong, simple baseline to compare other models against"
+       "You want a strong, simple baseline to compare with other models"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -15534,11 +16946,11 @@
        "You only need a quick baseline (exponential smoothing is simpler)"
       ],
       "data_needs": [
-       "One number over time, plus optional drivers"
+       "One number over time, and optional drivers"
       ],
       "difficulty": "intermediate",
-      "example": "Weekly sales split into a rising trend, a Christmas peak and week-to-week noise.",
-      "expert_notes": "statsmodels UnobservedComponents (local level/trend, stochastic seasonal, cycle, exog) estimated by maximum likelihood with the Kalman smoother.",
+      "example": "Weekly sales divide into an increasing trend, a Christmas peak and noise from week to week.",
+      "expert_notes": "statsmodels UnobservedComponents (local level/trend, stochastic seasonal, cycle, exog), estimated by maximum likelihood with the Kalman smoother.",
       "fits": {
        "data_shape": [
         "one_series"
@@ -15565,12 +16977,12 @@
        "ts.ets",
        "ts.hsgp_trend"
       ],
-      "summary_plain": "Splits a series into a slowly changing level and trend, a seasonal pattern and noise, and forecasts it from those parts.",
+      "summary_plain": "Divides a series into a level and a trend that change slowly, a seasonal pattern and noise. It forecasts the series from these parts.",
       "title": "Trend, season and noise",
       "typical_runtime": "seconds",
       "use_when": [
        "You want to see the underlying trend without the noise",
-       "The trend and season change slowly over time"
+       "The trend and the season change slowly over time"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -15844,19 +17256,19 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "Each series varies around a stable level, after differencing if needed",
+       "Each series varies around a stable level, after differencing if necessary",
        "Effects work through past values"
       ],
       "avoid_when": [
        "You have one series",
-       "Series trend together for good (use the error-correction model)"
+       "The series have the same trend permanently (use the error-correction model)"
       ],
       "data_needs": [
        "Two or more numbers over time at the same frequency"
       ],
       "difficulty": "expert",
-      "example": "A price cut by brand A lowers brand B's sales for three weeks.",
-      "expert_notes": "statsmodels VAR(p): OLS per equation; lag order by AIC/BIC/HQIC; impulse responses and forecast-error variance decomposition; Granger causality tests.",
+      "example": "A price decrease by brand A decreases the sales of brand B for three weeks.",
+      "expert_notes": "statsmodels VAR(p): OLS for each equation. Lag order by AIC/BIC/HQIC. Impulse responses and forecast-error variance decomposition. Granger causality tests.",
       "fits": {
        "data_shape": [
         "several_series"
@@ -15872,8 +17284,8 @@
       },
       "outputs": [
        "Joint forecasts with ranges",
-       "How a shock spreads (impulse responses)",
-       "Which series help predict which (Granger tests)"
+       "How a shock goes through the series (impulse responses)",
+       "Which series help to predict which series (Granger tests)"
       ],
       "references": [
        {
@@ -15890,12 +17302,12 @@
        "test.granger",
        "search.var_lag_order"
       ],
-      "summary_plain": "Models several series that influence each other over time, such as prices and sales of two brands, and forecasts them together.",
+      "summary_plain": "Models two or more series that change each other over time, such as the prices and sales of two brands. It forecasts them together.",
       "title": "Series that drive each other",
       "typical_runtime": "seconds",
       "use_when": [
-       "Several series move together and affect each other",
-       "You want to see how a shock to one series spreads to the others"
+       "Two or more series move together and change each other",
+       "You want to see how a shock to one series goes to the other series"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -16140,11 +17552,11 @@
        "You have many series and little history"
       ],
       "data_needs": [
-       "Two or more numbers over time, plus driver columns known for the future"
+       "Two or more numbers over time, and driver columns that you know for the future"
       ],
       "difficulty": "expert",
-      "example": "Forecast sales of two brands from each other's history and planned promotions.",
-      "expert_notes": "statsmodels VARMAX(p,q) with exogenous regressors (VARX when q = 0); estimated by maximum likelihood in state-space form.",
+      "example": "Forecast the sales of two brands from the history of each brand and planned promotions.",
+      "expert_notes": "statsmodels VARMAX(p,q) with exogenous regressors (VARX when q = 0), estimated by maximum likelihood in state-space form.",
       "fits": {
        "data_shape": [
         "several_series"
@@ -16177,11 +17589,11 @@
        "ts.var",
        "ts.sarimax"
       ],
-      "summary_plain": "Models several series that influence each other and also respond to outside drivers you know ahead, and forecasts them together.",
+      "summary_plain": "Models two or more series that change each other and also respond to outside drivers that you know in advance. It forecasts them together.",
       "title": "Series that drive each other, with drivers",
       "typical_runtime": "minutes",
       "use_when": [
-       "Several series affect each other and outside drivers matter too"
+       "Two or more series change each other, and outside drivers are also important"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -16442,18 +17854,18 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "A stable long-run relationship exists (checked by the Johansen test)"
+       "A stable long-run relationship exists (the Johansen test does a check of this)"
       ],
       "avoid_when": [
-       "Series do not trend",
-       "The long-run tie is not plausible"
+       "The series do not have a trend",
+       "A long-run tie is not probable"
       ],
       "data_needs": [
-       "Two or more trending numbers over time"
+       "Two or more numbers with a trend over time"
       ],
       "difficulty": "expert",
-      "example": "When a competitor's price drifts 5% above yours, half the gap closes within 4 weeks.",
-      "expert_notes": "statsmodels VECM with cointegration rank from the Johansen trace/max-eigenvalue tests; deterministic terms selectable.",
+      "example": "When the price of a competitor goes 5% above your price, half of the gap closes in 4 weeks.",
+      "expert_notes": "statsmodels VECM with cointegration rank from the Johansen trace/max-eigenvalue tests. You can select the deterministic terms.",
       "fits": {
        "data_shape": [
         "several_series"
@@ -16487,11 +17899,11 @@
        "ts.var",
        "ts.ecm"
       ],
-      "summary_plain": "Models series that wander but stay tied together in the long run, such as prices of close substitutes, and shows how fast they snap back after a gap opens.",
-      "title": "Series tied together for good",
+      "summary_plain": "Models series that wander but stay tied together in the long run, such as the prices of close substitutes. It shows how fast they go back after a gap opens.",
+      "title": "Series tied together in the long run",
       "typical_runtime": "seconds",
       "use_when": [
-       "Series trend but keep a stable long-run relationship"
+       "The series have a trend but keep a stable long-run relationship"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -16925,23 +18337,59 @@
     "title": "Response curves",
     "version": "1.0.0",
     "yanked": false
+   },
+   {
+    "id": "sci.ensemble",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "title": "Ensemble of draws",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "id": "sci.field_map",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "title": "Field map",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "id": "sci.profile_bands",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "title": "Profiles with bands",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "id": "sci.vector_field",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "title": "Vector field",
+    "version": "1.0.0",
+    "yanked": false
    }
   ],
   "steps": [
    {
     "about": {
      "assumptions": [
-      "The carry-over rate is fixed by you, not learned from the data"
+      "You set the carry-over rate. The model does not learn it from the data"
      ],
      "avoid_when": [
-      "The model already handles carry-over itself (the Bayesian MMM does)"
+      "The model already calculates carry-over itself (the Bayesian MMM does this)"
      ],
      "data_needs": [
       "Media spend or exposure over time"
      ],
      "difficulty": "intermediate",
      "example": "With a 50% weekly carry-over, 100 spent this week counts as 100, then 50, then 25.",
-     "expert_notes": "Geometric (alpha), delayed (theta) or Weibull kernels up to l_max lags, optionally normalised to sum to 1; applied per group along time.",
+     "expert_notes": "Geometric (alpha), delayed (theta) or Weibull kernels up to l_max lags, with optional normalisation to a sum of 1. The step applies them to each group along time.",
      "fits": {
       "goal": [
        "explain_marketing",
@@ -16949,18 +18397,18 @@
       ]
      },
      "outputs": [
-      "Media columns that include the lingering effect of past periods"
+      "Media columns that include the remaining effect of past periods"
      ],
      "references": [],
      "related": [
       "core.saturation",
       "mmm.bayesian"
      ],
-     "summary_plain": "Spreads each period's advertising effect over the following periods, because people remember an ad for a while after they see it.",
+     "summary_plain": "Spreads the advertising effect of each period over the next periods. People remember an ad for some time after they see it.",
      "title": "Carry-over of advertising",
      "typical_runtime": "instant",
      "use_when": [
-      "You model media with a simple (non-Bayesian) model and need carry-over",
+      "You model media with a simple (non-Bayesian) model and you need carry-over",
       "You want to see how a fixed carry-over rate changes spend series"
      ]
     },
@@ -17169,7 +18617,7 @@
    {
     "about": {
      "assumptions": [
-      "The same calendar effect applies every year"
+      "The same calendar effect occurs every year"
      ],
      "avoid_when": [
       "Your data is not over time"
@@ -17185,18 +18633,18 @@
       ]
      },
      "outputs": [
-      "One column per calendar feature"
+      "One column for each calendar feature"
      ],
      "references": [],
      "related": [
       "core.holidays",
       "core.fourier"
      ],
-     "summary_plain": "Adds calendar facts such as the month, the week of the year or whether a day falls on a weekend.",
+     "summary_plain": "Adds calendar facts, such as the month, the week of the year, or if a day is on a weekend.",
      "title": "Calendar facts",
      "typical_runtime": "instant",
      "use_when": [
-      "Behaviour depends on the day of week or month"
+      "Behaviour changes with the day of the week or the month"
      ]
     },
     "depends_on_target": false,
@@ -17282,13 +18730,13 @@
    {
     "about": {
      "assumptions": [
-      "Values beyond the limits carry no extra information"
+      "Values beyond the limits do not have more information"
      ],
      "avoid_when": [
-      "Extreme values are real and important"
+      "The extreme values are real and important"
      ],
      "data_needs": [
-      "Numeric columns and a lower and/or upper limit"
+      "Numeric columns and a lower limit, an upper limit or both"
      ],
      "difficulty": "beginner",
      "example": "With an upper limit of 100, a value of 250 becomes 100.",
@@ -17298,17 +18746,17 @@
       ]
      },
      "outputs": [
-      "The same columns within the limits"
+      "The same columns in the limits"
      ],
      "references": [],
      "related": [
       "core.max_abs_scale"
      ],
-     "summary_plain": "Caps values that are smaller or larger than limits you choose, which tames outliers.",
+     "summary_plain": "Changes values below or above the limits that you select to the nearest limit. This controls outliers.",
      "title": "Cap extreme values",
      "typical_runtime": "instant",
      "use_when": [
-      "A few extreme values would dominate the model",
+      "Some extreme values have too much effect on the model",
       "Values outside a range are errors"
      ]
     },
@@ -17386,33 +18834,33 @@
    {
     "about": {
      "assumptions": [
-      "Each row is one event; events outside the chosen dates are ignored"
+      "Each row is one event. The step ignores events outside the dates that you select"
      ],
      "avoid_when": [
-      "Your data is already a series of totals per period"
+      "Your data is already a series of totals for each period"
      ],
      "data_needs": [
       "A column with the time of each event"
      ],
      "difficulty": "beginner",
-     "example": "Three orders on Monday and one on Tuesday become 3 and 1.",
+     "example": "Three orders on Monday and one order on Tuesday become 3 and 1.",
      "fits": {
       "goal": [
        "check_data"
       ]
      },
      "outputs": [
-      "A count per period (and per group if you choose one), plus optional sums"
+      "A count for each period (and for each group if you select one), and optional sums"
      ],
      "references": [],
      "related": [
       "core.resample"
      ],
-     "summary_plain": "Turns a list of individual events, such as orders or sign-ups, into counts per day, week or month.",
+     "summary_plain": "Changes a list of individual events, such as orders or sign-ups, into counts for each day, week or month.",
      "title": "Count events per period",
      "typical_runtime": "instant",
      "use_when": [
-      "Your file has one row per event and you need a time series"
+      "Your dataset has one row for each event and you need a time series"
      ]
     },
     "depends_on_target": false,
@@ -17589,7 +19037,7 @@
    {
     "about": {
      "assumptions": [
-      "Numbers are assigned on the training data; new values follow a rule"
+      "The step gives the numbers on the training data. New values follow a rule"
      ],
      "avoid_when": [
       "The model reads category labels itself"
@@ -17605,17 +19053,17 @@
       ]
      },
      "outputs": [
-      "An integer code per category value"
+      "An integer code for each category value"
      ],
      "references": [],
      "related": [
       "core.one_hot"
      ],
-     "summary_plain": "Gives every category value a number, which many models use to look up a separate effect for each group.",
+     "summary_plain": "Gives each category value a number. Many models use this number to find a separate effect for each group.",
      "title": "Number each category",
      "typical_runtime": "instant",
      "use_when": [
-      "A model needs group numbers (one effect per store or market)"
+      "A model needs group numbers (one effect for each store or market)"
      ]
     },
     "depends_on_target": false,
@@ -17728,17 +19176,17 @@
    {
     "about": {
      "assumptions": [
-      "The dropped data is not needed by the model or later steps"
+      "The model and the steps after this step do not need the removed data"
      ],
      "avoid_when": [
-      "You want the model to learn from everything",
-      "You want to test on unseen markets (use a split instead)"
+      "You want the model to learn from all the data",
+      "You want to test on markets that the model did not see (use a split instead)"
      ],
      "data_needs": [
       "A dimension such as market, product or date"
      ],
      "difficulty": "beginner",
-     "example": "Keep only the markets DE and FR, or only weeks from 2023 onwards.",
+     "example": "Keep only the markets DE and FR, or only the weeks from 2023 and after.",
      "fits": {
       "goal": [
        "check_data"
@@ -17751,12 +19199,12 @@
      "related": [
       "core.leave_group_out"
      ],
-     "summary_plain": "Keeps only the markets, products or date range you pick, and drops the rest before modelling.",
+     "summary_plain": "Keeps only the markets, products or date range that you select. It removes the rest before you fit the model.",
      "title": "Keep some markets, products or dates",
      "typical_runtime": "instant",
      "use_when": [
-      "Some markets or products should not be modelled",
-      "Early history is unreliable and should be left out"
+      "You do not want to model some markets or products",
+      "The early history is not reliable and you want to remove it"
      ]
     },
     "depends_on_target": false,
@@ -17896,17 +19344,17 @@
    {
     "about": {
      "assumptions": [
-      "Only the allowed operations are used (arithmetic and a few functions); no code runs"
+      "The formula uses only the permitted operations (arithmetic and some functions). No code runs"
      ],
      "avoid_when": [
-      "A built-in step already does it (scaling, logs, lags)"
+      "A built-in step already does it (for example scale, log or lag)"
      ],
      "data_needs": [
-      "The columns the formula uses"
+      "The columns that the formula uses"
      ],
      "difficulty": "intermediate",
      "example": "revenue = price * units adds a revenue column.",
-     "expert_notes": "Lark grammar compiled to an allow-listed AST of xarray operations, evaluated in the sandbox; a usability feature, not a security boundary.",
+     "expert_notes": "The step compiles a Lark grammar to an allow-listed AST of xarray operations and evaluates it in the sandbox. This is a usability feature, not a security boundary.",
      "fits": {
       "goal": [
        "check_data"
@@ -17917,12 +19365,12 @@
      ],
      "references": [],
      "related": [],
-     "summary_plain": "Creates a new column from a simple formula over existing columns, such as price times units.",
+     "summary_plain": "Makes a new column from a simple formula of existing columns, such as price times units.",
      "title": "New column from a formula",
      "typical_runtime": "instant",
      "use_when": [
-      "You need a derived number like revenue = price x units",
-      "A ratio or difference of two columns explains the result better"
+      "You need a derived number, for example revenue = price x units",
+      "A ratio or a difference of two columns explains the result better"
      ]
     },
     "depends_on_target": false,
@@ -18024,7 +19472,7 @@
    {
     "about": {
      "assumptions": [
-      "The pattern repeats with the same length each cycle"
+      "The pattern repeats with the same length in each cycle"
      ],
      "avoid_when": [
       "You have less than one full season of history"
@@ -18033,8 +19481,8 @@
       "A regular date column"
      ],
      "difficulty": "intermediate",
-     "example": "Three yearly wave pairs on weekly data capture a summer peak and a winter dip.",
-     "expert_notes": "sin/cos(2 pi k t / period), k = 1..order; the origin and period are stored state so forecasts continue the same phase.",
+     "example": "Three yearly wave pairs on weekly data show a summer peak and a winter dip.",
+     "expert_notes": "sin/cos(2 pi k t / period), k = 1..order. The origin and the period are stored state, so forecasts continue the same phase.",
      "fits": {
       "goal": [
        "check_data"
@@ -18048,12 +19496,12 @@
       "core.calendar",
       "core.holidays"
      ],
-     "summary_plain": "Adds smooth wave-shaped columns that let a model learn a repeating pattern, such as every year or every week.",
+     "summary_plain": "Adds smooth wave-shaped columns. With these columns, a model can learn a repeating pattern, such as a pattern for each year or each week.",
      "title": "Repeating seasonal patterns",
      "typical_runtime": "instant",
      "use_when": [
-      "Your result rises and falls with the season",
-      "You want seasonality without one column per month"
+      "Your result increases and decreases with the season",
+      "You want seasonality without one column for each month"
      ]
     },
     "depends_on_target": false,
@@ -18141,10 +19589,10 @@
    {
     "about": {
      "assumptions": [
-      "The exchange-rate table covers every date in the data"
+      "The exchange-rate table covers all dates in the data"
      ],
      "avoid_when": [
-      "Everything is already in one currency"
+      "All values are already in one currency"
      ],
      "data_needs": [
       "Money columns and a table of exchange rates over time"
@@ -18157,13 +19605,13 @@
       ]
      },
      "outputs": [
-      "Money columns in the chosen currency"
+      "Money columns in the currency that you select"
      ],
      "references": [],
      "related": [
       "core.resample"
      ],
-     "summary_plain": "Converts money columns from local currencies into one currency, using exchange rates for each day or week.",
+     "summary_plain": "Converts money columns from local currencies into one currency. It uses exchange rates for each day or week.",
      "title": "Convert currencies",
      "typical_runtime": "instant",
      "use_when": [
@@ -18314,33 +19762,33 @@
    {
     "about": {
      "assumptions": [
-      "The holiday table covers the whole period, including any forecast"
+      "The holiday table covers the full period, and also the forecast"
      ],
      "avoid_when": [
-      "Holidays make no difference to your result"
+      "Holidays do not change your result"
      ],
      "data_needs": [
-      "A date column and a holiday table (per country or market)"
+      "A date column and a holiday table (for each country or market)"
      ],
      "difficulty": "beginner",
-     "example": "The week containing 25 December is flagged in every market that celebrates it.",
+     "example": "The step flags the week that contains 25 December in each market that has this holiday.",
      "fits": {
       "goal": [
        "check_data"
       ]
      },
      "outputs": [
-      "A holiday indicator or count per period"
+      "A holiday flag or a count for each period"
      ],
      "references": [],
      "related": [
       "core.calendar"
      ],
-     "summary_plain": "Marks the periods that contain public holidays, from a holiday table you provide.",
+     "summary_plain": "Marks the periods that contain public holidays. It uses a holiday table that you supply.",
      "title": "Holiday flags",
      "typical_runtime": "instant",
      "use_when": [
-      "Holidays move your sales"
+      "Holidays change your sales"
      ]
     },
     "depends_on_target": false,
@@ -18476,17 +19924,17 @@
    {
     "about": {
      "assumptions": [
-      "Fill values are learned on the training data only"
+      "The step learns the fill values from the training data only"
      ],
      "avoid_when": [
-      "Many values are missing (fix the source instead)",
-      "Missing means something (add a missing-value flag)"
+      "Many values are missing (correct the source instead)",
+      "A missing value has a meaning (add a missing-value flag)"
      ],
      "data_needs": [
       "The columns with gaps"
      ],
      "difficulty": "beginner",
-     "example": "A missing week of spend in a market is filled with that market's average.",
+     "example": "The step fills a missing week of spend in a market with the average of that market.",
      "fits": {
       "goal": [
        "check_data"
@@ -18500,11 +19948,11 @@
       "core.missing_indicator",
       "core.replace_sentinel"
      ],
-     "summary_plain": "Fills missing values with a sensible stand-in, such as the average, zero or the previous value.",
+     "summary_plain": "Fills missing values with a sensible substitute, such as the average, zero or the previous value.",
      "title": "Fill gaps",
      "typical_runtime": "instant",
      "use_when": [
-      "A few values are missing and the model cannot handle gaps"
+      "Some values are missing and the model cannot use data with gaps"
      ]
     },
     "depends_on_target": false,
@@ -18638,33 +20086,33 @@
    {
     "about": {
      "assumptions": [
-      "Earlier rows exist; the first rows get a fill value"
+      "Earlier rows exist. The first rows get a fill value"
      ],
      "avoid_when": [
-      "You forecast many periods ahead and the lagged value would not be known"
+      "You forecast many periods ahead and the lagged value is not known"
      ],
      "data_needs": [
       "A time dimension and the columns to lag"
      ],
      "difficulty": "intermediate",
-     "example": "A one-week lag of sales puts last week's 120 next to this week's 130.",
+     "example": "A one-week lag of sales puts the 120 of last week next to the 130 of this week.",
      "fits": {
       "goal": [
        "check_data"
       ]
      },
      "outputs": [
-      "One new column per lag"
+      "One new column for each lag"
      ],
      "references": [],
      "related": [
       "core.lag_tensor"
      ],
-     "summary_plain": "Adds the values from one or more earlier periods as extra columns, such as last week's sales.",
+     "summary_plain": "Adds the values from one or more earlier periods as extra columns, such as the sales of last week.",
      "title": "Earlier values as columns",
      "typical_runtime": "instant",
      "use_when": [
-      "Last period's value helps predict this period"
+      "The value of the last period helps to predict this period"
      ]
     },
     "context": {
@@ -18801,34 +20249,34 @@
    {
     "about": {
      "assumptions": [
-      "The window is long enough for the effect to fade"
+      "The window is sufficiently long for the effect to decrease to zero"
      ],
      "avoid_when": [
-      "The model takes plain series and handles history internally"
+      "The model takes plain series and uses the history internally"
      ],
      "data_needs": [
-      "A time dimension and the columns to keep history for"
+      "A time dimension and the columns that need history"
      ],
      "difficulty": "expert",
-     "example": "With a 6-week window, every week carries the spend of the 6 weeks before it.",
+     "example": "With a 6-week window, each week has the spend of the 6 weeks before it.",
      "fits": {
       "goal": [
        "check_data"
       ]
      },
      "outputs": [
-      "A new dimension with the last few periods of every series"
+      "A new dimension with the last periods of each series"
      ],
      "references": [],
      "related": [
       "core.lag",
       "core.adstock"
      ],
-     "summary_plain": "Keeps the last few periods of each series side by side, which models use to compute carry-over effects themselves.",
+     "summary_plain": "Keeps the last periods of each series side by side. Models use them to calculate carry-over effects themselves.",
      "title": "Recent history per series",
      "typical_runtime": "instant",
      "use_when": [
-      "A model computes its own carry-over from a window of past spend"
+      "A model calculates its carry-over from a window of past spend"
      ]
     },
     "context": {
@@ -18961,13 +20409,13 @@
    {
     "about": {
      "assumptions": [
-      "Results are converted back; averages on the original scale are approximate"
+      "The server converts the results back. Averages on the original scale are approximate"
      ],
      "avoid_when": [
       "Values can be negative"
      ],
      "data_needs": [
-      "Numeric columns of zero or more"
+      "Numeric columns with values of zero or more"
      ],
      "difficulty": "beginner",
      "example": "Sales of 9, 99 and 999 become about 2.3, 4.6 and 6.9.",
@@ -18983,11 +20431,11 @@
      "related": [
       "core.logit"
      ],
-     "summary_plain": "Takes the logarithm of one plus each value, which shrinks very large numbers and turns growth rates into steady steps.",
+     "summary_plain": "Takes the logarithm of one plus each value. This makes very large numbers smaller and changes growth rates into steady steps.",
      "title": "Compress large values",
      "typical_runtime": "instant",
      "use_when": [
-      "Values span several orders of magnitude",
+      "Values cover several orders of magnitude",
       "Effects work in percentages"
      ]
     },
@@ -19041,16 +20489,16 @@
    {
     "about": {
      "assumptions": [
-      "Exact 0 and 1 are nudged slightly inwards"
+      "The step moves exact values of 0 and 1 a small distance inwards"
      ],
      "avoid_when": [
       "Values are not between 0 and 1"
      ],
      "data_needs": [
-      "Columns with shares strictly between 0 and 1"
+      "Columns with shares that are strictly between 0 and 1"
      ],
      "difficulty": "intermediate",
-     "example": "A 50% share becomes 0; 90% becomes about 2.2.",
+     "example": "A 50% share becomes 0. A 90% share becomes about 2.2.",
      "fits": {
       "goal": [
        "check_data"
@@ -19063,7 +20511,7 @@
      "related": [
       "core.log1p"
      ],
-     "summary_plain": "Turns shares between 0 and 1, such as conversion rates, into numbers without limits so a model cannot predict impossible values.",
+     "summary_plain": "Changes shares between 0 and 1, such as conversion rates, into numbers without limits. Then a model cannot predict impossible values.",
      "title": "Unbounded scale for shares",
      "typical_runtime": "instant",
      "use_when": [
@@ -19128,7 +20576,7 @@
    {
     "about": {
      "assumptions": [
-      "The largest value is learned on the training data only"
+      "The step learns the largest value from the training data only"
      ],
      "avoid_when": [
       "Your data has extreme outliers (they set the scale)"
@@ -19151,7 +20599,7 @@
       "core.mean_scale",
       "core.clip"
      ],
-     "summary_plain": "Divides each series by its largest absolute value, so every value falls between -1 and 1.",
+     "summary_plain": "Divides each series by its largest absolute value, so all values are between -1 and 1.",
      "title": "Scale to between -1 and 1",
      "typical_runtime": "instant",
      "use_when": [
@@ -19244,7 +20692,7 @@
    {
     "about": {
      "assumptions": [
-      "The average is learned on the training data only and reused for new data"
+      "The step learns the average from the training data only and uses it again for new data"
      ],
      "avoid_when": [
       "The model scales the data itself"
@@ -19253,26 +20701,26 @@
       "Numeric columns"
      ],
      "difficulty": "beginner",
-     "example": "A market selling 5000 a week on average becomes 1.0; a week with 6000 becomes 1.2.",
+     "example": "A market that sells 5000 a week on average becomes 1.0. A week with 6000 becomes 1.2.",
      "fits": {
       "goal": [
        "check_data"
       ]
      },
      "outputs": [
-      "The same columns with an average of 1 (results are converted back automatically)"
+      "The same columns with an average of 1 (the server converts the results back automatically)"
      ],
      "references": [],
      "related": [
       "core.standardize",
       "core.max_abs_scale"
      ],
-     "summary_plain": "Divides each series by its own average, so that big and small markets can be compared on the same footing.",
+     "summary_plain": "Divides each series by its average, so that you can compare big and small markets on the same scale.",
      "title": "Put series on a common scale",
      "typical_runtime": "instant",
      "use_when": [
-      "Markets or channels differ a lot in size",
-      "A model works better when every series has an average of 1"
+      "Markets or channels are very different in size",
+      "A model works better when each series has an average of 1"
      ]
     },
     "depends_on_target": false,
@@ -19361,33 +20809,33 @@
    {
     "about": {
      "assumptions": [
-      "Run it before filling gaps"
+      "Use this step before you fill the gaps"
      ],
      "avoid_when": [
       "There are no gaps"
      ],
      "data_needs": [
-      "Columns that may have gaps"
+      "Columns that can have gaps"
      ],
      "difficulty": "beginner",
-     "example": "A missing price gets a flag of 1 next to the filled-in price.",
+     "example": "A missing price gets a flag of 1 next to the filled price.",
      "fits": {
       "goal": [
        "check_data"
       ]
      },
      "outputs": [
-      "One 0/1 column per input column"
+      "One 0/1 column for each input column"
      ],
      "references": [],
      "related": [
       "core.impute"
      ],
-     "summary_plain": "Adds a yes/no column that marks where a value was missing, so a model can tell real values from filled-in ones.",
+     "summary_plain": "Adds a yes/no column that marks where a value was missing. Then a model can tell real values from filled values.",
      "title": "Flag missing values",
      "typical_runtime": "instant",
      "use_when": [
-      "Whether a value is missing tells you something"
+      "The fact that a value is missing gives you information"
      ]
     },
     "depends_on_target": false,
@@ -19444,10 +20892,10 @@
    {
     "about": {
      "assumptions": [
-      "The categories seen in training are the ones that matter; new ones follow a rule"
+      "The categories in the training data are the important categories. New categories follow a rule"
      ],
      "avoid_when": [
-      "A category has hundreds of values (number them instead)"
+      "A category has hundreds of values (give them numbers instead)"
      ],
      "data_needs": [
       "Category columns"
@@ -19460,13 +20908,13 @@
       ]
      },
      "outputs": [
-      "One 0/1 column per category value"
+      "One 0/1 column for each category value"
      ],
      "references": [],
      "related": [
       "core.encode_levels"
      ],
-     "summary_plain": "Turns a category such as region into one yes/no column per value, so models that need numbers can use it.",
+     "summary_plain": "Changes a category, such as region, into one yes/no column for each value. Then models that need numbers can use it.",
      "title": "Categories to yes/no columns",
      "typical_runtime": "instant",
      "use_when": [
@@ -19560,10 +21008,10 @@
    {
     "about": {
      "assumptions": [
-      "The codes never occur as real values"
+      "The codes are never real values"
      ],
      "avoid_when": [
-      "Every number is a real measurement"
+      "All numbers are real measurements"
      ],
      "data_needs": [
       "Columns with placeholder codes"
@@ -19576,17 +21024,17 @@
       ]
      },
      "outputs": [
-      "The same columns with the codes turned into gaps"
+      "The same columns with gaps in place of the codes"
      ],
      "references": [],
      "related": [
       "core.impute"
      ],
-     "summary_plain": "Marks placeholder numbers such as -99 or 9999, which some systems use for 'unknown', as missing.",
+     "summary_plain": "Marks placeholder numbers, such as -99 or 9999, as missing. Some systems use these numbers for 'unknown'.",
      "title": "Placeholder numbers to missing",
      "typical_runtime": "instant",
      "use_when": [
-      "Your source uses codes like -99 for missing values"
+      "Your source uses codes such as -99 for missing values"
      ]
     },
     "depends_on_target": false,
@@ -19676,38 +21124,38 @@
    {
     "about": {
      "assumptions": [
-      "Spend and sales can be summed; prices and rates are averaged (choose per column)",
-      "Incomplete first and last periods are dropped when full periods are required"
+      "You can add spend and sales together. Prices and rates get an average (select this for each column)",
+      "When the step needs full periods, it removes an incomplete first or last period"
      ],
      "avoid_when": [
-      "Your data already has one row per week or month",
-      "The numbers cannot be added up and averaging would hide what matters"
+      "Your data already has one row for each week or month",
+      "You cannot add the numbers together, and an average hides the important information"
      ],
      "data_needs": [
-      "A date column with a regular rhythm"
+      "A date column with a regular interval"
      ],
      "difficulty": "beginner",
-     "example": "Daily TV spend of 100 every day becomes 700 for the week ending Sunday.",
-     "expert_notes": "Group-by on the time coordinate at the target frequency (pandas offset alias); `how` per variable (sum, mean, last); `full_periods_only` drops partial bins.",
+     "example": "If the daily TV spend is 100 every day, the week that ends on Sunday gets 700.",
+     "expert_notes": "Group-by on the time coordinate at the target frequency (pandas offset alias). `how` for each variable (sum, mean, last). `full_periods_only` removes partial bins.",
      "fits": {
       "goal": [
        "check_data"
       ]
      },
      "outputs": [
-      "The same columns with one row per week or month"
+      "The same columns with one row for each week or month"
      ],
      "references": [],
      "related": [
       "core.count_events",
       "core.calendar"
      ],
-     "summary_plain": "Adds up daily (or hourly) numbers into one number per week or month, so every row covers the same length of time.",
+     "summary_plain": "Adds the daily (or hourly) numbers together into one number for each week or month. Each row then covers the same length of time.",
      "title": "Weekly or monthly totals",
      "typical_runtime": "instant",
      "use_when": [
-      "Your data is daily but you plan and report by week or month",
-      "A model expects weekly data"
+      "Your data is daily, but you plan and report by week or month",
+      "A model needs weekly data"
      ]
     },
     "depends_on_target": false,
@@ -19807,17 +21255,17 @@
    {
     "about": {
      "assumptions": [
-      "The shape and its settings are fixed by you, not learned from the data"
+      "You set the shape and its settings. The model does not learn them from the data"
      ],
      "avoid_when": [
-      "The model learns saturation itself (the Bayesian MMM does)"
+      "The model learns saturation itself (the Bayesian MMM does this)"
      ],
      "data_needs": [
       "Media spend or exposure"
      ],
      "difficulty": "intermediate",
-     "example": "With half-saturation at 1000, spending 1000 gives half the possible effect.",
-     "expert_notes": "Logistic (lam), Hill (slope, half) or Michaelis-Menten curves applied element-wise.",
+     "example": "With half-saturation at 1000, a spend of 1000 gives half of the maximum effect.",
+     "expert_notes": "Logistic (lam), Hill (slope, half) or Michaelis-Menten curves, applied element by element.",
      "fits": {
       "goal": [
        "explain_marketing",
@@ -19832,11 +21280,11 @@
       "core.adstock",
       "mmm.bayesian"
      ],
-     "summary_plain": "Bends spend so that each extra unit of money adds a little less than the one before, as happens when a channel gets saturated.",
+     "summary_plain": "Bends spend so that each extra unit of money adds a little less than the unit before. This is what occurs when a channel is saturated.",
      "title": "Diminishing returns",
      "typical_runtime": "instant",
      "use_when": [
-      "You model media with a simple model and need diminishing returns"
+      "You model media with a simple model and you need diminishing returns"
      ]
     },
     "depends_on_target": false,
@@ -20012,7 +21460,7 @@
    {
     "about": {
      "assumptions": [
-      "Empty combinations can be dropped and are remembered so they can be restored"
+      "The step can remove empty combinations. It keeps a record of them, so you can put them back"
      ],
      "avoid_when": [
       "The model can use the grid directly"
@@ -20034,11 +21482,11 @@
      "related": [
       "core.unstack"
      ],
-     "summary_plain": "Combines several dimensions, such as market and product, into one list of cells.",
+     "summary_plain": "Combines two or more dimensions, such as market and product, into one list of cells.",
      "title": "Combine dimensions",
      "typical_runtime": "instant",
      "use_when": [
-      "A model works on a flat list of cells instead of a grid"
+      "A model works on a flat list of cells, not on a grid"
      ]
     },
     "depends_on_target": false,
@@ -20096,16 +21544,16 @@
    {
     "about": {
      "assumptions": [
-      "Average and spread are learned on the training data only"
+      "The step learns the average and the spread from the training data only"
      ],
      "avoid_when": [
-      "Zero must keep its meaning (spend of zero should stay zero)"
+      "Zero must keep its meaning (a spend of zero must stay zero)"
      ],
      "data_needs": [
       "Numeric columns"
      ],
      "difficulty": "beginner",
-     "example": "Temperatures averaging 15 with spread 5 make 20 degrees become 1.0.",
+     "example": "If temperatures have an average of 15 and a spread of 5, 20 degrees becomes 1.0.",
      "fits": {
       "goal": [
        "check_data"
@@ -20118,11 +21566,11 @@
      "related": [
       "core.mean_scale"
      ],
-     "summary_plain": "Shifts each series so its average is zero and stretches it so its typical spread is one.",
+     "summary_plain": "Moves each series so that its average is zero, and stretches it so that its typical spread is one.",
      "title": "Centre and scale",
      "typical_runtime": "instant",
      "use_when": [
-      "You compare the size of effects across inputs measured in different units"
+      "You compare the size of effects across inputs that have different units"
      ]
     },
     "depends_on_target": false,
@@ -20233,29 +21681,29 @@
    {
     "about": {
      "assumptions": [
-      "Padding cells are marked as missing or by a mask"
+      "Missing values or a mask mark the padding cells"
      ],
      "avoid_when": [
-      "Every group has the same number of rows and the model expects a grid"
+      "All groups have the same number of rows and the model needs a grid"
      ],
      "data_needs": [
       "A group dimension (customer) and a position dimension (trip number)"
      ],
      "difficulty": "intermediate",
-     "example": "Household 1 with 3 trips and household 2 with 1 trip becomes 4 rows.",
+     "example": "Household 1 with 3 trips and household 2 with 1 trip become 4 rows.",
      "fits": {
       "goal": [
        "check_data"
       ]
      },
      "outputs": [
-      "The same values with one row per observation and a group index"
+      "The same values with one row for each observation and a group index"
      ],
      "references": [],
      "related": [
       "core.to_padded"
      ],
-     "summary_plain": "Rearranges a table where each group's rows sit side by side into one row per observation, dropping the empty padding.",
+     "summary_plain": "Changes a table where the rows of each group are side by side into one row for each observation. It removes the empty padding.",
      "title": "One row per observation",
      "typical_runtime": "instant",
      "use_when": [
@@ -20398,33 +21846,33 @@
    {
     "about": {
      "assumptions": [
-      "Gaps are marked so the model can skip them"
+      "The gaps have a mark, so the model can ignore them"
      ],
      "avoid_when": [
       "Your data is already a grid"
      ],
      "data_needs": [
-      "A group column and an order within each group"
+      "A group column and an order in each group"
      ],
      "difficulty": "intermediate",
-     "example": "Households with 3 and 1 trips become a 2 by 3 grid with two empty cells.",
+     "example": "Households with 3 trips and 1 trip become a 2 by 3 grid with two empty cells.",
      "fits": {
       "goal": [
        "check_data"
       ]
      },
      "outputs": [
-      "A grid of groups by position plus a mask of the real cells"
+      "A grid of groups by position, and a mask of the real cells"
      ],
      "references": [],
      "related": [
       "core.to_long"
      ],
-     "summary_plain": "Lines up each group's rows side by side in a grid, filling short groups with gaps that are marked as missing.",
-     "title": "Line groups up side by side",
+     "summary_plain": "Puts the rows of each group side by side in a grid. It fills short groups with gaps and marks the gaps as missing.",
+     "title": "Put groups side by side",
      "typical_runtime": "instant",
      "use_when": [
-      "A model expects a grid of groups by position, such as households by trip"
+      "A model needs a grid of groups by position, such as households by trip"
      ]
     },
     "depends_on_target": false,
@@ -20570,7 +22018,7 @@
       "The drift continues at the same rate into the future"
      ],
      "avoid_when": [
-      "The trend changes direction often (use a flexible trend model)"
+      "The trend changes direction frequently (use a flexible trend model)"
      ],
      "data_needs": [
       "A regular date column"
@@ -20590,11 +22038,11 @@
       "core.fourier",
       "ts.hsgp_trend"
      ],
-     "summary_plain": "Adds a column that counts up over time, so a model can capture a steady rise or fall.",
+     "summary_plain": "Adds a column that counts up over time, so a model can show a steady increase or decrease.",
      "title": "Steady drift over time",
      "typical_runtime": "instant",
      "use_when": [
-      "Your result grows or shrinks steadily"
+      "Your result increases or decreases steadily"
      ]
     },
     "depends_on_target": false,
@@ -20673,13 +22121,13 @@
    {
     "about": {
      "assumptions": [
-      "The parts of every combined label are known"
+      "The parts of each combined label are known"
      ],
      "avoid_when": [
-      "Nothing was stacked"
+      "No step stacked the dimensions"
      ],
      "data_needs": [
-      "A dimension created by stacking"
+      "A dimension that a stack step made"
      ],
      "difficulty": "intermediate",
      "example": "12 market-product cells become 3 markets by 4 products.",
@@ -20695,11 +22143,11 @@
      "related": [
       "core.stack"
      ],
-     "summary_plain": "Splits a combined dimension back into its parts, for example market-product cells back into markets and products.",
+     "summary_plain": "Divides a combined dimension back into its parts. For example, market-product cells become markets and products again.",
      "title": "Split a combined dimension",
      "typical_runtime": "instant",
      "use_when": [
-      "You stacked dimensions earlier and need the grid back"
+      "You stacked dimensions in an earlier step and you need the grid again"
      ]
     },
     "depends_on_target": false,
@@ -20756,6 +22204,375 @@
     "yanked": false
    }
   ]
+ },
+ "model_inputs": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "D",
+     "name": "time",
+     "role": "coord"
+    },
+    {
+     "description": "A level of geo",
+     "dims": [],
+     "name": "geo",
+     "role": "coord"
+    },
+    {
+     "description": "A level of channel",
+     "dims": [],
+     "name": "channel",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "geo",
+      "time"
+     ],
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "Necessary on each period, also on the periods to forecast",
+     "dims": [
+      "geo",
+      "channel",
+      "time"
+     ],
+     "name": "spend",
+     "role": "driver"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "time",
+   "rows": [
+    [
+     "2026-10-01",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-01",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-01",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-01",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-02",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-02",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-02",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-02",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-03",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-03",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-03",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-03",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-04",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-04",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-04",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-04",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-05",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-05",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-05",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-05",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-06",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-06",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-06",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-06",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-07",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-07",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-07",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-07",
+     "fr",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-08",
+     "de",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-08",
+     "de",
+     "tv",
+     null,
+     null
+    ],
+    [
+     "2026-10-08",
+     "fr",
+     "search",
+     null,
+     null
+    ],
+    [
+     "2026-10-08",
+     "fr",
+     "tv",
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/eu-geo-mmm@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "channel": {
+     "contiguous": true,
+     "kind": "categorical",
+     "size": 2,
+     "values": [
+      "search",
+      "tv"
+     ]
+    },
+    "geo": {
+     "contiguous": true,
+     "kind": "categorical",
+     "size": 3,
+     "values": [
+      "de",
+      "fr",
+      "it"
+     ]
+    },
+    "time": {
+     "contiguous": true,
+     "end": "2026-09-30",
+     "freq": "D",
+     "kind": "time",
+     "size": 730,
+     "start": "2024-10-01"
+    }
+   },
+   "future_required": [
+    "spend"
+   ],
+   "horizon_dim": "time",
+   "input_schema": {
+    "dims": {
+     "channel": {
+      "kind": "categorical",
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "geo": {
+      "kind": "categorical",
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "time": {
+      "freq": "D",
+      "kind": "time",
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "spend": {
+      "dims": [
+       "geo",
+       "channel",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "missing": "forbid",
+      "role": "spend",
+      "units": "EUR"
+     },
+     "y": {
+      "dims": [
+       "geo",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "missing": "forbid",
+      "role": "target",
+      "units": "EUR"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:abababababababababababababababababababababababababababababababab",
+   "score_modes": [
+    "counterfactual",
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
  },
  "modelspec_schema": {
   "$defs": {

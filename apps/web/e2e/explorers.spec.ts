@@ -79,7 +79,7 @@ test("the catalog browses every item by its About card", async ({ page }) => {
   await page.getByRole("button", { name: /^Governance checks/ }).click();
   const items = page.getByRole("list", { name: "Catalog items" });
   await expect(items.getByRole("listitem")).toHaveCount(12);
-  await items.getByRole("button", { name: /^Beats simple benchmarks/ }).click();
+  await items.getByRole("button", { name: /^Better than simple benchmarks/ }).click();
   await expect(page).toHaveURL(/about=check%3Abaseline\.beats_naive|about=check:baseline\.beats_naive/);
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Avoid it when")).toBeVisible();
@@ -231,7 +231,7 @@ test("budget optimisation: bounds explained before the run, then the plan and it
   const plan = page.getByTestId("plan-result");
   await expect(plan).toBeVisible({ timeout: 15_000 });
   await expect(plan.getByRole("table", { name: "Allocation" })).toContainText("search");
-  await expect(plan).toContainText("chance it beats today's plan");
+  await expect(plan).toContainText("The chance that it is better than today's plan");
   await expect(page).toHaveURL(/run=run_/);
   await plotsRendered(page);
 });

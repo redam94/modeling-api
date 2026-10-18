@@ -1,18 +1,19 @@
 # Pipelines, stages and replay
 
-A pipeline is an ordered list of **steps**. Each step is a small, versioned transform with
-typed settings and, if it learns something, a fitted **state**. The promise of the platform is
-simple to state and fiddly to keep:
+A pipeline is a list of **steps** in sequence. Each step is a small transform with a version
+and typed settings. If a step learns something, it also has a fitted **state**. The promise of
+the platform is easy to say but difficult to keep:
 
-> **Scoring replays exactly the preprocessing that was learned at fit time. It never refits.**
+> **When you score a model, the platform uses exactly the preprocessing that it learned at fit time. It never fits again.**
 
-This page explains the pieces that keep that promise: stages, the split stage, context tails,
-inverse transforms and scenario entry points.
+This page tells about the parts that keep that promise. These parts are stages, the split
+stage, context tails, inverse transforms and the entry points for scenarios.
 
 ## Steps
 
-A step implements `fit` (learn, on train only), `transform` (apply; never learns) and, when it
-can, `inverse`. A complete one, from the [porting guide](../guides/port-a-model.md):
+A step has a `fit` function (it learns, on the training data only) and a `transform` function
+(it applies the step and never learns). When possible, a step also has an `inverse` function.
+This is a full step from the [porting guide](../guides/port-a-model.md):
 
 ??? example "A scaling step, in full"
 
@@ -20,32 +21,33 @@ can, `inverse`. A complete one, from the [porting guide](../guides/port-a-model.
     --8<-- "plugin_custom.py:step"
     ```
 
-Every step has a **kind**:
+Each step has a **kind**:
 
 | Kind | Changes | Inverted on the way out? | Examples |
 |---|---|---|---|
 | `reshape` | Structure: dims, frequency, layout | Never | `resample`, `to_long`, `stack`, `filter_coords` |
-| `value` | Values of existing variables | Yes, if `invertible` | `fx_convert`, `mean_scale`, `standardize`, `log1p` |
-| `feature` | Adds new variables | Not needed | `lag`, `fourier`, `calendar`, `one_hot`, `formula` |
+| `value` | Values of variables that exist | Yes, if `invertible` | `fx_convert`, `mean_scale`, `standardize`, `log1p` |
+| `feature` | Adds new variables | Not necessary | `lag`, `fourier`, `calendar`, `one_hot`, `formula` |
 
-And a **static schema effect**: a JSON template that says how the step changes the schema
-(adds `lag` dim, sets units to `1`, turns daily `date` into weekly `time`). The control plane
-uses it to propagate the schema through the whole pipeline without running anything.
+Each step also has a **static schema effect**. This is a JSON template that tells how the step
+changes the schema. For example, it adds a `lag` dim, sets units to `1`, or changes daily
+`date` into weekly `time`. The control plane uses the template to calculate the schema through
+the full pipeline. It does not run a step to do this.
 
 ## Stages
 
-A **stage** is the dataset after a named step; `raw` is the bound input. Static validation
-computes the schema at every stage, so problems surface before any data is read:
+A **stage** is the dataset after a named step. `raw` is the bound input. Static validation
+calculates the schema at each stage. Thus you see problems before the platform reads data:
 
 ```python
 --8<-- "concepts_pipeline.py:stages"
 ```
 
-Stages are how specs refer to points in the pipeline:
+Specs use stages to refer to points in the pipeline:
 
-- `data.split.after_step`: where the train/holdout split happens;
-- `ScoreRequest.inputs_stage`: where a scenario enters the pipeline;
-- the **output space**: the stage outputs are inverted back to.
+- `data.split.after_step`: the point of the train/holdout split
+- `ScoreRequest.inputs_stage`: the point where a scenario goes into the pipeline
+- the **output space**: the stage to which the platform inverts the outputs.
 
 ## Where the split happens
 
@@ -61,23 +63,23 @@ flowchart LR
     style SPLIT fill:#5eead4,stroke:#0f766e,color:#1e1b4b
 ```
 
-Some dims only exist after preprocessing: a holdout of "the last 8 weeks" cannot be cut from
-daily data before it is resampled. So the split happens at a **stage**. If `after_step` is not
-given, it defaults to the end of the **stateless prefix**, the leading steps that learn nothing
-(unit conversion, resampling).
+Some dims exist only after preprocessing. For example, you cannot cut a holdout of "the last 8
+weeks" from daily data before the data is resampled. Thus the split occurs at a **stage**. If
+you do not give `after_step`, the default is the end of the **stateless prefix**. The
+stateless prefix is the first steps that learn nothing (unit conversion, resampling).
 
-If a step that **learns** runs before the split, its state would be learned partly from the
-holdout and the evaluation would be optimistic. Validation reports it:
+If a step that **learns** runs before the split, it learns its state partly from the holdout.
+Then the evaluation is too optimistic. Validation reports this:
 
 ```python
 --8<-- "concepts_pipeline.py:leakage"
 ```
 
-Set `allow_leakage: true` on the split to downgrade the error to an acknowledged warning.
+To change the error to a warning that you accept, set `allow_leakage: true` on the split.
 
 ## Evaluate the way you will forecast
 
-`fit.mode: evaluate_then_refit` (the default) does this:
+`fit.mode: evaluate_then_refit` (the default) does these steps:
 
 ```mermaid
 sequenceDiagram
@@ -92,17 +94,20 @@ sequenceDiagram
     P->>B: production bundle (links evaluation + metrics)
 ```
 
-The holdout is never scored by a separate code path: it goes through `score_bundle`, with the
-context it would have in production. Then everything is refitted on all data, so the context
-tails and terminal states that forecasts start from are the latest ones. `train_only` stops
-after evaluation and keeps the train fit.
+The platform never uses a separate code path to score the holdout. The holdout goes through
+`score_bundle`, with the context that it would have in production. Then the platform fits all
+parts again on all the data. Thus forecasts start from the latest context tails and terminal
+states. `train_only` stops after the evaluation and keeps the fit on the training data.
 
 ## Context tails: looking back across the fit boundary
 
 Steps that look back in time (lags, carry-over) declare a **context need**, for example
-`{along: time, n: 6, within: [geo]}`. At fit time the step stores the last `n` rows of its
-**own input stage**, per group. At score time the platform prepends them before transforming,
-checks that the new data continues the fitted range, and drops them from the output.
+`{along: time, n: 6, within: [geo]}`. At fit time, the step stores the last `n` rows of its
+**own input stage**, for each group. At score time, the platform does these steps:
+
+1. It adds the stored rows before the new data, and then transforms the data.
+2. It makes sure that the new data continues the fitted range.
+3. It removes the stored rows from the output.
 
 ```mermaid
 flowchart LR
@@ -116,35 +121,36 @@ flowchart LR
     end
 ```
 
-The result is identical to transforming the whole series at once; the contract kit checks this
-"context-window equivalence" for every step and model. A new market has no tail, so its lags
-are padded according to the step's settings (`pad: first`).
+The result is the same as when you transform the full series at one time. The contract kit
+does a check of this "context-window equivalence" for each step and model. A new market has no
+tail. Thus the step pads its lags as its settings tell (`pad: first`).
 
-Sequential models (HMMs, Kalman filters) keep a model-side **terminal state** instead; see
-[Forecasting](../guides/time-series.md).
+Sequential models (HMMs, Kalman filters) keep a **terminal state** in the model instead. Refer
+to [Forecasting](../guides/time-series.md).
 
 ## Inverse transforms and the output space
 
-On the way out, the platform undoes invertible **value** steps in reverse order and stops at the
-**last reshape step**. A model fitted on weekly, scaled EUR returns weekly EUR: scaling can be
-undone, the weekly resample cannot (daily values are not recoverable from weekly sums).
+On the way out, the platform reverses the invertible **value** steps in the opposite sequence.
+It stops at the **last reshape step**. A model that is fitted on weekly, scaled EUR returns
+weekly EUR. The platform can reverse the scaling, but it cannot reverse the weekly resample.
+Daily values are not available from weekly sums.
 
-Every output records where it ended up:
+Each output records where it stopped:
 
 | Attribute | Example | Meaning |
 |---|---|---|
-| `output_space` | `{"y_hat": "weekly"}` | The stage the values live at |
-| `units` | `EUR` | Units after inversion |
-| `retransform` | `{"y_hat": "median"}` | For point models through a non-linear inverse: the inverse of a mean is not a mean, so the value is labelled (or Duan smearing is used) |
+| `output_space` | `{"y_hat": "weekly"}` | The stage of the values |
+| `units` | `EUR` | The units after inversion |
+| `retransform` | `{"y_hat": "median"}` | For point models through a non-linear inverse. The inverse of a mean is not a mean. Thus the platform labels the value (or uses Duan smearing) |
 
-Ask for `output: {units: model}` to skip inversion, for example to get contributions that add up
-exactly through a `log1p`.
+To skip inversion, ask for `output: {units: model}`. For example, use this to get
+contributions that add up exactly through a `log1p`.
 
 ## Scenarios enter at a stage
 
-A planner should not have to invent daily local-currency spend to ask about a weekly EUR
-budget. `ScoreRequest.inputs_stage` lets data enter the pipeline after a named step; the steps
-before it, and the side tables they need, are skipped:
+A planner must not have to make up daily spend in local currency to ask about a weekly EUR
+budget. With `ScoreRequest.inputs_stage`, data can go into the pipeline after a named step.
+The platform skips the steps before it, and the side tables that these steps need:
 
 ```yaml
 mode: forecast
@@ -152,20 +158,22 @@ horizon: {dim: time, periods: 8}
 inputs_stage: weekly        # send weekly EUR spend; to_eur and the FX table are skipped
 ```
 
-The E33 conformance fixture checks that this gives exactly the same forecast as the raw daily
-path for the same spend.
+The E33 conformance fixture makes sure that this gives exactly the same forecast as the raw
+daily path for the same spend.
 
 ## Models that own their preprocessing
 
-Some models do their own scaling or carry-over (the mmm-framework MMMs do both). They declare
-`owns: [scaling, carryover, inverse_units]` in their capabilities, the platform steps aside,
-and outputs are labelled as already in original units. See
+Some models do their own scaling or carry-over (the mmm-framework MMMs do both). These models
+declare `owns: [scaling, carryover, inverse_units]` in their capabilities. Then the platform
+does not apply these steps. The outputs have a label that tells that they are already in the
+original units. Refer to
 [the mmm-framework models](../models/mmm-framework.md#what-the-data-looks-like).
 
 ## Recursion
 
-A lag of the **target** is a recursive feature: forecasting more periods than the smallest lag
-would need predictions as inputs. v1 forecasts are direct, so such specs are rejected with
-`RECURSIVE_UNSUPPORTED` unless the model declares `owns: [recursion]`.
+A lag of the **target** is a recursive feature. If a forecast has more periods than the
+smallest lag, it needs predictions as inputs. v1 forecasts are direct. Thus the platform
+refuses such specs with `RECURSIVE_UNSUPPORTED`, unless the model declares
+`owns: [recursion]`.
 
 Next: [Representations and summaries](representations.md).

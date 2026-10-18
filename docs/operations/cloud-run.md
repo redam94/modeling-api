@@ -1,15 +1,15 @@
 # Cloud Run Jobs executor
 
-The `cloudrun-jobs` executor runs every attempt as a fresh Cloud Run Jobs (gen2) execution: a
-microVM per run, created from a small, fixed set of Jobs. It is the primary backend of the
-hosted platform ([v0.3](../roadmap/cloud.md)).
+The `cloudrun-jobs` executor runs each attempt as a new Cloud Run Jobs (gen2) execution. Each
+run gets a microVM, which the executor makes from a small, fixed set of Jobs. This executor is
+the primary backend of the hosted platform ([v0.3](../roadmap/cloud.md)).
 
 !!! warning "Tested against fakes only"
-    The executor, the Pub/Sub push endpoint, the KMS signer and the Cloud Storage driver are
-    built on the real Google client libraries but have **only** been exercised against test
-    doubles: an in-memory Cloud Run API (`FakeCloudRun`), locally generated OIDC keys, a KMS
-    double backed by local keys and a fake storage client. Items marked **[verify M0]** depend
-    on Cloud Run behaviour that still has to be confirmed in a real project.
+    The executor, the Pub/Sub push endpoint, the KMS signer and the Cloud Storage driver use
+    the real Google client libraries. But we tested them **only** against test doubles:
+    an in-memory Cloud Run API (`FakeCloudRun`), local OIDC keys, a KMS double with local
+    keys and a fake storage client. Items with the mark **[verify M0]** depend on Cloud Run
+    behaviour that we must still confirm in a real project.
 
 ## Install and select it
 
@@ -20,16 +20,17 @@ export MAPI_CLOUDRUN_PROJECT=mapi-prod-exec-paid
 export MAPI_CLOUDRUN_REGION=europe-west1
 ```
 
-The orchestrator (`mapi-server worker`) authenticates with Application Default Credentials:
-on Cloud Run, its own service account, which needs `run.jobs.run`, `run.executions.get`,
-`run.executions.list`, `run.executions.cancel` and `run.tasks.list` on the exec project
-(roles/run.developer, or a custom role with just these).
+The orchestrator (`mapi-server worker`) authenticates with Application Default Credentials.
+On Cloud Run, these are the credentials of its own service account. The service account needs
+`run.jobs.run`, `run.executions.get`, `run.executions.list`, `run.executions.cancel` and
+`run.tasks.list` on the exec project. Use roles/run.developer, or a custom role with only
+these permissions.
 
 ## The Job inventory
 
-Execution overrides can change only environment variables, the task count and the timeout —
-never the image, CPU or memory. The platform therefore deploys one Job per base image and
-resource class, and picks one per attempt:
+Execution overrides can change only environment variables, the task count and the timeout.
+They can never change the image, CPU or memory. Thus the platform deploys one Job for each
+base image and resource class, and it selects one Job for each attempt:
 
 | | S (2 vCPU, 8 GiB) | M (4 vCPU, 16 GiB) | L (8 vCPU, 32 GiB) |
 |---|---|---|---|
@@ -37,84 +38,109 @@ resource class, and picks one per attempt:
 | `base-ml` (`sklearn.*`) | `mapi-prod-base-ml-s` | `mapi-prod-base-ml-m` | `mapi-prod-base-ml-l` |
 | `base-forecast` (`ts.*`) | `mapi-prod-base-forecast-s` | `mapi-prod-base-forecast-m` | `mapi-prod-base-forecast-l` |
 
-The names follow `MAPI_CLOUDRUN_JOB_TEMPLATE` (default `mapi-{env}-{base}-{class}`); the
-infrastructure must create exactly these Jobs, each with:
+The names use `MAPI_CLOUDRUN_JOB_TEMPLATE` (default `mapi-{env}-{base}-{class}`). The
+infrastructure must make exactly these Jobs. Each Job must have:
 
-- `max-retries = 0` (the platform decides about retries);
-- the execution service account (get and delete on the bootstrap bucket, nothing else);
-- the static environment `MAPI_BOOTSTRAP_URL=gs://mapi-{env}-bootstrap/{nonce}`;
-- the deny-all network and the restricted Google APIs VIP.
+- `max-retries = 0` (the platform decides about retries).
+- The execution service account (get and delete on the bootstrap bucket, and no other
+  permissions).
+- The static environment `MAPI_BOOTSTRAP_URL=gs://mapi-{env}-bootstrap/{nonce}`.
+- The deny-all network and the restricted Google APIs VIP.
 
-XL runs belong to the GKE executor (M6); the dispatcher refuses them for `cloudrun-jobs`.
+XL runs are for the GKE executor (M6). The dispatcher refuses XL runs for `cloudrun-jobs`.
 
 ## What one attempt looks like
 
 1. The dispatcher writes the intent row `(run, attempt, nonce)` and the bootstrap object
-   `bootstrap/<nonce>` (the RunSpec with signed URLs and the HMAC key).
-2. `jobs.run` on the chosen Job with **only** these overrides: `MAPI_RUN_ID`, `MAPI_NONCE`,
-   `taskCount` and the task timeout (the run's timeout plus `MAPI_CLOUDRUN_TIMEOUT_MARGIN_S`,
-   so the supervisor can flush checkpoints before the backstop). Nothing goes in `args`.
-3. The operation's metadata names the execution; the execution name is stored as the attempt's
-   handle and the operation name is logged.
-4. The supervisor reads and deletes its bootstrap object, runs the worker and prints
-   HMAC-signed events, which travel Cloud Logging → Pub/Sub → `POST /internal/events`.
-5. The reconciler polls `executions.get` (and `tasks.list` once the execution finished, for
-   the exit codes). Event silence only marks a run `stalled`; the executor's status decides
-   whether it is alive.
+   `bootstrap/<nonce>`. The bootstrap object is the RunSpec with signed URLs and the HMAC
+   key.
+2. The dispatcher calls `jobs.run` on the selected Job with **only** these overrides:
+    - `MAPI_RUN_ID` and `MAPI_NONCE`.
+    - `taskCount`.
+    - The task timeout. This is the timeout of the run plus
+      `MAPI_CLOUDRUN_TIMEOUT_MARGIN_S`. Thus the supervisor can flush checkpoints before the
+      backstop.
+
+    Nothing goes in `args`.
+3. The metadata of the operation names the execution. The dispatcher keeps the execution
+   name as the handle of the attempt, and it logs the operation name.
+4. The supervisor reads and deletes its bootstrap object. It runs the worker and prints
+   events with HMAC signatures. The events go from Cloud Logging to Pub/Sub to
+   `POST /internal/events`.
+5. The reconciler polls `executions.get`. After the execution is complete, it also polls
+   `tasks.list` for the exit codes. If there are no events, the reconciler only marks the run
+   `stalled`. The status from the executor decides if the run is alive.
 
 | Execution outcome | Reported as | Run outcome |
 |---|---|---|
 | All tasks succeeded | `succeeded`, exit 0 | finalized after the `complete` event |
 | Supervisor exit 16 (checkpoints flushed) | `failed` or `cancelled`, exit 16 | finalized as `partial` |
-| Exit 137, or "memory limit exceeded" | `failed`, exit 137 | `failed` (`RESOURCE_EXHAUSTED`), retry one class up |
+| Exit 137, or "memory limit exceeded" | `failed`, exit 137 | `failed` (`RESOURCE_EXHAUSTED`), retry with the next larger class |
 | Task timeout | `failed`, exit 143 | `failed` (`TIMEOUT`) |
 | Cancelled through `executions.cancel` | `cancelled` | `cancelled`, or `partial` if it flushed |
 | Execution not found | `unknown` | cancelled and confirmed gone, then retried as an infrastructure failure |
 
 ### Orphans and duplicates
 
-Cloud Run chooses execution names, so an execution is identified by its nonce. If the
-dispatcher dies after `jobs.run` but before storing the handle, the reconciler calls
-`adopt(nonce)`: it lists the recent executions of every Job in the inventory and matches the
-`MAPI_NONCE` override in the execution template **[verify M0]**. If two executions carry the
-same nonce, the oldest is kept and the others are cancelled; a duplicate that starts anyway
-finds no bootstrap object (the first one deleted it) and exits without doing any work.
+Cloud Run selects the execution names. Thus the nonce identifies an execution. The dispatcher
+can stop after `jobs.run` but before it keeps the handle. If this occurs, the reconciler calls
+`adopt(nonce)`. It lists the recent executions of each Job in the inventory. Then it finds
+the `MAPI_NONCE` override in the execution template **[verify M0]**.
 
-A `jobs.run` call that fails ambiguously (a timeout or a 5xx after the request was sent) is
-never retried blindly: the next submit of that nonce adopts first.
+If two executions have the same nonce, the reconciler keeps the oldest and cancels the
+others. A duplicate that starts finds no bootstrap object, because the first execution
+deleted it. The duplicate then stops and does no work.
+
+A `jobs.run` call can fail in a way that is not clear, for example a timeout or a 5xx after
+the dispatcher sent the request. The dispatcher never retries this call without a check. The
+next submit of that nonce adopts first.
 
 ### Rate limits
 
-`jobs.run` is limited per project and region (180 calls a minute **[verify M0]**). Each
-orchestrator keeps a token bucket at `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE` (default 150 — split
-the quota between orchestrator replicas). A `429` answer means nothing was created: the
-executor puts every submitter into a shared cool-down (exponential back-off from
-`MAPI_CLOUDRUN_BACKOFF_BASE_S`, at least the server's `Retry-After` but never more than
-`MAPI_CLOUDRUN_BACKOFF_CAP_S`), counts the answer as an alarm (`ALARM cloudrun-jobs: jobs.run
-answered 429` in the log, `throttled_last_hour` in the executor health,
-`mapi_executor_submit_throttled_total{executor}` at `/metrics`, which the `MapiJobsRun429`
-alert watches) and retries the same nonce. When `MAPI_CLOUDRUN_MAX_429_RETRIES` answers in a
-row are exhausted the run goes back to the queue for a new attempt, without using up one of
-its `MAPI_MAX_INFRA_RETRIES`: a throttling storm delays runs, it never fails them. While a
-dispatcher works through a batch it keeps extending the leases of the runs it has not
-submitted yet, so the reconciler never takes over a run whose submit is only slow. A single
-submit that hangs for more than ten lease lengths stops the renewals: the leases lapse and the
-reconciler adopts what `jobs.run` created (by nonce) or retries the attempt.
+`jobs.run` has a limit for each project and region (180 calls a minute **[verify M0]**).
+Each orchestrator keeps a token bucket at `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE` (default 150).
+Divide the quota between the orchestrator replicas.
+
+A `429` answer means that Cloud Run made nothing. The executor then does these steps:
+
+1. It puts all submitters into a shared cool-down. This is an exponential back-off from
+   `MAPI_CLOUDRUN_BACKOFF_BASE_S`. It is at least the `Retry-After` of the server, but never
+   more than `MAPI_CLOUDRUN_BACKOFF_CAP_S`.
+2. It counts the answer as an alarm. The alarm shows in these locations:
+    - `ALARM cloudrun-jobs: jobs.run answered 429` in the log.
+    - `throttled_last_hour` in the executor health.
+    - `mapi_executor_submit_throttled_total{executor}` at `/metrics`. The `MapiJobsRun429`
+      alert monitors this metric.
+3. It retries the same nonce.
+
+After `MAPI_CLOUDRUN_MAX_429_RETRIES` answers in sequence, the run goes back to the queue for
+a new attempt. This does not use one of its `MAPI_MAX_INFRA_RETRIES`. Thus a large quantity
+of throttled calls makes runs late, but it never makes them fail.
+
+While a dispatcher works through a batch, it extends the leases of the runs that it has not
+submitted yet. Thus the reconciler never takes a run whose submit is only slow. If one submit
+stops for more than ten lease lengths, the renewals stop. The leases then expire. The
+reconciler adopts what `jobs.run` made (by nonce), or it retries the attempt.
 
 ### Fan-out with `taskCount`
 
-Homogeneous children of a fan-out parent (same kind, class, base and timeout) can run as the
-tasks of **one** execution (`RunSubmit.task_count`). Task *i* reads its own bootstrap object
-at a nonce derived from the execution nonce and `CLOUD_RUN_TASK_INDEX`
-(`mapi_server.executors.tasks.task_nonce`), numbers its events from `task_seq(i, 0)` so the
-event dedupe keeps every task's events, and writes its outputs under `.../a{n}/tasks/{i}/`.
-The execution succeeds only when every task does; a cancel stops all of them. Fan-out parents
-(`Sweep`, `SBC`, `Backtest`) arrive in v0.5; the executor side is ready.
+Homogeneous children of a fan-out parent can run as the tasks of **one** execution
+(`RunSubmit.task_count`). Homogeneous children have the same kind, class, base and timeout.
+Each task *i* does these actions:
+
+- It reads its own bootstrap object at a nonce. The nonce comes from the execution nonce and
+  `CLOUD_RUN_TASK_INDEX` (`mapi_server.executors.tasks.task_nonce`).
+- It gives numbers to its events from `task_seq(i, 0)`. Thus the event dedupe keeps the
+  events of all tasks.
+- It writes its outputs under `.../a{n}/tasks/{i}/`.
+
+The execution succeeds only when all tasks succeed. A cancel stops all of them. Fan-out
+parents (`Sweep`, `SBC`, `Backtest`) come in v0.5. The executor side is ready.
 
 ## Events: authenticated Pub/Sub push
 
-A Cloud Logging sink with the filter `jsonPayload.mapi_event:*` publishes the supervisors'
-event lines to a topic; a push subscription with OIDC authentication delivers them to
+A Cloud Logging sink with the filter `jsonPayload.mapi_event:*` publishes the event lines of
+the supervisors to a topic. A push subscription with OIDC authentication sends them to
 `POST /internal/events`. Configure the expected token:
 
 ```bash
@@ -123,23 +149,27 @@ export MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT=mapi-events-push@mapi-prod-control.iam.g
 export MAPI_PUBSUB_PUSH_SUBSCRIPTIONS=projects/mapi-prod-control/subscriptions/mapi-run-events-push
 ```
 
-Every push is then checked in this order, before anything in the body is read:
+The server then does a check of each push in this sequence, before it reads the body:
 
-1. the bearer token's RS256 signature against Google's JWKS (cached per `Cache-Control`; an
-   unknown key id triggers at most one refetch every 30 s; cached keys ride out a short JWKS
-   outage);
-2. its claims: issuer Google, our audience, the push service account with a verified e-mail,
-   not expired (60 s leeway);
-3. the subscription name against `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS`.
+1. The RS256 signature of the bearer token, against the JWKS of Google. The server keeps the
+   JWKS in a cache, as `Cache-Control` tells. An unknown key id causes a maximum of one new
+   fetch each 30 s. If the JWKS is not available for a short time, the cached keys continue
+   to work.
+2. The claims of the token. The issuer is Google, and the audience is ours. The push service
+   account has a verified e-mail. The token is not expired (60 s leeway).
+3. The subscription name, against `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS`.
 
-Failures answer `401`/`403` and are retried by Pub/Sub (configure a dead-letter topic). The
-message is then decoded — base64 Cloud Logging entry, `jsonPayload.mapi_event`, the
-`run.googleapis.com/execution_name` label — and the event is HMAC-verified with its attempt
-key, deduplicated on `(run, attempt, seq)` and coalesced into the run's progress row. A forged
-or replayed event is acknowledged (`200`, counted as a sandbox violation) and changes nothing.
+If a check fails, the server answers `401`/`403`, and Pub/Sub retries. Configure a
+dead-letter topic. The server then decodes the message: the base64 Cloud Logging entry,
+`jsonPayload.mapi_event` and the `run.googleapis.com/execution_name` label. The server
+verifies the HMAC of the event with the key of its attempt. It removes duplicates on
+`(run, attempt, seq)` and merges the event into the progress row of the run.
 
-In the `multi-tenant` profile the endpoint refuses every request until push authentication is
-configured (or, for a local setup, `MAPI_INTERNAL_TOKEN` is set).
+If an event is forged or replayed, the server acknowledges it (`200`) and changes nothing. It
+counts the event as a sandbox violation.
+
+In the `multi-tenant` profile, the endpoint refuses all requests until you configure push
+authentication. For a local setup, you can set `MAPI_INTERNAL_TOKEN` instead.
 
 ## Bundle signatures with Cloud KMS
 
@@ -149,31 +179,48 @@ export MAPI_KMS_KEY_VERSION=projects/mapi-prod-control/locations/europe-west1/ke
 export MAPI_KMS_TRUSTED_KEY_VERSIONS=projects/.../cryptoKeys/bundles/cryptoKeyVersions/1
 ```
 
-Only the SHA-256 digest of a manifest is sent to `asymmetricSign` (`EC_SIGN_P256_SHA256` or
-`RSA_SIGN_PSS_*_SHA256`). The response is checked for `verified_digest_crc32c`, the key version
-name and `signature_crc32c`, and the signature is verified locally before it is stored. The
-public keys of the active and trusted versions are loaded at startup, so verifying a manifest
-before minting URLs is local and never waits on KMS. To rotate, create a new version, point
-`MAPI_KMS_KEY_VERSION` at it and keep the old one in `MAPI_KMS_TRUSTED_KEY_VERSIONS` until
-no model version signed with it is in use. With Terraform these are `control.kms_key_version`
-and `control.kms_trusted_key_versions` (`ops/runbooks/rotating-keys.md`).
+The server sends only the SHA-256 digest of a manifest to `asymmetricSign`
+(`EC_SIGN_P256_SHA256` or `RSA_SIGN_PSS_*_SHA256`). It does a check of the response for
+`verified_digest_crc32c`, the key version name and `signature_crc32c`. It verifies the
+signature locally before it keeps it. At startup, the server loads the public keys of the
+active and trusted versions. Thus, before the server mints URLs, it verifies a manifest
+locally and never waits for KMS.
+
+To rotate the key, do these steps:
+
+1. Make a new key version.
+2. Set `MAPI_KMS_KEY_VERSION` to the new version.
+3. Keep the old version in `MAPI_KMS_TRUSTED_KEY_VERSIONS` until no model version that it
+   signed is in use.
+
+With Terraform, these settings are `control.kms_key_version` and
+`control.kms_trusted_key_versions` (`ops/runbooks/rotating-keys.md`).
 
 ## Cloud Storage
 
 `GcsObjectStore.for_cloud_run(...)` signs V4 URLs and POST policies through the IAM
-Credentials `signBlob` API with a refreshing token (the control-plane service account), and
-create-only POST policies as an uploader account that can create but not delete objects —
-GCS POST forms take no generation precondition, so an account that cannot delete cannot
-overwrite. The URLs are byte-identical to `google-cloud-storage`'s own V4 signer. Every write
-is checked against the CRC32C and MD5 that Cloud Storage computed, and copies pin the source
-generation and compare the result. See [GCS shim](../reference/gcs-shim.md#real-cloud-storage).
+Credentials `signBlob` API. It uses a token that it refreshes (the control-plane service
+account). It signs create-only POST policies as an uploader account. This account can make
+objects, but it cannot delete them. GCS POST forms do not accept a generation precondition.
+Thus an account that cannot delete cannot overwrite.
+
+The URLs are byte-identical to the URLs from the V4 signer of `google-cloud-storage`. The
+store does a check of each write against the CRC32C and MD5 that Cloud Storage calculated.
+Copies pin the source generation and compare the result. Refer to
+[GCS shim](../reference/gcs-shim.md#real-cloud-storage).
 
 ## Executor conformance and load
 
-An executor takes shared tiers only after it passes the executor conformance suite
-(`mapi_spec.conformance_executor`) and the [security suite](security-suite.md): submit, orphan adoption after a dispatcher crash,
-duplicate submit, cancel mid-run, timeout, stalled-not-lost, confirmed cancel before retry,
-checkpoint resume, OOM classification, fan-out, generation verification and 429 back-off.
+An executor gets shared tiers only after it passes two suites. These are the executor
+conformance suite (`mapi_spec.conformance_executor`) and the
+[security suite](security-suite.md). The conformance suite has these cases:
+
+- Submit, and orphan adoption after a dispatcher crash.
+- Duplicate submit, and cancel during a run.
+- Timeout, and stalled-not-lost.
+- Confirmed cancel before retry, and checkpoint resume.
+- OOM classification and fan-out.
+- Generation verification and 429 back-off.
 
 ```bash
 uv run pytest packages/server/tests/test_executor_conformance.py      # fake-cloudrun, local-process
@@ -181,27 +228,36 @@ uv run pytest packages/server/tests/test_executor_conformance.py -m docker   # n
 uv run pytest packages/server/tests/test_load_cloudrun.py -s           # 100 fits; prints metrics
 ```
 
-Each case runs the real dispatcher, reconciler, event ingestion and finalizer and checks the
-exact sequence of run states (recorded by a database trigger). The load test pushes 100
-concurrent fits through `cloudrun-jobs` over the fake backend, with outputs on the GCS shim,
-events as lagging, duplicated Pub/Sub pushes, three `429`s and two lost `jobs.run` responses.
-At the default 150 submits a minute it measures a p95 time-to-`running` of about 46 s with no
-lost run and exactly one execution per run. Real Cloud Run cold starts come on top.
+Each case runs the real dispatcher, reconciler, event ingestion and finalizer. It does a
+check of the exact sequence of run states, which a database trigger records. The load test
+sends 100 concurrent fits through `cloudrun-jobs` over the fake backend. It has these
+conditions:
+
+- The outputs are on the GCS shim.
+- The events come as Pub/Sub pushes that are late and duplicated.
+- There are three `429` answers and two lost `jobs.run` responses.
+
+At the default of 150 submits a minute, the test measures a p95 time-to-`running` of about
+46 s. No run is lost, and each run has exactly one execution. Real Cloud Run cold starts add
+more time.
 
 ### The shared-tier gate
 
-The gate is enforced in code. `verified` and `public` tenants are placed on an executor only
-when both hold:
+The code enforces the gate. The dispatcher puts `verified` and `public` tenants on an
+executor only when these two conditions are true:
 
-1. its caps allow it: isolation of at least gVisor, with egress and DNS enforced;
-2. a passing executor-conformance report **and** a passing security-suite report were recorded
-   for exactly the caps it currently reports, and neither is older than
-   `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S` (3 days by default, so the nightly suites keep it open).
+1. The caps of the executor permit it: an isolation of gVisor or higher, with egress and DNS
+   enforced.
+2. A passing executor-conformance report **and** a passing security-suite report are on
+   record. They must be for exactly the caps that the executor reports now. Neither report
+   can be older than `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S`. The default is 3 days, so the
+   nightly suites keep the gate open.
 
-A security-suite report only counts as evidence of enforced egress and DNS when the
-`http_egress`, `dns_egress` and `metadata_token` probes ran and were blocked (skipped is not
-evidence). Record results with `PUT /v1/admin/executors/{name}/evidence` (operators only,
-audited), with the target the suites ran against:
+A security-suite report is evidence of enforced egress and DNS only under one condition. The
+`http_egress`, `dns_egress` and `metadata_token` probes must run, and the executor must stop
+them. A skipped probe is not evidence. Record results with
+`PUT /v1/admin/executors/{name}/evidence` (only operators, with an audit record). Include
+the target of the suites:
 
 ```bash
 curl -X PUT "$API/v1/admin/executors/cloudrun-jobs/evidence" -H 'content-type: application/json' \
@@ -210,32 +266,35 @@ curl -X PUT "$API/v1/admin/executors/cloudrun-jobs/evidence" -H 'content-type: a
        "conformance": <ConformanceReport>, "security": <mapi-security --json output>}'
 ```
 
-Until then the dispatcher leaves `verified` and `public` runs queued (it never fails them for
-missing evidence), and `GET /v1/admin/executors` shows `shared_tiers_enabled: false` with the
-reason in `message`, plus `conformance_passed` and `security_passed`. The executor itself stays
-enabled for the trusted tiers: `enabled` and the `disabled` status are the operators' switch
-(`PUT /v1/admin/executors/{name}`, incident containment), never the evidence gate's. Evidence
-recorded for other caps (a changed region list, a flipped `MAPI_CLOUDRUN_DNS_ENFORCED`) no
-longer counts. `internal` and `self_hosted_trusted` tenants are not gated.
+Until you record the evidence, the dispatcher keeps `verified` and `public` runs in the
+queue. It never makes them fail because evidence is missing. `GET /v1/admin/executors` shows
+`shared_tiers_enabled: false`, with the reason in `message`. It also shows
+`conformance_passed` and `security_passed`.
+
+The executor stays enabled for the trusted tiers. `enabled` and the `disabled` status are the
+switch of the operators (`PUT /v1/admin/executors/{name}`, incident containment). They are
+never the switch of the evidence gate. Evidence for other caps does not count, for example
+after a change to the region list or to `MAPI_CLOUDRUN_DNS_ENFORCED`. The gate does not apply
+to `internal` and `self_hosted_trusted` tenants.
 
 ## Settings
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAPI_CLOUDRUN_PROJECT` | — | Exec project holding the Job inventory (required) |
+| `MAPI_CLOUDRUN_PROJECT` | — | Exec project that holds the Job inventory (necessary) |
 | `MAPI_CLOUDRUN_REGION` | `europe-west1` | Region of the inventory |
-| `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | Job id convention |
+| `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | Rule for Job ids |
 | `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base (JSON) |
 | `MAPI_CLOUDRUN_DEFAULT_BASE` | `base-bayes` | Base for runs without a plugin |
-| `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`, `MAPI_CLOUDRUN_SUBMIT_BURST` | `150`, `10` | Token bucket in front of `jobs.run` (at most 180) |
-| `MAPI_CLOUDRUN_MAX_429_RETRIES` | `6` | `429` answers in a row before a submit fails |
+| `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`, `MAPI_CLOUDRUN_SUBMIT_BURST` | `150`, `10` | Token bucket in front of `jobs.run` (maximum 180) |
+| `MAPI_CLOUDRUN_MAX_429_RETRIES` | `6` | Number of `429` answers in sequence before a submit fails |
 | `MAPI_CLOUDRUN_BACKOFF_BASE_S`, `MAPI_CLOUDRUN_BACKOFF_CAP_S` | `1`, `64` | Exponential back-off after a `429` |
 | `MAPI_CLOUDRUN_TIMEOUT_MARGIN_S` | `120` | Task timeout = run timeout + margin |
 | `MAPI_CLOUDRUN_EGRESS_ENFORCED` | `true` | The exec network denies all egress |
-| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified for Jobs **[verify M0]**; `verified` and `public` tenants need both, plus [recorded evidence](#the-shared-tier-gate) |
+| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified for Jobs **[verify M0]**. `verified` and `public` tenants need the two settings, and also [recorded evidence](#the-shared-tier-gate) |
 | `MAPI_CLOUDRUN_ADOPT_LOOKBACK_S` | `93600` | How far back orphan adoption looks |
-| `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | — | Expected push token (set both) |
+| `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | — | Expected push token (set the two) |
 | `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS` | any | Accepted subscriptions (comma-separated) |
-| `MAPI_GOOGLE_JWKS_URL` | Google's | Where the OIDC signing keys come from |
+| `MAPI_GOOGLE_JWKS_URL` | Google's | The source of the OIDC signing keys |
 | `MAPI_SIGNER` | `local` | `local` (PEM key file) or `kms` |
-| `MAPI_KMS_KEY_VERSION`, `MAPI_KMS_TRUSTED_KEY_VERSIONS` | — | Active and still-trusted key versions |
+| `MAPI_KMS_KEY_VERSION`, `MAPI_KMS_TRUSTED_KEY_VERSIONS` | — | Active key versions and key versions that are still trusted |

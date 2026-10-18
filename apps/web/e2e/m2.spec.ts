@@ -100,7 +100,7 @@ test("a token is minted with scopes, its secret shown once, then revoked", async
   await page.getByRole("button", { name: "New token" }).click();
   const create = page.getByRole("dialog", { name: "New API token" });
   await create.getByRole("button", { name: "Create token" }).click();
-  await expect(create.getByRole("alert").filter({ hasText: "Give the token a name" })).toBeVisible();
+  await expect(create.getByRole("alert").filter({ hasText: "Type a name for the token" })).toBeVisible();
   await create.getByLabel("Name").fill("ci-bot");
   await create.getByRole("checkbox", { name: /Run runs:create/ }).click();
   await create.getByLabel("Rate limit (optional)").fill("60");
@@ -150,7 +150,7 @@ test("a viewer sees why run actions are unavailable", async ({ page }) => {
   await page.goto(`/runs/${RUNNING}`);
   const cancel = page.getByRole("button", { name: "Cancel" });
   await expect(cancel).toBeDisabled();
-  await expect(cancel).toHaveAttribute("title", "Needs the runner role (yours is viewer)");
+  await expect(cancel).toHaveAttribute("title", "You need the runner role. Your role is viewer.");
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "The admin console is for platform operators" })).toBeVisible();
 });
@@ -162,7 +162,7 @@ test("usage shows cost charts and quota warnings", async ({ page }) => {
   await expect(page.getByRole("img", { name: /^Daily cost in / })).toBeVisible();
   const today = page.getByRole("meter", { name: "Compute today (organisation)" });
   await expect(today).toHaveAttribute("data-tone", "critical");
-  await expect(page.getByText(/Almost used up/)).toBeVisible();
+  await expect(page.getByText(/This limit is almost at its maximum/)).toBeVisible();
   await expect(page.getByRole("list", { name: "Cost by token" }).getByText("budget-planner")).toBeVisible();
   await page.getByRole("radio", { name: "Organisation" }).click();
   await expect(page.getByRole("list", { name: "Cost by project" }).getByText("Growth")).toBeVisible();
@@ -179,7 +179,7 @@ test("operators manage tenants, kill switches, executors and the audit log", asy
   const spend = page.getByRole("meter", { name: "Global spend against the cap" });
   await expect(spend).toHaveAttribute("aria-valuenow", "74");
   await expect(page.getByText(/\$370\.00 of \$500\.00 spent today/)).toBeVisible();
-  await expect(page.getByText(/Over 70% of the cap is used/)).toBeVisible();
+  await expect(page.getByText(/The spend is more than 70% of the cap/)).toBeVisible();
   await page.getByRole("switch", { name: "Allow uploaded code to run" }).click();
   const confirm = page.getByRole("dialog", { name: "Pause all uploaded code?" });
   const go = confirm.getByRole("button", { name: "Confirm" });
@@ -203,7 +203,7 @@ test("operators manage tenants, kill switches, executors and the audit log", asy
   await page.getByRole("tab", { name: "Executors" }).click();
   const cloudrun = page.getByRole("region", { name: "Executor cloudrun-jobs" });
   await expect(cloudrun.getByText("conformance passed")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Executor local-process" }).getByText("1 conformance case(s) failing")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Executor local-process" }).getByText("1 conformance case(s) failed")).toBeVisible();
   // incident containment: stop placing runs on an executor (audited, reason required)
   await cloudrun.getByRole("button", { name: "Disable" }).click();
   const off = page.getByRole("dialog", { name: "Disable cloudrun-jobs?" });

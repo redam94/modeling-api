@@ -81,7 +81,7 @@ def _posterior(bundle: Bundle) -> xr.Dataset | None:
 def _convergence(bundle: Bundle, out: dict[str, Measured], why: dict[str, str]) -> None:
     post = _posterior(bundle)
     if post is None:
-        reason = "the model has no posterior draws (not fitted by MCMC)"
+        reason = "the model has no posterior draws (the fit did not use MCMC)"
         for m in ("r_hat_max", "ess_bulk_min", "divergence_rate"):
             why[m] = reason
         return
@@ -168,8 +168,8 @@ def _holdout(bundle: Bundle, out: dict[str, Measured], why: dict[str, str]) -> N
             out[metric] = (float(value), expert)
         elif metric == "accuracy_lift" and metric not in report.skipped:
             why[metric] = (
-                "only models of a categorical target (choice models) report a hit rate; "
-                "evaluate accuracy_lift on one"
+                "only models of a categorical target (choice models) report a hit rate. "
+                "Evaluate accuracy_lift on one of these models"
             )
         else:
             why[metric] = report.skipped.get(
@@ -232,7 +232,7 @@ def _plausibility(bundle: Bundle, out: dict[str, Measured], why: dict[str, str])
         why["negative_roi_share"] = why["roi_max"] = "no channel has spend in the fit window"
     if "baseline" not in rc:
         why["max_channel_share"] = why["baseline_share"] = (
-            "the response curves carry no baseline (refit with a current plugin version)"
+            "the response curves have no baseline (fit again with a current plugin version)"
         )
         return
     base = np.asarray(rc["baseline"].transpose("sample").values, dtype=float)
@@ -269,7 +269,7 @@ def _prior_overlap(bundle: Bundle, out: dict[str, Measured], why: dict[str, str]
     post = _posterior(bundle)
     if prior is None or post is None:
         why["prior_overlap_max"] = (
-            "no prior draws were kept (set fit.prior_predictive or fit.keep.prior)"
+            "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)"
         )
         return
     worst: Measured | None = None
@@ -335,8 +335,7 @@ def _data_checks(
     got = history_years(np.asarray(coords[t].values), schema.dims[t].freq)
     if got is None:
         why["history_years"] = (
-            f"the time dim {t!r} has no regular frequency, so its history cannot be counted "
-            "in years"
+            f"the time dim {t!r} has no regular frequency, so the history in years is not known"
         )
         return
     years, expert = got

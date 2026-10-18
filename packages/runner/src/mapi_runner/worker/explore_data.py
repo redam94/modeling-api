@@ -425,12 +425,12 @@ def overview(c: DataContext) -> DataOverviewView:
         + (
             f"The result to explain is {c.kpi!r}. "
             if c.kpi
-            else "No variable is marked as the result (target). "
+            else "No variable has the role of the result (target). "
         )
         + (
             f"{serious} data problem(s) to look at."
             if serious
-            else f"No data problems to fix; {infos} thing(s) to know."
+            else f"No data problems to correct. There are {infos} thing(s) to know."
             if infos
             else "No data problems found."
         )
@@ -565,7 +565,7 @@ def missingness(c: DataContext) -> MissingnessView:
         grid=missingness_grid(c),
         share_by_var=share,
         longest_gap=gaps,
-        caption_plain="Where values are missing (darker = more missing).",
+        caption_plain="Shows where values are missing (a darker cell shows more missing values).",
     )
 
 
@@ -602,8 +602,8 @@ def outliers(c: DataContext) -> OutliersView:
         method=method,
         threshold=thr,
         items=items,
-        caption_plain=f"Values more than {thr:g} robust standard deviations from the typical "
-        "value.",
+        caption_plain=f"Shows the values that are more than {thr:g} robust standard deviations "
+        "from the typical value.",
     )
 
 
@@ -650,7 +650,7 @@ def correlation(c: DataContext) -> CorrelationView:
         vars=names,
         matrix=m,
         p_values=p,
-        caption_plain="How strongly variables move together (1: together, -1: opposite).",
+        caption_plain="Shows how strongly the variables move together (1: together, -1: opposite).",
     )
 
 
@@ -677,7 +677,7 @@ def _profile(var: str, facet: dict[str, Any], prof: stats.Lagged) -> LagProfile:
 def ccf(c: DataContext) -> CrossCorrelationView:
     _need_time(c)
     if c.kpi is None:
-        raise SectionSkipped("no KPI: mark a variable as the target or pass kpi")
+        raise SectionSkipped("no KPI. Give a variable the role target, or give kpi")
     items: list[LagProfile] = []
     drivers = c.drivers()
     if not drivers:
@@ -699,8 +699,8 @@ def ccf(c: DataContext) -> CrossCorrelationView:
         max_lag=c.req.max_lag,
         prewhitened=c.req.prewhiten,
         items=items,
-        caption_plain="Correlation of each driver with the KPI some periods later (a peak "
-        "at lag 2 means the driver's effect shows up two periods after it happens).",
+        caption_plain="Shows the correlation of each driver with the KPI some periods later. "
+        "A peak at lag 2 shows that the effect of the driver occurs two periods after the driver.",
     )
 
 
@@ -725,8 +725,8 @@ def acf_pacf(c: DataContext) -> AcfPacfView:
         acf=acfs,
         pacf=pacfs,
         suggested=suggested,
-        caption_plain="How each value relates to its own past; bars beyond the dashed band "
-        "are more than chance.",
+        caption_plain="Shows how each value relates to its own past. Bars outside the dashed "
+        "band are more than chance.",
     )
 
 
@@ -756,7 +756,7 @@ def stationarity(c: DataContext) -> StationarityView:
 def stl(c: DataContext) -> StlView:
     _need_time(c)
     if c.period is None:
-        raise SectionSkipped("the season length is unknown: pass period")
+        raise SectionSkipped("the season length is unknown. Give period")
     coords = c.time_coords()
     items: list[StlComponents] = []
     skipped = 0
@@ -789,14 +789,18 @@ def stl(c: DataContext) -> StlView:
             )
     if not items:
         raise SectionSkipped(
-            f"less than two seasons ({2 * c.period} periods) of complete data in every series"
+            f"each series has less than two seasons ({2 * c.period} periods) of complete data"
         )
-    warn = [f"{skipped} series were skipped (gaps or fewer than two seasons)."] if skipped else []
+    warn = (
+        [f"The view does not show {skipped} series (gaps or fewer than two seasons)."]
+        if skipped
+        else []
+    )
     return StlView(
         items=items,
         warnings_plain=warn,
-        caption_plain=f"Each series split into trend, a repeating {c.period}-period season "
-        "and the rest.",
+        caption_plain=f"Shows each series as a trend, a repeating {c.period}-period season "
+        "and the remainder.",
     )
 
 
@@ -816,8 +820,8 @@ def vif(c: DataContext, *, limit: float = 10.0) -> VifView:
         limit=limit,
         flagged=flagged,
         condition_number=stats.condition_number(cols),
-        caption_plain="How much each driver overlaps with the others (above 10: their "
-        "separate effects are hard to tell apart).",
+        caption_plain="Shows how much each driver overlaps with the other drivers. Above 10, "
+        "it is difficult to separate their effects.",
     )
 
 
@@ -911,7 +915,7 @@ def quality_warnings(
                     "DUPLICATE_PERIODS",
                     "error",
                     f"Some {c.time_dim} labels appear more than once.",
-                    "Remove or combine the duplicated periods before modelling.",
+                    "Remove or combine the duplicated periods before you fit a model.",
                 )
             )
         if t.dtype.kind == "M" and t.size >= 3 and c.freq is None:
@@ -930,8 +934,8 @@ def quality_warnings(
                 _w(
                     "SHORT_HISTORY",
                     "warning",
-                    f"Only {n} periods of history (at least {need} are recommended).",
-                    "Add more history or use a simpler model with fewer effects.",
+                    f"There are only {n} periods of history. We recommend {need} periods or more.",
+                    "Add more history, or use a simpler model with fewer effects.",
                 )
             )
     for var in c.vars:
@@ -945,7 +949,7 @@ def quality_warnings(
                     "MISSING_VALUES",
                     "warning",
                     f"{miss:.0%} of {var!r} is missing.",
-                    "Fill gaps (core.impute) or check the upload mapping.",
+                    "Fill the gaps (core.impute), or examine the upload mapping.",
                     var=var,
                 )
             )
@@ -955,7 +959,8 @@ def quality_warnings(
                     "MISSING_VALUES",
                     "info",
                     f"{miss:.1%} of {var!r} is missing.",
-                    "Small gaps are usually fine; impute them if the model needs complete data.",
+                    "Small gaps are usually not a problem. If the model needs complete data, "
+                    "impute them.",
                     var=var,
                 )
             )
@@ -967,7 +972,7 @@ def quality_warnings(
                     "CONSTANT_VAR",
                     "warning",
                     f"{var!r} never changes.",
-                    "Drop it: a variable that never changes cannot explain anything.",
+                    "Remove it. A variable that never changes cannot explain the result.",
                     var=var,
                 )
             )
@@ -977,7 +982,7 @@ def quality_warnings(
                     "NEGATIVE_SPEND",
                     "error",
                     f"{var!r} has negative values, which spend and media cannot have.",
-                    "Correct the source data (refunds belong in a separate variable).",
+                    "Correct the source data. Put refunds in a separate variable.",
                     var=var,
                 )
             )
@@ -1002,7 +1007,7 @@ def quality_warnings(
                     "MOSTLY_ZERO",
                     "info",
                     f"More than half of {var!r} is zero.",
-                    "Consider a model for counts or intermittent demand.",
+                    "Think about a model for counts or for intermittent demand.",
                     var=var,
                 )
             )
@@ -1015,8 +1020,7 @@ def quality_warnings(
                         "OUTLIERS",
                         "info",
                         f"{share:.1%} of {var!r} are extreme values.",
-                        "Check whether they are errors or real events (then add a "
-                        "control for them).",
+                        "Find if they are errors or real events. For real events, add a control.",
                         var=var,
                     )
                 )
@@ -1036,7 +1040,7 @@ def quality_warnings(
                         "LONG_GAP",
                         "warning",
                         f"{var!r} has a gap of {gap} periods in a row.",
-                        "Check the source; long gaps cannot be filled reliably.",
+                        "Examine the source. You cannot fill long gaps reliably.",
                         var=var,
                     )
                 )
@@ -1052,7 +1056,7 @@ def quality_warnings(
                         "COLLINEAR_DRIVERS",
                         "warning",
                         f"These drivers move almost together: {', '.join(high[:6])}.",
-                        "Combine them, drop one, or use priors to separate them.",
+                        "Combine them, remove one, or use priors to separate them.",
                     )
                 )
     return out[:500]
@@ -1063,7 +1067,8 @@ def quality(c: DataContext) -> QualityView:
     items = sorted(quality_warnings(c), key=lambda w: rank[w.severity])
     return QualityView(
         items=items,
-        caption_plain="Data problems to look at before modelling, most serious first.",
+        caption_plain="Shows the data problems to look at before you fit a model. The most "
+        "serious problems are first.",
     )
 
 

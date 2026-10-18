@@ -32,7 +32,7 @@ export function ModelExplorerPage() {
   const mv = useModelVersion(modelId, valid ? v : undefined);
   const expert = useEffectivePersona() === "expert";
   if (!valid) return <ErrorNotice error={new Error("The version must be a positive integer.")} />;
-  if (mv.isError) return <ErrorNotice error={mv.error} title="This model version could not be loaded" />;
+  if (mv.isError) return <ErrorNotice error={mv.error} title="The app could not load this model version" />;
   if (mv.isPending) return <LoadingRows rows={8} />;
   const d = mv.data;
   return (
@@ -44,7 +44,7 @@ export function ModelExplorerPage() {
             <Mono className="text-[15px] text-muted-foreground">v{v}</Mono>
           </span>
         }
-        description={expert ? "Parameters, diagnostics, fit, residuals, contributions, forecasts and backtests of this version, with governance evidence and lineage." : "What the model learned, whether you can trust it and what it expects next, in plain words."}
+        description={expert ? "The parameters, diagnostics, fit, residuals, contributions, forecasts and backtests of this version. The page also shows the governance evidence and the lineage." : "This page tells you, in plain words, what the model learned, if you can trust it and what it forecasts."}
         meta={
           <>
             <Mono>{d.ref}</Mono>
@@ -107,7 +107,7 @@ export function ComparePage() {
     <div className="grid gap-6">
       <PageHeader
         title="Compare model versions"
-        description="Put several versions side by side on held-out data: their errors, a ranking per metric, and tests of whether the differences are more than chance."
+        description="Compare some versions on held-out data. The page shows their errors and a ranking for each metric. Tests show if the differences are more than chance."
       />
       <SectionCard
         title="Versions"

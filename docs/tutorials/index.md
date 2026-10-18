@@ -4,9 +4,9 @@ description: Step-by-step tutorials - your first MMM in Guided mode, a forecast 
 
 # Tutorials
 
-Each tutorial gets one thing working from start to finish, with the screens or the code you
-need. The code is not illustrative: every Python snippet runs in the test suite, and the
-Apps Scripts run against stand-ins for Google's services.
+Each tutorial makes one thing work from start to finish. It gives the screens or the code
+that you need. The code is not only an example. Each Python snippet runs in the test suite.
+The Apps Scripts run against substitutes for the services of Google.
 
 <div class="grid cards" markdown>
 
@@ -14,8 +14,8 @@ Apps Scripts run against stand-ins for Google's services.
 
     ---
 
-    From a spreadsheet of weekly spend and revenue to ROI per channel, a sanity scorecard
-    and a budget scenario, without code. About ten minutes.
+    Start with a spreadsheet of weekly spend and revenue. Get the ROI for each channel, a
+    sanity scorecard and a budget scenario, without code. It takes about ten minutes.
 
     *For analysts.* [:octicons-arrow-right-24: Start](../guides/guided-tutorial.md)
 
@@ -23,8 +23,8 @@ Apps Scripts run against stand-ins for Google's services.
 
     ---
 
-    An Apps Script that writes a model's forecast into a sheet, with its likely range, and
-    refreshes it every morning.
+    An Apps Script writes the forecast of a model into a sheet, with its likely range. It
+    refreshes the forecast each morning.
 
     *For analysts and integrators.* [:octicons-arrow-right-24: Start](google-sheets.md)
 
@@ -32,8 +32,8 @@ Apps Scripts run against stand-ins for Google's services.
 
     ---
 
-    A read-only, expiring link to a model's chart for a doc, a dashboard or a thread, and a
-    PNG for tools that cannot show live content.
+    Make a read-only link to the chart of a model, for a doc, a dashboard or a thread. The
+    link expires. You also get a PNG for tools that cannot show live content.
 
     *For analysts.* [:octicons-arrow-right-24: Start](embed-a-chart.md)
 
@@ -41,8 +41,8 @@ Apps Scripts run against stand-ins for Google's services.
 
     ---
 
-    A FastAPI or Flask receiver that verifies every delivery's signature, ignores duplicates
-    and reacts when a model is ready or a run fails.
+    Make a FastAPI or Flask receiver. It verifies the signature of each delivery and ignores
+    duplicates. It does an action when a model is ready or when a run fails.
 
     *For developers.* [:octicons-arrow-right-24: Start](../guides/webhook-receivers.md)
 
@@ -50,8 +50,9 @@ Apps Scripts run against stand-ins for Google's services.
 
     ---
 
-    Ask a fitted marketing-mix model how to split a budget across channels: bounds, groups,
-    cautious objectives, the uplift and the chance it helps, and the efficient frontier.
+    Ask a fitted marketing-mix model how to divide a budget across channels. Learn about
+    bounds, groups, cautious objectives, the uplift, the probability that it helps, and the
+    efficient frontier.
 
     *For data scientists.* [:octicons-arrow-right-24: Start](../tutorials/optimise-a-budget.md)
 
@@ -59,18 +60,19 @@ Apps Scripts run against stand-ins for Google's services.
 
     ---
 
-    Unit-root tests, a differencing decision, an AR/MA order search, a rolling-origin
-    backtest against naive forecasts and governance, as one workflow you run with `--watch`
-    and schedule for Monday mornings.
+    Make one workflow with unit-root tests, a differencing decision and an AR/MA order
+    search. Add a rolling-origin backtest against naive forecasts, and governance. Run it
+    with `--watch` and schedule it for Monday mornings.
 
     *For data scientists.* [:octicons-arrow-right-24: Start](../guides/workflow-cookbook.md#readiness-to-arimax)
 
--   :material-shield-check-outline:{ .lg .middle } **Prove a model is not fitting noise** <span class="mapi-badge">v0.5</span>
+-   :material-shield-check-outline:{ .lg .middle } **Prove that a model does not fit noise** <span class="mapi-badge">v0.5</span>
 
     ---
 
-    Write a policy with null tests, validate a model version, have a colleague approve it,
-    export the evidence pack and make the endpoint refuse anything unvalidated.
+    Write a policy with null tests and validate a model version. Get the approval of a
+    colleague and export the evidence pack. Then set the endpoint to refuse all versions
+    that are not validated.
 
     *For data scientists and reviewers.* [:octicons-arrow-right-24: Start](../guides/governance.md)
 
@@ -78,8 +80,8 @@ Apps Scripts run against stand-ins for Google's services.
 
     ---
 
-    Read the Data Explorer's quality warnings, stationarity and lead-lag views, then let
-    *Help me choose* turn a few answers into a shortlist with reasons.
+    Read the quality warnings, stationarity views and lead-lag views of the Data Explorer.
+    Then answer some questions in *Help me choose*. It gives a shortlist with reasons.
 
     *For analysts.* [:octicons-arrow-right-24: Start](../guides/data-explorer.md) ·
     [Choosing a model](../guides/choosing-a-model.md)
@@ -88,15 +90,16 @@ Apps Scripts run against stand-ins for Google's services.
 
 ## Before you start
 
-- **A platform to talk to.** Everything works against a local stack: `make install && make
+- **A platform to talk to.** All tutorials work against a local stack: `make install && make
   dev && make seed` ([Quickstart](../getting-started/quickstart.md)). The Google Sheets and
-  public-embed tutorials need a deployment that the internet can reach, since Apps Script and
-  embedded charts are loaded from Google's and your viewers' machines.
-- **A fitted model.** The Guided tutorial makes one; `make seed` loads a demo marketing-mix
-  spec you can fit from the web app.
-- **An endpoint**, for Sheets and other tools: put a model live from the Guided *Share* step or the
-  [Integrations hub](../guides/integrations-hub.md#promoting-through-the-gate).
+  public-embed tutorials need a deployment that the internet can get to. The reason is that
+  Apps Script loads from the machines of Google, and embedded charts load from the machines
+  of your viewers.
+- **A fitted model.** The Guided tutorial makes one. `make seed` loads a demo marketing-mix
+  spec that you can fit from the web app.
+- **An endpoint**, for Sheets and other tools. To put a model live, use the Guided *Share*
+  step or the [Integrations hub](../guides/integrations-hub.md#promoting-through-the-gate).
 
-More task-oriented guides are under [Guides](../guides/web-ui.md); the ideas behind them are in
-[Concepts](../concepts/index.md); and [Use cases](../use-cases.md) shows which tutorials fit
+For more guides about tasks, see [Guides](../guides/web-ui.md). For the ideas behind them, see
+[Concepts](../concepts/index.md). [Use cases](../use-cases.md) shows which tutorials apply to
 which problem.

@@ -58,13 +58,13 @@ async function startGeoMmm(page: Page) {
   await expect(page.getByLabel("Which column names the market or region?")).toHaveValue("market");
   const spend = page.getByRole("group", { name: /media spend/ });
   for (const ch of ["tv_spend", "search_spend", "social_spend"]) await expect(spend.getByRole("checkbox", { name: new RegExp(ch) })).toBeChecked();
-  await expect(page.getByRole("group", { name: /move the result/ }).getByRole("checkbox", { name: /avg_price/ })).toBeChecked();
+  await expect(page.getByRole("group", { name: /change the result/ }).getByRole("checkbox", { name: /avg_price/ })).toBeChecked();
   await expect(page.getByText("Very likely match").first()).toBeVisible();
   // live preview: the file read locally, with a sparkline per chosen series
   const preview = page.getByRole("complementary", { name: "Preview" });
   await expect(preview.getByRole("table")).toContainText("2025-01-05");
   await expect(preview.getByRole("img", { name: /Spend: tv_spend/ })).toBeVisible();
-  await expect(preview).toContainText("Everything the model needs is answered.");
+  await expect(preview).toContainText("You answered all the questions that the model needs.");
   await page.getByRole("button", { name: "Upload and continue" }).click();
   await expect(page).toHaveURL(/\/guided\/spc_[0-9a-z]+\/priors$/);
 }
@@ -88,11 +88,11 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   // a new experiment is not a wall of errors: one summary beside the disabled actions, and a
   // field's own message only once it was left empty
   await expect(exp.getByRole("alert")).toHaveCount(0);
-  await expect(exp.getByLabel("Spend change")).toHaveAttribute("placeholder", /^e\.g\. /);
+  await expect(exp.getByLabel("Spend change")).toHaveAttribute("placeholder", /^For example /);
   await expect(page.getByTestId("beliefs-blocking")).toContainText("Experiment 1 still needs the first day");
   await exp.getByLabel("First day").focus();
   await exp.getByLabel("Last day").focus();
-  await expect(exp.getByRole("alert")).toHaveText(["Enter the first day of the test."]);
+  await expect(exp.getByRole("alert")).toHaveText(["Type the first day of the test."]);
   await exp.getByLabel("Channel tested").selectOption("tv");
   await exp.getByLabel("Market").selectOption("de");
   await exp.getByLabel("First day").fill("2025-06-01");
@@ -102,12 +102,12 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   await exp.getByLabel("± uncertainty (standard error)").fill("25000");
   await expect(page.getByTestId("beliefs-blocking")).toHaveCount(0);
   await page.getByRole("button", { name: "Preview what this means" }).click();
-  await expect(page.getByRole("heading", { name: "What your beliefs mean, before seeing the data" })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText(/of what the model believes falls inside your range/).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What your beliefs mean before the model sees the data" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/of the model's belief is in your range/).first()).toBeVisible();
   await expect(page.locator('iframe[title="Prior return on spend per channel"]')).toBeVisible();
   await expect(page.locator('iframe[title="Results the model expects before fitting"]')).toBeVisible();
   // social has no stated belief: it is named, not charted beside the beliefs
-  await expect(page.getByTestId("unstated-channels")).toContainText("No view on social");
+  await expect(page.getByTestId("unstated-channels")).toContainText("no view on social");
 
   // View as YAML shows the real spec with the calibration block, read-only
   await page.getByRole("button", { name: "View as YAML" }).click();
@@ -122,7 +122,7 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   // 4. run: plain-language phases, progress and ETA over SSE
   await page.getByRole("button", { name: "Fit the model" }).click();
   await expect(page.getByRole("progressbar", { name: "Fit progress" })).toBeVisible();
-  await expect(page.getByRole("list", { name: "What happens during the fit" })).toContainText("Learning from your data");
+  await expect(page.getByRole("list", { name: "What happens during the fit" })).toContainText("The model learns from your data");
   await expect(page.getByRole("heading", { name: "Your model is ready" })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "See the results" }).click();
 
@@ -132,7 +132,7 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   const table = page.getByRole("table", { name: /Return on spend and share of results per channel/ });
   await expect(table.getByRole("rowheader", { name: "tv" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sanity scorecard" })).toBeVisible();
-  await expect(page.getByText("Mostly fine, with something to look at")).toBeVisible();
+  await expect(page.getByText("Most checks passed. Examine the other checks.")).toBeVisible();
   const mape = page.locator('[data-check="holdout.mape"]');
   await expect(mape.locator('[data-status="warn"]')).toBeVisible();
   await expect(mape).toContainText("What to do:");
@@ -162,7 +162,7 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
 
   // 7. share: the gate (a warning needs an admin's reason), then an embed link
   await expect(page).toHaveURL(/\/share$/);
-  await expect(page.getByTestId("gate-sentence")).toContainText("As a project admin you can approve it anyway");
+  await expect(page.getByTestId("gate-sentence")).toContainText("As a project admin, you can approve the model.");
   await page.getByLabel("Why is it fine to go live anyway?").fill("Holdout error is high because of the summer promotion; accepted.");
   await page.getByRole("button", { name: "Approve and go live" }).click();
   await expect(page.getByTestId("endpoint-live")).toContainText("endpoint://growth/eu-media-mix");

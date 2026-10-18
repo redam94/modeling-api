@@ -77,14 +77,14 @@ def _rhat(post: xr.Dataset, rhat_max: float) -> list[Diagnostic]:
         "error" if value > RHAT_ERROR else "warning" if value > rhat_max else "info"
     )
     if severity == "info":
-        plain = "The independent sampling runs agree with each other."
+        plain = "The independent sampler runs agree with each other."
         action = None
     else:
         plain = (
-            f"The independent sampling runs disagree about {var!r}, so its estimates are not "
-            "reliable yet."
+            f"The independent sampler runs do not agree about {var!r}. Its estimates are not "
+            "reliable at this time."
         )
-        action = "Run longer (more tuning and draws) or reparameterise the model."
+        action = "Use more tuning steps and draws, or reparameterise the model."
     return [
         Diagnostic(
             code="RHAT",
@@ -128,7 +128,7 @@ def _ess(post: xr.Dataset, minimum: int) -> list[Diagnostic]:
                 message_expert=f"min {method} ESS {value:.0f} for {var!r} (threshold {minimum})",
                 message_plain=(
                     f"There is too little independent information about {var!r} (about "
-                    f"{value:.0f} effective draws) for stable {what}."
+                    f"{value:.0f} effective draws). The {what} are not stable."
                     if low
                     else f"There are enough effective draws for stable {what}."
                 ),
@@ -160,7 +160,7 @@ def _divergences(stats: xr.Dataset) -> list[Diagnostic]:
                 value=0.0,
                 threshold=0.0,
                 message_expert=f"0 divergent transitions in {total} draws",
-                message_plain="The sampler explored the model without running into trouble.",
+                message_plain="The sampler had no problems with the model.",
             )
         ]
     return [
@@ -172,10 +172,10 @@ def _divergences(stats: xr.Dataset) -> list[Diagnostic]:
             threshold=0.0,
             message_expert=f"{n} divergent transitions in {total} draws ({share:.1%})",
             message_plain=(
-                f"The sampler ran into trouble in {n} of {total} steps, which can bias the results."
+                f"The sampler had problems in {n} of {total} steps. The results can be biased."
             ),
             suggested_action=(
-                "Raise fit.target_accept (for example to 0.95) or use a non-centred "
+                "Increase fit.target_accept (for example to 0.95), or use a non-centred "
                 "parameterisation."
             ),
         )
@@ -195,7 +195,8 @@ def _treedepth(stats: xr.Dataset) -> list[Diagnostic]:
             value=float(n),
             threshold=0.0,
             message_expert=f"{n} of {total} draws hit the maximum tree depth",
-            message_plain="Sampling was slow in places; results are fine but fits take longer.",
-            suggested_action="Consider rescaling or reparameterising the model.",
+            message_plain="The sampler was slow at some points. The results are correct, but the "
+            "fits take longer.",
+            suggested_action="Change the scale of the model, or reparameterise it.",
         )
     ]

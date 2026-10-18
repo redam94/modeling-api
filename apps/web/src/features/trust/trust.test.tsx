@@ -166,7 +166,7 @@ describe("Settings > Data", () => {
     const dialog = await screen.findByRole("dialog", { name: "Delete Acme Retail?" });
     const schedule = within(dialog).getByRole("button", { name: "Schedule deletion" });
     await user.type(within(dialog).getByLabelText("Type acme to confirm"), "acm");
-    await user.click(within(dialog).getByRole("checkbox", { name: /cannot be undone/ }));
+    await user.click(within(dialog).getByRole("checkbox", { name: /cannot undo this/ }));
     expect(schedule).toBeDisabled();
     await user.type(within(dialog).getByLabelText("Type acme to confirm"), "e");
     expect(schedule).toBeEnabled();
@@ -212,7 +212,7 @@ describe("admin console", () => {
     await user.click(within(table).getByRole("button", { name: "Reject promo@burst.example" }));
     const dialog = await screen.findByRole("dialog", { name: "Reject promo@burst.example?" });
     await user.click(within(dialog).getByRole("button", { name: "Reject" }));
-    expect(within(dialog).getByText(/audited with the decision/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/records it with the decision/)).toBeInTheDocument();
     await user.type(within(dialog).getByLabelText("Reason"), "Promotion farm");
     await user.click(within(dialog).getByRole("button", { name: "Reject" }));
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Sign-ups" })).queryByText("promo@burst.example")).toBeNull());
@@ -223,8 +223,8 @@ describe("admin console", () => {
     renderApp("/admin");
     await user.click(await screen.findByRole("button", { name: "Trust and deletion of Globex Labs" }));
     const dialog = await screen.findByRole("dialog", { name: "Trust: Globex Labs" });
-    expect(await within(dialog).findByText("The tenant never asked to be deleted.")).toBeInTheDocument();
-    await user.selectOptions(within(dialog).getByLabelText("How was the identity checked?"), "manual");
+    expect(await within(dialog).findByText("The tenant did not ask for deletion.")).toBeInTheDocument();
+    await user.selectOptions(within(dialog).getByLabelText("How did you do a check of the identity?"), "manual");
     await user.type(within(dialog).getByLabelText("Reason (audited)"), "Contract signed, ticket T-42");
     await user.click(within(dialog).getByRole("button", { name: "Mark identity verified" }));
     expect(await within(dialog).findByRole("button", { name: "Withdraw verification" })).toBeInTheDocument();

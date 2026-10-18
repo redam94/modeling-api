@@ -102,7 +102,7 @@ def _baseline(ctx: NodeContext) -> NodeOutcome:
             train = y[start:origin]
             train = train[np.all(np.isfinite(train), axis=1)] if train.size else train
             if train.shape[0] < 2:
-                raise data_error("a fold has fewer than two training periods for the benchmark")
+                raise data_error("a fold has less than two training periods for the benchmark")
             steps = s1 - origin
             fc = baseline_forecast(train, steps, method, season)[s0 - origin :]
             fcs.append(FoldForecast(y[s0:s1], fc, None, None, mase_scale(train, season)))
@@ -188,7 +188,7 @@ def _residuals(ctx: NodeContext) -> NodeOutcome:
     res = model_residuals(mv, ctx.registry)
     e = res.resid
     if len(e) < 12:
-        raise data_error("too few residuals to check (at least 12)")
+        raise data_error("there are too few residuals for the checks (the minimum is 12)")
     alpha = float(clean_number(ctx.params.get("alpha")) or 0.05)
     lags = int(clean_number(ctx.params.get("lags")) or 10)
     use = min(lags, len(e) // 2 - 1)
@@ -208,25 +208,25 @@ def _residuals(ctx: NodeContext) -> NodeOutcome:
             "check": "Ljung-Box",
             "p_value": lb_p,
             "passed": white,
-            "plain": "No pattern over time is left."
+            "plain": "No pattern over time remains."
             if white
-            else "A pattern over time is left: the model misses some structure.",
+            else "A pattern over time remains. The model does not find all of the structure.",
         },
         {
             "check": "Jarque-Bera",
             "p_value": float(jb_p),
             "passed": normal,
-            "plain": "Errors are consistent with a bell curve."
+            "plain": "The errors agree with a bell curve."
             if normal
-            else "Errors are skewed or heavy-tailed: ranges may be off.",
+            else "The errors are skewed or have heavy tails. The ranges can be wrong.",
         },
         {
             "check": spread,
             "p_value": float(sp_p),
             "passed": equal,
-            "plain": "Errors have a steady spread."
+            "plain": "The errors have a steady spread."
             if equal
-            else "Errors are bigger in some places than others.",
+            else "The errors are larger in some places than in other places.",
         },
     ]
     table = TablePayload(
@@ -310,7 +310,7 @@ def _errors(payload: Mapping[str, Any], h: int) -> tuple[str, list[float], list[
     cands = [c for c in mp.candidates if c.errors]
     if not cands:
         raise data_error(
-            "the metrics carry no forecast errors (use model.backtest or evaluate.baseline)"
+            "the metrics have no forecast errors. Use model.backtest or evaluate.baseline."
         )
     c = min(cands, key=lambda c: c.metrics.get("mae") or math.inf)
     out: list[float] = []
@@ -352,10 +352,10 @@ def _dm(ctx: NodeContext) -> NodeOutcome:
     if reject:
         better = name_a if stat < 0 else name_b
         decision = "a_better" if stat < 0 else "b_better"
-        verdict = f"{better}'s forecasts are more accurate at horizon {h}, beyond luck."
+        verdict = f"The forecasts of {better} are more accurate at horizon {h}. It is not luck."
     else:
         decision = "no_difference"
-        verdict = f"The difference between {name_a} and {name_b} at horizon {h} may be luck."
+        verdict = f"The difference between {name_a} and {name_b} at horizon {h} is possibly luck."
     res = StatTestResult(
         test="test.diebold_mariano",
         statistic=stat,

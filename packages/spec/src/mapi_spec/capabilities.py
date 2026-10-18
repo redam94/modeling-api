@@ -30,6 +30,7 @@ __all__ = [
     "Capabilities",
     "DerivedDecl",
     "Diagnostic",
+    "GridDecl",
     "ModelManifest",
     "OutputDecl",
     "OutputSelector",
@@ -257,6 +258,35 @@ class Capabilities(StrictModel):
         return self
 
 
+FieldColormap = Literal["viridis", "magma", "cividis", "gray", "diverging"]
+
+
+class GridDecl(StrictModel):
+    """How to draw an output as a 2-D field (an image, a map, a vector field).
+
+    ``y`` and ``x`` are the dims of the raster rows and columns; ``y`` runs top to bottom
+    unless ``origin`` is ``lower``. ``frame`` names a third dim with one raster per level
+    (years, eras, times); ``component`` names a dim of length two that holds the ``(x, y)``
+    components of a vector field. Every other dim of the output is reduced over the
+    posterior draws only, never over space.
+    """
+
+    y: Name
+    x: Name
+    frame: Name | None = None
+    component: Name | None = None
+    origin: Literal["upper", "lower"] = "upper"
+    colormap: FieldColormap = "viridis"
+    log: bool = Field(False, description="Draw log10 of the value (for counts and intensities)")
+
+    @model_validator(mode="after")
+    def _distinct(self) -> GridDecl:
+        named = [d for d in (self.y, self.x, self.frame, self.component) if d is not None]
+        if len(set(named)) != len(named):
+            raise ValueError("the grid dims y, x, frame and component must be different")
+        return self
+
+
 class OutputDecl(StrictModel):
     """An output variable the model writes (e.g. ``y_hat``)."""
 
@@ -269,6 +299,19 @@ class OutputDecl(StrictModel):
     units_of: Name | None = Field(None, description="Take units from this input variable")
     units: str | None = Field(None, max_length=64)
     description: str | None = Field(None, max_length=2000)
+    grid: GridDecl | None = Field(
+        None, description="Draw the output as a 2-D field (Model Explorer 'fields' section)"
+    )
+
+    @model_validator(mode="after")
+    def _grid_dims(self) -> OutputDecl:
+        if self.grid is None or self.dims_of is not None:
+            return self
+        named = (self.grid.y, self.grid.x, self.grid.frame, self.grid.component)
+        missing = [d for d in named if d is not None and d not in self.dims]
+        if missing:
+            raise ValueError(f"grid dims {missing} are not dims of the output")
+        return self
 
     def full_dims(self, schema: DataSchema | None) -> list[str]:
         """``dims`` plus the dims of ``dims_of`` in the model's resolved input ``schema``."""

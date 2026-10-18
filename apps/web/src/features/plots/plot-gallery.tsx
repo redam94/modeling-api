@@ -37,9 +37,9 @@ function PlotPanel({ modelId, version, item }: { modelId: string; version: numbe
       </CardHeader>
       <CardContent>
         {spec.isError ? (
-          <ErrorNotice error={spec.error} title="The plot could not be loaded" />
+          <ErrorNotice error={spec.error} title="Cannot load the plot" />
         ) : data.isError ? (
-          <ErrorNotice error={data.error} title="The plot data could not be loaded" />
+          <ErrorNotice error={data.error} title="Cannot load the plot data" />
         ) : data.data ? (
           <PlotFrame
             kind={data.data.spec.kind}
@@ -65,8 +65,8 @@ export function PlotGallery({ modelId, version }: { modelId: string; version: nu
       {(page) => {
         if (!page.items.length) {
           return (
-            <EmptyState icon={<BarChart3 />} title="No plots for this version">
-              Plots are produced by the fit run from the recipes listed in the spec&apos;s outputs.
+            <EmptyState icon={<BarChart3 />} title="This version has no plots">
+              The fit run makes the plots from the recipes in the outputs of the spec.
             </EmptyState>
           );
         }

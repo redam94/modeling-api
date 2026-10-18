@@ -136,7 +136,7 @@ export function BarList({
   items,
   format,
   label,
-  empty = "Nothing recorded in this period.",
+  empty = "There is no data for this period.",
 }: {
   items: { key: string; label: React.ReactNode; value: number; sub?: React.ReactNode }[];
   format: (v: number) => string;

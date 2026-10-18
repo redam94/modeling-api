@@ -21,11 +21,11 @@ import { DeletionProgress } from "./deletion-progress";
 type Part = NonNullable<GdprExportRequest["include"]>[number];
 
 const PARTS: { id: Part; label: string; description: string }[] = [
-  { id: "metadata", label: "Workspace records", description: "Projects, members, specs, runs, endpoints, webhooks (credentials redacted)." },
-  { id: "datasets", label: "Datasets", description: "Every uploaded file and ingested version." },
-  { id: "models", label: "Models", description: "Bundle manifests of every model version." },
-  { id: "audit", label: "Audit log", description: "Who did what, and when." },
-  { id: "usage", label: "Usage and cost", description: "The cost ledger of every run." },
+  { id: "metadata", label: "Workspace records", description: "Projects, members, specs, runs, endpoints and webhooks (with no credentials)." },
+  { id: "datasets", label: "Datasets", description: "All uploaded files and ingested versions." },
+  { id: "models", label: "Models", description: "The bundle manifests of all model versions." },
+  { id: "audit", label: "Audit log", description: "Which user did which action, and when." },
+  { id: "usage", label: "Usage and cost", description: "The cost ledger of all runs." },
 ];
 
 const EXPORT_VARIANT: Record<GdprExport["state"], "info" | "success" | "outline" | "danger"> = { queued: "info", running: "info", ready: "success", expired: "outline", failed: "danger" };
@@ -57,7 +57,7 @@ export function ExportCard({ tenant }: { tenant: Tenant }) {
       <CardHeader>
         <div>
           <CardTitle>Export your data</CardTitle>
-          <CardDescription>One archive of everything {tenant.name} stored (GDPR access). It works while the organisation is suspended, too.</CardDescription>
+          <CardDescription>Get one archive of all data that {tenant.name} stored (GDPR access). This also works when the organisation is suspended.</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -82,7 +82,7 @@ export function ExportCard({ tenant }: { tenant: Tenant }) {
                 {
                   onSuccess: (e) => {
                     setRequested(e.id);
-                    toast.info("Export requested", "The archive is packed in the background; this page updates when it is ready.");
+                    toast.info("Export requested", "The server makes the archive in the background. This page updates when the archive is ready.");
                   },
                 },
               )
@@ -90,7 +90,7 @@ export function ExportCard({ tenant }: { tenant: Tenant }) {
           >
             {create.isPending ? <Spinner /> : <Archive />} Request export
           </Button>
-          {!parts.length ? <span className="text-xs text-destructive">Pick at least one part.</span> : null}
+          {!parts.length ? <span className="text-xs text-destructive">Select one or more parts.</span> : null}
         </div>
         {create.isError ? <ErrorNotice error={create.error} title="The export was not requested" /> : null}
         {exp ? (
@@ -102,7 +102,7 @@ export function ExportCard({ tenant }: { tenant: Tenant }) {
             </p>
             {working ? (
               <p className="flex items-center gap-2 text-muted-foreground">
-                <Spinner /> Packing {exp.include.join(", ")}…
+                <Spinner /> The server makes the archive: {exp.include.join(", ")}…
               </p>
             ) : null}
             {href ? (
@@ -112,14 +112,14 @@ export function ExportCard({ tenant }: { tenant: Tenant }) {
                     <Download /> Download archive{exp.size_bytes != null ? ` (${formatBytes(exp.size_bytes)})` : ""}
                   </a>
                 </Button>
-                <span className="text-xs text-muted-foreground">The link works until {absoluteTime(exp.expires_at)} (15 minutes); reload the page for a fresh one.</span>
+                <span className="text-xs text-muted-foreground">The link works until {absoluteTime(exp.expires_at)} (15 minutes). To get a new link, load the page again.</span>
               </div>
             ) : null}
             {exp.state === "expired" ? <p className="text-muted-foreground">The archive expired. Request a new export.</p> : null}
-            {exp.state === "failed" ? <p className="text-destructive">The export failed. Request it again; operators were notified.</p> : null}
+            {exp.state === "failed" ? <p className="text-destructive">The export failed. Request it again. The operators got a notification.</p> : null}
           </div>
         ) : current.isError || latest.isError ? (
-          <ErrorNotice error={current.error ?? latest.error} title="The last export could not be loaded" />
+          <ErrorNotice error={current.error ?? latest.error} title="The app could not load the last export" />
         ) : null}
       </CardContent>
     </Card>
@@ -138,7 +138,7 @@ function DeleteTenantDialog({ tenant, onClose }: { tenant: Tenant; onClose: () =
       { confirm: typed, ...(reason.trim() ? { reason: reason.trim() } : {}) },
       {
         onSuccess: (d) => {
-          toast.success("Deletion scheduled", `${tenant.name} is suspended; the purge starts ${absoluteTime(d.purge_after)}.`);
+          toast.success("Deletion scheduled", `${tenant.name} is suspended. The purge starts ${absoluteTime(d.purge_after)}.`);
           onClose();
         },
       },
@@ -149,22 +149,22 @@ function DeleteTenantDialog({ tenant, onClose }: { tenant: Tenant; onClose: () =
       <DialogContent wide>
         <DialogTitle>Delete {tenant.name}?</DialogTitle>
         <DialogDescription>
-          This deletes the whole organisation: every project, dataset, model, endpoint, webhook, token and member. Runs are cancelled and the organisation becomes read-only at once.
+          This deletes the full organisation: all projects, datasets, models, endpoints, webhooks, tokens and members. The app cancels runs. The organisation becomes read-only immediately.
         </DialogDescription>
         <form className="grid gap-4" onSubmit={submit} noValidate>
           <ul className="grid list-disc gap-1 pl-5 text-[13px]">
-            <li>You have {DELETION_GRACE_DAYS} days to change your mind: cancel here until the purge starts.</li>
-            <li>Then every store is purged and cannot be recovered. Export your data first if you need it.</li>
-            <li>The audit log (pseudonymised) and the cost ledger (amounts only) are kept for their legal retention.</li>
+            <li>You have {DELETION_GRACE_DAYS} days to change your decision. You can cancel here until the purge starts.</li>
+            <li>Then the app removes the data from all stores. You cannot get it back. If you need your data, export it first.</li>
+            <li>The app keeps the audit log (pseudonymised) and the cost ledger (amounts only) for the legal retention period.</li>
           </ul>
-          <Field label={`Type ${tenant.id} to confirm`} htmlFor="del-confirm" hint="The organisation id, exactly.">
+          <Field label={`Type ${tenant.id} to confirm`} htmlFor="del-confirm" hint="Type the organisation id with no changes.">
             <Input id="del-confirm" className="font-mono" autoComplete="off" spellCheck={false} value={typed} onChange={(e) => setTyped(e.target.value.trim())} />
           </Field>
           <Field label="Reason (optional)" htmlFor="del-reason">
             <Textarea id="del-reason" maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
           <label className="flex items-start gap-2 text-[13px]">
-            <Checkbox className="mt-0.5" checked={understood} onCheckedChange={(v) => setUnderstood(v === true)} />I understand that after {DELETION_GRACE_DAYS} days this cannot be undone.
+            <Checkbox className="mt-0.5" checked={understood} onCheckedChange={(v) => setUnderstood(v === true)} />I understand that I cannot undo this after {DELETION_GRACE_DAYS} days.
           </label>
           {request.isError ? <ErrorNotice error={request.error} title="The deletion was not scheduled" /> : null}
           <DialogFooter>
@@ -193,14 +193,14 @@ export function DeletionCard({ tenant }: { tenant: Tenant }) {
         <div>
           <CardTitle>Delete the organisation</CardTitle>
           <CardDescription>
-            Removes {tenant.name} and everything in it after a {DELETION_GRACE_DAYS}-day grace period.
+            Removes {tenant.name} and all its contents after a grace period of {DELETION_GRACE_DAYS} days.
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
         {deletion.isPending ? (
           <span className="flex items-center gap-2 text-muted-foreground">
-            <Spinner /> Checking for a deletion…
+            <Spinner /> The app looks for a deletion…
           </span>
         ) : deletion.isError ? (
           <ErrorNotice error={deletion.error} />
@@ -215,18 +215,18 @@ export function DeletionCard({ tenant }: { tenant: Tenant }) {
                   onClick={() =>
                     cancel.mutate(undefined, {
                       onSuccess: () => toast.success("Deletion cancelled", `${tenant.name} is active again.`),
-                      onError: (e) => toast.error("Cancel failed", errorMessage(e)),
+                      onError: (e) => toast.error("The deletion was not cancelled", errorMessage(e)),
                     })
                   }
                 >
                   {cancel.isPending ? <Spinner /> : <Undo2 />} Cancel the deletion
                 </Button>
-                <span className="text-xs text-muted-foreground">Possible until {absoluteTime(d.purge_after)}.</span>
+                <span className="text-xs text-muted-foreground">You can cancel until {absoluteTime(d.purge_after)}.</span>
               </div>
             ) : null}
             {d?.state === "failed" ? (
               <p className="flex items-start gap-2 text-[13px] text-destructive">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" /> The purge stopped on an error. It is retried automatically, and operators were notified.
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" /> The purge stopped because of an error. The app tries the purge again automatically. The operators got a notification.
               </p>
             ) : null}
             {!active ? (

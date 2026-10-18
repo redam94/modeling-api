@@ -6,6 +6,11 @@ here exactly as the server builds them: :func:`mapi_spec.jsonschema_export.expor
 and the default plugin registry's catalog (every installed step, model and plot), so the
 hints the app shows in mock mode are the ones a real control plane serves.
 
+The Score page reads ``GET /v1/models/{id}/versions/{v}/inputs`` (``model_inputs``): the input
+contract of the mock model (``eu-geo-mmm`` v1, the starter spec fitted on daily data through
+2026-09-30, under its canonical names) and the input table the server builds from it
+(:func:`mapi_spec.endpoints.input_table`).
+
 Usage::
 
     uv run python apps/web/scripts/gen_editor_fixtures.py [--check]
@@ -22,6 +27,7 @@ import sys
 from pathlib import Path
 
 from mapi_sdk.registry import default_registry
+from mapi_spec.endpoints import EndpointSchemaSnapshot, ModelInputSchema, input_table
 from mapi_spec.jsonschema_export import export_schemas
 
 WEB = Path(__file__).resolve().parent.parent
@@ -29,6 +35,47 @@ OUT = WEB / "src" / "mocks" / "editor.gen.json"
 
 #: Fixed so the file is deterministic (the server stamps the catalog when it loads it).
 GENERATED_AT = "2026-10-14T09:00:00Z"
+
+#: The mock model version's input contract: the starter spec's binding applied to the mock
+#: dataset (``market`` → ``geo``, ``date`` → ``time``, ``revenue_local`` → ``y``,
+#: ``spend_local`` → ``spend``), spend needed on the periods a forecast covers.
+SNAPSHOT = {
+    "inputs_stage": "raw",
+    "input_schema": {
+        "dims": {
+            "geo": {"kind": "categorical", "policy": "fixed"},
+            "channel": {"kind": "categorical", "policy": "fixed"},
+            "time": {"kind": "time", "policy": "extend", "freq": "D"},
+        },
+        "vars": {
+            "y": {"dims": ["geo", "time"], "dtype": "float64", "role": "target", "units": "EUR"},
+            "spend": {"dims": ["geo", "channel", "time"], "dtype": "float64", "role": "spend",
+                      "units": "EUR", "future_required": True},
+        },
+    },
+    "schema_hash": "sha256:" + "ab" * 32,
+    "score_modes": ["counterfactual", "evaluate", "forecast", "predict"],
+    "representation": "draws",
+    "horizon_dim": "time",
+    "future_required": ["spend"],
+    "fit_coords": {
+        "geo": {"kind": "categorical", "size": 3, "values": ["de", "fr", "it"]},
+        "channel": {"kind": "categorical", "size": 2, "values": ["search", "tv"]},
+        "time": {"kind": "time", "size": 730, "start": "2024-10-01", "end": "2026-09-30",
+                 "freq": "D", "contiguous": True},
+    },
+    "conditions_on_actuals": False,
+}  # fmt: skip
+
+
+def model_inputs() -> dict[str, object]:
+    snapshot = EndpointSchemaSnapshot.model_validate(SNAPSHOT)
+    doc = ModelInputSchema(
+        model_ref="model://default/eu-geo-mmm@v1",
+        snapshot=snapshot,
+        input_table=input_table(snapshot, periods=8),
+    )
+    return doc.model_dump(mode="json", exclude_none=True)
 
 
 def build() -> str:
@@ -38,6 +85,7 @@ def build() -> str:
     doc = {
         "modelspec_schema": export_schemas()["modelspec.json"],
         "catalog": {**catalog, "digest": f"sha256:{digest}", "generated_at": GENERATED_AT},
+        "model_inputs": model_inputs(),
     }
     return json.dumps(doc, indent=1, sort_keys=True) + "\n"
 

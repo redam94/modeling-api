@@ -16,6 +16,8 @@ response_curves.json``                           (M3; :class:`ResponseGridView`)
 forecast.json``                                  forecast fan after the split (M3)
 ``ui/guided/           ``mapi.counterfactual/v1`` a counterfactual score run's change of the
 counterfactual.json``                            KPI, in total and per period (M3)
+``ui/explore/          ``mapi.model-explorer.    quantised posterior rasters of the outputs
+fields.json``          fields/v1``               that declare a ``grid`` (:class:`FieldsView`)
 =====================  ========================  ==========================================
 
 Views are produced inside the sandbox from untrusted data: strings are capped and readers
@@ -24,6 +26,10 @@ must render them as text only.
 
 from __future__ import annotations
 
+import base64
+import binascii
+import sys
+from array import array
 from typing import Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -40,12 +46,20 @@ __all__ = [
     "EXPLORER_INDEX_FORMAT",
     "EXPLORE_INDEX",
     "EXPLORE_PREFIX",
+    "FIELD_LEVELS",
+    "FIELD_NAN",
     "FORECAST_FORMAT",
     "FORECAST_VIEW",
     "MAX_EXPLORE_LAGS",
     "MAX_EXPLORE_POINTS",
     "MAX_EXPLORE_SERIES",
     "MAX_EXPLORE_VARS",
+    "MAX_FIELDS",
+    "MAX_FIELD_ARROWS",
+    "MAX_FIELD_CELLS",
+    "MAX_FIELD_DRAWS",
+    "MAX_FIELD_FRAMES",
+    "MAX_FIELD_PIXELS",
     "MAX_GRID_CELLS",
     "MAX_GRID_DRAWS",
     "MAX_GRID_GEOS",
@@ -75,6 +89,11 @@ __all__ = [
     "ExplorerIndex",
     "ExplorerSectionRef",
     "FevdView",
+    "FieldArrows",
+    "FieldEntry",
+    "FieldFrame",
+    "FieldRaster",
+    "FieldsView",
     "FitVsActualView",
     "ForecastView",
     "GroupComparison",
@@ -120,6 +139,7 @@ __all__ = [
     "VarProfile",
     "ViewScalar",
     "VifView",
+    "decode_raster",
     "explore_view_name",
 ]
 
@@ -446,6 +466,23 @@ MAX_EXPLORE_POINTS: Final = 5000
 """Points per series (longer series are downsampled, flagged with ``downsampled``)."""
 MAX_EXPLORE_VARS: Final = 256
 MAX_EXPLORE_LAGS: Final = 200
+MAX_FIELDS: Final = 8
+"""Fields per ``fields`` view (outputs with a ``grid``, times the levels of any other dim)."""
+MAX_FIELD_PIXELS: Final = 160
+"""Raster side cap: larger grids are block-averaged (flagged with ``downsampled``)."""
+MAX_FIELD_FRAMES: Final = 24
+"""Frames per field (more levels of the ``frame`` dim are thinned evenly)."""
+MAX_FIELD_DRAWS: Final = 16
+"""Posterior draws kept as rasters per frame (for hypothetical outcome plots)."""
+MAX_FIELD_ARROWS: Final = 24
+"""Arrow grid side cap of a vector field."""
+MAX_FIELD_CELLS: Final = 1_000_000
+"""Cap on the raster cells of one ``fields`` view (about 2.7 MB of base64); producers drop
+draws, then pixels, to stay under it."""
+FIELD_NAN: Final = 65535
+"""The uint16 code of a missing (NaN) cell in a :class:`FieldRaster`."""
+FIELD_LEVELS: Final = 65534
+"""Codes ``0..FIELD_LEVELS`` map linearly onto ``[lo, hi]``."""
 
 DataSection = Literal[
     "overview", "distributions", "timeseries", "missingness", "outliers", "correlation",
@@ -454,7 +491,7 @@ DataSection = Literal[
 """Sections of the Data Explorer (``ui/explore/<section>.json``)."""
 ModelSection = Literal[
     "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf",
-    "fevd", "forecast", "backtest", "comparison",
+    "fevd", "fields", "forecast", "backtest", "comparison",
 ]  # fmt: skip
 """Sections of the Model Explorer (``ui/explore/<section>.json``)."""
 DATA_SECTIONS: Final[tuple[str, ...]] = (
@@ -463,7 +500,7 @@ DATA_SECTIONS: Final[tuple[str, ...]] = (
 )  # fmt: skip
 MODEL_SECTIONS: Final[tuple[str, ...]] = (
     "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf",
-    "fevd", "forecast", "backtest", "comparison",
+    "fevd", "fields", "forecast", "backtest", "comparison",
 )  # fmt: skip
 
 
@@ -923,6 +960,176 @@ class FevdView(_Explore):
             for row in per_h:
                 if abs(sum(row) - 1.0) > 1e-6:
                     raise ValueError("each fevd row sums to 1")
+        return self
+
+
+class FieldRaster(_View):
+    """One quantised raster: ``height`` x ``width`` cells, row-major (row 0 first).
+
+    ``data`` is the base64 of little-endian ``uint16`` codes, two bytes per cell. Code
+    :data:`FIELD_NAN` (65535) is a missing cell; a code ``q`` in ``0..FIELD_LEVELS`` decodes
+    to ``lo + (hi - lo) * q / FIELD_LEVELS`` (every code is ``lo`` when ``lo == hi``). When the
+    field's ``encoding`` is ``log10`` that number is ``log10`` of the value (values <= 0 are
+    missing). ``lo``/``hi`` are ``None`` only when every cell is missing. The step between two
+    codes is ``(hi - lo) / 65534``: four to five significant digits.
+    """
+
+    lo: float | None = None
+    hi: float | None = None
+    data: str = Field(..., max_length=4 * MAX_FIELD_PIXELS * MAX_FIELD_PIXELS)
+
+    @model_validator(mode="after")
+    def _range(self) -> Self:
+        if (self.lo is None) != (self.hi is None):
+            raise ValueError("a raster has both lo and hi, or neither")
+        if self.lo is not None and self.hi is not None and self.hi < self.lo:
+            raise ValueError("a raster's hi is below its lo")
+        return self
+
+    def cells(self) -> int:
+        """The number of cells ``data`` holds (it must be valid base64 of whole uint16s)."""
+        try:
+            raw = base64.b64decode(self.data, validate=True)
+        except (binascii.Error, ValueError):
+            raise ValueError("raster data is not base64") from None
+        if len(raw) % 2:
+            raise ValueError("raster data is not a whole number of uint16 codes")
+        return len(raw) // 2
+
+
+def decode_raster(
+    r: FieldRaster, encoding: Literal["linear", "log10"] = "linear"
+) -> list[float | None]:
+    """The values of a raster (row-major, ``None`` = missing), as a reader decodes them."""
+    codes = array("H")
+    codes.frombytes(base64.b64decode(r.data))
+    if sys.byteorder == "big":
+        codes.byteswap()
+    lo, hi = r.lo, r.hi
+    out: list[float | None] = []
+    for q in codes:
+        if q == FIELD_NAN or lo is None or hi is None:
+            out.append(None)
+            continue
+        v = lo + (hi - lo) * min(q, FIELD_LEVELS) / FIELD_LEVELS
+        out.append(10.0**v if encoding == "log10" else v)
+    return out
+
+
+class FieldArrows(_View):
+    """The mean ``(x, y)`` components of a vector field on a coarse grid (one arrow per cell).
+
+    ``x``/``y`` are the arrow centres in raster pixel units (column, row; fractional, 0 =
+    the centre of the first pixel). ``u`` is the component along increasing column index and
+    ``v`` along increasing row index (so with ``origin="lower"`` a positive ``v`` points up),
+    both ``[row][col]`` in the field's units.
+    """
+
+    x: list[float] = Field(..., min_length=1, max_length=MAX_FIELD_ARROWS)
+    y: list[float] = Field(..., min_length=1, max_length=MAX_FIELD_ARROWS)
+    u: list[list[float | None]]
+    v: list[list[float | None]]
+
+    @model_validator(mode="after")
+    def _shape(self) -> Self:
+        ny, nx = len(self.y), len(self.x)
+        for a in (self.u, self.v):
+            if len(a) != ny or any(len(row) != nx for row in a):
+                raise ValueError("arrow components are [row][col] over y and x")
+        return self
+
+
+class FieldFrame(_View):
+    """One frame of a field (one level of its ``frame`` dim, or the only frame): the posterior
+    mean, sd, 5% and 95% quantiles and a few draws, each a :class:`FieldRaster`. For a vector
+    field the rasters are of the magnitude ``sqrt(u**2 + v**2)`` (per draw, then summarised)
+    and ``arrows`` holds the mean components."""
+
+    label: ViewScalar = None
+    mean: FieldRaster
+    sd: FieldRaster | None = None
+    q05: FieldRaster | None = None
+    q95: FieldRaster | None = None
+    draws: list[FieldRaster] = Field(default_factory=list, max_length=MAX_FIELD_DRAWS)
+    arrows: FieldArrows | None = None
+
+    def rasters(self) -> list[FieldRaster]:
+        return [r for r in (self.mean, self.sd, self.q05, self.q95, *self.draws) if r is not None]
+
+
+class FieldEntry(_View):
+    """One output drawn as a 2-D field (see :class:`mapi_spec.capabilities.GridDecl`).
+
+    ``y_coords``/``x_coords`` label the raster rows and columns (for a downsampled raster,
+    the coordinate at the middle of each block). Row 0 is drawn at the top unless ``origin``
+    is ``lower``. ``facet`` names the level of each other dim of the output (one entry per
+    level). ``kind`` is ``vector`` when the output has a ``component`` dim.
+    """
+
+    output: str = Field(..., max_length=128)
+    units: str | None = Field(None, max_length=64)
+    description: str | None = Field(None, max_length=2000)
+    facet: Facet = Field(default_factory=dict)
+    kind: Literal["scalar", "vector"] = "scalar"
+    y_dim: str = Field(..., max_length=128)
+    x_dim: str = Field(..., max_length=128)
+    frame_dim: str | None = Field(None, max_length=128)
+    component_dim: str | None = Field(None, max_length=128)
+    height: int = Field(..., ge=1, le=MAX_FIELD_PIXELS)
+    width: int = Field(..., ge=1, le=MAX_FIELD_PIXELS)
+    source_height: int = Field(..., ge=1)
+    source_width: int = Field(..., ge=1)
+    downsampled: bool = False
+    y_coords: list[ViewScalar] = Field(..., max_length=MAX_FIELD_PIXELS)
+    x_coords: list[ViewScalar] = Field(..., max_length=MAX_FIELD_PIXELS)
+    colormap: Literal["viridis", "magma", "cividis", "gray", "diverging"] = "viridis"
+    log: bool = Field(False, description="Draw log10 of the value")
+    origin: Literal["upper", "lower"] = "upper"
+    encoding: Literal["linear", "log10"] = Field(
+        "linear", description="How the raster codes map to values (see FieldRaster)"
+    )
+    n_draws: int = Field(0, ge=0, description="Posterior draws behind the statistics")
+    frames: list[FieldFrame] = Field(..., min_length=1, max_length=MAX_FIELD_FRAMES)
+    omitted_frames: int = Field(0, ge=0, description="Frames left out by even thinning")
+
+    @model_validator(mode="after")
+    def _shape(self) -> Self:
+        if len(self.y_coords) != self.height or len(self.x_coords) != self.width:
+            raise ValueError("y_coords and x_coords need one label per raster row and column")
+        if self.height > self.source_height or self.width > self.source_width:
+            raise ValueError("a raster cannot be larger than its source grid")
+        cells = self.height * self.width
+        for f in self.frames:
+            for r in f.rasters():
+                if r.cells() != cells:
+                    raise ValueError(f"every raster needs {cells} cells (height x width)")
+            if self.kind == "scalar" and f.arrows is not None:
+                raise ValueError("only vector fields have arrows")
+        return self
+
+    def cells(self) -> int:
+        return self.height * self.width * sum(len(f.rasters()) for f in self.frames)
+
+
+class FieldsView(_Explore):
+    """``fields``: the outputs that declare a ``grid`` as interactive rasters (intensity maps,
+    images, space-time densities, vector fields), from the in-sample predictions.
+
+    Rasters are quantised to uint16 (:class:`FieldRaster`); one view holds at most
+    :data:`MAX_FIELD_CELLS` cells. ``omitted`` lists the grid outputs that are not shown (more
+    than :data:`MAX_FIELDS`, or not in the predictions).
+    """
+
+    format: Literal["mapi.model-explorer.fields/v1"] = "mapi.model-explorer.fields/v1"
+    kind: Literal["expected", "predictive"] = "expected"
+    fields: list[FieldEntry] = Field(..., min_length=1, max_length=MAX_FIELDS)
+    omitted: list[str] = Field(default_factory=list, max_length=256)
+
+    @model_validator(mode="after")
+    def _size(self) -> Self:
+        cells = sum(f.cells() for f in self.fields)
+        if cells > MAX_FIELD_CELLS:
+            raise ValueError(f"the view holds {cells} raster cells (max {MAX_FIELD_CELLS})")
         return self
 
 

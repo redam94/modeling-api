@@ -3,6 +3,10 @@ import type { OutputSelector, ScoreRequest } from "@/api/types";
 
 export type ScoreMode = NonNullable<ScoreRequest["mode"]>;
 export type InterventionOp = "multiply" | "add" | "set";
+/** Where the values to score come from: typed into the grid, a dataset, or nothing new. */
+export type InputSource = "typed" | "dataset" | "none";
+/** How a forecast fills future values of inputs it needs (`FutureCovariates`); "" = server default. */
+export type FutureCovariates = "" | "supplied" | "carry_last" | "seasonal_naive" | "zero";
 
 export interface InterventionRow {
   var: string;
@@ -17,8 +21,10 @@ export interface ScoreForm {
   horizonDim: string;
   horizonPeriods: string;
   inputsStage: string;
+  source: InputSource;
   /** Payload dataset (future inputs, new levels, the window to score); empty = none. */
   data: string;
+  futureCovariates: FutureCovariates;
   scenario: string;
   /** Side-table name → dataset reference; empty values are not sent. */
   sideTables: Record<string, string>;
@@ -34,7 +40,28 @@ export interface ScoreForm {
   seed: string;
 }
 
-export const SUMMARY_OPTIONS = ["mean", "median", "sd", "hdi_50", "hdi_90", "hdi_95", "q05", "q50", "q95"];
+/** How a model's output is represented (`Capabilities.representation`). */
+export type Representation = "draws" | "quantiles" | "interval" | "point" | "moments";
+
+/**
+ * What each representation can be summarised as, its default summaries and whether draws can
+ * be returned: `mapi_spec.capabilities.REPRESENTATION_RULES` / `_DEFAULT_SUMMARY` (the
+ * server checks the request against the same rules).
+ */
+export const REPRESENTATIONS: Record<Representation, { options: string[]; defaults: string[]; draws: boolean }> = {
+  draws: { options: ["mean", "median", "sd", "hdi_50", "hdi_90", "hdi_95", "q5", "q50", "q95"], defaults: ["mean", "hdi_90"], draws: true },
+  quantiles: { options: ["median", "q5", "q25", "q50", "q75", "q95", "eti_90"], defaults: ["median", "q5", "q95"], draws: false },
+  interval: { options: ["point", "interval"], defaults: ["point", "interval"], draws: false },
+  point: { options: ["point", "mean"], defaults: ["point"], draws: false },
+  moments: { options: ["mean", "sd", "eti_90", "point"], defaults: ["mean", "sd"], draws: false },
+};
+
+/** Summaries offered when the representation is unknown (an older model version). */
+export const SUMMARY_OPTIONS = REPRESENTATIONS.draws.options;
+
+export function asRepresentation(value: unknown): Representation | null {
+  return typeof value === "string" && value in REPRESENTATIONS ? (value as Representation) : null;
+}
 
 export function defaultScoreForm(): ScoreForm {
   return {
@@ -42,7 +69,9 @@ export function defaultScoreForm(): ScoreForm {
     horizonDim: "time",
     horizonPeriods: "8",
     inputsStage: "raw",
+    source: "typed",
     data: "",
+    futureCovariates: "carry_last",
     scenario: "",
     sideTables: {},
     interventions: [],
@@ -71,18 +100,23 @@ export function parseSel(sel: string): Record<string, (string | number | boolean
   const out: Record<string, (string | number | boolean)[]> = {};
   for (const part of sel.split(";").map((s) => s.trim()).filter(Boolean)) {
     const eq = part.indexOf("=");
-    if (eq <= 0) return `"${part}" is not dim=value`;
+    if (eq <= 0) return `"${part}" does not have the form dim=value`;
     const dim = part.slice(0, eq).trim();
-    if (!NAME_RE.test(dim)) return `"${dim}" is not a valid dim name`;
+    if (!NAME_RE.test(dim)) return `"${dim}" is not a correct dim name`;
     const values = part.slice(eq + 1).split(",").map((s) => s.trim()).filter(Boolean);
-    if (!values.length) return `no values for ${dim}`;
+    if (!values.length) return `${dim} has no values`;
     out[dim] = values.map(scalar);
   }
   return out;
 }
 
-/** Validate the form and build the request (or return the problems). */
-export function buildScoreRequest(form: ScoreForm, modelRef: string): { request: ScoreRequest } | { problems: FormProblem[] } {
+/** Validate the form and build the request (or return the problems). With `representation`,
+ * summaries and draws the model's output cannot give are problems, not server refusals. */
+export function buildScoreRequest(
+  form: ScoreForm,
+  modelRef: string,
+  representation: Representation | null = null,
+): { request: ScoreRequest } | { problems: FormProblem[] } {
   const problems: FormProblem[] = [];
   const request: ScoreRequest = {
     apiVersion: "mapi/v1",
@@ -93,34 +127,35 @@ export function buildScoreRequest(form: ScoreForm, modelRef: string): { request:
   };
 
   if (!/^[a-z_][a-z0-9_]{0,62}$/.test(request.inputs_stage ?? "raw")) {
-    problems.push({ field: "inputsStage", message: "Stage names are lowercase step ids (or raw)." });
+    problems.push({ field: "inputsStage", message: "The stage name is not correct. Type raw or a step id in lowercase." });
   }
   if (form.mode === "forecast") {
     const n = Number(form.horizonPeriods);
-    if (!NAME_RE.test(form.horizonDim)) problems.push({ field: "horizonDim", message: "Enter the dim to extend." });
-    if (!Number.isInteger(n) || n < 1 || n > 100_000) problems.push({ field: "horizonPeriods", message: "Periods must be a whole number from 1." });
+    if (!NAME_RE.test(form.horizonDim)) problems.push({ field: "horizonDim", message: "Type the dim to extend." });
+    if (!Number.isInteger(n) || n < 1 || n > 100_000) problems.push({ field: "horizonPeriods", message: "The number of periods is not correct. Type a whole number of 1 or more." });
     else request.horizon = { dim: form.horizonDim, periods: n };
   }
-  if (form.data.trim()) {
-    if (!DATASET_REF_RE.test(form.data.trim())) problems.push({ field: "data", message: "Use a dataset reference like dataset://default/eu_media_future@v1." });
+  if (form.mode === "forecast" && form.futureCovariates) request.future_covariates = form.futureCovariates;
+  if (form.source === "dataset" && form.data.trim()) {
+    if (!DATASET_REF_RE.test(form.data.trim())) problems.push({ field: "data", message: "The dataset reference is not correct. Type a reference, for example dataset://default/eu_media_future@v1." });
     else request.data = form.data.trim();
   }
   if (form.scenario.trim()) {
-    if (!DATASET_REF_RE.test(form.scenario.trim())) problems.push({ field: "scenario", message: "Use a dataset reference like dataset://default/plan_2027h1@v1." });
+    if (!DATASET_REF_RE.test(form.scenario.trim())) problems.push({ field: "scenario", message: "The dataset reference is not correct. Type a reference, for example dataset://default/plan_2027h1@v1." });
     else request.scenario = form.scenario.trim();
   }
   const sideTables: Record<string, string> = {};
   for (const [name, ref] of Object.entries(form.sideTables)) {
     const value = ref.trim();
     if (!value) continue;
-    if (!DATASET_REF_RE.test(value)) problems.push({ field: `sideTables.${name}`, message: `Side table ${name}: use a dataset reference.` });
+    if (!DATASET_REF_RE.test(value)) problems.push({ field: `sideTables.${name}`, message: `Side table ${name}: the value is not a dataset reference. Type a dataset reference.` });
     else sideTables[name] = value;
   }
   if (Object.keys(sideTables).length) request.side_tables = sideTables;
   const interventions: NonNullable<ScoreRequest["interventions"]> = [];
   form.interventions.forEach((row, i) => {
     if (!NAME_RE.test(row.var)) {
-      problems.push({ field: `interventions.${i}`, message: `Intervention ${i + 1}: enter a variable name.` });
+      problems.push({ field: `interventions.${i}`, message: `Intervention ${i + 1}: type a variable name.` });
       return;
     }
     const sel = parseSel(row.sel);
@@ -130,7 +165,7 @@ export function buildScoreRequest(form: ScoreForm, modelRef: string): { request:
     }
     const value = Number(row.value);
     if (row.value.trim() === "" || !Number.isFinite(value)) {
-      problems.push({ field: `interventions.${i}`, message: `Intervention ${i + 1}: enter a number.` });
+      problems.push({ field: `interventions.${i}`, message: `Intervention ${i + 1}: type a number.` });
       return;
     }
     const selFlat: Record<string, string | number | boolean | (string | number | boolean)[]> = {};
@@ -140,9 +175,16 @@ export function buildScoreRequest(form: ScoreForm, modelRef: string): { request:
   if (interventions.length) request.interventions = interventions;
 
   const draws = Number(form.output.draws || "0");
-  if (!Number.isInteger(draws) || draws < 0 || draws > 10_000) problems.push({ field: "draws", message: "Draws must be between 0 and 10000." });
+  if (!Number.isInteger(draws) || draws < 0 || draws > 10_000) problems.push({ field: "draws", message: "The number of draws is not correct. Type a number from 0 to 10000." });
+  else if (draws > 0 && representation && !REPRESENTATIONS[representation].draws) {
+    problems.push({ field: "draws", message: `This model returns ${representation}, not draws. Set draws to 0.` });
+  }
+  if (representation) {
+    const bad = form.output.summary.filter((s) => !REPRESENTATIONS[representation].options.includes(s));
+    if (bad.length) problems.push({ field: "summary", message: `This model returns ${representation}. The app cannot calculate ${bad.join(", ")} from it. Remove these summaries.` });
+  }
   const vars = form.output.vars.split(",").map((s) => s.trim()).filter(Boolean);
-  if (vars.some((v) => !NAME_RE.test(v))) problems.push({ field: "vars", message: "Variable names are letters, digits, _ . -" });
+  if (vars.some((v) => !NAME_RE.test(v))) problems.push({ field: "vars", message: "A variable name is not correct. Use only letters, digits, _ . -" });
   const output: OutputSelector = {
     kind: form.output.kind,
     summary: form.output.summary.length ? form.output.summary : null,
@@ -155,7 +197,7 @@ export function buildScoreRequest(form: ScoreForm, modelRef: string): { request:
 
   if (form.seed.trim()) {
     const seed = Number(form.seed);
-    if (!Number.isInteger(seed) || seed < 0 || seed >= 2 ** 32) problems.push({ field: "seed", message: "Seed must be a whole number below 2³²." });
+    if (!Number.isInteger(seed) || seed < 0 || seed >= 2 ** 32) problems.push({ field: "seed", message: "The seed is not correct. Type a whole number less than 2³²." });
     else request.seed = seed;
   }
   return problems.length ? { problems } : { request };

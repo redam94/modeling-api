@@ -1140,7 +1140,7 @@
             "arm": "then",
             "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
             "decided_at": "2026-10-15T09:30:00Z",
-            "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+            "explain_plain": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference.",
             "inputs": {
               "nodes.adf.p_value": 0.57,
               "nodes.kpss.reject": true,
@@ -2189,7 +2189,7 @@
                 "name": "permutation_scores"
               }
             ],
-            "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+            "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
             "metric": "permutation_p_value",
             "severity": "blocking",
             "status": "pass",
@@ -2560,8 +2560,8 @@
                 "id": "weekly_forecast",
                 "kind": "template",
                 "reasons_plain": [
-                  "Made for forecasting",
-                  "Works on one series"
+                  "Suits: forecast the future",
+                  "Suits: one number over time"
                 ],
                 "score": 0.92,
                 "summary_plain": "Forecasts one weekly number a few months ahead, with a range of likely values.",
@@ -5148,7 +5148,7 @@
                 {
                   "check": "holdout.mape",
                   "code": "SCORECARD_WARN",
-                  "message_plain": "Holdout error: forecasts were off by 14%.",
+                  "message_plain": "Holdout error: the forecast error was 14%.",
                   "outcome": "needs_override"
                 }
               ],
@@ -5899,10 +5899,10 @@
             "issues": [
               {
                 "code": "MISSING_FUTURE_COVARIATE",
-                "message": "forecasting needs future values of ['spend'] at stage 'raw'",
+                "message": "the forecast needs future values of ['spend'] at stage 'raw'",
                 "pointer": "/scenario",
                 "severity": "error",
-                "suggested_action": "Provide them in a scenario dataset."
+                "suggested_action": "Supply them in a scenario dataset."
               }
             ],
             "valid": false
@@ -6232,7 +6232,7 @@
                       "name": "permutation_scores"
                     }
                   ],
-                  "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+                  "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
                   "metric": "permutation_p_value",
                   "severity": "blocking",
                   "status": "pass",
@@ -8323,7 +8323,7 @@
               "holdout",
               "time_series"
             ],
-            "title": "Beats simple benchmarks",
+            "title": "Better than simple benchmarks",
             "warn": 0.05
           }
         ],
@@ -8788,6 +8788,79 @@
           "checks"
         ],
         "title": "GovernancePolicyUpdate",
+        "type": "object"
+      },
+      "GridDecl": {
+        "additionalProperties": false,
+        "description": "How to draw an output as a 2-D field (an image, a map, a vector field).\n\n``y`` and ``x`` are the dims of the raster rows and columns; ``y`` runs top to bottom\nunless ``origin`` is ``lower``. ``frame`` names a third dim with one raster per level\n(years, eras, times); ``component`` names a dim of length two that holds the ``(x, y)``\ncomponents of a vector field. Every other dim of the output is reduced over the\nposterior draws only, never over space.",
+        "properties": {
+          "colormap": {
+            "default": "viridis",
+            "enum": [
+              "viridis",
+              "magma",
+              "cividis",
+              "gray",
+              "diverging"
+            ],
+            "title": "Colormap",
+            "type": "string"
+          },
+          "component": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Component"
+          },
+          "frame": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame"
+          },
+          "log": {
+            "default": false,
+            "description": "Draw log10 of the value (for counts and intensities)",
+            "title": "Log",
+            "type": "boolean"
+          },
+          "origin": {
+            "default": "upper",
+            "enum": [
+              "upper",
+              "lower"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "x": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "X",
+            "type": "string"
+          },
+          "y": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Y",
+            "type": "string"
+          }
+        },
+        "required": [
+          "y",
+          "x"
+        ],
+        "title": "GridDecl",
         "type": "object"
       },
       "GuidedAnswers": {
@@ -9916,7 +9989,7 @@
                 "role": "coord"
               },
               {
-                "description": "The actual; leave empty for the periods to forecast",
+                "description": "The actual (leave empty for the periods to forecast)",
                 "dims": [
                   "t"
                 ],
@@ -9924,7 +9997,7 @@
                 "role": "target"
               },
               {
-                "description": "Needed on every period, the periods to forecast included",
+                "description": "Necessary on each period, also on the periods to forecast",
                 "dims": [
                   "t"
                 ],
@@ -12109,13 +12182,14 @@
                 "response_curves",
                 "irf",
                 "fevd",
+                "fields",
                 "forecast",
                 "backtest",
                 "comparison"
               ],
               "type": "string"
             },
-            "maxItems": 11,
+            "maxItems": 12,
             "minItems": 1,
             "title": "Sections",
             "type": "array"
@@ -12243,19 +12317,176 @@
                 "response_curves",
                 "irf",
                 "fevd",
+                "fields",
                 "forecast",
                 "backtest",
                 "comparison"
               ],
               "type": "string"
             },
-            "maxItems": 11,
+            "maxItems": 12,
             "minItems": 1,
             "title": "Sections",
             "type": "array"
           }
         },
         "title": "ModelExploreRequest",
+        "type": "object"
+      },
+      "ModelInputSchema": {
+        "description": "``GET /v1/models/{model_id}/versions/{version}/inputs``: what a score call of one model\nversion can send - the same input contract an endpoint serving the version would freeze\n(:func:`~mapi_server.services.endpoints.snapshot_for`) and its input table.\n\nThe names are the spec's canonical ones (``data.bind`` applied), which inline payloads\n(``ScoreCall.inline``) use. ``fit_coords`` tell a caller what the model saw: the fitted\nperiods and every level of the other dims.",
+        "examples": [
+          {
+            "input_table": {
+              "columns": [
+                {
+                  "description": "The period (yyyy-MM-dd)",
+                  "freq": "MS",
+                  "name": "t",
+                  "role": "coord"
+                },
+                {
+                  "description": "The actual (leave empty for the periods to forecast)",
+                  "dims": [
+                    "t"
+                  ],
+                  "name": "y",
+                  "role": "target"
+                },
+                {
+                  "description": "Necessary on each period, also on the periods to forecast",
+                  "dims": [
+                    "t"
+                  ],
+                  "name": "price",
+                  "role": "driver"
+                }
+              ],
+              "conditions_on_actuals": true,
+              "horizon_dim": "t",
+              "rows": [
+                [
+                  "1961-01-01",
+                  null,
+                  null
+                ],
+                [
+                  "1961-02-01",
+                  null,
+                  null
+                ]
+              ]
+            },
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "snapshot": {
+              "fit_coords": {
+                "channel": {
+                  "kind": "categorical",
+                  "size": 2,
+                  "values": [
+                    "search",
+                    "tv"
+                  ]
+                },
+                "date": {
+                  "end": "2025-12-30",
+                  "freq": "D",
+                  "kind": "time",
+                  "size": 730,
+                  "start": "2024-01-01"
+                },
+                "market": {
+                  "kind": "categorical",
+                  "size": 2,
+                  "values": [
+                    "de",
+                    "fr"
+                  ]
+                }
+              },
+              "future_required": [
+                "spend_local"
+              ],
+              "horizon_dim": "time",
+              "input_schema": {
+                "dims": {
+                  "channel": {
+                    "kind": "categorical"
+                  },
+                  "date": {
+                    "freq": "D",
+                    "kind": "time",
+                    "policy": "extend"
+                  },
+                  "market": {
+                    "kind": "categorical",
+                    "new_level_strategy": "pooled",
+                    "policy": "new_levels"
+                  }
+                },
+                "vars": {
+                  "revenue_local": {
+                    "dims": [
+                      "market",
+                      "date"
+                    ],
+                    "dtype": "float64",
+                    "role": "target"
+                  },
+                  "spend_local": {
+                    "dims": [
+                      "market",
+                      "channel",
+                      "date"
+                    ],
+                    "dtype": "float64",
+                    "future_required": true,
+                    "role": "spend"
+                  }
+                }
+              },
+              "inputs_stage": "raw",
+              "representation": "draws",
+              "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+              "score_modes": [
+                "counterfactual",
+                "evaluate",
+                "forecast",
+                "predict"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "input_table": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InputTable"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The inline input as a long table, with the periods after the fit"
+          },
+          "max_inline_bytes": {
+            "default": 5242880,
+            "title": "Max Inline Bytes",
+            "type": "integer"
+          },
+          "model_ref": {
+            "title": "Model Ref",
+            "type": "string"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/EndpointSchemaSnapshot"
+          }
+        },
+        "required": [
+          "model_ref",
+          "snapshot"
+        ],
+        "title": "ModelInputSchema",
         "type": "object"
       },
       "ModelManifest": {
@@ -12424,7 +12655,7 @@
                     "name": "permutation_scores"
                   }
                 ],
-                "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+                "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
                 "metric": "permutation_p_value",
                 "severity": "blocking",
                 "status": "pass",
@@ -12669,7 +12900,7 @@
               "items": [
                 {
                   "code": "RHAT_OK",
-                  "message_plain": "All chains converged to the same answer.",
+                  "message_plain": "All chains got the same answer.",
                   "metric": "r_hat_max",
                   "status": "pass",
                   "threshold": 1.01,
@@ -12678,10 +12909,10 @@
                 },
                 {
                   "code": "HOLDOUT_MAPE",
-                  "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+                  "message_plain": "The forecast error on the last 8 weeks was 14%.",
                   "metric": "mape",
                   "status": "warn",
-                  "suggested_action": "Add holidays or check data for the last weeks.",
+                  "suggested_action": "Add holidays, or look at the data for the last weeks.",
                   "threshold": 0.1,
                   "title": "Holdout error",
                   "value": 0.14
@@ -14046,6 +14277,17 @@
             ],
             "description": "The output also carries every dim of this input variable (e.g. 'y' for models whose data dims come from settings, such as the sklearn row dims)",
             "title": "Dims Of"
+          },
+          "grid": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GridDecl"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Draw the output as a 2-D field (Model Explorer 'fields' section)"
           },
           "units": {
             "anyOf": [
@@ -17687,7 +17929,7 @@
               {
                 "check": "holdout.mape",
                 "code": "SCORECARD_WARN",
-                "message_plain": "Holdout error: forecasts were off by 14%.",
+                "message_plain": "Holdout error: the forecast error was 14%.",
                 "outcome": "needs_override"
               }
             ],
@@ -19969,7 +20211,7 @@
       },
       "ScoreCall": {
         "additionalProperties": false,
-        "description": "Body of ``POST /v1/models/{model_id}/versions/{version}:score``.\n\nSend ``Prefer: wait=N`` (N ≤ 60) to wait for the result: the response is 200 with\noutputs if the run finished in time, else 202 with the run (poll it or follow its SSE).",
+        "description": "Body of ``POST /v1/models/{model_id}/versions/{version}:score``.\n\nSend ``Prefer: wait=N`` (N ≤ 60) to wait for the result: the response is 200 with\noutputs if the run finished in time, else 202 with the run (poll it or follow its SSE).\n``inline`` carries ``data``/``scenario`` typed in instead of named as datasets; the\nrequest then names neither.",
         "examples": [
           {
             "request": {
@@ -19992,6 +20234,16 @@
           }
         ],
         "properties": {
+          "inline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreInline"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "labels": {
             "maxProperties": 64,
             "patternProperties": {
@@ -20111,6 +20363,73 @@
           "run"
         ],
         "title": "ScoreCallResult",
+        "type": "object"
+      },
+      "ScoreInline": {
+        "additionalProperties": false,
+        "description": "Values typed in rather than uploaded: small XrJSON datasets (up to 5 MB each) under\nthe spec's canonical names, checked against the version's input contract\n(``GET …/inputs``) and stored as run inputs, as an endpoint's inline payloads are.",
+        "examples": [
+          {
+            "data": {
+              "coords": {
+                "market": {
+                  "data": [
+                    "de"
+                  ],
+                  "dims": [
+                    "market"
+                  ]
+                },
+                "time": {
+                  "data": [
+                    "2026-01-04",
+                    "2026-01-11"
+                  ],
+                  "dims": [
+                    "time"
+                  ]
+                }
+              },
+              "data_vars": {
+                "spend": {
+                  "data": [
+                    [
+                      1200.0,
+                      1350.0
+                    ]
+                  ],
+                  "dims": [
+                    "market",
+                    "time"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/XrJsonDataset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/XrJsonDataset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ScoreInline",
         "type": "object"
       },
       "ScorePolicy": {
@@ -20290,7 +20609,7 @@
         "type": "object"
       },
       "ScoreSummary": {
-        "description": "The requested summary of a score run as plain tables (``summary.json``), inlined in\n:class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without\nzarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the\n``score.zarr.zip`` output for everything). ``conditioning`` (forecasts): what the\nforecast was conditioned on - the end of the fitted history and the actuals the request\nsupplied (:mod:`mapi_spec.actuals`).",
+        "description": "The requested summary of a score run as plain tables (``summary.json``), inlined in\n:class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without\nzarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the\n``score.zarr.zip`` output for everything). ``conditioning`` (forecasts): what the\nforecast was conditioned on - the end of the fitted history and the actuals the request\nsupplied (:mod:`mapi_spec.actuals`); ``actuals`` holds those values next to the\npredictions they compare with.",
         "examples": [
           {
             "tables": [
@@ -20375,6 +20694,15 @@
           }
         ],
         "properties": {
+          "actuals": {
+            "description": "Forecasts with actuals: the actuals the request supplied, as tables named after the prediction variable they compare with (its coordinate columns, then `actual`), in the output's names and original units. Predictions on those periods are one-step-ahead: what the model expected before seeing each actual",
+            "items": {
+              "$ref": "#/components/schemas/ScoreSummaryTable"
+            },
+            "maxItems": 16,
+            "title": "Actuals",
+            "type": "array"
+          },
           "conditioning": {
             "anyOf": [
               {
@@ -20481,7 +20809,7 @@
             "items": [
               {
                 "code": "RHAT_OK",
-                "message_plain": "All chains converged to the same answer.",
+                "message_plain": "All chains got the same answer.",
                 "metric": "r_hat_max",
                 "status": "pass",
                 "threshold": 1.01,
@@ -20490,10 +20818,10 @@
               },
               {
                 "code": "HOLDOUT_MAPE",
-                "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+                "message_plain": "The forecast error on the last 8 weeks was 14%.",
                 "metric": "mape",
                 "status": "warn",
-                "suggested_action": "Add holidays or check data for the last weeks.",
+                "suggested_action": "Add holidays, or look at the data for the last weeks.",
                 "threshold": 0.1,
                 "title": "Holdout error",
                 "value": 0.14
@@ -20539,7 +20867,7 @@
         "examples": [
           {
             "code": "RHAT_OK",
-            "message_plain": "All chains converged to the same answer.",
+            "message_plain": "All chains got the same answer.",
             "metric": "r_hat_max",
             "status": "pass",
             "threshold": 1.01,
@@ -20551,10 +20879,10 @@
             "check": "holdout.mape",
             "code": "HOLDOUT_MAPE",
             "docs_anchor": "check-holdout-mape",
-            "message_plain": "Forecasts were off by 14% on the held-out periods.",
+            "message_plain": "The forecast error on the holdout periods was 14%.",
             "metric": "mape",
             "status": "warn",
-            "suggested_action": "Check the last weeks of data for gaps or one-off events.",
+            "suggested_action": "Look for gaps or one-time events in the last weeks of data.",
             "threshold": 0.1,
             "title": "Holdout error",
             "value": 0.14
@@ -25790,7 +26118,7 @@
                 "arm": "then",
                 "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
                 "decided_at": "2026-10-15T09:30:00Z",
-                "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+                "explain_plain": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference.",
                 "inputs": {
                   "nodes.adf.p_value": 0.57,
                   "nodes.kpss.reject": true,
@@ -26836,7 +27164,7 @@
     "description": "Contract version 0.2. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
     "summary": "Typed xarray modelling runtime: control plane API (v1)",
     "title": "modeling-api",
-    "version": "0.6.0"
+    "version": "0.7.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -30978,13 +31306,13 @@
                     }
                   },
                   "NOT_VALIDATED": {
-                    "summary": "The governance policy requires a validated model",
+                    "summary": "The governance policy needs a validated model",
                     "value": {
                       "code": "NOT_VALIDATED",
-                      "detail": "The governance policy requires a validated model",
+                      "detail": "The governance policy needs a validated model",
                       "errors": [],
                       "status": 409,
-                      "title": "The governance policy requires a validated model",
+                      "title": "The governance policy needs a validated model",
                       "type": "urn:mapi:error:NOT_VALIDATED"
                     }
                   },
@@ -31000,13 +31328,13 @@
                     }
                   },
                   "PROMOTION_BLOCKED": {
-                    "summary": "Promotion blocked by the scorecard",
+                    "summary": "The scorecard blocks the promotion",
                     "value": {
                       "code": "PROMOTION_BLOCKED",
-                      "detail": "Promotion blocked by the scorecard",
+                      "detail": "The scorecard blocks the promotion",
                       "errors": [],
                       "status": 409,
-                      "title": "Promotion blocked by the scorecard",
+                      "title": "The scorecard blocks the promotion",
                       "type": "urn:mapi:error:PROMOTION_BLOCKED"
                     }
                   }
@@ -31365,13 +31693,13 @@
                     }
                   },
                   "NOT_VALIDATED": {
-                    "summary": "The governance policy requires a validated model",
+                    "summary": "The governance policy needs a validated model",
                     "value": {
                       "code": "NOT_VALIDATED",
-                      "detail": "The governance policy requires a validated model",
+                      "detail": "The governance policy needs a validated model",
                       "errors": [],
                       "status": 409,
-                      "title": "The governance policy requires a validated model",
+                      "title": "The governance policy needs a validated model",
                       "type": "urn:mapi:error:NOT_VALIDATED"
                     }
                   }
@@ -33984,6 +34312,70 @@
         ]
       }
     },
+    "/v1/models/{model_id}/versions/{version}/inputs": {
+      "get": {
+        "description": "The input contract of the version (the one an endpoint serving it would freeze): the\ninput dims and variables under the spec's canonical names, which are needed on future\nperiods, the fitted coordinates, and the input table with ``periods`` periods after the\nfit (1-200) for a model that forecasts.",
+        "operationId": "get_model_inputs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Model Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periods",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "title": "Periods",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelInputSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "What a score call can send: the input contract and the input table",
+        "tags": [
+          "models"
+        ]
+      }
+    },
     "/v1/models/{model_id}/versions/{version}/plots": {
       "get": {
         "operationId": "list_plots",
@@ -34658,7 +35050,7 @@
     },
     "/v1/models/{model_id}/versions/{version}:score": {
       "post": {
-        "description": "Score with replayed preprocessing. ``Prefer: wait=N`` (≤ 60) waits up to N s:\n200 with output links if the run finished, else 202 with the run.",
+        "description": "Score with replayed preprocessing. ``Prefer: wait=N`` (≤ 60) waits up to N s:\n200 with output links if the run finished, else 202 with the run. ``inline`` data is\nchecked against the version's input contract (``GET …/inputs``) and stored as a run\ninput, as an endpoint's inline payloads are.",
         "operationId": "score_model",
         "parameters": [
           {
@@ -40398,13 +40790,13 @@
                     }
                   },
                   "WEBHOOK_URL_BLOCKED": {
-                    "summary": "The webhook URL is not allowed by the egress policy",
+                    "summary": "The egress policy does not allow the webhook URL",
                     "value": {
                       "code": "WEBHOOK_URL_BLOCKED",
-                      "detail": "The webhook URL is not allowed by the egress policy",
+                      "detail": "The egress policy does not allow the webhook URL",
                       "errors": [],
                       "status": 422,
-                      "title": "The webhook URL is not allowed by the egress policy",
+                      "title": "The egress policy does not allow the webhook URL",
                       "type": "urn:mapi:error:WEBHOOK_URL_BLOCKED"
                     }
                   }
@@ -40836,13 +41228,13 @@
                     }
                   },
                   "WEBHOOK_URL_BLOCKED": {
-                    "summary": "The webhook URL is not allowed by the egress policy",
+                    "summary": "The egress policy does not allow the webhook URL",
                     "value": {
                       "code": "WEBHOOK_URL_BLOCKED",
-                      "detail": "The webhook URL is not allowed by the egress policy",
+                      "detail": "The egress policy does not allow the webhook URL",
                       "errors": [],
                       "status": 422,
-                      "title": "The webhook URL is not allowed by the egress policy",
+                      "title": "The egress policy does not allow the webhook URL",
                       "type": "urn:mapi:error:WEBHOOK_URL_BLOCKED"
                     }
                   }
@@ -41204,13 +41596,13 @@
               "application/problem+json": {
                 "examples": {
                   "WEBHOOK_URL_BLOCKED": {
-                    "summary": "The webhook URL is not allowed by the egress policy",
+                    "summary": "The egress policy does not allow the webhook URL",
                     "value": {
                       "code": "WEBHOOK_URL_BLOCKED",
-                      "detail": "The webhook URL is not allowed by the egress policy",
+                      "detail": "The egress policy does not allow the webhook URL",
                       "errors": [],
                       "status": 422,
-                      "title": "The webhook URL is not allowed by the egress policy",
+                      "title": "The egress policy does not allow the webhook URL",
                       "type": "urn:mapi:error:WEBHOOK_URL_BLOCKED"
                     }
                   }

@@ -163,7 +163,9 @@ class LocalRunner:
         validation = validate_workflow(spec, resolve_subworkflow=self.subworkflows)
         if not validation.valid:
             raise MapiError(
-                "the workflow is invalid", code=ErrorCode.WORKFLOW_INVALID, issues=validation.issues
+                "the workflow is not valid",
+                code=ErrorCode.WORKFLOW_INVALID,
+                issues=validation.issues,
             )
         resolved_params = check_run_params(spec, dict(params or {}))
         values: dict[str, Value] = {}
@@ -174,7 +176,7 @@ class LocalRunner:
             if name not in (inputs or {}):
                 if decl.required and decl.default is None:
                     raise MapiError(
-                        f"input {name!r} is required",
+                        f"input {name!r} needs a value",
                         code=ErrorCode.WORKFLOW_INVALID,
                         pointer=f"/inputs/{name}",
                     )
@@ -395,7 +397,7 @@ class LocalRunner:
             engine.failed(
                 nid,
                 NodeError(
-                    code=ErrorCode.REF_UNRESOLVED, message=f"workflow {ref_text} was not found"
+                    code=ErrorCode.REF_UNRESOLVED, message=f"the workflow {ref_text} does not exist"
                 ),
             )
             return

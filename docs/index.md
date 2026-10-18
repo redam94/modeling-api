@@ -8,36 +8,44 @@ hide:
 
 <div class="mapi-hero" markdown>
 <div markdown>
-<p class="mapi-tagline">Guided for analysts · exact for data scientists · honest uncertainty · one safe platform</p>
+<p class="mapi-tagline">Guided mode for analysts · exact control for data scientists · honest uncertainty · one safe platform</p>
 
 # Trustworthy models,<br>from spreadsheet to endpoint.
 
-<p>modeling-api fits Bayesian and classical models of data with <strong>named
-dimensions</strong> (market × channel × week, store × product × day, household × trip) and
-answers questions with them in the units your business uses. An analyst uploads a spreadsheet
+<p>modeling-api fits Bayesian and classical models of data that has <strong>named
+dimensions</strong> (market × channel × week, store × product × day, household × trip). The
+models answer questions in the units that your business uses. An analyst uploads a spreadsheet
 and gets a report, a sanity scorecard and instant what-if sliders. A data scientist writes a
-small spec or a few lines of Python and gets the same model behind a versioned endpoint,
-with the fitted preprocessing replayed exactly on every call. Whole analyses - tests,
-decisions, models, benchmarks - run as versioned **workflows**, and a model only goes live
-after it has beaten **shuffled data, fake drivers and a naive forecast**. Every run happens in
-a fresh sandbox, and every result says how sure it is.</p>
+small spec or some lines of Python and gets the same model behind a versioned endpoint. Each
+call uses the same fitted preprocessing again, exactly.</p>
+
+<p>Full analyses (tests, decisions, models and benchmarks) run as versioned
+<strong>workflows</strong>. A model goes live only after it is better than <strong>shuffled
+data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandbox, and each result tells how sure it is.</p>
 
 [Your first MMM in Guided mode](guides/guided-tutorial.md){ .md-button .md-button--primary }
 [Quickstart for data scientists](getting-started/quickstart.md){ .md-button }
 [What's new in 0.5](whats-new-0.5.md){ .md-button }
 
 </div>
-![modeling-api logo: a labelled data cube](assets/logo.svg)
+![The modeling-api logo: a cube of labelled data](assets/logo.svg)
 </div>
 
 !!! success "v0.5: workflows, governance, explorers, mmm-framework and statsmodels"
-    **Workflows** chain unit-root tests, differencing decisions, AR/MA order searches,
-    rolling-origin backtests against naive forecasts, model selection and governance into
-    one versioned, schedulable graph. **Governance policies** hold every model to null tests
-    - it must beat itself fitted on shuffled results and give fake noise drivers no credit -
-    with a second person's approval and an evidence pack. **Data and Model Explorers**,
-    **mmm-framework** marketing-mix models with budget optimisation, **twelve statsmodels**
-    time-series models, and an **About card on everything** with *Help me choose*.
+    **Workflows** connect these items into one versioned graph that you can schedule:
+    unit-root tests, differencing decisions, AR/MA order searches, rolling-origin backtests
+    against naive forecasts, model selection and governance. **Governance policies** apply
+    null tests to each model. The model must be better than the same model fitted on shuffled
+    results. It must also give no credit to fake noise drivers. A second person approves the
+    model, and the platform makes an evidence pack.
+
+    Version 0.5 also adds:
+
+    - **Data and Model Explorers**
+    - **mmm-framework** marketing-mix models with budget optimisation
+    - **twelve statsmodels** time-series models
+    - an **About card on everything**, with *Help me choose*
+
     [What's new in 0.5](whats-new-0.5.md).
 
 ## Two ways in, one model
@@ -49,15 +57,15 @@ a fresh sandbox, and every result says how sure it is.</p>
 
 <p class="mapi-promise">Upload → report → scenario in minutes, with honest uncertainty.</p>
 
-- Pick what you want to learn; answer "which column is revenue?" (the platform suggests
-  the answer and says why).
-- Say what you already believe ("TV returns 1.5 to 4 per euro") or enter a lift test.
-- Read a report in plain words, with a **sanity scorecard** that tells you whether to trust it.
-- Drag **what-if sliders**: answers in your browser, with a range that stays honest when
-  several channels move at once. "Run exact" asks the full model.
-- Share a live chart or put the model in a Google Sheet.
-- Not sure which model? **Help me choose** asks a few questions and explains its
-  recommendations; every option has an *About* card in plain words.
+- Select what you want to learn. Answer questions such as "which column is revenue?". The
+  platform suggests the answer and tells you why.
+- Tell what you already believe ("TV returns 1.5 to 4 per euro"), or enter a lift test.
+- Read a report in plain words. A **sanity scorecard** tells you if you can trust it.
+- Move the **what-if sliders**. Your browser gives the answers. The range stays honest when
+  some channels move at the same time. "Run exact" asks the full model.
+- Share a live chart, or put the model in a Google Sheet.
+- If you are not sure which model to use, use **Help me choose**. It asks some questions and
+  explains its recommendations. Each option has an *About* card in plain words.
 
 [:octicons-arrow-right-24: Your first analysis in Guided mode](guides/guided-tutorial.md)
 
@@ -66,18 +74,18 @@ a fresh sandbox, and every result says how sure it is.</p>
 
 ### :material-code-braces: Data scientists
 
-<p class="mapi-promise">Any PyMC, scikit-learn or forecasting model. Preprocessing replayed exactly. Endpoints in one click.</p>
+<p class="mapi-promise">Any PyMC, scikit-learn or forecasting model. The same preprocessing, exactly. Endpoints in one click.</p>
 
-- A PyMC model is one `build()` method, an sklearn model one `estimator()`; built-in
+- A PyMC model is one `build()` method. An sklearn model is one `estimator()`. Built-in
   marketing-mix, forecasting, demand and choice models are ready to use.
-- Steps **learn on the training data only** and are **replayed**, never refitted, at score
-  time: forecasts, new markets, counterfactuals.
-- Uncertainty is first-class: draws, quantiles or intervals, with the aggregations that are
-  valid for each.
-- Promote a version to an **endpoint** through the scorecard gate; copy a snippet for
+- Steps **learn on the training data only**. At score time, the platform **replays** them
+  and does not fit them again. This applies to forecasts, new markets and counterfactuals.
+- Uncertainty is a primary part of each result: draws, quantiles or intervals. Each one has
+  the aggregations that are valid for it.
+- Promote a version to an **endpoint** through the scorecard gate. Copy a snippet for
   Python, TypeScript, curl, R, Apps Script or a notebook.
-- Automate the statistics: **workflows** of tests, branches, searches, backtests and
-  governance checks, run live from `mapi workflows run --watch` or `api.workflows`.
+- Automate the statistics with **workflows** of tests, branches, searches, backtests and
+  governance checks. Run them live from `mapi workflows run --watch` or `api.workflows`.
 
 [:octicons-arrow-right-24: Quickstart: zero to first model](getting-started/quickstart.md) ·
 [Workflow cookbook](guides/workflow-cookbook.md)
@@ -85,8 +93,9 @@ a fresh sandbox, and every result says how sure it is.</p>
 </div>
 </div>
 
-Both edit the same `ModelSpec`: every Guided screen has **View as YAML**, and an expert's
-changes come back to Guided mode intact. [Who it is for, and who it is not for](why.md).
+The two groups edit the same `ModelSpec`. Each Guided screen has **View as YAML**. The
+changes of an expert come back to Guided mode with no loss.
+[Who it is for, and who it is not for](why.md).
 
 ## How it works
 
@@ -105,43 +114,48 @@ flowchart LR
 ```
 
 1. **Your data stays labelled.** The upload becomes an `xr.Dataset` with named dims, roles and
-   units; nothing downstream is positional.
-2. **Mistakes fail early.** A spec that would leak the holdout, a forecast past what the
-   model supports, a market the model has never seen: typed errors, before any compute.
-3. **Fitting learns, scoring replays.** Every preprocessing step stores what it learned, so a
-   forecast or a new market goes through exactly the same transformations, then back into
-   your units.
-4. **Results are checked twice.** Outputs are verified against the storage's own checksums
-   and signed; the scorecard checks convergence, holdout error and plausibility.
-5. **Models earn their place.** A governance policy holds each version to null tests and
-   benchmarks, records the evidence and, if you ask, waits for a second person; endpoints
-   can refuse anything that is not validated.
-6. **Other tools connect to an endpoint, not a file.** Promote a better model and every
-   integration uses it; roll back with one call.
-7. **Whole analyses repeat themselves.** A workflow re-runs the tests, decisions, fits and
-   checks every Monday or whenever the data changes, reusing every step whose inputs did not
-   change.
+   units. No later part of the process uses the position of the data.
+2. **Mistakes fail early.** Examples are a spec that leaks the holdout, a forecast past the
+   limit of the model, or a market that the model did not see. You get typed errors before
+   any compute.
+3. **The fit learns, and the score replays.** Each preprocessing step stores what it learned.
+   Thus a forecast or a new market goes through exactly the same transformations. Then the
+   result goes back into your units.
+4. **The platform checks results two times.** It compares the outputs with the checksums of
+   the storage, and it signs them. The scorecard checks convergence, holdout error and
+   plausibility.
+5. **Models must show that they are good.** A governance policy applies null tests and
+   benchmarks to each version and records the evidence. If you ask, it waits for a second
+   person. Endpoints can refuse all versions that are not validated.
+6. **Other tools connect to an endpoint, not to a file.** Promote a better model, and all
+   integrations use it. Roll back with one call.
+7. **Full analyses repeat automatically.** A workflow runs the tests, decisions, fits and
+   checks again each Monday, or when the data changes. It uses again each step whose inputs
+   did not change.
 
 ## Your first MMM in Guided mode
 
-The whole journey of a geo marketing-mix model, from a spreadsheet of weekly spend and
-revenue by region to a budget scenario. The times are what an automated "tester" took on a
-laptop, almost all of it the platform working: **135 seconds** from upload to scenario.
+This section shows the full path of a geo marketing-mix model. The path starts with a
+spreadsheet of weekly spend and revenue by region. It ends with a budget scenario. The times
+are from an automated "tester" on a laptop. The platform used almost all of this time. The
+full path took **135 seconds** from upload to scenario.
 
 <div class="mapi-path" markdown>
 
-1. **Choose "Geo marketing mix"** and drop your CSV on the page. Each column is profiled *in
-   your browser*; the platform suggests which column is revenue, which are spend, and why.
-   *(5 s)*
-2. **Say what you believe**, if anything: an ROI range per channel, a lift test. *Preview
-   what this means* shows it in business units before any fitting. *(22 s, optional)*
-3. **Fit the model.** Plain-language progress; the model is tested on weeks it has not seen,
-   then refitted on everything. *(80 s)*
-4. **Read the results**: ROI and share per channel with 90% ranges, and the sanity scorecard,
-   each check with what to do next. *(instant)*
-5. **Ask "what if"**: move search +20% and see the change in revenue with its range at once;
-   *Run exact* confirms it with the full model. *(30 s with the exact run and a forecast)*
-6. **Share it**: put the model live as an endpoint, or share a chart by link.
+1. **Choose "Geo marketing mix"**. Then drop your CSV file on the page. The platform makes a
+   profile of each column *in your browser*. It suggests which column is revenue and which
+   columns are spend. It also tells why. *(5 s)*
+2. **Say what you believe**, if you have beliefs. For example, give an ROI range for each
+   channel, or a lift test. *Preview what this means* shows it in business units before the
+   fit. *(22 s, optional)*
+3. **Fit the model.** The progress shows in plain language. The platform tests the model on
+   weeks that it did not see. Then it fits the model again on all the data. *(80 s)*
+4. **Read the results.** You see the ROI and share of each channel with 90% ranges. You also
+   see the sanity scorecard, with the next action for each check. *(instant)*
+5. **Ask "what if"**. Move search +20%. The change in revenue and its range show immediately.
+   *Run exact* confirms the result with the full model. *(30 s with the exact run and a
+   forecast)*
+6. **Share it**. Put the model live as an endpoint, or share a chart with a link.
 
 </div>
 
@@ -152,32 +166,32 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
 <figure markdown>
 [![The Guided templates](assets/screenshots/guided-templates.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#1-choose-what-you-want-to-learn)
-<figcaption>Templates: start from the question, not the model.</figcaption>
+<figcaption>Templates: start from the question, not from the model.</figcaption>
 </figure>
 
 <figure markdown>
-[![The question flow with role detection](assets/screenshots/guided-data.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#2-your-data)
+[![The questions, with the roles that the platform found](assets/screenshots/guided-data.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#2-your-data)
 <figcaption>Your data: suggested answers, each with its reason.</figcaption>
 </figure>
 
 <figure markdown>
 [![Beliefs as ROI ranges with a preview](assets/screenshots/guided-priors.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#3-what-you-believe)
-<figcaption>Beliefs: ROI ranges and lift tests, previewed in business units.</figcaption>
+<figcaption>Beliefs: ROI ranges and lift tests, with a preview in business units.</figcaption>
 </figure>
 
 <figure markdown>
 [![The report with ROI and share per channel](assets/screenshots/guided-report.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#5-results-and-the-sanity-scorecard)
-<figcaption>Results: every number with the range it could really be in.</figcaption>
+<figcaption>Results: each number with the range that it can really be in.</figcaption>
 </figure>
 
 <figure markdown>
 [![The sanity scorecard](assets/screenshots/guided-scorecard.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#5-results-and-the-sanity-scorecard)
-<figcaption>Scorecard: can you trust it, and what to do if not.</figcaption>
+<figcaption>Scorecard: can you trust it, and what to do if you cannot.</figcaption>
 </figure>
 
 <figure markdown>
 [![What-if sliders with the exact run](assets/screenshots/guided-whatif.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#6-what-if)
-<figcaption>What if: instant answers from per-draw response curves.</figcaption>
+<figcaption>What if: instant answers from a response curve for each draw.</figcaption>
 </figure>
 
 </div>
@@ -191,9 +205,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
     ---
 
     Unit roots → differencing → AR/MA orders → rolling-origin backtest → ARIMAX vs naive →
-    select → governance, as one versioned YAML graph with live node status, caching,
-    schedules and dataset triggers. Seventeen statistical tests, seven split plans,
-    Diebold-Mariano.
+    select → governance. All of these steps are one versioned YAML graph. The graph has live
+    node status, a cache, schedules and dataset triggers. It has seventeen statistical tests,
+    seven split plans and Diebold-Mariano.
 
     [:octicons-arrow-right-24: Workflow cookbook](guides/workflow-cookbook.md)
 
@@ -201,9 +215,10 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    Governance policies: shuffled-target and placebo-regressor null tests, naive benchmarks,
-    residual whiteness, stability, signs, prior sensitivity. Second-person approval, evidence
-    packs, and endpoints that refuse unvalidated models.
+    Governance policies have these checks: shuffled-target and placebo-regressor null tests,
+    naive benchmarks, residual whiteness, stability, signs and prior sensitivity. They also
+    have approval by a second person and evidence packs. Endpoints refuse models that are
+    not validated.
 
     [:octicons-arrow-right-24: Can you trust this model?](guides/null-tests.md)
 
@@ -211,9 +226,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    Stationarity, cross-correlation with the KPI, STL, VIF and quality warnings before you
-    model; parameters, residual tests, IRF/FEVD, forecasts, backtests and side-by-side
-    comparisons after.
+    Before you make a model, see stationarity, cross-correlation with the KPI, STL, VIF and
+    quality warnings. After the fit, see parameters, residual tests, IRF/FEVD, forecasts,
+    backtests and side-by-side comparisons.
 
     [:octicons-arrow-right-24: Explore a dataset](guides/data-explorer.md)
 
@@ -221,8 +236,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    `mmm.bayesian` pooled over geos and products, `mmm.frequentist` in seconds, business
-    priors, lift tests, and budgets optimised from the posterior with risk objectives.
+    `mmm.bayesian` pools over geos and products. `mmm.frequentist` fits in seconds. You get
+    business priors and lift tests. The platform optimises budgets from the posterior with
+    risk objectives.
 
     [:octicons-arrow-right-24: Marketing-mix models](models/mmm-framework.md)
 
@@ -230,8 +246,8 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    SARIMAX to VECM and Markov switching, with future drivers, prediction intervals,
-    impulse responses and cointegration tests.
+    The models go from SARIMAX to VECM and Markov switching. They have future drivers,
+    prediction intervals, impulse responses and cointegration tests.
 
     [:octicons-arrow-right-24: statsmodels models](models/statsmodels.md)
 
@@ -239,8 +255,8 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    Every model, step, node, check and template explains itself in plain words; eight
-    questions turn into a ranked shortlist with reasons - in the web app, `mapi choose` or
+    Each model, step, node, check and template explains itself in plain words. Eight
+    questions give a ranked shortlist with reasons. Use the web app, `mapi choose` or
     `api.catalog.recommend()`.
 
     [:octicons-arrow-right-24: Choosing a model](guides/choosing-a-model.md)
@@ -252,33 +268,33 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 <div class="mapi-shots" markdown>
 
 <figure markdown>
-[![The visual workflow editor with the readiness-to-ARIMAX graph](assets/screenshots/workflows-editor.png){ .mapi-shot loading=lazy }](guides/workflows.md#the-editor)
-<figcaption>Workflows: tests, decisions, searches, backtests and governance as one graph, with typed ports.</figcaption>
+[![The visual workflow editor with the graph from readiness to ARIMAX](assets/screenshots/workflows-editor.png){ .mapi-shot loading=lazy }](guides/workflows.md#the-editor)
+<figcaption>Workflows: tests, decisions, searches, backtests and governance in one graph, with typed ports.</figcaption>
 </figure>
 
 <figure markdown>
-[![A workflow run followed live, every step done](assets/screenshots/workflows-run-monitor.png){ .mapi-shot loading=lazy }](guides/workflows.md#running-and-watching)
-<figcaption>Run monitor: every step, decision and verdict live, with the run's cost.</figcaption>
+[![A workflow run that you follow live, with all steps complete](assets/screenshots/workflows-run-monitor.png){ .mapi-shot loading=lazy }](guides/workflows.md#running-and-watching)
+<figcaption>Run monitor: each step, decision and verdict live, with the cost of the run.</figcaption>
 </figure>
 
 <figure markdown>
-[![A validation awaiting a reviewer's approval](assets/screenshots/governance-validation.png){ .mapi-shot loading=lazy }](guides/governance.md#validating-a-model-version)
-<figcaption>Governance: checks, evidence and a second person's sign-off.</figcaption>
+[![A validation that waits for the approval of a reviewer](assets/screenshots/governance-validation.png){ .mapi-shot loading=lazy }](guides/governance.md#validating-a-model-version)
+<figcaption>Governance: checks, evidence and the approval of a second person.</figcaption>
 </figure>
 
 <figure markdown>
-[![The real model's error against nineteen fits on shuffled results](assets/screenshots/governance-evidence.png){ .mapi-shot loading=lazy }](guides/null-tests.md)
-<figcaption>Null tests: the real model must beat itself fitted on shuffled results.</figcaption>
+[![The error of the real model, compared with nineteen fits on shuffled results](assets/screenshots/governance-evidence.png){ .mapi-shot loading=lazy }](guides/null-tests.md)
+<figcaption>Null tests: the real model must be better than the same model fitted on shuffled results.</figcaption>
 </figure>
 
 <figure markdown>
 [![Stationarity per series in the Data Explorer](assets/screenshots/explorer-data-stationarity.png){ .mapi-shot loading=lazy }](guides/data-explorer.md)
-<figcaption>Data Explorer: does each series wander, with a plain verdict.</figcaption>
+<figcaption>Data Explorer: a plain verdict that tells if each series wanders.</figcaption>
 </figure>
 
 <figure markdown>
 [![A budget plan with the efficient frontier](assets/screenshots/explorer-optimize.png){ .mapi-shot loading=lazy }](tutorials/optimise-a-budget.md)
-<figcaption>Budget plans: mmm-framework planning from the posterior, with the frontier.</figcaption>
+<figcaption>Budget plans: mmm-framework plans from the posterior, with the frontier.</figcaption>
 </figure>
 
 </div>
@@ -293,9 +309,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    Four templates (geo marketing mix, weekly forecast, demand by store, customer choice),
-    role detection, MFF and Meridian presets, drafts you can open as YAML, and a lock that
-    keeps a project Guided-only.
+    Guided mode has four templates (geo marketing mix, weekly forecast, demand by store,
+    customer choice). It finds the roles of columns and has MFF and Meridian presets. You can
+    open drafts as YAML. A lock can keep a project in Guided mode only.
 
     [:octicons-arrow-right-24: Tutorial](guides/guided-tutorial.md)
 
@@ -303,8 +319,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    ROI or contribution-share ranges translated into model priors in a sandbox, with a
-    prior-predictive preview; experiments enter the likelihood as calibration.
+    A sandbox translates ROI or contribution-share ranges into model priors. A
+    prior-predictive preview shows the result. Experiments go into the likelihood as
+    calibration.
 
     [:octicons-arrow-right-24: Guided modelling](guides/guided-modelling.md)
 
@@ -312,8 +329,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    Convergence, holdout error and coverage, plausibility and data checks, each in plain
-    words. Pass goes live, warn needs an admin's audited reason, fail is blocked.
+    The scorecard has checks for convergence, holdout error and coverage, plausibility and
+    data. Each check is in plain words. A pass goes live. A warn needs an audited reason from
+    an admin. The gate blocks a fail.
 
     [:octicons-arrow-right-24: The gate](concepts/integrations.md#promotion-gate)
 
@@ -321,8 +339,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    Sliders over response curves precomputed per posterior draw, so bands stay joint and
-    honest; "Run exact" scores the full model with common random numbers.
+    The sliders use response curves that the platform calculates before, for each posterior
+    draw. Thus the bands stay joint and honest. "Run exact" scores the full model with common
+    random numbers.
 
     [:octicons-arrow-right-24: What if…](guides/guided-tutorial.md#6-what-if)
 
@@ -330,8 +349,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    A stable alias per use, history and rollback, a frozen input contract with an example
-    call, `score:<alias>` tokens, and generated code in seven flavours.
+    Each use gets a stable alias, with history and rollback. Each endpoint has a frozen input
+    contract with an example call, and `score:<alias>` tokens. The platform makes code in
+    seven flavours.
 
     [:octicons-arrow-right-24: Integrations hub](guides/integrations-hub.md)
 
@@ -339,8 +359,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    `run.*`, `model.version.ready`, `endpoint.promoted`, `score.completed`: HMAC-signed,
-    retried, logged and replayable, through an SSRF guard.
+    The events are `run.*`, `model.version.ready`, `endpoint.promoted` and `score.completed`.
+    They are HMAC-signed and go through an SSRF guard. The platform tries them again if they
+    fail, logs them, and can send them again.
 
     [:octicons-arrow-right-24: Receive webhooks](guides/webhook-receivers.md)
 
@@ -348,8 +369,8 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    Read-only, expiring chart links for Notion, Slack, Looker Studio or Power BI, and PNG,
-    SVG or PDF rendered in the sandbox.
+    Chart links are read-only and expire. Use them in Notion, Slack, Looker Studio or Power
+    BI. The sandbox also renders PNG, SVG or PDF files.
 
     [:octicons-arrow-right-24: Embed a chart](tutorials/embed-a-chart.md)
 
@@ -357,8 +378,8 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    A card on every endpoint generates an Apps Script that writes a forecast into a sheet
-    every morning, with a token scoped to that one endpoint.
+    A card on each endpoint makes an Apps Script. The script writes a forecast into a sheet
+    each morning. Its token has a scope of that one endpoint only.
 
     [:octicons-arrow-right-24: Connect Sheets](tutorials/google-sheets.md)
 
@@ -366,8 +387,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    Self-service workspaces with e-mail verification and abuse controls, GDPR export, tenant
-    deletion that purges every store, and a Cloud Armor policy.
+    Users can make their own workspaces, with e-mail verification and abuse controls. There
+    is a GDPR export and a tenant deletion that purges all stores. There is also a Cloud
+    Armor policy.
 
     [:octicons-arrow-right-24: Deleting and exporting data](guides/data-deletion.md)
 
@@ -375,8 +397,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    `choice.multinomial_logit`, a conditional logit with household effects, and categorical
-    holdout metrics: hit rate against always guessing the favourite, log score, Brier.
+    `choice.multinomial_logit` is a conditional logit with household effects. It has
+    categorical holdout metrics: the log score, Brier, and the hit rate compared with a guess
+    of the favourite each time.
 
     [:octicons-arrow-right-24: Use cases](use-cases.md#customer-choice)
 
@@ -384,8 +407,9 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     ---
 
-    `api.endpoint("…").score(ds)` returns an `xarray.Dataset`; `mapi endpoints`, `webhooks`,
-    `plots`, `guided`, `priors` and `tenant` cover the rest from a terminal.
+    `api.endpoint("…").score(ds)` returns an `xarray.Dataset`. From a terminal,
+    `mapi endpoints`, `webhooks`, `plots`, `guided`, `priors` and `tenant` do the other
+    tasks.
 
     [:octicons-arrow-right-24: The Python client](guides/python-client.md)
 
@@ -393,31 +417,32 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
 ## Measured, not promised
 
-Measured on an 8-core laptop against the whole stack, with real fits in the sandboxed runner.
-The v0.5 journeys, on the data and settings of [M3.5 verification](operations/m35-verification.md):
+We measured these values on an 8-core laptop against the full stack. The fits were real fits
+in the sandboxed runner. The v0.5 journeys used the data and settings of
+[M3.5 verification](operations/m35-verification.md):
 
 <div class="mapi-stats" markdown>
-<div class="mapi-stat"><strong>37–40 s</strong><span>the canonical workflow, 19 nodes from unit-root tests to governance, through the orchestrator and the sandboxed runner</span></div>
-<div class="mapi-stat"><strong>p = 0.7–0.95</strong><span>an ARIMAX fitted on pure noise against 19 shuffled refits: validation fails, promotion answers NOT_VALIDATED</span></div>
-<div class="mapi-stat"><strong>0.1 %</strong><span>of the result credited to three fake noise drivers by a model fitted on real signal</span></div>
-<div class="mapi-stat"><strong>26 s</strong><span>a validation with the null tests: 19 shuffled refits plus 3 fake drivers</span></div>
+<div class="mapi-stat"><strong>37–40 s</strong><span>the canonical workflow: 19 nodes from unit-root tests to governance, through the orchestrator and the sandboxed runner</span></div>
+<div class="mapi-stat"><strong>p = 0.7–0.95</strong><span>an ARIMAX fitted on pure noise, compared with 19 fits on shuffled data. The validation fails. Promotion gives NOT_VALIDATED.</span></div>
+<div class="mapi-stat"><strong>0.1 %</strong><span>of the result that a model fitted on real signal gave to three fake noise drivers</span></div>
+<div class="mapi-stat"><strong>26 s</strong><span>a validation with the null tests: 19 fits on shuffled data plus 3 fake drivers</span></div>
 <div class="mapi-stat"><strong>10–16 s</strong><span>an mmm-framework budget plan with a 5-point efficient frontier, in the sandbox</span></div>
 </div>
 
-Those runs found eight defects that no unit, integration or mocked-browser test could see;
-each was fixed with a regression test before release. The v0.4 journey, on the data of
-[M3 verification](operations/m3-verification.md):
+These runs found eight defects that unit, integration and mocked-browser tests did not find.
+We repaired each defect and added a regression test before the release. The v0.4 journey used
+the data of [M3 verification](operations/m3-verification.md):
 
 <div class="mapi-stats" markdown>
-<div class="mapi-stat"><strong>135 s</strong><span>upload → report → scenario, clicked through by a script; 79 s of it is the fit</span></div>
-<div class="mapi-stat"><strong>0.08 %</strong><span>instant slider vs the exact model for TV at half budget (−454,590 vs −454,241; exact sd 14,003)</span></div>
-<div class="mapi-stat"><strong>0.01 %</strong><span>"TV off" from the grid vs an exact counterfactual run (−1,046,519 vs −1,046,414)</span></div>
-<div class="mapi-stat"><strong>76–81 %</strong><span>of each translated prior inside the analyst's stated 80% ROI range</span></div>
-<div class="mapi-stat"><strong>0 objects</strong><span>left in five buckets after a tenant deletion (285 before); only the audit log and cost ledger are kept</span></div>
+<div class="mapi-stat"><strong>135 s</strong><span>upload → report → scenario, done by a script. The fit used 79 s.</span></div>
+<div class="mapi-stat"><strong>0.08 %</strong><span>the difference between the instant slider and the exact model, for TV at half budget (−454,590 vs −454,241, exact sd 14,003)</span></div>
+<div class="mapi-stat"><strong>0.01 %</strong><span>the difference between "TV off" from the grid and an exact counterfactual run (−1,046,519 vs −1,046,414)</span></div>
+<div class="mapi-stat"><strong>76–81 %</strong><span>of each translated prior is in the 80% ROI range that the analyst gave</span></div>
+<div class="mapi-stat"><strong>0 objects</strong><span>stay in five buckets after a tenant deletion (285 before). The platform keeps only the audit log and the cost ledger.</span></div>
 </div>
 
-Not yet measured: real testers, a real Google Cloud project, Docker-isolated public
-workspaces ([what remains](operations/m3-verification.md#what-remains-unverified)).
+We did not measure these items yet: real testers, a real Google Cloud project and public
+workspaces with Docker isolation ([what remains](operations/m3-verification.md#what-remains-unverified)).
 
 ## Connect it to everything
 
@@ -430,7 +455,7 @@ workspaces ([what remains](operations/m3-verification.md#what-remains-unverified
 
 <figure markdown>
 [![An endpoint with its history](assets/screenshots/integrations-endpoint.png){ .mapi-shot loading=lazy }](guides/integrations-hub.md#an-endpoints-page)
-<figcaption>Endpoints: one alias, every promotion and rollback with its reason.</figcaption>
+<figcaption>Endpoints: one alias, and each promotion and rollback with its reason.</figcaption>
 </figure>
 
 <figure markdown>
@@ -440,7 +465,7 @@ workspaces ([what remains](operations/m3-verification.md#what-remains-unverified
 
 <figure markdown>
 [![A shared chart on its embed page](assets/screenshots/embed-page.png){ .mapi-shot loading=lazy }](tutorials/embed-a-chart.md)
-<figcaption>Embeds: a read-only chart for a dashboard or a doc, revocable at any time.</figcaption>
+<figcaption>Embeds: a read-only chart for a dashboard or a document. You can revoke it at any time.</figcaption>
 </figure>
 
 </div>
@@ -455,10 +480,10 @@ workspaces ([what remains](operations/m3-verification.md#what-remains-unverified
 
 ## The core idea: fit with preprocessing, score with the *same* preprocessing
 
-The same pipeline object runs at fit time and at score time. At fit time each step
-**learns** its state from the training data; at score time it **replays** that state. Steps
-that look back in time store a small per-group tail, so a forecast sees exactly the history
-the model was fitted on.
+The same pipeline object runs at fit time and at score time. At fit time, each step
+**learns** its state from the training data. At score time, it **replays** that state. Steps
+that look back in time store a small tail for each group. Thus a forecast sees exactly the
+history that the model used for the fit.
 
 ```mermaid
 flowchart LR
@@ -495,24 +520,27 @@ flowchart LR
 
 === "What the platform does"
 
-    1. Checks the whole spec **statically**: names, dims, settings, units at every stage, where
-       the split happens and whether any step would learn from the holdout (`LEAKAGE_RISK`).
-    2. Fits each stateful step on the **training weeks only**, fits the model, then scores the
-       holdout **through the same path a forecast uses** and records the metrics.
-    3. Refits on all weeks so forecasts start from the latest data, and writes a bundle with
-       every state, context tail and hash.
+    1. The platform checks the full spec **statically**. It checks names, dims, settings and
+       units at each stage. It also checks where the split occurs, and if a step can learn
+       from the holdout (`LEAKAGE_RISK`).
+    2. It fits each stateful step on the **training weeks only**, and then fits the model.
+       Then it scores the holdout **through the same path that a forecast uses** and records
+       the metrics.
+    3. It fits again on all weeks, so that forecasts start from the latest data. Then it
+       writes a bundle with each state, context tail and hash.
 
 === "What you get back"
 
-    - Forecasts in **weekly EUR**, not "model units": the model reports its own units, and
-      they stop at the weekly resample because daily values cannot be recovered from weekly sums.
-      The output says so in its `output_space` (`model-owned`) and `units` attributes.
-    - A new market drawn from the fitted **hyperprior**, honestly wider than a known one.
-    - What-if deltas that share their noise with the baseline (common random numbers), so
-      the delta reflects the change, not sampling noise.
+    - Forecasts in **weekly EUR**, not in "model units". The model reports its own units. The
+      units stop at the weekly resample, because you cannot get daily values back from weekly
+      sums. The `output_space` (`model-owned`) and `units` attributes of the output tell this.
+    - A new market that comes from the fitted **hyperprior**. Its range is honestly wider than
+      the range of a known market.
+    - What-if deltas that share their noise with the baseline (common random numbers). Thus
+      the delta shows the change, not the sampling noise.
 
-The same model in plain Python, without any server; every snippet on this site is executed
-by the test suite:
+This is the same model in plain Python, without a server. The test suite runs each snippet
+on this site:
 
 ```python
 --8<-- "quickstart.py:fit"
@@ -524,10 +552,10 @@ by the test suite:
 
 ## Secure by design
 
-The platform is built to run models and data from people it does not trust. The controls that
-matter most are not settings you can forget to turn on: they are how it works.
-[The security model](concepts/security.md) says what each one stops, and what is still to be
-verified in the cloud.
+The platform can run models and data from persons that it does not trust. The most important
+controls are not settings that you can forget to set. They are part of how the platform works.
+[The security model](concepts/security.md) tells what each control stops. It also tells what
+we must still verify in the cloud.
 
 <div class="grid cards" markdown>
 
@@ -535,72 +563,73 @@ verified in the cloud.
 
     ---
 
-    Every ingest, fit, score and render runs in its own sandbox (a microVM on Cloud Run
-    Jobs), with no secrets and no network but signed URLs to its own objects. Placement by
-    trust tier is enforced in code.
+    Each ingest, fit, score and render runs in its own sandbox (a microVM on Cloud Run Jobs).
+    The sandbox has no secrets. Its only network access is signed URLs to its own objects. The
+    code enforces the placement by trust tier.
 
 -   :material-domain:{ .lg .middle } **Tenants never see each other**
 
     ---
 
-    PostgreSQL row-level security on every table, pinned per transaction and failing closed;
-    roles checked at every request; operators manage the platform without reading tenant
-    data.
+    Each table has PostgreSQL row-level security. It is pinned for each transaction, and it
+    fails closed. The platform checks roles at each request. Operators manage the platform,
+    but they do not read tenant data.
 
 -   :material-check-decagram-outline:{ .lg .middle } **Outputs are claims**
 
     ---
 
-    A run's outputs are checked against the store's own hashes and generations, copied where
-    runs cannot write, and signed. Download links are minted only after the signature
-    verifies.
+    The platform compares the outputs of a run with the hashes and generations of the store.
+    Then it copies the outputs to a location where runs cannot write, and signs them. It makes
+    download links only after it verifies the signature.
 
 -   :material-shield-link-variant-outline:{ .lg .middle } **Integrations that cannot be turned against you**
 
     ---
 
-    Webhooks are HMAC-signed and sent through an SSRF guard that pins the checked address;
-    embed links show platform recipes only, carry no credential and can be revoked; snippets
-    never contain a secret.
+    Webhooks are HMAC-signed. They go through an SSRF guard that pins the checked address.
+    Embed links show only platform recipes and have no credential. You can revoke them.
+    Snippets never contain a secret.
 
 -   :material-cash-lock:{ .lg .middle } **Compute you can see and cap**
 
     ---
 
-    Quotas in vCPU-seconds per token, tenant and platform, per-token budgets for endpoint
-    callers, a cost on every run, a global spend cap and an audited kill switch.
+    Quotas are in vCPU-seconds for each token, tenant and platform. Each token that calls an
+    endpoint has a budget. Each run shows a cost. There is a global spend cap and an audited
+    kill switch.
 
 -   :material-file-lock-outline:{ .lg .middle } **No pickle, anywhere**
 
     ---
 
-    Bundles are single zarr zips plus JSON sidecars; native models are skops (allow-listed
-    types) or xgboost JSON. Every file carries CRC32C, MD5 and SHA-256, and reading verifies
-    them.
+    Bundles are single zarr zips plus JSON sidecars. Native models are skops (allow-listed
+    types) or xgboost JSON. Each file has CRC32C, MD5 and SHA-256 values. The platform
+    verifies them when it reads the file.
 
 </div>
 
 ## Run it for many teams
 
-One deployment serves many organisations. People sign up or sign in with their own identity
-provider, work in the projects they have a role in, and see what their compute costs;
-operators look after the platform without ever reading a tenant's data.
+One deployment serves many organisations. Users sign up, or sign in with their own identity
+provider. They work in the projects where they have a role, and they see the cost of their
+compute. Operators manage the platform, but they never read the data of a tenant.
 
 <div class="mapi-shots" markdown>
 
 <figure markdown>
 [![The project switcher with two tenants](assets/screenshots/project-switcher.png){ .mapi-shot loading=lazy }](guides/authentication.md#browser-sign-in)
-<figcaption>Tenants and projects: your role in each, and each tenant's trust tier.</figcaption>
+<figcaption>Tenants and projects: your role in each project, and the trust tier of each tenant.</figcaption>
 </figure>
 
 <figure markdown>
 [![Usage and cost of a project](assets/screenshots/usage.png){ .mapi-shot loading=lazy }](guides/administration.md#cost-and-usage)
-<figcaption>Usage: metered cost per run, by token and resource class, against every quota.</figcaption>
+<figcaption>Usage: the metered cost of each run, by token and resource class, against each quota.</figcaption>
 </figure>
 
 <figure markdown>
 [![Settings > Data: export and deletion](assets/screenshots/settings-data.png){ .mapi-shot loading=lazy }](guides/data-deletion.md)
-<figcaption>Your data: a GDPR export, and a deletion that purges every store.</figcaption>
+<figcaption>Your data: a GDPR export, and a deletion that purges all stores.</figcaption>
 </figure>
 
 </div>

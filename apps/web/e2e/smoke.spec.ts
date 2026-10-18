@@ -267,6 +267,28 @@ test("the visual builder adds, reorders and edits steps by drag and drop", async
   expect(yaml).toContain("- {id: fill, use: core.impute@^1, with: {vars: [spend, spend_local], method: mean, over: [time]}}");
 });
 
+test("the Score page explains the model's inputs and scores typed-in values", async ({ page }) => {
+  const sent: unknown[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "POST" && /\/versions\/\d+:score$/.test(r.url())) sent.push(r.postDataJSON());
+  });
+  await page.goto(`/score?model=${MODEL}&version=1`);
+  const needs = page.getByRole("region", { name: "What this model needs" });
+  await expect(needs.getByText("needed on future periods")).toBeVisible({ timeout: 20_000 });
+  const grid = page.getByRole("table", { name: "Values to score" });
+  await expect(grid.getByLabel("time, row 1", { exact: true })).toHaveValue("2026-10-01");
+  await grid.getByLabel("spend, row 1", { exact: true }).fill("1500");
+  await page.getByRole("textbox", { name: "Value to fill with" }).fill("1000");
+  await page.getByRole("button", { name: /Fill blanks/ }).click();
+  await expect(grid.getByLabel("spend, row 1", { exact: true })).toHaveValue("1500");
+  await expect(grid.getByLabel("spend, row 48")).toHaveValue("1000");
+  await page.getByRole("button", { name: /^Forecast$/ }).click();
+  await expect(page.getByRole("region", { name: "Results" }).getByText("ui/plotdata/ppc_fan.arrow")).toBeVisible();
+  const body = sent[0] as { request: { data?: string }; inline: { data: { data_vars: { spend: { data: number[][][] } } } } };
+  expect(body.request.data).toBeUndefined();
+  expect(body.inline.data.data_vars.spend.data[0]![0]![0]).toBe(1500);
+});
+
 test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingested", async ({ page }) => {
   await page.goto("/datasets/ds_01jaf3a1b2c3d4e5f6g7h8j9k0?upload=true");
   const csv = "date,market,revenue,spend\n2026-01-01,de,10.5,3\n2026-01-02,de,11,4\n";
@@ -275,16 +297,16 @@ test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingeste
   await expect(page.getByRole("combobox", { name: "Use date as" })).toHaveValue("dim");
   await expect(page.getByRole("combobox", { name: "Use revenue as" })).toHaveValue("var");
   await page.getByRole("button", { name: "Upload and ingest" }).click();
-  await expect(page.getByText("Ingesting v2")).toBeVisible();
+  await expect(page.getByText("The ingest of v2 started")).toBeVisible();
   await expect(page).toHaveURL(/version=2/);
   await expect(page.getByText("ingesting").first()).toBeVisible();
 });
 
 test("scoring returns outputs that open as a table and a sandboxed chart", async ({ page }) => {
   await page.goto(`/score?model=${MODEL}&version=1`);
-  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: "Add a change" }).click();
   await page.getByRole("textbox", { name: "Selection" }).fill("channel=tv");
-  await page.getByRole("button", { name: "Score", exact: true }).click();
+  await page.getByRole("button", { name: "Forecast", exact: true }).click();
   await expect(page.getByText("ui/plotdata/ppc_fan.arrow")).toBeVisible();
   await expect(page.getByRole("table", { name: "ui/plotdata/ppc_fan.arrow" })).toContainText("week");
   const frame = page.locator('iframe[data-testid="plot-frame"]');
@@ -299,15 +321,16 @@ test("scoring returns outputs that open as a table and a sandboxed chart", async
 
 test("score form errors are marked on their fields and focus the first one", async ({ page }) => {
   await page.goto(`/score?model=${MODEL}&version=1`);
+  await page.getByText("Advanced", { exact: true }).click();
   await page.getByLabel("Draws").fill("abc");
   await page.getByLabel("Variables (optional)").fill("bad name!");
-  await page.getByRole("button", { name: "Score", exact: true }).click();
+  await page.getByRole("button", { name: "Forecast", exact: true }).click();
   const draws = page.getByLabel("Draws");
   await expect(draws).toBeFocused();
   await expect(draws).toHaveAttribute("aria-invalid", "true");
-  await expect(draws).toHaveAccessibleDescription(/Draws must be between 0 and 10000\..*0 returns summaries only\./);
+  await expect(draws).toHaveAccessibleDescription(/The number of draws is not correct\. Type a number from 0 to 10000\..*If you type 0, you get only summaries\./);
   await expect(page.getByLabel("Variables (optional)")).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByRole("alert").filter({ hasText: "Draws must be between" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "The number of draws is not correct" })).toBeVisible();
   await expect(page.getByLabel("Seed (optional)")).not.toHaveAttribute("aria-invalid");
 });
 
@@ -326,7 +349,7 @@ test.describe("phone layout (375 px)", () => {
     [`/models/${MODEL}/versions/1`, "Diagnostics"],
     [`/datasets/${DATASET}`, "Versions"],
     [`/runs/${RUNNING}`, "attempt 1"],
-    [`/score?model=${MODEL}&version=1`, "Outputs"],
+    [`/score?model=${MODEL}&version=1`, "What this model needs"],
   ];
   for (const [path, marker] of pages) {
     test(`${path} does not scroll horizontally`, async ({ page }) => {

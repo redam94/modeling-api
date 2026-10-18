@@ -471,13 +471,15 @@ CHOOSER_QUESTIONS: Final[tuple[ChooserQuestion, ...]] = (
         ("explain_marketing", "Measure what my marketing adds"),
         ("plan_budget", "Plan or split a marketing budget"),
         ("forecast", "Forecast the future"),
-        ("explain_drivers", "Understand what drives a number"),
+        ("explain_drivers", "Understand what causes changes in a number"),
         ("predict_values", "Predict a value for each store, product or customer"),
         ("understand_choices", "Understand which product people choose"),
         ("find_regimes", "Find periods that behave differently"),
         ("compare_series", "See how several series move together"),
-        ("check_data", "Check or prepare my data"),
-        ("validate_model", "Check that a model can be trusted"),
+        ("check_data", "Examine or prepare my data"),
+        ("validate_model", "Make sure that I can trust a model"),
+        ("map_fields", "Make a map or an image from measurements, with its uncertainty"),
+        ("fit_physics", "Fit a physical model to measurements"),
     ], weight=3, multiple=True),
     _q("data_shape", "What does your data look like?", [
         ("one_series", "One number over time"),
@@ -485,8 +487,9 @@ CHOOSER_QUESTIONS: Final[tuple[ChooserQuestion, ...]] = (
         ("panel", "The same numbers for many markets, stores or products"),
         ("choices", "Purchases or choices by customers"),
         ("table", "A table of items without a time order"),
+        ("grid", "A map, an image or values on a regular grid"),
     ], weight=2, multiple=True),
-    _q("frequency", "How often is it recorded?", [
+    _q("frequency", "How often do you record the data?", [
         ("daily", "Daily"), ("weekly", "Weekly"), ("monthly", "Monthly or less often"),
         ("not_time", "It is not over time"),
     ], multiple=True),
@@ -495,13 +498,14 @@ CHOOSER_QUESTIONS: Final[tuple[ChooserQuestion, ...]] = (
         ("long", "More than three years"),
     ]),
     _q("drivers", "Do you have other columns that could explain the result?", [
-        ("yes", "Yes (prices, promotions, weather, spend)"), ("no", "No, just the number"),
-    ], help="Columns you know for the future too (planned prices, booked spend) help forecasts."),
-    _q("uncertainty", "Do you need a range (best and worst case), not just one number?", [
-        ("essential", "Yes, a range is essential"), ("nice", "It would be nice"),
+        ("yes", "Yes (prices, promotions, weather, spend)"), ("no", "No, only the number"),
+    ], help="Columns that you also know for the future (planned prices, booked spend) make "
+         "forecasts better."),
+    _q("uncertainty", "Do you need a range (best and worst case), not only one number?", [
+        ("essential", "Yes, a range is essential"), ("nice", "It would be good"),
         ("no", "One number is enough"),
     ]),
-    _q("experience", "How comfortable are you with statistics?", [
+    _q("experience", "How much do you know about statistics?", [
         ("beginner", "New to it"), ("intermediate", "I know the basics"),
         ("expert", "I am an expert"),
     ]),
@@ -570,7 +574,7 @@ class ChooserResult(ResponseModel):
                     "summary_plain": "Forecasts one weekly number a few months ahead, with "
                     "a range of likely values.",
                     "score": 0.92,
-                    "reasons_plain": ["Made for forecasting", "Works on one series"],
+                    "reasons_plain": ["Suits: forecast the future", "Suits: one number over time"],
                     "cautions_plain": [],
                     "difficulty": "beginner",
                     "typical_runtime": "minutes",
@@ -596,7 +600,7 @@ def chooser_answers_from_query(query: Mapping[str, Sequence[str]]) -> list[Choos
             out.append(ChooserAnswer(question_id=key, values=values))
         except ValueError as exc:
             raise MapiError(
-                f"invalid chooser answer for {key[:40]!r}",
+                f"the chooser answer for {key[:40]!r} is not valid",
                 code=ErrorCode.CHOOSER_ANSWER_INVALID,
                 pointer=f"/{key[:40]}",
                 untrusted_text=str(exc)[:2000],

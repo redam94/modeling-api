@@ -6,7 +6,8 @@
  * - the dataset `eu_media_daily` (every version) explores a synthetic weekly geo panel;
  * - `eu-geo-mmm` (and any model this file does not know, e.g. Guided sessions' models) is the
  *   mmm-framework MMM; `sales-arimax` (v1, v2), `sales-ets` and `macro-vecm` are added to the
- *   model list for forecasts, backtests, comparisons and impulse responses;
+ *   model list for forecasts, backtests, comparisons and impulse responses; `demo-fields`
+ *   serves the `fields` view of `fields.gen.json` (synthetic posterior draws on grids);
  * - explore and optimize runs finish {@link MOCK_RUN_MS} after they start.
  */
 import { delay, http, HttpResponse, type HttpHandler } from "msw";
@@ -20,6 +21,7 @@ import { crc32cBase64 } from "@/lib/crc32c";
 
 import { answersFromQuery, ChooserAnswerError, recommend } from "./chooser";
 import gen from "./explorer.gen.json";
+import fieldsGen from "./fields.gen.json";
 import * as fx from "./fixtures";
 
 const API = env.apiBase;
@@ -62,6 +64,8 @@ interface Fixture {
 }
 
 export const FIXTURE = gen as unknown as Fixture;
+/** The demo model of the field viewer (only the `fields` section). */
+export const FIELDS_FIXTURE = fieldsGen as unknown as ModelFixture;
 
 const MMM = "model://default/eu-geo-mmm@v1";
 const ARIMAX = "model://default/sales-arimax";
@@ -74,6 +78,8 @@ export const EXTRA_MODEL_IDS = {
   vecm: "mdl_01jaf3m35vecm0000000001",
   /** The ARIMAX the canonical workflow run fitted (`mocks/workflows.ts`), explored like sales-arimax v1. */
   workflowFit: "mdl_01jaf3m35wffit000000001",
+  /** A model whose outputs lie on grids (`fields.gen.json`): the field viewer. */
+  fields: "mdl_01jaf3m35fields00000001",
 } as const;
 
 interface ExtraModel {
@@ -108,6 +114,7 @@ export const EXTRA_MODELS: ExtraModel[] = [
   extraModel(EXTRA_MODEL_IDS.ets, "sales-ets", [{ v: 1, plugin: "ts.ets@1.0.0", inference: "kalman", metrics: { mape: 22.75, rmse: 7.75 } }]),
   extraModel(EXTRA_MODEL_IDS.vecm, "macro-vecm", [{ v: 1, plugin: "ts.vecm@1.0.0", inference: "point", metrics: {} }]),
   extraModel(EXTRA_MODEL_IDS.workflowFit, "wf-weekly-readiness-fit", [{ v: 1, plugin: "ts.sarimax@1.0.0", inference: "kalman", metrics: { mape: 10.37, rmse: 2.62 } }]),
+  extraModel(EXTRA_MODEL_IDS.fields, "demo-fields", [{ v: 1, plugin: "sci.lgcp_grid@1.0.0", inference: "mcmc", metrics: {} }]),
 ];
 
 /** The fixture of a model version (unknown models are the MMM). */
@@ -116,6 +123,7 @@ function modelFixture(modelId: string, version: number): ModelFixture {
   if (modelId === EXTRA_MODEL_IDS.workflowFit) return FIXTURE.models[`${ARIMAX}@v1`]!;
   if (modelId === EXTRA_MODEL_IDS.ets) return FIXTURE.models[ETS]!;
   if (modelId === EXTRA_MODEL_IDS.vecm) return FIXTURE.models[VECM]!;
+  if (modelId === EXTRA_MODEL_IDS.fields) return FIELDS_FIXTURE;
   return FIXTURE.models[MMM]!;
 }
 

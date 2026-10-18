@@ -5,6 +5,90 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.7.0] — Scientific models — 2026-10-17
+
+This release adds scientific models with data on a map, an image or a grid. Four new plugins
+come from the pymc-challenges case studies: event counts on a map, a reaction-diffusion PDE,
+cell forces from gel movement and a strong gravitational lens. A model can now declare that an
+output is a 2-D field. The Model Explorer then shows the field with its uncertainty, and new
+Plotly recipes draw it. The Score page now guides each request in steps, and a forecast with
+actuals shows its predictions next to the actuals.
+
+### Known gaps
+- The docs' Score screenshots still show the previous form; regenerate them against a live
+  stack (`scripts/docs_screenshots.mjs`).
+- The Model Explorer shows the **Fields** section only for fits made with this release. Fit a
+  model again to see its fields.
+- The `sci.*` recipes and the field viewer are not in the plot gallery of the docs, which shows
+  only Vega-Lite plots.
+- The real-data loaders of `mapi-plugin-science` need a local copy of pymc-challenges
+  (`MAPI_PYMC_CHALLENGES_DATA`). The platform does not ingest the `.npz` files directly.
+- The corpus checks run `e80_lens` only at the tiny size. Nobody ran the full size.
+
+### Added
+- **Scientific models (`mapi-plugin-science`).** Four new plugins from the pymc-challenges
+  case studies. They have data on a map, an image or a grid, and their outputs are fields with a
+  range for each cell:
+  - `sci.lgcp_grid`: event counts on a map over time, with a forecast (E07, Oklahoma
+    earthquakes).
+  - `sci.fisher_kpp`: a reaction-diffusion PDE that the model solves in each step of the fit,
+    with a forecast to later times (E50, scratch assay).
+  - `sci.traction_force`: cell forces from the movement of a gel, with exact draws of the
+    force field (E60).
+  - `sci.strong_lens`: a strong gravitational lens in a telescope image, with the source, the
+    Einstein radius and the critical curves of each draw (E80).
+
+  Each plugin has a conformance fixture (`e07_lgcp`, `e50_kpp`, `e60_traction`, `e80_lens`).
+  The `base-bayes` runner images contain them (namespace `sci`).
+- `OutputDecl.grid` (`GridDecl`): a model can declare that an output is a 2-D field. The
+  declaration gives the row and column dims, an optional frame dim, an optional component dim
+  for a vector field, the colour map, the log scale and the origin.
+- **Fields in the Model Explorer.** A new `fields` section shows each field output on a canvas.
+  Select the mean, the sd, mean ÷ sd, the 5% or 95% map, or single draws. Use the frame slider
+  and the draw player (hypothetical outcome plots). Point to a cell to see its value and its
+  90% range. Vector fields show arrows.
+- **`sci.*` plot recipes** (Plotly): `sci.field_map`, `sci.vector_field`, `sci.profile_bands`
+  and `sci.ensemble`. A recipe can now return a Plotly figure.
+- Two new chooser goals ("Make a map or an image from measurements, with its uncertainty" and
+  "Fit a physical model to measurements") and a new data shape ("A map, an image or values on a
+  regular grid").
+- **Score page: type values instead of uploading a dataset.** The page now explains what the
+  chosen model version needs (what it predicts, the inputs it reads and which of them it needs
+  on future periods, the fitted date range and every fitted level) and guides the request in
+  steps: what to do (the version's modes in plain words), how far ahead, the values to score
+  and what-if changes. Values are typed into a grid that starts with the periods to score
+  crossed with every fitted level, with paste from a spreadsheet and "fill blanks" for a
+  column; a forecast says what blank future inputs become. A dataset or no new data are still
+  there, and the rarely changed settings moved under **Advanced**. A checklist says what will
+  be sent and what is missing.
+- `GET /v1/models/{model_id}/versions/{version}/inputs` (`ModelInputSchema`): the input contract
+  of a version - the one an endpoint serving it would freeze - and its input table with
+  `?periods=N` periods after the fit.
+- `ScoreCall.inline` (`ScoreInline`): `data`/`scenario` as inline XrJSON (up to 5 MB each) on
+  `POST …/versions/{version}:score`, checked against the version's inputs and stored as run
+  inputs exactly like an endpoint's inline payloads. The route gets the endpoint score body cap.
+
+- **Predictions against your actuals.** A forecast sent actuals returns one-step-ahead
+  predictions on those periods (what the model expected before seeing each actual); the Score
+  page now shows them next to the actuals: the number compared, the typical (MAE) and
+  percentage error, how often the actuals fell inside the band and the average over/under
+  prediction, a chart per series in the plot sandbox (actuals as points, the forecast dashed
+  after the last actual) and a table with the error per period.
+- `ScoreSummary.actuals`: the actuals a forecast used, as tables named after the prediction
+  variable they compare with (its coordinate columns, then `actual`), in the output's names
+  and original units (raw-stage payloads; none for model-space output).
+
+### Fixed
+- A score payload with one label on an integer dim with a step larger than 1 (for example
+  hours with an 8 h step) no longer fails with a false "gap" error. The validator now puts the
+  payload on the grid of the fit.
+- The harness no longer treats a vector field (an output with a `component` dim that its
+  `grid` declares) as an additive decomposition.
+- The Score page asked every model for `mean`/`hdi_90` summaries, which quantile, interval and
+  point models refuse (`CAPABILITY_UNSUPPORTED`). Summaries now default to the model's
+  representation (`median`/`q5`/`q95` for quantiles), only the ones it can give are offered,
+  and draws are off for models without them.
+
 ## [0.6.0] — Spec builder — 2026-10-17
 
 Building a spec no longer means knowing every id and column by heart. The YAML editor now

@@ -318,7 +318,7 @@ export function mockValidateWorkflow(doc: WorkflowDoc, catalog: Catalog): Workfl
     if (n.when && !when) issues.push(issue("WORKFLOW_INVALID", `${base}/when`, "when must be '<branch node id>.then' or '.else'"));
     if (when) {
       const b = doc.nodes.find((x) => x.id === when.branch);
-      if (!b || implId(b.use) !== BRANCH_NODE) issues.push(issue("WORKFLOW_INVALID", `${base}/when`, `node '${n.id}' is gated by '${when.branch}', which is not a branch node`));
+      if (!b || implId(b.use) !== BRANCH_NODE) issues.push(issue("WORKFLOW_INVALID", `${base}/when`, `node '${n.id}' uses when: ${when.branch}, but '${when.branch}' is not a branch node`));
     }
     const ports = inputPorts(n, catalog);
     const isSub = implId(n.use) === SUBWORKFLOW_NODE;
@@ -345,7 +345,7 @@ export function mockValidateWorkflow(doc: WorkflowDoc, catalog: Catalog): Workfl
           issues.push(issue("WORKFLOW_INVALID", pointer, `${s}: the type of this binding is unknown`));
           return;
         }
-        if (spec && t !== spec.type) issues.push(issue("WORKFLOW_INVALID", pointer, `expects ${spec.type} but ${s} is ${t}`));
+        if (spec && t !== spec.type) issues.push(issue("WORKFLOW_INVALID", pointer, `input '${port}' must be ${spec.type}, but ${s} is ${t}`));
       });
     }
     for (const [port, spec] of Object.entries(ports)) {

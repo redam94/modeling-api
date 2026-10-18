@@ -27,20 +27,20 @@ export function planHeadline(r: OptimizeResult): { text: string; tone: "good" | 
   const up = moves.filter((m) => m.delta > 1e-6 * Math.max(1, r.total_budget));
   const down = moves.filter((m) => m.delta < -1e-6 * Math.max(1, r.total_budget));
   const parts: string[] = [];
-  if (r.mode === "free") parts.push(`The model suggests spending ${amount(r.total_budget, r.spend_units)} in all (today ${amount(r.current_total, r.spend_units)}).`);
+  if (r.mode === "free") parts.push(`The model recommends a total spend of ${amount(r.total_budget, r.spend_units)} (today ${amount(r.current_total, r.spend_units)}).`);
   else if (Math.abs(r.total_budget - r.current_total) > 1e-6 * Math.max(1, r.current_total)) parts.push(`With ${amount(r.total_budget, r.spend_units)} instead of ${amount(r.current_total, r.spend_units)}:`);
   if (up.length || down.length) {
     const words = (xs: typeof moves) => xs.map((m) => `${m.ch} (${signedAmount(Math.round(m.delta), r.spend_units)})`).join(", ");
     const sentence = down.length && up.length ? `move money from ${words(down)} to ${words(up)}` : down.length ? `spend less on ${words(down)}` : `spend more on ${words(up)}`;
     parts.push(`${parts.length ? sentence : sentence.replace(/^./, (c) => c.toUpperCase())}.`);
-  } else parts.push("Today's split is already about the best.");
+  } else parts.push("Today's split is already almost the best split.");
   let tone: "good" | "neutral" | "warn" = "neutral";
   if (r.uplift) {
     const b = band(r.uplift.quantiles);
     const round = (v: number) => (Math.abs(v) >= 100 ? Math.round(v) : v);
     parts.push(`That adds about ${signedAmount(round(r.uplift.mean), r.kpi_units)} to ${r.kpi}${b ? ` (90% likely between ${signedAmount(round(b[0]), r.kpi_units)} and ${signedAmount(round(b[1]), r.kpi_units)})` : ""}.`);
     if (r.prob_positive_uplift != null) {
-      parts.push(`The chance it beats today's plan is ${pct(r.prob_positive_uplift)}.`);
+      parts.push(`The chance that it is better than today's plan is ${pct(r.prob_positive_uplift)}.`);
       tone = r.prob_positive_uplift >= 0.8 ? "good" : r.prob_positive_uplift < 0.6 ? "warn" : "neutral";
     }
   }
@@ -77,7 +77,7 @@ export function PlanResult({ result: r, expert }: { result: OptimizeResult; expe
     <div className="grid gap-5" data-testid="plan-result">
       <PlainSummary tone={headline.tone}>
         <p className="text-[15px]">{headline.text}</p>
-        <p className="text-[13px] text-muted-foreground">Goal: {expert ? r.objective_label : objectivePlain(r.objective, r.kpi)}. Based on {num(r.n_draws)} plausible versions of the model{r.horizon ? `, over ${r.horizon} periods` : ""}.</p>
+        <p className="text-[13px] text-muted-foreground">Goal: {expert ? r.objective_label : objectivePlain(r.objective, r.kpi)}. The result uses {num(r.n_draws)} plausible versions of the model{r.horizon ? `, over ${r.horizon} periods` : ""}.</p>
       </PlainSummary>
       <div className="grid gap-3 sm:grid-cols-3">
         <Figure label={`Expected ${r.kpi} with the plan`} value={kpiAmount(r.expected_kpi.mean, r.kpi_units)} detail={expected ? `90% likely ${kpiAmount(expected[0], r.kpi_units)} – ${kpiAmount(expected[1], r.kpi_units)}` : undefined} />
@@ -132,10 +132,10 @@ export function PlanResult({ result: r, expert }: { result: OptimizeResult; expe
           />
           {extrapolated.length ? (
             <p className="flex items-start gap-1.5 text-[13px]">
-              <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warning" /> {extrapolated.map(allocationLabel).join(", ")} would spend more than the data has seen; the model is extrapolating there.
+              <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warning" /> {extrapolated.map(allocationLabel).join(", ")} will spend more than the data shows. For these channels, the model extrapolates.
             </p>
           ) : null}
-          {expert ? <p className="text-xs text-muted-foreground">Agreement: the share of plausible model versions whose own best plan moves the channel the same way.</p> : null}
+          {expert ? <p className="text-xs text-muted-foreground">Agreement: the share of plausible model versions that move the channel in the same direction in their best plan.</p> : null}
         </CardContent>
       </Card>
       {frontier ? (
@@ -187,7 +187,7 @@ export function PlanResult({ result: r, expert }: { result: OptimizeResult; expe
               ))}
               {notes.technical.length ? (
                 <li className="flex items-start gap-1.5 text-muted-foreground">
-                  <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" /> The optimiser left {notes.technical.length === 1 ? "a technical note" : `${notes.technical.length} technical notes`} for experts, below.
+                  <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" /> The optimiser wrote {notes.technical.length === 1 ? "a technical note" : `${notes.technical.length} technical notes`} for experts. Look below.
                 </li>
               ) : null}
             </ul>

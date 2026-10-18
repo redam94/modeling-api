@@ -24,7 +24,7 @@ export function ModelPicker({ value, onChange, error }: { value: string; onChang
   const about = items.find((m) => m.id === modelId)?.about;
   return (
     <div className="grid gap-2">
-      <Field label="Model (required)" htmlFor={id} error={error} hint="The catalog model this node fits; the version range keeps later compatible versions.">
+      <Field label="Model (required)" htmlFor={id} error={error} hint="Select the catalog model that this node fits. The version range lets the node use later compatible versions.">
         <div className="flex gap-2">
           <NativeSelect id={id} className="min-w-0 flex-1 shrink" value={modelId} onChange={(e) => onChange(e.target.value ? `${e.target.value}@${range || "^1"}` : "")}>
             <option value="">Choose a model</option>
@@ -80,7 +80,7 @@ export function WorkflowRefPicker({ value, onChange, project, self, error }: { v
   const make = (name: string, rev: number | "latest") => `workflow://${project}/${name}@${rev === "latest" ? "latest" : `r${rev}`}`;
   return (
     <div className="grid gap-3">
-      <Field label="Workflow (required)" htmlFor={id} error={error} hint="Its inputs and outputs become this node's ports. Pin a revision so later edits do not change this workflow silently.">
+      <Field label="Workflow (required)" htmlFor={id} error={error} hint="The inputs and outputs of that workflow become the ports of this node. Select a fixed revision. Then later changes to that workflow do not change this node.">
         <NativeSelect id={id} value={parsed?.name ?? ""} onChange={(e) => onChange(e.target.value ? make(e.target.value, workflows.data?.items.find((w) => w.name === e.target.value)?.latest_revision ?? "latest") : "")}>
           <option value="">Choose a saved workflow</option>
           {(workflows.data?.items ?? [])

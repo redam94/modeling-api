@@ -20,7 +20,7 @@ import { isTerminal } from "@/lib/run-state";
 import { useAuth } from "@/stores/auth";
 import { scopeKey, useScope } from "@/stores/scope";
 
-import { api, newIdempotencyKey, PROJECT_HEADER, unwrap, unwrapVoid, unwrapWithStatus } from "./client";
+import { ApiError, api, newIdempotencyKey, PROJECT_HEADER, unwrap, unwrapVoid, unwrapWithStatus } from "./client";
 import { advanceLogTail, EMPTY_LOG_TAIL, logPollDelay, type LogTail } from "./logs";
 import { fetchSession } from "./session";
 import type {
@@ -114,6 +114,7 @@ export const qk = {
   model: (p: string, id: string) => ["p", p, "models", id] as const,
   modelVersions: (p: string, id: string) => ["p", p, "models", id, "versions"] as const,
   modelVersion: (p: string, id: string, v: number) => ["p", p, "models", id, "versions", v] as const,
+  modelInputs: (p: string, id: string, v: number) => ["p", p, "models", id, "versions", v, "inputs"] as const,
   plots: (p: string, id: string, v: number) => ["p", p, "models", id, "versions", v, "plots"] as const,
   plot: (p: string, id: string, v: number, plotId: string) => ["p", p, "models", id, "versions", v, "plots", plotId] as const,
   modelVersionById: (p: string, mvId: string) => ["p", p, "model-version-by-id", mvId] as const,
@@ -610,6 +611,25 @@ export function useModelVersions(id: string | undefined) {
         }),
       ),
     enabled: Boolean(id),
+  });
+}
+
+/** What a score call of the version can send: the input contract and the input table. */
+export function useModelInputs(id: string | undefined, version: number | undefined) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: qk.modelInputs(s.key, id ?? "", version ?? 0),
+    queryFn: ({ signal }) =>
+      unwrap(
+        api.GET("/v1/models/{model_id}/versions/{version}/inputs", {
+          params: { path: { model_id: id ?? "", version: version ?? 0 } },
+          headers: s.headers,
+          signal,
+        }),
+      ),
+    enabled: Boolean(id) && version !== undefined,
+    staleTime: 5 * 60_000,
+    retry: (n, e) => !(e instanceof ApiError && e.status < 500) && n < 2,
   });
 }
 

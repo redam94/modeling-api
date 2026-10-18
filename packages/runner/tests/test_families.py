@@ -43,6 +43,10 @@ EXPECTED: dict[str, tuple[str, set[str], tuple[Any, ...]]] = {
     "e24": ("ts", TIME, (_SLOW,)),
     "e33": ("mmm", TIME | {"decomposition", "response_curves"}, (_SLOW,)),
     "guided_mmm": ("mmm", TIME | {"decomposition", "response_curves"}, (_SLOW,)),
+    "e07_lgcp": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
+    "e50_kpp": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
+    "e60_traction": ("sci", {"params", "diagnostics", "fields"}, ()),
+    "e80_lens": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
 }
 CHEAP_CHECKS = (
     "convergence",

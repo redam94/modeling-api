@@ -1,6 +1,6 @@
 [project]
 name = "mapi-server"
-version = "0.6.0"
+version = "0.7.0"
 description = "modeling-api control plane (FastAPI)"
 readme = "README.md"
 requires-python = ">=3.12"

@@ -369,10 +369,10 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
                     threshold=0.0,
                     message_expert=f"the likelihood optimiser did not converge for "
                     f"{len(unconverged)} of {len(fits)} series; estimates may be unreliable",
-                    message_plain="The model could not settle on its best settings for some "
-                    "series, so treat their results with care.",
-                    suggested_action="Simplify the model (fewer lags or terms) or check the "
-                    "data for outliers and level shifts.",
+                    message_plain="The model did not find its best settings for some series. "
+                    "Be careful with the results of these series.",
+                    suggested_action="Make the model simpler (fewer lags or terms), or look "
+                    "for outliers and level shifts in the data.",
                 )
             )
         if "test.ljung_box" in tests[TEST].values:
@@ -389,11 +389,11 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
                         threshold=0.0,
                         message_expert=f"Ljung-Box rejects white-noise residuals at 5% for "
                         f"{share:.0%} of the series",
-                        message_plain="Some pattern over time is left in the errors, so the "
-                        "model misses part of the structure."
+                        message_plain="A pattern over time is left in the errors. The model "
+                        "does not find all of the structure."
                         if share > 0
                         else "No pattern over time is left in the errors.",
-                        suggested_action="Try more lags or a seasonal term." if share > 0 else None,
+                        suggested_action="Add more lags or a seasonal term." if share > 0 else None,
                     )
                 )
         return out

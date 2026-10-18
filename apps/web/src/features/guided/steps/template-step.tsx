@@ -125,7 +125,7 @@ function TemplateAbout({ template }: { template: GuidedTemplate }) {
 export function TemplatePicker() {
   const templates = useGuidedTemplates();
   if (templates.isPending) return <LoadingRows rows={3} />;
-  if (templates.isError) return <ErrorNotice error={templates.error} title="The templates could not be loaded" onRetry={() => void templates.refetch()} />;
+  if (templates.isError) return <ErrorNotice error={templates.error} title="The app could not load the templates" onRetry={() => void templates.refetch()} />;
   return (
     <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Templates">
       {sortTemplates(templates.data.items).map((t) => (
@@ -148,7 +148,7 @@ export function SessionList() {
   if (!sessions.length) {
     return (
       <EmptyState icon={<Clock />} title="Nothing in progress yet" className="p-6">
-        Your analyses appear here, so you can pick up where you left off.
+        You have no analyses. Start an analysis from a template. You can then continue it from here.
       </EmptyState>
     );
   }

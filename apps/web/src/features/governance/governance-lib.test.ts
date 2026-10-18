@@ -16,10 +16,10 @@ describe("governance helpers", () => {
     const permutation = checks.get("null.permutation_target")!; // lower p is better: direction max
     expect(whiteness.direction).toBe("min");
     expect(thresholdProblem(whiteness, 0.05, 0.01)).toBeNull();
-    expect(thresholdProblem(whiteness, 0.05, 0.2)).toMatch(/at most the warn limit/);
+    expect(thresholdProblem(whiteness, 0.05, 0.2)).toMatch(/fail limit equal to or less than the warn limit/);
     expect(thresholdProblem(permutation, 0.05, 0.1)).toBeNull();
-    expect(thresholdProblem(permutation, 0.1, 0.05)).toMatch(/at least the warn limit/);
-    expect(thresholdProblem(permutation, Number.NaN, 0.05)).toBe("Both limits must be numbers.");
+    expect(thresholdProblem(permutation, 0.1, 0.05)).toMatch(/fail limit equal to or more than the warn limit/);
+    expect(thresholdProblem(permutation, Number.NaN, 0.05)).toBe("A limit is not a number. Type a number for each limit.");
     expect(thresholdText(whiteness, 0.05)).toBe("passes at 0.05 or more");
     expect(thresholdText(permutation, 0.05)).toBe("passes at 0.05 or less");
     expect(thresholdText(checks.get("recovery.simulated"), 0.1)).toBe("passes within 0.1 of 0.9");
@@ -51,7 +51,7 @@ describe("governance helpers", () => {
   });
 
   it("read NOT_VALIDATED refusals as a blocked gate", () => {
-    const message = "The governance policy requires a validated model; this version is awaiting approval. Submit it for validation first.";
+    const message = "The governance policy accepts only a validated model. This version is awaiting approval. Submit it for validation first.";
     const decision = gateFromProblem({
       type: "urn:mapi:error:NOT_VALIDATED",
       title: "Conflict",

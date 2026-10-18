@@ -60,6 +60,7 @@ __all__ = [
     "InputColumnRole",
     "InputTable",
     "InputTableColumn",
+    "ModelInputSchema",
     "capability_breaks",
     "endpoint_ref",
     "example_actuals_call",
@@ -413,9 +414,9 @@ class InputTable(ResponseModel):
                 {"name": "t", "role": "coord", "freq": "MS",
                  "description": "The period (yyyy-MM-dd)"},
                 {"name": "y", "role": "target", "dims": ["t"],
-                 "description": "The actual; leave empty for the periods to forecast"},
+                 "description": "The actual (leave empty for the periods to forecast)"},
                 {"name": "price", "role": "driver", "dims": ["t"],
-                 "description": "Needed on every period, the periods to forecast included"},
+                 "description": "Necessary on each period, also on the periods to forecast"},
             ],
             "rows": [["1961-01-01", None, None], ["1961-02-01", None, None]],
         }
@@ -429,6 +430,31 @@ class InputTable(ResponseModel):
     def variables(self) -> dict[str, list[str]]:
         """Value columns and their dims (the input of ``xrjson_from_rows``)."""
         return {c.name: list(c.dims) for c in self.columns if c.role != "coord"}
+
+
+class ModelInputSchema(ResponseModel):
+    """``GET /v1/models/{model_id}/versions/{version}/inputs``: what a score call of one model
+    version can send - the same input contract an endpoint serving the version would freeze
+    (:func:`~mapi_server.services.endpoints.snapshot_for`) and its input table.
+
+    The names are the spec's canonical ones (``data.bind`` applied), which inline payloads
+    (``ScoreCall.inline``) use. ``fit_coords`` tell a caller what the model saw: the fitted
+    periods and every level of the other dims."""
+
+    model_ref: str
+    snapshot: EndpointSchemaSnapshot
+    input_table: InputTable | None = Field(
+        None, description="The inline input as a long table, with the periods after the fit"
+    )
+    max_inline_bytes: int = 5 * 1024 * 1024
+
+    model_config = _examples(
+        {
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "snapshot": EndpointSchemaSnapshot.model_json_schema()["examples"][0],
+            "input_table": InputTable.model_json_schema()["examples"][0],
+        }
+    )
 
 
 class EndpointSchema(ResponseModel):
@@ -484,8 +510,8 @@ class EndpointValidation(ResponseModel):
                     "code": "MISSING_FUTURE_COVARIATE",
                     "severity": "error",
                     "pointer": "/scenario",
-                    "message": "forecasting needs future values of ['spend'] at stage 'raw'",
-                    "suggested_action": "Provide them in a scenario dataset.",
+                    "message": "the forecast needs future values of ['spend'] at stage 'raw'",
+                    "suggested_action": "Supply them in a scenario dataset.",
                 }
             ],
         }
@@ -527,7 +553,7 @@ def schema_breaks(old: DataSchema, new: DataSchema) -> list[str]:
     for name, dim in old.dims.items():
         nd = new.dims.get(name)
         if nd is None:
-            out.append(f"dim {name!r} is gone")
+            out.append(f"dim {name!r} does not exist now")
             continue
         if nd.kind != dim.kind:
             out.append(f"dim {name!r} changed from {dim.kind} to {nd.kind}")
@@ -540,7 +566,7 @@ def schema_breaks(old: DataSchema, new: DataSchema) -> list[str]:
         ov = old.vars.get(name)
         if ov is None:
             if var.missing == "forbid":
-                out.append(f"new required input {name!r}")
+                out.append(f"new necessary input {name!r}")
             continue
         if tuple(ov.dims) != tuple(var.dims):
             out.append(f"input {name!r} now has dims {list(var.dims)} (was {list(ov.dims)})")
@@ -563,8 +589,9 @@ def capability_breaks(old: EndpointSchemaSnapshot, new: EndpointSchemaSnapshot) 
         and "forecast" in new.score_modes
     ):
         out.append(
-            "forecasts with actuals: the version served now updates a forecast with the "
-            "actuals a call sends; this version refuses them (ACTUALS_NOT_SUPPORTED)"
+            "forecasts with actuals: the version that the endpoint serves now updates a "
+            "forecast with the actuals that a call sends. This version refuses them "
+            "(ACTUALS_NOT_SUPPORTED)"
         )
     return out
 
@@ -744,9 +771,9 @@ def input_table(snapshot: EndpointSchemaSnapshot, *, periods: int = 8) -> InputT
         text = "The value of the target"
         if forecasting:
             text = (
-                "The actual; leave empty for the periods to forecast"
+                "The actual (leave empty for the periods to forecast)"
                 if snapshot.conditions_on_actuals
-                else "Leave empty: this model forecasts from the end of its fitted history"
+                else "Leave empty. This model forecasts from the end of its fitted history"
             )
         columns.append(
             InputTableColumn(
@@ -759,7 +786,7 @@ def input_table(snapshot: EndpointSchemaSnapshot, *, periods: int = 8) -> InputT
                 name=n,
                 role="driver",
                 dims=list(schema.vars[n].dims),
-                description="Needed on every period, the periods to forecast included",
+                description="Necessary on each period, also on the periods to forecast",
             )
         )
     for n in others:

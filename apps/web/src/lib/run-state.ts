@@ -46,23 +46,23 @@ export interface StateMeta {
 }
 
 export const STATE_META: Record<RunState, StateMeta> = {
-  created: { label: "Created", tone: "neutral", description: "Accepted; waiting for static checks." },
-  rejected: { label: "Rejected", tone: "danger", description: "Static validation or quota checks failed." },
-  queued: { label: "Queued", tone: "neutral", description: "Waiting for an executor slot." },
-  dispatching: { label: "Dispatching", tone: "active", description: "Being handed to the executor." },
-  provisioning: { label: "Provisioning", tone: "active", description: "The sandbox is starting." },
-  running: { label: "Running", tone: "active", description: "The runner is working." },
+  created: { label: "Created", tone: "neutral", description: "The server accepted the run. The run waits for the static checks." },
+  rejected: { label: "Rejected", tone: "danger", description: "The static validation or a quota check failed." },
+  queued: { label: "Queued", tone: "neutral", description: "The run waits for a free executor slot." },
+  dispatching: { label: "Dispatching", tone: "active", description: "The server sends the run to the executor." },
+  provisioning: { label: "Provisioning", tone: "active", description: "The sandbox starts." },
+  running: { label: "Running", tone: "active", description: "The runner does the work." },
   stalled: {
     label: "Stalled",
     tone: "warning",
-    description: "No events for a while. The executor still reports the run alive; this is a warning, not a failure.",
+    description: "There are no events for some time. The executor still reports that the run is alive. This is a warning, not a failure.",
   },
-  finalizing: { label: "Finalizing", tone: "active", description: "Verifying and copying outputs." },
-  succeeded: { label: "Succeeded", tone: "success", description: "Outputs verified." },
-  partial: { label: "Partial", tone: "warning", description: "Stopped with checkpoints; it can be resumed." },
-  failed: { label: "Failed", tone: "danger", description: "The run failed; see the problem below." },
-  cancelling: { label: "Cancelling", tone: "muted", description: "Waiting for the executor to confirm." },
-  cancelled: { label: "Cancelled", tone: "muted", description: "Cancelled." },
+  finalizing: { label: "Finalizing", tone: "active", description: "The runner verifies and copies the outputs." },
+  succeeded: { label: "Succeeded", tone: "success", description: "The outputs are verified." },
+  partial: { label: "Partial", tone: "warning", description: "The run stopped with checkpoints. You can resume it." },
+  failed: { label: "Failed", tone: "danger", description: "The run failed. Look at the problem below." },
+  cancelling: { label: "Cancelling", tone: "muted", description: "The run waits for the executor to confirm the cancel." },
+  cancelled: { label: "Cancelled", tone: "muted", description: "The run was cancelled." },
 };
 
 export const TONE_CLASSES: Record<Tone, string> = {

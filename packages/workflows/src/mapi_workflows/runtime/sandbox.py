@@ -108,7 +108,7 @@ def _policies(params: Mapping[str, JsonValue]) -> list[GovernancePolicy]:
         return [GovernancePolicy.model_validate(p) for p in raw]
     except ValidationError as exc:
         raise MapiError(
-            "the resolved policies are invalid",
+            "the resolved policies are not valid",
             code=ErrorCode.POLICY_INVALID,
             untrusted_text=str(exc)[:4000],
         ) from None

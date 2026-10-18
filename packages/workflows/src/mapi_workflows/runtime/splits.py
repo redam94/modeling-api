@@ -124,7 +124,7 @@ def resolve_plan(plan_doc: dict[str, Any], ctx: NodeContext) -> SplitPlanPayload
         plan = _plan_adapter().validate_python(plan_doc)
     except ValidationError as exc:
         raise MapiError(
-            "the split plan is invalid",
+            "the split plan is not valid",
             code=ErrorCode.SPLIT_INVALID,
             untrusted_text=str(exc)[:4000],
         ) from None

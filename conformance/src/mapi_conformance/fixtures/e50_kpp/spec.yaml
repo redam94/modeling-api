@@ -1,0 +1,15 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: scratch-assay-kpp, project: biology, labels: {corpus: e50}}
+data:
+  dataset: dataset://biology/scratch_assay@latest
+  bind:
+    dims: {t: hours, x: position}
+    vars: {count: cells}
+  split: {kind: time_holdout, dim: t, last: 2}
+model:
+  use: sci.fisher_kpp@^1
+  settings: {steps_per_hour: 10, delay: true, max_extension: 4}
+  fit: {mode: evaluate_then_refit, seed: 50, tune: 500, draws: 500, chains: 4, engine: pymc}
+evaluate: {metrics: [rmse, mae, coverage_90]}
+outputs: {plots: [core.convergence, core.posterior_forest, sci.profile_bands, sci.field_map]}

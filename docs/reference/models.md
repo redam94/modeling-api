@@ -1,23 +1,23 @@
 # Built-in models
 
-These model plugins ship with the platform (tier T0). They register through the
-`mapi.models` entry point, so `default_registry()` and the control-plane catalog list them
-without any configuration. Every one passes the contract kit (`mapi_sdk.testing.check_model`)
-and has a conformance fixture (see [Conformance corpus](../guides/conformance.md)).
-From v0.5 the marketing-mix models run on [mmm-framework](../models/mmm-framework.md), the
-platform's only marketing-mix engine.
+These model plugins come with the platform (tier T0). They register through the
+`mapi.models` entry point. Thus `default_registry()` and the control-plane catalog show them
+without configuration. Each plugin passes the contract kit (`mapi_sdk.testing.check_model`).
+Each plugin also has a conformance fixture (see [Conformance corpus](../guides/conformance.md)).
+From v0.5, the marketing-mix models run on [mmm-framework](../models/mmm-framework.md). This is
+the only marketing-mix engine of the platform.
 
-**Calibration** (M3, the spec's `calibration` block, Guided task 3) is declared per plugin in
-`Capabilities.calibration`; a spec with calibration data for a plugin that does not declare
-it fails static validation with `CALIBRATION_UNSUPPORTED`:
+**Calibration** (M3, the `calibration` block of the spec, Guided task 3): each plugin declares
+it in `Capabilities.calibration`. A spec can have calibration data for a plugin that does not
+declare it. Such a spec fails static validation with `CALIBRATION_UNSUPPORTED`:
 
 | Plugin | Business priors | Lift tests |
 |---|---|---|
-| `mmm.bayesian` | yes - log-normal ROI priors per channel (`priors.roi`) and the `intercept` | yes - mmm-framework experiment likelihoods (marginal ROAS or contribution) |
+| `mmm.bayesian` | yes - log-normal ROI priors for each channel (`priors.roi`) and the `intercept` | yes - mmm-framework experiment likelihoods (marginal ROAS or contribution) |
 | `mmm.frequentist` | no | no |
 
-The math of the translation and of each lift likelihood is in
-[Guided modelling](../guides/guided-modelling.md).
+[Guided modelling](../guides/guided-modelling.md) gives the math of the translation and of
+each lift likelihood.
 
 | Plugin | Package | Representation | Score modes | Corpus fixture |
 |---|---|---|---|---|
@@ -30,87 +30,104 @@ The math of the translation and of each lift likelihood is in
 | `choice.multinomial_logit@1` | `mapi-plugin-tabular` | draws (Bayesian bootstrap) | predict, forecast, counterfactual, evaluate | `e84_lite` |
 | `ts.sarimax@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | `sm_arimax` |
 | `ts.vecm@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | `sm_vecm_macro` |
+| `sci.lgcp_grid@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e07_lgcp` |
+| `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
+| `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
+| `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
-The statsmodels plugins (ARIMA family, exponential smoothing, theta, ARDL and error
-correction, VAR, VECM, VARMAX, dynamic factors and Markov switching) are described in
-[statsmodels time-series models](../models/statsmodels.md).
+[statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
+plugins. These are the ARIMA family, exponential smoothing, theta, ARDL and error correction,
+VAR, VECM, VARMAX, dynamic factors and Markov switching.
 
-Plugins use **canonical names** for their inputs; bind your dataset's names onto them in the
-spec's `data.bind` block. Outputs come back under your names (reverse binding) unless they
-are new variables such as `y_hat`.
+Plugins use **canonical names** for their inputs. Bind the names of your dataset to them in
+the `data.bind` block of the spec. Outputs come back with your names (reverse binding). New
+variables, for example `y_hat`, keep their names.
 
-The `mapi-sklearn` package also registers five general-purpose tabular plugins,
-`sklearn.tabular_regressor`, `sklearn.tabular_quantiles`, `sklearn.tabular_bootstrap`,
-`sklearn.tabular_conformal` and `sklearn.tabular_classifier`; see
-[Tabular models](../guides/sklearn.md).
+The `mapi-sklearn` package also registers five general tabular plugins (see
+[Tabular models](../guides/sklearn.md)):
+
+- `sklearn.tabular_regressor`
+- `sklearn.tabular_quantiles`
+- `sklearn.tabular_bootstrap`
+- `sklearn.tabular_conformal`
+- `sklearn.tabular_classifier`
 
 !!! tip "Every setting, generated"
-    The [models catalog](generated/models-catalog.md) is generated from the installed
-    manifests: capabilities, outputs, derived quantities, every setting with its default and
-    Guided-mode level, and the input data contract.
+    The platform makes the [models catalog](generated/models-catalog.md) from the installed
+    manifests. It shows the capabilities, outputs and derived quantities. It also shows each
+    setting with its default and Guided-mode level, and the contract for the input data.
 
 ## `mmm.bayesian`: marketing mix on mmm-framework
 
-mmm-framework's `BayesianMMM`: adstock (geometric, delayed, Weibull) and saturation
-(logistic, Hill, Michaelis-Menten, tanh, root) per channel, a trend (none, linear,
-piecewise, spline, GP), Fourier seasonality, baselines partially pooled across geos and
-products (optionally channel effects per geo), and channel effects stated as returns on
-spend. The model owns scaling, carry-over and units (`owns: [scaling, carryover,
-inverse_units]`): the pipeline only converts currencies and resamples. With
-`outputs.derived` the fit caches contributions, per-draw response curves and marginal
-costs; budgets are optimised with mmm-framework planning (`POST …:optimize`) and the
-model declares a decision objective.
+This plugin uses the `BayesianMMM` of mmm-framework. It has these parts:
 
-**Inputs.** `y(*panel, time)`, `spend(*panel, channel, time)` and any other numeric
-variable over time as a control; the panel dims are `hierarchy.pool_over` (`geo`,
-`product`). New panel levels follow `new_levels` (`pooled` by default), `channel` is
-`fixed`, `time` extends.
+- Adstock (geometric, delayed, Weibull) and saturation (logistic, Hill, Michaelis-Menten,
+  tanh, root) for each channel.
+- A trend (none, linear, piecewise, spline, GP).
+- Fourier seasonality.
+- Baselines with partial pooling across geos and products. Channel effects for each geo are
+  optional.
+- Channel effects as returns on spend.
 
-**Outputs.** `y_hat(*panel, time)` and `contributions(component, *panel, time)` (one
-component per channel, `baseline`, `trend`, `seasonality` and one per control; they sum to
-`y_hat`).
+The model owns scaling, carry-over and units (`owns: [scaling, carryover,
+inverse_units]`). Thus the pipeline only converts currencies and resamples. With
+`outputs.derived`, the fit caches contributions, response curves for each draw and marginal
+costs. The mmm-framework planning optimises budgets (`POST …:optimize`). The model declares a
+decision objective.
 
-Read [Marketing-mix models on mmm-framework](../models/mmm-framework.md) for how the
-settings map onto mmm-framework, priors, lift tests and optimisation, and the
-[marketing-mix guide](../guides/mmm.md) for a complete analysis.
+**Inputs.** `y(*panel, time)`, `spend(*panel, channel, time)`, and other numeric variables
+over time as controls. The panel dims are `hierarchy.pool_over` (`geo`, `product`). New panel
+levels follow `new_levels` (`pooled` by default). `channel` is `fixed`. `time` extends.
+
+**Outputs.** `y_hat(*panel, time)` and `contributions(component, *panel, time)`. The
+components are one for each channel, `baseline`, `trend`, `seasonality` and one for each
+control. Their sum is `y_hat`.
+
+[Marketing-mix models on mmm-framework](../models/mmm-framework.md) tells how the settings
+map to mmm-framework. It also tells about priors, lift tests and optimisation. For a complete
+analysis, read the [marketing-mix guide](../guides/mmm.md).
 
 ## `mmm.frequentist`: fast marketing mix
 
-mmm-framework's ridge estimator: adstock and saturation chosen by an out-of-sample search,
-non-negative channel effects, bootstrap confidence intervals (the replicates are the
-draws). Same data contract and outputs as `mmm.bayesian`; no priors, no lift tests, no
-convergence diagnostics. Seed-deterministic, seconds to fit.
+This plugin uses the ridge estimator of mmm-framework. An out-of-sample search selects the
+adstock and saturation. The channel effects are not negative. The bootstrap gives confidence
+intervals (the replicates are the draws). The data contract and outputs are the same as
+`mmm.bayesian`. There are no priors, no lift tests and no convergence diagnostics. The same
+seed gives the same result, and a fit takes seconds.
 
 ## `ts.hsgp_trend` — smooth trend with seasonality
 
-A Hilbert-space Gaussian process (HSGP) trend plus an optional linear drift and Fourier
-seasonality, for one regularly spaced series (Mauna-Loa style CO2, sales, traffic).
+This plugin has a Hilbert-space Gaussian process (HSGP) trend, an optional linear drift and
+Fourier seasonality. It is for one series with regular spaces between periods (CO2 as at
+Mauna Loa, sales, traffic).
 
-**Inputs.** `t` (time, policy `extend`) and the target `y(t)`. Missing months are allowed:
-replace sentinel codes with `core.replace_sentinel` and they are left out of the likelihood
-while the model still interpolates them. Put `core.standardize` on `y`; the priors are on the
-standardised scale and outputs are mapped back to your units.
+**Inputs.** `t` (time, policy `extend`) and the target `y(t)`. Missing months are
+permitted. Replace sentinel codes with `core.replace_sentinel`. The likelihood then does not
+use these months, but the model interpolates them. Put `core.standardize` on `y`. The priors
+are on the standardised scale, and the model changes the outputs back to your units.
 
-**Forecast horizon.** `max_extension` (default 24 periods) is part of the model's input
-schema. The HSGP domain is sized at fit time from the *anticipated* coordinates (the fitted
-range plus `max_extension` periods), so every forecast up to that horizon evaluates exactly
-the fitted functions. A longer horizon is rejected before any compute with
-`HORIZON_EXCEEDS_FIT` (HTTP 409): refit with a larger `max_extension`.
+**Forecast horizon.** `max_extension` (default 24 periods) is part of the input schema of the
+model. At fit time, the model sets the size of the HSGP domain from the *anticipated*
+coordinates. These are the fitted range plus `max_extension` periods. Thus each forecast up to
+that horizon evaluates exactly the fitted functions. The server rejects a longer horizon with
+`HORIZON_EXCEEDS_FIT` (HTTP 409) before it starts to compute. Fit again with a larger
+`max_extension`.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `max_extension` | 24 | Periods a forecast may reach past the fit without a refit |
+| `max_extension` | 24 | The number of periods after the fit that a forecast can reach without a new fit |
 | `kernel` | `expquad` | `expquad`, `matern52` or `matern32` |
 | `m`, `c` | 30, 1.5 | Basis functions and boundary factor of the approximation |
 | `lengthscale_mu`, `lengthscale_sigma` | 0.4, 0.5 | Log-normal lengthscale prior on the scaled axis `[-1, 1]` |
 | `eta_sigma` | 1.0 | Half-normal scale of the GP amplitude |
-| `linear_trend` | true | Add `intercept + slope * t` |
+| `linear_trend` | true | Adds `intercept + slope * t` |
 | `season_period`, `season_order` | 12, 3 | Fourier seasonality (periods of `t`, order) |
 | `noise_sigma` | 0.5 | Half-normal scale of the observation noise |
 
-**Outputs.** `y_hat(t)` (expected value or a predictive draw) and `trend(t)`, the long-term
-component without seasonality, both in the target's units.
+**Outputs.** `y_hat(t)` (the expected value or a predictive draw) and `trend(t)`. `trend(t)`
+is the long-term component without seasonality. The two outputs are in the units of the
+target.
 
 ```yaml
 data:
@@ -127,53 +144,64 @@ model:
 
 ## `ts.gaussian_hmm` — hidden states with a terminal state
 
-A K-state Gaussian hidden Markov model over many sequences at once (animal tracks, machine
-regimes, customer phases). Hidden states are summed out with the forward algorithm, so
-sampling is fast and exact.
+This plugin is a Gaussian hidden Markov model with K states. It uses many sequences at the
+same time (animal tracks, machine regimes, customer phases). The forward algorithm sums out the
+hidden states. Thus the sampler is fast and exact.
 
-**Inputs.** Padded layout: `animal` (the sequence dim, `new_levels` with strategy `pooled`),
-`step` (`extend`), `y(animal, step)` with NaN padding and a boolean `mask(animal, step)`.
+**Inputs.** A padded layout with these items: `animal` (the sequence dim, `new_levels` with
+strategy `pooled`), `step` (`extend`), `y(animal, step)` with NaN padding, and a boolean
+`mask(animal, step)`.
 
-**Terminal state.** After the fit the filtered state distribution at the last fitted step
-is stored as the bundle's `terminal_state` group, `alpha_T(chain, draw, animal, state)`.
+**Terminal state.** After the fit, the bundle keeps the filtered state distribution at the
+last fitted step. It is the `terminal_state` group of the bundle,
+`alpha_T(chain, draw, animal, state)`.
 
-* `predict` / `evaluate` use the one-step-ahead state distribution of the fit inside the
-  fitted range and `alpha_T` propagated by the transition matrix after it; they never look at
-  targets in the payload.
+* `predict` / `evaluate` use the one-step-ahead state distribution of the fit in the fitted
+  range. After the fitted range, they use `alpha_T`, propagated by the transition matrix. They
+  do not use targets in the payload.
 * `forecast` propagates `alpha_T` over the horizon.
-* `filter` runs the forward filter over new observations that continue the fitted steps and
+* `filter` runs the forward filter over new observations that continue the fitted steps. It
   returns an **updated** `terminal_state` group with the filtered `state_prob`.
 * New animals start from the initial distribution `pi` at the first fitted step.
 
-Draws are relabelled after sampling so that the state means increase (label switching);
-`identification: ordered` uses an ordered prior instead. Pointwise LOO is declared invalid
-(`elpd_loo` is rejected at validation): steps within a track are dependent.
+After the sampler stops, the model gives new labels to the draws so that the state means
+increase (label switching). `identification: ordered` uses an ordered prior instead. The
+manifest declares pointwise LOO as not valid, because the steps in a track are dependent.
+Validation rejects `elpd_loo`.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `n_states` | 2 | Number of hidden states |
 | `mu_center`, `mu_sigma` | 0.0, 2.0 | Normal prior of the state means |
-| `sigma_scale` | 1.0 | Half-normal scale of the per-state sds |
-| `stickiness` | 2.0 | Extra Dirichlet weight on staying in a state |
+| `sigma_scale` | 1.0 | Half-normal scale of the sds for each state |
+| `stickiness` | 2.0 | Additional Dirichlet weight to stay in the same state |
 | `pi_concentration` | 1.0 | Dirichlet weight of the initial distribution |
-| `identification` | `relabel` | `relabel` (sort draws by mean) or `ordered` |
+| `identification` | `relabel` | `relabel` (sort the draws by mean) or `ordered` |
 
-**Outputs.** `y_hat(animal, step)` in your units and `state_prob(animal, step, state)`
-(units `probability`, never inverse-transformed).
+**Outputs.** `y_hat(animal, step)` in your units, and `state_prob(animal, step, state)`. The
+units of `state_prob` are `probability`. The model does not inverse-transform it.
 
 ## `tabular.hierarchical_glm` — partial pooling in long layout
 
-Varying intercepts (and optionally slopes) by group with group-level predictors: the radon
-model and its many relatives (schools, stores, clinics).
+This plugin has intercepts that change by group, and optionally slopes that change by group.
+It has group-level predictors. Examples are the radon model and many similar models (schools,
+stores, clinics).
 
-**Inputs.** Long layout: rows along `obs` (`extend`), a group dim (`group_dim`, default
-`county`, `new_levels` with strategy `hyperprior`), the index `<group_dim>_idx(obs)`, the
-target `y(obs)`, observation-level `covariates` and group-level `group_covariates`. Covariates
-are part of the input schema, so a spec naming a missing one fails validation.
+**Inputs.** A long layout with these items:
 
-**New groups.** A county the model never saw is drawn from the fitted hyperprior for every
-posterior draw; its group-level covariates shift its prior mean exactly as for fitted
-counties. Score payloads may list counties in any order: the platform remaps `county_idx`.
+- Rows along `obs` (`extend`).
+- A group dim (`group_dim`, default `county`, `new_levels` with strategy `hyperprior`).
+- The index `<group_dim>_idx(obs)`.
+- The target `y(obs)`.
+- Observation-level `covariates` and group-level `group_covariates`.
+
+Covariates are part of the input schema. Thus, if a spec names a covariate that is missing,
+the spec fails validation.
+
+**New groups.** For a county that the model did not see, the model draws its effect from the
+fitted hyperprior for each posterior draw. Its group-level covariates move its prior mean in
+the same way as for fitted counties. Score payloads can list counties in any sequence. The
+platform maps `county_idx` again.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -182,74 +210,224 @@ counties. Score payloads may list counties in any order: the platform remaps `co
 | `covariates` | `[]` | Predictors over `obs` |
 | `varying_slopes` | `[]` | Covariates whose slope varies by group |
 | `group_covariates` | `[]` | Predictors over the group dim |
-| `centered` | false | Centred group effects |
+| `centered` | false | Use centred group effects |
 
 ## `tabular.regressor` — quantile regression for panels
 
-The plan's store-demand model: rows are stacked from labelled dims (store × sku × week), the
-coordinates become categorical features, and an allow-listed estimator predicts conditional
-quantiles. Its `estimator` setting accepts exactly the quantile-capable estimators of the
-registry (xgboost, scikit-learn's gradient boosting and histogram boosting, and quantile
-regression), so other estimators are rejected at validation.
+This plugin is the store-demand model of the plan. The model stacks rows from labelled dims
+(store × sku × week). The coordinates become categorical features. An estimator from the allow
+list predicts conditional quantiles. The `estimator` setting accepts only the estimators of the
+registry that can predict quantiles. These are xgboost, the gradient boosting and histogram
+boosting of scikit-learn, and quantile regression. Validation rejects other estimators.
 
 * Defaults: xgboost (300 trees, depth 5, learning rate 0.05) and quantiles `[0.1, 0.5, 0.9]`.
-* New stores are pooled (`new_levels: pooled`); forecasting is direct, so future covariates
-  marked `future_required` must be supplied (`MISSING_FUTURE_COVARIATE` otherwise).
-* Quantiles are per cell: aggregating them across stores is refused
+* The model pools new stores (`new_levels: pooled`).
+* The forecast is direct. Thus you must supply the future covariates that have the
+  `future_required` mark. If you do not, the error is `MISSING_FUTURE_COVARIATE`.
+* Quantiles are for each cell. The server refuses to aggregate them across stores
   (`CAPABILITY_UNSUPPORTED`).
 * The manifest lists `core.fit_vs_actual`, `core.residuals_over_time` and
   `ml.feature_importance`.
 
-All other settings are those of `mapi_sklearn` (see
+All other settings are the settings of `mapi_sklearn` (see
 [Tabular models](../guides/sklearn.md)).
 
 ## `choice.multinomial_logit` — which product customers pick
 
-The built-in model of the Guided **customer choice** template (E84-style household panels): on
-every shopping trip a household picks one product, and price and promotions shift the choice.
+This plugin is the built-in model of the Guided **customer choice** template (household panels
+as in E84). On each shopping trip, a household selects one product. Price and promotions change
+the choice.
 
-**Inputs.** A dense `hh × trip` panel - `hh` (categorical, `new_levels` with strategy
-`hyperprior`), `trip` (`index`, `extend`) - with the alternatives along `product`
-(categorical, `fixed`). The target `y(hh, trip)` is text: the product chosen, empty where a
-household made no trip (ragged panels are fine). Covariates are alternative-specific
-variables along `product`, such as `price(hh, trip, product)` and `promo(hh, trip, product)`;
-by default every numeric variable with the `product` dim is one. A product whose covariates
-are missing on a trip was not available on that trip (off the shelf).
+**Inputs.** A dense `hh × trip` panel, with the alternatives along `product` (categorical,
+`fixed`). `hh` is categorical, with `new_levels` with strategy `hyperprior`. `trip` is `index`
+and `extend`. The target `y(hh, trip)` is text: the product that the household selected. It
+is empty when a household made no trip (ragged panels are permitted). Covariates are variables
+for each alternative along `product`, for example `price(hh, trip, product)` and
+`promo(hh, trip, product)`. By default, each numeric variable with the `product` dim is a
+covariate. If the covariates of a product are missing on a trip, that product was not
+available on that trip (not on the shelf).
 
-**Model.** A conditional logit with household-specific product intercepts:
-`U[h, t, j] = asc[j] + Σ_k beta[k]·x_k[h, t, j] + u[h, j]`, the choice probabilities a softmax
-over the available products, `u[h, j] ~ Normal(0, effect_sd)` (a random-intercept logit). It
-is fitted by penalised maximum likelihood, the posterior mode of that model. **Uncertainty**
-comes from the Bayesian bootstrap: each of `fit.draws` draws refits with Dirichlet weights on
-households, so every household keeps its own effect in every draw and the draws are joint
-(`draws` representation: shares, counterfactual deltas and sums over trips are valid).
-There is no pointwise log-likelihood, so LOO is not offered.
+**Model.** A conditional logit with product intercepts for each household:
+`U[h, t, j] = asc[j] + Σ_k beta[k]·x_k[h, t, j] + u[h, j]`. The choice probabilities are a
+softmax over the available products. `u[h, j] ~ Normal(0, effect_sd)` (a random-intercept
+logit). The fit uses penalised maximum likelihood, that is, the posterior mode of that model.
 
-**Scoring.** `y_hat(hh, trip, product)` is the choice probability (`expected`) or one sampled
-choice per draw (`predictive`, one-hot). A household never seen at fit draws its preferences
-from `Normal(0, sd)` per draw, `sd` being the spread of the fitted effects in that draw. Trips
-never made have probability 0 for every product, so sums over trips count expected
-purchases. Price scenarios are interventions, e.g.
-`{var: price, sel: {product: cola}, multiply: 1.1}` in a `counterfactual` request. Choice
-values match product labels after lower-casing and replacing punctuation with `_`.
+**Uncertainty** comes from the Bayesian bootstrap. Each of the `fit.draws` draws is a new fit
+with Dirichlet weights on households. Thus each household keeps its own effect in each draw,
+and the draws are joint. In the `draws` representation, shares, counterfactual deltas and sums
+over trips are valid. There is no pointwise log-likelihood, so LOO is not available.
+
+**Scoring.** `y_hat(hh, trip, product)` is the choice probability (`expected`), or one sampled
+choice for each draw (`predictive`, one-hot). The fit did not see some households. For each
+draw, the model draws their preferences from `Normal(0, sd)`. `sd` is the spread of the fitted
+effects in that draw. A trip that the household did not make has probability 0 for all
+products. Thus sums over trips count the expected purchases.
+
+Price scenarios are interventions, for example
+`{var: price, sel: {product: cola}, multiply: 1.1}` in a `counterfactual` request. To match
+choice values to product labels, the model changes them to lower case and replaces
+punctuation with `_`.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `covariates` | every numeric variable along `product` | Alternative-specific covariates |
+| `covariates` | each numeric variable along `product` | Covariates for each alternative |
 | `random_effects` | `[hh]` | Household product intercepts (`[]`: none) |
-| `effect_sd` | 1.0 | Prior sd of the household effects (smaller pools more) |
+| `effect_sd` | 1.0 | Prior sd of the household effects (a smaller value pools more) |
 | `coef_sd` | 10.0 | Prior sd of the product intercepts and coefficients |
 | `reference` | the first product | The product whose intercept is fixed at 0 |
 | `max_iter` | 500 | Iterations of each L-BFGS fit |
 
-`fit.draws` (default 100, at most 2000) sets the bootstrap draws and `fit.seed` makes them
-reproducible. The in-sample hit rate is reported as the `CHOICE_HIT_RATE` diagnostic.
+`fit.draws` (default 100, maximum 2000) sets the number of bootstrap draws. With `fit.seed`,
+you get the same draws each time. The `CHOICE_HIT_RATE` diagnostic gives the in-sample hit
+rate.
 
-**Holdout metrics.** A text target scored as one probability per product gets the
-categorical metrics of `evaluate.metrics`: `accuracy` (the hit rate of the most likely
-product), `accuracy_naive` (always guessing the holdout's most common product),
-`accuracy_lift` (their difference), `log_score` (mean log probability of the product
-bought) and `brier` (multi-class Brier score). The Guided `customer_choice` template
-evaluates all five on each household's last trip and its scorecard runs
-[`holdout.hit_rate`](../concepts/guided-mode.md#check-holdout-hit-rate); numeric metrics
-such as `mape` are skipped for a text target.
+**Holdout metrics.** A text target with one score probability for each product gets the
+categorical metrics of `evaluate.metrics`:
+
+- `accuracy`: the hit rate of the most likely product.
+- `accuracy_naive`: the hit rate if you always select the most common product of the holdout.
+- `accuracy_lift`: the difference between the two.
+- `log_score`: the mean log probability of the product that the household bought.
+- `brier`: the multi-class Brier score.
+
+The Guided `customer_choice` template evaluates all five on the last trip of each household.
+Its scorecard runs [`holdout.hit_rate`](../concepts/guided-mode.md#check-holdout-hit-rate).
+For a text target, the server skips numeric metrics, for example `mape`.
+
+## Scientific models (`mapi-plugin-science`)
+
+These plugins come from the case studies of
+[pymc-challenges](https://github.com/redam94/pymc-challenges). Their data are maps, images and
+fields on a regular grid. Their outputs are fields with a range for each cell. Each output that
+is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the column dim `x`, an
+optional `frame` dim and an optional `component` dim for a vector field). The platform then
+shows the output in two places:
+
+- The **Fields** section of the Model Explorer. It shows the mean, the sd, mean ÷ sd, the 5% and
+  95% maps and single draws, with a frame slider and a draw player.
+- The `sci.*` plot recipes (see [Plot recipes](plots.md#scientific-model-pack-sci)).
+
+The runner images of `base-bayes` contain these plugins (namespace `sci`).
+
+!!! note "Real data"
+    Each data module has a `from_challenges(path)` function. It reads the real data file of the
+    case study from a local copy of pymc-challenges. To run the tests that use the real files,
+    set `MAPI_PYMC_CHALLENGES_DATA` to the `data/` directory of that copy. Without it, these
+    tests are skipped.
+
+### `sci.lgcp_grid` — event counts on a map over time (E07)
+
+A log-Gaussian Cox process on a space-time grid. The total for each period follows a random
+walk. The share of each cell comes from a 2-D Hilbert-space GP (Matérn 5/2) whose map changes
+from one era (a group of periods) to the next.
+
+**Inputs.** `period` (time, policy `extend`), `row` and `col` (integer, fixed) and the target
+`count(period, row, col)`. Row 0 is the south edge of the grid.
+
+**Outputs.** `rate(period, row, col)` (a field with a frame for each period, log colour scale)
+and `total(period)`. The sum of `rate` over the cells is equal to `total`.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `max_extension` | 8 | The number of periods after the fit that a forecast can reach without a new fit |
+| `era_periods` | 4 | The number of periods in one era. The map changes from era to era |
+| `field` | `era_walk` | `era_walk` (a new map for each era) or `static` (one map) |
+| `cell_km` | 25 | The width of one cell in km |
+| `m_row`, `m_col`, `c` | 10, 14, 1.5 | Basis functions and boundary factor of the approximation |
+| `ell_lower_km`, `ell_upper_km` | 15, 100 | The 5% and 95% quantiles of the lengthscale prior |
+| `likelihood` | `negbin` | `negbin` or `poisson` |
+
+`from_challenges` puts the Oklahoma earthquake catalogue into 12 × 9 cells of 25 km for each
+quarter from 2009 to 2019. A fit on 2009–2017 takes approximately one minute with nutpie.
+
+### `sci.fisher_kpp` — a reaction-diffusion PDE (E50)
+
+The Fisher-KPP equation `du/dt = D d²u/dx² + lam u (1 - u)` moves and grows cells into a
+scratch wound. The model solves the equation in the model graph (explicit Euler in
+`pytensor.scan`, zero flux at the edges). The counts are Poisson. With `delay: true`, the
+movement and the growth start slowly after the scratch (`tanh(beta t)`).
+
+**Inputs.** `t` (integer hours, policy `extend`), `x` (float positions in µm, equal spaces,
+fixed) and the target `count(t, x)`. The first time is the initial condition. The likelihood
+does not use it. Each time after the first must be on the Euler grid.
+
+**Outputs.** `density(t, x)` (a field: time on the rows, position on the columns) and the
+scalar `wave_speed` (`2 sqrt(D lam)`, µm/h). A forecast continues the PDE to later times.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `steps_per_hour` | 10 | Euler steps for each hour |
+| `delay` | true | Multiply the movement and the growth by `tanh(beta t)` |
+| `max_extension` | 4 | The number of periods after the fit that a forecast can reach |
+| `diffusivity_median`, `growth_median` | 1000, 0.05 | Prior medians of `D` (µm²/h) and `lam` (1/h) |
+| `capacity_mu`, `capacity_sigma` | 122, 15 | Prior of the capacity `K` (cells for each column) |
+| `cfl_quantile` | 0.99 | The prior quantile of `D` that must keep the Euler steps stable |
+
+If the Euler steps are not stable at the `cfl_quantile` of the prior of `D`, the model stops
+with `SETTINGS_INVALID`. The message gives the smallest `steps_per_hour` that is stable.
+
+### `sci.traction_force` — cell forces from gel movement (E60)
+
+Fourier-transform traction cytometry as a Gaussian inverse problem. The data are a displacement
+field of a soft gel. The output is the traction field that the cells apply. NUTS samples only
+the noise sd and the prior spectrum. The model integrates the field out, with one closed-form
+likelihood for each Fourier mode. At score time, the model draws each traction field exactly
+with two FFTs for each posterior draw.
+
+**Inputs.** `component` (categorical `x`, `y`), `row` and `col` (integer, fixed) and the target
+`displacement(component, row, col)` in µm. The raster must have no missing pixels. Thus the
+model has no split: evaluate it in sample. With `force_mask: true`, the data also has a
+`force_mask(row, col)`.
+
+**Outputs.** `traction(component, row, col)` (a vector field, Pa), `displacement_hat`, and the
+scalars `strain_energy` (fJ) and `contractility` (µN).
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `grid_um`, `young_pa`, `poisson` | 1, 10000, 0.49 | Grid spacing (µm), Young's modulus (Pa) and Poisson ratio of the gel |
+| `young_cv` | 0 | Relative uncertainty of Young's modulus (0 = known) |
+| `prior` | `matern` | `white` (Tikhonov), `smooth` or `matern` |
+| `field_draws` | 100 | The number of traction fields to draw for each score |
+| `force_mask` | false | Sum the strain energy and the contractility inside `force_mask` only |
+
+The `NOISE_SPECTRUM_MISMATCH` diagnostic compares the power of the data in the finest modes with
+the model. Correlated noise from overlapping PIV windows causes it, and then the ranges are too
+narrow. `challenges_settings(ds)` gives the settings for the real pyTFM colony of
+`from_challenges`.
+
+### `sci.strong_lens` — a galaxy-scale strong lens (E80)
+
+A pixel forward model of a strong gravitational lens in a telescope image. The mass is a
+singular isothermal ellipsoid with an optional external shear. Rays from each pixel (and from
+sub-pixels) go back to the source plane. The source and the lens light are Sérsic profiles,
+and the model applies the PSF of the image. The model integrates the linear light amplitudes
+out in closed form. A staged search for the mode starts the sampler, and NUTS samples near
+that mode with a Laplace preconditioner.
+
+**Inputs.** `row` and `col` (integer, fixed, row 0 at the bottom), the target `image(row, col)`,
+the inverse variance `weight(row, col)` (0 leaves a pixel out) and a constant
+`psf(psf_row, psf_col)` with odd sides. With `use_mask: true`, the data also has a bool
+`mask(row, col)`.
+
+**Outputs.** `model_image(row, col)` (a field, grey scale), `source(source_row, source_col)` (the
+source on a source-plane grid), the scalar `einstein_radius` (arcsec) and, when `z_lens` and
+`z_source` are set, `einstein_mass` (solar masses). The fit keeps the critical curve, the
+caustic and the cut of each posterior draw as the derived group `critical_curves`. In
+`simulate` mode, the model makes new noisy images from the posterior.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `pixel_scale` | 0.05 | Pixel size (arcsec) |
+| `subsample` | 2 | Rays for each pixel along each axis |
+| `lens_light_components` | 2 | Sérsic profiles of the lens galaxy light (0 to 2) |
+| `external_shear` | true | Add an external shear to the mass |
+| `noise_correlation` | 0 | Correlation of the noise between neighbour pixels (drizzled images) |
+| `theta_e_median`, `theta_e_log_sd` | 1.0, 0.5 | Log-normal prior of the Einstein radius |
+| `n_starts` | 5 | Starts of the search for the mode |
+| `source_grid`, `source_half_width` | 30, 0.45 | Size of the source-plane grid (pixels, arcsec) |
+| `curve_draws` | 100 | Posterior draws with critical curves |
+
+The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F814W image of
+SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
+posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
+

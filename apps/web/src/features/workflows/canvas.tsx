@@ -114,7 +114,7 @@ const WorkflowNodeBox = memo(function WorkflowNodeBox({ data, selected }: NodePr
       )}
     >
       {data.isBranch ? null : (
-        <Handle type="target" position={Position.Top} id={GATE_HANDLE} aria-label={`Gate ${data.nodeId} on a branch arm`} className={cn(handleClass, "!bg-muted-foreground")} title="Drop a branch arm here to run this node only on that arm" />
+        <Handle type="target" position={Position.Top} id={GATE_HANDLE} aria-label={`Gate ${data.nodeId} on a branch arm`} className={cn(handleClass, "!bg-muted-foreground")} title="Drag a branch arm here to run this node only on that arm." />
       )}
       <Handle type="source" position={Position.Right} id={REF_OUT} isConnectable={false} className="!pointer-events-none !opacity-0" />
       <Handle type="target" position={Position.Left} id={REF_IN} isConnectable={false} className="!pointer-events-none !opacity-0" />
@@ -350,8 +350,8 @@ function CanvasInner({ doc, catalog, subs, positions, issues, statuses, selected
         proOptions={{ hideAttribution: true }}
         aria-label={label}
         ariaLabelConfig={{
-          "node.a11yDescription.default": "Press Enter or Space to select the node, Delete to remove it. Arrow keys move a selected node.",
-          "edge.a11yDescription.default": "Press Enter or Space to select the connection, Delete to remove it.",
+          "node.a11yDescription.default": "Press Enter or Space to select the node. Press Delete to remove it. Use the arrow keys to move a selected node.",
+          "edge.a11yDescription.default": "Press Enter or Space to select the connection. Press Delete to remove it.",
         }}
       >
         <Background gap={20} size={1} />

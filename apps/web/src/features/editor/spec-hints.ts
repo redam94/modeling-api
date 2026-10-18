@@ -199,7 +199,7 @@ export function plotSnippets(catalog: CatalogResponse | null, model: ModelManife
   const out: Snippet[] = [];
   for (const id of model?.plots ?? []) {
     seen.add(id);
-    out.push({ label: id, body: id, description: `recommended by ${model!.id}` });
+    out.push({ label: id, body: id, description: `${model!.id} recommends this plot` });
   }
   for (const p of catalog?.plots ?? []) {
     if (p.yanked || seen.has(p.id)) continue;
@@ -214,7 +214,7 @@ export function datasetSnippets(datasets: Dataset[]): Snippet[] {
     label: `${d.ref}@latest`,
     body: `${d.ref}@latest`,
     description: d.description ?? d.name,
-    markdownDescription: md(d.name, d.description ?? d.about?.summary_generated, d.latest_version ? `latest: v${d.latest_version}` : "no versions yet"),
+    markdownDescription: md(d.name, d.description ?? d.about?.summary_generated, d.latest_version ? `Latest version: v${d.latest_version}` : "This dataset has no versions."),
   }));
 }
 
@@ -350,7 +350,7 @@ export function enrichSpecSchema(base: unknown, shape: SpecShape, sources: HintS
     if (canon.length) {
       // Suggest the canonical names the model expects as keys.
       block.properties = Object.fromEntries(
-        canon.map((c) => [c, { type: "string", description: `Canonical ${kind === "dims" ? "dim" : "variable"} \`${c}\` expected by ${model!.id}: the dataset name it maps to`, defaultSnippets: values }]),
+        canon.map((c) => [c, { type: "string", description: `The dataset name for the canonical ${kind === "dims" ? "dim" : "variable"} \`${c}\`. The model ${model!.id} needs this name.`, defaultSnippets: values }]),
       );
     }
   }
@@ -382,7 +382,7 @@ export function enrichSpecSchema(base: unknown, shape: SpecShape, sources: HintS
   const modelBlock = defs.ModelBlock;
   addSnippets(prop(modelBlock, "use"), modelSnippets(catalog));
   if (model && isObj(model.settings_schema) && isObj(modelBlock) && isObj(modelBlock.properties)) {
-    modelBlock.properties.settings = { ...embed(defs, `model.${model.id}`, model.settings_schema), description: `Settings of ${model.id}` };
+    modelBlock.properties.settings = { ...embed(defs, `model.${model.id}`, model.settings_schema), description: `The settings for ${model.id}` };
   }
   const outputs = defs.OutputsBlock;
   addSnippets(prop(outputs, "plots"), plotSnippets(catalog, model));

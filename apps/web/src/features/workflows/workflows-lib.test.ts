@@ -65,7 +65,7 @@ describe("workflow documents", () => {
     expect(text).toContain("condition: (not nodes.adf.reject or nodes.kpss.reject)");
     expect(parseDocText("kind: Spec\n")).toEqual({ ok: false, error: "kind must be Workflow." });
     expect(parseDocText("a: [")).toMatchObject({ ok: false });
-    expect(asWorkflowDoc({ kind: "Workflow", metadata: {}, nodes: [{ id: "a", use: "test.adf" }, { id: "a", use: "test.kpss" }] })).toEqual({ ok: false, error: "Two nodes are called a." });
+    expect(asWorkflowDoc({ kind: "Workflow", metadata: {}, nodes: [{ id: "a", use: "test.adf" }, { id: "a", use: "test.kpss" }] })).toEqual({ ok: false, error: "Two nodes have the id a. Give each node a different id." });
   });
 
   it("pins issue pointers to nodes", () => {
@@ -89,11 +89,11 @@ describe("typed ports", () => {
       ok: false,
       reason: "acf.data takes dataset, but adf.result gives test result.",
     });
-    expect(checkConnection(d, catalog, { node: "acf", port: "result" }, { node: "acf", port: "data" })).toEqual({ ok: false, reason: "A node cannot feed its own input." });
+    expect(checkConnection(d, catalog, { node: "acf", port: "result" }, { node: "acf", port: "data" })).toEqual({ ok: false, reason: "A node cannot send data to its own input." });
     const cycle = checkConnection(d, catalog, { node: "diff", port: "data" }, { node: "sdiff", port: "data" });
     expect(cycle.ok).toBe(false);
-    expect(!cycle.ok && cycle.reason).toMatch(/^This would create a cycle: .*sdiff.*diff/);
-    expect(checkConnection(d, catalog, { node: "inputs", port: "data" }, { node: "adf", port: "data" })).toEqual({ ok: false, reason: "inputs.data already feeds adf.data." });
+    expect(!cycle.ok && cycle.reason).toMatch(/^The connection makes a cycle: .*sdiff.*diff/);
+    expect(checkConnection(d, catalog, { node: "inputs", port: "data" }, { node: "adf", port: "data" })).toEqual({ ok: false, reason: "inputs.data is already connected to adf.data." });
     expect(checkConnection(d, catalog, { node: "diff", port: "data" }, { node: "adf", port: "nope" })).toEqual({ ok: false, reason: 'adf has no input "nope".' });
   });
 
@@ -124,10 +124,10 @@ describe("cron preview", () => {
   });
 
   it("refuses what the server refuses", () => {
-    expect(cronProblem("*/5 * * * *")).toBe("schedules may fire at most every 15 minutes");
-    expect(cronProblem("0 6 * *")).toBe("a cron expression has 5 fields: minute hour day month weekday");
-    expect(cronProblem("0 25 * * *")).toBe("25 is outside 0-23");
-    expect(cronProblem("0 0 30 2 *")).toBe("the schedule never fires");
+    expect(cronProblem("*/5 * * * *")).toBe("a schedule can run at most one time every 15 minutes");
+    expect(cronProblem("0 6 * *")).toBe("a cron expression must have 5 fields: minute hour day month weekday");
+    expect(cronProblem("0 25 * * *")).toBe("25 is not in the range 0-23");
+    expect(cronProblem("0 0 30 2 *")).toBe("the schedule never runs");
     expect(cronProblem("*/15 * * * *")).toBeNull();
     expect(parseCron("0 6 * * mon-fri").weekdays).toEqual(new Set([1, 2, 3, 4, 5]));
     expect(describeCron("0 6 * * 1")).toBe("Every Monday at 06:00");

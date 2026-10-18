@@ -56,13 +56,13 @@ describe("Guided mode", () => {
     expect(within(spend).getByRole("checkbox", { name: /tv_spend/ })).toBeChecked();
     expect(within(spend).queryByRole("checkbox", { name: /Revenue/ })).toBeNull();
     const preview = screen.getByRole("complementary", { name: "Preview" });
-    await within(preview).findByText("Everything the model needs is answered.", undefined, { timeout: 3000 });
+    await within(preview).findByText("You answered all the questions that the model needs.", undefined, { timeout: 3000 });
     expect(within(preview).getByRole("table")).toHaveTextContent("2025-01-05");
     await waitFor(() => expect(screen.getByRole("button", { name: "Upload and continue" })).toBeEnabled());
 
     // a required answer removed: the next step is not offered, and the preview says what is missing
     await userEvent.selectOptions(kpi, "");
-    await within(preview).findByText(/Still to answer: Which column is the result you want to explain/);
+    await within(preview).findByText(/Answer these questions: Which column is the result you want to explain/);
     expect(screen.getByRole("button", { name: "Upload and continue" })).toBeDisabled();
   });
 });

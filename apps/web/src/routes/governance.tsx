@@ -87,7 +87,7 @@ function PolicyTable({ policies, editable }: { policies: GovernancePolicy[]; edi
       columns={columns}
       getRowId={(p) => p.id}
       onRowClick={(p) => void navigate({ to: "/governance/policies/$policyId", params: { policyId: p.id }, search: p.scope === "tenant" ? { scope: "tenant" } : {} })}
-      empty="No policy."
+      empty="There are no policies."
     />
   );
 }
@@ -143,7 +143,7 @@ export function GovernancePage() {
     <>
       <PageHeader
         title="Governance"
-        description="Which checks a model must pass before it counts as validated - including null tests against random noise - who approves it, and whether endpoints may serve it."
+        description="Set the checks that a model must pass to become validated. These include null tests against random noise. Also set who approves the model and if endpoints can serve it."
         actions={
           <>
             <Button variant="ghost" asChild>
@@ -173,7 +173,7 @@ export function GovernancePage() {
           <TabsTrigger value="checks">Check catalog</TabsTrigger>
         </TabsList>
         <TabsContent value="policies">
-          <p className="mb-3 text-[13px] text-muted-foreground">Tenant-wide policies are a floor every project inherits; the project's own policies add checks or tighten thresholds.</p>
+          <p className="mb-3 text-[13px] text-muted-foreground">All projects inherit the tenant-wide policies as a minimum. The policies of a project can add checks or make thresholds stricter.</p>
           <QueryView query={projectPolicies}>{(page) => <PolicyTable policies={page.items} editable={(p) => (p.scope === "tenant" ? tenantAdmin : projectAdmin)} />}</QueryView>
         </TabsContent>
         <TabsContent value="tenant">
@@ -194,7 +194,7 @@ export function NewPolicyPage() {
   const allowed = s === "tenant" ? can(ws.grants, "create", "tenant_policy") : can(ws.grants, "create", "policy");
   return (
     <>
-      <PageHeader title={s === "tenant" ? "New tenant-wide policy" : "New project policy"} description="Pick the checks, their limits and who signs off." />
+      <PageHeader title={s === "tenant" ? "New tenant-wide policy" : "New project policy"} description="Select the checks and their limits. Then select who approves the model." />
       <PolicyEditor scope={s} policy={null} readOnly={!allowed} />
     </>
   );
@@ -208,12 +208,12 @@ export function PolicyPage() {
   const policy = usePolicy(s, policyId);
   const allowed = s === "tenant" ? can(ws.grants, "update", "tenant_policy") : can(ws.grants, "update", "policy");
   if (policy.isPending) return <LoadingRows rows={6} />;
-  if (policy.isError || !policy.data) return <ErrorNotice error={policy.error} title="The policy could not be loaded" />;
+  if (policy.isError || !policy.data) return <ErrorNotice error={policy.error} title="The app could not load the policy" />;
   return (
     <>
       <PageHeader
         title={policy.data.name}
-        description={policy.data.scope === "tenant" ? "A tenant-wide policy: every project inherits it." : "A project policy."}
+        description={policy.data.scope === "tenant" ? "A tenant-wide policy. All projects inherit it." : "A project policy."}
         meta={
           <>
             <span>version {policy.data.version}</span>
@@ -267,9 +267,9 @@ export function ValidationsPage() {
         description={
           awaiting
             ? reviewer.isReviewer
-              ? "Model versions whose checks passed and that wait for a reviewer. You cannot approve your own submissions."
-              : "Model versions waiting for a reviewer. Only members with the reviewer capability (and project admins) decide."
-            : "Every validation of the project's model versions."
+              ? "These model versions passed their checks and wait for a reviewer. You cannot approve your own submissions."
+              : "These model versions wait for a reviewer. Only members with the reviewer capability and project admins can make the decision."
+            : "All the validations of the model versions in this project."
         }
         actions={
           <NativeSelect
@@ -293,12 +293,12 @@ export function ValidationsPage() {
             <DataTable label="Validations" data={page.items} columns={columns} getRowId={(v) => v.id} onRowClick={(v) => void navigate({ to: "/validations/$validationId", params: { validationId: v.id } })} />
           ) : (
             <EmptyState icon={<ShieldCheck />} title={awaiting ? "Nothing to review" : "No validations"}>
-              {awaiting ? "No model version is waiting for approval." : "Validate a model version from its page."}
+              {awaiting ? "No model version waits for approval." : "To validate a model version, open the page of that version."}
             </EmptyState>
           )
         }
       </QueryView>
-      {!reviewer.isReviewer && awaiting && atLeast(ws.current?.role, "viewer") ? <p className="mt-3 text-xs text-muted-foreground">Ask a project admin to grant you the reviewer capability on the Members page.</p> : null}
+      {!reviewer.isReviewer && awaiting && atLeast(ws.current?.role, "viewer") ? <p className="mt-3 text-xs text-muted-foreground">Ask a project admin to give you the reviewer capability on the Members page.</p> : null}
     </>
   );
 }
@@ -311,6 +311,6 @@ export function ValidationPage() {
 export function ModelValidationsPage() {
   const { modelId, version } = modelValidationsRoute.useParams();
   const v = Number(version);
-  if (!Number.isInteger(v) || v < 1) return <ErrorNotice error={new Error("The version must be a positive number.")} title="Not a model version" />;
+  if (!Number.isInteger(v) || v < 1) return <ErrorNotice error={new Error("The version must be a positive number.")} title="This is not a model version" />;
   return <ModelValidations modelId={modelId} version={v} />;
 }

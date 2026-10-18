@@ -91,7 +91,7 @@ def time_dim(ds: xr.Dataset, schema: DataSchema | None = None, prefer: str | Non
             return name
     if len(ds.dims) == 1:
         return str(next(iter(ds.dims)))
-    raise data_error("cannot tell which dimension is time; name it with the node's 'dim'")
+    raise data_error("cannot find the time dimension. Give its name in 'dim' of the node.")
 
 
 def numeric_vars(ds: xr.Dataset) -> list[str]:
@@ -115,7 +115,7 @@ def target_var(ds: xr.Dataset, schema: DataSchema | None, var: str | None = None
     if len(nums) == 1:
         return nums[0]
     raise data_error(
-        "the data has several variables and no single target; name one with 'var' "
+        "the data has several variables and no single target. Give one in 'var' "
         f"(variables: {', '.join(nums[:20])})"
     )
 
@@ -180,7 +180,7 @@ def iter_series(
     over its other dims into one total series."""
     da = ds[var]
     if tdim not in da.dims:
-        raise data_error(f"{var!r} does not vary along {tdim!r}")
+        raise data_error(f"{var!r} does not change along {tdim!r}")
     others = [str(d) for d in da.dims if d != tdim]
     labels = np.asarray(ds[tdim].values) if tdim in ds.coords else np.arange(da.sizes[tdim])
     if not others:
@@ -243,7 +243,7 @@ def season_length(
         base = freq.split("-")[0].lstrip("0123456789")
         if base in _PERIODS and _PERIODS[base] > 1:
             return _PERIODS[base]
-    raise data_error("cannot tell the season length from the data; give 'period' or 'season'")
+    raise data_error("cannot find the season length from the data. Give 'period' or 'season'.")
 
 
 def json_labels(labels: Sequence[Any]) -> list[Any]:

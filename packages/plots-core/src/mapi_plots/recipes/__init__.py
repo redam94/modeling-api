@@ -20,7 +20,9 @@ the runner from a fitted bundle or a score output, so every plugin gets them for
 ============================  ==========================================================
 
 The MMM domain pack lives in :mod:`mapi_plots.packs.mmm` and the tabular-ML pack
-(``ml.feature_importance``) in :mod:`mapi_plots.packs.ml`. All are exposed through the
+(``ml.feature_importance``) in :mod:`mapi_plots.packs.ml`, and the scientific-model pack
+(``sci.field_map``, ``sci.vector_field``, ``sci.profile_bands``, ``sci.ensemble``; Plotly) in
+:mod:`mapi_plots.packs.sci`. All are exposed through the
 ``mapi.plots`` entry-point group, so ``mapi_sdk.registry.default_registry()`` finds them.
 """
 
@@ -96,8 +98,9 @@ def all_recipes() -> list[Recipe[Any]]:
     """Core catalog plus the bundled domain packs."""
     from mapi_plots.packs.ml import ml_recipes
     from mapi_plots.packs.mmm import mmm_recipes
+    from mapi_plots.packs.sci import sci_recipes
 
-    return [*_STANDARD, *mmm_recipes(), *ml_recipes()]
+    return [*_STANDARD, *mmm_recipes(), *ml_recipes(), *sci_recipes()]
 
 
 def get_recipe(id: str) -> Recipe[Any]:

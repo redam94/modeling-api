@@ -72,7 +72,7 @@ function fmt(mode: BeliefMode) {
  */
 export function baselineSentence(b: readonly [number, number] | null, mean: number): string {
   if (!b) return `about ${share(mean)}.`;
-  if (b[0] < 0 || b[1] > 1) return "anything from none to all of your results - the model has no view yet. If you have one, give it under \u201cResults without any media\u201d.";
+  if (b[0] < 0 || b[1] > 1) return "any value from none to all of your results. The model has no view yet. If you have a view, give it in \u201cResults without any media\u201d.";
   return `between ${share(b[0])} and ${share(b[1])}.`;
 }
 
@@ -149,7 +149,7 @@ function ChannelRow({ row, mode, onChange, error }: { row: ChannelBeliefForm; mo
           </div>
         </>
       ) : (
-        <p className="text-[13px] text-muted-foreground md:col-span-2">No view on this channel: the model learns it from the data alone. Tick it to give a range you are fairly sure of.</p>
+        <p className="text-[13px] text-muted-foreground md:col-span-2">You have no view on this channel. The model learns it from the data only. To give a range, select the channel.</p>
       )}
       {error ? (
         <p role="alert" className="text-xs font-medium text-destructive md:col-span-3">
@@ -211,7 +211,7 @@ function LiftRow({
           "channel",
           "Channel tested",
           <NativeSelect id={`${id}-channel`} value={row.channel} onChange={(e) => onChange({ ...row, channel: e.target.value })} className="h-8" aria-invalid={errors.channel ? true : undefined}>
-            <option value="">Choose…</option>
+            <option value="">Select…</option>
             {channels.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -252,11 +252,11 @@ function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: 
     <section aria-labelledby="preview-h" className="grid gap-4">
       <div className="grid gap-1">
         <h2 id="preview-h" className="text-[15px] font-semibold tracking-tight">
-          What your beliefs mean, before seeing the data
+          What your beliefs mean before the model sees the data
         </h2>
         <p className="text-[13px] text-muted-foreground">
-          The charts show the channels you have a view on. The shaded bar is the range you gave; the line is where 90% of what the model now believes falls, the thick part the
-          middle half.
+          The charts show the channels that you have a view on. The shaded bar is the range that you gave. The line shows where 90% of the belief of the model is. The thick
+          part shows the middle half.
         </p>
       </div>
       <ul className="grid gap-1 text-[13px]">
@@ -277,14 +277,14 @@ function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: 
         {fan ? (
           <figure className="grid gap-1 xl:col-span-2">
             <PlotFrame kind="vega-lite" spec={fan.spec} datasets={fan.datasets} title="Results the model expects before fitting" height={300} exportName="prior-kpi-fan" />
-            <figcaption className="text-xs text-muted-foreground">If the band is far from your usual results, a belief may be off. Fitting then lets the data correct it.</figcaption>
+            <figcaption className="text-xs text-muted-foreground">If the band is far from your usual results, a belief can be wrong. The fit then lets the data correct it.</figcaption>
           </figure>
         ) : null}
       </div>
       {unstated.length ? (
         <p className="text-[13px] text-muted-foreground" data-testid="unstated-channels">
-          No view on {listWords(unstated)}: the model starts from a deliberately wide default for {unstated.length === 1 ? "it" : "them"} and learns{" "}
-          {unstated.length === 1 ? "it" : "them"} from the data, so {unstated.length === 1 ? "it is" : "they are"} left out of these charts.
+          You have no view on {listWords(unstated)}. The model starts from a wide default for {unstated.length === 1 ? "it" : "them"} and learns{" "}
+          {unstated.length === 1 ? "it" : "them"} from the data. These charts do not show {unstated.length === 1 ? "it" : "them"}.
         </p>
       ) : null}
       {preview.baseline_share ? (
@@ -303,7 +303,7 @@ export function PriorsStep({ session }: { session: GuidedSession }) {
     return (
       <div className="grid gap-5">
         <IngestStatus version={session.datasetVersion} />
-        {session.datasetVersion?.status === "ready" ? <p className="text-[13px] text-muted-foreground">This data has no channels to state beliefs about.</p> : null}
+        {session.datasetVersion?.status === "ready" ? <p className="text-[13px] text-muted-foreground">This dataset has no channels that you can give beliefs about.</p> : null}
       </div>
     );
   }
@@ -333,7 +333,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
   const translationFits = translation.data?.done && translation.data.result && (previewKey === key || (previewKey === null && runId === savedRun));
   const blocking = problems.length > 0 || lift.problems.length > 0;
   // Why Preview and Save are disabled, beside them.
-  const blockedBy = [...(problems.length ? ["Fix the beliefs marked in red above."] : []), ...liftSummary(lift.problems, form.liftTests)];
+  const blockedBy = [...(problems.length ? ["Correct the beliefs that show in red above."] : []), ...liftSummary(lift.problems, form.liftTests)];
   const canSave = can(grants, "update", "spec");
   const canPreview = can(grants, "create", "run");
 
@@ -391,7 +391,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
           <div className="grid gap-1">
             <CardTitle>Your channels</CardTitle>
             <CardDescription>
-              Tell the model what you already believe, as a range you are fairly sure of. Leave a channel unticked if you have no view; the data decides it alone. Everything here is optional.
+              Tell the model what you already believe. Give a range that you are fairly sure of. If you have no view on a channel, do not select it. Then the data alone decides. All the fields here are optional.
             </CardDescription>
           </div>
         </CardHeader>
@@ -425,7 +425,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
                 <div className="grid gap-1.5">
                   <RangeSlider label="Baseline share" value={[form.baseline.low, form.baseline.high]} min={0} max={1} step={0.01} format={(v) => share(v)} onValueChange={([low, high]) => setForm((f) => ({ ...f, baseline: { ...f.baseline, low, high } }))} />
                   <p className="text-xs text-muted-foreground">
-                    Between {share(form.baseline.low)} and {share(form.baseline.high)} of results happen anyway.
+                    Between {share(form.baseline.low)} and {share(form.baseline.high)} of the results occur without media.
                   </p>
                   {problems.find((p) => p.where === "baseline") ? (
                     <p role="alert" className="text-xs font-medium text-destructive">
@@ -450,11 +450,11 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
             <div className="grid gap-1">
               <CardTitle>
                 <span className="inline-flex items-center gap-2">
-                  <FlaskConical aria-hidden className="size-4 text-muted-foreground" /> Experiments you have run (optional)
+                  <FlaskConical aria-hidden className="size-4 text-muted-foreground" /> Experiments that you did (optional)
                 </span>
               </CardTitle>
               <CardDescription>
-                A lift test or geo holdout measured what a channel really adds: for example, pausing TV in one market for four weeks. The model treats each result as extra evidence.
+                A lift test or a geo holdout measures what a channel really adds. For example, you stop TV in one market for four weeks. The model uses each result as more evidence.
               </CardDescription>
             </div>
           </CardHeader>
@@ -486,7 +486,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
         <CardContent className="grid gap-4 pt-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="max-w-[60ch] text-[13px] text-muted-foreground">
-              See what your beliefs imply before fitting: a quick, secure simulation of the results they predict.
+              See what your beliefs mean before the fit. A quick, secure simulation shows the results that they predict.
             </p>
             <Button variant="outline" onClick={() => void preview()} disabled={!bp || blocking || start.isPending || !canPreview}>
               {start.isPending || (translation.data && !translation.data.done) ? <Spinner /> : <Eye />} Preview what this means
@@ -494,16 +494,16 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
           </div>
           {translation.data && !translation.data.done ? (
             <p className="flex items-center gap-2 text-[13px]" aria-live="polite">
-              <Spinner /> Simulating what your beliefs imply…
+              <Spinner /> The app simulates the results of your beliefs…
             </p>
           ) : null}
-          {translation.isError ? <ErrorNotice error={translation.error} title="The preview could not be loaded" /> : null}
+          {translation.isError ? <ErrorNotice error={translation.error} title="The app could not load the preview" /> : null}
           {translation.data?.done && translation.data.run.state !== "succeeded" ? (
             <ErrorNotice error={new Error(translation.data.run.problem?.detail ?? "The preview run did not finish.")} title="The preview did not work" />
           ) : null}
           {translation.data?.done && translation.data.result ? (
             <>
-              {!translationFits ? <p className="text-xs text-warning">You changed your beliefs since this preview. Preview again to see the new ones.</p> : null}
+              {!translationFits ? <p className="text-xs text-warning">You changed your beliefs after this preview. Click Preview what this means again to see the new beliefs.</p> : null}
               <PreviewPanel result={translation.data.result} form={form} />
             </>
           ) : null}

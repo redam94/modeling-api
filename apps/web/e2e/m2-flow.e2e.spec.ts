@@ -222,7 +222,7 @@ test.describe("@e2e M2: tenants, run cost, tokens and the kill switch in the UI"
     await admin.page.goto(`/build/${seeded.spec_id}`);
     await expect(admin.page.getByText("r1", { exact: true })).toBeVisible({ timeout: 30_000 });
     await admin.page.getByRole("button", { name: "Fit" }).click();
-    const toast = admin.page.getByText("Fit failed to start");
+    const toast = admin.page.getByText("The fit did not start");
     await expect(toast).toBeVisible({ timeout: 30_000 });
     await expect(admin.page.getByText(/spend cap/).first()).toBeVisible();
     await expect(admin.page).toHaveURL(/\/build\/spc_/);

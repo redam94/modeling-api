@@ -36,10 +36,10 @@ export interface PlanForm {
 }
 
 export const OBJECTIVES: readonly { value: string; label: string; help: string }[] = [
-  { value: "mean", label: "Most likely result", help: "Maximise the expected (average) result." },
-  { value: "p25", label: "Cautious", help: "Maximise a result you beat 3 times in 4 (the 25th percentile)." },
-  { value: "p10", label: "Very cautious", help: "Maximise a result you beat 9 times in 10 (the 10th percentile)." },
-  { value: "cvar10", label: "Protect the downside", help: "Maximise the average of the worst 10% of outcomes." },
+  { value: "mean", label: "Most likely result", help: "Get the highest average result." },
+  { value: "p25", label: "Cautious", help: "Get the highest result that you beat 3 times in 4 (the 25th percentile)." },
+  { value: "p10", label: "Very cautious", help: "Get the highest result that you beat 9 times in 10 (the 10th percentile)." },
+  { value: "cvar10", label: "Protect the downside", help: "Get the highest average of the worst 10% of results." },
 ];
 
 export function defaultForm(channels: readonly string[]): PlanForm {
@@ -113,21 +113,21 @@ export function targetBudget(f: PlanForm, currentTotal: number): number | null {
  */
 export function planProblems(f: PlanForm, current: Record<string, number>): string[] {
   const out: string[] = [];
-  if (!OBJECTIVE_RE.test(f.objective)) out.push("The goal must be 'mean', 'p1'–'p49' or 'cvar1'–'cvar49'.");
-  if (f.mode === "total" && (f.total === null || !(f.total > 0))) out.push("Enter a total budget above zero.");
-  if (f.mode === "change" && (f.changePct === null || f.changePct <= -100 || f.changePct > 1000)) out.push("Enter a change between −99% and +1000%.");
-  if (f.horizon !== null && (!Number.isInteger(f.horizon) || f.horizon < 1 || f.horizon > 520)) out.push("The horizon is a whole number of periods between 1 and 520.");
-  if (f.defaultMin < 0 || f.defaultMax < f.defaultMin) out.push("The default range must run from a minimum of at least 0 up to a larger maximum.");
+  if (!OBJECTIVE_RE.test(f.objective)) out.push("The goal is not correct. Use 'mean', 'p1'–'p49' or 'cvar1'–'cvar49'.");
+  if (f.mode === "total" && (f.total === null || !(f.total > 0))) out.push("Type a total budget that is more than zero.");
+  if (f.mode === "change" && (f.changePct === null || f.changePct <= -100 || f.changePct > 1000)) out.push("Type a change between −99% and +1000%.");
+  if (f.horizon !== null && (!Number.isInteger(f.horizon) || f.horizon < 1 || f.horizon > 520)) out.push("The horizon is not correct. Type a whole number of periods from 1 to 520.");
+  if (f.defaultMin < 0 || f.defaultMax < f.defaultMin) out.push("The default range is not correct. Make the minimum 0 or more, and make the maximum larger than the minimum.");
   for (const [ch, l] of Object.entries(f.limits)) {
     if (l.locked) continue;
-    if ((l.min !== null && l.min < 0) || (l.max !== null && l.max < 0)) out.push(`${ch}: limits cannot be negative.`);
-    if (l.min !== null && l.max !== null && l.min > l.max) out.push(`${ch}: the minimum is above the maximum.`);
-    else if (l.unit === "multiplier" && l.min !== null && l.max === null && l.min > 2) out.push(`${ch}: the minimum (${l.min}×) is above the usual maximum (2×); set a maximum too.`);
-    if (l.unit === "multiplier" && ((l.min ?? 0) > 100 || (l.max ?? 0) > 100)) out.push(`${ch}: multiples of today's spend go up to 100×.`);
+    if ((l.min !== null && l.min < 0) || (l.max !== null && l.max < 0)) out.push(`${ch}: a limit is less than zero. Type a limit of zero or more.`);
+    if (l.min !== null && l.max !== null && l.min > l.max) out.push(`${ch}: the minimum is more than the maximum. Lower the minimum or increase the maximum.`);
+    else if (l.unit === "multiplier" && l.min !== null && l.max === null && l.min > 2) out.push(`${ch}: the minimum (${l.min}×) is more than the usual maximum (2×). Set a maximum also.`);
+    if (l.unit === "multiplier" && ((l.min ?? 0) > 100 || (l.max ?? 0) > 100)) out.push(`${ch}: the limit is too high. The maximum multiple of today's spend is 100×.`);
   }
   for (const g of f.groups) {
-    if (!g.channels.length) out.push(`Group "${g.name}": pick at least one channel.`);
-    if (g.min_share != null && g.max_share != null && g.min_share > g.max_share) out.push(`Group "${g.name}": the minimum share is above the maximum.`);
+    if (!g.channels.length) out.push(`Group "${g.name}": select at least one channel.`);
+    if (g.min_share != null && g.max_share != null && g.min_share > g.max_share) out.push(`Group "${g.name}": the minimum share is more than the maximum. Lower the minimum or increase the maximum.`);
   }
   if (out.length) return out;
   const budget = targetBudget(f, Object.values(current).reduce((a, b) => a + b, 0));
@@ -152,12 +152,12 @@ export function planProblems(f: PlanForm, current: Record<string, number>): stri
     hi += Math.max(chHi, chLo);
   }
   const fmt = (v: number) => Math.round(v).toLocaleString("en");
-  if (lo > budget * (1 + 1e-9)) out.push(`The channel minimums add up to ${fmt(lo)}, more than the budget of ${fmt(budget)}. Lower some minimums or raise the budget.`);
-  if (hi < budget * (1 - 1e-9)) out.push(`The channel maximums add up to ${fmt(hi)}, less than the budget of ${fmt(budget)}. Raise some maximums or lower the budget.`);
+  if (lo > budget * (1 + 1e-9)) out.push(`The channel minimums add up to ${fmt(lo)}. This is more than the budget of ${fmt(budget)}. Lower some minimums or increase the budget.`);
+  if (hi < budget * (1 - 1e-9)) out.push(`The channel maximums add up to ${fmt(hi)}. This is less than the budget of ${fmt(budget)}. Increase some maximums or lower the budget.`);
   const shares = f.groups.reduce((s, g) => s + (g.min_share ?? 0), 0);
   if (shares > 1) {
     const overlap = f.groups.some((a, i) => f.groups.slice(i + 1).some((b) => a.channels.some((c) => b.channels.includes(c))));
-    if (!overlap) out.push("The groups' minimum shares add up to more than 100%.");
+    if (!overlap) out.push("The minimum shares of the groups add up to more than 100%. Lower some minimum shares.");
   }
   return out;
 }

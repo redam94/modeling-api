@@ -83,25 +83,25 @@ def _value(token: str, lo: int, hi: int, names: dict[str, int] | None) -> int:
     if names is not None and token in names:
         return names[token]
     if not token.isdigit() or len(token) > 2:
-        raise _bad(f"{token!r} is not a number in {lo}-{hi}")
+        raise _bad(f"{token!r} is not a number in the range {lo}-{hi}")
     v = int(token)
     if not lo <= v <= hi:
-        raise _bad(f"{v} is outside {lo}-{hi}")
+        raise _bad(f"{v} is not in the range {lo}-{hi}")
     return v
 
 
 def _field(text: str, lo: int, hi: int, names: dict[str, int] | None = None) -> frozenset[int]:
     if not _FIELD_RE.match(text):
-        raise _bad(f"invalid cron field {text[:40]!r}")
+        raise _bad(f"the cron field {text[:40]!r} is not correct")
     out: set[int] = set()
     for part in text.split(","):
         if not part:
-            raise _bad("empty list item")
+            raise _bad("a list item is empty")
         rng, slash, step_txt = part.partition("/")
         step = 1
         if slash:
             if not step_txt.isdigit() or not 1 <= int(step_txt) <= hi - lo + 1:
-                raise _bad(f"invalid step in {part!r}")
+                raise _bad(f"the step in {part!r} is not correct")
             step = int(step_txt)
         if rng == "*":
             a, b = lo, hi
@@ -109,7 +109,7 @@ def _field(text: str, lo: int, hi: int, names: dict[str, int] | None = None) -> 
             left, _, right = rng.partition("-")
             a, b = _value(left, lo, hi, names), _value(right, lo, hi, names)
             if a > b:
-                raise _bad(f"range {part!r} runs backwards")
+                raise _bad(f"the range {part!r} starts after its end")
         else:
             a = _value(rng, lo, hi, names)
             b = hi if slash else a
@@ -120,11 +120,11 @@ def _field(text: str, lo: int, hi: int, names: dict[str, int] | None = None) -> 
 def parse_cron(expr: str) -> CronSpec:
     """Parse an expression (``SCHEDULE_INVALID`` with a plain message otherwise)."""
     if not isinstance(expr, str) or len(expr) > 200:
-        raise _bad("a cron expression is a short text")
+        raise _bad("a cron expression must be a short text")
     text = _MACROS.get(expr.strip().lower(), expr.strip().lower())
     fields = text.split()
     if len(fields) != 5:
-        raise _bad("a cron expression has 5 fields: minute hour day month weekday")
+        raise _bad("a cron expression must have 5 fields: minute hour day month weekday")
     minute, hour, dom, month, dow = fields
     weekdays = _field(dow, 0, 7, _DAYS)
     weekdays = frozenset(0 if d == 7 else d for d in weekdays)
@@ -185,7 +185,7 @@ def next_fire(spec: CronSpec | str, after: datetime, tz: str = "UTC") -> datetim
                         continue
                     return fire
         day = (day.replace(tzinfo=None) + timedelta(days=1)).replace(tzinfo=zone)
-    raise _bad("the schedule never fires")
+    raise _bad("the schedule never runs")
 
 
 def check_cron(expr: str, *, min_interval_minutes: int = MIN_INTERVAL_MINUTES) -> str:
@@ -200,7 +200,7 @@ def check_cron(expr: str, *, min_interval_minutes: int = MIN_INTERVAL_MINUTES) -
     for _ in range(600):
         nxt = next_fire(cs, prev)
         if (nxt - prev) < timedelta(minutes=min_interval_minutes):
-            raise _bad(f"schedules may fire at most every {min_interval_minutes} minutes")
+            raise _bad(f"a schedule can run at most one time every {min_interval_minutes} minutes")
         if nxt - t > timedelta(days=8):
             break
         prev = nxt

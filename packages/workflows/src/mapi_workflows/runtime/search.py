@@ -62,8 +62,8 @@ def _before_tests(ctx: NodeContext, ds: Any, tdim: str) -> Any:
     starts = [int(f["test_start"]) for f in folds if isinstance(f.get("test_start"), int)]
     if plan.get("dim") != tdim or not starts:
         raise data_error(
-            "the order search takes a split plan along time (rolling origin, expanding "
-            "window or holdout) to search before its first test window"
+            "the order search needs a split plan along time (rolling origin, expanding "
+            "window or holdout). It searches only before its first test window."
         )
     gaps = [
         int(f["test_start"]) - int(f["train_stop"])
@@ -73,8 +73,8 @@ def _before_tests(ctx: NodeContext, ds: Any, tdim: str) -> Any:
     stop = min(starts) - max([0, *gaps])
     if stop < 20:
         raise data_error(
-            f"the split plan leaves {max(stop, 0)} periods before its first test window; "
-            "the order search needs at least 20"
+            f"the split plan leaves {max(stop, 0)} periods before its first test window. "
+            "The order search needs at least 20."
         )
     return ds.isel({tdim: slice(0, stop)})
 
@@ -204,7 +204,7 @@ def _arma(ctx: NodeContext) -> NodeOutcome:
     )
     best = next((r for r in rows if r.get("status") == "ok"), None)
     if best is None:
-        raise data_error("every order on the grid failed to fit")
+        raise data_error("all the orders on the grid failed to fit")
     dy = y[period:] - y[:-period] if big_d else y
     dy = np.diff(dy, n=d) if d else dy
     hints = acf_significance(dy, nlags=min(24, len(dy) // 2 - 1), max_order=max(max_p, max_q))
@@ -267,7 +267,7 @@ def _sarima(ctx: NodeContext) -> NodeOutcome:
     )
     best = next((r for r in rows if r.get("status") == "ok"), None)
     if best is None:
-        raise data_error("every order on the grid failed to fit")
+        raise data_error("all the orders on the grid failed to fit")
     order = [int(best["p"]), d, int(best["q"])]
     sorder = [int(best["P"]), big_d, int(best["Q"]), period]
     table = TablePayload(
@@ -304,7 +304,7 @@ def _var_lag(ctx: NodeContext) -> NodeOutcome:
     if criterion == "aicc":
         criterion = "aic"
     if mat.shape[0] <= maxlags * len(names) + 10:
-        raise data_error(f"too few observations ({mat.shape[0]}) for {maxlags} lags")
+        raise data_error(f"there are too few observations ({mat.shape[0]}) for {maxlags} lags")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         sel = VAR(mat).select_order(maxlags=maxlags)
@@ -325,7 +325,7 @@ def _var_lag(ctx: NodeContext) -> NodeOutcome:
         meta={
             "criterion": criterion,
             "vars": list(names),
-            "summary_plain": f"{criterion.upper()} picks {best} lag(s).",
+            "summary_plain": f"{criterion.upper()} selects {best} lag(s).",
         },
     )
     return NodeOutcome(

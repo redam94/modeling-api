@@ -187,7 +187,7 @@ export function NodeDrawer({
                 <p className="text-[13px] text-muted-foreground">
                   {node.status === "cached" && node.cached_from ? (
                     <>
-                      Nothing it depends on changed, so the result of run <ChildRunLink id={node.cached_from} workflow /> was reused at no cost.
+                      The inputs of this step did not change. The server used the result of run <ChildRunLink id={node.cached_from} workflow /> again, at no cost.
                     </>
                   ) : node.status === "skipped" ? (
                     (node.skipped_reason ?? meta.plain)
@@ -237,7 +237,7 @@ export function NodeDrawer({
               {node.result && !isTest && !decision ? (
                 <details className="rounded-md border p-2">
                   <summary className="cursor-pointer text-sm font-semibold">Result fields</summary>
-                  <p className="mt-1 text-xs text-muted-foreground">What conditions downstream can read as nodes.{node.node_id}.&lt;field&gt;.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Conditions in later steps can read these fields as nodes.{node.node_id}.&lt;field&gt;.</p>
                   <JsonBlock value={node.result} className="mt-2" maxHeight="18rem" />
                 </details>
               ) : null}

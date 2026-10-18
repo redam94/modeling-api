@@ -39,7 +39,7 @@ export function TestVerdict({ result }: { result: Obj }) {
   return (
     <div className="grid gap-2" data-testid="test-verdict">
       {verdict ? <p className="text-[14px] font-medium">{verdict}</p> : null}
-      {typeof result.null_plain === "string" ? <p className="text-xs text-muted-foreground">The question it asks: {result.null_plain}</p> : null}
+      {typeof result.null_plain === "string" ? <p className="text-xs text-muted-foreground">The question that the test asks: {result.null_plain}</p> : null}
       <KeyValues
         items={[
           ["Decision", typeof result.decision === "string" ? <Badge variant={result.reject ? "info" : "secondary"}>{result.decision.replace(/_/g, " ")}</Badge> : null],
@@ -143,7 +143,7 @@ function PlotPayload({ value, title }: { value: Obj; title: string }) {
   const spec = obj(value.spec);
   const datasets = obj(value.datasets) ?? {};
   const inline = Object.values(datasets).every((d) => Array.isArray(d));
-  if (!spec || !inline) return <p className="text-[13px] text-muted-foreground">This chart's data is stored as a file: use the download link.</p>;
+  if (!spec || !inline) return <p className="text-[13px] text-muted-foreground">The data for this chart is in a file. Click Download to get the file.</p>;
   return <PlotFrame kind={value.kind === "plotly" ? "plotly" : "vega-lite"} spec={spec as JsonObject} datasets={datasets as Record<string, Row[]>} title={title} height={260} />;
 }
 

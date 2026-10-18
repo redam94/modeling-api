@@ -189,7 +189,7 @@ def test_the_refusal_says_what_was_sent_and_what_to_do() -> None:
     issue = problem.errors[0]
     assert "3 periods (1961-01-01 to 1961-03-01)" in issue.message
     assert "1960-12-01" in issue.message and "T00:00:00" not in issue.message
-    assert issue.suggested_action is not None and "Refit" in issue.suggested_action
+    assert issue.suggested_action is not None and "Fit the model again" in issue.suggested_action
     assert issue.context == {"target": "y", "actuals": 3, "fit_end": "1960-12-01"}
 
 
@@ -392,7 +392,7 @@ def test_actuals_must_continue_the_fitted_history() -> None:
     issues = validate_score_request(_req(), meta, late)
     assert _codes(issues) == ["ACTUALS_INVALID"]
     err = next(i for i in issues if i.code is ErrorCode.ACTUALS_INVALID)
-    assert "start 2 period(s) after the fitted history ends (1960-12-01)" in err.message
+    assert "start 2 period(s) after the end of the fitted history (1960-12-01)" in err.message
     # coordinates that skip periods are a different problem
     skipped = _inputs(("1961-03-01", "1961-04-01", 2), ("1961-03-01", "1961-04-01", 2))
     assert "NON_CONTIGUOUS_EXTENSION" in _codes(validate_score_request(_req(), meta, skipped))
@@ -417,7 +417,7 @@ def test_drivers_with_actuals_and_on_the_appended_horizon() -> None:
     )
     issues = validate_score_request(_req(), meta, with_x)
     err = next(i for i in issues if i.code is ErrorCode.MISSING_FUTURE_COVARIATE)
-    assert "appended after it" in err.message  # the 8 appended periods have no x
+    assert "horizon periods after it" in err.message  # the 8 appended periods have no x
     filled = validate_score_request(_req(future_covariates="carry_last"), meta, with_x)
     assert _codes(filled) == []
     rows = _inputs(
@@ -592,10 +592,17 @@ def test_predict_mode_says_target_values_after_the_fit_are_not_used() -> None:
     predict = _req(mode="predict", horizon=None)
     issues = validate_score_request(predict, meta, sent)
     assert _codes(issues) == []
-    warn = [i for i in issues if i.severity is Severity.WARNING and "not used" in i.message]
+    warn = [
+        i
+        for i in issues
+        if i.severity is Severity.WARNING and "predict mode does not use" in i.message
+    ]
     assert warn and "mode: forecast" in (warn[0].suggested_action or "")
     inside = _inputs(("1960-01-01", "1960-06-01", 6), ("1960-01-01", "1960-06-01", 6))
-    assert not any("not used" in i.message for i in validate_score_request(predict, meta, inside))
+    assert not any(
+        "predict mode does not use" in i.message
+        for i in validate_score_request(predict, meta, inside)
+    )
 
 
 def test_a_model_fitted_in_a_transformed_space_refuses_actuals_and_warns() -> None:

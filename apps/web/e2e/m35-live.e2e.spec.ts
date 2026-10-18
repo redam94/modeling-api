@@ -165,12 +165,12 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
     const steps = page.getByRole("table", { name: "Steps" });
     await steps.getByRole("button", { name: /Does it wander\? \(ADF\)/ }).click();
     const drawer = page.getByTestId("node-drawer");
-    await expect(drawer.getByTestId("test-verdict")).toContainText("The series wanders");
+    await expect(drawer.getByTestId("test-verdict")).toContainText("The series does not return to a stable level");
     await expect(drawer.getByText("Sandbox run")).toBeVisible();
     await shot(page, "adf-drawer");
     await page.keyboard.press("Escape");
     await steps.getByRole("button", { name: /Is it stable\? \(KPSS\)/ }).click();
-    await expect(page.getByTestId("node-drawer").getByTestId("test-verdict")).toContainText("The series wanders");
+    await expect(page.getByTestId("node-drawer").getByTestId("test-verdict")).toContainText("The series does not return to a stable level");
     await page.keyboard.press("Escape");
     await steps.getByRole("button", { name: /AR and MA orders/ }).click();
     await expect(page.getByTestId("node-drawer")).toContainText(/best_p|AR order|p =/);
@@ -204,13 +204,13 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
       await page.goto(`/datasets/${seeded.datasets.weekly_sales}/versions/1/explore`);
       const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: /Recipes/ }) });
       await expect(nav.getByRole("link", { name: /Help me choose/ })).toBeVisible();
-      await page.getByRole("link", { name: "Check it is ready to forecast" }).click();
+      await page.getByRole("link", { name: "Test if it is ready to forecast" }).click();
       await expect(page).toHaveURL(/\/workflows\/recipe\?template=ts_readiness_arimax&data=/);
       const runner = page.getByTestId("recipe-runner");
       await expect(runner.getByTestId("about-card")).toContainText("Time-series readiness to ARIMAX");
       await expect(runner.getByLabel("Dataset")).toHaveValue(`dataset://${seeded.project}/weekly_sales`);
       // the price plan is known ahead: the one setting worth changing, under Fine-tune
-      await runner.getByText("Fine-tune (optional: the defaults suit most data)").click();
+      await runner.getByText("Fine-tune (optional: the defaults are correct for most data)").click();
       await runner.getByLabel("Drivers").fill("price");
       await runner.getByRole("button", { name: "Run this recipe" }).click();
       await expect(page).toHaveURL(/\/workflow-runs\/run_/);

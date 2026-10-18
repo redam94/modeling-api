@@ -5,22 +5,25 @@ description: Drive the platform from Python with mapi_client - upload datasets, 
 # The Python client <span class="mapi-badge">v0.2</span>
 
 `mapi-client` (`mapi_client`, Apache-2.0) is a typed client for the `/v1`
-[HTTP API](http-api.md), built on `httpx`. Every request and response is a Pydantic model from
-`mapi_spec.api`, the same models the server uses, so a typo in a field name fails in your
-editor, not in production. Errors come back as `mapi_spec.errors.MapiError` subclasses with
-the server's stable error code.
+[HTTP API](http-api.md). It uses `httpx`. Each request and each response is a Pydantic model
+from `mapi_spec.api`. The server uses the same models. Thus, if a field name has a typo, your
+editor shows the error before production. Errors come back as `mapi_spec.errors.MapiError`
+subclasses with the stable error code of the server.
 
-It is the client the `mapi` CLI, `make seed` and the end-to-end tests use. This page walks
-through one script, `docs/snippets/client_tour.py`, which `make e2e` runs against a live stack;
-the outputs shown come from running it (shortened in places).
+The `mapi` CLI, `make seed` and the end-to-end tests use this client. This page shows one
+script, `docs/snippets/client_tour.py`. `make e2e` runs this script against a live stack. The
+outputs on this page come from that script. Some outputs are shorter than the real outputs.
 
 ```bash
 uv add mapi-client              # or, for xr.Dataset uploads and xr.DataTree results:
 uv add "mapi-client[xarray]"
 ```
 
-In the workspace both are already installed. The examples need a running stack and the
-demo files: `make dev`, then `uv run python scripts/seed.py --export demo/`.
+The workspace already has the two packages. The examples need a live stack and the demo
+files:
+
+1. Run `make dev`.
+2. Run `uv run python scripts/seed.py --export demo/`.
 
 ## Connect
 
@@ -29,15 +32,18 @@ demo files: `make dev`, then `uv run python scripts/seed.py --export demo/`.
 ```
 
 ```text
-http://127.0.0.1:8000 ok 0.6.0
+http://127.0.0.1:8000 ok 0.7.0
 ```
 
-`Client()` resolves its settings like the CLI: arguments (`Client("http://…", token=…,
-project=…)`), then `MAPI_URL` (or `MAPI_API_URL`), `MAPI_TOKEN`, `MAPI_PROJECT` and
-`MAPI_PROFILE`, then a profile in
-`~/.config/mapi/config.toml`, then `http://127.0.0.1:8000`. `api.config.sources` says where
-each value came from. Use the client as a context manager (`with Client() as api:`) or call
-`close()`.
+`Client()` finds its settings in the same sequence as the CLI:
+
+1. The arguments (`Client("http://…", token=…, project=…)`).
+2. `MAPI_URL` (or `MAPI_API_URL`), `MAPI_TOKEN`, `MAPI_PROJECT` and `MAPI_PROFILE`.
+3. A profile in `~/.config/mapi/config.toml`.
+4. `http://127.0.0.1:8000`.
+
+`api.config.sources` tells where each value came from. Use the client as a context manager
+(`with Client() as api:`), or call `close()`.
 
 ## Upload data
 
@@ -52,14 +58,19 @@ dataset://default/holidays_eu@v2 ready sha256:11abf028d5f5
 dataset://default/eu_media_future@v2 ready sha256:2db88e1af79d
 ```
 
-`datasets.upload` does the whole dance: it creates the dataset if the name is new, opens an
-upload session, PUTs the bytes to the signed URL (without sending your API credentials
-there), starts the sandboxed ingest run with a fresh idempotency key, and waits until the
-version is `ready`, raising the ingest's error if it fails. It accepts a path, `bytes`, or an
-`xr.Dataset` (with the `xarray` extra). CSV and Parquet files need a `mapping=IngestMapping(…)`;
-zarr zips and netCDF files describe themselves.
+`datasets.upload` does all the steps of an upload:
 
-The version carries the schema the ingest run checked:
+1. If the name is new, it makes the dataset.
+2. It opens an upload session.
+3. It PUTs the bytes to the signed URL. It does not send your API credentials to that URL.
+4. It starts the ingest run in the sandbox with a new idempotency key.
+5. It waits until the version is `ready`. If the ingest fails, it raises the error of the
+   ingest.
+
+It accepts a path, `bytes` or an `xr.Dataset` (with the `xarray` extra). CSV and Parquet files
+need a `mapping=IngestMapping(…)`. Zarr zips and netCDF files describe themselves.
+
+The version has the schema that the ingest run checked:
 
 ```python
 --8<-- "client_tour.py:schema"
@@ -84,11 +95,12 @@ weekly ['channel', 'geo', 'time'] <- split
 hols ['channel', 'geo', 'time']
 ```
 
-Validation is synchronous and static: the server never imports plugin code. It returns every
-issue at once with a JSON pointer (`/pipeline/2/with/over`), plus the schema at every stage,
-here in the dataset's canonical names (`geo`, `time`) after binding. The marketing-mix model
-(`mmm.bayesian`, on mmm-framework) scales the data and carries spend over itself, so the
-pipeline stops at the currency, weekly and holiday steps.
+Validation is synchronous and static. The server never imports plugin code. It returns all
+the issues at one time, each with a JSON pointer (`/pipeline/2/with/over`). It also returns
+the schema at each stage. Here, the schema uses the canonical names of the dataset (`geo`,
+`time`) after binding. The marketing-mix model (`mmm.bayesian`, on mmm-framework) scales the
+data and carries spend over. Thus, the pipeline stops at the currency, weekly and holiday
+steps.
 
 ## Fit and follow the run
 
@@ -123,22 +135,23 @@ end: succeeded
 succeeded mv_01m53hmgdhfby1esy1xe341hvh
 ```
 
-(Captured on a laptop against `make dev`, with the demo spec's deliberately tiny sampler
-settings; "posterior ready" appears twice because the model is fitted on the training weeks,
-evaluated on the holdout, then refitted on every week.)
+(We got this output on a laptop against `make dev`. The demo spec has very small sampler
+settings on purpose. "posterior ready" shows two times. First, the model fits on the training
+weeks. Then it does an evaluation on the holdout. Then it fits again on all the weeks.)
 
-`runs.stream_events` follows the server-sent event stream and yields four kinds of items:
+`runs.stream_events` follows the server-sent event stream. It yields four types of items:
 
 | Item | When | Notes |
 |---|---|---|
-| `RunSnapshot` | First, and after every state change | The full `Run` |
-| `RunEventFrame` | Persisted events: `state`, `warning`, `diagnostic`, `metric`, `checkpoint`, `complete`, `error` | Has an id; replayed after a reconnect |
-| `RunLiveFrame` | `progress` and `log` | Live only, never replayed |
-| `RunEnd` | Once, when the run is terminal | The stream then closes |
+| `RunSnapshot` | First, and after each change of state | The full `Run` |
+| `RunEventFrame` | Persisted events: `state`, `warning`, `diagnostic`, `metric`, `checkpoint`, `complete`, `error` | Has an id. The stream sends it again after a reconnect. |
+| `RunLiveFrame` | `progress` and `log` | Live only. The stream never sends it again. |
+| `RunEnd` | One time, when the run is terminal | Then the stream closes. |
 
-A dropped connection is resumed with `Last-Event-ID`, so no persisted event is lost or
-repeated. `runs.wait` polls instead (with backoff) and, with `raise_on_failure=True`, raises
-the run's error; `runs.logs(run_id)` pages through the captured output.
+If the connection stops, the client continues it with `Last-Event-ID`. Thus, no persisted
+event is lost or repeated. `runs.wait` polls (with backoff) and does not use the stream. With
+`raise_on_failure=True`, it raises the error of the run. `runs.logs(run_id)` gives the
+captured output page by page.
 
 ## Inspect the model version
 
@@ -152,7 +165,7 @@ model://default/eu-geo-mmm@v1 fail
 warn RHAT: The chains mostly agree, but not fully (R-hat 1.05).
 fail ESS: Only 71 independent draws: the numbers are not stable.
 pass DIVERGENCES: The sampler explored the model without problems.
-pass HOLDOUT_MAPE: Forecasts were off by 3% on the held-out periods.
+pass HOLDOUT_MAPE: The forecast error on the holdout periods was 3%.
 pass HOLDOUT_COVERAGE: 96% of held-out values fell inside the 90% range, as expected.
 pass NEGATIVE_ROI: No channel is likely to have a negative return.
 pass ROI_ABSURD: The highest channel return (4.34 per unit spent) is believable.
@@ -164,21 +177,21 @@ fail DATA_HISTORY: Only 0.6 years of history: too short to separate media from s
 pass SPEND_VARIATION: Every channel's spend varies enough to measure its effect.
 ```
 
-The scorecard is doing its job: the demo spec samples 100 draws on 2 chains from about half
-a year of weekly data so the walkthrough stays fast, and the scorecard says exactly that - too
-few independent draws and too little history - in plain words. A scorecard that fails blocks
-promotion to an endpoint outright (`PROMOTION_BLOCKED`); one that only warns needs an admin's
-audited reason ([the promotion gate](../concepts/integrations.md#promotion-gate)).
+The scorecard works correctly here. The demo spec samples 100 draws on 2 chains from about
+half a year of weekly data. This keeps the tour fast. The scorecard tells this in plain words:
+too few independent draws and too little history. If a scorecard fails, you cannot promote
+the model version to an endpoint (`PROMOTION_BLOCKED`). If a scorecard only warns, an admin
+must give an audited reason ([the promotion gate](../concepts/integrations.md#promotion-gate)).
 
-A `ModelVersion` also carries the signed `manifest`, the `diagnostics`, the `capabilities`, the
-`lineage` and the list of `artifacts`. Download any of them:
+A `ModelVersion` also has the signed `manifest`, the `diagnostics`, the `capabilities`, the
+`lineage` and the list of `artifacts`. You can download each of them:
 
 ```python
 --8<-- "client_tour.py:download"
 ```
 
-The API checks the manifest's signature before minting the short-lived signed URL, and the
-client checks the download against the CRC32C and size the object store computed.
+The API checks the signature of the manifest before it makes the short-lived signed URL. The
+client compares the download with the CRC32C and the size that the object store calculated.
 `mapi_sdk.bundle.Bundle` opens the downloaded `bundle.zarr.zip` in a notebook.
 
 ## Score
@@ -193,17 +206,18 @@ succeeded ['plots.json', 'result.json', 'score.zarr.zip', 'summary.json', 'ui/gu
 [272645. 254447. 259143. 258366. 265242. 269497. 268112. 266377.]
 ```
 
-`model-owned` means the model returned its answers in its own stage's units, recorded in each
-variable's `units` attribute: weekly EUR, because the pipeline converted and resampled before
-the model.
+`model-owned` means that the model returned its answers in the units of its own stage. The
+`units` attribute of each variable records these units. Here, the units are weekly EUR. The
+pipeline converted and resampled the data before the model.
 
-`models.score` sends the request with `Prefer: wait=60`. If the run is not done by then, it
-repeats the *same* request with the *same* idempotency key: the server answers with the one
-run it already created, so a slow score never turns into two runs. With the `xarray` extra
-the result tree is downloaded and checked into `result.tree`.
+`models.score` sends the request with `Prefer: wait=60`. If the run is not complete at that
+time, the client sends the *same* request again with the *same* idempotency key. The server
+answers with the run that it made before. Thus, a slow score never becomes two runs. With the
+`xarray` extra, the client downloads the result tree, does a check of it and puts it in
+`result.tree`.
 
 The request is a [`ScoreRequest`](../reference/spec-format.md) as a dict, a YAML string or the
-Pydantic model. `apiVersion` and `kind` are filled in for you.
+Pydantic model. The client fills in `apiVersion` and `kind`.
 
 ## Errors
 
@@ -216,62 +230,69 @@ SIDE_TABLE_COVERAGE validation failed with 1 error; first at /side_tables/fx: si
 MODE_NOT_SUPPORTED
 ```
 
-Every RFC 7807 problem from the server becomes a `MapiError` (or a subclass such as
-`ModeNotSupported`, `ValidationFailed`, `CoordPlanError`, `QuotaExceeded`,
-`IntegrityFailure`) with the stable `code`, the HTTP `status`, the JSON `pointer` and the
-individual `issues`. Both requests above failed during static checks, before any run
-was created. Transport failures raise `mapi_client.TransportError`; responses the client
-cannot parse raise `UnexpectedResponse`.
+The client changes each RFC 7807 problem from the server into a `MapiError`. The error can
+also be a subclass, for example `ModeNotSupported`, `ValidationFailed`, `CoordPlanError`,
+`QuotaExceeded` or `IntegrityFailure`. It has the stable `code`, the HTTP `status`, the JSON
+`pointer` and the individual `issues`. The two requests above failed in the static checks,
+before the server made a run. Transport failures raise `mapi_client.TransportError`. If the
+client cannot parse a response, it raises `UnexpectedResponse`.
 
-Idempotent calls (`GET`s, and `POST`s with an idempotency key) are retried on 502, 503,
-504 and connection errors, honouring `Retry-After` (`ClientConfig.max_retries`, default 2).
-`429` answers are handled as described in [Quotas and rate limits](#quotas-and-rate-limits).
+The client tries idempotent calls again on 502, 503, 504 and connection errors. Idempotent
+calls are `GET`s, and `POST`s with an idempotency key. The client obeys `Retry-After`
+(`ClientConfig.max_retries`, default 2). For `429` answers, see
+[Quotas and rate limits](#quotas-and-rate-limits).
 
 ## Projects, tokens and usage <span class="mapi-badge">v0.3</span> { #projects-tokens-and-usage }
 
-On a multi-tenant API the client needs credentials and a project
-([Tenancy and authentication](../concepts/tenancy-and-auth.md)). Credentials come from an
-API token (`Client(token=…)`, `MAPI_TOKEN` or the profile) or, when none is set, from the
-sign-in `mapi login` stored for the profile; the client renews that sign-in by itself and
-only sends it to the API it was made for. The project comes from `Client(project=…)`,
-`MAPI_PROJECT` or the profile (`mapi use`), and is sent as `X-Mapi-Project` on
-project-scoped requests only:
+On a multi-tenant API, the client needs credentials and a project
+([Tenancy and authentication](../concepts/tenancy-and-auth.md)). The credentials come from an
+API token (`Client(token=…)`, `MAPI_TOKEN` or the profile). If there is no token, they come
+from the sign-in that `mapi login` stored for the profile. The client renews that sign-in
+automatically. It sends the sign-in only to the API that made it.
+
+The project comes from `Client(project=…)`, `MAPI_PROJECT` or the profile (`mapi use`). The
+client sends the project as `X-Mapi-Project`, only on the requests for a project:
 
 ```python
 --8<-- "client_tenancy.py:me"
 ```
 
-Mint a token for a program. The secret is returned exactly once and is kept out of `repr`:
+Make a token for a program. The API returns the secret only one time. The secret does not
+show in `repr`:
 
 ```python
 --8<-- "client_tenancy.py:tokens"
 ```
 
-Usage reports and runs carry exact costs in integer micro-units of the currency:
+Usage reports and runs have exact costs in integer micro-units of the currency:
 
 ```python
 --8<-- "client_tenancy.py:usage"
 ```
 
-`api.tenants` covers tenants, projects and members; `api.admin` the operator endpoints
-(tenants, quotas, kill switches, executors, the audit log). See the [reference](#reference).
+`api.tenants` contains the calls for tenants, projects and members. `api.admin` contains the
+operator endpoints: tenants, quotas, kill switches, executors and the audit log. See the
+[reference](#reference).
 
 ### Quotas and rate limits
 
-A `429` answer carries one of two codes. `RATE_LIMITED` means the request was refused before
-the server acted on it, so the client waits (`Retry-After`, then exponential back-off with a
-little jitter) and sends it again, whatever the method; it raises `RateLimited` only after
-`RetryPolicy.rate_limit_retries` attempts, or at once when the server asks for a wait longer
-than `max_rate_limit_wait`. `QUOTA_EXCEEDED` is raised at once as `QuotaExceeded`;
-`retry_after_of(exc)` says when the quota window resets (`None` when only finishing running
-work frees capacity):
+A `429` answer has one of two codes:
+
+- `RATE_LIMITED`: The server refused the request before it did work on it. Thus, the client
+  waits and sends the request again, for all methods. It waits for `Retry-After`, then for an
+  exponential back-off with a small jitter. It raises `RateLimited` only after
+  `RetryPolicy.rate_limit_retries` attempts. If the server asks for a wait longer than
+  `max_rate_limit_wait`, the client raises `RateLimited` immediately.
+- `QUOTA_EXCEEDED`: The client raises `QuotaExceeded` immediately. `retry_after_of(exc)` tells
+  when the quota window starts again. It is `None` when capacity becomes free only after the
+  work that runs now is complete.
 
 ```python
 --8<-- "client_tenancy.py:quota"
 ```
 
-Tune the behaviour with a `RetryPolicy` (`max_quota_wait` lets a short quota window be
-waited out too):
+Use a `RetryPolicy` to change this behavior. With `max_quota_wait`, the client can also wait
+until a short quota window ends:
 
 ```python
 --8<-- "client_tenancy.py:retry"
@@ -279,8 +300,9 @@ waited out too):
 
 ## Endpoints, webhooks and sharing <span class="mapi-badge">v0.4</span> { #endpoints-webhooks-and-sharing }
 
-The examples in this section come from `docs/snippets/client_integrations.py`, which runs
-offline against a stand-in API. The concepts are in [Integrations](../concepts/integrations.md).
+The examples in this section come from `docs/snippets/client_integrations.py`. This script
+runs offline against a substitute API. For the concepts, see
+[Integrations](../concepts/integrations.md).
 
 ### Promote a model version to an endpoint
 
@@ -292,17 +314,20 @@ offline against a stand-in API. The concepts are in [Integrations](../concepts/i
 endpoint://growth/geo-mmm-prod -> model://growth/eu-geo-mmm@v3 allowed
 ```
 
-Promotion goes through the [promotion gate](../concepts/integrations.md#promotion-gate): a
-version whose scorecard warns raises `MapiError` with code `OVERRIDE_REQUIRED` until a
-signed-in project admin repeats the call with `override=True, reason="…"`; `PROMOTION_BLOCKED`
-cannot be overridden. `api.endpoints` also has `list`, `get`, `history`, `rollback(alias,
-reason, to_revision=…)` and `delete`.
+A promotion goes through the [promotion gate](../concepts/integrations.md#promotion-gate). If
+the scorecard of a version warns, the call raises `MapiError` with code `OVERRIDE_REQUIRED`.
+Then a signed-in project admin must do the call again with `override=True, reason="…"`.
+Nobody can override `PROMOTION_BLOCKED`. `api.endpoints` also has `list`, `get`, `history`,
+`rollback(alias, reason, to_revision=…)` and `delete`.
 
 ### Score an endpoint into xarray
 
-`api.endpoint(alias)` returns a `RemoteEndpoint`: `schema()` says what to send, `validate(ds)`
-checks a payload without running it, and `score(ds)` sends an `xr.Dataset` inline (as
-XrJSON, up to 5 MB) and returns the scored `xr.Dataset`:
+`api.endpoint(alias)` returns a `RemoteEndpoint`:
+
+- `schema()` tells what to send.
+- `validate(ds)` does a check of a payload, but does not run it.
+- `score(ds)` sends an `xr.Dataset` inline (as XrJSON, up to 5 MB) and returns the scored
+  `xr.Dataset`.
 
 ```python
 --8<-- "client_integrations.py:score"
@@ -313,28 +338,33 @@ XrJSON, up to 5 MB) and returns the scored `xr.Dataset`:
 [[13260.]]
 ```
 
-`score` returns the `summary` group (a `stat` dim: `mean`, `hdi_90_lower`, `hdi_90_upper`,
-...); pass `group="draws"` with `output={"draws": 100}` for posterior draws along `sample`,
-or `group="delta/summary"` for a counterfactual. Any other `EndpointScoreCall` field is a
-keyword: `mode="forecast"`, `horizon={"dim": "time", "periods": 8}`, `scenario=plan_ds`,
-`future_covariates="carry_last"`. Like `models.score`, it sends `Prefer: wait=60` and
-repeats the call with the same idempotency key until the run is done (`timeout=` bounds the
-wait), so a slow score never creates two runs. `api.endpoints.score(alias, call)` is the
-lower-level call: it returns a `ScoreResult` with the run, the output links and the
-downloaded tree. Inline payloads need the `xarray` extra; larger data is uploaded as a
-dataset and sent as `data="dataset://growth/plan@v2"`.
+`score` returns the `summary` group. This group has a `stat` dim (`mean`, `hdi_90_lower`,
+`hdi_90_upper` and more). For posterior draws along `sample`, pass `group="draws"` with
+`output={"draws": 100}`. For a counterfactual, pass `group="delta/summary"`. Each other
+`EndpointScoreCall` field is a keyword, for example `mode="forecast"`,
+`horizon={"dim": "time", "periods": 8}`, `scenario=plan_ds` and
+`future_covariates="carry_last"`.
 
-`mapi_client.xrjson.encode(ds)` and `decode(payload)` convert between `xr.Dataset` and the
-XrJSON payload (the SDK wire format: dates as ISO strings, `NaN` as `null`, size-checked
-before anything is sent).
+Like `models.score`, it sends `Prefer: wait=60`. It sends the call again with the same
+idempotency key until the run is complete. `timeout=` sets the maximum wait. Thus, a slow
+score never makes two runs. `api.endpoints.score(alias, call)` is the lower-level call. It
+returns a `ScoreResult` with the run, the output links and the downloaded tree. Inline
+payloads need the `xarray` extra. If the data is larger, upload it as a dataset and send it
+as `data="dataset://growth/plan@v2"`.
+
+`mapi_client.xrjson.encode(ds)` changes an `xr.Dataset` into the XrJSON payload.
+`decode(payload)` changes the payload back into an `xr.Dataset`. XrJSON is the wire format of
+the SDK. It has dates as ISO strings and `NaN` as `null`. The client does a check of the size
+before it sends data.
 
 ### Forecast with your latest actuals
 
 `api.endpoints.forecast(alias, rows)` sends [actuals and the dates to
-forecast](../concepts/forecasting-with-actuals.md) in one call, without a refit. `rows` is a
-long table in the endpoint's input layout (`schema().input_table`: the time column, the
-target, the drivers) - a pandas `DataFrame`, a list of row mappings or a mapping of columns.
-Rows with the target filled are actuals; rows after them with it empty are forecast:
+forecast](../concepts/forecasting-with-actuals.md) in one call. It does not fit the model
+again. `rows` is a long table in the input layout of the endpoint (`schema().input_table`).
+This layout has the time column, the target and the drivers. `rows` can be a pandas
+`DataFrame`, a list of row mappings or a mapping of columns. Rows that have a target value
+are actuals. The model forecasts the rows after them that have no target value:
 
 ```python
 import pandas as pd
@@ -350,14 +380,19 @@ print(result.conditioning.message)
 # 1961-04-01 to 1961-05-01.
 ```
 
-Or give them apart: `actuals=` (rows with the target) and `future=` - the dates to forecast,
-rows with their driver values, or a number of periods to append after the last actual
-(`future=6`). Empty driver values on future rows are carried forward
-(`future_covariates="carry_last"`, the default here). A model that cannot use actuals refuses
-them with `ActualsNotSupported` (`422 ACTUALS_NOT_SUPPORTED`). `api.endpoint(alias).forecast(rows)`
-does the same and fetches the schema once; `mapi_client.forecast_call(schema, rows, ...)` only
-builds the call. `ScoreResult.conditioning` is the record for any forecast, with
-`conditioned=False` and the end of the fitted history when no actual was sent.
+You can also give the two parts separately:
+
+- `actuals=`: the rows with the target.
+- `future=`: the dates to forecast, rows with their driver values, or a number of periods to
+  add after the last actual (`future=6`).
+
+The client carries empty driver values on future rows forward
+(`future_covariates="carry_last"`, the default here). If a model cannot use actuals, it
+refuses them with `ActualsNotSupported` (`422 ACTUALS_NOT_SUPPORTED`).
+`api.endpoint(alias).forecast(rows)` does the same and gets the schema one time.
+`mapi_client.forecast_call(schema, rows, ...)` only makes the call. `ScoreResult.conditioning`
+is the record for each forecast. If you sent no actual, it has `conditioned=False` and the
+end of the fitted history.
 
 ### Snippets
 
@@ -365,11 +400,12 @@ builds the call. `ScoreResult.conditioning` is the record for any forecast, with
 --8<-- "client_integrations.py:snippets"
 ```
 
-`api.endpoints.snippets(alias, languages)` returns the code the
-[Integrations hub](../concepts/integrations.md#snippets) shows, in Python, TypeScript, curl,
-R, Apps Script and a notebook cell. The Python snippet is exactly the
-`api.endpoints.score(...)` call above, the notebook cell the `api.endpoint(alias).score(...)`
-form; both run as generated (the client's tests execute them).
+`api.endpoints.snippets(alias, languages)` returns the code that the
+[Integrations hub](../concepts/integrations.md#snippets) shows. The languages are Python,
+TypeScript, curl, R, Apps Script and a notebook cell. The Python snippet is the same as the
+`api.endpoints.score(...)` call above. The notebook cell uses the
+`api.endpoint(alias).score(...)` form. The two snippets run without changes. The tests of the
+client run them.
 
 ### Webhooks
 
@@ -377,10 +413,10 @@ form; both run as generated (the client's tests execute them).
 --8<-- "client_integrations.py:webhook"
 ```
 
-The signing secret is returned once (by `create` and `rotate_secret`) and kept out of
-`repr`. `api.webhooks` also has `list`, `get`, `update`, `delete`, `deliveries(id,
-status=…)` and `replay(id, delivery_id)`. To check deliveries on the receiving side, see
-[Receiving webhooks](webhook-receivers.md).
+`create` and `rotate_secret` return the signing secret only one time. The secret does not
+show in `repr`. `api.webhooks` also has `list`, `get`, `update`, `delete`,
+`deliveries(id, status=…)` and `replay(id, delivery_id)`. For the checks of deliveries on the
+receiver side, see [Receiving webhooks](webhook-receivers.md).
 
 ### Render a plot
 
@@ -388,11 +424,11 @@ status=…)` and `replay(id, delivery_id)`. To check deliveries on the receiving
 --8<-- "client_integrations.py:render"
 ```
 
-`plots.render` takes a PlotSpec, a saved plot (`saved_plot_id=`) or a model version's plot,
-waits for the sandboxed render like a score, and `download_render` fetches the file
-(CRC32C-checked). `plots.save`, `saved`, `get_saved` and `delete_saved` manage saved plots;
-`create_embed` returns a read-only embed link once (`embeds`, `revoke_embed`, and the public
-`embed(token)` view). See [Sharing plots](sharing-plots.md).
+`plots.render` accepts a PlotSpec, a saved plot (`saved_plot_id=`) or a plot of a model
+version. Like a score, it waits for the render in the sandbox. `download_render` gets the
+file and does a CRC32C check. `plots.save`, `saved`, `get_saved` and `delete_saved` manage
+saved plots. `create_embed` returns a read-only embed link one time. Also see `embeds`,
+`revoke_embed` and the public `embed(token)` view. See [Sharing plots](sharing-plots.md).
 
 ### Sign-up, verification, deletion and export
 
@@ -400,27 +436,33 @@ waits for the sandboxed render like a score, and `download_render` fetches the f
 --8<-- "client_integrations.py:export"
 ```
 
-`download_export` waits for the export to be ready, downloads it through the storage client
-(never with your API credentials) to a temporary file and renames it into place once its
-size matches. `api.tenants` also has `verification`, `request_deletion(tenant_id,
-confirm=tenant_id)`, `deletion` and `cancel_deletion`; `api.signup(...)` and
-`api.verify_email(token)` are the public sign-up calls (sent without credentials). Operators
-have `api.admin.signups`, `review_signup`, `set_verification` and `retry_deletion`. See
+`download_export` waits until the export is ready. Then it downloads the export through the
+storage client to a temporary file. It never uses your API credentials for this download.
+When the size is correct, it renames the file to its final name.
+
+`api.tenants` also has `verification`, `request_deletion(tenant_id, confirm=tenant_id)`,
+`deletion` and `cancel_deletion`. `api.signup(...)` and `api.verify_email(token)` are the
+public sign-up calls. The client sends them without credentials. Operators have
+`api.admin.signups`, `review_signup`, `set_verification` and `retry_deletion`. See
 [Deleting and exporting data](data-deletion.md).
 
 ### Guided mode
 
-`api.guided` drives [Guided mode](../concepts/guided-mode.md) from code: `templates()` and
-`template(id)`, `detect_roles(template_id, columns=[…] | dataset="dataset://…")`,
-`draft(template_id=…, name=…, dataset=…, answers={…})` (the ingest mapping, the `ModelSpec`
-and its YAML; nothing is stored), `compile({...})` (the `ScoreRequest` a what-if, forecast
-or preset stands for) and `preview_priors(business_priors, spec_id=…, revision=…)` (a
-sandboxed `translate_priors` run, waited for).
+`api.guided` controls [Guided mode](../concepts/guided-mode.md) from code. It has these
+calls:
+
+- `templates()` and `template(id)`.
+- `detect_roles(template_id, columns=[…] | dataset="dataset://…")`.
+- `draft(template_id=…, name=…, dataset=…, answers={…})`. This returns the ingest mapping,
+  the `ModelSpec` and its YAML. It does not store data.
+- `compile({...})`. This returns the `ScoreRequest` for a what-if, a forecast or a preset.
+- `preview_priors(business_priors, spec_id=…, revision=…)`. This starts a `translate_priors`
+  run in the sandbox and waits for it.
 
 ## Workflows, governance and explorers <span class="mapi-badge">v0.5</span> { #workflows-governance-and-explorers }
 
-Everything v0.5 adds is on the same client, typed with the `mapi_spec` DTOs. The walkthrough
-below runs, unchanged, against a real server in the documentation tests.
+All the v0.5 calls are on the same client. The `mapi_spec` DTOs give their types. The
+documentation tests run the tour below, without changes, against a real server.
 
 ### Help me choose
 
@@ -438,11 +480,16 @@ below runs, unchanged, against a real server in the documentation tests.
 --8<-- "client_v05.py:run"
 ```
 
-`stream_events` yields `WorkflowSnapshot` (the run with every node, first on each
-connection), `WorkflowEventFrame` (node queued, started, succeeded, cached, skipped, failed or
-retrying; branch decided) and `WorkflowEnd`; a dropped connection is resumed with
-`Last-Event-ID`. `api.workflows.wait(run_id)` polls instead, and raises the failing node's
-error.
+`stream_events` yields these items:
+
+- `WorkflowSnapshot`: the run with all its nodes. It comes first on each connection.
+- `WorkflowEventFrame`: a node is queued, started, succeeded, cached, skipped, failed or
+  retrying, or a branch is decided.
+- `WorkflowEnd`.
+
+If the connection stops, the client continues it with `Last-Event-ID`.
+`api.workflows.wait(run_id)` polls and does not use the stream. It raises the error of the
+node that failed.
 
 ```python
 --8<-- "client_v05.py:inspect"
@@ -488,14 +535,14 @@ error.
 
 ## Async
 
-`AsyncClient` has the same resources and arguments; calls are awaited and lists are
-iterated with `async for`:
+`AsyncClient` has the same resources and arguments. Use `await` for the calls. Use
+`async for` for the lists:
 
 ```python
 --8<-- "client_tour.py:async"
 ```
 
-The v0.5 resources work the same way:
+The v0.5 resources work in the same way:
 
 ```python
 --8<-- "client_v05_more.py:async"
@@ -520,10 +567,12 @@ The v0.5 resources work the same way:
 | `usage` (v0.3) | `get` (the project), `tenant` |
 | `admin` (v0.3, operators) | `tenants`, `tenant`, `create_tenant`, `update_tenant`, `quotas`, `set_quota`, `delete_quota`, `kill_switches`, `set_kill_switches`, `executors`, `executor`, `audit`; v0.4: `signups`, `review_signup`, `set_verification`, `retry_deletion` |
 
-List calls return lazy paginators that follow `next_cursor`. `api.health()` and `api.ready()`
-call `/healthz` and `/readyz`; `api.me()` calls `/v1/me` and `api.use(project)` changes the
-selected project; `api.signup()`, `api.verify_email()` and `api.endpoint(alias)` are v0.4.
-`mapi_client.webhooks` verifies deliveries and `mapi_client.xrjson` encodes inline payloads
-(budgets are optimised by the platform: see [Optimise a budget](../tutorials/optimise-a-budget.md)). The DTOs are documented in
-[`mapi_spec`](../reference/api/spec.md#rest-dtos) and the endpoints in the
-[HTTP API reference](../reference/http-api.md).
+List calls return lazy paginators that follow `next_cursor`. `api.health()` and
+`api.ready()` call `/healthz` and `/readyz`. `api.me()` calls `/v1/me`. `api.use(project)`
+changes the selected project. `api.signup()`, `api.verify_email()` and `api.endpoint(alias)`
+are v0.4. `mapi_client.webhooks` verifies deliveries. `mapi_client.xrjson` encodes inline
+payloads.
+
+The platform optimizes budgets (see [Optimise a budget](../tutorials/optimise-a-budget.md)).
+For the DTOs, see [`mapi_spec`](../reference/api/spec.md#rest-dtos). For the endpoints, see
+the [HTTP API reference](../reference/http-api.md).

@@ -143,4 +143,4 @@ def test_spec_plots_render_from_real_outputs(bundle: Bundle, registry: Registry)
     on_bundle = render_plots(bundle.to_tree(), ["ml.feature_importance"], registry=registry)
     assert [p.id for p in on_bundle.plots] == ["ml.feature_importance"], on_bundle.issues
     caption: Any = on_bundle.plots[0].caption_plain
-    assert "relies most on" in caption
+    assert "The model uses" in caption and "most" in caption

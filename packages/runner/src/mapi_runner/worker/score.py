@@ -30,6 +30,7 @@ from mapi_sdk.errors import PayloadLimitError
 from mapi_sdk.harness import _to_original, score_bundle
 from mapi_sdk.models import ScoreContext
 from mapi_sdk.wire import to_arrow_table, write_arrow_ipc, write_datatree_zip
+from mapi_spec._types import RESERVED_STAGE
 from mapi_spec.actuals import CONDITIONING_ATTR
 from mapi_spec.api import SCORE_SUMMARY_MAX_CELLS, SCORE_SUMMARY_OUTPUT
 from mapi_spec.capabilities import REPRESENTATION_RULES
@@ -48,7 +49,7 @@ from mapi_runner.worker.data import (
     load_side_tables,
     supplied_side_tables,
 )
-from mapi_runner.worker.guided import counterfactual_view, forecast_view
+from mapi_runner.worker.guided import _kpi_var, counterfactual_view, forecast_view
 from mapi_runner.worker.plots import render_for
 
 __all__ = ["run_derive", "run_evaluate", "run_score"]
@@ -138,10 +139,13 @@ def summary_tables(ds: xr.Dataset, *, max_cells: int = SCORE_SUMMARY_MAX_CELLS) 
     return {"tables": tables, "truncated": truncated}
 
 
-def summary_document(tree: xr.DataTree) -> dict[str, Any] | None:
+def summary_document(
+    tree: xr.DataTree, actuals: list[dict[str, Any]] | None = None
+) -> dict[str, Any] | None:
     """``summary.json`` (a :class:`~mapi_spec.api.ScoreSummary`) of a score result: the
     summary tables and, for forecasts, what the forecast was conditioned on
-    (:mod:`mapi_spec.actuals`). ``None`` when the result has no summary group."""
+    (:mod:`mapi_spec.actuals`) and the actuals themselves (:func:`actuals_tables`). ``None``
+    when the result has no summary group."""
     if "summary" not in tree:
         return None
     node = tree["summary"]
@@ -150,6 +154,57 @@ def summary_document(tree: xr.DataTree) -> dict[str, Any] | None:
     conditioning = tree.attrs.get(CONDITIONING_ATTR)
     if isinstance(conditioning, str):
         out["conditioning"] = json.loads(conditioning)
+    if actuals:
+        out["actuals"] = actuals
+    return out
+
+
+def actuals_tables(
+    bundle: Bundle,
+    req: ScoreRequest,
+    data: xr.Dataset | None,
+    tree: xr.DataTree,
+    *,
+    max_cells: int = SCORE_SUMMARY_MAX_CELLS // 4,
+) -> list[dict[str, Any]]:
+    """The actuals a forecast was sent, to compare with the predictions on their periods:
+    one table per target, named after the summary's prediction variable (its KPI), with the
+    target's coordinate columns then ``actual``. Only for raw-stage payloads (dataset names,
+    original units) and output in original units; the names follow ``output.names``."""
+    if (
+        req.mode != "forecast"
+        or data is None
+        or req.inputs_stage != RESERVED_STAGE
+        or req.output.units != "original"
+        or "summary" not in tree
+    ):
+        return []
+    node = tree["summary"]
+    assert isinstance(node, xr.DataTree)
+    var = _kpi_var(bundle, node.to_dataset())
+    raw = bundle.resolved.stages.get(RESERVED_STAGE)
+    if var is None or raw is None:
+        return []
+    out: list[dict[str, Any]] = []
+    for target in raw.targets:
+        name = bundle.binding.to_dataset(target)
+        if name not in data:
+            continue
+        ds = xr.Dataset({name: data[name]})
+        if req.output.names == "canonical":
+            ds = bundle.binding.apply(ds, missing="ignore")
+            name = target
+        da = ds[name]
+        dims = [str(d) for d in da.dims]
+        labels = [ds[d].values if d in ds.coords else np.arange(da.sizes[d]) for d in dims]
+        values = np.asarray(da.values, dtype=np.float64)
+        rows: list[list[Any]] = []
+        for idx in zip(*np.nonzero(np.isfinite(values)), strict=True):
+            if (len(rows) + 1) * (len(dims) + 1) > max_cells:
+                break
+            rows.append([_cell(labels[k][i]) for k, i in enumerate(idx)] + [_cell(values[idx])])
+        if rows:
+            out.append({"variable": var, "columns": [*dims, "actual"], "rows": rows})
     return out
 
 
@@ -200,12 +255,13 @@ def _write_tree(
     tree: xr.DataTree,
     extra_plots: list[str],
     plot_trees: list[xr.DataTree] | None = None,
+    actuals: list[dict[str, Any]] | None = None,
 ) -> None:
     raw = write_datatree_zip(tree)
     assert raw is not None
     ctx.write_output("score.zarr.zip", raw)
     ctx.write_json("result.json", _result_json(tree))
-    summary = summary_document(tree)
+    summary = summary_document(tree, actuals)
     if summary is not None:
         node = tree["summary"]
         assert isinstance(node, xr.DataTree)
@@ -244,7 +300,12 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
         plot_trees = _guided_views(ctx, bundle, tree, job.request, tables)
         tree = _without_full(tree)
     plots = job.plots if job.plots is not None else _DEFAULT_PLOTS.get(job.request.mode, [])
-    _write_tree(ctx, tree, plots, plot_trees)
+    try:
+        actuals = actuals_tables(bundle, job.request, data, tree)
+    except (ValueError, KeyError) as exc:  # the comparison is a convenience; the score stands
+        ctx.warning("VIEW_FAILED", f"the actuals were not added to the summary: {exc}"[:500])
+        actuals = []
+    _write_tree(ctx, tree, plots, plot_trees, actuals)
     return tree
 
 

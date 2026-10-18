@@ -313,9 +313,9 @@ def _error(check: PolicyCheck, why: str, expert: str | None = None) -> CheckResu
     return result(
         check,
         None,
-        f"The check could not be computed: {why}",
+        f"The check did not get a result: {why}",
         expert=expert,
-        action="Look at the run's logs; fix the model or data problem and resubmit.",
+        action="Look at the logs of the run. Correct the model or data problem, then submit again.",
         status=CheckStatus.ERROR,
     )
 
@@ -492,7 +492,7 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     n = int(env.data.sizes[dim])
     k = min(k, env.refitter.remaining - 1)
     if k < 5:
-        return _error(check, "the refit budget allows fewer than 5 shuffled fits")
+        return _error(check, "the refit budget has space for fewer than 5 shuffled fits")
     spec = env.refitter.spec(metrics=[metric])
     real_b = env.refitter.fit(env.data, spec)
     target = env.targets[0]
@@ -543,8 +543,8 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
 
         null = "drivers" if drivers else "target"
         how = (
-            f"the drivers {', '.join(drivers[:5])} shuffled in blocks of {block} (the result "
-            "untouched)"
+            f"the drivers {', '.join(drivers[:5])} shuffled in blocks of {block} (no change "
+            "to the result)"
             if drivers
             else f"the result's {_ORDINAL.get(d, f'{d}th')} shuffled"
         )
@@ -592,7 +592,7 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             continue
         scores.append(s)
     if len(scores) < 5:
-        return _error(check, "fewer than 5 shuffled fits produced a score")
+        return _error(check, "fewer than 5 shuffled fits gave a score")
     as_good = sum(1 for s in scores if s >= real)
     pval = (1 + as_good) / (len(scores) + 1)
     timed = held is not None
@@ -604,10 +604,10 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         _metric(
             "holdout_skill_vs_naive" if timed else f"holdout_{metric}",
             real if timed else -real,
-            "The real model's skill on held-out data against the null forecast (the last "
-            "value of an integrated series, else its mean)"
+            "The skill of the real model on holdout data against the null forecast (the last "
+            "value of an integrated series, or else its mean)"
             if timed
-            else "The real model's error on held-out data",
+            else "The error of the real model on holdout data",
         ),
         _table(
             "permutation_scores",
@@ -617,10 +617,10 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
                 "shuffled_median": float(np.median(scores)) * (1 if timed else -1),
                 "statistic": f"skill vs the null forecast ({metric})" if timed else metric,
                 "axis": (
-                    f"Skill on held-out data ({metric.upper()} against the null forecast; "
+                    f"Skill on holdout data ({metric.upper()} against the null forecast, "
                     "higher is better)"
                     if timed
-                    else f"{metric.upper()} on held-out data (lower is better)"
+                    else f"{metric.upper()} on holdout data (lower is better)"
                 ),
                 "null": how,
                 "block": block,
@@ -632,18 +632,18 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     ]
     if as_good == 0:
         msg = (
-            f"The model did better on held-out data ({shown(real)}) than all {len(scores)} "
+            f"The model was better on holdout data ({shown(real)}) than all {len(scores)} "
             f"fits with {how} (p = {pval:.3f})."
         )
         if len(scores) < 19:
             msg += (
-                f" With {len(scores)} shuffles the smallest possible p is {pval:.3f}: "
-                "use at least 19 for a 5% test."
+                f" With {len(scores)} shuffles, the smallest possible p is {pval:.3f}. "
+                "Use 19 or more shuffles for a 5% test."
             )
     else:
         msg = (
-            f"{as_good} of {len(scores)} fits with {how} did as well as the real model "
-            f"(p = {pval:.3f}): it may be fitting noise rather than signal."
+            f"{as_good} of {len(scores)} fits with {how} were as good as the real model "
+            f"(p = {pval:.3f}). The model possibly fits noise, not signal."
         )
     return result(
         check,
@@ -657,8 +657,8 @@ def _permutation(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         )
         + f"; real {shown(real)}, shuffled median {shown(float(np.median(scores)))}; "
         f"p = (1 + {as_good}) / ({len(scores)} + 1).",
-        action="Check for leakage between training and test data, simplify the model, or add "
-        "drivers that carry real signal.",
+        action="Look for leakage between the training data and the test data. Make the model "
+        "simpler, or add drivers that have real signal.",
         evidence=ev,
     )
 
@@ -918,8 +918,8 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if shares and ignored:
         return _skip(
             check,
-            "the model takes a fixed set of drivers and ignored the fake ones; "
-            "list a noise driver in its settings to run this check",
+            "the model has a fixed set of drivers and did not use the false drivers. "
+            "To run this check, add a noise driver to the settings of the model",
         )
     rows = _estimates(b)
     p_values = {
@@ -934,12 +934,12 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     clear = [n for n, pr in material.items() if pr >= 0.9]
     # frequentist: significant after Holm's correction for the number of placebos
     sig = _holm_significant(p_values)
-    of_what = "the real drivers' effect" if of_drivers else "the result"
+    of_what = "the effect of the real drivers" if of_drivers else "the result"
     ev = [
         _table(
             "noise_effect_share",
             {k_: round(v, 6) for k_, v in shares.items()},
-            f"Share of {of_what} each fake driver was credited with",
+            f"The share of {of_what} that the model gave to each false driver",
         ),
         _table(
             "placebo",
@@ -948,8 +948,8 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
                 "kind": kind,
                 "names": placebo.names,
                 "share_of": "real drivers' effect" if of_drivers else "result",
-                "prior": "the model's default prior (real channels' priors and calibration "
-                "are not copied)",
+                "prior": "the default prior of the model (the check does not copy the priors "
+                "and the calibration of the real channels)",
             },
         ),
     ]
@@ -958,7 +958,7 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             _table(
                 "noise_effect_interval_90",
                 intervals,
-                "90% interval of each fake driver's total effect",
+                "The 90% interval of the total effect of each false driver",
             )
         )
     if material:
@@ -966,7 +966,8 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             _table(
                 "noise_share_prob_material",
                 {k_: round(v, 4) for k_, v in material.items()},
-                f"Posterior probability that a fake driver's share is above {_pct(warn_at)}",
+                f"The posterior probability that the share of a false driver is more than "
+                f"{_pct(warn_at)}",
             )
         )
     if p_values:
@@ -974,7 +975,7 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             _table(
                 "noise_p_values",
                 p_values,
-                "p-values of the fake drivers' estimates (judged with Holm's correction)",
+                "The p-values of the estimates of the false drivers (with Holm's correction)",
             )
         )
     status = None
@@ -986,20 +987,21 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         )
     if value <= warn_at and not (clear or sig):
         msg = (
-            f"{len(shares)} fake drivers made of pure noise got at most {_pct(value)} of "
-            f"{of_what}: the model does not credit drivers that carry no signal."
+            f"{len(shares)} false drivers of only noise got a maximum of {_pct(value)} of "
+            f"{of_what}. The model gives no credit to drivers that have no signal."
         )
     else:
         extra = ""
         if clear:
             extra = (
-                f" {', '.join(clear)} got more than {_pct(warn_at)} with at least 90% probability."
+                f" {', '.join(clear)} got more than {_pct(warn_at)} with a probability of 90% "
+                "or more."
             )
         elif sig:
-            extra = f" {', '.join(sig)} came out statistically significant."
+            extra = f" {', '.join(sig)} is statistically significant."
         msg = (
-            f"A fake driver made of pure noise ({worst}) got {_pct(value)} of {of_what}: the "
-            f"model credits drivers too easily.{extra}"
+            f"A false driver of only noise ({worst}) got {_pct(value)} of {of_what}. The "
+            f"model gives credit to drivers too easily.{extra}"
         )
     return result(
         check,
@@ -1012,8 +1014,8 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         "over placebos. Bayesian: flagged when P(share > warn limit) >= 0.9 per posterior "
         "draw (practical equivalence; sign-constrained effects never cover 0). "
         "Frequentist: placebo p-values Holm-corrected.",
-        action="Use stronger regularisation or priors, fewer drivers, or more data before "
-        "trusting how the result is split between drivers.",
+        action="Use stronger regularisation or priors, fewer drivers or more data. Then "
+        "trust how the model divides the result between drivers.",
         evidence=ev,
     )
 
@@ -1086,20 +1088,20 @@ def _placebo_shift(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         _table(
             "placebo_effect_ratio",
             {k_: round(v, 6) for k_, v in ratios.items()},
-            "Effect after moving the drivers, as a share of the real effect, per shift",
+            "The effect after the drivers move, as a share of the real effect, for each shift",
         ),
         _table("drivers", drivers),
     ]
     if check_status(check.check, value, check.thresholds) is CheckStatus.PASS:
         msg = (
-            f"Moving the drivers {abs(int(worst))} periods away keeps only {_pct(value)} of "
-            "their effect: the effect is tied to when they happened."
+            f"A move of the drivers by {abs(int(worst))} periods keeps only {_pct(value)} of "
+            "their effect. The effect has a connection to the dates of the drivers."
         )
     else:
         msg = (
-            f"The model still finds {_pct(value)} of the effect when the drivers are moved "
-            f"{abs(int(worst))} periods away: it picks up timing patterns (trend, season) "
-            "rather than the drivers."
+            f"The model still finds {_pct(value)} of the effect after the drivers move by "
+            f"{abs(int(worst))} periods. The model finds time patterns (trend, season), not "
+            "the drivers."
         )
     return result(
         check,
@@ -1107,8 +1109,8 @@ def _placebo_shift(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         msg,
         expert=f"Circular time-shift placebo of {len(drivers)} driver(s) by {shifts}; ratio "
         "of the placebo fit's total ablation effect to the real fit's, maximised over shifts.",
-        action="Add trend and seasonality controls, or check for drivers that simply follow "
-        "the calendar.",
+        action="Add trend and seasonality controls. Or look for drivers that only follow the "
+        "calendar.",
         evidence=ev,
     )
 
@@ -1135,13 +1137,13 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     trained = env.trained()
     mask = holdout_mask(env.bundle, env.data, trained)
     if mask is None or env.time_dim is None or str(mask.dims[0]) != env.time_dim:
-        return _skip(check, "the model has no held-out periods at the end of its data")
+        return _skip(check, "the model has no holdout periods at the end of its data")
     t = env.time_dim
     preds = predict(trained, env.data, env.registry, side_tables=env.side_tables)
     p = _first(preds, env.targets[0] if env.targets else None)
     mask = holdout_mask(env.bundle, p.observed, trained)  # on the model's periods
     if mask is None:
-        return _skip(check, "the model has no held-out periods at the end of its data")
+        return _skip(check, "the model has no holdout periods at the end of its data")
     held = np.asarray(mask.values)
     n_train = int((~held).sum())
     h = int(held.sum())
@@ -1167,12 +1169,12 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         if loss is not None:
             losses[m] = loss
     if l_model is None or not losses:
-        return _skip(check, "no benchmark could be computed from the training history")
+        return _skip(check, "the training history does not give a benchmark")
     best = min(losses, key=lambda m: losses[m])
     if losses[best] == 0:
         return _error(
             check,
-            f"the benchmark '{_METHOD_PLAIN.get(best, best)}' is perfect on the held-out data",
+            f"the benchmark '{_METHOD_PLAIN.get(best, best)}' is perfect on the holdout data",
         )
     skill = 1.0 - l_model / losses[best]
     scale = float(np.mean(scale_parts)) if scale_parts else None
@@ -1180,18 +1182,18 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     mase = mae / scale if scale and mae is not None else None
     ev = [
         _table("losses", {"model": l_model, **losses, "metric": metric, "held_out_periods": h}),
-        _metric("mase", mase, "Error relative to the in-sample seasonal-naive error"),
+        _metric("mase", mase, "The error relative to the in-sample seasonal-naive error"),
     ]
     plain = _METHOD_PLAIN.get(best, best)
     if skill >= 0:
         msg = (
-            f"On the {h} held-out periods the model's error is {_pct(skill)} lower than "
-            f"'{plain}' (the strongest simple benchmark)."
+            f"On the {h} holdout periods, the error of the model is {_pct(skill)} lower than "
+            f"'{plain}' (the best simple benchmark)."
         )
     else:
         msg = (
-            f"On the {h} held-out periods the model is worse than '{plain}' by "
-            f"{_pct(-skill)}: a simple rule forecasts better."
+            f"On the {h} holdout periods, the model is {_pct(-skill)} worse than "
+            f"'{plain}'. A simple rule gives a better forecast."
         )
     return result(
         check,
@@ -1199,8 +1201,8 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         msg,
         expert=f"Relative skill 1 - {metric}(model)/{metric}({best}) = {skill:.4f} over {h} "
         f"periods x {obs.shape[1]} series; MASE {mase if mase is None else round(mase, 4)}.",
-        action="Check the drivers and the seasonality; a model that cannot beat a naive "
-        "forecast should not be used for forecasting.",
+        action="Do a check of the drivers and the seasonality. Do not use a model for "
+        "forecasts if a naive forecast is better.",
         evidence=ev,
     )
 
@@ -1282,7 +1284,7 @@ def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
                     )
                 )
     if not rows:
-        return _skip(check, "the residual series are too short or constant")
+        return _skip(check, "the residual series are too short or do not change")
     worst = min(rows, key=lambda x: x[1])
     value = worst[1]
     ev = [
@@ -1292,15 +1294,15 @@ def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
                 name: {"p_value": round(pv, 6), "q": round(q, 4)}
                 for name, pv, q in sorted(rows, key=lambda x: x[1])[:20]
             },
-            f"Ljung-Box at {lags} lags per series (worst first)",
+            f"Ljung-Box at {lags} lags for each series (worst first)",
         )
     ]
     if check_status(check.check, value, check.thresholds) is CheckStatus.PASS:
         msg = f"No pattern is left in the errors (Ljung-Box p = {value:.2f} at {lags} lags)."
     else:
         msg = (
-            f"The errors still follow a pattern over time (Ljung-Box p = {value:.3f}): "
-            "the model misses some structure."
+            f"The errors still have a pattern over time (Ljung-Box p = {value:.3f}). "
+            "The model does not find all of the structure."
         )
     return result(
         check,
@@ -1308,8 +1310,8 @@ def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         msg,
         expert=f"Minimum Ljung-Box p over {len(rows)} series, lags={lags}, model_df={model_df}"
         f" (first {burn} start-up residual(s) of the differencing left out).",
-        action="Add lags, seasonality or missing drivers (look at the residual ACF in the "
-        "Model Explorer).",
+        action="Add lags, seasonality or missing drivers. Look at the residual ACF in the "
+        "Model Explorer.",
         evidence=ev,
     )
 
@@ -1321,7 +1323,7 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     wanted = [str(x) for x in raw] if isinstance(raw, list) else None
     key = _key_params(base, wanted)
     if not key:
-        return _skip(check, "the model has no interpretable parameters to compare")
+        return _skip(check, "the model has no parameters that you can explain and compare")
     n = int(env.data.sizes[env.time_dim])
     window = _pint(check.params, "window", 0) or max(8, n // 2)
     step = _pint(check.params, "step", 4)
@@ -1331,7 +1333,7 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if len(starts) > 8:
         starts = [starts[int(i)] for i in np.linspace(0, len(starts) - 1, 8).round()]
     if len(starts) < 2:
-        return _skip(check, "the history allows only one window")
+        return _skip(check, "the history has space for only one window")
     spec = env.refitter.spec(split=None)
     names = [e.name for e in key]
     per: dict[str, list[float]] = {nm: [] for nm in names}
@@ -1363,11 +1365,11 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         if failed:
             return _error(
                 check,
-                f"the model could not be refitted on windows of {window} periods; give a longer "
-                "'window' in the check's parameters",
+                f"the check could not fit the model again on windows of {window} periods. "
+                "Give a longer 'window' in the parameters of the check",
                 failed[0],
             )
-        return _error(check, "no parameter could be estimated in two windows")
+        return _error(check, "the check could not estimate a parameter in two windows")
     worst = max(variation, key=lambda k_: variation[k_])
     value = variation[worst]
     ev = [
@@ -1379,11 +1381,13 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         _table("variation", {k_: round(v, 6) for k_, v in variation.items()}),
     ]
     if check_status(check.check, value, check.thresholds) is CheckStatus.PASS:
-        msg = f"The key estimates vary by at most {_pct(value)} across {used} windows of history."
+        msg = (
+            f"The key estimates change by a maximum of {_pct(value)} in {used} windows of history."
+        )
     else:
         msg = (
-            f"{worst} changes a lot across windows of history (variation {_pct(value)}): the "
-            "relationship may not be stable over time."
+            f"{worst} changes much between windows of history (variation {_pct(value)}). The "
+            "relationship is possibly not stable over time."
         )
     return result(
         check,
@@ -1392,8 +1396,8 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         expert=f"Coefficient of variation across {used} rolling refits (window {window}, step "
         f"{step}), relative to max(|mean|, the full fit's standard error); max over "
         f"{len(variation)} parameters.",
-        action="Look for a structural break (CUSUM or Chow tests in a workflow), shorten the "
-        "history, or let the effect change over time.",
+        action="Look for a structural break (CUSUM or Chow tests in a workflow). Or use a "
+        "shorter history, or let the effect change over time.",
         evidence=ev,
     )
 
@@ -1427,8 +1431,8 @@ def _signs(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         if not shares:
             return _error(
                 check,
-                "none of the expected parameters was found in the model's "
-                f"estimates ({', '.join(map(str, expected))})",
+                "the estimates of the model do not include the expected "
+                f"parameters ({', '.join(map(str, expected))})",
             )
         how = "the listed parameters"
     else:
@@ -1449,8 +1453,8 @@ def _signs(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             if not media:
                 return _skip(
                     check,
-                    "no expected directions: list them in the check's "
-                    "'expected' parameter (no media or spend drivers to assume positive)",
+                    "no expected directions. Give them in the 'expected' parameter of the "
+                    "check (no media or spend drivers are positive by default)",
                 )
             effects = [(v, _ablate(env, env.data, v)) for v in media]
         for name, off in effects[:30]:
@@ -1474,13 +1478,13 @@ def _signs(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     value = shares[worst]
     ev = [
         _table("wrong_sign_share", {k_: round(v, 6) for k_, v in shares.items()}),
-        _table("estimates", estimates, "Estimated effect (total contribution or parameter)"),
+        _table("estimates", estimates, "The estimated effect (total contribution or parameter)"),
     ]
     if check_status(check.check, value, check.thresholds) is CheckStatus.PASS:
-        msg = f"Every effect points the expected way ({how})."
+        msg = f"Each effect has the expected direction ({how})."
     else:
         msg = (
-            f"{worst} points the wrong way: {_pct(value)} of its estimate"
+            f"{worst} has the wrong direction. {_pct(value)} of its estimate"
             f"{' (uncertainty)' if env.kind != 'ml' else ''} is on the wrong side."
         )
     return result(
@@ -1489,8 +1493,8 @@ def _signs(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         msg,
         expert=f"Share of the posterior (or sampling distribution) on the wrong side, max over "
         f"{len(shares)} effects ({how}).",
-        action="Check the driver's data (units, sign), add the missing confounder, or use a "
-        "prior that keeps the effect positive.",
+        action="Do a check of the data of the driver (units, sign). Add the missing "
+        "confounder, or use a prior that keeps the effect positive.",
         evidence=ev,
     )
 
@@ -1580,8 +1584,8 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if found == 0:
         return _skip(
             check,
-            "the model's priors are not set in its settings, so they cannot "
-            "be varied automatically",
+            "the settings of the model do not set its priors, so the check cannot "
+            "change them automatically",
         )
     # business priors translated at fit time are written out above: refit without
     # translating them again, or the translation would overwrite the scaled priors
@@ -1617,26 +1621,27 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
                 denom = max(abs(e0.estimate), e0.sd or 0.0, 1e-12)
                 moves.setdefault(nm, {})[str(s)] = abs(got[nm].estimate - e0.estimate) / denom
     if not moves:
-        return _error(check, "no refit with changed priors could run")
+        return _error(check, "no fit with changed priors could run")
     flat = [(nm, sc, v) for nm, per in moves.items() for sc, v in per.items()]
     nm, sc, value = max(flat, key=lambda x: x[2])
     ev = [
         _table(
             "relative_change",
             {k_: {s_: round(v, 6) for s_, v in per.items()} for k_, per in moves.items()},
-            "Relative change of each key estimate per prior scale",
+            "The relative change of each key estimate for each prior scale",
         ),
         _metric("prior_parameters_scaled", float(found)),
     ]
     if check_status(check.check, value, check.thresholds) is CheckStatus.PASS:
         msg = (
-            f"Making the starting assumptions {min(scales):g}x to {max(scales):g}x as wide "
-            f"moves the key estimates by at most {_pct(value)}: they come from the data."
+            f"Starting assumptions that are {min(scales):g}x to {max(scales):g}x as wide "
+            f"move the key estimates by a maximum of {_pct(value)}. The estimates come from "
+            "the data."
         )
     else:
         msg = (
-            f"{nm} moves by {_pct(value)} when the starting assumptions are scaled by {sc}: "
-            "the data does not pin it down."
+            f"{nm} moves by {_pct(value)} when the starting assumptions change by a scale of "
+            f"{sc}. The data does not set its value."
         )
     return result(
         check,
@@ -1644,8 +1649,8 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         msg,
         expert=f"Refit-based prior sensitivity: {found} prior scale parameter(s) multiplied by "
         f"{scales}; |mean_s - mean_0| / max(|mean_0|, sd_0), max over parameters.",
-        action="Collect more informative data (experiments, lift tests) or justify the prior "
-        "with evidence before relying on these estimates.",
+        action="Get data with more information (experiments, lift tests), or show evidence "
+        "for the prior. Then use these estimates.",
         evidence=ev,
     )
 
@@ -1659,9 +1664,9 @@ def _recovery(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if env.family in _DYNAMIC_FAMILIES and env.kind != "bayesian":
         return _skip(
             check,
-            "the model predicts each period from the series' own past, so data simulated "
-            "around its fitted values would not follow the model (use the backtest and "
-            "residual checks for it)",
+            "the model predicts each period from the past of the series. Data that the "
+            "check simulates around the fitted values does not follow the model (use the "
+            "backtest and residual checks for this model)",
         )
     raw = check.params.get("params")
     wanted = [str(x) for x in raw] if isinstance(raw, list) else None
@@ -1671,10 +1676,10 @@ def _recovery(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         if e.lower is not None or e.draws is not None
     ]
     if not truth:
-        return _skip(check, "the model reports no parameter intervals to check")
+        return _skip(check, "the model gives no parameter intervals for the check")
     n_sims = min(_pint(check.params, "n_sims", 20), env.refitter.remaining)
     if n_sims < 3:
-        return _error(check, "the refit budget allows fewer than 3 simulations")
+        return _error(check, "the refit budget has space for fewer than 3 simulations")
     p = _first(env.predictions(), env.targets[0])
     y = env.targets[0]
     t = env.time_dim
@@ -1708,32 +1713,36 @@ def _recovery(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             hits[e0.name].append(e.lower <= e0.estimate <= e.upper)
     total = sum(len(v) for v in hits.values())
     if total == 0:
-        return _error(check, "no simulated refit produced parameter intervals")
+        return _error(check, "no simulated refit gave parameter intervals")
     coverage = sum(sum(v) for v in hits.values()) / total
     per = {nm: round(sum(v) / len(v), 4) for nm, v in hits.items() if v}
     sims = max(len(v) for v in hits.values())
     ev = [
-        _table("coverage_by_parameter", per, "How often each 90% interval held the known value"),
+        _table(
+            "coverage_by_parameter", per, "How often each 90% interval contained the known value"
+        ),
         _metric("simulations", float(sims)),
     ]
     status = check_status(check.check, coverage, check.thresholds)
     if status is CheckStatus.PASS:
         msg = (
-            f"The model found the known values inside its 90% ranges {_pct(coverage)} of "
-            f"the time over {sims} simulated datasets (target 90%)."
+            f"The 90% ranges of the model contained the known values {_pct(coverage)} of "
+            f"the time in {sims} simulated datasets (target 90%)."
         )
         action = None
     else:
         narrow = coverage < 0.9
         msg = (
-            f"The model's 90% ranges held the known values only {_pct(coverage)} of the time "
-            f"(target 90%): its uncertainty is {'too narrow' if narrow else 'too wide'}."
+            f"The 90% ranges of the model contained the known values only {_pct(coverage)} "
+            f"of the time (target 90%). Its uncertainty is "
+            f"{'too narrow' if narrow else 'too wide'}."
         )
         action = (
-            "The model is overconfident: check for missing structure (autocorrelation, "
+            "The model is too confident. Look for missing structure (autocorrelation, "
             "hierarchy) and convergence problems."
             if narrow
-            else "The model is too cautious: priors may be too wide or the model too flexible."
+            else "The model is not confident enough. The priors are possibly too wide, or "
+            "the model is too flexible."
         )
     return result(
         check,
@@ -1752,7 +1761,7 @@ def _convergence(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if env.kind == "bayesian":
         r = s.get("r_hat_max")
         if r is None:
-            return _skip(check, "R-hat needs at least two chains with recorded draws")
+            return _skip(check, "R-hat needs two or more chains with recorded draws")
         ev = [
             _metric("r_hat_max", r),
             _metric("ess_bulk_min", s.get("ess_bulk_min")),
@@ -1763,12 +1772,12 @@ def _convergence(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         if div > 0 and status is CheckStatus.PASS:
             status = CheckStatus.WARN
         if status is CheckStatus.PASS:
-            msg = f"All chains agree (R-hat {r:.3f}): the fit settled on a stable answer."
+            msg = f"All chains agree (R-hat {r:.3f}). The fit found a stable answer."
         else:
             msg = (
-                f"The chains disagree (R-hat {r:.3f})"
+                f"The chains do not agree (R-hat {r:.3f})"
                 + (f" and {int(div)} transitions diverged" if div else "")
-                + ": running the fit again could give a "
+                + ". If you fit the model again, you can get a "
                 "different answer."
             )
         return result(
@@ -1778,8 +1787,8 @@ def _convergence(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             status=status,
             expert=f"max split R-hat {r:.4f}; min bulk ESS {s.get('ess_bulk_min')}; "
             f"divergences {div:g}.",
-            action="Run more tuning and draws or reparameterise (non-centred priors); do not "
-            "use the model until R-hat is below 1.01.",
+            action="Use more tuning steps and draws, or reparameterise (non-centred priors). "
+            "Do not use the model until R-hat is below 1.01.",
             evidence=ev,
         )
     conv = s.get("converged")
@@ -1788,10 +1797,11 @@ def _convergence(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         return result(
             check,
             None,
-            "The optimiser did not converge: the estimates are unreliable.",
+            "The optimiser did not converge. The estimates are not reliable.",
             status=CheckStatus.FAIL,
             expert="The plugin reported converged=false.",
-            action="Rescale the drivers, simplify the model or raise the iteration limit.",
+            action="Change the scale of the drivers, make the model simpler or increase the "
+            "iteration limit.",
             evidence=ev,
         )
     return result(
@@ -1806,11 +1816,11 @@ def _convergence(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
 
 
 _METRIC_PLAIN: Final = {
-    "mape": "average percentage error",
+    "mape": "mean percentage error",
     "smape": "symmetric percentage error",
     "mase": "error relative to a naive forecast",
     "rmse": "root mean squared error",
-    "mae": "average absolute error",
+    "mae": "mean absolute error",
 }
 
 
@@ -1822,14 +1832,14 @@ def _accuracy(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         trained = env.trained()
         mask = holdout_mask(env.bundle, env.data, trained)
         if mask is None:
-            return _skip(check, f"the fit did not evaluate {metric} on held-out data")
+            return _skip(check, f"the fit did not evaluate {metric} on holdout data")
         p = _first(
             predict(trained, env.data, env.registry, side_tables=env.side_tables),
             env.targets[0] if env.targets else None,
         )
         mask = holdout_mask(env.bundle, p.observed, trained)  # on the model's periods
         if mask is None:
-            return _skip(check, f"the fit did not evaluate {metric} on held-out data")
+            return _skip(check, f"the fit did not evaluate {metric} on holdout data")
         dim = str(mask.dims[0])
         obs = p.observed.where(mask, drop=True)
         pt = p.point.where(mask, drop=True)
@@ -1843,26 +1853,28 @@ def _accuracy(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         value = error_metrics(np.asarray(obs.values), np.asarray(pt.values), scale=scale).get(
             metric
         )
-        source = "recomputed on the held-out periods"
+        source = "calculated again on the holdout periods"
     if value is None:
-        return _error(check, f"{metric} could not be computed on the held-out data")
+        return _error(check, f"the check could not calculate {metric} on the holdout data")
     limit = check.thresholds.warn if check.thresholds else GOVERNANCE_CHECKS[check.check].warn
     shown = _pct(value) if metric in _PERCENT else f"{value:.3g}"
     lim = _pct(limit) if metric in _PERCENT else f"{limit:.3g}"
     plain = _METRIC_PLAIN.get(metric, metric)
     if check_status(check.check, value, check.thresholds) is CheckStatus.PASS:
-        msg = f"On data it was not fitted on, the model's {plain} is {shown} (limit {lim})."
+        msg = (
+            f"On data that the fit did not use, the {plain} of the model is {shown} (limit {lim})."
+        )
     else:
         msg = (
-            f"On data it was not fitted on, the model's {plain} is {shown}, above the limit "
-            f"of {lim}."
+            f"On data that the fit did not use, the {plain} of the model is {shown}. This "
+            f"is more than the limit of {lim}."
         )
     note = (
         ""
         if metric in _PERCENT or check.thresholds
         else (
-            " The catalog's default limits are fractions; set limits in the KPI's units for "
-            f"{metric}."
+            " The default limits of the catalog are fractions. Set limits in the units of "
+            f"the KPI for {metric}."
         )
     )
     return result(
@@ -1870,8 +1882,8 @@ def _accuracy(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         value,
         msg + note,
         expert=f"holdout {metric} = {value:.6g} ({source}).",
-        action="Improve the model (drivers, seasonality, more history) or agree a realistic "
-        "limit for this KPI.",
+        action="Make the model better (drivers, seasonality, more history). Or agree on a "
+        "realistic limit for this KPI.",
         evidence=[_metric(f"holdout_{metric}", value)],
     )
 
@@ -1890,7 +1902,9 @@ def _data_quality(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     ]
     periods = int(env.data.sizes[env.time_dim]) if env.time_dim else None
     if not issues:
-        msg = "No data problems found" + (f" ({periods} periods of history)." if periods else ".")
+        msg = "The check found no data problems" + (
+            f" ({periods} periods of history)." if periods else "."
+        )
         action = None
     else:
         msg = f"{len(issues)} data problem(s): " + " ".join(w.message_plain for w in issues[:3])
@@ -1934,18 +1948,20 @@ def measure(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     try:
         return impl(env, check)
     except BudgetExhausted as exc:
-        return _error(check, f"{exc}; raise the budget or lower the check's sample sizes.")
+        return _error(
+            check, f"{exc}. Increase the budget, or decrease the sample sizes of the check."
+        )
     except _NoPrediction:
         return _skip(
             check,
-            "the model's predictions are not numbers over its target (a choice or "
-            "classification model), which this check compares",
+            "the predictions of the model are not numbers for its target (a choice or "
+            "classification model). This check compares numbers",
         )
     except Exception as exc:
         env.log("".join(traceback.format_exception(type(exc), exc, exc.__traceback__))[-4000:])
         return _error(
             check,
-            "the model could not be refitted or scored for this check.",
+            "the check could not fit or score the model again.",
             f"{type(exc).__name__}: {str(exc)[:1500]}",
         )
 

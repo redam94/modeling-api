@@ -198,7 +198,7 @@ async def test_breaking_input_changes_follow_the_schema_policy_and_rollback(
     await _set(ctx, v2.id, score_meta=meta)
     r = await client.put("/v1/endpoints/p", json={"model_version_id": v2.id})
     assert r.status_code == 409 and r.json()["code"] == "PROMOTION_BLOCKED"
-    assert "new required input 'price'" in r.json()["errors"][0]["message"]
+    assert "new necessary input 'price'" in r.json()["errors"][0]["message"]
     r = await client.put(
         "/v1/endpoints/p",
         json={"model_version_id": v2.id, "evaluation_policy": {"schema_change": "allow"}},
@@ -440,7 +440,7 @@ async def test_returned_draws_are_capped_per_tier(
         assert any(
             i["code"] == "QUOTA_EXCEEDED" and i["pointer"] == "/output/draws" for i in issues
         ), (path, body)
-        assert "at most 300 draws" in json.dumps(body)
+        assert "a maximum of 300 draws" in json.dumps(body)
     r = await client.post("/v1/endpoints/trend-prod/score", json=call(300))
     assert r.status_code == 202, r.text
     async with ctx.db.session() as s:
@@ -450,12 +450,12 @@ async def test_returned_draws_are_capped_per_tier(
     request = {"apiVersion": "mapi/v1", "kind": "ScoreRequest",
                "model": "model://default/trend@v1", **call(301)}  # fmt: skip
     r = await client.post(f"/v1/models/{mv.model_id}/versions/1:score", json={"request": request})
-    assert r.status_code in (409, 422, 429) and "at most 300 draws" in r.text, r.text
+    assert r.status_code in (409, 422, 429) and "a maximum of 300 draws" in r.text, r.text
     # paid tiers: 500
     await _tier(ctx, "verified")
     assert (await client.post("/v1/endpoints/trend-prod/score", json=call(500))).status_code == 202
     r = await client.post("/v1/endpoints/trend-prod/score", json=call(501))
-    assert r.status_code >= 400 and "at most 500 draws" in r.text
+    assert r.status_code >= 400 and "a maximum of 500 draws" in r.text
 
 
 async def _finish_score(ctx: ServerContext, run_id: str, outputs: dict[str, bytes]) -> None:

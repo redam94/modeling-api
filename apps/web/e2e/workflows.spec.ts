@@ -112,7 +112,7 @@ test("a small workflow is built on the canvas, checked live and saved", async ({
   await expect(page.getByRole("status").filter({ hasText: "results have no field 'p_valu'" })).toBeVisible();
   await expect(page.getByTestId("canvas-node-if")).toContainText("1");
   await condition.fill("not nodes.adf.reject");
-  await expect(page.getByText("The condition reads correctly.")).toBeVisible();
+  await expect(page.getByText("The condition is correct.")).toBeVisible();
   await shot(page, "workflow-editor");
 
   // Gate the differencing node on the then arm (inspector), then save.
@@ -143,13 +143,13 @@ test("a run is followed live, a node's details open and another run is cancelled
   await expect(monitor.getByTestId("run-status")).toHaveText(/Queued|Running/);
   await expect(page.getByTestId("canvas-node-adf")).toHaveAttribute("data-status", /queued|running|succeeded/);
   await expect(monitor).toHaveAttribute("data-status", "succeeded", { timeout: 20_000 });
-  await expect(page.getByTestId("run-summary")).toContainText(/the tests found that the series wanders rather than returning to a steady level, so it was differenced/i);
+  await expect(page.getByTestId("run-summary")).toContainText(/the tests found that the series wanders and does not return to a steady level/i);
   await shot(page, "run-monitor");
 
   await page.getByRole("tab", { name: "Steps" }).click();
   await page.getByRole("table", { name: "Steps" }).getByRole("button", { name: /Does it wander\? \(ADF\)/ }).click();
   const drawer = page.getByTestId("node-drawer");
-  await expect(drawer.getByTestId("test-verdict")).toContainText("The series wanders");
+  await expect(drawer.getByTestId("test-verdict")).toContainText("The series does not return to a stable level");
   await expect(drawer.getByText("Sandbox run")).toBeVisible();
   await shot(page, "node-drawer");
   await page.keyboard.press("Escape");
@@ -190,7 +190,7 @@ test("a schedule previews its next runs and is added", async ({ page }) => {
   await page.getByRole("button", { name: "Schedule", exact: true }).click();
   const form = page.getByRole("form", { name: "New schedule" });
   await form.getByLabel("Cron expression").fill("*/5 * * * *");
-  await expect(form.getByText("schedules may fire at most every 15 minutes")).toBeVisible();
+  await expect(form.getByText("a schedule can run at most one time every 15 minutes")).toBeVisible();
   await form.getByRole("button", { name: "Every weekday at 07:00" }).click();
   await form.getByLabel("Time zone").fill("Europe/Berlin");
   await expect(form.getByTestId("cron-preview")).toContainText("Every weekday at 07:00 (Europe/Berlin)");

@@ -7,14 +7,14 @@ import type { CheckSeverity, CheckStatus, ValidationEvent, ValidationStatus } fr
 type Tone = "neutral" | "active" | "success" | "warning" | "danger" | "muted";
 
 export const VALIDATION_META: Record<ValidationStatus, { label: string; tone: Tone; plain: string }> = {
-  draft: { label: "Draft", tone: "neutral", plain: "Not submitted yet." },
-  checks_running: { label: "Checks running", tone: "active", plain: "The checks are running in the sandbox." },
+  draft: { label: "Draft", tone: "neutral", plain: "Nobody submitted it." },
+  checks_running: { label: "Checks running", tone: "active", plain: "The checks run in the sandbox now." },
   checks_passed: { label: "Checks passed", tone: "success", plain: "Every blocking check passed." },
-  checks_failed: { label: "Checks failed", tone: "danger", plain: "A blocking check failed or could not be computed." },
-  awaiting_approval: { label: "Awaiting approval", tone: "warning", plain: "The checks passed; a reviewer has to approve it." },
-  validated: { label: "Validated", tone: "success", plain: "The model may be used (and promoted where a policy requires it)." },
+  checks_failed: { label: "Checks failed", tone: "danger", plain: "A blocking check failed or did not calculate a result." },
+  awaiting_approval: { label: "Awaiting approval", tone: "warning", plain: "The checks passed. A reviewer must approve it." },
+  validated: { label: "Validated", tone: "success", plain: "You can use the model. You can also promote it where a policy needs validation." },
   rejected: { label: "Rejected", tone: "danger", plain: "A reviewer, or the failed checks, rejected it." },
-  deprecated: { label: "Deprecated", tone: "muted", plain: "It was validated once and should no longer be used." },
+  deprecated: { label: "Deprecated", tone: "muted", plain: "It was validated before. Do not use it now." },
 };
 
 export const TONE_BADGE: Record<Tone, "secondary" | "info" | "success" | "warning" | "danger" | "outline"> = {
@@ -30,13 +30,13 @@ export const CHECK_META: Record<CheckStatus, { label: string; tone: Tone; plain:
   pass: { label: "Pass", tone: "success", plain: "Passed" },
   warn: { label: "Warning", tone: "warning", plain: "Passed with a warning" },
   fail: { label: "Fail", tone: "danger", plain: "Failed" },
-  error: { label: "Error", tone: "danger", plain: "Could not be computed" },
+  error: { label: "Error", tone: "danger", plain: "Did not calculate a result" },
   skipped: { label: "Skipped", tone: "muted", plain: "Did not apply to this model" },
 };
 
 export const SEVERITY_META: Record<CheckSeverity, { label: string; plain: string }> = {
   blocking: { label: "Blocking", plain: "A failure stops validation" },
-  warning: { label: "Warning", plain: "Shown to the reviewer; does not stop validation" },
+  warning: { label: "Warning", plain: "The reviewer sees it. It does not stop validation" },
   info: { label: "Information", plain: "Evidence only" },
 };
 

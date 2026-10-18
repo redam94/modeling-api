@@ -4,169 +4,224 @@ description: The web app's Integrations hub - connect a model to Google Sheets, 
 
 # The Integrations hub <span class="mapi-badge">v0.4</span>
 
-**Integrations** in the web app's sidebar (++g++ then ++i++) is where a fitted model leaves
-the platform: a spreadsheet scores it, a dashboard embeds its chart, your pipeline hears when
-a fit is ready. Everything on these pages is one or two calls of the
-[HTTP API](../reference/http-api.md#guided-and-integrations); the concepts behind them - the
-promotion gate, signed webhooks, embed links for platform recipes only - are explained in
-[Integrations](../concepts/integrations.md), and [Endpoints and webhooks](endpoints-and-webhooks.md)
-does the same with `curl`.
+**Integrations** in the sidebar of the web app (++g++ then ++i++) is where a fitted model
+goes out of the platform. For example, a spreadsheet scores the model, a dashboard embeds its
+chart, or your pipeline gets a message when a fit is ready. Each action on these pages is one
+or two calls of the [HTTP API](../reference/http-api.md#guided-and-integrations).
+[Integrations](../concepts/integrations.md) tells the concepts: the promotion gate, signed
+webhooks, and embed links only for platform recipes.
+[Endpoints and webhooks](endpoints-and-webhooks.md) does the same tasks with `curl`.
 
-The hub has four tabs: **Overview** (the Guided cards and the developer entry points),
-**Endpoints**, **Webhooks** and **Plots and links**. Guided mode's last step,
-[Share](guided-tutorial.md#7-share), leads here: an endpoint or chart link made there is listed
-in the hub straight away, and its **Code for this endpoint** button opens the endpoint's
-snippets. In a project locked to Guided mode, the hub stays in the navigation.
+The hub has four tabs:
+
+- **Overview**: The Guided cards and the entry points for developers.
+- **Endpoints**.
+- **Webhooks**.
+- **Plots and links**.
+
+The last step of Guided mode, [Share](guided-tutorial.md#7-share), goes to the hub. If you make
+an endpoint or a chart link in that step, the hub lists it immediately. Its **Code for this
+endpoint** button opens the snippets of the endpoint. In a project that is locked to Guided
+mode, the hub stays in the navigation.
 
 ## Overview: connect in a few steps
 
 ![The Integrations overview: Google Sheets, BI dashboard and webhook cards, and the developer entry points](../assets/screenshots/integrations-overview.png){ .mapi-shot }
 
-Three cards cover the common cases without reading any API documentation:
+Three cards cover the usual cases. You do not need to read API documentation:
 
 | Card | What you get | You need |
 |---|---|---|
-| **Google Sheets** | The Apps Script that scores an endpoint from a sheet - the rows of a sheet named `Input` (a header row with the endpoint's dims and inputs, one row per coordinate; for a forecast, your actuals and the dates to forecast with the target blank, previewed on the card), or the example call - and writes the answer's summary (mean and 90% interval per coordinate) to a sheet named `Result` under a note on what the forecast was conditioned on, with the steps to install it | An endpoint; a token from **Create a token** (it can only score that endpoint) |
-| **BI dashboard** | A read-only, expiring embed link for Looker Studio, Power BI or Notion (Slack shows a link as a card without the chart: post the PNG there) | A saved plot of a platform recipe |
+| **Google Sheets** | The Apps Script that scores an endpoint from a sheet, with the steps to install it. The script reads the rows of a sheet with the name `Input`, or it uses the example call. The `Input` sheet has a header row with the dims and inputs of the endpoint, and one row for each coordinate. For a forecast, it has your actuals and the dates to forecast, with the target empty. The card shows a preview. The script writes the summary of the answer (mean and 90% interval for each coordinate) to a sheet with the name `Result`. Above the summary, it writes a note that tells the conditions of the forecast | An endpoint. A token from **Create a token**. This token can only score that endpoint |
+| **BI dashboard** | A read-only embed link that expires, for Looker Studio, Power BI or Notion. Slack shows a link as a card without the chart. For Slack, post the PNG | A saved plot of a platform recipe |
 | **Webhook** | A signed call to your URL when a model is ready or a run fails | The project admin role |
 
-Below them, **For developers** links to the endpoints, to [scoped tokens](administration.md#api-tokens)
-and to the server's own interactive API documentation (`/docs`) and OpenAPI 3.1 document
-(`/openapi.json`).
+Below the cards, **For developers** has links to these items:
+
+- The endpoints.
+- [Scoped tokens](administration.md#api-tokens).
+- The interactive API documentation of the server (`/docs`).
+- The OpenAPI 3.1 document of the server (`/openapi.json`).
 
 ## Endpoints and aliases
 
-The **Endpoints** tab lists the project's endpoints: the alias, the model version it serves,
-its revision, the gate it passed and when it was promoted. Click one to open its page.
+The **Endpoints** tab lists the endpoints of the project. For each endpoint, it shows the
+alias, the model version that it serves and its revision. It also shows the gate that it
+passed and the date of the promotion. To open the page of an endpoint, click it.
 
 ### Promoting through the gate
 
-**Promote a model** (project admins) asks for the endpoint's name, a model and a version.
-The dialog shows the version's [sanity scorecard](../concepts/guided-mode.md#scorecard) and
-the **expected gate**; **Promote** asks the server, which decides:
+Only project admins can promote.
+
+1. Click **Promote a model**.
+2. Type the name of the endpoint, and select a model and a version. The dialog shows the
+   [sanity scorecard](../concepts/guided-mode.md#scorecard) of the version and the **expected
+   gate**.
+3. Click **Promote**. The server decides:
 
 ![The promote dialog after the server asked for an override, with the scorecard, the reason and the override field](../assets/screenshots/integrations-promote-gate.png){ .mapi-shot }
 
 | The gate says | The dialog | What to do |
 |---|---|---|
 | Passes | The endpoint page opens on the new revision | - |
-| **Needs an override** (`409 OVERRIDE_REQUIRED`) | The reasons, each with its check (`holdout.mape`), and an **Override reason** field | A project admin signed in to the app writes why and clicks **Override and promote**; the override is audited as `endpoint.promote_override`. No API token can override |
-| **Blocked** (`409 PROMOTION_BLOCKED`) | The reasons; no override | A failing scorecard, an interrupted fit, a `train_only` fit or a breaking input change: fix it and promote a new version |
+| **Needs an override** (`409 OVERRIDE_REQUIRED`) | The reasons, each with its check (`holdout.mape`), and an **Override reason** field | A project admin who is signed in to the app writes the reason and clicks **Override and promote**. The audit log records the override as `endpoint.promote_override`. An API token cannot override |
+| **Blocked** (`409 PROMOTION_BLOCKED`) | The reasons. No override | The cause is a scorecard that fails, a fit that stopped, a `train_only` fit or an input change that breaks callers. Repair the cause and promote a new version |
 
-The server also checks what the app cannot see - that the version was refitted on all data
-after its holdout evaluation, and that its input contract still matches what callers send - so
-an expected **Passes** can still come back blocked. **Description and evaluation policy**
-sets the endpoint's [EvaluationPolicy](../concepts/integrations.md#promotion-gate): accept
-exploration fits too, and block, warn about or allow input-contract changes. If someone else
-promoted the endpoint while the dialog was open, the server refuses the stale revision and the
-dialog says so.
+The server also checks two things that the app cannot see:
+
+- The version was fitted again on all the data after its holdout evaluation.
+- Its input contract still agrees with what callers send.
+
+Thus an expected **Passes** can still come back blocked. **Description and evaluation policy**
+sets the [EvaluationPolicy](../concepts/integrations.md#promotion-gate) of the endpoint. With
+it, you can accept exploration fits. You can also block, warn about or allow changes to the
+input contract. If a different person promoted the endpoint while the dialog was open, the
+server refuses the old revision. The dialog tells you this.
 
 ### An endpoint's page
 
 ![An endpoint's page: the version it serves, the gate's reasons and the history with rollback](../assets/screenshots/integrations-endpoint.png){ .mapi-shot }
 
-- **Version and history**: the version served now (linked to its model page), who promoted
-  it and how, the gate's reasons, and every promotion and rollback with its reason. **Roll back**
-  returns to the previous revision's version, **Roll back here** to any earlier one; both ask
-  for a reason, which is audited. The gate is not re-run on a rollback: that version passed it
-  before. **Delete endpoint** needs the alias typed out; integrations calling it get `404`.
-- **Schema and Try it**: the input contract frozen at promotion (score modes, the dim a
-  forecast extends, dimensions and variables) and the example call. **Validate** runs the
-  server's static checks (`POST …/validate`), **Score** a real score run (`POST …/score` with
-  `Prefer: wait=30`, runner role) - edit the call first to try your own. A forecasting
-  endpoint adds **Your latest actuals and the dates to forecast**: its input table (the time
-  column, the target, the drivers) with the periods after the fit as rows. Fill the target
-  where you have actuals and leave it blank on the dates to forecast (**Add a period**,
-  **Paste from a spreadsheet**), then **Use in the call**. After **Score**, a note says what
-  the forecast was conditioned on - *Conditioned on 3 actuals through 1961-03-01*, or *From the
-  end of the fitted history* - above the first summary tables
-  ([Forecasts with actuals](../concepts/forecasting-with-actuals.md)).
-- **Snippets**: ready-to-run code for **Python**, **TypeScript**, **curl**, **R**, **Apps Script**
-  and **Notebook** (a Jupyter or marimo cell that returns an `xarray.Dataset`),
-  generated by the server with the example call, shown and copied exactly as the server wrote
-  it, each with what to install first. Snippets never contain a secret: they read the token
-  from `MAPI_TOKEN`.
+- **Version and history**: This shows these items:
+    - The version that serves now, with a link to its model page.
+    - The person who promoted it, and how.
+    - The reasons of the gate.
+    - Each promotion and rollback with its reason.
+
+    **Roll back** goes back to the version of the previous revision. **Roll back here** goes
+    back to an earlier revision. The two buttons ask for a reason, and the audit log records
+    it. A rollback does not run the gate again, because that version passed it before.
+    **Delete endpoint** needs you to type the alias. Integrations that call a deleted endpoint
+    get `404`.
+
+- **Schema and Try it**: This shows the input contract from the time of the promotion. The
+  contract has the score modes, the dim that a forecast extends, and the dimensions and
+  variables. It also shows the example call. To try your own call, edit the call first.
+
+    - **Validate** runs the static checks of the server (`POST …/validate`).
+    - **Score** does a real score run (`POST …/score` with `Prefer: wait=30`). It needs the
+      runner role.
+
+    A forecasting endpoint also has **Your latest actuals and the dates to forecast**. This is
+    its input table: the time column, the target and the drivers. The periods after the fit
+    are rows. To use it, do these steps:
+
+    1. Fill the target where you have actuals.
+    2. Leave the target empty on the dates to forecast. Use **Add a period** or **Paste from a
+       spreadsheet**.
+    3. Click **Use in the call**.
+
+    After **Score**, a note above the first summary tables tells the conditions of the
+    forecast. Examples are *Conditioned on 3 actuals through 1961-03-01* and *From the end of
+    the fitted history* ([Forecasts with actuals](../concepts/forecasting-with-actuals.md)).
+
+- **Snippets**: Code that is ready to run for **Python**, **TypeScript**, **curl**, **R**,
+  **Apps Script** and **Notebook**. **Notebook** is a Jupyter or marimo cell that returns an
+  `xarray.Dataset`. The server makes the code with the example call. The app shows and copies
+  the code exactly as the server wrote it. Each snippet tells what to install first. Snippets
+  never contain a secret. They read the token from `MAPI_TOKEN`.
 
 ![Schema and Try it: the input contract and a validated example call](../assets/screenshots/integrations-try-it.png){ .mapi-shot }
 
 ![The snippet tabs with the Python client snippet](../assets/screenshots/integrations-snippets.png){ .mapi-shot }
 
-**Token for this endpoint** (and **Create a score:… token** on the Snippets tab) opens the
-Tokens page's **New token** dialog prefilled for a `score:<alias>` token: it can read and score
-that endpoint and nothing else, with a 120 requests-per-minute limit to start from.
+**Token for this endpoint** opens the **New token** dialog of the Tokens page. **Create a
+score:… token** on the Snippets tab opens the same dialog. The dialog is filled for a
+`score:<alias>` token. This token can read and score that endpoint and nothing more. Its
+initial limit is 120 requests each minute.
 
 ## Webhooks
 
-The **Webhooks** tab (project admins; others see why it is empty) lists every webhook with its
-events, status and last delivery. **New webhook** asks for an https URL, a description and the
-[events](../concepts/integrations.md#webhooks) to send. The platform refuses URLs on private
-or internal addresses (`WEBHOOK_URL_BLOCKED`), and says so under the URL field.
+The **Webhooks** tab is for project admins. Other users see why the tab is empty. The tab lists
+each webhook with its events, its status and its last delivery. **New webhook** asks for an
+https URL, a description and the [events](../concepts/integrations.md#webhooks) to send. The
+platform refuses URLs on private or internal addresses (`WEBHOOK_URL_BLOCKED`). It tells you
+this below the URL field.
 
-The **signing secret is shown once**, right after creation: copy it into your receiver's
-configuration (the dialog's **Done** stays disabled until you copy it or tick that you stored
-it). The dialog also shows the few lines that verify a delivery's `Mapi-Signature`.
+The app **shows the signing secret one time**, immediately after you make the webhook. Copy
+the secret into the configuration of your receiver. The **Done** button of the dialog stays
+disabled until you copy the secret, or tick that you stored it. The dialog also shows the
+lines of code that verify the `Mapi-Signature` of a delivery.
 
 ![A webhook's page: its events, the secret's hint, and the delivery log with an expanded failure](../assets/screenshots/integrations-webhook.png){ .mapi-shot }
 
-A webhook's page has:
+The page of a webhook has these items:
 
-- **Settings**: enable or disable it, change its events, **Rotate secret** (the new secret is
-  shown once; the old one keeps signing for 24 hours).
-- **Delivery log**: every try, newest first - the event, its status (*Delivered*, *Retrying*,
-  *Failed*, *Blocked*, *Pending*), the attempt number, your receiver's response code and the
-  time it took. **Details** shows the error, the next retry and the first KiB of your
-  receiver's answer (as untrusted text). **Replay** sends a delivery again; **Resend
-  newest** replays the newest one, so you can check a receiver you just fixed. There is no
-  synthetic test event: a new webhook gets its first delivery from the next subscribed event
-  in the project (a fit or score finishing, a version ready, a promotion).
-- A webhook that kept failing (20 consecutive failed events, or a `410 Gone`) is **disabled
-  automatically**: the page says why. Fix the receiver, then switch it back on (here, or
-  with `mapi webhooks update WEBHOOK_ID --enable`); that resets the failure count.
+- **Settings**: Enable or disable the webhook, and change its events. **Rotate secret** makes a
+  new secret. The app shows the new secret one time. The old secret continues to sign for 24
+  hours.
+- **Delivery log**: Each try, newest first. For each try, the log shows the event and its status
+  (*Delivered*, *Retrying*, *Failed*, *Blocked*, *Pending*). It also shows the try number, the
+  response code of your receiver and the duration.
+
+    - **Details** shows the error, the next retry and the first KiB of the answer of your
+      receiver, as untrusted text.
+    - **Replay** sends a delivery again.
+    - **Resend newest** sends the newest delivery again. Thus you can check a receiver that you
+      repaired.
+
+    There is no synthetic test event. A new webhook gets its first delivery from the next
+    subscribed event in the project. Examples are a fit or a score that finishes, a version
+    that is ready, or a promotion.
+
+- A webhook that continues to fail is **disabled automatically**. This occurs after 20 failed
+  events in a sequence, or after a `410 Gone`. The page tells the reason. To enable the
+  webhook again:
+
+    1. Repair the receiver.
+    2. Switch the webhook on again on this page, or with
+       `mapi webhooks update WEBHOOK_ID --enable`. This sets the failure count to zero.
 
 ## Plots and links
 
 ![Saved plots with their downloads and embed links](../assets/screenshots/integrations-sharing.png){ .mapi-shot }
 
-The **Plots and links** tab keeps the plots you report on:
+The **Plots and links** tab keeps the plots that you use in reports:
 
-- **Save a model plot** picks a model, a version and one of its plots. The **Share** button in
-  a model version's plot gallery opens the same dialog prefilled. A saved plot keeps pointing at
-  that version, so a link to it never changes when the model is refitted.
-- **Download** renders PNG, SVG or PDF in the sandbox (a `render` run, runner role; slow
-  formats are followed until they finish) and checks the file's checksum before saving it.
-  Plotly figures need kaleido and a Chrome in the runner image: when the server answers
-  `MODE_NOT_SUPPORTED`, the Plotly download buttons are disabled with the server's reason.
-- **Create link** makes a tokenised, read-only, expiring link - 7 to 365 days, 30 by default -
-  optionally limited to the sites that may frame it (https origins). Only plots of the
-  platform's own recipes can be shared; others say why the button is disabled. The link and
-  its `<iframe>` code are **shown once**; the table below each plot lists its links with their
-  status, expiry and view count, and **Revoke** ends one at once (viewers then see "This link
-  has expired").
+- **Save a model plot** selects a model, a version and one of its plots. The **Share** button
+  in the plot gallery of a model version opens the same dialog, already filled. A saved plot
+  continues to point at that version. Thus a link to it never changes when you fit the model
+  again.
+- **Download** renders PNG, SVG or PDF in the sandbox. This is a `render` run, and it needs the
+  runner role. The app monitors slow formats until they finish. It checks the checksum of the
+  file before it saves the file. Plotly figures need kaleido and a Chrome in the runner image.
+  If the server answers `MODE_NOT_SUPPORTED`, the app disables the Plotly download buttons and
+  shows the reason of the server.
+- **Create link** makes a read-only link with a token. The link expires after 7 to 365 days,
+  and the default is 30 days. Optionally, you can limit the link to the sites that can frame it
+  (https origins). You can share only plots of the recipes of the platform. For other plots,
+  the app tells why the button is disabled. The app **shows the link and its `<iframe>` code
+  one time**. The table below each plot lists its links with their status, expiry and view
+  count. **Revoke** stops a link immediately. Then viewers see "This link has expired".
 
 ![The embed link dialog: the link and its iframe code, shown once](../assets/screenshots/integrations-embed-link.png){ .mapi-shot }
 
-See [Sharing plots](sharing-plots.md) for what the embed page does and does not load.
+See [Sharing plots](sharing-plots.md) for what the embed page loads and does not load.
 
 ## Sign-up and e-mail verification
 
-When the server allows self-service sign-up, the sign-in screen links to **Create a
-workspace** (`/signup`), a page that works without a session:
+If the server allows self-service sign-up, the sign-in screen has a link to **Create a
+workspace** (`/signup`). This page works without a session:
 
 ![The sign-up page refusing a disposable e-mail address](../assets/screenshots/signup.png){ .mapi-shot }
 
-1. Enter a work e-mail, your name, optionally the organisation (it names the workspace) and
-   accept the terms: the **terms of service** and the **acceptable-use policy** open in a new
-   tab (`/terms` and `/acceptable-use`, or the installation's own documents set with
-   `VITE_TERMS_URL` and `VITE_ACCEPTABLE_USE_URL`). Disposable e-mail addresses are refused
-   at the e-mail field; a server with sign-up closed says so.
-2. **Check your inbox**: the answer is the same whether or not the address already has an
-   account. The link works once, for 24 hours; **Send the link again** replaces it. On a
-   development server the page links straight to the mail in the outbox (`make outbox`).
-3. The link opens `/verify-email`, which removes the token from the address bar and asks you
-   to **Confirm and create my workspace**. That creates a `public`-tier workspace with a
-   `default` project and makes you its admin; **Sign in** then goes through the usual
-   identity-provider flow and opens the new workspace in Guided mode. An expired or reused
-   link explains how to get a new one.
+1. Type a work e-mail and your name. Optionally, type the organisation. The organisation gives
+   the workspace its name.
+2. Accept the terms. The **terms of service** and the **acceptable-use policy** open in a new
+   tab. These are `/terms` and `/acceptable-use`, or the documents of the installation that
+   `VITE_TERMS_URL` and `VITE_ACCEPTABLE_USE_URL` set. The e-mail field refuses disposable
+   e-mail addresses. If sign-up is closed on the server, the page tells you this.
+3. Look at your e-mail (**Check your inbox**). The answer is the same if the address already
+   has an account or not. The link works one time, for 24 hours. **Send the link again**
+   replaces the link. On a development server, the page links directly to the mail in the
+   outbox (`make outbox`).
+4. Open the link. It opens `/verify-email`, which removes the token from the address bar.
+5. Click **Confirm and create my workspace**. The app makes a `public`-tier workspace with a
+   `default` project, and makes you its admin.
+6. Click **Sign in**. The usual identity-provider flow starts and opens the new workspace in
+   Guided mode.
+
+If the link expired or you used it before, the page tells you how to get a new link.
 
 ## Settings > Data
 
@@ -174,35 +229,37 @@ Organisation admins find a **Data** section at the bottom of **Settings**:
 
 ![Settings > Data: the GDPR export and deleting the organisation](../assets/screenshots/settings-data.png){ .mapi-shot }
 
-- **Export your data** packs everything the organisation stored - workspace records
-  (credentials redacted), datasets, model manifests, the audit log and the cost ledger, as you
-  choose - into one archive. The page follows the export and offers **Download archive**; the
-  link lasts 15 minutes, so reload the page for a fresh one. Exports work while the
-  organisation is suspended.
-- **Delete the organisation** needs the organisation id typed out. The organisation is
-  suspended (read-only) at once and its runs are cancelled; for 7 days a banner on every page
-  says when the purge starts, and **Cancel the deletion** restores it. Then every store is
-  purged, with the progress shown per store. The audit log (pseudonymised) and the cost ledger
-  (amounts only) are kept for their legal retention - see
+- **Export your data** puts all the data that the organisation stored into one archive. You
+  select the items: workspace records (with credentials removed), datasets, model manifests,
+  the audit log and the cost ledger. The page monitors the export and shows **Download
+  archive**. The link is valid for 15 minutes. For a new link, reload the page. Exports work
+  while the organisation is suspended.
+- **Delete the organisation** needs you to type the organisation id. The platform suspends the
+  organisation (read-only) immediately and cancels its runs. For 7 days, a banner on each page
+  tells when the purge starts. **Cancel the deletion** restores the organisation. Then the
+  platform purges each store, and shows the progress for each store. The platform keeps the
+  audit log (pseudonymised) and the cost ledger (amounts only) for their legal retention. See
   [Deleting and exporting data](data-deletion.md).
 
 ## Admin console additions
 
-Platform operators get two more things in **Admin**:
+Platform operators get these items in **Admin**:
 
-- **Sign-ups**: the review queue of sign-ups a Sybil heuristic flagged (same network address,
-  same browser, a repeated address, a burst from one domain), with the reasons in plain words.
-  **Approve** clears the flag; **Reject** suspends the workspace the sign-up created. Both
-  need a reason, which is audited.
+- **Sign-ups**: The review queue of sign-ups that a Sybil heuristic flagged. The heuristic
+  looks for the same network address, the same browser, a repeated address, or a burst from
+  one domain. The queue gives the reasons in plain words. **Approve** removes the flag.
+  **Reject** suspends the workspace that the sign-up made. The two buttons need a reason, and
+  the audit log records it.
 
-  ![The sign-up review queue](../assets/screenshots/admin-signups.png){ .mapi-shot }
+    ![The sign-up review queue](../assets/screenshots/admin-signups.png){ .mapi-shot }
 
-- **Trust** on each tenant row: its e-mail and identity verification and whether uploaded code
-  is allowed, **Mark identity verified** (with the method and a reason) or withdraw it, and its
-  deletion's status per store, with **Retry the purge** after a failure.
+- **Trust** on each tenant row: This shows the e-mail and identity verification of the tenant,
+  and if uploaded code is allowed. **Mark identity verified** sets the verification, with the
+  method and a reason. You can also withdraw it. The row also shows the status of the deletion
+  for each store. After a failure, use **Retry the purge**.
 
-- **Promotions**: the endpoint promotions that needed attention, across tenants and newest
-  first - admin overrides of the scorecard gate (with the reason and the failing checks) and
-  refused promotions (blocked, or needing an override). Nothing waits in a queue: the gate
-  decides each promotion at once. The rows come from the audit log
-  (`endpoint.promote_override`, and `endpoint.promote` with the outcome `denied`).
+- **Promotions**: The endpoint promotions that needed attention, across tenants and newest
+  first. These are admin overrides of the scorecard gate, with the reason and the checks that
+  failed. They are also refused promotions: blocked, or with a need for an override. Nothing
+  waits in a queue, because the gate decides each promotion immediately. The rows come from the
+  audit log (`endpoint.promote_override`, and `endpoint.promote` with the outcome `denied`).

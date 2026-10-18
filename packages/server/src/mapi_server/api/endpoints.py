@@ -87,7 +87,11 @@ PreferHeader = Annotated[
 
 SCORE_BODY_MAX_BYTES = MAX_XRJSON_BYTES * 2 + 256 * 1024
 """Body cap of score and validate calls (two inline payloads of 5 MB plus the call)."""
-SCORE_BODY_PATHS = (r"/v1/endpoints/[^/]+/score", r"/v1/endpoints/[^/]+/validate")
+SCORE_BODY_PATHS = (
+    r"/v1/endpoints/[^/]+/score",
+    r"/v1/endpoints/[^/]+/validate",
+    r"/v1/models/[^/]+/versions/[^/]+:score",
+)
 
 
 # --------------------------------------------------------------------------------- reads

@@ -80,7 +80,7 @@ function LiveRun({ run, session }: { run: Run; session: GuidedSession }) {
             <div className="grid gap-1">
               <h2 className="text-[17px] font-semibold tracking-tight">Your model is ready</h2>
               <p className="text-[13px] text-muted-foreground">
-                It learned from your data and checked itself on the weeks it held back.
+                It learned from your data. Then it did a test on the weeks that it held back.
                 {current.cost?.amount_micros != null ? ` This fit cost ${formatMicros(current.cost.amount_micros, current.cost.currency)}.` : ""}
               </p>
             </div>
@@ -115,14 +115,14 @@ function LiveRun({ run, session }: { run: Run; session: GuidedSession }) {
           <div className="grid gap-1.5">
             <Progress value={p?.fraction ?? null} label="Fit progress" className="h-2" />
             <p className="flex justify-between text-xs text-muted-foreground tabular">
-              <span>{p?.fraction != null ? `${Math.round(p.fraction * 100)}% done` : "Starting…"}</span>
+              <span>{p?.fraction != null ? `${Math.round(p.fraction * 100)}% done` : "The fit starts…"}</span>
               <span>{eta ?? ""}</span>
             </p>
           </div>
         ) : null}
         {!terminal ? <PhaseChecklist phase={p?.phase ?? null} done={false} /> : null}
         <p className="text-xs text-muted-foreground">
-          You can leave this page: the fit carries on and this step shows where it is when you come back.{" "}
+          You can leave this page. The fit continues. When you come back, this step shows the progress.{" "}
           <Link to="/runs/$runId" params={{ runId: current.id }} className="underline underline-offset-2 hover:text-foreground">
             Technical details
           </Link>
@@ -168,16 +168,16 @@ export function RunStep({ session }: { session: GuidedSession }) {
       {!run || finished ? (
         <Card>
           <CardContent className="grid gap-3 pt-5">
-            <h2 className="text-[15px] font-semibold tracking-tight">{run ? "Try again" : "Ready when you are"}</h2>
+            <h2 className="text-[15px] font-semibold tracking-tight">{run ? "Try again" : "Ready to start"}</h2>
             <p className="max-w-[62ch] text-[13px] text-muted-foreground">
-              Fitting runs in a secure sandbox and usually takes a few minutes. First the model learns without the latest weeks to measure how well it forecasts, then it learns again from everything.
-              {session.lastGoodFit && session.lastGoodFit.spec_revision !== session.latest.revision ? " Your earlier results stay available until the new fit finishes." : ""}
+              The fit runs in a secure sandbox. It usually takes a few minutes. First, the model learns without the latest weeks. This measures how well it forecasts. Then the model learns again from all the data.
+              {session.lastGoodFit && session.lastGoodFit.spec_revision !== session.latest.revision ? " Your earlier results stay available until the new fit is complete." : ""}
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Button onClick={() => void start()} disabled={!dataReady || create.isPending || !canRun}>
                 {create.isPending ? <Spinner /> : run ? <RotateCcw /> : <Play />} {run ? "Fit again" : "Fit the model"}
               </Button>
-              {!canRun ? <span className="text-xs text-muted-foreground">Starting a fit needs the runner role.</span> : null}
+              {!canRun ? <span className="text-xs text-muted-foreground">You need the runner role to start a fit.</span> : null}
             </div>
             {error ? (
               <p role="alert" className="text-[13px] text-destructive">

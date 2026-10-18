@@ -45,7 +45,7 @@ function RenameField({ doc, node, onRename }: { doc: WorkflowDoc; node: Workflow
   useEffect(() => setDraft(node.id), [node.id]);
   const problem = draft === node.id ? null : nodeIdProblem(doc, draft, node.id);
   return (
-    <Field label="Node id" htmlFor={id} error={problem} hint="Other nodes read its results as nodes.<id>; renaming updates them.">
+    <Field label="Node id" htmlFor={id} error={problem} hint="Other nodes read the results of this node as nodes.<id>. If you change the id, the app changes these references too.">
       <Input
         id={id}
         className="font-mono"
@@ -125,7 +125,7 @@ export function NodeInspector({
         <AboutCard framed about={impl.about} compact headingLevel={3} heading={<span className="text-sm">What it does</span>} />
       ) : (
         <p role="alert" className="text-[13px] text-destructive">
-          “{implId(node.use)}” is not in the node catalog. Pick another implementation in the YAML view, or remove the node.
+          “{implId(node.use)}” is not in the node catalog. Select a different implementation in the YAML view, or remove the node.
         </p>
       )}
 
@@ -147,7 +147,7 @@ export function NodeInspector({
           <h3 id={`${idBase}-in`} className="text-sm font-semibold">
             Inputs
           </h3>
-          {Object.keys(ports).length === 0 ? <p className="text-[13px] text-muted-foreground">Choose the workflow first: its inputs become this node's inputs.</p> : null}
+          {Object.keys(ports).length === 0 ? <p className="text-[13px] text-muted-foreground">Select the workflow first. Its inputs become the inputs of this node.</p> : null}
           {Object.entries(ports).map(([port, spec]) => {
             const bound = bindingList(node.inputs?.[port]);
             const sources = compatibleSources(doc, catalog, { node: node.id, port }, subs).filter((s) => !bound.includes(s.binding));
@@ -197,7 +197,7 @@ export function NodeInspector({
                   onChange={(e) => e.target.value && onChange(connect(doc, e.target.value, node.id, port, "append"))}
                 >
                   <option value="">
-                    {sources.length ? (bound.length ? (spec.multiple ? "Add a source…" : "Add an alternative (used if the first is skipped)…") : "Connect a source…") : `Nothing upstream gives ${PORT_TYPE_META[spec.type].label}`}
+                    {sources.length ? (bound.length ? (spec.multiple ? "Add a source…" : "Add an alternative (used if the first is skipped)…") : "Connect a source…") : `No earlier node gives ${PORT_TYPE_META[spec.type].label}`}
                   </option>
                   {sources.map((s) => (
                     <option key={s.binding} value={s.binding}>
@@ -232,7 +232,7 @@ export function NodeInspector({
               </option>,
             ])}
           </NativeSelect>
-          <p className="text-xs text-muted-foreground">A node on an arm that is not taken is skipped, and so is everything that needs it unless it has an alternative.</p>
+          <p className="text-xs text-muted-foreground">The workflow skips a node on an arm that it does not take. It also skips each node that needs that node and has no alternative.</p>
         </section>
       ) : null}
 
@@ -271,7 +271,7 @@ export function NodeInspector({
         <details className="rounded-md border p-2">
           <summary className="cursor-pointer text-sm font-semibold">How it runs</summary>
           <div className="mt-3 grid gap-3">
-            <Field label="Retries" htmlFor={`${idBase}-retries`} hint="Retry a transient failure up to 3 times.">
+            <Field label="Retries" htmlFor={`${idBase}-retries`} hint="The number of times to try again after a temporary failure. The maximum is 3.">
               <NativeSelect id={`${idBase}-retries`} value={node.retries ?? 0} onChange={(e) => onChange(setNodeFields(doc, node.id, { retries: Number(e.target.value) }))}>
                 {[0, 1, 2, 3].map((n) => (
                   <option key={n} value={n}>
@@ -280,18 +280,18 @@ export function NodeInspector({
                 ))}
               </NativeSelect>
             </Field>
-            <Field label="Time limit" htmlFor={`${idBase}-timeout`} hint="Like 20m or 2h; empty uses the server's default." error={fieldErrors.timeout}>
+            <Field label="Time limit" htmlFor={`${idBase}-timeout`} hint="Type a time, for example 20m or 2h. If you do not type a time, the server uses its default." error={fieldErrors.timeout}>
               <Input id={`${idBase}-timeout`} className="font-mono" value={node.timeout ?? ""} placeholder="30m" onChange={(e) => onChange(setNodeFields(doc, node.id, { timeout: e.target.value || null }))} />
             </Field>
             <Field label="When it fails" htmlFor={`${idBase}-fail`}>
               <NativeSelect id={`${idBase}-fail`} value={node.on_failure ?? "fail"} onChange={(e) => onChange(setNodeFields(doc, node.id, { on_failure: e.target.value as "fail" | "continue" }))}>
                 <option value="fail">Stop the workflow</option>
-                <option value="continue">Carry on as if it was skipped</option>
+                <option value="continue">Continue as if the node was skipped</option>
               </NativeSelect>
             </Field>
             <label className="flex items-center gap-2 text-[13px]">
               <Checkbox checked={node.cache !== false} onCheckedChange={(c) => onChange(setNodeFields(doc, node.id, { cache: c === true }))} />
-              Reuse an identical earlier result
+              Use an identical earlier result again
             </label>
           </div>
         </details>

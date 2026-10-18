@@ -1,19 +1,19 @@
 # Plots reference (`mapi-plots`)
 
-`mapi-plots` has two halves with different dependency footprints:
+`mapi-plots` has two parts. Each part has different dependencies:
 
 | Install | Modules | Imports | Runs in |
 |---|---|---|---|
 | `mapi-plots` | `mapi_plots.sanitize`, `mapi_plots.templates` | `mapi-spec`, `jsonschema` (JSON only) | API server, runner, notebooks |
 | `mapi-plots[recipes]` | `mapi_plots.convert`, `mapi_plots.recipes`, `mapi_plots.packs`, `mapi_plots.examples` | + altair, plotly, numpy, pandas, pyarrow, xarray | runner images, notebooks |
 
-An import-linter contract keeps the sanitizer and templates free of numpy, pandas, xarray,
-pyarrow, altair, plotly and `mapi_sdk`, and `import mapi_plots` loads nothing heavy (exports are
-lazy).
+An import-linter contract makes sure that the sanitizer and the templates do not import
+numpy, pandas, xarray, pyarrow, altair, plotly or `mapi_sdk`. `import mapi_plots` loads no
+large modules, because the exports are lazy.
 
 ## The PlotSpec envelope
 
-Defined in `mapi_spec.plots` (the contract package):
+The contract package `mapi_spec.plots` defines the envelope:
 
 ```yaml
 id: core.ppc_fan                    # [A-Za-z0-9_.-]{1,128}
@@ -31,11 +31,12 @@ provenance: {recipe: core.ppc_fan@1.0.0, bundle_id: ..., generated_at: ...}
 ```
 
 - Vega-Lite references data with `{"data": {"name": "fan"}}`.
-- Plotly references a column with `{"$ref": "<dataset>.<column>"}` in any data-array attribute
-  (and in `arrayOk` attributes such as `marker.color`). The part before the first `.` is the
-  dataset; the rest is the column (`trace0.marker.color` → dataset `trace0`, column
-  `marker.color`). Its JSON Schema ships as `mapi_plots.sanitize.PLOTLY_REF_SCHEMA` and as the
-  file `mapi_plots/sanitize/schemas/plotly-ref.schema.json`:
+- Plotly references a column with `{"$ref": "<dataset>.<column>"}` in a data-array attribute.
+  It also uses this reference in `arrayOk` attributes, for example `marker.color`. The part
+  before the first `.` is the dataset. The remaining part is the column
+  (`trace0.marker.color` → dataset `trace0`, column `marker.color`). The JSON Schema of the
+  reference is `mapi_plots.sanitize.PLOTLY_REF_SCHEMA`. It is also in the file
+  `mapi_plots/sanitize/schemas/plotly-ref.schema.json`:
 
 ```json
 {
@@ -49,8 +50,9 @@ provenance: {recipe: core.ppc_fan@1.0.0, bundle_id: ..., generated_at: ...}
 }
 ```
 
-- Inline Arrow datasets are at most 2 MiB of base64 each. Recipe datasets are written
-  compactly (float32, int32, dictionary-encoded strings); timestamps are UTC milliseconds.
+- The maximum size of each inline Arrow dataset is 2 MiB of base64. Recipes write datasets in
+  a compact format (float32, int32, dictionary-encoded strings). Timestamps are UTC
+  milliseconds.
 
 ## Sanitizer
 
@@ -65,29 +67,36 @@ issues = check_plot(doc)               # errors + changes, never raises
 spec, changes = sanitize_spec("plotly", figure_dict)   # bare spec, no envelope
 ```
 
-`SanitizeError` is a `MapiError`; `err.issues` lists every violation (capped at
-`max_issues`), each with an RFC 6901 `pointer`, a platform-written `message`, the rule in
-`context["rule"]` and any user-supplied text only in `untrusted_text`. `err.rules` is the set of
-rules that fired. The error code is the most severe present:
+`SanitizeError` is a `MapiError`. `err.issues` lists all violations, up to `max_issues`. Each
+violation has these items:
+
+- An RFC 6901 `pointer`.
+- A `message` that the platform wrote.
+- The rule, in `context["rule"]`.
+- Text from the user, if there is some. This text is only in `untrusted_text`.
+
+`err.rules` is the set of rules that fired. The error code is the most severe code that is
+present:
 
 | Code | HTTP | Rules |
 |---|---|---|
 | `PLOT_UNSAFE` | 422 | `url_data`, `href`, `external_image`, `tile_map`, `proto_key`, `script_url`, `css_url`, `expression`, `format_type`, `config` |
 | `PAYLOAD_TOO_LARGE` | 413 | `too_large`, `too_deep`, `too_many_nodes`, `string_too_long`, `array_too_long` |
-| `SPEC_PARSE_ERROR` | 400 | `parse` (invalid JSON, duplicate keys, NaN/Infinity) |
+| `SPEC_PARSE_ERROR` | 400 | `parse` (JSON that is not valid, duplicate keys, NaN/Infinity) |
 | `SCHEMA_INVALID` | 422 | `schema`, `envelope`, `dataset_ref`, `typed_array` |
 
-Changes (never errors) use the rules `html_stripped`, `schema_url` and `template_pruned`.
+Changes use the rules `html_stripped`, `schema_url` and `template_pruned`. Changes are not
+errors.
 
 ### Limits
 
 | `SanitizeLimits` field | Default |
 |---|---|
-| `max_document_bytes` | 16 MiB (whole PlotSpec, inline Arrow included) |
+| `max_document_bytes` | 16 MiB (the full PlotSpec, with the inline Arrow data) |
 | `max_spec_bytes` | 2 MiB (the `spec` member) |
 | `max_depth` | 48 |
 | `max_nodes` | 200 000 |
-| `max_string_bytes` | 64 KiB (inline Arrow payloads are capped by the envelope instead) |
+| `max_string_bytes` | 64 KiB (the envelope sets the limit for inline Arrow payloads) |
 | `max_array_items` | 100 000 |
 | `max_expr_chars` | 2 000 |
 | `max_typed_array_bytes` | 8 MiB |
@@ -95,42 +104,52 @@ Changes (never errors) use the rules `html_stripped`, `schema_url` and `template
 
 ### Vega-Lite rules
 
-1. `$schema` must be an official Vega-Lite v5 or v6 URL (or absent); it is pinned to v6.4.1.
-2. The spec must validate against the vendored Vega-Lite v6.4.1 JSON Schema (draft-07,
-   local `$ref`s only).
-3. No `url` key anywhere; no `href`; no `image` mark; `formatType` only `number`, `time` or
-   `utc`; `config.customFormatTypes` must not be enabled.
-4. Expressions — `expr`, `calculate`, `filter`/`test` strings (and their `and`/`or`/`not`
-   compositions), any `…Expr` key such as `labelExpr`, and bracketed filters inside selection
-   event streams — must use only allow-listed Vega functions. Method calls, `this`/`new`,
-   assignment, statements, template and regex literals, `\u`/`\x` escapes, non-ASCII outside
-   strings, computed member access with a non-literal key, browser globals (`window`,
-   `document`, `fetch`, `globalThis` …) and `event.view` are rejected.
+1. `$schema` must be an official Vega-Lite v5 or v6 URL, or not present. The sanitizer sets it
+   to v6.4.1.
+2. The spec must be valid against the vendored Vega-Lite v6.4.1 JSON Schema (draft-07, local
+   `$ref`s only).
+3. Do not use these items: a `url` key at any location, `href`, and the `image` mark.
+   `formatType` can only be `number`, `time` or `utc`. Do not enable
+   `config.customFormatTypes`.
+4. Expressions must use only Vega functions from the allow list. Expressions are:
+    - `expr`, `calculate` and `filter`/`test` strings, and their `and`/`or`/`not`
+      compositions.
+    - Each `…Expr` key, for example `labelExpr`.
+    - Filters in brackets in selection event streams.
+
+    The sanitizer rejects these items: method calls, `this`/`new`, assignment, statements,
+    template and regex literals, and `\u`/`\x` escapes. It also rejects non-ASCII characters
+    outside strings, and computed member access with a key that is not a literal. It also
+    rejects browser globals (`window`, `document`, `fetch`, `globalThis` …) and `event.view`.
 
 ### Plotly rules
 
-1. Top level has only `data`, `layout`, `frames` and `config`.
-2. Trace types, attribute names and value types are checked against a table derived from the
-   official plotly.js 4.1.1 `plot-schema.json` (enumerations, flag lists, subplot ids, colour
-   scales, info arrays; `xaxis2`-style subplot keys; `annotationdefaults`-style keys in
-   templates). Unknown attributes are errors — except inside `layout.template`, where they
-   (and tile-map sections) are pruned and reported.
-3. Data arrays are inline lists, dataset references or plotly.py typed arrays
-   (`{dtype: i1|u1|u1c|i2|u2|i4|u4|f4|f8, bdata, shape?}`, validated for base64, length and
-   shape).
-4. Tile-map traces/subplots, non-`data:image/(png|jpeg|gif|webp);base64` image sources (also
-   inside `updatemenus`/`sliders` relayout arguments), `url`/`href`/`topojsonURL` keys and
-   network `config` options are rejected.
-5. Strings are stripped to `<b> <i> <br> <sub> <sup>` (attributes dropped, stray `<` escaped);
-   `<extra>` survives in hover templates.
+1. The top level has only `data`, `layout`, `frames` and `config`.
+2. The sanitizer does a check of trace types, attribute names and value types against a table.
+   This table comes from the official plotly.js 4.1.1 `plot-schema.json`. It has enumerations,
+   flag lists, subplot ids, colour scales and info arrays. It also has subplot keys of the
+   `xaxis2` type, and template keys of the `annotationdefaults` type.
+3. Unknown attributes are errors. In `layout.template`, the sanitizer removes unknown
+   attributes and tile-map sections, and reports them.
+4. Data arrays are inline lists, dataset references or plotly.py typed arrays
+   (`{dtype: i1|u1|u1c|i2|u2|i4|u4|f4|f8, bdata, shape?}`). The sanitizer does a check of the
+   base64, length and shape of typed arrays.
+5. The sanitizer rejects these items:
+    - Tile-map traces and subplots.
+    - Image sources that are not `data:image/(png|jpeg|gif|webp);base64`. This rule also
+      applies in the relayout arguments of `updatemenus`/`sliders`.
+    - `url`/`href`/`topojsonURL` keys.
+    - Network `config` options.
+6. Strings can keep only `<b> <i> <br> <sub> <sup>`. The sanitizer removes attributes and
+   escapes a stray `<`. `<extra>` stays in hover templates.
 
 ### Vendored schemas
 
 | File | Source | Regenerate |
 |---|---|---|
 | `vega-lite-v6.4.1.json` | `https://vega.github.io/schema/vega-lite/v6.4.1.json` (byte-for-byte) | `scripts/vendor_schemas.py --download` |
-| `plotly-structure-v4.1.1.json` | derived from `plotly.js@v4.1.1/dist/plot-schema.json` | same |
-| `VENDORED.json` | source URLs and SHA-256 digests (checked by a unit test) | same |
+| `plotly-structure-v4.1.1.json` | made from `plotly.js@v4.1.1/dist/plot-schema.json` | same |
+| `VENDORED.json` | source URLs and SHA-256 digests (a unit test does a check of them) | same |
 
 ## Templates (`mapi_plots.templates`)
 
@@ -142,15 +161,16 @@ template_issues(plot, schema, *, optional=()) -> list[Issue]
 
 | Binding | Resolves to | Vega-Lite type |
 |---|---|---|
-| `dim:<name>` | a dim of the schema | `time` → temporal, numeric → quantitative, ordered/index → ordinal, else nominal |
-| `role:<role>` | the single variable with that role (lists for `tooltip`) | from the dtype |
+| `dim:<name>` | a dim of the schema | `time` → temporal, numeric → quantitative, ordered/index → ordinal, other → nominal |
+| `role:<role>` | the one variable with that role (lists for `tooltip`) | from the dtype |
 | `var:<name>` | that variable | from the dtype |
-| `coord:<name>` | a coordinate (dim or not) | from the dim, else nominal |
+| `coord:<name>` | a coordinate (dim or not) | from the dim, or nominal if it is not a dim |
 | `stat:<name>` | a summary statistic column (`mean`, `hdi_90_lower`, `q5` …) | quantitative |
 
 `render_template(template, data, schema=None, *, group=None, value=None, optional=())` (extra
-`recipes`) also builds the dataset from an `xr.Dataset`/tree group; the schema defaults to
-`attrs["mapi_schema"]` or is inferred (roles from each variable's `role` attribute).
+`recipes`) also makes the dataset from an `xr.Dataset` or a tree group. The default schema is
+`attrs["mapi_schema"]`. If that is not available, the function infers the schema. It gets the
+roles from the `role` attribute of each variable.
 
 ## Recipes (`mapi_plots.recipes`)
 
@@ -159,6 +179,7 @@ get_recipe(id) -> Recipe                 # bundled recipes (core + packs)
 standard_recipes() -> list[Recipe]       # entry point  mapi.plots: core
 mapi_plots.packs.mmm.mmm_recipes()       # entry point  mapi.plots: mmm
 mapi_plots.packs.ml.ml_recipes()         # entry point  mapi.plots: ml
+mapi_plots.packs.sci.sci_recipes()       # entry point  mapi.plots: sci (Plotly)
 Recipe.render(data, **settings) -> PlotSpec       # also Recipe(data, **settings)
 Recipe.catalog_entry() -> PlotCatalogEntry        # id, version, persona, required groups/representation
 
@@ -171,8 +192,8 @@ report.issues         # skipped plots: REF_UNRESOLVED / SCHEMA_INVALID / USER_CO
 report.to_json()      # plots.json sidecar body
 ```
 
-Write your own with the decorator — the result works with `Registry.register` and the
-`mapi.plots` entry-point group:
+To write your own recipe, use the decorator. The result works with `Registry.register` and
+the `mapi.plots` entry-point group:
 
 ```python
 import altair as alt
@@ -191,9 +212,16 @@ def weekly_total(inp, s: Settings) -> Figure:
     return Figure(chart, {"weekly": frame}, caption=f"Total {s.var} per week.")
 ```
 
+A recipe can also return a Plotly figure (`plotly.graph_objects.Figure` or a
+`{data, layout, frames}` dict) in `Figure.chart`. `Recipe.render` then sends it through
+`from_plotly` with the same title, caption, persona and provenance. The recipe can also give
+its own DataFrames in `Figure.datasets`. The traces then refer to their columns with
+`{"$ref": "<dataset>.<column>"}`. The function `plotly_plot` applies the inline-text rules to
+the string columns of these DataFrames.
+
 ### Settings shared by every recipe
 
-`title` (override), `width` (480), `height` (180). Unknown settings are rejected.
+`title` (override), `width` (480), `height` (180). The recipe rejects unknown settings.
 
 ### Per-recipe settings
 
@@ -211,9 +239,56 @@ def weekly_total(inp, s: Settings) -> Figure:
 | `core.counterfactual` | `var`, `along`, `hdi_prob` (0.9), `bins` (30) |
 | `core.decision_distribution` | `var`, `candidate`, `hdi_prob`, `higher_is_better` (true), `max_candidates` (12) |
 | `mmm.response_curves` | `var`, `channel`, `grid`, `spend_var` (spend), `current_var` (current_spend), `hdi_prob`, `facet` |
-| `mmm.marginal_cost` | as response curves + `metric` (cost \| roi), `clip_quantile` (0.98) |
+| `mmm.marginal_cost` | the same as response curves, + `metric` (cost \| roi), `clip_quantile` (0.98) |
 | `mmm.budget_plans` | `spend_var`, `outcome_var`, `plan`, `channel`, `reference`, `hdi_prob` |
 | `ml.feature_importance` | `top` (20), `feature_dim` (feature), `source` (auto \| importance \| coefficients) |
+| `sci.field_map` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive), `y`, `x`, `frame`, `select`, `stats` ([mean, sd]; also median, z, q05, q95, draws), `n_draws` (3), `max_draws` (400), `max_cells` (40 000), `max_frames` (24), `colormap`, `log`, `origin`, `aspect` (equal \| auto), `columns` (3), `width` (760), `height` (280, one row of panels) |
+| `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
+| `sci.profile_bands` | `var`, `group`, `observed_var`, `along`, `by`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_curves` (12), `max_draws` (1 000), `colormap` (viridis), `log` (false), `width` (640), `height` (360) |
+| `sci.ensemble` | `var`, `group`, `observed_var`, `along`, `select`, `n_draws` (40), `levels` ([0.9]), `point` (median \| mean \| none), `max_draws` (2 000), `seed` (0), `log` (false), `width` (640), `height` (320) |
 
-Convergence diagnostics are rank-normalised split R-hat and bulk/tail ESS (Vehtari et al. 2021),
-implemented in numpy and tested to match ArviZ exactly.
+### Scientific-model pack (`sci.*`)
+
+The `sci.*` recipes make Plotly figures for models with gridded outputs, vector fields,
+profiles and trajectories. They read draws (`chain`/`draw` or `sample` dims) from
+`posterior`, `predictions` or `posterior_predictive`. They read the actual values from
+`observed_data`.
+
+| Recipe | What it shows |
+|---|---|
+| `sci.field_map` | One heatmap panel for each statistic of a gridded output. A slider and a Play button show one `frame` at a time. |
+| `sci.vector_field` | The length of a vector as colours, arrows of the mean vector, and the sd of the length. |
+| `sci.profile_bands` | The median and the 50% and 90% bands along `along`, one curve for each level of `by`, and the actual values. A slider shows one level with its bands. |
+| `sci.ensemble` | Some draws as thin lines, the 90% band of all draws, the median and the actual values. |
+
+Statistics of `sci.field_map`:
+
+- `mean`, `median`: the average value and the middle value of the draws.
+- `sd`: the uncertainty. A high sd shows where the data do not fix the value.
+- `z`: the mean divided by the sd. Values far from zero are clear.
+- `q05`, `q95`: the limits of the 90% interval.
+- `draws`: `n_draws` possible fields from the model.
+
+The grid dims come from the settings. If you do not set them, the recipe uses the `grid` of
+the output (`OutputDecl.grid`). It reads the `grid` from the `grid` attribute of the variable
+or from the model manifest in the bundle. The `colormap`, `log` and `origin` settings also
+come from the `grid` when you do not set them. If the output has more dims than the plot
+uses, use `select` to pick one level of each, for example `select: {species: 0}`.
+
+The size of a field plot has limits:
+
+- All the cells of a plot are in one dataset: `x`, `y` and one column for each statistic
+  and frame. The recipe keeps this dataset below the inline Arrow limit (2 MB).
+- If the field has too many cells, the recipe calculates the average of each block of
+  k × k cells. A cell with no value (NaN) stays empty. The caption tells the block size.
+- A field of 189 × 193 cells with six panels and one frame has its full resolution.
+- `max_frames` sets the maximum number of frames. The slider shows frames at equal
+  intervals.
+
+The plot sandbox shows the Plotly `frames`, `sliders` and `updatemenus` of these plots. In
+dark mode, it changes the palette colours of the traces to their dark variants, the same as
+for Vega-Lite.
+
+The convergence diagnostics are rank-normalised split R-hat and bulk/tail ESS (Vehtari et al.
+2021). The package calculates them with numpy. Tests make sure that the values agree exactly
+with ArviZ.

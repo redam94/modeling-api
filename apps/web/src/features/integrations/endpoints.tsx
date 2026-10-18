@@ -37,7 +37,7 @@ export function GateBadge({ outcome, overridden = false }: { outcome: GateOutcom
         {meta.label}
       </Badge>
       {overridden ? (
-        <Badge variant="outline" title="Promoted by an audited admin override">
+        <Badge variant="outline" title="An admin promoted this version with an override. The audit log records it.">
           <ShieldAlert /> overridden
         </Badge>
       ) : null}
@@ -52,7 +52,7 @@ const REASON_ICON: Record<GateOutcome, React.ReactNode> = {
 };
 
 /** The reasons of a gate decision, in plain words with the check that raised each. */
-export function GateReasons({ decision, empty = "Every check passes." }: { decision: PromotionGateDecision; empty?: string }) {
+export function GateReasons({ decision, empty = "All checks pass." }: { decision: PromotionGateDecision; empty?: string }) {
   const reasons = decision.reasons ?? [];
   if (!reasons.length) return <p className="text-[13px] text-muted-foreground">{empty}</p>;
   return (
@@ -139,9 +139,9 @@ export function EndpointsSection() {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-[68ch] text-muted-foreground">
-          An endpoint is a stable name for one model version. Spreadsheets, dashboards and notebooks call the name, so promoting a better version - or rolling back - never breaks them. Promotion is gated on the version&apos;s sanity scorecard.
+          An endpoint is a stable name for one model version. Spreadsheets, dashboards and notebooks call the name. When you promote a better version or roll back, they continue to work. The sanity scorecard of the version controls the promotion.
         </p>
-        <Button onClick={() => setPromoting(true)} disabled={!canPromote} title={canPromote ? undefined : "Project admins promote endpoints"}>
+        <Button onClick={() => setPromoting(true)} disabled={!canPromote} title={canPromote ? undefined : "Only project admins can promote endpoints."}>
           <ArrowUpCircle /> Promote a model
         </Button>
       </div>
@@ -159,7 +159,7 @@ export function EndpointsSection() {
           ) : (
             <EmptyState
               icon={<Plug />}
-              title="No endpoints yet"
+              title="This project has no endpoints"
               action={
                 canPromote ? (
                   <Button onClick={() => setPromoting(true)}>
@@ -168,7 +168,7 @@ export function EndpointsSection() {
                 ) : null
               }
             >
-              Promote a fitted model version to an endpoint to score it from a spreadsheet, a BI tool, a notebook or your own service.
+              Promote a fitted model version to an endpoint. Then you can score it from a spreadsheet, a BI tool, a notebook or your own service.
             </EmptyState>
           )
         }
@@ -189,14 +189,14 @@ export function EndpointsSection() {
 // ----------------------------------------------------------------------- promote
 
 const FIT_MODES: { value: EvaluationPolicy["fit_mode"] & string; label: string }[] = [
-  { value: "evaluate_then_refit", label: "Evaluated, then refitted on all data (required for production)" },
+  { value: "evaluate_then_refit", label: "Evaluated, then fitted again on all data (necessary for production)" },
   { value: "train_only", label: "Also accept exploration fits (train only)" },
 ];
 
 const SCHEMA_CHANGES: { value: NonNullable<EvaluationPolicy["schema_change"]>; label: string }[] = [
   { value: "block", label: "Block versions that expect different input" },
   { value: "warn", label: "Allow them with an admin override" },
-  { value: "allow", label: "Allow them (callers must follow)" },
+  { value: "allow", label: "Allow them (callers must change their input)" },
 ];
 
 /**
@@ -226,8 +226,8 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
   const [submitted, setSubmitted] = useState(false);
   const [stale, setStale] = useState(false);
 
-  const aliasError = !endpoint && !ALIAS_RE.test(alias) ? "Lowercase letters, digits, - and _ (up to 128), starting and ending with a letter or digit." : null;
-  const reasonError = decision?.outcome === "needs_override" && !overrideReason.trim() ? "Say why this version should serve despite the gate; the reason is audited." : null;
+  const aliasError = !endpoint && !ALIAS_RE.test(alias) ? "Use lowercase letters, digits, - and _ (a maximum of 128). The first and last characters must be a letter or a digit." : null;
+  const reasonError = decision?.outcome === "needs_override" && !overrideReason.trim() ? "Type the reason to serve this version when the gate does not pass. The audit log records the reason." : null;
   const preview = mv.data ? previewGate(mv.data) : null;
   const policyChanged =
     !endpoint || fitMode !== (endpoint.evaluation_policy?.fit_mode ?? "evaluate_then_refit") || schemaChange !== (endpoint.evaluation_policy?.schema_change ?? "block");
@@ -245,7 +245,7 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
       { alias: endpoint?.alias ?? alias, body },
       {
         onSuccess: (ep) => {
-          toast.success(override ? "Promoted by override" : "Promoted", `${ep.alias} now serves ${ep.model_ref} (r${ep.revision})`);
+          toast.success(override ? "Promoted with an override" : "Promoted", `${ep.alias} now serves ${ep.model_ref} (r${ep.revision})`);
           onPromoted(ep);
         },
         onError: (e) => {
@@ -284,11 +284,11 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
         <DialogDescription>
           {endpoint
             ? `Callers of ${endpoint.ref} get the new version from their next call. It serves r${endpoint.revision} now.`
-            : "Pick a fitted model version and name the endpoint integrations will call."}
+            : "Select a fitted model version. Then type the name of the endpoint that integrations will call."}
         </DialogDescription>
         <form className="grid gap-5" onSubmit={submit} noValidate>
           {!endpoint ? (
-            <Field label="Endpoint name" htmlFor="ep-alias" error={submitted ? aliasError : null} hint="Integrations call endpoint://<project>/<name>; it cannot be renamed later.">
+            <Field label="Endpoint name" htmlFor="ep-alias" error={submitted ? aliasError : null} hint="Integrations call endpoint://<project>/<name>. You cannot change the name later.">
               <Input id="ep-alias" className="font-mono" autoFocus placeholder="geo-mmm-prod" value={alias} onChange={(e) => setAlias(e.target.value.toLowerCase())} />
             </Field>
           ) : null}
@@ -327,7 +327,7 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
           <section aria-label="Promotion gate" className="grid gap-3 rounded-lg border p-4">
             {mv.isPending && effectiveVersion ? (
               <span className="flex items-center gap-2 text-muted-foreground">
-                <Spinner /> Loading the version…
+                <Spinner /> The version is loading…
               </span>
             ) : mv.data && preview ? (
               <>
@@ -344,25 +344,25 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
                   <NotValidatedNotice modelId={mv.data.model_id} version={mv.data.version} />
                 ) : decision ? (
                   <div className={cn("grid gap-2 rounded-md border p-3", decision.outcome === "blocked" ? "border-destructive/35 bg-destructive/6" : "border-warning/40 bg-warning/8")} role="alert">
-                    <p className="font-medium">{decision.outcome === "blocked" ? "This version cannot be promoted" : "The gate needs an admin override"}</p>
+                    <p className="font-medium">{decision.outcome === "blocked" ? "You cannot promote this version" : "The gate needs an admin override"}</p>
                     <GateReasons decision={decision} />
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">The server also checks that the version was refitted on all data and that its input contract still matches what callers send.</p>
+                  <p className="text-xs text-muted-foreground">The server also makes sure that the version was fitted again on all data. It also makes sure that the input contract agrees with the input that callers send.</p>
                 )}
               </>
             ) : (
-              <p className="text-muted-foreground">Fit a model first: endpoints serve model versions.</p>
+              <p className="text-muted-foreground">Fit a model first. Endpoints serve model versions.</p>
             )}
           </section>
 
           {decision?.outcome === "needs_override" ? (
             canOverride ? (
-              <Field label="Override reason" htmlFor="ep-reason" error={submitted ? reasonError : null} hint="Recorded in the audit log with your name (endpoint.promote_override). API tokens can never override.">
+              <Field label="Override reason" htmlFor="ep-reason" error={submitted ? reasonError : null} hint="The audit log records the reason with your name (endpoint.promote_override). API tokens cannot override the gate.">
                 <Textarea id="ep-reason" maxLength={1000} value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Holdout error accepted for the Q4 plan; refit after the holidays." />
               </Field>
             ) : (
-              <p className="text-[13px] text-muted-foreground">Only a project admin signed in to the app can override the gate. Ask one to promote this version, or improve the model.</p>
+              <p className="text-[13px] text-muted-foreground">Only a project admin who is signed in to the app can override the gate. Ask an admin to promote this version, or make the model better.</p>
             )
           ) : null}
 
@@ -397,7 +397,7 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
 
           {stale ? (
             <p role="alert" className="text-[13px] text-warning">
-              Someone else promoted this endpoint meanwhile. Close the dialog to see its current version, then try again.
+              Another user promoted this endpoint while the dialog was open. Close the dialog to see the current version. Then try again.
             </p>
           ) : otherError ? (
             <ErrorNotice error={promote.error} title="The version was not promoted" />
@@ -428,7 +428,7 @@ export function RollbackDialog({ endpoint, target, onClose }: { endpoint: Endpoi
   const rollback = useRollbackEndpoint(endpoint.alias);
   const [reason, setReason] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const error = !reason.trim() ? "Say why; the rollback is audited with its reason." : null;
+  const error = !reason.trim() ? "Type the reason. The audit log records the rollback with its reason." : null;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
@@ -441,7 +441,7 @@ export function RollbackDialog({ endpoint, target, onClose }: { endpoint: Endpoi
           ) : (
             <>It will serve the version of the revision before r{endpoint.revision} again.</>
           )}{" "}
-          The gate is not re-run: that version was promoted before.
+          The gate does not run again, because that version was promoted before.
         </DialogDescription>
         <form
           className="grid gap-4"
@@ -487,7 +487,7 @@ export function DeleteEndpointDialog({ endpoint, onClose, onDeleted }: { endpoin
       <DialogContent>
         <DialogTitle>Delete {endpoint.alias}?</DialogTitle>
         <DialogDescription>
-          Every integration calling <Mono>{endpoint.ref}</Mono> gets 404 Not found from its next call. The model version itself is kept.
+          Each integration that calls <Mono>{endpoint.ref}</Mono> gets 404 Not found from its next call. The app keeps the model version.
         </DialogDescription>
         <Field label={`Type ${endpoint.alias} to confirm`} htmlFor="ep-del">
           <Input id="ep-del" className="font-mono" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
@@ -506,7 +506,7 @@ export function DeleteEndpointDialog({ endpoint, onClose, onDeleted }: { endpoin
                   toast.success("Endpoint deleted", endpoint.alias);
                   onDeleted();
                 },
-                onError: (e) => toast.error("Delete failed", errorMessage(e)),
+                onError: (e) => toast.error("The endpoint was not deleted", errorMessage(e)),
               })
             }
           >

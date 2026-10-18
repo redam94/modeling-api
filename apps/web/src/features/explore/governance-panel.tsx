@@ -161,12 +161,12 @@ function CheckRow({ result, expert }: { result: CheckResult; expert: boolean }) 
 export function GovernancePanel({ modelId, version, expert }: { modelId: string; version: number; expert: boolean }) {
   const v = useModelValidations(modelId, version);
   if (v.isPending) return <LoadingRows rows={4} />;
-  if (v.isError) return <ErrorNotice error={v.error} title="The validations could not be loaded" />;
+  if (v.isError) return <ErrorNotice error={v.error} title="The app could not load the validations" />;
   const latest = latestValidation(v.data.items);
   if (!latest) {
     return (
       <EmptyState icon={<ShieldQuestion />} title="Not validated yet" action={<GovernanceLinks modelId={modelId} version={version} latest={null} />}>
-        No governance checks have run on this version. A validation runs the checks of your project&apos;s policies (null tests against shuffled data, benchmarks, residual whiteness, convergence and more) in the sandbox and records the evidence here.
+        This version has no governance checks. Request a validation to start them. A validation runs the checks of the project policies in the sandbox. Examples are null tests against shuffled data, benchmarks, residual whiteness and convergence. The evidence shows here.
       </EmptyState>
     );
   }
@@ -189,7 +189,7 @@ export function GovernancePanel({ modelId, version, expert }: { modelId: string;
           {latest.require_approval ? ` · needs ${latest.approvals_required ?? 1} approval${(latest.approvals_required ?? 1) === 1 ? "" : "s"}` : ""}
           {latest.policies?.length ? ` · policies ${latest.policies.join(", ")}` : ""}
         </p>
-        {latest.failing_checks?.length ? <p className="text-[13px]">Blocking: {latest.failing_checks.join(", ")}</p> : null}
+        {latest.failing_checks?.length ? <p className="text-[13px]">Checks that block the version: {latest.failing_checks.join(", ")}</p> : null}
         <GovernanceLinks modelId={modelId} version={version} latest={latest} />
       </div>
       <ul className="grid gap-2" aria-label="Check results">

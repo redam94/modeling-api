@@ -136,7 +136,7 @@ describe("dataset About and the Data Explorer", () => {
   it("puts the plain reading first in Guided mode", async () => {
     useUi.setState({ persona: "guided", personas: {} });
     renderApp(`/datasets/${DS_ID}/versions/1/explore?section=distributions`);
-    expect(await screen.findByText(/^Half of the values of revenue lie between/, undefined, T)).toBeInTheDocument();
+    expect(await screen.findByText(/^Half of the values of revenue are between/, undefined, T)).toBeInTheDocument();
     const stats = screen.getByText("Show the statistics", { selector: "summary" }).closest("details")!;
     expect(stats.open).toBe(false);
   });
@@ -157,7 +157,7 @@ describe("the Model Explorer", () => {
   it("shows the impulse responses of a VECM with pickers", async () => {
     renderApp(`/models/${EXTRA_MODEL_IDS.vecm}/versions/1/explore?section=irf`);
     expect(await screen.findByLabelText("A shock to", undefined, T)).toBeInTheDocument();
-    expect(screen.getByText(/^After an unexpected rise in/)).toBeInTheDocument();
+    expect(screen.getByText(/^After an unexpected increase in/)).toBeInTheDocument();
   });
 });
 

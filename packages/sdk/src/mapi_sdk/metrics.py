@@ -367,10 +367,10 @@ def elpd(
                         threshold=PARETO_K_THRESHOLD,
                         message_expert=f"{bad} of {kv.size} observations have Pareto k > "
                         f"{PARETO_K_THRESHOLD}; PSIS-LOO may be unreliable",
-                        message_plain="Some data points strongly influence the model, so the "
-                        "leave-one-out score is only approximate.",
-                        suggested_action="Inspect influential observations or use K-fold "
-                        "cross-validation.",
+                        message_plain="Some data points have a strong effect on the model, so "
+                        "the leave-one-out score is only approximate.",
+                        suggested_action="Look at the observations that have a strong effect, "
+                        "or use K-fold cross-validation.",
                     )
                 )
     return values, skipped, diagnostics

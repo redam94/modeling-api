@@ -217,8 +217,8 @@ _HINTS: Final[dict[ErrorCode, str]] = {
         "workflows apply FILE` (or `mapi workflows archive WF --undo`)"
     ),
     ErrorCode.SCHEDULE_INVALID: (
-        "hint: cron has five fields and may fire at most every 15 minutes; the time zone is "
-        "an IANA name such as Europe/Berlin"
+        "hint: a cron expression has five fields. A schedule can run at most one time every "
+        "15 minutes. The time zone is an IANA name, for example Europe/Berlin"
     ),
     ErrorCode.CHOOSER_ANSWER_INVALID: "hint: `mapi choose` lists the questions and answers",
     ErrorCode.SELF_APPROVAL_FORBIDDEN: (

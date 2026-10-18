@@ -86,7 +86,7 @@ function HealthDot() {
   const ready = useReady();
   const status = ready.isError ? "fail" : (ready.data?.status ?? "pending");
   const label =
-    status === "ok" ? "API connected" : status === "degraded" ? "API degraded" : status === "fail" ? "API unreachable" : "Checking API";
+    status === "ok" ? "API connected" : status === "degraded" ? "API degraded" : status === "fail" ? "API unreachable" : "API status not known yet";
   return (
     <Link to="/settings" className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground" title={label}>
       <span
@@ -143,7 +143,7 @@ export function PersonaToggle() {
         void navigate({ to: p === "guided" ? "/guided" : "/" });
       }}
       options={[
-        { value: "guided", label: "Guided", title: "Task-based flows in business terms" },
+        { value: "guided", label: "Guided", title: "Do tasks in business terms" },
         { value: "expert", label: "Expert", title: "Specs, runs and diagnostics" },
       ]}
     />
@@ -160,7 +160,7 @@ function SignedOutBanner() {
   return (
     <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-info/35 bg-info/8 px-4 py-2 text-[13px] md:px-6">
       <LogIn className="size-4 text-info" aria-hidden />
-      <span>You are signed out. The page stays as it is, but nothing can be loaded or saved.</span>
+      <span>You are signed out. The page does not change, but the app cannot load or save data.</span>
       <Button size="sm" variant="outline" className="h-7" onClick={() => signIn()}>
         Sign in again
       </Button>
@@ -316,7 +316,7 @@ function NoProjectNotice() {
     <div className="grid max-w-xl gap-2 rounded-lg border border-dashed p-8">
       <h1 className="font-semibold">No project selected</h1>
       <p className="text-muted-foreground">
-        You are not a member of any project, so there is no project data to show. The admin console works without one.
+        You are not a member of a project. Thus, there is no project data to show. You can use the admin console without a project.
       </p>
       <Link to="/admin" className="text-primary hover:underline">
         Open the admin console

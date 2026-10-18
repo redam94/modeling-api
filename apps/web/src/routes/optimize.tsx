@@ -85,7 +85,7 @@ export function OptimizePage() {
   }, [form, channels.data]);
 
   if (!valid) return <ErrorNotice error={new Error("The version must be a positive integer.")} />;
-  if (mv.isError) return <ErrorNotice error={mv.error} title="This model version could not be loaded" />;
+  if (mv.isError) return <ErrorNotice error={mv.error} title="The app could not load this model version" />;
   const back = search.back ? (
     <Button asChild variant="ghost">
       <Link to="/guided/$specId/$step" params={{ specId: search.back, step: "explore" }}>
@@ -102,7 +102,7 @@ export function OptimizePage() {
   const header = (
     <PageHeader
       title="Optimise a budget"
-      description={expert ? "Split the budget across channels (and markets) to maximise the result, using every plausible version of the model: bounds, groups, a cautious objective and the efficient frontier." : "Find the best way to split your marketing budget, based on what the model learned. The plan accounts for what the model is unsure about."}
+      description={expert ? "Divide the budget across channels (and markets) to get the maximum result. The plan uses all the plausible versions of the model. It has bounds, groups, a cautious objective and the efficient frontier." : "Find the best division of your marketing budget from what the model learned. The plan includes the uncertainty of the model."}
       meta={
         <>
           {model.data ? <span className="font-medium text-foreground">{model.data.name}</span> : null}
@@ -126,7 +126,7 @@ export function OptimizePage() {
       <div className="grid gap-6">
         {header}
         <EmptyState icon={<Wallet />} title="This model does not optimise budgets">
-          Budget plans need a marketing-mix model (mmm.bayesian or mmm.frequentist) that learned how each channel responds to spend.
+          A budget plan needs a marketing-mix model (mmm.bayesian or mmm.frequentist). The model must know how each channel responds to spend.
         </EmptyState>
       </div>
     );
@@ -136,7 +136,7 @@ export function OptimizePage() {
       <div className="grid gap-6">
         {header}
         <EmptyState icon={<Wallet />} title="No response curves for this version">
-          The fit did not keep response curves, so the channels and today&apos;s spend are unknown. Refit with <Mono>outputs.derived: [response_curves]</Mono>.
+          The fit did not keep the response curves. Thus the app does not know the channels and the current spend. Fit the model again with <Mono>outputs.derived: [response_curves]</Mono>.
         </EmptyState>
       </div>
     );
@@ -166,12 +166,12 @@ export function OptimizePage() {
         />
         <section aria-label="The plan" className="grid content-start gap-4">
           {o && !o.done ? <RunBanner exploration={o} title="Optimising the budget" /> : null}
-          {optimization.isError ? <ErrorNotice error={optimization.error} title="The plan could not be loaded" /> : null}
-          {o?.done && o.run.problem ? <ProblemNotice problem={o.run.problem} title="The budget could not be optimised" /> : null}
+          {optimization.isError ? <ErrorNotice error={optimization.error} title="The app could not load the plan" /> : null}
+          {o?.done && o.run.problem ? <ProblemNotice problem={o.run.problem} title="The optimisation of the budget failed" /> : null}
           {o?.done && o.result ? <PlanResult result={o.result} expert={expert} /> : null}
           {!o && !search.run ? (
             <EmptyState icon={<Wallet />} title="Your plan appears here">
-              Choose the budget and how cautious to be, then optimise. You can change the limits and run it again; each plan is kept in the run history.
+              Select the budget and the level of caution. Then start the optimisation. You can change the limits and run it again. The run history keeps each plan.
             </EmptyState>
           ) : null}
         </section>

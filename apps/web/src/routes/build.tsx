@@ -46,7 +46,7 @@ export function BuildPage() {
     <>
       <PageHeader
         title="Build"
-        description="Model specs are YAML documents. Every revision is immutable and validated statically before anything runs."
+        description="A model spec is a YAML document. You cannot change a revision after you save it. The server does a check of each revision before a run starts."
         actions={
           <Button asChild>
             <Link to="/build/new">
@@ -78,7 +78,7 @@ export function BuildPage() {
                 </Button>
               }
             >
-              A spec names a dataset, a preprocessing pipeline and a model plugin. Validation runs as you type.
+              A spec names a dataset, a preprocessing pipeline and a model plugin. The app does a check of the spec while you type.
             </EmptyState>
           )
         }

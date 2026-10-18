@@ -95,7 +95,7 @@ export function checkConnection(
   target: { node: string; port: string },
   subs: SubworkflowIndex = new Map(),
 ): ConnectionCheck {
-  if (source.node === target.node) return { ok: false, reason: "A node cannot feed its own input." };
+  if (source.node === target.node) return { ok: false, reason: "A node cannot send data to its own input." };
   const tNode = doc.nodes.find((n) => n.id === target.node);
   if (!tNode) return { ok: false, reason: `There is no node "${target.node}".` };
   const spec = inputPorts(tNode, catalog, subs)[target.port];
@@ -115,13 +115,13 @@ export function checkConnection(
     const deps = nodeDependencies(doc);
     if (ancestors(deps, source.node).has(target.node)) {
       const path = dependencyPath(deps, source.node, target.node) ?? [source.node, target.node];
-      return { ok: false, reason: `This would create a cycle: ${[...path].reverse().join(" → ")} → ${source.node}.` };
+      return { ok: false, reason: `The connection makes a cycle: ${[...path].reverse().join(" → ")} → ${source.node}.` };
     }
   }
   const current = bindingList(tNode.inputs?.[target.port]);
-  if (current.includes(binding)) return { ok: false, reason: `${binding} already feeds ${target.node}.${target.port}.` };
-  if (spec.multiple) return { ok: true, mode: "append", note: current.length ? `Adds a source to the ${current.length} already collected.` : null };
-  return { ok: true, mode: "replace", note: current.length ? `Replaces ${current.join(", ")} (add it as an alternative from the node's inspector instead).` : null };
+  if (current.includes(binding)) return { ok: false, reason: `${binding} is already connected to ${target.node}.${target.port}.` };
+  if (spec.multiple) return { ok: true, mode: "append", note: current.length ? `Adds a source to the ${current.length} sources that the input has.` : null };
+  return { ok: true, mode: "replace", note: current.length ? `Replaces ${current.join(", ")}. To keep the current source, add the new source as an alternative in the node inspector.` : null };
 }
 
 /** The sources that could feed `target.port`: workflow inputs and outputs of upstream-safe nodes. */

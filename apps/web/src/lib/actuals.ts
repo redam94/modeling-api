@@ -165,12 +165,12 @@ export function nextLabel(label: string, freq: string | null | undefined): strin
   return out.toISOString().slice(0, 10);
 }
 
-/** A short line for the answer: "Conditioned on 3 actuals through 1961-03-01" or "From the end of the fitted history (1960-12-01)". */
+/** A short line for the answer: "Uses 3 actuals up to 1961-03-01" or "Starts at the end of the fitted history (1960-12-01)". */
 export function conditioningHeadline(c: ForecastConditioning): string {
   if (c.conditioned) {
-    return `Conditioned on ${c.n_actuals} actual${c.n_actuals === 1 ? "" : "s"} through ${String(c.actuals_through ?? "")}`;
+    return `Uses ${c.n_actuals} actual${c.n_actuals === 1 ? "" : "s"} up to ${String(c.actuals_through ?? "")}`;
   }
-  return `From the end of the fitted history (${String(c.fit_end)})`;
+  return `Starts at the end of the fitted history (${String(c.fit_end)})`;
 }
 
 /** Tab- or comma-separated text pasted from a spreadsheet (a header row first) as rows in the table's column order. */

@@ -30,10 +30,10 @@ const SEVERITIES: CheckSeverity[] = ["blocking", "warning", "info"];
 
 /** `mapi_spec.governance.PolicyCheck` threshold rule: fail is at least as strict as warn. */
 export function thresholdProblem(def: GovernanceCheckDef | undefined, warn: number, fail: number): string | null {
-  if (!Number.isFinite(warn) || !Number.isFinite(fail)) return "Both limits must be numbers.";
+  if (!Number.isFinite(warn) || !Number.isFinite(fail)) return "A limit is not a number. Type a number for each limit.";
   if (!def || warn === fail) return null;
   const lenient = fail >= warn;
-  if ((def.direction === "min") === lenient) return def.direction === "min" ? "The fail limit must be at most the warn limit (higher is better)." : "The fail limit must be at least the warn limit (lower is better).";
+  if ((def.direction === "min") === lenient) return def.direction === "min" ? "The fail limit is more than the warn limit. A higher value is better, so make the fail limit equal to or less than the warn limit." : "The fail limit is less than the warn limit. A lower value is better, so make the fail limit equal to or more than the warn limit.";
   return null;
 }
 
@@ -82,7 +82,7 @@ function ListInput({ id, label, hint, values, onChange, suggestions = [] }: { id
           id={id}
           list={suggestions.length ? `${id}-list` : undefined}
           value={draft}
-          placeholder={values.length ? "Add another" : "Empty: matches every model"}
+          placeholder={values.length ? "Add another" : "Empty: applies to all models"}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === ",") {
@@ -157,7 +157,7 @@ function CheckRow({ check, def, onChange, onRemove, readOnly, error }: { check: 
           <Field label={`Warn ${def?.direction === "min" ? "below" : "above"}`} htmlFor={`${id}-warn`} error={tProblem}>
             <Input id={`${id}-warn`} type="number" step="any" disabled={readOnly} value={warn} onChange={(e) => onChange({ ...check, thresholds: { warn: Number(e.target.value), fail } })} />
           </Field>
-          <Field label={`Fail ${def?.direction === "min" ? "below" : "above"}`} htmlFor={`${id}-fail`} hint={def ? `Measured as ${def.metric.replace(/_/g, " ")}` : undefined}>
+          <Field label={`Fail ${def?.direction === "min" ? "below" : "above"}`} htmlFor={`${id}-fail`} hint={def ? `The check measures the ${def.metric.replace(/_/g, " ")}.` : undefined}>
             <Input id={`${id}-fail`} type="number" step="any" disabled={readOnly} value={fail} onChange={(e) => onChange({ ...check, thresholds: { warn, fail: Number(e.target.value) } })} />
           </Field>
         </div>
@@ -198,7 +198,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
   const used = new Set(form.checks.map((c) => c.check));
   const candidate = adding ? checks.map.get(adding) : undefined;
   const thresholdErrors = form.checks.map((c) => (c.thresholds ? thresholdProblem(checks.map.get(c.check), c.thresholds.warn, c.thresholds.fail) : null));
-  const nameError = !form.name.trim() ? "Give the policy a name." : null;
+  const nameError = !form.name.trim() ? "The policy has no name. Type a name." : null;
   const checksError = form.checks.length ? null : "Add at least one check.";
   const busy = create.isPending || update.isPending;
   const saveError = create.error ?? update.error;
@@ -213,7 +213,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
         { id: policy.id, body: { ...form, expected_version: policy.version } },
         {
           onSuccess: (p) => {
-            toast.success(`Saved version ${p.version}`, "Validations from now on are held to this version.");
+            toast.success(`Saved version ${p.version}`, "From now on, validations use this version.");
             void navigate({ to: "/governance/policies/$policyId", params: { policyId: p.id }, search: scope === "tenant" ? { scope: "tenant" } : {} });
           },
         },
@@ -234,7 +234,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
         <CardHeader>
           <div>
             <CardTitle>Policy</CardTitle>
-            <CardDescription>{scope === "tenant" ? "Tenant-wide: every project inherits it as a floor (a project can tighten it, never loosen it)." : "Applies to this project's models, on top of the tenant-wide policies."}</CardDescription>
+            <CardDescription>{scope === "tenant" ? "This policy applies to all projects in the tenant. A project can make the rules stricter. A project cannot make them less strict." : "This policy applies to the models of this project. The tenant-wide policies also apply."}</CardDescription>
           </div>
           {policy ? <Badge variant="outline">version {policy.version}</Badge> : null}
         </CardHeader>
@@ -247,8 +247,8 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
           </Field>
           <div className="grid gap-4 md:grid-cols-3">
             <ListInput id={`${id}-fam`} label="Model families" hint="mmm, ts, tabular…" suggestions={KNOWN_FAMILIES} values={form.applies_to?.families ?? []} onChange={(families) => setForm({ ...form, applies_to: { ...form.applies_to, families } })} />
-            <ListInput id={`${id}-mod`} label="Model ids" hint="e.g. ts.sarimax" values={form.applies_to?.models ?? []} onChange={(models) => setForm({ ...form, applies_to: { ...form.applies_to, models } })} />
-            <ListInput id={`${id}-tpl`} label="Guided templates" hint="e.g. geo_mmm" values={form.applies_to?.templates ?? []} onChange={(templates) => setForm({ ...form, applies_to: { ...form.applies_to, templates } })} />
+            <ListInput id={`${id}-mod`} label="Model ids" hint="For example, ts.sarimax" values={form.applies_to?.models ?? []} onChange={(models) => setForm({ ...form, applies_to: { ...form.applies_to, models } })} />
+            <ListInput id={`${id}-tpl`} label="Guided templates" hint="For example, geo_mmm" values={form.applies_to?.templates ?? []} onChange={(templates) => setForm({ ...form, applies_to: { ...form.applies_to, templates } })} />
           </div>
         </CardContent>
       </Card>
@@ -257,7 +257,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
         <CardHeader>
           <div>
             <CardTitle>Required checks</CardTitle>
-            <CardDescription>A blocking check that fails (or cannot be computed) stops validation; warnings are shown to the reviewer.</CardDescription>
+            <CardDescription>If a blocking check fails or cannot calculate a result, validation stops. The reviewer sees the warnings.</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -325,7 +325,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
             <Switch checked={Boolean(form.require_approval)} disabled={readOnly} onCheckedChange={(v) => setForm({ ...form, require_approval: v })} aria-label="Require approval by a reviewer" />
             <span>
               <span className="font-medium">Require approval by a reviewer</span>
-              <span className="block text-muted-foreground">Someone other than the submitter, with the reviewer capability, approves each validation. API tokens can never approve.</span>
+              <span className="block text-muted-foreground">A person with the reviewer capability approves each validation. This person cannot be the submitter. API tokens cannot approve.</span>
             </span>
           </label>
           {form.require_approval ? (
@@ -343,14 +343,14 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
             <Switch checked={Boolean(form.require_validated_for_promotion)} disabled={readOnly} onCheckedChange={(v) => setForm({ ...form, require_validated_for_promotion: v })} aria-label="Only validated models can be promoted" />
             <span>
               <span className="font-medium">Only validated models can be promoted to an endpoint</span>
-              <span className="block text-muted-foreground">The promotion gate refuses other versions (NOT_VALIDATED); no administrator override passes it.</span>
+              <span className="block text-muted-foreground">The promotion gate stops all other versions with the code NOT_VALIDATED. An administrator cannot override the gate.</span>
             </span>
           </label>
           <label className="flex items-start gap-3 text-[13px]">
             <Switch checked={form.active !== false} disabled={readOnly} onCheckedChange={(v) => setForm({ ...form, active: v })} aria-label="Policy active" />
             <span>
               <span className="font-medium">Active</span>
-              <span className="block text-muted-foreground">An inactive policy is kept but no longer applies.</span>
+              <span className="block text-muted-foreground">The app keeps an inactive policy, but the policy does not apply.</span>
             </span>
           </label>
         </CardContent>
@@ -359,14 +359,14 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
       {saveError ? (
         saveError instanceof ApiError && saveError.code === "CONFLICT" ? (
           <p role="alert" className="text-[13px] text-warning">
-            Someone saved a newer version of this policy meanwhile. Reload the page to see it, then make your change again.
+            Another person saved a newer version of this policy. Reload the page to see it. Then make your change again.
           </p>
         ) : (
           <ErrorNotice error={saveError} title="The policy was not saved" />
         )
       ) : null}
       {readOnly ? (
-        <p className="text-[13px] text-muted-foreground">{scope === "tenant" ? "Only tenant admins change tenant-wide policies." : "Only project admins change policies."}</p>
+        <p className="text-[13px] text-muted-foreground">{scope === "tenant" ? "Only tenant admins can change tenant-wide policies." : "Only project admins can change policies."}</p>
       ) : (
         <div className="flex flex-wrap justify-between gap-2">
           {policy ? (
@@ -374,7 +374,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
               variant="outline"
               className="text-destructive"
               onClick={() => {
-                if (!window.confirm(`Retire “${policy.name}”? Its versions are kept for audit.`)) return;
+                if (!window.confirm(`Retire “${policy.name}”? The app keeps its versions for audit.`)) return;
                 retire.mutate(policy.id, {
                   onSuccess: () => {
                     toast.success("Policy retired");

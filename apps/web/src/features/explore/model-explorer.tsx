@@ -1,7 +1,7 @@
 /**
  * The Model Explorer of one model version (M3.5): what the model learned, whether it can be
  * trusted and what it expects next. The fit wrote the parameter, diagnostic, fit, residual,
- * contribution, response-curve and IRF/FEVD views; forecasts and backtests come from an
+ * contribution, response-curve, IRF/FEVD and field views; forecasts and backtests come from an
  * explore run started here. Governance evidence and lineage complete the picture.
  */
 import { Link } from "@tanstack/react-router";
@@ -25,16 +25,16 @@ import { mergeSections, useBaseIndex, useExploration, useSectionView, useStartEx
 import { ExplorerNav, RecipePlots, RunBanner, SectionGate, type NavEntry } from "./explorer-shell";
 import { GovernancePanel } from "./governance-panel";
 import { LineagePanel } from "./lineage-panel";
-import { BacktestSection, DecompositionSection, DiagnosticsSection, FevdSection, FitSection, ForecastSection, IrfSection, ParamsSection, ResidualsSection, ResponseCurvesSection } from "./model-sections";
+import { BacktestSection, DecompositionSection, DiagnosticsSection, FevdSection, FieldsSection, FitSection, ForecastSection, IrfSection, ParamsSection, ResidualsSection, ResponseCurvesSection } from "./model-sections";
 import { diagnosticsReading, fitReading } from "./plain";
 import { MODEL_SECTION_META } from "./sections-meta";
 import { num, PlainSummary, SectionCard } from "./ui";
-import type { ModelSection, SectionViews } from "./views";
+import { FIT_SECTIONS, type ExplorerIndexView, type ModelSection, type SectionViews } from "./views";
 
 export type ModelTab = Exclude<ModelSection, "comparison"> | "summary" | "governance" | "lineage";
 
 /** The view sections the explorer lists (comparison has its own page). */
-export const MODEL_ORDER: readonly Exclude<ModelSection, "comparison">[] = ["params", "decomposition", "response_curves", "irf", "fevd", "diagnostics", "fit", "residuals", "backtest", "forecast"];
+export const MODEL_ORDER: readonly Exclude<ModelSection, "comparison">[] = ["params", "decomposition", "response_curves", "irf", "fevd", "fields", "diagnostics", "fit", "residuals", "backtest", "forecast"];
 
 const ON_DEMAND: readonly ModelSection[] = ["forecast", "backtest"];
 
@@ -68,12 +68,12 @@ function ModelOptionsDialog({ open, onOpenChange, initial, onRun, pending }: { o
   const hs = parseHorizons(horizons);
   const needsPlan = sections.includes("backtest");
   const valid = sections.length > 0 && (!needsPlan || hs.length > 0) && horizon >= 1 && horizon <= 520;
-  const choices: ModelSection[] = ["forecast", "backtest", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd"];
+  const choices: ModelSection[] = ["forecast", "backtest", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd", "fields"];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide>
         <DialogTitle>Explore with options</DialogTitle>
-        <DialogDescription>An explore run computes these views in the sandbox. Backtests refit the model on each fold (at most 10).</DialogDescription>
+        <DialogDescription>An explore run computes these views in the sandbox. A backtest fits the model again on each fold (maximum 10 folds).</DialogDescription>
         <form
           className="grid gap-5"
           onSubmit={(e) => {
@@ -119,7 +119,7 @@ function ModelOptionsDialog({ open, onOpenChange, initial, onRun, pending }: { o
                     <option value="rolling_origin">Rolling origin (fixed window)</option>
                   </NativeSelect>
                 </Field>
-                <Field label="Horizons" htmlFor="mx-hs" hint="Periods ahead, e.g. 1, 4, 8" error={hs.length ? undefined : "Give at least one horizon."}>
+                <Field label="Horizons" htmlFor="mx-hs" hint="Type the periods ahead, for example 1, 4, 8." error={hs.length ? undefined : "There is no horizon. Type one or more horizons."}>
                   <Input id="mx-hs" value={horizons} onChange={(e) => setHorizons(e.target.value)} />
                 </Field>
                 <Field label="Folds" htmlFor="mx-folds">
@@ -128,7 +128,7 @@ function ModelOptionsDialog({ open, onOpenChange, initial, onRun, pending }: { o
                 <Field label="Fewest training periods" htmlFor="mx-min">
                   <Input id="mx-min" type="number" min={1} value={minTrain} onChange={(e) => setMinTrain(Number(e.target.value))} />
                 </Field>
-                <Field label="Gap (periods not scored)" htmlFor="mx-gap" hint="For data that arrives late.">
+                <Field label="Gap (periods not scored)" htmlFor="mx-gap" hint="Use a gap for data that arrives late.">
                   <Input id="mx-gap" type="number" min={0} value={gap} onChange={(e) => setGap(Number(e.target.value))} />
                 </Field>
                 {kind === "rolling_origin" ? (
@@ -173,6 +173,8 @@ function SectionContent({ section, view, expert }: { section: ModelSection; view
       return <IrfSection view={view as SectionViews["irf"]} expert={expert} />;
     case "fevd":
       return <FevdSection view={view as SectionViews["fevd"]} expert={expert} />;
+    case "fields":
+      return <FieldsSection view={view as SectionViews["fields"]} expert={expert} />;
     case "forecast":
       return <ForecastSection view={view as SectionViews["forecast"]} expert={expert} />;
     case "backtest":
@@ -194,7 +196,7 @@ function SectionPanel({ target, section, state, runId, expert, onCompute, canRun
         notComputed={
           <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5 text-[13px]" data-testid="section-missing">
             <p className="text-muted-foreground">
-              {section === "backtest" ? "A backtest refits the model on earlier parts of the history and scores each refit on what came next. It runs in the sandbox and can take a few minutes." : "This view is computed on demand, in the sandbox."}
+              {section === "backtest" ? "A backtest fits the model again on earlier parts of the history. Then it scores each fit on the periods that came next. It runs in the sandbox and can take some minutes." : "The sandbox computes this view when you ask for it."}
             </p>
             <Button size="sm" onClick={onCompute} disabled={!canRun || running}>
               {running ? <Spinner /> : <FlaskConical />} Compute it now
@@ -224,7 +226,7 @@ function SummaryPanel({ mv, target, states, runId, expert, onSection }: { mv: Mo
     <div className="grid gap-5">
       <SectionCard title="At a glance" description="The short answer: did the fit work, and how close is the model to what happened?">
         <PlainSummary tone={worst}>
-          {readings.length ? readings.map((r) => <p key={r.text}>{r.text}</p>) : <p>The fit-time views are not available for this version.</p>}
+          {readings.length ? readings.map((r) => <p key={r.text}>{r.text}</p>) : <p>This version has no fit-time views.</p>}
         </PlainSummary>
         {Object.keys(mv.metrics ?? {}).length ? (
           <KeyValues items={Object.entries(mv.metrics ?? {}).map(([k, v]) => [<span key={k} className="font-mono text-xs">{k}</span>, <span key="v" className="tabular">{num(v)}</span>])} />
@@ -250,6 +252,19 @@ function SummaryPanel({ mv, target, states, runId, expert, onSection }: { mv: Mo
 
 // ------------------------------------------------------------------------------ the explorer
 
+/**
+ * A fit-time section that a loaded fit index does not list comes from a fit that is older than
+ * the section (for example `fields`): the version has no such view, so it does not apply. Only
+ * the on-demand sections stay "missing" (an explore run computes them).
+ */
+export function fitOnlyAbsent<T extends ModelSection>(states: SectionState<T>[], base: ExplorerIndexView | null | undefined): SectionState<T>[] {
+  if (!base) return states;
+  return states.map((s) =>
+    s.status === "missing" && FIT_SECTIONS.includes(s.section) && !ON_DEMAND.includes(s.section) ? { ...s, status: "skipped", message: "The fit of this version did not make this view." } : s,
+  );
+}
+
+
 export interface ModelExplorerProps {
   mv: ModelVersion;
   modelId: string;
@@ -269,7 +284,7 @@ export function ModelExplorer({ mv, modelId, version, tab, onTab, runId, onRun, 
   const grants = useGrants();
   const canRun = can(grants, "create", "run");
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const states = useMemo(() => mergeSections(MODEL_ORDER, base.data, run.data), [base.data, run.data]);
+  const states = useMemo(() => fitOnlyAbsent(mergeSections(MODEL_ORDER, base.data, run.data), base.data), [base.data, run.data]);
   const byId = new Map(states.map((s) => [s.section, s]));
   const missing = states.filter((s) => s.status === "missing").map((s) => s.section);
   const running = Boolean(run.data && !run.data.done) || start.isPending;
@@ -278,7 +293,7 @@ export function ModelExplorer({ mv, modelId, version, tab, onTab, runId, onRun, 
       onSuccess: (r) => {
         setOptionsOpen(false);
         onRun(r.exploration.run.id);
-        if (r.cached) toast.success("Already computed", "These views were computed earlier with the same options.");
+        if (r.cached) toast.success("Already computed", "The sandbox computed these views before with the same options.");
       },
       onError: (e) => toast.error("The explore run did not start", errorMessage(e)),
     });
@@ -299,13 +314,13 @@ export function ModelExplorer({ mv, modelId, version, tab, onTab, runId, onRun, 
   if (tab === "summary") body = <SummaryPanel mv={mv} target={target} states={states} runId={runId} expert={expert} onSection={onTab} />;
   else if (tab === "governance")
     body = (
-      <SectionCard title="Governance" description="Has this version passed the checks your policies require?">
+      <SectionCard title="Governance" description="Did this version pass the checks that your policies need?">
         <GovernancePanel modelId={modelId} version={version} expert={expert} />
       </SectionCard>
     );
   else if (tab === "lineage")
     body = (
-      <SectionCard title="Lineage" description="The data, spec and runs this version comes from.">
+      <SectionCard title="Lineage" description="The data, the spec and the runs that made this version.">
         <LineagePanel mv={mv} expert={expert} />
       </SectionCard>
     );
@@ -328,7 +343,7 @@ export function ModelExplorer({ mv, modelId, version, tab, onTab, runId, onRun, 
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">
         <p className="text-[13px] text-muted-foreground">
-          {base.isPending ? "Loading the views…" : missing.length ? `Forecasts and backtests are computed on demand (${missing.map((s) => MODEL_SECTION_META[s].title.toLowerCase()).join(", ")}).` : "Every view is ready."}
+          {base.isPending ? "Loading the views…" : missing.length ? `The sandbox computes forecasts and backtests when you ask for them (${missing.map((s) => MODEL_SECTION_META[s].title.toLowerCase()).join(", ")}).` : "Every view is ready."}
         </p>
         <div className="flex flex-wrap gap-2">
           {missing.length ? (

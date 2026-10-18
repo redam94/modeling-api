@@ -114,7 +114,7 @@ def _missing_column(column: str, what: str, pointer: str, columns: list[str]) ->
     hint = (
         f"Did you mean {', '.join(repr(c[:64]) for c in close)}?"
         if close
-        else ("Check the spelling, or pick one of the upload's columns.")
+        else ("Make sure that the spelling is correct, or select one of the columns of the upload.")
     )
     return _schema_error(
         f"column {column[:64]!r} ({what}) is not in the upload", pointer, action=hint
@@ -187,9 +187,9 @@ def _coerce_dim(
                 notes.append(
                     {
                         "pointer": pointer,
-                        "message": f"the dates in column {str(series.name)[:64]!r} carry UTC "
-                        "offsets or a time zone; they were read as local dates and times "
-                        "(the offsets were dropped)",
+                        "message": f"the dates in column {str(series.name)[:64]!r} have UTC "
+                        "offsets or a time zone. The server read them as local dates and "
+                        "times and removed the offsets",
                     }
                 )
             return out
@@ -210,7 +210,7 @@ def _coerce_dim(
             "float": "Use numbers in this column.",
         }[spec.kind]
         raise _schema_error(
-            f"column {str(series.name)[:64]!r} cannot be read as a {spec.kind} dim",
+            f"the server cannot read column {str(series.name)[:64]!r} as a {spec.kind} dim",
             pointer,
             action=hint,
             untrusted_text=str(exc)[:2000],
@@ -306,7 +306,7 @@ def _wide_labels(mapping: IngestMapping) -> dict[str, list[str]]:
             raise _schema_error(
                 f"wide variable {name!r} creates dim {w.dim!r}, which is already a dim or variable",
                 f"/mapping/wide/{name}/dim",
-                action="Give the new dim another name.",
+                action="Give the new dim a different name.",
             )
         mine = list(w.columns)
         if w.dim in labels:
@@ -316,7 +316,7 @@ def _wide_labels(mapping: IngestMapping) -> dict[str, list[str]]:
                     f"wide variables {owner[w.dim]!r} and {name!r} label {w.dim!r} "
                     f"differently ({diff})",
                     f"/mapping/wide/{name}/columns",
-                    action="Map one column per label for every variable along the same dim.",
+                    action="For each variable along the same dim, map one column for each label.",
                 )
         else:
             labels[w.dim] = mine
@@ -338,12 +338,12 @@ def _check_cube(frame: pd.DataFrame, dims: list[str], limits: IngestLimits, poin
     shape = " x ".join(f"{n:,} {d}" for d, n in zip(dims, sizes, strict=True))
     raise problem(
         ErrorCode.PAYLOAD_TOO_LARGE,
-        f"the mapped dims span {shape} = {combos:,} combinations, so the dataset would hold "
-        f"{cells:,} values (~{nbytes / 1024**3:.1f} GiB) for {len(frame):,} rows; the limit "
-        f"is {min(limits.max_cells, limits.max_uncompressed_bytes // 8):,} values",
+        f"the mapped dims make {shape} = {combos:,} combinations. Thus the dataset would "
+        f"hold {cells:,} values (~{nbytes / 1024**3:.1f} GiB) for {len(frame):,} rows. The "
+        f"limit is {min(limits.max_cells, limits.max_uncompressed_bytes // 8):,} values",
         pointer=pointer,
-        action="Most combinations have no row: map fewer columns as dims (keep the others "
-        "as variables), use a long layout with one id dim, or split the upload.",
+        action="Most combinations have no row. Map fewer columns as dims (keep the other "
+        "columns as variables), use a long layout with one id dim, or split the upload.",
     )
 
 
@@ -394,8 +394,8 @@ def dataset_from_table(
             and 1 < df[c].nunique() <= 1000
         ][:3]
         hint = (
-            f"Columns such as {', '.join(repr(c[:40]) for c in unmapped)} vary within a "
-            "combination: map them as dims too, or aggregate the rows first."
+            f"Columns such as {', '.join(repr(c[:40]) for c in unmapped)} change in one "
+            "combination. Map them as dims too, or aggregate the rows first."
             if unmapped
             else "Remove duplicate rows, or map another column as a dim."
         )
@@ -458,8 +458,8 @@ def dataset_from_table(
 def _mff_error(message: str, pointer: str = "/mapping/mff", **kw: Any) -> MapiError:
     kw.setdefault(
         "action",
-        f"An MFF table has the columns {', '.join(MFF_COLUMNS)}: one row per period, key "
-        "combination and variable.",
+        f"An MFF table has the columns {', '.join(MFF_COLUMNS)}. It has one row for each "
+        "period, key combination and variable.",
     )
     return _schema_error(message, pointer, **kw)
 
@@ -487,10 +487,10 @@ def mff_table(
     if len(variables) > limits.max_columns:
         raise problem(
             ErrorCode.PAYLOAD_TOO_LARGE,
-            f"the MFF table has {len(variables):,} variables; at most "
-            f"{limits.max_columns:,} are allowed",
+            f"the MFF table has {len(variables):,} variables. The maximum is "
+            f"{limits.max_columns:,}",
             pointer="/mapping/mff",
-            action="Drop the variables the model does not need.",
+            action="Remove the variables that the model does not need.",
         )
     values = pd.to_numeric(df[opts.value_column], errors="coerce")
     bad = values.isna() & df[opts.value_column].notna()
@@ -550,8 +550,8 @@ def mff_table(
         first = {k: str(v)[:40] for k, v in table.loc[dup, keys].iloc[0].to_dict().items()}
         raise _mff_error(
             f"{int(dup.sum())} MFF rows repeat a key and variable",
-            action="Every (Period, key columns, VariableName) combination may appear once; "
-            "aggregate duplicates first.",
+            action="Each (Period, key columns, VariableName) combination can occur only one "
+            "time. Aggregate the duplicates first.",
             untrusted_text=str(first),
         )
     for col, levels in spread:
@@ -603,7 +603,8 @@ def _spread_totals(
             notes.append(
                 {
                     "pointer": f"/mapping/mff/allocation/{col}",
-                    "message": f"variables given in total were spread equally across {col}: "
+                    "message": "the server divided the variables given in total equally across "
+                    f"{col}: "
                     + (
                         f"the KPI {kpi!r} has no positive total per {col}"
                         if kpi
@@ -623,8 +624,8 @@ def _spread_totals(
         notes.append(
             {
                 "pointer": f"/mapping/mff/{col}",
-                "message": f"{len(names)} variable(s) given in total ({', '.join(names[:5])}) "
-                f"were spread across the {len(levels)} {col} levels "
+                "message": f"the server divided {len(names)} variable(s) given in total "
+                f"({', '.join(names[:5])}) across the {len(levels)} {col} levels "
                 + ("equally" if method == "equal" or weights.nunique() == 1 else "by the KPI"),
             }
         )
@@ -799,7 +800,7 @@ def _self_describing(
         except PayloadLimitError as exc:
             raise problem(
                 ErrorCode.PAYLOAD_TOO_LARGE,
-                "the zarr zip is larger than an upload may be once decoded",
+                "after decoding, the zarr zip is larger than the upload limit",
                 action="Split the dataset, or use a larger resource class.",
                 untrusted=exc.detail,
             ) from None
@@ -865,9 +866,9 @@ def _read_netcdf(path: Path, limits: IngestLimits = _UNLIMITED) -> xr.Dataset:
                 if opened.nbytes > budget:
                     raise problem(
                         ErrorCode.PAYLOAD_TOO_LARGE,
-                        f"the netCDF file decodes to {opened.nbytes:,} bytes (at most "
+                        f"the netCDF file decodes to {opened.nbytes:,} bytes (the maximum is "
                         f"{limits.max_decompression_ratio:g} times its size and "
-                        f"{limits.max_uncompressed_bytes:,} bytes are allowed)",
+                        f"{limits.max_uncompressed_bytes:,} bytes)",
                         action="Split the dataset, or write it with less compression.",
                     )
                 if len(opened.data_vars) > limits.max_columns:
@@ -1027,8 +1028,8 @@ def build_dataset(
             raise _schema_error(
                 f"the upload is not a {mapping.format} file",
                 "/mapping/format",
-                action="Set the mapping's format to what the file is (csv, parquet, mff, "
-                "zarr_zip or netcdf).",
+                action="Set the format of the mapping to the format of the file (csv, parquet, "
+                "mff, zarr_zip or netcdf).",
             )
         ds, schema = _self_describing(path, mapping.format, mapping, limits)
         return ds, schema, None

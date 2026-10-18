@@ -637,7 +637,7 @@ def _learn_levels(da: xr.DataArray, max_levels: int, step_id: str) -> tuple[list
 def _unseen_error(step_id: str, name: str, unseen: np.ndarray) -> CoordPlanError:
     preview = ", ".join(str(v) for v in np.unique(unseen)[:10])
     return CoordPlanError(
-        f"step {step_id!r}: {np.unique(unseen).size} level(s) of {name!r} were not seen at fit "
+        f"step {step_id!r}: the fit did not see {np.unique(unseen).size} level(s) of {name!r}, "
         "and its unseen-level policy is 'error'",
         code=ErrorCode.UNSEEN_LEVELS,
         untrusted_text=preview,

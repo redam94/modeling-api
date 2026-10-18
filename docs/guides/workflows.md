@@ -4,41 +4,47 @@ description: Build, run and automate workflows - unit-root tests, differencing d
 
 # Workflows <span class="mapi-badge">v0.5</span>
 
-A workflow strings statistical tests, data processing, train/test plans, models, governance
-checks and reports into one graph that runs the same way every time. This guide is the
-practical side: how to start from the gallery, the canonical "readiness → ARIMAX" document
-line by line, a cookbook of patterns, where every node runs, and how to schedule and watch
-runs. The [Workflows concept page](../concepts/workflows.md) covers the document format,
-the condition language and validation in depth. The
-[node reference](../reference/workflow-nodes.md) lists every node with its About card,
+A workflow connects statistical tests, data processing, train/test plans, models, governance
+checks and reports into one graph. The graph runs the same way each time. This guide gives
+the practical information:
+
+- How to start from the gallery.
+- The canonical "readiness → ARIMAX" document, line by line.
+- A cookbook of patterns.
+- Where each node runs.
+- How to schedule runs and how to monitor them.
+
+The [Workflows concept page](../concepts/workflows.md) gives the full data about the document
+format, the condition language and the validation. The
+[node reference](../reference/workflow-nodes.md) lists all nodes with their About cards,
 ports, parameters and result fields.
 
 | You want to | Go to |
 |---|---|
-| Run a ready-made analysis | [Start from the gallery](#start-from-the-gallery) |
-| Build, run and watch workflows in the browser | [In the web app](#in-the-web-app) |
+| Run an analysis that is ready to use | [Start from the gallery](#start-from-the-gallery) |
+| Build, run and monitor workflows in the browser | [In the web app](#in-the-web-app) |
 | Understand the canonical example | [The canonical workflow](#the-canonical-workflow) |
-| Build your own | [Cookbook](#cookbook) |
+| Build your own workflow | [Cookbook](#cookbook) |
 | Know what runs where and what it costs | [Where nodes run](#where-nodes-run) |
-| Automate it | [Schedules and triggers](#schedules-and-triggers) |
+| Run it automatically | [Schedules and triggers](#schedules-and-triggers) |
 | Try it in a notebook without a server | [Run it locally](#run-it-locally) |
-| Copy a complete, tested analysis | [Workflow cookbook](workflow-cookbook.md) |
-| Drive it from Python or a terminal | `api.workflows` ([client](python-client.md#workflows-governance-and-explorers)), `mapi workflows` ([CLI](cli.md#workflows-governance-and-explorers)) |
+| Copy a complete analysis that has tests | [Workflow cookbook](workflow-cookbook.md) |
+| Control it from Python or a terminal | `api.workflows` ([client](python-client.md#workflows-governance-and-explorers)), `mapi workflows` ([CLI](cli.md#workflows-governance-and-explorers)) |
 
 ## Start from the gallery
 
-The gallery has four templates, each with a plain-language About card
+The gallery has four templates. Each template has an About card in plain language
 (`GET /v1/workflow-templates`):
 
-| Template | Pick it when |
+| Template | Select it when |
 |---|---|
-| `ts_readiness_arimax` | You have one weekly or daily KPI and want a defensible ARIMAX forecast: the tests decide the differencing, a search picks the AR and MA orders, a backtest proves it beats naive forecasts |
-| `var_vecm_cointegration` | Several series move together (sales, price, distribution) and you want to know whether they are tied in the long run before choosing a VECM or a VAR |
-| `mmm_governed` | A marketing mix model that must pass the governance policy before anyone uses it |
-| `forecast_bakeoff` | You do not know which forecasting model suits the data: SARIMAX, ETS, Theta and a smooth trend compete on the same folds |
+| `ts_readiness_arimax` | You have one weekly or daily KPI and you want an ARIMAX forecast that you can defend. The tests decide the differencing. A search selects the AR and MA orders. A backtest shows that the model is better than naive forecasts. |
+| `var_vecm_cointegration` | Some series move together (for example sales, price and distribution). You want to know if they have a long-run relation before you select a VECM or a VAR. |
+| `mmm_governed` | You need a marketing mix model that must pass the governance policy before a person uses it. |
+| `forecast_bakeoff` | You do not know which forecast model is correct for the data. SARIMAX, ETS, Theta and a smooth trend compete on the same folds. |
 
-Creating a workflow from a template copies its document into your project as revision 1;
-from then on it is yours to edit.
+When you make a workflow from a template, the server copies the template document into your
+project as revision 1. After that, the workflow is yours and you can edit it.
 
 ```bash
 # create it (the name and project come from the request's project)
@@ -54,204 +60,245 @@ api POST "/v1/workflows/$WF/runs" -H "Idempotency-Key: $(uuidgen)" -d '{
 api GET "/v1/workflow-runs/$RUN" | jq '.nodes[] | {node_id, status, result}'
 ```
 
-`api` is the helper of the [HTTP API guide](http-api.md) (it adds the token and the project
-header). The same from the command line is `mapi workflows create --template
+`api` is the helper of the [HTTP API guide](http-api.md). It adds the token and the project
+header. To do the same from the command line, use `mapi workflows create --template
 ts_readiness_arimax`, then `mapi workflows run ts-readiness-arimax -i
-data=dataset://growth/weekly_sales@latest -p 'drivers=["price"]' --watch`; from Python,
-`api.workflows.create(template="ts_readiness_arimax")` and `api.workflows.run(...)`. `@latest` is resolved when the run starts and recorded as an exact version, so the
-run is reproducible: `GET /v1/workflow-runs/{run_id}` shows `dataset://growth/weekly_sales@v7`.
+data=dataset://growth/weekly_sales@latest -p 'drivers=["price"]' --watch`. From Python, use
+`api.workflows.create(template="ts_readiness_arimax")` and `api.workflows.run(...)`. The
+server resolves `@latest` when the run starts and records it as an exact version. Thus you
+can make the run again with the same result: `GET /v1/workflow-runs/{run_id}` shows
+`dataset://growth/weekly_sales@v7`.
 
-A run answers `202` with the run's view. Starting one with an `Idempotency-Key` that was
-already used returns the first run (`200`) instead of starting another.
+When you start a run, the server answers `202` with the view of the run. If you start a run
+with an `Idempotency-Key` that you used before, the server returns the first run (`200`). It
+does not start a different run.
 
 ## In the web app
 
-**Workflows** in the sidebar (++g++ then ++w++) opens the project's workflows and the
-gallery. Everything below uses the same endpoints as the rest of this guide.
+To open the workflows of the project and the gallery, click **Workflows** in the sidebar
+(++g++ then ++w++). All the functions below use the same endpoints as the remaining part of
+this guide.
 
 ### Recipes for Guided users
 
-In Guided mode the sidebar entry reads **Recipes** and the page opens on them: the gallery templates as About cards (what each
-does in plain words, when to use it and when not, what it needs and gives, a tiny example).
-**Run on my data** asks for a dataset and, only when the recipe needs them, the settings it
-cannot guess (the drivers of the marketing-mix recipe); the rest sit under *Fine-tune*. The
-first run creates the project's workflow from the template; later runs reuse it. The Data
-Explorer of data over time offers the readiness recipe with that data already chosen
-(*Check it is ready to forecast*). The run
-page then shows each step in plain words as it finishes, with the decisions taken and the
-report's summary.
+In Guided mode, the sidebar item shows **Recipes**, and the page opens on the recipes. The
+recipes are the gallery templates as About cards. Each card tells in plain words:
 
-![A recipe in Guided mode: the About card in plain words, then the data to run it on](../assets/screenshots/workflows-recipe.png){ .mapi-shot }
+- What the recipe does.
+- When to use it and when not to use it.
+- What it needs and what it gives.
+- A very small example.
+
+**Run on my data** asks for a dataset. It also asks for the settings that the recipe cannot
+guess, but only when the recipe needs them (for example, the drivers of the marketing-mix
+recipe). The other settings are under *Fine-tune*. The first run makes the workflow of the
+project from the template. Subsequent runs use that workflow again. The Data Explorer of
+data over time shows the readiness recipe with that data already selected (*Check it is ready
+to forecast*). Then the run page shows each step in plain words when the step is complete. It
+also shows the decisions and the summary of the report.
+
+![A recipe in Guided mode: the About card in plain words, then the data that the recipe runs on](../assets/screenshots/workflows-recipe.png){ .mapi-shot }
 
 ### Start from a template (Expert)
 
-**Use this template** opens a three-step wizard: the template's About card and the workflow's
-name, its parameters (saved as the workflow's defaults; every run can still change them) and
-the data it runs on by default (saved as the input's default reference, so schedules and runs
-started without data use it). The workflow is created as revision 1.
+**Use this template** opens a wizard that has three steps:
 
-![The workflow gallery: each template's About card, difficulty and typical runtime](../assets/screenshots/workflows-gallery.png){ .mapi-shot }
+1. The About card of the template and the name of the workflow.
+2. The parameters. The app saves them as the defaults of the workflow. Each run can change
+   them.
+3. The default data for the run. The app saves it as the default reference of the input.
+   Schedules use it, and runs that start without data use it.
+
+The app makes the workflow as revision 1.
+
+![The workflow gallery: the About card, difficulty and usual runtime of each template](../assets/screenshots/workflows-gallery.png){ .mapi-shot }
 
 ### The editor
 
-A workflow's **Editor** tab has three panes, side by side on wide screens and stacked on
-narrow ones:
+The **Editor** tab of a workflow has three panes. On wide screens the panes are side by side.
+On narrow screens they are one above the other.
 
-![The editor on the readiness-to-ARIMAX workflow: tests on the left, decisions, the order search, the backtest, selection, governance and the report on the right](../assets/screenshots/workflows-editor.png){ .mapi-shot }
+![The editor on the readiness-to-ARIMAX workflow: tests on the left, then decisions, the order search, the backtest, the selection, governance and the report on the right](../assets/screenshots/workflows-editor.png){ .mapi-shot }
 
 | Pane | What it does |
 |---|---|
-| **Nodes** (the palette) | Every node of `GET /v1/catalog/workflow-nodes`, grouped by kind, each kind and node with its About card; search by name, id or what it is for. Drag a node onto the canvas, or pick it and press **Add** (the keyboard path). |
-| **Canvas** | The graph. Data edges are coloured by port type and numbered when a port has alternatives (*alt 1*, *alt 2*); dashed edges run from a branch's **then**/**else** arm to the top edge of the nodes it gates; dotted edges show results a condition or `$expr` reads. Drag from an output to an input to bind it: an edge between ports of different types, a node feeding itself or a cycle is refused, with the reason above the canvas. Select a node or edge and press ++delete++ to remove it. Problems are counted on the nodes they concern. Node positions are remembered in your browser only (**Tidy layout** forgets them); the document never stores them. |
-| **Node editor** | The selected node's About card, its id and label, each input port with its type and its sources in order (add one, reorder alternatives, disconnect), the branch arm that gates it (**When it runs**), its settings - a form generated from the node's JSON Schema, where each field can also take a workflow **parameter** or an **expression** - and how it runs (retries, time limit, failure handling, caching). A model node picks its model from the catalog with the model's About card; `governance.check` picks a check; `subworkflow.run` picks a saved workflow and revision, whose inputs and outputs become the node's ports. With no node selected, the pane edits the workflow's description, parameters, inputs, outputs and run limits. |
+| **Nodes** (the palette) | Shows all nodes of `GET /v1/catalog/workflow-nodes` in groups by kind. Each kind and each node has its About card. You can search by name, by id or by purpose. To add a node, drag it onto the canvas. Or, select it and push **Add** (this is the keyboard method). |
+| **Canvas** | Shows the graph. The color of a data edge shows the port type. If a port has alternatives, the edges have numbers (*alt 1*, *alt 2*). Dashed edges go from the **then**/**else** arm of a branch to the top edge of the nodes that the arm controls. Dotted edges show results that a condition or `$expr` reads. To bind an output to an input, drag from the output to the input. The canvas refuses an edge between ports of different types, a node that feeds itself and a cycle. It shows the reason above the canvas. To remove a node or an edge, select it and push ++delete++. Each node shows the number of problems that it has. Your browser keeps the node positions, and only your browser keeps them (**Tidy layout** removes them). The document never keeps them. |
+| **Node editor** | Shows the selected node: its About card, its id and label, and each input port with its type and its sources in sequence. You can add a source, change the sequence of alternatives and disconnect a source. It also shows the branch arm that controls the node (**When it runs**). It shows the settings: a form that the app makes from the JSON Schema of the node. Each field can also use a workflow **parameter** or an **expression**. Then it shows how the node runs: retries, time limit, failure handling and caching. A model node selects its model from the catalog, with the About card of the model. `governance.check` selects a check. `subworkflow.run` selects a saved workflow and revision. The inputs and outputs of that workflow become the ports of the node. If you select no node, the pane edits the description, parameters, inputs, outputs and run limits of the workflow. |
 
-A **branch** node gets a condition editor: write the condition, insert results of upstream
-nodes (`nodes.adf.reject`) or parameters from the list, and the server checks it as you type
-(`POST /v1/workflows:validate`, the issue at `/nodes/<i>/with/condition`). The browser never
-evaluates a condition.
+A **branch** node has a condition editor. Write the condition. Insert results of upstream
+nodes (`nodes.adf.reject`) or parameters from the list. The server does a check of the
+condition while you type (`POST /v1/workflows:validate`, with the issue at
+`/nodes/<i>/with/condition`). The browser never calculates a condition.
 
-**YAML** and **JSON** show the same document in the code editor, with the server's problems
-as markers. An edit there updates the canvas as soon as the text reads as a workflow; until
-then the canvas keeps the last readable version and says why. Every change is checked live
-(the status reads *Ready to run* or *N problems*; the **Problems** list jumps to the node of
-each one), undo and redo work across all three views, and **Save revision** (++cmd+s++)
-stores the next revision with a message. A revision with problems is saved too, but cannot
-run. If someone saved a newer revision meanwhile, the save is refused and your draft is
-kept. **Revisions** lists every revision with its verdict; open one in the editor or compare
-two side by side.
+**YAML** and **JSON** show the same document in the code editor. Markers show the problems
+that the server found. When the text is a correct workflow, an edit there updates the canvas
+immediately. Until then, the canvas keeps the last version that it could read and tells why.
+The app does a check of each change immediately. The status shows *Ready to run* or
+*N problems*. The **Problems** list goes to the node of each problem.
+
+Undo and redo operate across all three views. **Save revision** (++cmd+s++) saves the next
+revision with a message. The app also saves a revision that has problems, but that revision
+cannot run. If a different person saved a newer revision in the meantime, the app refuses the
+save and keeps your draft. **Revisions** lists all revisions with their verdicts. You can
+open a revision in the editor or compare two revisions side by side.
 
 ### Running and watching
 
-**Run workflow** binds the inputs (a dataset from the project, the latest version when it
-runs or an exact one), adjusts the parameters for this run only and starts it with an
-`Idempotency-Key`. The run page follows `GET /v1/workflow-runs/{run_id}/events` live and
-resumes with `Last-Event-ID` after a dropped connection:
+**Run workflow** binds the inputs. An input is a dataset from the project: the latest version
+at the time of the run, or an exact version. You can change the parameters for this run only.
+The app starts the run with an `Idempotency-Key`. The run page follows
+`GET /v1/workflow-runs/{run_id}/events` live. If the connection stops, the page continues
+with `Last-Event-ID`. The run page has these tabs:
 
-- **Graph**: the canvas with each node's status (waiting, queued, running, done, reused,
+- **Graph**: the canvas with the status of each node (waiting, queued, running, done, reused,
   skipped, failed, cancelled).
-- **Steps**: every node in plain words: its verdict, what a decision meant ("The tests found
-  that the series wanders ..., so it was differenced"), why a node was not needed, how long
-  it took. A comparison or selection names its candidates by their step labels ("ARIMAX").
-- **Decisions**: each branch's plain explanation, the steps it ran or skipped, the verdicts
-  of the earlier steps it read ("What decided it"), and under *For experts: the condition*
-  the expression and the values it read (open in Expert mode, collapsed in a Guided recipe).
-- **Outputs** and **Events**: the run's outputs (the report, rendered) and the event log.
+- **Steps**: each node in plain words. It shows the verdict and the meaning of a decision
+  ("The tests found that the series wanders ..., so it was differenced"). It also shows why
+  the run did not need a node, and how long the node took. A comparison or a selection
+  identifies its candidates by their step labels ("ARIMAX").
+- **Decisions**: the plain explanation of each branch and the steps that it ran or skipped.
+  It also shows the verdicts of the earlier steps that it read ("What decided it"). Under
+  *For experts: the condition*, it shows the expression and the values that it read. This
+  section is open in Expert mode and closed in a Guided recipe.
+- **Outputs** and **Events**: the outputs of the run (the app shows the report) and the event
+  log.
 
-![A finished run: 19 of 19 steps, the decisions taken, the cost, and every node done on the graph](../assets/screenshots/workflows-run-monitor.png){ .mapi-shot }
+![A finished run: 19 of 19 steps, the decisions, the cost, and all nodes done on the graph](../assets/screenshots/workflows-run-monitor.png){ .mapi-shot }
 
-![Decisions: each branch's condition, the values it read and the arm it took](../assets/screenshots/workflows-decisions.png){ .mapi-shot }
+![Decisions: the condition of each branch, the values that it read and the arm that it took](../assets/screenshots/workflows-decisions.png){ .mapi-shot }
 
-Select a step to open its drawer: whether it ran or reused an earlier result (with a link to
-the run it came from), its test verdict (the statistic, p-value and decision, per series for
-panels), its outputs (tables, scores, train/test folds, reports, governance evidence, charts
-in the plot sandbox, and a download for file outputs such as derived datasets), the settings
-it ran with, its sandbox run, fits or child workflow runs with their logs, and its cost.
-**Cancel run** stops a running workflow and its children; the run's cost is shown when it
-finishes.
+To open the drawer of a step, select the step. The drawer shows:
 
-![A step's drawer: the ADF verdict with its p-value and statistic, the settings it ran with, its sandbox run and logs](../assets/screenshots/workflows-node-drawer.png){ .mapi-shot }
+- If the step ran or used an earlier result again. If it used an earlier result, a link goes
+  to the run that made that result.
+- The test verdict: the statistic, the p-value and the decision. For panels, it shows them
+  for each series.
+- The outputs: tables, scores, train/test folds, reports, governance evidence, charts in the
+  plot sandbox, and a download for file outputs (for example, derived datasets).
+- The settings of the step.
+- Its sandbox run, its fits or its child workflow runs, with their logs.
+- Its cost.
 
-A model the run fitted opens in the [Model Explorer](model-explorer.md#in-the-web-app):
-**Explore *name* vN** sits under the run's summary when it succeeds, beside the fit step's
-runs and on every `model_version` output, with a **Validation** link to that version's
-validations. The Model Explorer's lineage links back to this run.
+**Cancel run** stops a workflow that runs and its children. When the run stops, the app shows
+the cost of the run.
+
+![The drawer of a step: the ADF verdict with its p-value and statistic, the settings of the step, its sandbox run and logs](../assets/screenshots/workflows-node-drawer.png){ .mapi-shot }
+
+You can open a model that the run fitted in the
+[Model Explorer](model-explorer.md#in-the-web-app). The link **Explore *name* vN** is in these
+locations:
+
+- Below the summary of the run, when the run is successful.
+- Next to the runs of the fit step.
+- On each `model_version` output.
+
+The link has a **Validation** link to the validations of that version. The lineage in the
+Model Explorer has a link back to this run.
 
 ### Schedules and triggers in the app
 
-**Schedules and triggers** adds a schedule from presets or a cron expression, in a time zone,
-and previews the next five firing times exactly as the server computes them (daylight-saving
-gaps skipped, repeats fired once); an expression that would fire more often than every 15
-minutes is refused before it is sent. Schedules can be paused and deleted. A **trigger**
-runs the workflow whenever a chosen dataset gets a new version, bound to one of its dataset
-inputs, after a debounce.
+**Schedules and triggers** adds a schedule from presets or from a cron expression, in a time
+zone. It shows the next five run times exactly as the server calculates them. It skips
+daylight-saving gaps, and it fires repeated times only once. If an expression fires more
+frequently than each 15 minutes, the app refuses it before it sends it. You can pause and
+delete schedules. A **trigger** runs the workflow each time a selected dataset gets a new
+version. The trigger binds the dataset to one of the dataset inputs and runs after a
+debounce.
 
-![A new schedule from a preset, with the next five firing times in its time zone](../assets/screenshots/workflows-schedule.png){ .mapi-shot }
+![A new schedule from a preset, with the next five run times in its time zone](../assets/screenshots/workflows-schedule.png){ .mapi-shot }
 
 ## The canonical workflow
 
-This is the `ts_readiness_arimax` template exactly as the server stores it (the docs build
-checks they are identical):
+This is the `ts_readiness_arimax` template exactly as the server keeps it. The docs build
+makes sure that the two are identical:
 
 ```yaml
 --8<-- "workflow_ts_readiness_arimax.yaml"
 ```
 
-Reading it from the top:
+This list explains the document from the top:
 
 `params`
-:   Everything a user may change per run, each with a type, a default and bounds. A run that
-    passes `{"alpha": "x"}` is refused with `422` and the pointer `/params/alpha`; so is a
-    number larger than 1e15 either way (conditions and `$expr` compute with parameters).
+:   All values that a user can change for each run. Each value has a type, a default and
+    limits. If a run sends `{"alpha": "x"}`, the server refuses it with `422` and the pointer
+    `/params/alpha`. The server also refuses a number that is more than 1e15 or less than
+    -1e15, because conditions and `$expr` calculate with parameters.
 
 `seas`, `seasonal` and `sdiff`
-:   The seasonal decision comes first (as in `nsdiffs` before `ndiffs`): the seasonal
-    strength of the raw series decides whether to take a seasonal difference, which only
-    runs on the `then` arm of `seasonal`. When the arm is not taken the node is
-    **skipped**, not failed.
+:   The seasonal decision is first (as `nsdiffs` is before `ndiffs`). The seasonal strength
+    of the raw series decides if the workflow takes a seasonal difference. The seasonal
+    difference runs only on the `then` arm of `seasonal`. If the workflow does not take the
+    arm, the node is **skipped**. It is not failed.
 
 `adf`, `kpss`, `pp`, `za`
-:   Four unit-root tests on the seasonally differenced series (or the raw series when
-    there is no seasonal difference): `data: [sdiff.data, inputs.data]` is a list of
-    **alternatives**, the first node that ran. Testing the raw levels of a seasonal series
-    would find the seasonal unit root and add a first difference on top of the seasonal
-    one, over-differencing it. ADF and Phillips-Perron's null hypothesis is "the series
-    wanders"; KPSS's is "the series is stable", so its decision labels run the other way;
-    Zivot-Andrews allows one structural break. Each returns a `StatTestResult` with a
-    `verdict_plain` sentence.
+:   Four unit-root tests on the seasonally differenced series. If there is no seasonal
+    difference, the tests use the raw series. `data: [sdiff.data, inputs.data]` is a list of
+    **alternatives**: the workflow uses the first node that ran. A test of the raw levels of
+    a seasonal series finds the seasonal unit root. Thus it adds a first difference on top
+    of the seasonal difference, and the series gets too much differencing.
+    The null hypothesis of ADF and Phillips-Perron is "the series wanders". The null
+    hypothesis of KPSS is "the series is stable", so its decision labels go in the opposite
+    direction. Zivot-Andrews accepts one structural break. Each test returns a
+    `StatTestResult` with a `verdict_plain` sentence.
 
 `cand` and `overdiff`
-:   An over-differencing guard: a trial first difference and its autocorrelations. A
-    lag-1 autocorrelation below -0.5 after differencing is the signature of a unit root
-    that is not there.
+:   A guard against too much differencing: a trial first difference and its
+    autocorrelations. If the lag-1 autocorrelation is less than -0.5 after differencing, it
+    shows a unit root that does not exist.
 
 `wanders` (`branch.if`)
 :   `(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)
-    and nodes.overdiff.acf[1] > -0.5` reads: difference unless the evidence for stationarity
-    is clear, and never when differencing would over-difference. The condition is parsed by
-    the safe expression language (never `eval`), and the run records which values it read,
-    so the decision can be audited later.
+    and nodes.overdiff.acf[1] > -0.5` means this: difference the series unless the evidence
+    for stationarity is clear. Never difference when differencing gives too much
+    differencing. The safe expression language parses the condition (it never uses `eval`).
+    The run records which values it read, so you can audit the decision later.
 
 `diff`
 :   The first difference of the same alternatives, on the `then` arm of `wanders`. `acf`
-    uses three alternatives, so it always looks at the most-processed series.
+    uses three alternatives, so it always uses the series that has the most processing.
 
 `order` (`search.arma_order`)
-:   An information-criterion grid over AR orders `0..max_p` and MA orders `0..max_q`.
-    `d` and `D` pass the differencing decisions in, so the search scores exactly the
-    model that is fitted, ARIMA(p, d, q)(0, D, 0) with the season length, on the raw
-    series. With the backtest's plan on its `split` port it only searches the periods
-    before the first test window, so the backtest stays out of sample.
+:   A grid of information criteria over AR orders `0..max_p` and MA orders `0..max_q`.
+    `d` and `D` give the differencing decisions to the search. Thus the search scores
+    exactly the model that the workflow fits: ARIMA(p, d, q)(0, D, 0) with the season length,
+    on the raw series. The `split` port has the plan of the backtest. With this plan, the
+    search uses only the periods before the first test window. Thus the backtest stays out
+    of sample.
 
 `folds` (`split.expanding_window`)
-:   An expanding-window plan: `n_folds` origins, `step: 4` periods apart, a `gap` between
-    training and test (for data that arrives late) and every horizon in `horizons` scored
-    separately. The folds are computed from the number of periods alone.
+:   An expanding-window plan. It has `n_folds` origins, with `step: 4` periods between them.
+    It has a `gap` between the training and the test, for data that arrives late. It scores
+    each horizon in `horizons` separately. The server calculates the folds from the number of
+    periods only.
 
 `backtest` and `naive`
-:   The ARIMAX model refitted on every fold, and naive and seasonal-naive forecasts on the
-    **same** folds. The `settings` are built from upstream results with `$expr`.
+:   The workflow fits the ARIMAX model again on each fold. It also makes naive and
+    seasonal-naive forecasts on the **same** folds. `$expr` makes the `settings` from
+    upstream results.
 
 `compare`, `fit`, `select`
-:   `compare.models` ranks the candidates by MAE; `select.best` keeps the fitted ARIMAX
-    only if it beats every benchmark in `must_beat` (here `naive`) by at least `margin`.
-    Otherwise the workflow stops with a plain explanation (`reason_plain`).
+:   `compare.models` puts the candidates in sequence by MAE. `select.best` keeps the fitted
+    ARIMAX only if it is better than each benchmark in `must_beat` (here `naive`) by at least
+    `margin`. If not, the workflow stops with a plain explanation (`reason_plain`).
 
 `governance`
-:   Runs the governance policy in force for the project (null tests, residual checks,
-    stability...; see [Governance](../concepts/governance.md)) and produces an evidence
-    record. The result says `passed` and lists `failed_checks`; the report shows both, and
-    the [gate recipe](#gate-on-governance-and-keep-the-evidence) stops a workflow on a
-    failure.
+:   Runs the governance policy that applies to the project and makes an evidence record. The
+    policy includes null tests, residual checks, stability and other checks (see
+    [Governance](../concepts/governance.md)). The result shows `passed` and lists
+    `failed_checks`. The report shows the two. The
+    [gate recipe](#gate-on-governance-and-keep-the-evidence) stops a workflow on a failure.
 
 `report` and `outputs`
-:   A `mapi.report/v1` document with a section per test, decision, table and metric.
-    `outputs` names what the run hands back (and what a parent workflow can read).
+:   A `mapi.report/v1` document with a section for each test, decision, table and metric.
+    `outputs` gives the names of the values that the run returns. A parent workflow can read
+    these values.
 
 ## Cookbook
 
-Each recipe is a fragment of `nodes:`; paste it into a document that declares
-`inputs: {data: {type: dataset}}`. Validate before saving with
-`POST /v1/workflows:validate`: every problem comes back with a JSON pointer.
+Each recipe is a part of `nodes:`. Paste it into a document that declares
+`inputs: {data: {type: dataset}}`. Before you save, validate the document with
+`POST /v1/workflows:validate`. The server returns each problem with a JSON pointer.
 
 ### Difference only when the tests say so
 
@@ -270,12 +317,14 @@ Each recipe is a fragment of `nodes:`; paste it into a document that declares
 - {id: lb, use: test.ljung_box, inputs: {data: [diff.data, inputs.data]}}
 ```
 
-`explain_then` and `explain_else` (up to 300 characters each) are recorded with the decision
-(`BranchDecision.explain_plain`) and lead the report's summary; without them the summary
-reads "Difference? yes". The gallery templates set both.
+The run records `explain_then` and `explain_else` (each has a maximum of 300 characters)
+with the decision (`BranchDecision.explain_plain`). They are the first part of the summary of
+the report. Without them, the summary shows "Difference? yes". The gallery templates set the
+two values.
 
-A node that needs `diff.data` *without* an alternative is skipped with it. Add
-`when: wanders.else` to a node to run it only when the series was left alone.
+If a node needs `diff.data` *without* an alternative, the workflow skips that node together
+with `diff`. To run a node only when the workflow did not change the series, add
+`when: wanders.else` to the node.
 
 ### Pick AR and MA terms
 
@@ -294,10 +343,11 @@ A node that needs `diff.data` *without* an alternative is skipped with it. Add
       order: {$expr: "[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]"}
 ```
 
-`acf` suggests orders from the significant autocorrelations (`suggested_p`, `suggested_q`)
-and is quick to read; `search.arma_order` actually fits every candidate and is what the model
-should use. `search.sarima_order` adds seasonal orders, `search.var_lag_order` chooses a VAR's
-lag length and `search.coint_rank` a VECM's cointegration rank.
+`acf` gives possible orders from the significant autocorrelations (`suggested_p`,
+`suggested_q`). Its result is fast to read. `search.arma_order` fits each candidate, and the
+model must use its result. `search.sarima_order` adds seasonal orders.
+`search.var_lag_order` selects the lag length of a VAR. `search.coint_rank` selects the
+cointegration rank of a VECM.
 
 ### Honest train/test plans
 
@@ -320,15 +370,16 @@ lag length and `search.coint_rank` a VECM's cointegration rank.
 - {id: geo, use: split.geo_holdout, inputs: {data: inputs.data}, with: {n: 2, seed: 7}}
 ```
 
-`split.blocked_kfold` and `split.purged_kfold` cut contiguous blocks (with a purge gap) for
-models that are not forecasters. A plan is a `split_plan` value: feed the same plan to every
-`model.backtest`, `evaluate.baseline` and `search.grid` node you want to compare. Given a
-`split.nested` plan, `search.grid` runs nested cross-validation: each outer fold picks its
-grid point on its own inner folds, and that point is refitted on the outer training window
-and scored on the outer test window. `best_score` is the score of those outer forecasts (the
-honest error of the tuned model), `outer_scores` and `selected_per_fold` show each fold, and
-`best_settings` is the point the outer folds chose most often. `model.backtest` on a nested
-plan scores its outer folds.
+`split.blocked_kfold` and `split.purged_kfold` cut continuous blocks (with a purge gap) for
+models that do not forecast. A plan is a `split_plan` value. Give the same plan to each
+`model.backtest`, `evaluate.baseline` and `search.grid` node that you want to compare.
+
+If `search.grid` gets a `split.nested` plan, it does nested cross-validation. Each outer fold
+selects its grid point on its own inner folds. The node fits that point again on the outer
+training window and scores it on the outer test window. `best_score` is the score of those
+outer forecasts (the honest error of the tuned model). `outer_scores` and
+`selected_per_fold` show each fold. `best_settings` is the point that the outer folds
+selected most frequently. `model.backtest` on a nested plan scores its outer folds.
 
 ### Beat the benchmarks, or stop
 
@@ -347,9 +398,10 @@ plan scores its outer folds.
    with: {metric: mase, must_beat: [naive, seasonal_naive], margin: 0.05}}
 ```
 
-`compare.diebold_mariano` tests whether the difference in forecast errors is more than
-luck (with the Harvey-Leybourne-Newbold small-sample correction). `select.threshold` keeps
-the rows of a comparison table within limits (`max`, `min`) when there is no single winner.
+`compare.diebold_mariano` tests if the difference in forecast errors is more than chance. It
+uses the Harvey-Leybourne-Newbold small-sample correction. If there is no single winner,
+`select.threshold` keeps the rows of a comparison table that are in the limits (`max`,
+`min`).
 
 ### Long-run relationships: VECM or VAR
 
@@ -367,20 +419,21 @@ the rows of a comparison table within limits (`max`, `min`) when there is no sin
    with: {model: ts.var@^1, settings: {lags: {$expr: "nodes.lags.best_lag"}}}}
 ```
 
-A Johansen rank equal to the number of series means every series is already stable (growth
-rates, changes): there is nothing to error-correct, and `ts.vecm` refuses that rank, so the
-VAR is fitted on the levels; rank 0 means separate random walks, and the VAR is fitted on
-the changes. A VAR fitted on `transform.difference` output forecasts the changes, not the
-levels, and cannot update its forecast with actuals (the endpoint does not difference what
-you send): the model is labelled `mapi.io/data-space: transformed`, actuals are refused and
-every answer warns ([Forecasts with actuals](../concepts/forecasting-with-actuals.md#which-models-can)).
+If the Johansen rank is equal to the number of series, each series is already stable (for
+example, growth rates or changes). Then there is no error to correct, and `ts.vecm` refuses
+that rank. Thus the workflow fits the VAR on the levels. Rank 0 means separate random walks.
+Then the workflow fits the VAR on the changes. A VAR that is fitted on the output of
+`transform.difference` forecasts the changes, not the levels. It cannot update its forecast
+with actuals, because the endpoint does not difference the data that you send. The model has
+the label `mapi.io/data-space: transformed`, the server refuses actuals, and each answer
+shows a warning ([Forecasts with actuals](../concepts/forecasting-with-actuals.md#which-models-can)).
 
-The data holds the series along one dimension, one value per series and period
-(`value(series, quarter)`: the layout of the statsmodels multivariate models; ingest a wide
-sheet with the `wide` mapping). The tests and searches use every series of that dimension,
-or the ones named in `vars` (labels such as `[sales, price]`), and the model nodes bind the
-models' `variable` dimension to it. The `var_vecm_cointegration` template is the complete
-version, with Granger tests and a report.
+The data keeps the series along one dimension, with one value for each series and period
+(`value(series, quarter)`). This is the layout of the statsmodels multivariate models. To
+ingest a wide sheet, use the `wide` mapping. The tests and searches use all series of that
+dimension, or the series in `vars` (labels such as `[sales, price]`). The model nodes bind
+the `variable` dimension of the models to it. The `var_vecm_cointegration` template is the
+complete version, with Granger tests and a report.
 
 ### Search model settings on a plan
 
@@ -396,9 +449,9 @@ version, with Granger tests and a report.
     max_points: 9
 ```
 
-Every grid point is backtested on the plan; `best` is the winning settings refitted on all
-the data (`best_settings`, `best_score` in the result). A grid larger than `max_points`
-fails the node (`WORKFLOW_INVALID`) before any point is fitted.
+The node does a backtest of each grid point on the plan. `best` is the winning settings,
+fitted again on all the data (`best_settings`, `best_score` in the result). If a grid has
+more points than `max_points`, the node fails (`WORKFLOW_INVALID`) before it fits a point.
 
 ### Gate on governance and keep the evidence
 
@@ -410,20 +463,24 @@ fails the node (`WORKFLOW_INVALID`) before any point is fitted.
    when: approved.then}
 ```
 
-`governance.policy` records the outcome of every check of the policy in force (or the one
-named by `policy`) as evidence; it does not fail when a check fails, so the evidence of a
-rejected model is kept too. The branch makes everything after it depend on the verdict.
-`governance.check` runs a single check with its own thresholds, which is handy while a policy
-is being designed. The checks are the platform's own implementations (the same as a
-validation request's), measured in the node's sandbox on the model and its data; the policy
-in force is the one the project or tenant set up for the model's family (the platform's
-default policies apply until you add your own). With `submit: true` a passing model is
-recorded as a validation of that model version: `validated`, or `awaiting_approval` when the
-policy asks for a reviewer (see [governance](governance.md)). A node's `policy` only adds to
-the policies in force (the tenant floor and the project's policies always apply), and the
-validation counts as submitted by the person who started the run - or who created its
-schedule or trigger - so that person cannot approve it. Governance nodes are never cached:
-the checks run again on every run.
+`governance.policy` records the result of each check of the policy that applies (or of the
+policy in `policy`) as evidence. It does not fail when a check fails, so it also keeps the
+evidence of a rejected model. Because of the branch, all nodes after it depend on the
+verdict. `governance.check` runs one check with its own thresholds. This is useful while you
+design a policy.
+
+The checks are the implementations of the platform. They are the same as the checks of a
+validation request. The node measures them in its sandbox, on the model and its data. The
+policy that applies is the policy that the project or tenant set for the model family. The
+default policies of the platform apply until you add your own policies.
+
+If `submit: true` is set and the model passes, the server records a validation of that model
+version. The status is `validated`, or `awaiting_approval` if the policy needs a reviewer
+(see [governance](governance.md)). The `policy` of a node only adds to the policies that
+apply. The tenant floor and the policies of the project always apply. The server records the
+validation as submitted by the person who started the run, or by the person who made its
+schedule or trigger. Thus that person cannot approve it. The server never caches governance
+nodes: the checks run again on each run.
 
 ### Reuse a workflow as a node
 
@@ -436,11 +493,12 @@ the checks run again on every run.
 - {id: summary, use: report.summary, inputs: {items: [ready.report]}}
 ```
 
-The child runs as its own workflow run (`trigger: parent`), visible on its own page and
-cancelled with its parent. Its ports are the child's `outputs`. Pin a revision (`@r3`) so a
-later edit of the child does not change the parent silently; `@latest` is allowed too.
-A workflow that would run itself, directly or through another, fails with
-`WORKFLOW_INVALID`, and sub-workflows nest at most 8 deep.
+The child runs as a separate workflow run (`trigger: parent`). It has its own page, and it
+stops when the server cancels its parent. Its ports are the `outputs` of the child. Pin a
+revision (`@r3`). Then a subsequent edit of the child does not change the parent without
+notice. You can also use `@latest`. If a workflow runs itself, directly or through a
+different workflow, it fails with `WORKFLOW_INVALID`. Sub-workflows can go a maximum of 8
+levels deep.
 
 ### Failures, retries and time limits
 
@@ -455,13 +513,15 @@ A workflow that would run itself, directly or through another, fails with
 execution: {max_parallel: 4, timeout: 2h}
 ```
 
-`execution` applies to the whole run: how many nodes run at once and a deadline after which
-the run fails with `TIMEOUT`. A failed node without `on_failure: continue` fails the run; the
-nodes still pending are cancelled, the ones running are stopped, and the run's `error` names
-the node. A condition or `$expr` that cannot be computed on the data it reads (a number too
-large, values nested too deeply) fails its node with `EXPRESSION_ERROR`. Should the
-orchestrator itself be unable to advance a run, the run fails with `INTERNAL_ERROR` and its
-running children are stopped; other runs are not held up.
+`execution` applies to the full run. It sets how many nodes run at the same time. It also
+sets a deadline. After the deadline, the run fails with `TIMEOUT`. If a node fails and it
+does not have `on_failure: continue`, the run fails. Then the server cancels the nodes that
+wait, stops the nodes that run, and gives the name of the node in the `error` of the run.
+
+If a condition or `$expr` cannot calculate on the data that it reads, its node fails with
+`EXPRESSION_ERROR`. For example, a number is too large, or the values are nested too deeply.
+If the orchestrator cannot move a run forward, the run fails with `INTERNAL_ERROR`. Then the
+server stops the children of the run that run. This does not stop other runs.
 
 ## Where nodes run
 
@@ -470,48 +530,50 @@ The control plane never decodes your data. Each node implementation declares whe
 
 | Runs in | Nodes | How |
 |---|---|---|
-| The orchestrator | `branch.if`, `compare.models`, `select.best`, `select.threshold`, `report.summary`, `report.evidence_pack` | On the JSON results of upstream nodes only, in the API process, with no child run and no cost |
-| A sandboxed `workflow_node` run | tests, transforms, splits, order searches, `model.backtest`, `model.forecast`, `evaluate.*`, `compare.diebold_mariano`, `governance.*` | A child run on the same executor and isolation as fits; it reads its inputs through generation-pinned signed URLs and writes a result the finalizer verifies |
-| A child `fit` run | `model.fit`, and the winner of `search.grid` (after a `workflow_node` run scored the grid) | An ordinary fit of a stored spec named `wf-<workflow>-<node>`, so the model version is a normal one (scoring, endpoints, approvals) |
-| A child workflow run | `subworkflow.run` | The child workflow, with its own nodes |
+| The orchestrator | `branch.if`, `compare.models`, `select.best`, `select.threshold`, `report.summary`, `report.evidence_pack` | Only on the JSON results of upstream nodes, in the API process. There is no child run and no cost. |
+| A sandboxed `workflow_node` run | tests, transforms, splits, order searches, `model.backtest`, `model.forecast`, `evaluate.*`, `compare.diebold_mariano`, `governance.*` | A child run on the same executor and isolation as fits. It reads its inputs through signed URLs that are pinned to a generation. It writes a result. The finalizer does a check of that result. |
+| A child `fit` run | `model.fit`, and the winner of `search.grid` (after a `workflow_node` run scored the grid) | A usual fit of a stored spec with the name `wf-<workflow>-<node>`. Thus the model version is a usual model version (scoring, endpoints, approvals). |
+| A child workflow run | `subworkflow.run` | The child workflow, with its own nodes. |
 
-Two consequences worth knowing:
+Two important results of this:
 
-- **Derived datasets are real datasets.** The differenced series of node `diff` of workflow
-  `ts-readiness` is registered as `dataset://<project>/wf-ts-readiness-diff@vN`. You can open
-  it in the Data explorer or start another workflow from it. These datasets do not fire
-  dataset triggers, so a workflow cannot trigger itself.
-- **Fitted models carry their preprocessing.** When `model.fit` reads the output of a
-  `transform.steps` node, the steps are written into the stored spec ahead of the model, so
-  scoring new data applies the same preprocessing. Differencing nodes are the exception: pass
-  `d` (or `order`) to the model instead, as the canonical template does.
+- **Derived datasets are real datasets.** The server registers the differenced series of node
+  `diff` of workflow `ts-readiness` as `dataset://<project>/wf-ts-readiness-diff@vN`. You can
+  open it in the Data explorer or start a different workflow from it. These datasets do not
+  fire dataset triggers, so a workflow cannot trigger itself.
+- **Fitted models keep their preprocessing.** When `model.fit` reads the output of a
+  `transform.steps` node, the server writes the steps into the stored spec before the model.
+  Thus, when you score new data, the model uses the same preprocessing. Differencing nodes
+  are the exception. For them, give `d` (or `order`) to the model, as the canonical template
+  does.
 
-The run's `cost` is the sum over its child runs; orchestrator nodes are free. Each node lists
-its child runs (`child_runs`, one per attempt); they are ordinary runs with a `parent_run_id`
-and the labels `workflow` and `workflow-node`.
+The `cost` of the run is the sum of the costs of its child runs. Orchestrator nodes have no
+cost. Each node lists its child runs (`child_runs`, one for each attempt). They are usual
+runs with a `parent_run_id` and the labels `workflow` and `workflow-node`.
 
 ### Caching
 
-Every node has a cache key made of its implementation and version, its resolved parameters
-and the identity of its inputs (dataset content hashes, model versions, upstream keys). When a
-project already has a successful result with the same key, the node is marked `cached` with
-`cached_from` naming the run that produced it, and no child run starts. Change one parameter
-of the final report and only the report runs again. Start a run with `"use_cache": false` to
-recompute everything, or set `cache: false` on a node.
+Each node has a cache key. The key contains the implementation and its version, the resolved
+parameters and the identity of the inputs (dataset content hashes, model versions, upstream
+keys). If a project already has a successful result with the same key, the server marks the
+node as `cached`. Then `cached_from` gives the name of the run that made the result, and no
+child run starts. If you change one parameter of the final report, only the report runs
+again. To calculate all nodes again, start a run with `"use_cache": false`. Or, set
+`cache: false` on a node.
 
 ## Watching a run
 
 | Endpoint | What you get |
 |---|---|
-| `GET /v1/workflow-runs/{run_id}` | Status, every node (status, attempt, result, outputs, child runs, timing), branch decisions with the values they read, outputs, error and cost |
-| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}` | One node in detail |
-| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}` | A signed download link for a file output (a derived dataset, a table too large to inline) |
-| `GET /v1/workflow-runs/{run_id}/events` | The event log as JSON, or as server-sent events with `Accept: text/event-stream` (a `snapshot` first, `Last-Event-ID` to resume, `end` when the run finished) |
-| `POST /v1/workflow-runs/{run_id}:cancel` | Cancels the run and every running child (`cancelling` until the children have stopped) |
+| `GET /v1/workflow-runs/{run_id}` | The status, each node (status, attempt, result, outputs, child runs, timing), the branch decisions with the values that they read, the outputs, the error and the cost |
+| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}` | The details of one node |
+| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}` | A signed download link for a file output (a derived dataset, or a table that is too large to show inline) |
+| `GET /v1/workflow-runs/{run_id}/events` | The event log as JSON, or as server-sent events with `Accept: text/event-stream`. The stream sends a `snapshot` first. Use `Last-Event-ID` to continue. The stream sends `end` when the run is complete. |
+| `POST /v1/workflow-runs/{run_id}:cancel` | Cancels the run and each child that runs. The status is `cancelling` until the children stop. |
 
-Finished runs send the `workflow.run.succeeded` and `workflow.run.failed`
-[webhooks](endpoints-and-webhooks.md), with the run id, the workflow revision, the status and
-the outputs.
+When a run is complete, the server sends the `workflow.run.succeeded` or `workflow.run.failed`
+[webhook](endpoints-and-webhooks.md). The webhook contains the run id, the workflow revision,
+the status and the outputs.
 
 ## Schedules and triggers
 
@@ -529,25 +591,29 @@ api POST "/v1/workflows/$WF/triggers" -d '{
 }'
 ```
 
-- A **schedule** fires once per due time, in its time zone (daylight-saving changes
-  included). Expressions that would fire more often than every 15 minutes are refused, as are
-  unknown time zones. `PATCH` with `{"active": false}` pauses it; `last_run_id` and
-  `next_run_at` show where it stands.
-- A **trigger** binds a new dataset version to one of the workflow's inputs. Versions that
-  arrive within `debounce_seconds` of each other start one run, on the newest version.
-- Runs started by schedules and triggers carry `trigger: schedule` or
-  `trigger: dataset.version.created` and the schedule or trigger id, are audited as the
-  platform acting for the person who created the schedule, and count against the project's
-  quotas like any other run. They run as that person (an API token's owner when a token
-  created the schedule): a schedule or trigger whose creator is no longer allowed to run
-  workflows in the project - removed, demoted below `runner`, or whose token was revoked or
-  expired - pauses itself (`active: false`, audited) instead of firing.
+- A **schedule** fires one time for each due time, in its time zone. This includes
+  daylight-saving changes. The server refuses expressions that fire more frequently than each
+  15 minutes. It also refuses unknown time zones. To pause a schedule, send `PATCH` with
+  `{"active": false}`. `last_run_id` and `next_run_at` show the status of the schedule.
+- A **trigger** binds a new dataset version to one of the inputs of the workflow. If some
+  versions arrive in `debounce_seconds` of each other, they start one run, on the newest
+  version.
+- Runs that schedules and triggers start have `trigger: schedule` or
+  `trigger: dataset.version.created`, and the schedule id or trigger id. The audit log
+  records them as the platform that acts for the person who made the schedule. They count
+  against the quotas of the project, as all other runs do.
+- These runs run as the person who made the schedule. If an API token made the schedule, they
+  run as the owner of the token. The creator possibly cannot run workflows in the project
+  any more. For example, the creator is removed, or has a role below `runner`, or the token
+  is revoked or expired. In this case, the schedule or trigger pauses itself
+  (`active: false`, audited). It does not fire.
 
 ## Run it locally
 
-The same engine runs in a Python process, which is the fastest way to develop a workflow
-against a dataset you have in memory. `LocalRunner` executes every node in threads, honours
-branches, alternatives, retries, timeouts and cancellation, and caches results in memory:
+The same engine runs in a Python process. This is the fastest method to develop a workflow on
+a dataset that you have in memory. `LocalRunner` runs each node in threads. It obeys
+branches, alternatives, retries, timeouts and cancellation. It keeps results in a memory
+cache:
 
 ```python
 --8<-- "workflows_local.py:run"
@@ -561,37 +627,37 @@ branches, alternatives, retries, timeouts and cancellation, and caches results i
 --8<-- "workflows_local.py:cache"
 ```
 
-The example uses `mapi_workflows.testing.test_registry()`: the real statsmodels models
-(`ts.sarimax`, `ts.var`, `ts.vecm`, ...) with the SDK's toy models and the built-in steps
-(install `mapi-workflows[testing]`). `mapi_sdk.default_registry()` gives every installed
-plugin. `LocalRunner(governance=GovernanceServices(...))` supplies the policy resolver for
-governance nodes; the check runners are the installed ones (`mapi-runner` exports every
-check through the `mapi.governance_checks` entry point), and `runners=` adds or replaces
-some.
+The example uses `mapi_workflows.testing.test_registry()`. It contains the real statsmodels
+models (`ts.sarimax`, `ts.var`, `ts.vecm`, ...), the toy models of the SDK and the built-in
+steps (install `mapi-workflows[testing]`). `mapi_sdk.default_registry()` gives all installed
+plugins. `LocalRunner(governance=GovernanceServices(...))` gives the policy resolver for
+governance nodes. The check runners are the installed check runners. `mapi-runner` exports
+all checks through the `mapi.governance_checks` entry point. Use `runners=` to add or
+replace some check runners.
 
 ## Limits and settings
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `MAPI_WORKFLOW_TICK_S` | 1.0 | How often the orchestrator advances active runs |
-| `MAPI_WORKFLOW_MAX_ACTIVE_RUNS` | 20 | Runs a project may have going at once, sub-workflow runs included (`429` beyond; a `subworkflow.run` node over it fails with `QUOTA_EXCEEDED`) |
-| `MAPI_WORKFLOW_MAX_SCHEDULES` | 20 | Active schedules per project |
-| `MAPI_WORKFLOW_MAX_TRIGGERS` | 20 | Active triggers per project |
-| `MAPI_WORKFLOW_NODE_TIMEOUT_S` | 1800 | Timeout of a node without its own `timeout` |
-| `MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES` | 1 MiB | Largest JSON output a node may return |
+| `MAPI_WORKFLOW_TICK_S` | 1.0 | How frequently the orchestrator moves active runs forward |
+| `MAPI_WORKFLOW_MAX_ACTIVE_RUNS` | 20 | The number of runs that a project can have at the same time, sub-workflow runs included. More runs get `429`. A `subworkflow.run` node above this limit fails with `QUOTA_EXCEEDED`. |
+| `MAPI_WORKFLOW_MAX_SCHEDULES` | 20 | Active schedules for each project |
+| `MAPI_WORKFLOW_MAX_TRIGGERS` | 20 | Active triggers for each project |
+| `MAPI_WORKFLOW_NODE_TIMEOUT_S` | 1800 | The timeout of a node that does not have its own `timeout` |
+| `MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES` | 1 MiB | The largest JSON output that a node can return |
 
-A document has at most 200 nodes; conditions at most 2000 characters. Workflows,
-revisions, runs, node runs, events, schedules and triggers are tenant data with row-level
-security, like everything else.
+A document has a maximum of 200 nodes. A condition has a maximum of 2000 characters.
+Workflows, revisions, runs, node runs, events, schedules and triggers are tenant data with
+row-level security, as all other data are.
 
 ## Known limitations in v0.5
 
-- Plot outputs of `evaluate.residuals` and `model.forecast` are not produced yet; their
-  tables and results are.
-- Detrending, STL adjustment and lag/lead features are not separate nodes: use
-  `transform.steps` with the catalog's preprocessing steps.
-- In the web editor, node positions are a per-browser view preference (the document has no
-  place for them), and a sub-workflow's ports appear once its revision is loaded.
+- The nodes `evaluate.residuals` and `model.forecast` do not make plot outputs yet. They make
+  their tables and results.
+- Detrending, STL adjustment and lag/lead features are not separate nodes. Use
+  `transform.steps` with the preprocessing steps of the catalog.
+- In the web editor, each browser keeps the node positions as a view preference. The document
+  has no place for them. The ports of a sub-workflow show when the app loads its revision.
 - The [Python client](python-client.md#workflows-governance-and-explorers) and the
-  [CLI](cli.md#workflows-governance-and-explorers) cover every workflow operation; the web
-  app's screens are in [In the web app](#in-the-web-app).
+  [CLI](cli.md#workflows-governance-and-explorers) can do all workflow operations. The
+  screens of the web app are in [In the web app](#in-the-web-app).

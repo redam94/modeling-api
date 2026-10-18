@@ -19,11 +19,11 @@ function coordText(c: NonNullable<NonNullable<DatasetVersion["summary"]>["coords
 
 /** Waiting for, or explaining the failure of, the sandboxed check of the upload. */
 export function IngestStatus({ version, compact = false }: { version: DatasetVersion | null; compact?: boolean }) {
-  if (!version) return <p className="text-[13px] text-muted-foreground">Looking for your data…</p>;
+  if (!version) return <p className="text-[13px] text-muted-foreground">The app looks for your data…</p>;
   if (version.status === "ingesting") {
     return (
       <p className="flex items-center gap-2 text-[13px]" aria-live="polite">
-        <Spinner /> We are checking your data in a secure sandbox. This usually takes under a minute{compact ? "." : "; you can carry on meanwhile."}
+        <Spinner /> A secure sandbox does a check of your data. This usually takes less than 1 minute.{compact ? "" : " You can continue to work during the check."}
       </p>
     );
   }
@@ -31,7 +31,7 @@ export function IngestStatus({ version, compact = false }: { version: DatasetVer
     return (
       <div role="alert" className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4 text-[13px]">
         <p className="flex items-center gap-2 font-medium">
-          <AlertTriangle aria-hidden className="size-4 text-destructive" /> Your file could not be read
+          <AlertTriangle aria-hidden className="size-4 text-destructive" /> The app could not read your file
         </p>
         <ul className="grid gap-1 text-muted-foreground">
           {(version.issues ?? []).map((i, n) => (
@@ -79,7 +79,7 @@ export function DataSummaryStep({ session }: { session: GuidedSession }) {
         </CardContent>
       </Card>
       <p className="text-[13px] text-muted-foreground">
-        To use a different file or change which column means what, start a new analysis from the same template; this one keeps its results.{" "}
+        To use a different file or to change the meaning of the columns, start a new analysis from the same template. This analysis keeps its results.{" "}
         <Button asChild variant="link" size="sm" className="h-auto px-0">
           <Link to="/guided/new/$templateId" params={{ templateId: session.template.id }}>
             <RotateCcw /> Start again with a new file

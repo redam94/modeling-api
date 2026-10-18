@@ -76,7 +76,7 @@ describe("Workflows", () => {
     await user.click(await screen.findByRole("button", { name: "Run workflow" }));
     const dialog = await screen.findByRole("dialog", { name: "Run revision 2" });
     await user.click(within(dialog).getByRole("button", { name: "Start run" }));
-    expect(await within(dialog).findByText("Still needed: data.")).toBeInTheDocument();
+    expect(await within(dialog).findByText("Still needed: data. Give a value for each item.")).toBeInTheDocument();
     await user.selectOptions(within(dialog).getByLabelText("Your data"), "dataset://default/eu_media_daily");
     await user.click(within(dialog).getByRole("button", { name: "Start run" }));
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/workflow-runs\/run_/));
@@ -92,7 +92,7 @@ describe("Workflows", () => {
     expect(within(monitor).getByTestId("run-status")).toHaveTextContent("Succeeded");
     const summary = within(monitor).getByTestId("run-summary");
     // the seasonal decision comes first, so this one continues the sentence
-    expect(summary).toHaveTextContent(/the tests found that the series wanders rather than returning to a steady level, so it was differenced/i);
+    expect(summary).toHaveTextContent(/the tests found that the series wanders and does not return to a steady level/i);
     expect(summary).toHaveTextContent("ARIMAX has the best average error");
     expect(summary).not.toHaveTextContent(/-> (then|else)/);
     await user.click(screen.getByRole("tab", { name: "Steps" }));
@@ -100,23 +100,23 @@ describe("Workflows", () => {
     // Branches and skipped steps say what the path means; the comparison names the model.
     const row = (id: string) => steps.querySelector<HTMLElement>(`[data-node="${id}"]`)!;
     expect(row("wanders")).toHaveTextContent("The tests found that the series wanders");
-    expect(row("sdiff")).toHaveTextContent("Not needed: the series has no strong seasonal pattern, so it was not seasonally differenced.");
+    expect(row("sdiff")).toHaveTextContent("Not needed: the series has no strong seasonal pattern, so the workflow did not apply a seasonal difference.");
     expect(row("compare")).toHaveTextContent("Best: ARIMAX");
     expect(row("select")).toHaveTextContent("ARIMAX has the best average error");
     expect(steps).not.toHaveTextContent(/\b(then|else) (arm|path)\b/);
     await user.click(within(steps).getByRole("button", { name: /Does it wander\? \(ADF\)/ }));
     const drawer = await screen.findByTestId("node-drawer");
-    expect(within(drawer).getByTestId("test-verdict")).toHaveTextContent("The series wanders: consider differencing it.");
+    expect(within(drawer).getByTestId("test-verdict")).toHaveTextContent("The series does not return to a stable level. Use the differences of the series.");
     expect(within(drawer).getByText("unit root")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("tab", { name: /Decisions/ }));
     // the seasonal decision comes first (the unit-root tests run after it, M3.5 review)
     const decision = screen.getAllByTestId("branch-decision").find((d) => d.textContent?.includes("nodes.kpss.reject"))!;
-    expect(decision).toHaveTextContent("The tests found that the series wanders rather than returning to a steady level, so it was differenced");
+    expect(decision).toHaveTextContent("The tests found that the series wanders and does not return to a steady level");
     expect(decision).toHaveTextContent("The condition was met. Ran: Change from the previous period.");
     // what decided it: the tests the condition read, in their own plain verdicts
     const evidence = within(decision).getByRole("list", { name: "What decided it" });
-    expect(evidence).toHaveTextContent("The series wanders: consider differencing it.");
+    expect(evidence).toHaveTextContent("The series does not return to a stable level. Use the differences of the series.");
     // the expression and the raw values stay, under "For experts"
     const experts = within(decision).getByText("For experts: the condition").closest("details")!;
     expect(experts).toHaveTextContent("nodes.kpss.reject");
@@ -133,7 +133,7 @@ describe("Workflows", () => {
     const cron = within(form).getByLabelText("Cron expression");
     await user.clear(cron);
     await user.type(cron, "*/5 * * * *");
-    expect(within(form).getByText("schedules may fire at most every 15 minutes")).toBeInTheDocument();
+    expect(within(form).getByText("a schedule can run at most one time every 15 minutes")).toBeInTheDocument();
     expect(within(form).getByRole("button", { name: "Add schedule" })).toBeDisabled();
     await user.click(within(form).getByRole("button", { name: "Every Monday at 06:00" }));
     const tz = within(form).getByLabelText("Time zone");

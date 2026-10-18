@@ -4,36 +4,36 @@ description: Metrics, structured logs and traces of the control plane, the dashb
 
 # Observability <span class="mapi-badge">v0.3</span>
 
-The API and the worker emit three signals:
+The API and the worker send three signals:
 
-- **Metrics:** Prometheus text at `GET /metrics` on every API process. The worker records
-  the orchestrator's series (dispatch, reconciliation, finalization, pipe event ingestion) and
-  serves them on `MAPI_WORKER_METRICS_PORT` when that is set.
-- **Logs:** one JSON object per line on stderr. Each line carries `trace_id` and `span_id`,
-  plus the request, run and tenant it belongs to.
-- **Traces:** OpenTelemetry spans for every request, every outgoing HTTP call and every run's
-  dispatch and finalization. Spans are exported over OTLP/HTTP only when a collector is
-  configured.
+- **Metrics:** Prometheus text at `GET /metrics` on each API process. The worker records the
+  series of the orchestrator (dispatch, reconciliation, finalization, pipe event ingestion).
+  When `MAPI_WORKER_METRICS_PORT` is set, the worker serves them on that port.
+- **Logs:** one JSON object on each line on stderr. Each line has `trace_id` and `span_id`,
+  and the request, run and tenant that it is related to.
+- **Traces:** OpenTelemetry spans for each request, each outgoing HTTP call, and the
+  dispatch and finalization of each run. The server exports spans over OTLP/HTTP only when
+  you configure a collector.
 
-Nothing is exported from inside a sandbox. Each execution gets the dispatching span's
-`traceparent` in `MAPI_TRACEPARENT`, so the supervisor's own stderr diagnostics can be joined
-to the run's trace without any telemetry leaving the exec project.
+Nothing goes out from inside a sandbox. Each execution gets the `traceparent` of the
+dispatching span in `MAPI_TRACEPARENT`. Thus you can join the stderr diagnostics of the
+supervisor to the trace of the run, and no telemetry goes out of the exec project.
 
 ## Settings
 
 | Variable | Default | Effect |
 |---|---|---|
-| `MAPI_LOG_JSON` | `true` | JSON logs. `false` gives a readable console format for local work |
+| `MAPI_LOG_JSON` | `true` | JSON logs. `false` gives a console format that is easy to read for local work |
 | `MAPI_METRICS_ENABLED` | `true` | Serve `GET /metrics` |
-| `MAPI_METRICS_TOKEN` | unset | Bearer a scraper must present. Required in the `multi-tenant` profile |
-| `MAPI_WORKER_METRICS_PORT`, `MAPI_WORKER_METRICS_HOST` | unset, `127.0.0.1` | Where the worker serves its own `/metrics` (same bearer rule) |
-| `MAPI_TRACING_ENABLED` | `true` | Create spans (their ids reach the logs even without a collector) |
+| `MAPI_METRICS_TOKEN` | unset | The bearer that a scraper must send. Necessary in the `multi-tenant` profile |
+| `MAPI_WORKER_METRICS_PORT`, `MAPI_WORKER_METRICS_HOST` | unset, `127.0.0.1` | The address where the worker serves its own `/metrics` (the same bearer rule) |
+| `MAPI_TRACING_ENABLED` | `true` | Make spans (their ids go into the logs also without a collector) |
 | `MAPI_OTLP_ENDPOINT` | unset | OTLP/HTTP collector (`OTEL_EXPORTER_OTLP_ENDPOINT` also works). Needs the `otlp` extra of `mapi-server` |
 
 ### Scraping `/metrics`
 
-The series carry tenant ids and spend, so `/metrics` is not a public route. It authenticates
-its own bearer, like the Pub/Sub push endpoint does:
+The series contain tenant ids and spend. Thus `/metrics` is not a public route. It
+authenticates its own bearer, as the Pub/Sub push endpoint does:
 
 ```yaml
 # prometheus.yml
@@ -46,73 +46,79 @@ scrape_configs:
       - targets: ["api.internal:8000", "worker.internal:9464"]
 ```
 
-In the `multi-tenant` profile a server without `MAPI_METRICS_TOKEN` refuses every scrape
-(401). The `single-tenant` and `dev` profiles serve `/metrics` openly on their loopback API
-unless a token is set.
+In the `multi-tenant` profile, a server without `MAPI_METRICS_TOKEN` refuses all scrapes
+(401). The `single-tenant` and `dev` profiles serve `/metrics` without authentication on
+their loopback API, if no token is set.
 
 ## The metric set
 
-Generated from `mapi_server.observability.metrics.Metrics`, the one registry every series is
-defined in, so this table cannot drift from what `/metrics` serves. Label cardinality is bounded
-on purpose: `tenant_id` is the only unbounded label, on the two counters that are meaningless
-without it, and HTTP series are labelled by route *template*, never the raw path.
+This table comes from `mapi_server.observability.metrics.Metrics`. This is the one registry
+that defines all series. Thus the table always agrees with what `/metrics` serves. The
+number of label values is limited on purpose. `tenant_id` is the only unlimited label, on the
+two counters that have no meaning without it. HTTP series have the route *template* as
+label, never the raw path.
 
 <!-- generated: metrics -->
 
-What to watch first:
+Monitor these series first:
 
-- **`mapi_time_to_running_seconds`**: the M2 target is p95 under 90 s.
-- **`mapi_integrity_failures_total`** and **`mapi_sandbox_violations_total`**: any increase is a
-  security signal, not a reliability one.
-- **`mapi_global_spend_micros`** against **`mapi_global_spend_cap_micros`**: the kill switch's
-  window.
-- **`mapi_runs_active{state="stalled"}`**: runs whose events went quiet (the executor's status,
-  not the silence, decides what happens to them).
+- **`mapi_time_to_running_seconds`**: the M2 target is a p95 below 90 s.
+- **`mapi_integrity_failures_total`** and **`mapi_sandbox_violations_total`**: each increase
+  is a security signal, not a reliability signal.
+- **`mapi_global_spend_micros`** against **`mapi_global_spend_cap_micros`**: the window of the
+  kill switch.
+- **`mapi_runs_active{state="stalled"}`**: runs that sent no events for some time. The status
+  of the executor decides what occurs to them, not the absence of events.
 
 The security suite adds one more series from outside the server,
 `mapi_security_probe_unexpected{executor}`, through a textfile collector or a Pushgateway
 ([Security suite](security-suite.md#run-it)).
 
-Every response carries `X-Request-Id`: the caller's own header when it sent one, otherwise the
-trace id. Quote it when you report a problem; it finds the log lines and the trace.
+Each response has `X-Request-Id`. This is the header of the caller if the caller sent one.
+If not, it is the trace id. When you report a problem, give this id. It finds the log lines
+and the trace.
 
 ## Dashboards, alerts and runbooks
 
-Everything operators need is in `ops/` at the root of the repository; `ops/README.md` explains
-how to import each one. The tables below are generated from those files.
+All the files that operators need are in `ops/` at the root of the repository.
+`ops/README.md` tells how to import each one. The tables below come from those files.
 
 ### Dashboards
 
-A Grafana dashboard and a Cloud Monitoring dashboard over the same series:
+A Grafana dashboard and a Cloud Monitoring dashboard show the same series:
 
 <!-- generated: dashboards -->
 
 ### Alerts
 
-`ops/alerts/prometheus-rules.yml` (Prometheus rules, with recording rules such as
-`mapi:global_spend_ratio`) and `ops/alerts/cloud-monitoring-alerts.yaml` (the same policies for
-Cloud Monitoring). *page* wakes someone; *ticket* is for the next working hour. The thresholds
-are starting points for the private beta.
+`ops/alerts/prometheus-rules.yml` has the Prometheus rules, with recording rules such as
+`mapi:global_spend_ratio`. `ops/alerts/cloud-monitoring-alerts.yaml` has the same policies
+for Cloud Monitoring. A *page* alert wakes a person. A *ticket* alert is for the next working
+hour. The thresholds are initial values for the private beta.
 
 <!-- generated: alerts -->
 
 ### Runbooks
 
-Each alert names the runbook that resolves it:
+Each alert names the runbook that solves it:
 
 <!-- generated: runbooks -->
 
-The sandbox-escape runbook is the plan's incident response for a confirmed escape: turn off
-uploaded code with the [kill switch](../guides/administration.md#kill-switches), rotate the
-signing and HMAC keys (which invalidates every outstanding signed URL), quarantine the affected
-bundles and notify the tenants.
+The sandbox-escape runbook is the incident response of the plan for a confirmed escape. It
+has these steps:
+
+1. Turn off uploaded code with the [kill switch](../guides/administration.md#kill-switches).
+2. Rotate the signing and HMAC keys. This makes all signed URLs that are open now invalid.
+3. Put the affected bundles in quarantine.
+4. Tell the tenants.
 
 ## Tests that guard the signals
 
 | Command | What it checks |
 |---|---|
-| `make chaos` | A worker killed during `PROVISIONING` and `RUNNING`, Pub/Sub redelivery and reordering, bad-HMAC redelivery, and a PostgreSQL restart mid-run. Every run converges to one outcome, with one attempt and no duplicate execution |
-| `make load-test` | 100 concurrent fits through the real dispatcher, reconciler and finalizer on the fake Cloud Run backend, with injected 429s, lost responses and duplicate pushes. No run is lost, and p95 time-to-`RUNNING` stays under 90 s |
-| `make security-suite` | The sandbox-escape probes (see [Security suite](security-suite.md)) |
+| `make chaos` | A worker that stops during `PROVISIONING` and `RUNNING`, Pub/Sub redelivery and a changed sequence, redelivery with a bad HMAC, and a PostgreSQL restart during a run. Each run comes to one outcome, with one attempt and no duplicate execution |
+| `make load-test` | 100 concurrent fits through the real dispatcher, reconciler and finalizer on the fake Cloud Run backend, with injected 429s, lost responses and duplicate pushes. No run is lost, and the p95 time-to-`RUNNING` stays below 90 s |
+| `make security-suite` | The sandbox-escape probes (refer to [Security suite](security-suite.md)) |
 
-All three run offline, against the embedded PostgreSQL and the in-memory or shim object store.
+All three run offline, against the embedded PostgreSQL and the in-memory or shim object
+store.

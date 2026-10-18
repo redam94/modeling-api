@@ -213,7 +213,7 @@ def _current_rows(c: _Curves, point_curves: pd.DataFrame, col: str) -> pd.DataFr
     settings=ResponseCurveSettings,
     persona="both",
     requires_groups=["response_curves"],
-    summary="Expected outcome for each level of spend per channel, with uncertainty.",
+    summary="The expected outcome for each level of spend in each channel, with uncertainty.",
     tags=["mmm"],
 )
 def response_curves(inp: RecipeInput, s: ResponseCurveSettings) -> Figure:
@@ -231,9 +231,10 @@ def response_curves(inp: RecipeInput, s: ResponseCurveSettings) -> Figure:
         inp.dim_label("channel"),
     )
     caption = (
-        f"Each curve shows the expected {c.var} for a level of spend per channel, with the "
-        f"{pct(s.hdi_prob)} interval shaded. Steeper curves return more per extra unit of "
-        "spend; flattening curves mean the channel is saturating."
+        f"Each curve shows the expected {c.var} for each level of spend in a channel. The "
+        f"shaded area is the {pct(s.hdi_prob)} interval. A steeper curve returns more for each "
+        "extra unit of spend. A curve that becomes flat shows that the channel is near "
+        "saturation."
     )
     if current is not None and c.current is not None:
         sat = []
@@ -247,8 +248,8 @@ def response_curves(inp: RecipeInput, s: ResponseCurveSettings) -> Figure:
         if valid:
             ratio, ch = min(valid)
             caption += (
-                f" At current spend (diamonds), {ch} is closest to saturation: an extra unit "
-                f"there returns {pct(ratio)} of what it returned at its steepest point."
+                f" At current spend (diamonds), {ch} is closest to saturation. An extra unit "
+                f"there returns {pct(ratio)} of the return at its steepest point."
             )
     return Figure(chart=chart, datasets=datasets, caption=caption)
 
@@ -266,7 +267,8 @@ class MarginalCostSettings(ResponseCurveSettings):
     settings=MarginalCostSettings,
     persona="both",
     requires_groups=["response_curves"],
-    summary="What the next unit of outcome costs (or returns) at each spend level per channel.",
+    summary="The cost (or the return) of the next unit of outcome at each spend level in each "
+    "channel.",
     tags=["mmm"],
 )
 def marginal_cost(inp: RecipeInput, s: MarginalCostSettings) -> Figure:
@@ -295,8 +297,8 @@ def marginal_cost(inp: RecipeInput, s: MarginalCostSettings) -> Figure:
         inp.dim_label("channel"),
     )
     caption = (
-        f"The {label} of {c.var} at each spend level per channel ({pct(s.hdi_prob)} interval "
-        "shaded)."
+        f"The {label} of {c.var} at each spend level in each channel. The shaded area is the "
+        f"{pct(s.hdi_prob)} interval."
     )
     if current is not None:
         best = (current.sort_values("value", ascending=s.metric == "cost")).iloc[0]
@@ -323,7 +325,7 @@ class BudgetPlanSettings(RecipeSettings):
     persona="both",
     requires_groups=["plans"],
     requires_representation=[Representation.DRAWS],
-    summary="Spend allocation and expected outcome of alternative budget plans.",
+    summary="The spend allocation and the expected outcome of different budget plans.",
     tags=["mmm"],
 )
 def budget_plans(inp: RecipeInput, s: BudgetPlanSettings) -> Figure:
@@ -432,11 +434,11 @@ def budget_plans(inp: RecipeInput, s: BudgetPlanSettings) -> Figure:
             f"{best.plan} is expected to deliver {fmt(best.delta)} "
             + (f"({pct(rel)}) " if np.isfinite(rel) else "")
             + f"{'more' if best.delta >= 0 else 'less'} {s.outcome_var} than {ref} "
-            f"({pct(s.hdi_prob)} interval {fmt(best.delta_lo)} to {fmt(best.delta_hi)}); "
-            f"probability it is better: {pct(best.p_better)}."
+            f"({pct(s.hdi_prob)} interval {fmt(best.delta_lo)} to {fmt(best.delta_hi)}). "
+            f"The probability that it is better: {pct(best.p_better)}."
         )
     else:
-        caption = f"Expected {s.outcome_var} of plan {ref}."
+        caption = f"The expected {s.outcome_var} of plan {ref}."
     datasets = {"allocation": alloc, "outcomes": summary}
     return Figure(chart=chart, datasets=datasets, caption=caption)
 
@@ -451,7 +453,7 @@ class MMMDecompositionSettings(DecompositionSettings):
     settings=MMMDecompositionSettings,
     persona="both",
     requires_groups=["contributions"],
-    summary="Baseline and channel contributions over time and in total.",
+    summary="The baseline and channel contributions over time and in total.",
     tags=["mmm"],
 )
 def mmm_decomposition(inp: RecipeInput, s: MMMDecompositionSettings) -> Figure:
@@ -545,8 +547,8 @@ def _belief_rows(ds: Any, s: PriorBeliefSettings) -> pd.DataFrame:
     settings=PriorBeliefSettings,
     persona="guided",
     requires_groups=list(BELIEF_GROUPS),
-    summary="What the translated priors believe about each channel's ROI or share before "
-    "seeing the KPI, against the range you stated.",
+    summary="The ROI or share of each channel in the translated priors before the model sees "
+    "the KPI, compared with the range that you gave.",
     tags=["mmm"],
 )
 def prior_beliefs(inp: RecipeInput, s: PriorBeliefSettings) -> Figure:
@@ -593,13 +595,13 @@ def prior_beliefs(inp: RecipeInput, s: PriorBeliefSettings) -> Figure:
     for row in frame.itertuples():
         if np.isfinite(row.coverage):
             parts.append(
-                f"{row.label}: {pct(row.coverage)} of the prior lies in your range "
+                f"{row.label}: {pct(row.coverage)} of the prior is in your range "
                 f"(you said {pct(row.credibility)})"
             )
     caption = (
-        "Before seeing the KPI, the model believes each channel's value lies on the black line "
-        "(90% of the prior) and mostly in the dark bar (50%), with the tick at the median. The "
-        "light band is the range you stated."
+        "Before the model sees the KPI, it puts the value of each channel on the black line "
+        "(90% of the prior) and mostly in the dark bar (50%). The tick is at the median. The "
+        "light band is the range that you gave."
     )
     if parts:
         caption += " " + "; ".join(parts[:8]) + "."
