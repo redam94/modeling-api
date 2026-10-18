@@ -905,4 +905,172 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "the grid's x. Other dims must have one level or be fixed with `select`. The median "
         "line is not itself a possible path.",
     ),
+    # ------------------------------------------------------------ science pack: images
+    "sci.image_residuals": _a(
+        "Image residuals",
+        "Shows the observed image, the image that the model expects and the difference "
+        "between them. A pattern in the difference shows something that the model misses.",
+        [
+            "The model makes an image or a map that you can compare with a measured one",
+            "You want to find the parts of the image that the model does not explain",
+            "You want to check that the noise in the model has the right size",
+        ],
+        [
+            "There is no observed image (use Field map)",
+            "You want to see single images from the model (use Predictive image grid)",
+        ],
+        [
+            "Draws of a gridded output in the posterior_predictive, predictions or posterior group",
+            "The observed image with the same grid (observed_data group)",
+            "Optional: the noise of the data (a sigma variable or a number)",
+        ],
+        [
+            "Each cell is compared on its own; the chart does not show how cells vary together",
+            "Large images are averaged in blocks of cells so that the chart stays small",
+        ],
+        [
+            "Heatmaps of the observed image and the model mean on one colour scale",
+            "A heatmap of the residual (observed minus mean) on a red-blue scale",
+            "A heatmap of the residual divided by the uncertainty and the noise",
+            "A histogram of these normalised residuals with the standard normal curve",
+            "A slider when the output has a frame dimension",
+        ],
+        _I,
+        _SEC,
+        "The residual of a galaxy image is grey noise except for a red spot at the bottom "
+        "right. The model has the main galaxy but not a small companion next to it. The "
+        "normalised residuals have an sd of 1.04, so the noise level is right.",
+        related=["sci.ppc_image_grid", "sci.field_map", "core.ppc"],
+        expert="Mean and sd (ddof 1) per cell over up to `max_draws` draws; residual = obs - "
+        "mean; normalised = residual / sqrt(sd² + σ²). σ² comes from `sigma` (a variable: "
+        "posterior draws are averaged as E[σ²]; or a number), read as `sigma_kind` sd, "
+        "variance or inverse_variance. Without `sigma`, a variable named sigma is used, but "
+        "only for noise-free images: draws from posterior_predictive already hold the noise. "
+        "The histogram uses all cells at full resolution, bins of 0.25 on [-4.5, 4.5] (the "
+        "tails go to the end bins). `log` compares log10 values.",
+        refs=[_GABRY],
+    ),
+    "sci.ppc_image_grid": _a(
+        "Predictive image grid",
+        "Shows the observed image next to a few images that the model makes. If the model "
+        "fits, you cannot easily tell which image is the real one.",
+        [
+            "You want a quick visual check that the model can make images like the data",
+            "You want to test yourself or others with a shuffled grid",
+        ],
+        [
+            "You want to locate the errors cell by cell (use Image residuals)",
+            "There is no observed image (use Field map with draws)",
+        ],
+        [
+            "Draws of a gridded output, best from the posterior_predictive group",
+            "The observed image with the same grid (observed_data group)",
+        ],
+        [
+            "The draws hold the noise of the data, so they look like real measurements",
+            "A few draws show the typical images, not the rare ones",
+        ],
+        [
+            "One heatmap of the observed image and one for each draw, on one colour scale",
+            "With shuffle, the panels are in a random order and the caption names the real one",
+            "A slider when the output has a frame dimension",
+        ],
+        _B,
+        _SEC,
+        "In a shuffled grid of six patterns, five look the same and panel D has thinner "
+        "stripes. The caption says that panel D is the real image, so the model makes "
+        "stripes that are too wide.",
+        related=["sci.image_residuals", "sci.field_map", "core.ppc"],
+        expert="`n_draws` (5) draws chosen without replacement with `seed`; `shuffle` permutes "
+        "the observed panel among them with the same seed. All panels share one value range "
+        "(0.5 to 99.5 percentile). This is the visual 'line-up' test of Buja et al. (2009) "
+        "and Gelman's graphical posterior predictive checks.",
+        refs=[_GABRY],
+    ),
+    "sci.swatches": _a(
+        "Colour swatches",
+        "Shows squares in the colours that the model gives to each item, next to the "
+        "measured colours. Squares that change from draw to draw show where the model is not "
+        "sure.",
+        [
+            "The model gives a colour for each item, such as a paint, a chip or a pixel",
+            "You want to compare model colours with measured colours by eye",
+            "The items have places on a chart, such as the colour-naming chip chart",
+        ],
+        [
+            "The output is not a colour in sRGB from 0 to 1 (convert it first)",
+            "You need exact colour differences (read the numbers instead)",
+        ],
+        [
+            "Draws of an output with an item dimension and an rgb dimension of length 3",
+            "Optional: measured colours with the same dimensions (observed_data group)",
+            "Optional: row and col coordinates on the item dimension to draw a map",
+            "Optional: a probability for each item, shown as border width or opacity",
+        ],
+        [
+            "The values are sRGB in [0, 1]; values outside are clipped",
+            "The mean colour is the average in sRGB, not in a perceptual colour space",
+            "Screens show colours differently, so compare squares on the same screen",
+        ],
+        [
+            "Squares of the measured colours",
+            "Squares of the mean colour and of a few single draws",
+            "A list of items, or a map when the items have row and col coordinates",
+            "A caption with the mean distance between model and measured colours",
+        ],
+        _B,
+        _SEC,
+        "On the chip map, the mean squares match the measured squares in the light rows. "
+        "In the dark rows the draws change from green to brown, so the model is not sure of "
+        "the dark colours.",
+        related=["sci.field_map", "sci.ppc_image_grid"],
+        expert="`channel` (rgb) is the length-3 dim, reordered to r, g, b by its labels. "
+        "Colours are written as hex strings in the dataset. `arrange` auto draws a map when "
+        "`row` and `col` coords exist on the item dim (text coords become ordered ticks). "
+        "`prob` (draws are averaged) sets border width (0 to 2.5 px) or opacity "
+        "(`prob_as`) on the model panels. A list shows at most `max_items` evenly spaced "
+        "items. The distance in the caption is the Euclidean sRGB distance on a 0 to 255 "
+        "scale, not CIEDE2000.",
+    ),
+    "sci.power_spectrum": _a(
+        "Power spectrum",
+        "Shows how much signal there is at each scale or frequency, as the model sees it, "
+        "with shaded ranges and the measured points.",
+        [
+            "The model gives a spectrum in bins, such as the power of a sky map or a signal",
+            "You want to compare the spectrum with a theory curve and with the data",
+        ],
+        [
+            "The output is not binned along one dimension (use Profiles with bands)",
+            "You want single possible spectra (use Ensemble of draws)",
+        ],
+        [
+            "Draws of a binned output, with a coordinate such as multipole or frequency",
+            "Optional: observed values and their sd (observed_data group)",
+            "Optional: a theory curve in any group",
+        ],
+        [
+            "The bands show the uncertainty of each bin on its own; bins can be correlated",
+            "A log axis hides values at or below zero",
+        ],
+        [
+            "A line for the median in each bin",
+            "Shaded 50% and 90% bands",
+            "A dashed theory curve",
+            "Dots for the observed values with error bars",
+            "A caption with the share of observed values inside the 90% band",
+        ],
+        _X,
+        _NOW,
+        "The model's spectrum of a sky patch follows the dashed theory curve at large "
+        "scales, but it is lower than the curve above multipole 1500. 75% of the observed "
+        "points are in the 90% band, so the patch has a little less power at small scales.",
+        related=["sci.profile_bands", "sci.ensemble", "sci.field_map"],
+        expert="Equal-tailed bands at `levels` (default 0.5, 0.9) and the median or mean over "
+        "up to `max_draws` draws. x is `x_coord` (default: the first numeric coord on the bin "
+        "dim, such as ell; else the bin index). `theory` is any variable along one dim "
+        "(draws give the median). Error bars are `error_var`, default `<observed>_sd`. "
+        "`log_x` and `log_y` set log axes. The recipe draws the spectrum as given; scale it "
+        "(for example to D_ell = ell(ell+1)C_ell/2π) in the model.",
+    ),
 }

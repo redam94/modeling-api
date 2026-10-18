@@ -27,12 +27,15 @@ __all__ = [
     "example_inputs",
     "feature_importance_tree",
     "field_tree",
+    "image_tree",
     "panel_data",
     "plans_dataset",
     "prior_beliefs_dataset",
     "profile_tree",
     "response_curves",
     "score_tree",
+    "spectrum_tree",
+    "swatch_tree",
     "vector_tree",
 ]
 
@@ -372,6 +375,102 @@ def ensemble_tree() -> xr.DataTree:
     )
 
 
+def image_tree() -> xr.DataTree:
+    """``posterior_predictive.image(chain, draw, row, col)`` and ``observed_data.image``: a
+    galaxy with a smooth disc on a 40x40 image. The model has the disc but misses a small
+    companion at the bottom right, so the residuals show a bright spot there."""
+    rng = _rng(15)
+    yy, xx = np.meshgrid(np.linspace(-1, 1, 40), np.linspace(-1, 1, 40), indexing="ij")
+    disc = 2.0 * np.exp(-((xx / 0.5) ** 2 + (yy / 0.3) ** 2))
+    companion = 0.9 * np.exp(-((xx - 0.55) ** 2 + (yy - 0.5) ** 2) / 0.006)
+    noise = 0.12
+    fit = disc * rng.normal(1.0, 0.03, size=(CHAINS, 50, 1, 1))
+    pred = fit + rng.normal(0, noise, size=(CHAINS, 50, 40, 40))
+    obs = disc + companion + rng.normal(0, noise, size=(40, 40))
+    coords = {"row": np.arange(40), "col": np.arange(40)}
+    grid = json.dumps({"y": "row", "x": "col"})
+    da = xr.DataArray(pred, dims=["chain", "draw", "row", "col"], coords=coords, name="image")
+    da.attrs["grid"] = grid
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior_predictive": da.to_dataset(),
+            "/observed_data": xr.Dataset({"image": (("row", "col"), obs)}, coords),
+        }
+    )
+
+
+def swatch_tree() -> xr.DataTree:
+    """``posterior.chip_rgb(chain, draw, chip, rgb)``: the colour that the model gives to
+    each of 96 chips on an 6 x 16 map (row letters, column numbers), the measured colour and
+    ``posterior.p_mode(chain, draw, chip)``, the chance that the chip has its usual name.
+    The model is sure of the light chips and not sure of the dark ones."""
+    rng = _rng(16)
+    rows, n_cols = list("ABCDEF"), 16
+    r_grid, c_grid = np.meshgrid(np.arange(len(rows)), np.arange(n_cols), indexing="ij")
+    r_idx, c_idx = r_grid.ravel(), c_grid.ravel()
+    hue = c_idx / n_cols * 2 * np.pi
+    light = 0.85 - 0.12 * r_idx
+    base = np.stack(
+        [light + 0.25 * np.cos(hue + k * 2 * np.pi / 3) for k in range(3)], axis=1
+    ).clip(0, 1)
+    spread = 0.02 + 0.03 * r_idx[:, None]
+    draws = (base[None, None] + rng.normal(size=(CHAINS, 40, len(base), 3)) * spread).clip(0, 1)
+    observed = (base + rng.normal(0, 0.02, size=base.shape)).clip(0, 1)
+    p = 1 / (1 + np.exp(-(3.0 - 0.6 * r_idx + rng.normal(0, 0.3, size=(CHAINS, 40, len(base))))))
+    coords = {
+        "chip": np.arange(len(base)),
+        "rgb": ["r", "g", "b"],
+        "row": ("chip", [rows[i] for i in r_idx]),
+        "col": ("chip", c_idx),
+    }
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior": xr.Dataset(
+                {
+                    "chip_rgb": (("chain", "draw", "chip", "rgb"), draws),
+                    "p_mode": (("chain", "draw", "chip"), p),
+                },
+                coords,
+            ),
+            "/observed_data": xr.Dataset({"chip_rgb": (("chip", "rgb"), observed)}, coords),
+        }
+    )
+
+
+def spectrum_tree() -> xr.DataTree:
+    """``posterior.bandpower(chain, draw, bin)`` with an ``ell`` coord, the observed
+    bandpowers with their sd and a theory curve ``constant_data.theory_dl(ell_fine)``: a
+    sky patch with acoustic peaks. The patch has a little less power than the theory at
+    small scales (high ell)."""
+    rng = _rng(17)
+    ell = np.linspace(60, 1900, 24)
+    fine = np.linspace(30, 2000, 300)
+
+    def dl(x: np.ndarray) -> np.ndarray:
+        return 5500 * np.exp(-x / 1400) * (0.55 + 0.45 * np.cos((x - 220) / 160) ** 2)
+
+    tilt = 1 - 0.08 * ell / 1900
+    sd = 0.04 * dl(ell) + 40
+    draws = dl(ell) * tilt * rng.normal(1.0, 0.03, size=(CHAINS, 200, 1))
+    draws = draws + rng.normal(0, 1, size=draws.shape) * sd * 0.5
+    obs = dl(ell) * tilt + rng.normal(0, 1, size=ell.shape) * sd
+    coords = {"bin": np.arange(len(ell)), "ell": ("bin", ell)}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior": xr.Dataset({"bandpower": (("chain", "draw", "bin"), draws)}, coords),
+            "/observed_data": xr.Dataset(
+                {"bandpower": (("bin",), obs), "bandpower_sd": (("bin",), sd)}, coords
+            ),
+            "/constant_data": xr.Dataset(
+                {"theory_dl": (("ell_fine",), dl(fine))}, {"ell_fine": fine}
+            ),
+        }
+    )
+
+
 def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     """``{recipe id: (input data, render options)}`` for every bundled recipe."""
     bundle = bundle_tree()
@@ -399,4 +498,11 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "sci.vector_field": (vector_tree(), {}),
         "sci.profile_bands": (profile_tree(), {}),
         "sci.ensemble": (ensemble_tree(), {}),
+        "sci.image_residuals": (
+            image_tree(),
+            {"columns": 4, "width": 900, "height": 220, "hist_height": 160},
+        ),
+        "sci.ppc_image_grid": (image_tree(), {"n_draws": 5}),
+        "sci.swatches": (swatch_tree(), {"prob": "p_mode", "n_draws": 2}),
+        "sci.power_spectrum": (spectrum_tree(), {"theory": "theory_dl"}),
     }
