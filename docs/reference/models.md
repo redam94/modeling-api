@@ -521,7 +521,10 @@ values. Thus the model has no split: evaluate it in sample.
 
 The bundle also keeps `posterior_predictive/patch_fit` (`ppc_draws` draws) and
 `observed_data/patch_fit`. Thus `sci.image_residuals` shows the data, the fit and the residuals
-of each spot. `sci.point_pattern` shows the positions with error ellipses over `render`.
+of each spot. The bundle keeps `predictions/render` (`score_draws` draws) as well, so
+`sci.point_pattern` (the positions with error ellipses over `render`) and `sci.field_map` draw
+the super-resolved image from the fit alone. A whole long movie, such as the 2,000 real
+frames, is too large for the in-sample evaluate (see `PAYLOAD_TOO_LARGE` below).
 
 | Setting | Default | Meaning |
 |---|---|---|

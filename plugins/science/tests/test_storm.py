@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import math
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -442,6 +443,46 @@ def test_typed_score_refusals(
     assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
 
 
+def test_the_fit_alone_draws_the_render_when_the_movie_is_too_long_to_score(
+    bundle: Bundle,
+    registry: Registry,
+    synthetic: tuple[xr.Dataset, xr.Dataset],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: the runner draws plots from the fit bundle, then from an in-sample
+    evaluate of the whole fit data. On the real 2,000-frame movie that evaluate is over
+    MAX_FRAME_VALUES and refused, and the bundle had no ``render``: sci.point_pattern was
+    skipped and sci.field_map showed ``patch_fit``. The bundle now keeps ``render``."""
+    data, _ = synthetic
+    full = _predictions(_score(bundle, registry, "mode: predict\n", data))
+    group = bundle.model.groups[storm_mod.RENDER_GROUP]
+    assert group["render"].dims == ("chain", "draw", "render_y", "render_x")
+    assert group["render"].shape == full["render"].shape  # score_draws draws, as a score
+    np.testing.assert_allclose(group["render"].values, full["render"].values, rtol=1e-6)
+    # the real movie's case, scaled down: the runner's evaluate is refused
+    monkeypatch.setattr(storm_mod, "MAX_FRAME_VALUES", full["frames_hat"].size // 2)
+    with pytest.raises(MapiError) as exc:
+        score_bundle(  # what packages/runner worker/fit.py _evaluation_tree sends
+            bundle,
+            load_score_request(
+                HEADER + "mode: evaluate\ndata: dataset://runner/holdout@latest\nseed: 0\n"
+                "output: {names: canonical, kind: predictive}\n"
+            ),
+            data,
+            registry=registry,
+            metrics=["rmse"],
+            return_full=True,
+        )
+    assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+    refs = ["core.convergence", "sci.point_pattern", "sci.image_residuals", "sci.field_map"]
+    out = render_plots(bundle.to_tree(), refs)  # the runner's first tree
+    assert not out.issues, [i.untrusted_text or i.message for i in out.issues]
+    drawn = {str(p.id): json.dumps(p.model_dump(mode="json")) for p in out.plots}
+    assert set(drawn) == set(refs)
+    assert "render" in drawn["sci.point_pattern"]
+    assert "render" in drawn["sci.field_map"] and "patch_fit" not in drawn["sci.field_map"]
+
+
 # ------------------------------------------------------------------------------ plots
 
 
@@ -499,7 +540,7 @@ def test_contract_kit(registry: Registry, synthetic: tuple[xr.Dataset, xr.Datase
 
 
 @pytest.mark.skipif(CHALLENGES is None, reason="pymc-challenges data are not present")
-def test_from_challenges_reads_the_unc13_frames() -> None:
+def test_from_challenges_reads_the_unc13_frames(tmp_path: Path) -> None:
     assert CHALLENGES is not None
     ds = from_challenges(CHALLENGES)
     assert validate_dataset(STORM_SCHEMA, ds) == []
@@ -515,12 +556,9 @@ def test_from_challenges_reads_the_unc13_frames() -> None:
     assert 2 * np.median(spots.background) == pytest.approx(ref["background_photons"], abs=2)
     assert load_model_spec(challenges_spec(ds)).model.settings["max_spots"] == 200
     with pytest.raises(ValueError, match="missing"):
-        bad = CHALLENGES.parent / "missing.npz"
+        bad = tmp_path / "missing.npz"  # never write next to the shared real data
         np.savez(bad, frames=np.zeros((3, 4, 4)))
-        try:
-            from_challenges(bad)
-        finally:
-            bad.unlink()
+        from_challenges(bad)
 
 
 @pytest.mark.slow

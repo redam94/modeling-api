@@ -53,7 +53,10 @@ the same patches (``fit.keep.log_likelihood: true`` stores the pointwise values 
   frames, for example the frames with a fitted spot (``constant_data/spot_frame``).
 
 The bundle also keeps ``posterior_predictive/patch_fit`` (``ppc_draws`` Poisson draws) and
-``observed_data/patch_fit`` so ``sci.image_residuals`` shows data, fit and residual per spot.
+``observed_data/patch_fit`` so ``sci.image_residuals`` shows data, fit and residual per spot,
+and ``predictions/render`` (``score_draws`` draws) so ``sci.point_pattern`` and
+``sci.field_map`` draw the super-resolved image from the fit alone (a whole long movie is too
+large for the in-sample evaluate the runner would otherwise draw them from).
 A score uses only the fitted spots: it cannot localise spots in frames it has not seen.
 """
 
@@ -132,6 +135,8 @@ SQ2 = math.sqrt(2.0)
 Kind = Literal["flat", "plane"]
 MAX_FRAME_VALUES = 50_000_000
 """Most values of ``frames_hat`` in one score (frames x rows x cols x draws)."""
+#: the bundle group with ``render`` (``score_draws`` draws), found by the sci plots
+RENDER_GROUP = "predictions"
 
 # 4-connected blobs within one frame, never across frames
 _FOUR = np.array([[[0, 0, 0]] * 3, [[0, 1, 0], [1, 1, 1], [0, 1, 0]], [[0, 0, 0]] * 3])
@@ -702,6 +707,12 @@ class StormLocalisationModel(CustomModel[StormLocalisationSettings]):
             groups["posterior_predictive"] = _clean(
                 _ppc(posterior, spots.patches.shape[1], s, seed), result.engine
             )
+        # the super-resolved render (score_draws draws), so the fit's own plots
+        # (sci.point_pattern, sci.field_map) draw it without a score: the runner's in-sample
+        # evaluate of a long movie is over MAX_FRAME_VALUES and refused
+        render = self._render_group(posterior, geo, s)
+        groups[RENDER_GROUP] = _clean(render, result.engine)
+        groups[RENDER_GROUP]["render"].attrs = render["render"].attrs  # keep kind and grid
         with _quiet():
             prior = pm.sample_prior_predictive(
                 draws=200, model=model, var_names=names, random_seed=seed
@@ -743,6 +754,31 @@ class StormLocalisationModel(CustomModel[StormLocalisationSettings]):
         if check is not None:
             out.append(check)
         return out
+
+    def _render_group(
+        self, posterior: xr.Dataset, geo: _Geometry, s: StormLocalisationSettings
+    ) -> xr.Dataset:
+        """``render`` of ``score_draws`` evenly spaced posterior draws (as a score has it)."""
+        chains, draws = _draw_index(posterior, s.score_draws)
+        sub = posterior.isel(chain=chains, draw=draws)
+        dims_s = ("chain", "draw", SPOT_DIM)
+        render = render_points(
+            np.asarray(sub["x"].transpose(*dims_s).values),
+            np.asarray(sub["y"].transpose(*dims_s).values),
+            geo.render_x_edges,
+            geo.render_y_edges,
+        )
+        decl = self.outputs["render"]
+        attrs = {"kind": "posterior", "units": decl["units"], "grid": json.dumps(decl["grid"])}
+        return xr.Dataset(
+            {"render": (("chain", "draw", RENDER_Y, RENDER_X), render, attrs)},
+            coords={
+                "chain": sub["chain"].values,
+                "draw": sub["draw"].values,
+                RENDER_Y: geo.render_y,
+                RENDER_X: geo.render_x,
+            },
+        )
 
     # ================================================================== score
     def score(
