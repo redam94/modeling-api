@@ -518,8 +518,9 @@ the plots.
   `unreachable`). `esp0` is the number of ties whose two nodes have no shared neighbour.
   Compare them with the statistics of the data (posterior predictive checks).
 
-The fit always keeps the log-likelihood of each observed pair (dim `dyad`; the pairs are in
-`constant_data/dyad_i` and `dyad_j`). Thus `elpd_loo` is leave-one-pair-out, and the kinds of a
+The posterior also keeps `tie_prob` (float32) for the plots of the fit, and
+`constant_data/adjacency` keeps the observed matrix. The fit always keeps the log-likelihood of
+each observed pair (dim `dyad`; the pairs are in `constant_data/dyad_i` and `dyad_j`). Thus `elpd_loo` is leave-one-pair-out, and the kinds of a
 workflow ladder use the same pairs in the same order. A `mask_block` split over `[node, node_]`
 holds out random cells. A pair is out of the fit when one of its two cells is held out.
 
