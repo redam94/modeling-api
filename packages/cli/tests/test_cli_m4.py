@@ -181,8 +181,8 @@ def test_one_file_at_a_node_is_an_assembly(
     _, _, version = _routes(api, example)
     (psf,) = _files(tmp_path, "psf.nc")
     res = mapi(
-        "--url", URL, "datasets", "upload", psf, "--name", "eu_media_daily", "--node", "/instrument",
-        "--no-wait",
+        "--url", URL, "datasets", "upload", psf, "--name", "eu_media_daily",
+        "--node", "/instrument", "--no-wait",
     )  # fmt: skip
     assert res.exit_code == 0, res.output
     assert [s["node"] for s in _sources(version)] == ["/instrument"]
@@ -246,8 +246,8 @@ def test_raw_hdf5_needs_a_mapping(
     mapping = tmp_path / "h5.json"
     mapping.write_text(json.dumps(IngestMapping.model_json_schema()["examples"][4]))
     res = mapi(
-        "--url", URL, "datasets", "upload", str(h5), "--name", "eu_media_daily", "--mapping", str(mapping),
-        "--no-wait",
+        "--url", URL, "datasets", "upload", str(h5), "--name", "eu_media_daily",
+        "--mapping", str(mapping), "--no-wait",
     )  # fmt: skip
     assert res.exit_code == 0, res.output
     body = json.loads(version.calls.last.request.content)
