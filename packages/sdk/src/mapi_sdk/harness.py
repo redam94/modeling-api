@@ -18,6 +18,12 @@
 ``inputs_stage``, context replay, canonical coords, ``model.score``, context removal,
 selection, inverse transforms to the output space, aggregation, summaries, thinned draws and
 reverse binding. It returns an ``xr.DataTree``.
+
+Tree datasets (M4): both accept an ``xr.DataTree`` wherever they take the dataset. The
+nodes the spec's ``data.nodes`` selects are merged into one flat dataset first
+(:func:`mapi_sdk.tree.select_nodes`, aligned per ``data.join``) and everything else runs on
+it exactly as for a plain dataset. A model whose capabilities declare ``input="tree"``
+also gets the whole tree, bound per node, as ``FitContext.tree`` / ``ScoreContext.tree``.
 """
 
 from __future__ import annotations
@@ -58,6 +64,7 @@ from mapi_spec.errors import (
 from mapi_spec.loader import load_model_spec, load_score_request
 from mapi_spec.schema import DataSchema, DimPolicy, Role
 from mapi_spec.spec import (
+    DataBlock,
     FitMode,
     LastPerGroupSplit,
     ModelSpec,
@@ -65,6 +72,7 @@ from mapi_spec.spec import (
     ScoreRequest,
     Split,
 )
+from mapi_spec.tree import NodeSelectionError, TreeSchema
 from mapi_spec.validate import ResolvedSpec, apply_defaults, validate_spec
 
 from mapi_sdk._util import json_safe, normalise_dataset
@@ -106,7 +114,8 @@ from mapi_sdk.summarise import (
     summarise,
     thin_index,
 )
-from mapi_sdk.wire import write_zarr_zip
+from mapi_sdk.tree import infer_tree_schema, select_nodes, selection_error, selection_schema
+from mapi_sdk.wire import write_datatree_zip, write_zarr_zip
 
 __all__ = [
     "DEFAULT_EVAL_METRICS",
@@ -156,13 +165,92 @@ class FitHooks:
             self.cancel.check()
 
 
-def data_hash(ds: xr.Dataset) -> str:
-    """``sha256:`` of the canonical zarr-zip bytes of ``ds`` (deterministic)."""
+def data_hash(ds: xr.Dataset | xr.DataTree) -> str:
+    """``sha256:`` of the canonical zarr-zip bytes of ``ds`` (a tree: of its tree zip)."""
     import hashlib
 
-    raw = write_zarr_zip(ds)
+    raw = write_datatree_zip(ds) if isinstance(ds, xr.DataTree) else write_zarr_zip(ds)
     assert raw is not None
     return "sha256:" + hashlib.sha256(raw).hexdigest()
+
+
+# ===================================================================================== trees
+
+
+@dataclass(slots=True)
+class _TreeInput:
+    """A dataset handed to the harness; a tree is flattened per ``data.nodes``."""
+
+    flat: xr.Dataset
+    raw_schema: DataSchema | None
+    tree: xr.DataTree | None
+    """The whole tree under its dataset names (``None`` for a plain dataset)."""
+    spec: ModelSpec
+    """The spec static validation sees: for a tree, ``data.nodes``/``join`` are already
+    applied (the flat dataset is the raw stage)."""
+
+
+def _flat_spec(spec: ModelSpec) -> ModelSpec:
+    if spec.data.nodes is None and spec.data.join == "exact":
+        return spec
+    data = spec.data.model_copy(update={"nodes": None, "join": "exact"})
+    return spec.model_copy(update={"data": data})
+
+
+def _tree_input(
+    spec: ModelSpec,
+    data: xr.Dataset | xr.DataTree,
+    raw_schema: DataSchema | None,
+    tree_schema: TreeSchema | None,
+) -> _TreeInput:
+    """Flatten a tree dataset per ``spec.data.nodes`` (plain datasets pass through)."""
+    if not isinstance(data, xr.DataTree):
+        if tree_schema is not None:
+            raise MapiError(
+                "a tree schema was given for a plain dataset",
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer="/data",
+            )
+        return _TreeInput(data, raw_schema, None, spec)
+    block = spec.data
+    try:
+        schema = tree_schema if tree_schema is not None else infer_tree_schema(data)
+        flat = select_nodes(data, block.nodes, block.join, schema=schema)
+        if raw_schema is None:
+            raw_schema = selection_schema(schema, block.nodes, data=flat, join=block.join)
+    except NodeSelectionError as exc:
+        raise selection_error(exc) from None
+    return _TreeInput(flat, raw_schema, data, _flat_spec(spec))
+
+
+def _payload(
+    block: DataBlock, ds: xr.Dataset | xr.DataTree | None, what: str, inputs_stage: str
+) -> tuple[xr.Dataset | None, xr.DataTree | None]:
+    """A score payload as a flat dataset (and its tree, when it is one)."""
+    if not isinstance(ds, xr.DataTree):
+        return ds, None
+    if inputs_stage != RAW:
+        raise MapiError(
+            f"a tree dataset can only enter at the raw stage, not {inputs_stage!r}",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/inputs_stage",
+        )
+    try:
+        flat = select_nodes(ds, block.nodes, block.join)
+    except NodeSelectionError as exc:
+        err = selection_error(exc)
+        err.pointer = f"/{what}"
+        raise err from None
+    return flat, ds
+
+
+def _bound_tree(
+    tree: xr.DataTree | None, binding: BindingMap, wants_tree: bool
+) -> xr.DataTree | None:
+    """The tree a tree-input model receives: binding renames applied per node."""
+    if tree is None or not wants_tree:
+        return None
+    return binding.apply_tree(tree)
 
 
 # ============================================================================================ fit
@@ -230,11 +318,15 @@ class _FitEnv:
     hooks: FitHooks
     data_hash: str | None
     validation_issues: list[Issue] = field(default_factory=list)
+    tree: xr.DataTree | None = None
+    """M4: the tree dataset under its dataset names (``None`` for a plain dataset)."""
+    bound_tree: xr.DataTree | None = None
+    """M4: the bound tree handed to a tree-input model (``None`` otherwise)."""
 
 
 def fit_spec(
     spec: ModelSpec | str,
-    data: xr.Dataset,
+    data: xr.Dataset | xr.DataTree,
     side_tables: Mapping[str, xr.Dataset] | None = None,
     registry: Registry | None = None,
     *,
@@ -242,18 +334,25 @@ def fit_spec(
     hooks: FitHooks | None = None,
     keep_evaluation_bundle: bool = True,
     hash_data: bool = True,
+    tree_schema: TreeSchema | None = None,
 ) -> Bundle:
     """Fit ``spec`` on ``data`` and return the production :class:`~mapi_sdk.bundle.Bundle`.
 
     ``raw_schema`` describes ``data`` under its dataset names; when omitted it is read from
     ``data.attrs["mapi_schema"]`` or inferred (variables bound to the model's targets are
     marked as targets). ``side_tables`` maps ``data.side_tables`` names to datasets.
+
+    ``data`` may be a tree dataset (M4): the nodes ``spec.data.nodes`` selects are merged
+    into the flat dataset the pipeline reads (:func:`mapi_sdk.tree.select_nodes`);
+    ``tree_schema`` describes the tree (inferred when omitted) and ``raw_schema``, if given,
+    the merged flat dataset. A tree-input model also gets the bound tree (``ctx.tree``).
     """
     spec = load_model_spec(spec) if isinstance(spec, str) else spec
     registry = registry or default_registry()
     hooks = hooks or FitHooks()
-    data = normalise_dataset(data)
-    resolved, schema, issues = _resolve(spec, registry, data, raw_schema)
+    given = _tree_input(spec, data, raw_schema, tree_schema)
+    data = normalise_dataset(given.flat)
+    resolved, schema, issues = _resolve(given.spec, registry, data, given.raw_schema)
     check_dataset(schema, data)
     hooks.progress(0.05, "validated the spec and the data")
 
@@ -280,8 +379,12 @@ def fit_spec(
         side_tables=tables,
         seed=spec.model.fit.seed or 0,
         hooks=hooks,
-        data_hash=data_hash(data) if hash_data else None,
+        data_hash=data_hash(given.tree if given.tree is not None else data) if hash_data else None,
         validation_issues=issues,
+        tree=given.tree,
+        bound_tree=_bound_tree(
+            given.tree, BindingMap(resolved.binding), manifest.capabilities.input == "tree"
+        ),
     )
     raw = BindingMap(resolved.binding).apply(data)
 
@@ -431,6 +534,7 @@ def _fit_from(
         stage_schema=rs.stages.get(rs.model_stage),
         calibration=_calibration_for(env.spec, manifest),
         to_original=_to_original(env.pipeline, states, env.side_tables),
+        tree=env.bound_tree,
     )
     try:
         out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)
@@ -558,25 +662,28 @@ class ModelStage:
 
 def prepare_model_stage(
     spec: ModelSpec | str,
-    data: xr.Dataset,
+    data: xr.Dataset | xr.DataTree,
     side_tables: Mapping[str, xr.Dataset] | None = None,
     registry: Registry | None = None,
     *,
     raw_schema: DataSchema | None = None,
     hooks: FitHooks | None = None,
+    tree_schema: TreeSchema | None = None,
 ) -> ModelStage:
     """Validate ``spec`` against ``data``, fit every pipeline step on all of it and return
     the model-stage dataset with the model plugin, its parsed settings and a
     :class:`~mapi_sdk.models.FitContext` (``to_original`` uses the fitted step states).
 
     Nothing is split and the model is not fitted: the scales are the data-derived ones a
-    full fit would learn (the production refit of ``evaluate_then_refit``).
+    full fit would learn (the production refit of ``evaluate_then_refit``). A tree dataset
+    is flattened per ``data.nodes`` as in :func:`fit_spec`.
     """
     spec = load_model_spec(spec) if isinstance(spec, str) else spec
     registry = registry or default_registry()
     hooks = hooks or FitHooks()
-    data = normalise_dataset(data)
-    resolved, schema, issues = _resolve(spec, registry, data, raw_schema)
+    given = _tree_input(spec, data, raw_schema, tree_schema)
+    data = normalise_dataset(given.flat)
+    resolved, schema, issues = _resolve(given.spec, registry, data, given.raw_schema)
     check_dataset(schema, data)
     tables = {k: normalise_dataset(v) for k, v in (side_tables or {}).items()}
     needed = sorted({t for s in resolved.steps for t in s.side_tables})
@@ -609,6 +716,9 @@ def prepare_model_stage(
         stage_schema=resolved.stages.get(resolved.model_stage),
         calibration=spec.calibration,
         to_original=to_original,
+        tree=_bound_tree(
+            given.tree, BindingMap(resolved.binding), manifest.capabilities.input == "tree"
+        ),
     )
     return ModelStage(
         spec=spec,
@@ -694,6 +804,7 @@ def _fit_derived(
         log=env.hooks.log,
         cancel=env.hooks.cancel,
         to_original=_to_original(env.pipeline, states, env.side_tables),
+        tree=env.bound_tree,
     )
     model_id = fitted.manifest.id
     out: dict[str, xr.Dataset] = {}
@@ -788,7 +899,13 @@ def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, 
         rs.model.input_schema,
         pad_extend=bool(getattr(env.plugin, "pad_extend", True)),
     )
-    ctx = ScoreContext(mode="predict", kind="expected", seed=env.seed, schema=rs.model.input_schema)
+    ctx = ScoreContext(
+        mode="predict",
+        kind="expected",
+        seed=env.seed,
+        schema=rs.model.input_schema,
+        tree=env.bound_tree,
+    )
     tree = env.plugin.score(bundle.model, canon, req, ctx)
     pred = plan.restore(_predictions(tree))
     out: dict[str, xr.DataArray] = {}
@@ -859,6 +976,7 @@ def _evaluate(env: _FitEnv, evaluation: Bundle, sr: SplitResult, split_stage: st
         metrics=[m for m in names if not m.startswith("elpd_")],
         metric_mask=mask,
         observed=observed,
+        tree=env.tree,
     )
     report = MetricsReport.model_validate_json(tree.attrs["metrics"])
     report.split = json_safe(
@@ -1144,9 +1262,9 @@ class _Scored:
 def score_bundle(
     bundle: Bundle,
     request: ScoreRequest | str,
-    data: xr.Dataset | None = None,
+    data: xr.Dataset | xr.DataTree | None = None,
     *,
-    scenario: xr.Dataset | None = None,
+    scenario: xr.Dataset | xr.DataTree | None = None,
     side_tables: Mapping[str, xr.Dataset] | None = None,
     registry: Registry | None = None,
     max_draws: int | None = None,
@@ -1154,8 +1272,9 @@ def score_bundle(
     metrics: Sequence[str] | None = None,
     metric_mask: xr.DataArray | None = None,
     hooks: FitHooks | None = None,
-    observed: xr.Dataset | None = None,
-    history: xr.Dataset | None = None,
+    observed: xr.Dataset | xr.DataTree | None = None,
+    history: xr.Dataset | xr.DataTree | None = None,
+    tree: xr.DataTree | None = None,
 ) -> xr.DataTree:
     """Score a fitted bundle; returns a ``DataTree``.
 
@@ -1173,6 +1292,13 @@ def score_bundle(
     has them masked. ``history`` (M3) is the fitted dataset (dataset names): forecasts whose
     ``future_covariates`` policy is ``carry_last`` or ``seasonal_naive`` extend the
     covariates the payload lacks from it (:mod:`mapi_sdk.future`).
+
+    Tree datasets (M4): ``data``, ``scenario``, ``observed`` and ``history`` may be
+    ``xr.DataTree`` versions entering at the raw stage; the nodes the bundle's
+    ``data.nodes`` selects are merged into the flat payload first. A model whose
+    capabilities declare ``input="tree"`` gets the payload's tree, bound, as
+    ``ScoreContext.tree``; ``tree`` (dataset names) stands in for it when the payload is
+    already flat (the evaluation of a fit from a tree dataset).
     """
     req = load_score_request(request) if isinstance(request, str) else request
     registry = registry or default_registry()
@@ -1185,6 +1311,13 @@ def score_bundle(
     plugin = plugin_cls()
     pipeline = bundle.pipeline(registry)
     pipeline.index(req.inputs_stage)
+    block = bundle.spec.data
+    data, data_tree = _payload(block, data, "data", req.inputs_stage)
+    scenario, scenario_tree = _payload(block, scenario, "scenario", req.inputs_stage)
+    observed, _ = _payload(block, observed, "observed", req.inputs_stage)
+    history, _ = _payload(block, history, "history", RAW)
+    data_tree = data_tree if data_tree is not None else tree
+    wants_tree = plugin_cls.manifest().capabilities.input == "tree"
 
     counterfactual = req.mode == "counterfactual"
     if counterfactual and req.scenario is not None and scenario is None:
@@ -1201,6 +1334,8 @@ def score_bundle(
         )
     if not counterfactual and scenario is not None:
         data, scenario = scenario, None  # the scenario is the payload
+        if scenario_tree is not None:
+            data_tree, scenario_tree = scenario_tree, None
     payload_given = data is not None
     if data is None:
         if req.horizon is None:
@@ -1324,7 +1459,7 @@ def score_bundle(
             drop_context(model_ds[[t for t in targets if t in model_ds]], trace.marks)
         )
 
-    def run(ds: xr.Dataset) -> _Scored:
+    def run(ds: xr.Dataset, payload_tree: xr.DataTree | None) -> _Scored:
         trace, canon, plan = prepare(ds)
         ctx = ScoreContext(
             mode=req.mode,
@@ -1336,6 +1471,7 @@ def score_bundle(
             draw_index=bundle.thin,
             log=hooks.log,
             cancel=hooks.cancel,
+            tree=_bound_tree(payload_tree, binding, wants_tree),
         )
         actuals: ForecastActuals | None = None
         if forecast:
@@ -1384,9 +1520,10 @@ def score_bundle(
         return _Scored(pred, observed, extra, trace.issues)
 
     scored = data if scenario is None else scenario
+    scored_tree = scenario_tree if scenario_tree is not None else data_tree
     if req.interventions:
         scored = _apply_interventions(scored, req, binding)
-    main = run(scored)
+    main = run(scored, scored_tree)
     issues += main.issues
     if observed is not None:
         # cell-level evaluation: features come from the target-masked payload, the
@@ -1394,7 +1531,7 @@ def score_bundle(
         obs_in = binding.apply(normalise_dataset(observed), missing="ignore")
         obs_trace, _, obs_plan = prepare(_order_payload(obs_in, entry_schema))
         main.observed = observe(obs_trace, obs_plan)
-    baseline = run(data) if counterfactual else None
+    baseline = run(data, data_tree) if counterfactual else None
 
     kept_reported: set[str] = set()
 

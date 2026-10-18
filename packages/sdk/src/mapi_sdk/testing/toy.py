@@ -15,10 +15,12 @@ Models (panel models over ``group_dim × time_dim``)
     ``toy.quantile`` (quantiles; least squares plus empirical residual quantiles),
     ``toy.ar1`` (point; an AR(1) with drivers per group that conditions forecasts on
     actuals - the reference for ``forecast_with_actuals``; ``toy.ar1_missing`` filters gaps,
-    ``toy.ar1_plain`` lacks the capability).
+    ``toy.ar1_plain`` lacks the capability), ``toy.tree_linear`` (``toy.linear`` that also
+    reads the whole tree dataset - the reference for ``capabilities.input="tree"``).
 
 :func:`toy_registry` returns a registry with all of them and :func:`panel_dataset` makes a
-daily E33-like dataset (markets × channels × days) with a known linear signal.
+daily E33-like dataset (markets × channels × days) with a known linear signal;
+:func:`tree_dataset` makes a weekly tree dataset (M4) for tree-input models.
 """
 
 from __future__ import annotations
@@ -63,8 +65,11 @@ __all__ = [
     "QuantileModel",
     "ResampleStep",
     "ScaleStep",
+    "TreeLinearModel",
     "panel_dataset",
     "toy_registry",
+    "tree_dataset",
+    "tree_spec",
 ]
 
 # ============================================================================ steps
@@ -906,6 +911,148 @@ class AR1NoActualsModel(AR1Model):
     capabilities = AR1Model.capabilities.model_copy(update={"conditions_on_actuals": False})
 
 
+# ======================================================================= tree input
+
+
+ADJUST_NODE = "/adjust"
+"""Node of :func:`tree_dataset` whose ``offset`` (per group) ``toy.tree_linear`` adds."""
+
+
+def _tree_offset(tree: xr.DataTree | None, group_dim: str) -> xr.DataArray | None:
+    if tree is None or ADJUST_NODE.lstrip("/") not in tree.children:
+        return None
+    node = tree[ADJUST_NODE.lstrip("/")]
+    assert isinstance(node, xr.DataTree)
+    if "offset" not in node.data_vars:
+        return None
+    off = node["offset"]
+    if set(off.dims) - {group_dim}:
+        raise MapiError(
+            f"node {ADJUST_NODE!r}: 'offset' may only vary along {group_dim!r}",
+            code=ErrorCode.SCHEMA_INVALID,
+        )
+    return off.astype(float)
+
+
+class TreeLinearModel(LinearModel):
+    """``toy.linear`` that reads the whole tree dataset (``capabilities.input="tree"``).
+
+    The pipeline input is the flat merge ``data.nodes`` selects, as for any model; in
+    addition the bound tree (``ctx.tree``) may hold an ``/adjust`` node whose
+    ``offset(group_dim)`` is added to the intercept (and so to ``y_hat``). The offset seen
+    at fit is learned, so a flat score payload without its tree scores like the fit tree;
+    a tree payload's own ``/adjust`` wins. ``learned["tree_nodes"]`` lists the fit tree.
+    """
+
+    id = "toy.tree_linear"
+    version = "1.0.0"
+    capabilities = LinearModel.capabilities.model_copy(update={"input": "tree"})
+
+    def fit(self, ds: xr.Dataset, s: PanelSettings, cfg: FitConfig, ctx: FitContext) -> FitOutput:
+        if ctx.tree is None:
+            raise MapiError(
+                "toy.tree_linear reads a tree dataset; fit it from one",
+                code=ErrorCode.SCHEMA_INVALID,
+            )
+        out = super().fit(ds, s, cfg, ctx)
+        out.learned["tree_nodes"] = cast(
+            list[JsonValue], sorted(str(node.path) for node in ctx.tree.subtree)
+        )
+        off = _tree_offset(ctx.tree, s.group_dim)
+        if off is not None:
+            out.groups["adjust"] = xr.Dataset({"offset": off})
+        return out
+
+    def score(
+        self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+    ) -> xr.DataTree:
+        s = self.parse_settings(fitted.settings)
+        tree = super().score(fitted, ds, req, ctx)
+        off = _tree_offset(ctx.tree, s.group_dim)
+        if off is None and "adjust" in fitted.groups:
+            off = fitted.groups["adjust"]["offset"]
+        if off is None:
+            return tree
+        node = tree[PREDICTIONS]
+        assert isinstance(node, xr.DataTree)
+        pred = node.to_dataset()
+        shift = off.reindex({s.group_dim: pred[s.group_dim].values}, fill_value=0.0)
+        contributions = pred["contributions"].copy()
+        contributions.loc[{"component": "intercept"}] = (
+            contributions.sel(component="intercept") + shift
+        )
+        out = xr.Dataset({"y_hat": contributions.sum("component"), "contributions": contributions})
+        return xr.DataTree.from_dict({PREDICTIONS: out})
+
+
+def tree_dataset(
+    *,
+    markets: Sequence[str] = ("NL", "DE", "FR"),
+    channels: Sequence[str] = ("tv", "search"),
+    weeks: int = 40,
+    start: str = "2024-01-07",
+    seed: int = 0,
+    noise: float = 0.05,
+    offset: Sequence[float] | None = (5.0, -5.0, 0.0),
+) -> xr.DataTree:
+    """A weekly tree dataset (M4) with a known linear signal.
+
+    ``/`` holds the shared coords (``market``, ``channel``, ``date``; the children inherit
+    them), ``/sales`` ``revenue(market, date)``, ``/media`` ``spend(market, channel, date)``
+    and - unless ``offset`` is ``None`` - ``/adjust`` ``offset(market)``, which
+    :class:`TreeLinearModel` adds to its predictions. Read it with :func:`tree_spec`.
+    """
+    rng = np.random.default_rng(seed)
+    dates = pd.date_range(start, periods=weeks, freq="W-SUN").as_unit("ns")
+    m, c = len(markets), len(channels)
+    spend = rng.gamma(2.0, 50.0, size=(m, c, weeks))
+    beta = np.linspace(0.8, 1.6, c)
+    base = rng.uniform(200, 400, size=m)
+    revenue = base[:, None] + np.einsum("mcw,c->mw", spend, beta)
+    revenue *= 1 + noise * rng.standard_normal(revenue.shape)
+    nodes: dict[str, xr.Dataset] = {
+        "/": xr.Dataset(
+            coords={"market": list(markets), "channel": list(channels), "date": dates},
+            attrs={"title": "toy tree dataset"},
+        ),
+        "/sales": xr.Dataset({"revenue": (("market", "date"), revenue, {"units": "EUR"})}),
+        "/media": xr.Dataset({"spend": (("market", "channel", "date"), spend, {"units": "EUR"})}),
+    }
+    if offset is not None:
+        nodes[ADJUST_NODE] = xr.Dataset({"offset": (("market",), np.asarray(offset, float))})
+    return xr.DataTree.from_dict(nodes)
+
+
+TREE_SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: toy-tree, project: growth}
+data:
+  dataset: dataset://growth/toy_tree@latest
+  nodes:
+    sales: {path: /sales}
+    media: {path: /media}
+  bind:
+    dims: {geo: market, time: date}
+    vars: {y: revenue}
+__SPLIT__pipeline: []
+model:
+  use: __MODEL__
+  fit: {mode: __MODE__, seed: 3}
+evaluate: {metrics: [rmse]}
+"""
+
+
+def tree_spec(
+    model: str = "toy.tree_linear@^1", *, split: bool = True, mode: str = "evaluate_then_refit"
+) -> str:
+    """A spec (YAML text) reading :func:`tree_dataset`'s ``/sales`` and ``/media`` nodes."""
+    text = TREE_SPEC.replace("__MODEL__", model).replace("__MODE__", mode)
+    return text.replace(
+        "__SPLIT__", "  split: {kind: time_holdout, dim: time, last: 4}\n" if split else ""
+    )
+
+
 # ============================================================================ helpers
 
 
@@ -926,6 +1073,7 @@ def toy_registry() -> Registry:
             AR1Model,
             AR1MissingModel,
             AR1NoActualsModel,
+            TreeLinearModel,
         ]
     )
     return reg
