@@ -14,6 +14,7 @@ Their data are maps, images and fields on a regular grid.
 | `sci.turing_pattern@1` | Schnakenberg kinetics from early images of a growing Turing pattern, exact Fourier-mode likelihood (E61 part A) | draws | predict, simulate, evaluate |
 | `sci.storm_localisation@1` | Single-molecule localisation in raw EMCCD STORM frames: detection and camera calibration in NumPy, batched pixel-integrated Gaussian PSF fit with Poisson counts (E58) | draws | predict, evaluate |
 | `sci.ibp_features@1` | Latent binary features of small images: truncated Indian buffet process, patterns summed out (E31) | draws | predict, evaluate |
+| `sci.colour_naming@1` | Colour naming of one language (World Color Survey): softmax over quadratic CIELAB logits, pooled or with speaker effects (E77) | draws | predict, simulate, evaluate |
 
 Outputs that are fields declare a `grid` (`OutputDecl.grid`). The Model Explorer shows them in
 its **Fields** section, and the `sci.*` plot recipes draw them.

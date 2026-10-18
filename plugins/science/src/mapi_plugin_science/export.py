@@ -63,6 +63,7 @@ from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
 from mapi_plugin_science import (
+    colour_naming_data,
     heat_plate_data,
     ibp_data,
     kpp_data,
@@ -507,6 +508,22 @@ _register(
         project="vision",
         dataset="optdigits_e31",
         spec=ibp_data.DIGITS_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e77",
+        title="Colour naming in Nafaanra (World Color Survey)",
+        notebook="E77_colour_naming.py",
+        model="sci.colour_naming",
+        files=colour_naming_data.CHALLENGES_FILES,
+        loader=lambda d: colour_naming_data.from_challenges(d / colour_naming_data.CHALLENGES_FILE),
+        synthetic=lambda: colour_naming_data.naming_dataset(),
+        schema=colour_naming_data.NAMING_SCHEMA,
+        project="linguistics",
+        dataset="wcs_nafaanra",
+        spec=colour_naming_data.NAFAANRA_SPEC_YAML,
     )
 )
 

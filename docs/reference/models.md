@@ -38,6 +38,7 @@ each lift likelihood.
 | `sci.turing_pattern@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e61_turing` |
 | `sci.storm_localisation@1` | `mapi-plugin-science` | draws | predict, evaluate | `e58_storm` |
 | `sci.ibp_features@1` | `mapi-plugin-science` | draws | predict, evaluate | `e31_ibp` |
+| `sci.colour_naming@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e77_colour_naming` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -359,6 +360,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e61` | `sci.turing_pattern` | none (the notebook simulates its images) | `biology/e61_turing_early_images` |
 | `e58` | `sci.storm_localisation` | `dannhauser2022_unc13_dstorm_roi.npz` | `microscopy/dannhauser2022_unc13_dstorm` |
 | `e31` | `sci.ibp_features` | `optdigits_train.csv`, `optdigits_test.csv` | `vision/optdigits_e31` |
+| `e77` | `sci.colour_naming` | `wcs_naming.npz`, `wcs_terms.csv`, `wcs_chips.csv`, `wcs_languages.csv` | `linguistics/wcs_nafaanra` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -758,3 +760,77 @@ the notebook predicts. The notebook fits the 300 training digits only and gives 
 The export spec also fits the top halves of the test digits, so its log density differs. A
 separate fit on the 300 training digits only, as in the notebook, gives 0.283 and −0.34 nats
 in approximately 4 minutes.
+
+### `sci.colour_naming` — how the speakers of a language name colours (E77)
+
+The World Color Survey asked the speakers of 110 languages to name 330 colour chips. This model
+fits the naming of one language. The probability that a speaker gives term `t` to chip `c` is
+a softmax over the terms. The logit of each term is a quadratic surface in CIELAB colour space:
+a multinomial logistic regression on 10 standardised features
+(`1, L, a, b, L², a², b², ab, La, Lb`). The weights `W` are zero-sum over the terms
+(`ZeroSumNormal(w_sd)`).
+
+- `kind: pooled` gives all speakers the same naming. The likelihood uses the chip × term counts.
+- `kind: hierarchical` gives each speaker an intercept and linear weights (`L, a, b`) of their
+  own, around the weights of the language: `W_s = W + sd z_s`, with `sd ~ HalfNormal(sd_scale)`
+  and `z ~ ZeroSumNormal(1)`. A term that only some speakers use gets a large `sd` on its
+  intercept.
+- `features: grid_line` and `features: grid_circle` use the place of the chip on the printed
+  palette (row and hue column) instead of its colour. `grid_line` treats the hue as a line, and
+  `grid_circle` treats it as a circle. Fit the variants with `elpd_loo` in a workflow to compare
+  them.
+
+**Inputs.** `speaker` (categorical, policy `new_levels`, strategy `hyperprior`), `chip`
+(integer, fixed) and the target `naming(speaker, chip)`. The target holds the term labels as
+text. An empty cell is a speaker who gave no answer. The chip variables are `lab_l`, `lab_a`,
+`lab_b` (the CIELAB colour) and `grid_row`, `grid_col` (the place on the palette; WCS rows A to
+J are 0 to 9 and the greys are in column 0). The model orders the terms from the most used to
+the least used.
+
+**Outputs.**
+
+- `p_name(speaker, chip, term)`: the probability that the speaker gives the term to the chip.
+  A fitted speaker keeps their own effects. A new speaker gets new effects in each draw, so the
+  mean over the draws is the prediction for a new speaker. With `kind: predictive`, each draw
+  holds one sampled term (one-hot). The `evaluate` mode always uses the probabilities.
+- `p_term(term, lightness, hue)`: the share of the speakers of the language who give the term
+  to the chip, on the palette grid (a field with one frame for each term). The fit averages
+  `new_speakers` simulated speakers in each draw. A grid cell without a chip is empty in the
+  fitted model and 0 in a score.
+- `mode_term_rgb(chip, rgb)`: each chip in the display colour of its most probable term in the
+  draw. The display colour of a term is the CIELAB mean of the chips where the term is most
+  probable. The `row` and `col` coords put the chips on the palette for `sci.swatches`. The
+  observed panel paints each chip with the term that most speakers gave.
+- `p_top(chip)`: the share of speakers who give the chip its most probable term.
+- `k_eff_speaker` and `k_eff_language`: the effective number of colour categories of one
+  speaker and of the language, `exp` of the mutual information between chip and term.
+
+The fitted model keeps these language-level outputs for every draw. Thus the fit-time plots
+(`sci.field_map`, `sci.swatches`) show them without a score. The pointwise log-likelihood has
+one value for each chip (the sum over its speakers). Thus `elpd_loo` is leave-one-chip-out, and
+the variants have the same points. Use the categorical metrics (`log_score`, `accuracy`,
+`accuracy_lift`, `brier`) with a `leave_group_out` split on `speaker`: they score the held-out
+speakers as new speakers.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kind` | `hierarchical` | `hierarchical` (speaker effects) or `pooled` |
+| `features` | `cielab` | `cielab`, `grid_line` or `grid_circle` |
+| `w_sd` | 3 | Prior sd of the zero-sum weights |
+| `sd_scale` | 1 | Half-normal scale of the sds between speakers |
+| `n_random` | 4 | The number of leading features with speaker effects (the intercept and `L, a, b`) |
+| `hue_columns` | the largest `grid_col` | The number of hue columns around the circle (`grid_circle`) |
+| `new_speakers` | 20 | Simulated new speakers in each draw for the language-level shares |
+| `score_draws` | 200 | Posterior draws that one score uses |
+
+`from_challenges(path)` reads `wcs_naming.npz` and the three WCS tables next to it. It takes
+one language (`language=77`, Nafaanra) and keeps the major terms (used by at least a third of
+the speakers). All other terms become `other`. `NAFAANRA_SPEC_YAML` holds out the same 9
+speakers as the notebook. On Nafaanra the pooled fit scores the held-out speakers at -0.392 nats
+for each answer, and the hierarchical fit gives 1.92 effective categories for one speaker and
+1.84 for the language.
+
+The model stops with `SCHEMA_INVALID` when the naming has fewer than 2 or more than 40 terms,
+a chip has no CIELAB colour, or two chips have the same palette place. It stops with
+`SETTINGS_INVALID` when `kind: hierarchical` has only one speaker, or `n_random` is larger than
+the number of features. Chips that are not in the fit give `UNSEEN_LEVELS`.

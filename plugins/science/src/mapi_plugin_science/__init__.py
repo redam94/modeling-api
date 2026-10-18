@@ -19,7 +19,10 @@ Ported from the pymc-challenges case studies:
   detection and camera calibration in NumPy, then a batched pixel-integrated Gaussian PSF
   fit with Poisson counts, and a super-resolved render (E58);
 * ``sci.ibp_features`` - latent binary features of small images, a truncated Indian buffet
-  process with every image's pattern summed out (E31, handwritten digits).
+  process with every image's pattern summed out (E31, handwritten digits);
+* ``sci.colour_naming`` - how the speakers of one language name colour chips: a softmax
+  over quadratic CIELAB logits, pooled or with speaker effects, mapped on the chip palette
+  (E77, World Color Survey).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -28,6 +31,7 @@ Every plugin registers through the ``mapi.models`` entry point
 
 from importlib import metadata as _metadata
 
+from mapi_plugin_science.colour_naming import ColourNamingModel, ColourNamingSettings
 from mapi_plugin_science.heat_plate import HeatPlateModel, HeatPlateSettings
 from mapi_plugin_science.ibp import IBPFeaturesModel, IBPFeaturesSettings
 from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
@@ -51,11 +55,14 @@ PLUGINS = (
     TuringPatternModel,
     StormLocalisationModel,
     IBPFeaturesModel,
+    ColourNamingModel,
 )
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
 __all__ = [
     "PLUGINS",
+    "ColourNamingModel",
+    "ColourNamingSettings",
     "FisherKPPModel",
     "FisherKPPSettings",
     "HeatPlateModel",
