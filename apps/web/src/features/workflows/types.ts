@@ -113,6 +113,7 @@ export const NODE_KINDS: readonly NodeKind[] = [
   "select",
   "governance",
   "report",
+  "plot",
   "subworkflow",
 ];
 

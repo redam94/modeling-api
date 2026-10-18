@@ -10649,7 +10649,7 @@ export interface components {
          * NodeKind
          * @enum {string}
          */
-        NodeKind: "test" | "transform" | "branch" | "split" | "search" | "model" | "evaluate" | "compare" | "select" | "governance" | "report" | "subworkflow";
+        NodeKind: "test" | "transform" | "branch" | "split" | "search" | "model" | "evaluate" | "compare" | "select" | "governance" | "report" | "plot" | "subworkflow";
         /**
          * NodeOutputRef
          * @description Where a node output lives: a reference (``dataset://``, ``model://``), a run artifact
