@@ -536,7 +536,11 @@ the bundle keeps replicate images for `sci.ppc_image_grid` and `sci.image_residu
 training digits for each class and 20 test digits for each class by 13 other writers, 8 × 6
 pixels, ink from 0 to 1. The `visible` mask hides the bottom half of each test digit. The
 `learned.heldout` field of the fit gives the completion score of those halves (the mean log
-predictive density for each digit and the RMSE). With the notebook settings (`K = 8`,
-`noise_sd = 0.25`, 4 chains of 1000 draws) a fit on the 300 training digits completes the test
-halves with an RMSE of 0.283 and −0.34 nats for each digit. The notebook gives 0.283 and −0.3.
-The fit takes approximately 4 minutes with the `pymc` engine.
+predictive density for each digit and the RMSE). The E31 spec of the export (`K = 8`,
+`noise_sd = 0.25`, 4 chains of 1000 draws, all 500 digits with the test bottom halves hidden by
+the mask) completes the test halves with an RMSE of 0.284 and −0.70 nats for each digit. The
+fit takes approximately 10 minutes with the `pymc` engine, and the convergence checks warn, as
+the notebook predicts. The notebook fits the 300 training digits only and gives 0.283 and −0.3.
+The export spec also fits the top halves of the test digits, so its log density differs. A
+separate fit on the 300 training digits only, as in the notebook, gives 0.283 and −0.34 nats
+in approximately 4 minutes.
