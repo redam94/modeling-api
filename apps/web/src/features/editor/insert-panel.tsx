@@ -10,9 +10,12 @@ import { Badge, Input } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
-import { addStep, addToList, setDataset, setModel, starterWith } from "./spec-doc";
+import { nodeKey, nodesWithVars } from "@/features/datasets/tree";
+
+import { addStep, addToList, setDataset, setModel, setPath, starterWith } from "./spec-doc";
 import {
   findModel,
+  inputColumns,
   latestModels,
   latestSteps,
   namesForModel,
@@ -206,7 +209,7 @@ export function buildGroups({
 
   // Dataset columns (insert the name the spec uses: the canonical one when bound), and the
   // names after the last pipeline stage when validation has computed them.
-  const raw = namesOf(sources.columns);
+  const raw = namesOf(inputColumns(shape, sources));
   const boundTo = new Map(Object.entries({ ...shape.bind.dims, ...shape.bind.vars }).map(([c, ds]) => [ds, c]));
   const seen = new Set<string>();
   const columnItems: InsertItem[] = [...raw.dims.map((n) => ({ ...n, kind: "dim" })), ...raw.vars.map((n) => ({ ...n, kind: "var" }))].map((n) => {
@@ -233,6 +236,29 @@ export function buildGroups({
     hint: shape.datasetRef ? "Puts the name at the cursor. A bound name shows its canonical name." : "This spec has no dataset. Select a dataset to see its columns.",
     items: columnItems,
   });
+
+  // M4: the nodes of a tree dataset (data.nodes picks the nodes the pipeline reads).
+  if (sources.tree) {
+    const tree = sources.tree;
+    const selected = new Map(Object.entries(shape.nodes).map(([k, s]) => [s.path, k]));
+    groups.push({
+      name: "Tree nodes",
+      hint: "This dataset is a tree. Adds the node to data.nodes: its variables go into the data the pipeline reads.",
+      items: nodesWithVars(tree).map((p) => {
+        const vars = Object.keys(tree[p]?.vars ?? {});
+        const key = selected.get(p) ?? nodeKey(p, Object.keys(shape.nodes));
+        return {
+          key: `node:${p}`,
+          title: p,
+          id: key,
+          detail: `${vars.length} variables: ${vars.join(", ")}`,
+          current: selected.has(p),
+          keywords: vars.join(" "),
+          apply: () => applied(setPath(text, ["data", "nodes", key], { path: p }), onText, "Node added", `data.nodes.${key} reads ${p}`),
+        };
+      }),
+    });
+  }
 
   groups.push({
     name: "Plots",
