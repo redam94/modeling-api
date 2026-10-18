@@ -197,6 +197,27 @@ def test_image_residuals_panels_and_values() -> None:
     assert "normalised residuals have an sd of" in cap and "Empty cells" in cap
 
 
+def test_image_residuals_log_normalises_in_the_data_units() -> None:
+    # pixels near 300 with a noise sd of 5: on a log scale the z-scores must not shrink
+    rng = np.random.default_rng(1)
+    truth = rng.gamma(30.0, 10.0, size=(10, 12))
+    pred = truth[None, None] + rng.normal(0, 0.1, size=(2, 40, 10, 12))
+    obs = truth + rng.normal(0, 5.0, size=truth.shape)
+    tree = xr.DataTree.from_dict(
+        {
+            "/predictions": xr.Dataset({"img": (("chain", "draw", "y", "x"), pred)}),
+            "/observed_data": xr.Dataset({"img": (("y", "x"), obs)}),
+        }
+    )
+    lin = frame(image_residuals.render(tree, sigma=5.0), "cells")
+    plot = image_residuals.render(tree, sigma=5.0, log=True)
+    lg = frame(plot, "cells")
+    np.testing.assert_allclose(lg["norm__0"], lin["norm__0"], rtol=1e-4, atol=1e-5)
+    np.testing.assert_allclose(lg["observed__0"], np.log10(obs).ravel(), rtol=1e-5)
+    assert 0.8 < float(np.std(lg["norm__0"])) < 1.2
+    assert "too small" not in (plot.caption_plain or "")
+
+
 def test_image_residuals_sigma_for_a_noise_free_output() -> None:
     tree = image_tree(group="posterior", sigma=True)
     plot = image_residuals.render(tree)

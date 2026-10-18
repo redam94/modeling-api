@@ -312,6 +312,29 @@ def test_phylogeny_matches_tips_by_label_and_by_position() -> None:
     np.testing.assert_allclose(tips2["point"], want, rtol=1e-5)
 
 
+@pytest.mark.parametrize("node_coords", [False, True])
+def test_phylogeny_positions_win_over_labels_shared_by_chance(node_coords: bool) -> None:
+    # tips are nodes 3..6; a 0-based ``tip`` coord shares only "3" with them
+    parent = np.array([-1, 0, 0, 1, 1, 2, 2])
+    vals = RNG.normal(size=(2, 30, 4)) * 0.01 + np.arange(4)
+    tree_ds = xr.Dataset(
+        {"parent": ("node", parent)}, {"node": np.arange(7)} if node_coords else None
+    )
+    obs = xr.Dataset({"trait": ("tip", np.arange(4.0) + 0.5)}, {"tip": np.arange(4)})
+    tree = xr.DataTree.from_dict(
+        {
+            "/tree": tree_ds,
+            "/observed_data": obs,
+            "/posterior": xr.Dataset(
+                {"trait": (("chain", "draw", "tip"), vals)}, {"tip": np.arange(4)}
+            ),
+        }
+    )
+    tips = frame(phylogeny.render(tree), "tips").set_index("label")
+    np.testing.assert_allclose(tips.loc[["3", "4", "5", "6"], "point"], np.arange(4), atol=0.05)
+    np.testing.assert_allclose(tips.loc[["3", "4", "5", "6"], "observed"], np.arange(4) + 0.5)
+
+
 def test_phylogeny_prunes_to_max_tips() -> None:
     t = ladder_tree(60)
     tree = xr.DataTree.from_dict(

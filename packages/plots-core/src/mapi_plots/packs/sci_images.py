@@ -262,15 +262,19 @@ def image_residuals(inp: RecipeInput, s: ImageResidualsSettings) -> Figure:
         draws = np.asarray(sub.values, dtype=float)
         o = np.asarray((obs.isel({fi.frame: lv}) if fi.frame else obs).values, dtype=float)
         s2 = (sig2[lv] if fi.frame else sig2) if sig2 is not None else 0.0
-        if log:
-            draws, o = _to_log(draws), _to_log(o)
+        ddof = 1 if draws.shape[0] > 1 else 0
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
+            # the noise is in the data's units: normalise there, whatever the colour scale
+            raw_resid = o - np.nanmean(draws, axis=0)
+            scale = np.sqrt(np.nanstd(draws, axis=0, ddof=ddof) ** 2 + s2)
+            norm = np.where(scale > 0, raw_resid / np.where(scale > 0, scale, 1.0), np.nan)
+            if log:
+                draws, o = _to_log(draws), _to_log(o)
             mean = np.nanmean(draws, axis=0)
-            sd = np.nanstd(draws, axis=0, ddof=1 if draws.shape[0] > 1 else 0)
             resid = o - mean
-            scale = np.sqrt(sd**2 + s2)
-            norm = np.where(scale > 0, resid / np.where(scale > 0, scale, 1.0), np.nan)
+        if log:
+            norm = np.where(np.isfinite(resid), norm, np.nan)
         masked = masked or bool((~np.isfinite(resid)).any())
         norms.append(norm[np.isfinite(norm)])
         got = {"observed": o, "mean": mean, "resid": resid, "norm": norm}
@@ -390,7 +394,10 @@ def image_residuals(inp: RecipeInput, s: ImageResidualsSettings) -> Figure:
     )
     caption += f" and the noise ({sig_name})." if sig_name else "."
     if log:
-        caption += " All values are log10."
+        caption += (
+            " The first three panels are log10, so the residual is the log10 of the ratio. "
+            "The normalised residual uses the original units, as the noise does."
+        )
     if pooled.size:
         sd = float(np.std(pooled))
         out2 = float((np.abs(pooled) > 2).mean())

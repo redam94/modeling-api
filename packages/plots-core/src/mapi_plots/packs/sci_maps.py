@@ -675,6 +675,7 @@ class _Tree:
     tips: np.ndarray  # node positions of the tips, in node order
     labels: list[str]  # per node
     dim: str
+    named: bool = True  # False when the labels are positions made up for a dim without coords
 
 
 def _tree(inp: RecipeInput, first: str | None) -> _Tree:
@@ -708,6 +709,7 @@ def _tree(inp: RecipeInput, first: str | None) -> _Tree:
         tips = np.setdiff1d(np.arange(n), parent[parent >= 0])
     lab = _aux(inp, "tip_label", first)
     labels = [str(v) for v in lab.values] if lab is not None else node_labels
+    named = lab is not None or dim in par.coords
     # a cycle would hang the layout: every node must reach a root
     done = parent < 0
     for v in range(n):
@@ -723,7 +725,25 @@ def _tree(inp: RecipeInput, first: str | None) -> _Tree:
         done[path] = True
     if not len(tips):
         raise RecipeDataError("the tree has no tips")
-    return _Tree(parent, length, tips, labels, dim)
+    return _Tree(parent, length, tips, labels, dim, named)
+
+
+def _align_tips(mine: list[str] | None, n: int, tree: _Tree) -> list[int] | None:
+    """Per tip of ``tree``, the position in a dim of ``n`` levels (-1 for a missing tip),
+    or None when the two cannot be lined up.
+
+    Labels match only when the tree has real labels and every tip label is a level, or
+    when the lengths differ and most tips are found. A few labels shared by chance (two
+    0-based position dims) do not count: the dims then line up by position."""
+    tip_labels = [tree.labels[t] for t in tree.tips]
+    if mine is not None and tree.named:
+        pos = {v: i for i, v in enumerate(mine)}
+        found = sum(t in pos for t in tip_labels)
+        if found == len(tip_labels) or (n != len(tip_labels) and 2 * found > len(tip_labels)):
+            return [pos.get(t, -1) for t in tip_labels]
+    if n == len(tip_labels):
+        return list(range(n))
+    return None
 
 
 def _tip_draws(
@@ -769,19 +789,15 @@ def _tip_draws(
         raise RecipeDataError(f"pass tip_dim= (dims of {da.name!r}: {', '.join(dims)})")
     st = _only(stack_samples(_select(da, s.select)), [tip_dim])
     st = _thin(st.transpose(SAMPLE, tip_dim), s.max_draws)
-    tip_labels = [tree.labels[t] for t in tree.tips]
     mine = [_label(v) for v in coord_values(st, tip_dim)] if tip_dim in st.coords else None
-    if mine is not None and set(mine) & set(tip_labels):
-        pos = {v: i for i, v in enumerate(mine)}
-        idx = [pos.get(v, -1) for v in tip_labels]
+    idx = _align_tips(mine, st.sizes[tip_dim], tree)
+    if idx is not None:
         vals = np.asarray(st.values, dtype=float)[:, [max(i, 0) for i in idx]]
         vals[:, [i < 0 for i in idx]] = np.nan
-    elif st.sizes[tip_dim] == n_tips:
-        vals = np.asarray(st.values, dtype=float)
     else:
         raise RecipeDataError(
             f"{da.name!r} has {st.sizes[tip_dim]} levels of {tip_dim!r} but the tree has "
-            f"{n_tips} tips and no labels in common"
+            f"{n_tips} tips and too few labels in common"
         )
     out = xr.DataArray(vals, dims=[SAMPLE, "tip"], name=str(da.name))
     return out, group, tip_dim
@@ -810,16 +826,12 @@ def _tip_observed(
             raise RecipeDataError(f"the observed {name!r} has no dim {tip_dim!r}")
         return None
     obs = _only(obs, [tip_dim])
-    tip_labels = [tree.labels[t] for t in tree.tips]
     vals = np.asarray(obs.values, dtype=float)
-    if tip_dim in obs.coords:
-        mine = [_label(v) for v in obs[tip_dim].values]
-        if set(mine) & set(tip_labels):
-            pos = {v: i for i, v in enumerate(mine)}
-            return name, np.array([vals[pos[t]] if t in pos else np.nan for t in tip_labels])
-    if len(vals) != len(tip_labels):
+    mine = [_label(v) for v in obs[tip_dim].values] if tip_dim in obs.coords else None
+    idx = _align_tips(mine, len(vals), tree)
+    if idx is None:
         return None
-    return name, vals
+    return name, np.array([vals[i] if i >= 0 else np.nan for i in idx])
 
 
 def _layout_tree(

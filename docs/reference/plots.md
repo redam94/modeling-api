@@ -324,6 +324,9 @@ Notes on the image and spectrum recipes (`mapi_plots.packs.sci_images`):
 - Draws from `posterior_predictive` already hold the noise of the data, so
   `sci.image_residuals` adds no σ to them. For a noise-free output (`posterior` or
   `predictions`), it uses `sigma` or a variable named `sigma`.
+- With `log`, `sci.image_residuals` shows the observed, mean and residual panels as log10.
+  It computes the normalised residual and its histogram in the data's units, because σ is
+  in those units.
 - `sci.swatches` writes the colours as `#rrggbb` text in the dataset. The plot sandbox does
   not change these colours in dark mode, because they are data.
 
