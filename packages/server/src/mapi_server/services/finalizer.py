@@ -35,15 +35,19 @@ from mapi_spec.coords import CoordSummary, DataSummary
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.guided import ColumnProfile
+from mapi_spec.ingest import MAX_INSPECTION_BYTES, UploadInspection
 from mapi_spec.jobs import (
+    DATATREE_OUTPUT,
     DESCRIBE_OUTPUT,
     FIT_BUNDLE,
     FIT_SIDECARS,
     INGEST_COLUMNS,
     INGEST_DATA,
     INGEST_SCHEMA,
+    INSPECT_OUTPUT,
     PLOT_EXAMPLES_OUTPUT,
     SIDE_TABLE_PREFIX,
+    TREE_SCHEMA_OUTPUT,
     DescribeJob,
     MetricsSidecar,
 )
@@ -75,10 +79,11 @@ from mapi_spec.storage import (
     dataset_prefix,
     run_prefix,
 )
+from mapi_spec.tree import MAX_TREE_NODES, NodePath, TreeSchema
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata
 from mapi_spec.views import EXPLORE_PREFIX
 from pydantic import TypeAdapter, ValidationError
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -111,6 +116,7 @@ log = logging.getLogger(__name__)
 _DIAGNOSTICS = TypeAdapter(list[Diagnostic])
 _METRIC_NAMES = TypeAdapter(dict[MetricName, float])
 _COORDS = TypeAdapter(dict[str, dict[str, CoordSummary]])
+_NODE_SUMMARIES = TypeAdapter(dict[NodePath, DataSummary])
 _MAX_PLOTS = 200
 
 
@@ -343,6 +349,8 @@ class Finalizer:
             return await self._optimize(v)
         if kind is RunKind.GOVERNANCE:
             return await self._governance(v)
+        if kind is RunKind.INSPECT:
+            return await self._inspect(v)
         return await self._outputs_only(v)
 
     # ....................................................................... governance
@@ -643,11 +651,17 @@ class Finalizer:
         for key, ref in sorted((run.inputs or {}).items()):
             if not key.startswith(SIDE_TABLE_PREFIX) or not isinstance(ref, dict):
                 continue
-            stored = m.DatasetVersion.objects[INGEST_DATA]
+            # a side table may be a tree version (M4): its data object is data.tree.zip
+            matches = [
+                (stored["bucket"].astext == str(ref.get("bucket")))
+                & (stored["name"].astext == str(ref.get("name")))
+                for stored in (
+                    m.DatasetVersion.objects[INGEST_DATA],
+                    m.DatasetVersion.objects[DATATREE_OUTPUT],
+                )
+            ]
             stmt = select(m.DatasetVersion).where(
-                m.DatasetVersion.tenant_id == run.tenant_id,
-                stored["bucket"].astext == str(ref.get("bucket")),
-                stored["name"].astext == str(ref.get("name")),
+                m.DatasetVersion.tenant_id == run.tenant_id, or_(*matches)
             )
             dv = (await session.execute(stmt)).scalars().first()
             if dv is not None and dv.sha256:
@@ -771,22 +785,43 @@ class Finalizer:
 
     # ........................................................................... ingest
     async def _ingest(self, v: _Verified) -> RunState | None:
+        """Register the dataset version an ingest run wrote: ``data.zarr.zip`` +
+        ``schema.json`` (dataset layout) or, M4, ``data.tree.zip`` + ``tree_schema.json``
+        (+ ``schema.json``, the root node's schema) for a tree version."""
         run = v.run
-        data = v.objects.get(INGEST_DATA)
+        tree_data = v.objects.get(DATATREE_OUTPUT)
+        flat_data = v.objects.get(INGEST_DATA)
+        if tree_data is not None and flat_data is not None:
+            raise IntegrityError(
+                f"an ingest run uploads {INGEST_DATA} or {DATATREE_OUTPUT}, not both"
+            )
+        layout = "tree" if tree_data is not None else "dataset"
+        data = tree_data if tree_data is not None else flat_data
+        data_name = DATATREE_OUTPUT if tree_data is not None else INGEST_DATA
         schema_meta = v.objects.get(INGEST_SCHEMA)
+        tree_meta = v.objects.get(TREE_SCHEMA_OUTPUT)
         if data is None or schema_meta is None:
             raise IntegrityError(f"an ingest run must upload {INGEST_DATA} and {INGEST_SCHEMA}")
+        if layout == "tree" and tree_meta is None:
+            raise IntegrityError(
+                f"a tree ingest ({DATATREE_OUTPUT}) must upload {TREE_SCHEMA_OUTPUT}"
+            )
+        if layout == "dataset" and tree_meta is not None:
+            raise IntegrityError(f"{TREE_SCHEMA_OUTPUT} belongs to a {DATATREE_OUTPUT} ingest")
         if data.md5_hash is None:
-            raise IntegrityError(f"{INGEST_DATA} has no server-computed MD5")
+            raise IntegrityError(f"{data_name} has no server-computed MD5")
         cap = self.ctx.settings.max_sidecar_bytes
+        tree: TreeSchema | None = None
         try:
             schema = DataSchema.model_validate(
                 await self._read_json(run_bucket(v), schema_meta, cap)
             )
-            summary = (
-                DataSummary.model_validate(
-                    await self._read_json(run_bucket(v), v.objects["summary.json"], cap)
+            if tree_meta is not None:
+                tree = TreeSchema.model_validate(
+                    await self._read_json(run_bucket(v), tree_meta, cap)
                 )
+            summary = (
+                _summary(await self._read_json(run_bucket(v), v.objects["summary.json"], cap))
                 if "summary.json" in v.objects
                 else None
             )
@@ -799,6 +834,11 @@ class Finalizer:
             raise IntegrityError(
                 "an ingest sidecar does not match its schema", untrusted_text=str(exc)[:8000]
             ) from exc
+        if tree is not None and schema != tree.root:
+            raise IntegrityError(
+                f"{INGEST_SCHEMA} of a tree ingest must be the root node's schema of "
+                f"{TREE_SCHEMA_OUTPUT}"
+            )
         sha_hex = dataset_sha(data)
         prefix = dataset_prefix(run.tenant_id, sha_hex)
         data_bucket = self.ctx.buckets.data
@@ -840,6 +880,8 @@ class Finalizer:
             dv.status = "ready"
             dv.sha256 = f"sha256:{sha_hex}"
             dv.size_bytes = data.size
+            dv.layout = layout
+            dv.tree_schema = tree.model_dump(mode="json") if tree is not None else None
             dv.data_schema = schema.model_dump(mode="json")
             dv.summary = summary.model_dump(mode="json") if summary else None
             dv.profile = ref("profile.json")
@@ -864,6 +906,41 @@ class Finalizer:
                 f"{INGEST_COLUMNS} must be a list of at most {MAX_COLUMN_PROFILES} profiles"
             )
         return [ColumnProfile.model_validate(c).model_dump(mode="json") for c in raw]
+
+    # .......................................................................... inspect
+    async def _inspect(self, v: _Verified) -> RunState | None:
+        """An inspect run must upload a valid ``inspection.json`` (M4; size-capped JSON,
+        validated as :class:`UploadInspection`); it is stored on the upload in the
+        transaction that marks the run succeeded."""
+        meta = v.objects.get(INSPECT_OUTPUT)
+        if meta is None:
+            if v.partial:
+                return await self._commit(v)
+            raise IntegrityError(f"an inspect run must upload {INSPECT_OUTPUT}")
+        cap = min(self.ctx.settings.max_sidecar_bytes, MAX_INSPECTION_BYTES)
+        try:
+            inspection = UploadInspection.model_validate(
+                await self._read_json(run_bucket(v), meta, cap)
+            )
+        except ValidationError as exc:
+            raise IntegrityError(
+                f"{INSPECT_OUTPUT} does not match the UploadInspection schema",
+                untrusted_text=str(exc)[:8000],
+            ) from exc
+        doc = inspection.model_dump(mode="json")
+
+        async def apply(session: AsyncSession, row: m.Run) -> None:
+            upload = (
+                await session.execute(
+                    select(m.Upload)
+                    .where(m.Upload.tenant_id == row.tenant_id, m.Upload.inspect_run_id == row.id)
+                    .with_for_update()
+                )
+            ).scalar_one_or_none()
+            if upload is not None:  # an upload deleted meanwhile keeps nothing
+                upload.inspection = doc
+
+        return await self._commit(v, apply)
 
     # .................................................................. translate_priors
     async def _translate_priors(self, v: _Verified) -> RunState | None:
@@ -970,6 +1047,21 @@ MAX_PLOT_EXAMPLES_BYTES = 16 * 1024 * 1024
 
 MAX_COLUMN_PROFILES = 100_000
 """Profiles one ``columns.json`` may hold (the ingest caps columns far below this)."""
+
+
+def _summary(raw: Any) -> DataSummary:
+    """``summary.json``: a :class:`DataSummary`; a tree ingest (M4) may add ``nodes`` (node
+    path -> DataSummary), which are validated and served with the object but not stored on
+    the version (its ``summary`` is the root's, for readers that predate trees)."""
+    if isinstance(raw, dict) and "nodes" in raw:
+        nodes = raw.get("nodes")
+        if not isinstance(nodes, dict) or len(nodes) > MAX_TREE_NODES:
+            raise IntegrityError(
+                f"summary.json 'nodes' must map at most {MAX_TREE_NODES} nodes to summaries"
+            )
+        _NODE_SUMMARIES.validate_python(nodes)
+        raw = {k: val for k, val in raw.items() if k != "nodes"}
+    return DataSummary.model_validate(raw)
 
 
 def _md5(copied: ObjectMeta, source: ObjectMeta) -> str:
