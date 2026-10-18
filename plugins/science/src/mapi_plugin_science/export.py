@@ -63,6 +63,7 @@ from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
 from mapi_plugin_science import (
+    cmb_data,
     colour_naming_data,
     heat_plate_data,
     ibp_data,
@@ -524,6 +525,22 @@ _register(
         project="linguistics",
         dataset="wcs_nafaanra",
         spec=colour_naming_data.NAFAANRA_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e79",
+        title="Planck SMICA CMB map around the Large Magellanic Cloud",
+        notebook="E79_cmb_field_level.py",
+        model="sci.cmb_field",
+        files=(cmb_data.CHALLENGES_FILE, cmb_data.THEORY_FILE),
+        loader=lambda d: cmb_data.from_challenges(d / cmb_data.CHALLENGES_FILE),
+        synthetic=lambda: cmb_data.cmb_dataset(),
+        schema=cmb_data.CMB_SCHEMA,
+        project="astronomy",
+        dataset="planck_smica_lmc",
+        spec=cmb_data.PLANCK_SPEC_YAML,
     )
 )
 

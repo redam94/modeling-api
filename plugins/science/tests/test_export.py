@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -152,6 +154,21 @@ def test_cli(
         main(["e07"])  # no data directory and no --synthetic
     with pytest.raises(SystemExit):
         main(["e99", "--synthetic"])
+
+
+def test_cli_as_a_module_lists_every_case(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``python -m`` runs ``main()`` at the ``__main__`` guard, so a case registered
+    below the guard is missing from the command line though an import finds it."""
+    monkeypatch.delenv(CHALLENGES_ENV, raising=False)
+    run = subprocess.run(
+        [sys.executable, "-m", "mapi_plugin_science.export", "--list"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    missing = [c for c in CASES if c not in run.stdout]
+    assert not missing, f"cases missing from `-m ... --list`: {missing}"
+    assert "e79" in run.stdout and "sci.cmb_field" in run.stdout
 
 
 def test_registering_a_case_twice_fails() -> None:

@@ -129,6 +129,7 @@ def test_cards_cover_the_surviving_catalog_and_the_planned_engines() -> None:
         "sci.storm_localisation",
         "sci.ibp_features",
         "sci.colour_naming",
+        "sci.cmb_field",
     } == SCIENCE_MODEL_IDS
     assert set(MODEL_ABOUTS) == SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS | SCIENCE_MODEL_IDS
     for template in GUIDED_TEMPLATES.values():

@@ -22,7 +22,9 @@ Ported from the pymc-challenges case studies:
   process with every image's pattern summed out (E31, handwritten digits);
 * ``sci.colour_naming`` - how the speakers of one language name colour chips: a softmax
   over quadratic CIELAB logits, pooled or with speaker effects, mapped on the chip palette
-  (E77, World Color Survey).
+  (E77, World Color Survey);
+* ``sci.cmb_field`` - field-level inference of a masked CMB map: sky draws behind the mask
+  and bandpowers from a Wandelt-Eriksen Gibbs sampler (E79).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -31,6 +33,7 @@ Every plugin registers through the ``mapi.models`` entry point
 
 from importlib import metadata as _metadata
 
+from mapi_plugin_science.cmb import CMBFieldModel, CMBFieldSettings
 from mapi_plugin_science.colour_naming import ColourNamingModel, ColourNamingSettings
 from mapi_plugin_science.heat_plate import HeatPlateModel, HeatPlateSettings
 from mapi_plugin_science.ibp import IBPFeaturesModel, IBPFeaturesSettings
@@ -56,11 +59,14 @@ PLUGINS = (
     StormLocalisationModel,
     IBPFeaturesModel,
     ColourNamingModel,
+    CMBFieldModel,
 )
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
 __all__ = [
     "PLUGINS",
+    "CMBFieldModel",
+    "CMBFieldSettings",
     "ColourNamingModel",
     "ColourNamingSettings",
     "FisherKPPModel",

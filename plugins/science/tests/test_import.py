@@ -12,6 +12,7 @@ EXPECTED_IDS = {
     "sci.storm_localisation",
     "sci.ibp_features",
     "sci.colour_naming",
+    "sci.cmb_field",
 }
 
 

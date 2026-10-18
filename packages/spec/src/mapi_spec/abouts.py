@@ -2078,6 +2078,88 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "speed": ["minutes"],
         },
     ),
+    "sci.cmb_field": _a(
+        "Sky map behind a mask (CMB)",
+        "Fills the masked holes of a map of the cosmic microwave background with skies that "
+        "agree with the data, and measures how strong the sky is at each angular scale. It "
+        "shows how sure it is at each pixel.",
+        [
+            "You have a temperature map of the CMB on a small flat patch, with a mask and a "
+            "noise level for each pixel",
+            "You want to know what the sky looks like behind the mask, with a range for each pixel",
+            "You need the power spectrum of the patch in bins (bandpowers) without the bias that "
+            "a mask gives to a simple estimate",
+        ],
+        [
+            "The patch is large (more than about 20 degrees): the flat-sky approximation fails",
+            "The map has strong foreground residuals outside the mask",
+            "You need polarisation or lensing (the model has temperature only)",
+        ],
+        [
+            "A temperature map on a regular grid of pixels in uK, with NaN where the mask removes "
+            "a pixel",
+            "The noise sd of each pixel",
+            "A reference spectrum D_ell (for example the Planck best fit) for multipoles 0, 1, 2, "
+            "... and optionally the pixel window of the source map",
+            "The pixel size and the beam width of the map",
+        ],
+        [
+            "The sky is a Gaussian random field with the same statistics in all directions",
+            "The power in each bin is the reference power times a free factor",
+            "The noise is Gaussian and independent from pixel to pixel",
+            "The patch is flat. The model adds a border without data so that the edges need not "
+            "repeat",
+        ],
+        [
+            "Probable sky maps (constrained realisations) with a mean and an sd for each pixel",
+            "The bandpowers (D_ell in uK^2) and their ratio to the reference",
+            "The amplitude and the tilt of the spectrum relative to the reference",
+            "Simulated maps of other patches with the same spectrum",
+        ],
+        _X,
+        _MIN,
+        "The Planck SMICA map around the Large Magellanic Cloud (16 % of the pixels masked) "
+        "gives a pixel sd of 2.5 uK where there are data and about 90 uK in the hole. Its "
+        "amplitude is within 2 % of the Planck spectrum.",
+        related=["sci.traction_force", "sci.strong_lens"],
+        expert="Field-level inference on a flat periodic torus (the raster plus an unobserved "
+        "border). The Hartley coefficients of the sky are independent Gaussians with the reference "
+        "spectrum folded through the beam, the pixel windows and aliasing, times exp(q_b) per "
+        "bandpower bin (flat prior on q_b). A Wandelt-Eriksen Gibbs sampler alternates a "
+        "constrained realisation by preconditioned conjugate gradients (dense preconditioner on"
+        " the large scales), an inverse-gamma draw of each bandpower and a non-centred "
+        "rescaling move (Metropolis). NumPy and FFTs only, no NUTS. The amplitude and tilt come"
+        " from the exact Gaussian posterior of a linear model of the binned q_b. No pointwise "
+        "LOO: all pixels share one latent field.",
+        refs=[
+            (
+                "Wandelt, Larson & Lakshminarayanan (2004), Global, exact cosmic microwave "
+                "background data analysis using Gibbs sampling",
+                "https://arxiv.org/abs/astro-ph/0310080",
+            ),
+            (
+                "Eriksen et al. (2004), Power spectrum estimation from high-resolution maps by "
+                "Gibbs sampling",
+                "https://arxiv.org/abs/astro-ph/0407028",
+            ),
+            (
+                "Jewell, Levin & Anderson (2004), Application of Monte Carlo algorithms to the "
+                "Bayesian analysis of the cosmic microwave background",
+                "https://arxiv.org/abs/astro-ph/0209560",
+            ),
+            (
+                "Planck Collaboration (2020), Planck 2018 results IV: diffuse component separation",
+                "https://arxiv.org/abs/1807.06208",
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "fit_physics"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential"],
+            "experience": ["expert"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -2102,6 +2184,7 @@ SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
         "sci.storm_localisation",
         "sci.ibp_features",
         "sci.colour_naming",
+        "sci.cmb_field",
     }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
