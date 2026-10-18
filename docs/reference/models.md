@@ -498,8 +498,12 @@ densities on the circle, as the E81 case study does. It has four kinds:
   `log f(θ) = Σ aₖ cos kθ + bₖ sin kθ − log Z`, with the prior `aₖ, bₖ ~ N(0, (τ/k)²)`. The
   model uses only the sums of `cos kθ` and `sin kθ` for each group.
 
-The priors are N(0, 2) on the intercepts and N(0, 1) on the other coefficients. NUTS samples
-the coefficients. With `fit.keep.log_likelihood: true`, the bundle keeps the log density of
+The priors of `von_mises` and `projected_normal` are N(0, `intercept_sd` = 2) on the
+intercepts and N(0, `coef_sd` = 1) on the other coefficients. `regime_mixture` does not use
+`intercept_sd`, as in the notebook. The intercept of regime r has the prior
+N(`regime_strength` (cos μᵣ, sin μᵣ), 1), with μᵣ from `regime_directions_deg`. The gate
+intercept has the prior N(0, `gate_intercept_sd` = 1.5). The other coefficients of the regimes
+and of the gate have the prior N(0, `coef_sd`). NUTS samples the coefficients. With `fit.keep.log_likelihood: true`, the bundle keeps the log density of
 each row (per radian). Thus `elpd_loo` compares the kinds on the same rows, for example in a
 workflow ladder `von_mises` → `projected_normal` → `regime_mixture`.
 
@@ -525,10 +529,21 @@ wind has no direction) before the fit.
   group is active) and `overlap(frame, frame_)` (the area under the lower of two densities, a
   field).
 
+The fit also keeps the fields `density(frame, angle)` and, for `activity`, `overlap(frame,
+frame_)` in the posterior. They have the same values as in a score. Thus `sci.field_map` and
+`sci.profile_bands` show the densities (and, with `var: overlap`, the overlaps) in the plots
+of a fit run.
+
 With `fit.keep.posterior_predictive`, the bundle keeps simulated angles `theta` (radians, 0 to
-2π) and the observed `theta` in `observed_data`. Then `sci.rose` shows the observed rose with
-the range of the model in its default settings. For the density of each frame, use
-`sci.rose` with `var: density`, `frame: frame` and `units` set to the units of the data.
+2π) and the observed `theta` in `observed_data`. `sci.rose` uses them in its default
+settings: it shows the observed rose with the range of the model. The default settings use
+the orientation of mathematics: 0 is at the right (east) and the angles increase
+anticlockwise. Thus a wind from the west (270°) is at the bottom. For a compass or a clock (0
+at the top, clockwise), pass `clockwise: true` to `sci.rose` in a `plot.render` step or in the
+plots request. For the density of each frame, use `sci.rose` with `var: density`, `frame:
+frame` and `units` set to the units of the data. The default rose of a score result reads
+`direction_hat`, which is in the units of the data, as radians. Pass `var: direction_hat` and
+`units` set to the units of the data.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -536,9 +551,11 @@ the range of the model in its default settings. For the density of each frame, u
 | `units` | `degrees` | Units of the direction: `degrees`, `radians` or `hours` |
 | `daily_harmonics`, `annual_harmonics` | 3, 2 | Harmonics of the hour and of the day of the year |
 | `interaction_harmonics` | 2 | Daily harmonics multiplied by the first annual harmonic |
-| `intercept_sd`, `coef_sd` | 2, 1 | Prior sd of the intercepts and of the other coefficients |
+| `intercept_sd`, `coef_sd` | 2, 1 | Prior sd of the intercepts (not for `regime_mixture`) and of the other coefficients |
 | `regime_directions_deg`, `regime_names` | [90, 250], [easterly, westerly] | `regime_mixture`: prior directions and names of the two regimes |
 | `regime_daily_harmonics`, `regime_annual_harmonics` | 2, 1 | `regime_mixture`: features of each regime |
+| `regime_strength` | 2 | `regime_mixture`: prior mean concentration of each regime (the length of the prior mean of its intercept) |
+| `gate_intercept_sd` | 1.5 | `regime_mixture`: prior sd of the gate intercept |
 | `group_dim` | `group` | `activity`: the dim of the groups |
 | `harmonics`, `tau_sd`, `grid_points` | 16, 2, 256 | `activity`: Fourier terms, prior scale of `τ`, angles of the sum for `Z` |
 | `frames`, `angle_points`, `rows_per_frame` | 8, 72, 200 | Blocks of the day, angles and fit rows of the `density` output |

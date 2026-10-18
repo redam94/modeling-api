@@ -1758,14 +1758,15 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
         "regime_mixture (two von Mises regimes on fewer features, the second one's "
         "probability through a logistic gate on all features, labels anchored by the prior "
         "directions), activity (log-Fourier density per group, a_k, b_k ~ N(0, (tau/k)^2), "
-        "fitted through the trigonometric moments). Priors N(0, 2) on intercepts and N(0, 1) "
-        "on the other coefficients. Pointwise log densities (per radian) support elpd_loo "
-        "across kinds. Activity level 1 / (2 pi max f) (Rowcliffe et al. 2014), overlap "
-        "Delta = int min(f_i, f_j).",
+        "fitted through the trigonometric moments, tau ~ HalfNormal(2)). Priors N(0, 2) on "
+        "intercepts and N(0, 1) on the other coefficients; regime_mixture instead centres "
+        "each regime intercept on 2 (cos mu_r, sin mu_r) with sd 1, gives the gate "
+        "intercept N(0, 1.5) and the other coefficients N(0, 1). Pointwise log densities "
+        "(per radian) support elpd_loo across kinds. Activity level 1 / (2 pi max f) "
+        "(Rowcliffe et al. 2014), overlap Delta = int min(f_i, f_j).",
         refs=[
             (
-                "Fisher (1993), Statistical analysis of circular data, Cambridge University "
-                "Press",
+                "Fisher (1993), Statistical analysis of circular data, Cambridge University Press",
                 None,
             ),
             (
