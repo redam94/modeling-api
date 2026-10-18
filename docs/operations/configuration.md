@@ -195,7 +195,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 |---|---|---|
 | `MAPI_CATALOG_PATH` | unset | A catalog JSON that the image build exports. If unset, the worker puts a sandboxed `describe` run in the queue |
 | `MAPI_IMAGE_DIGEST` | `sha256` of `uv.lock` | The digest of the runner image. The catalog cache uses it as the key |
-| `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the local image digest |
+| `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the image digest. When it is unset, the digest of a source checkout also hashes `packages/*/src` and `plugins/*/src`, so `make dev` makes a new catalog after a code change |
 | `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | The EC P-256 key that signs bundle manifests (in place of Cloud KMS). The worker signs and the API verifies, thus the two must load the same file. `mapi-server migrate` makes it |
 | `MAPI_SIGNING_TRUSTED_KEY_PATHS` | none | Old bundle-signing keys (PEM files, public or private, comma-separated) whose signatures still verify. Thus a key rotation does not break the models that the old key signed (`ops/runbooks/rotating-keys.md`) |
 | `MAPI_SIGNING_KEY_CREATE` | `true` | Make the key at the first use if it is missing. Compose turns it off for `api` and `worker`. Thus, if the key is missing, start-up fails, and the server does not mint a new key |

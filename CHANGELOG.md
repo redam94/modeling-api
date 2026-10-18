@@ -21,6 +21,12 @@ milestone releases are tagged on `main`.
 - The docs' plot recipes catalog has a section and a picture for each recipe;
   `render_gallery.py` now draws every recipe (Plotly through kaleido).
 
+### Changed
+- `make dev` describes the catalog again after a code change. In a source checkout (no
+  `MAPI_UV_LOCK_PATH`), the image digest that keys the catalog also hashes `packages/*/src`
+  and `plugins/*/src`. Before, a change that left `uv.lock` alone (a new recipe or About
+  card) kept the old catalog. The images still use the hash of their baked `uv.lock`.
+
 ### Fixed
 - The plot sandbox refused every `sci.*` plot: its client-side check did not allow Plotly's
   `<extra>` tag in hover templates, which the server's sanitizer keeps.
