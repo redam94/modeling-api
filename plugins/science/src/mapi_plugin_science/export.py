@@ -62,7 +62,7 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
-from mapi_plugin_science import kpp_data, lens_data, lgcp_data, traction_data
+from mapi_plugin_science import heat_plate_data, kpp_data, lens_data, lgcp_data, traction_data
 from mapi_plugin_science.challenges import CHALLENGES_ENV
 
 __all__ = [
@@ -98,7 +98,8 @@ class ExportCase:
     model: str
     """The catalog model that fits the data (``sci.lgcp_grid``)."""
     files: tuple[str, ...]
-    """The files the loader reads from the pymc-challenges ``data/`` directory."""
+    """The files the loader reads from the pymc-challenges ``data/`` directory (empty when
+    the notebook simulates its data: the loader then needs no directory)."""
     loader: Callable[[Path], ExportData]
     """Builds the data from the ``data/`` directory (``from_challenges``)."""
     synthetic: Callable[[], ExportData]
@@ -242,9 +243,9 @@ def export_case(
     if synthetic:
         data = c.synthetic()
     else:
-        if data_dir is None:
+        if data_dir is None and c.files:
             raise ValueError(f"{c.case}: give the pymc-challenges data/ directory")
-        data = c.load(Path(data_dir).expanduser())
+        data = c.load(Path(data_dir or ".").expanduser())
     path = write_export(data, out, schema=c.schema)
     if spec_out is not None:
         sp = Path(spec_out)
@@ -273,7 +274,7 @@ def _list() -> str:
         kind = "tree" if c.tree else "dataset"
         lines.append(
             f"{c.case}  {c.model:<22} {kind:<7} {c.title}\n"
-            f"     notebook: {c.notebook}; files: {', '.join(c.files)}; "
+            f"     notebook: {c.notebook}; files: {', '.join(c.files) or 'none (simulated)'}; "
             f"suggested dataset: {c.project}/{c.dataset}"
         )
     return "\n".join(lines)
@@ -306,7 +307,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     case = EXPORTS.get(str(args.case).lower())
     if case is None:
         p.error(f"unknown case {args.case!r}; known: {', '.join(EXPORTS)}")
-    if not args.synthetic and not args.challenges:
+    if not args.synthetic and not args.challenges and case.files:
         p.error(f"give --challenges (or set {CHALLENGES_ENV}), or use --synthetic")
     out = args.out or f"{case.dataset}.nc"
     try:
@@ -422,6 +423,21 @@ _register(
         project="astronomy",
         dataset="slacs_j1627_f814w",
         spec=lens_data.SLACS_SPEC_YAML,
+    )
+)
+_register(
+    ExportCase(
+        case="e51",
+        title="Calibration of a heated plate (2-D steady heat equation)",
+        notebook="E51_heat_equation_design.py",
+        model="sci.heat_plate",
+        files=(),
+        loader=lambda d: heat_plate_data.from_challenges(d),
+        synthetic=lambda: heat_plate_data.heat_plate_dataset(),
+        schema=heat_plate_data.HEAT_SCHEMA,
+        project="engineering",
+        dataset="heat_plate_e51",
+        spec=heat_plate_data.E51_SPEC_YAML,
     )
 )
 

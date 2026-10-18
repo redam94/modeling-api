@@ -38,6 +38,7 @@ FIXTURES: list[str] = [
     "sm_vecm_macro",
     "e07_lgcp",
     "e50_kpp",
+    "e51_heat_plate",
     "e60_traction",
     "e80_lens",
 ]

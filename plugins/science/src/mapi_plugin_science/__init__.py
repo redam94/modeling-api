@@ -9,7 +9,9 @@ Ported from the pymc-challenges case studies:
 * ``sci.traction_force`` - a Gaussian inverse problem in Fourier space that recovers a 2-D
   traction field from a displacement field, with exact posterior draws (E60);
 * ``sci.strong_lens`` - a pixel forward model of a galaxy-scale strong lens, with a
-  pixelated source and critical curves per draw (E80).
+  pixelated source and critical curves per draw (E80);
+* ``sci.heat_plate`` - the 2-D steady heat equation of a heated plate, a finite-volume
+  linear system solved inside the model, calibrated on thermocouple readings (E51).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -18,6 +20,7 @@ Every plugin registers through the ``mapi.models`` entry point
 
 from importlib import metadata as _metadata
 
+from mapi_plugin_science.heat_plate import HeatPlateModel, HeatPlateSettings
 from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
 from mapi_plugin_science.lens import StrongLensModel, StrongLensSettings
 from mapi_plugin_science.lgcp import LGCPGridModel, LGCPGridSettings
@@ -28,13 +31,15 @@ try:
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
     __version__ = "0.8.0"
 
-PLUGINS = (LGCPGridModel, FisherKPPModel, TractionForceModel, StrongLensModel)
+PLUGINS = (LGCPGridModel, FisherKPPModel, TractionForceModel, StrongLensModel, HeatPlateModel)
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
 __all__ = [
     "PLUGINS",
     "FisherKPPModel",
     "FisherKPPSettings",
+    "HeatPlateModel",
+    "HeatPlateSettings",
     "LGCPGridModel",
     "LGCPGridSettings",
     "StrongLensModel",

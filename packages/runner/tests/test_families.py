@@ -45,6 +45,7 @@ EXPECTED: dict[str, tuple[str, set[str], tuple[Any, ...]]] = {
     "guided_mmm": ("mmm", TIME | {"decomposition", "response_curves"}, (_SLOW,)),
     "e07_lgcp": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
     "e50_kpp": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
+    "e51_heat_plate": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
     "e60_traction": ("sci", {"params", "diagnostics", "fields"}, ()),
     "e80_lens": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
 }

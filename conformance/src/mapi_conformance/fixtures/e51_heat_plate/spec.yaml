@@ -1,0 +1,24 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: heat-plate-calibration, project: engineering, labels: {corpus: e51}}
+data:
+  dataset: dataset://engineering/heat_plate_calibration@latest
+  bind:
+    dims: {run: run, y: y_cm, x: x_cm}
+    vars: {heater_power: heater_w, temperature: reading_c}
+  split: {kind: leave_group_out, dim: run, groups: [cal3]}
+model:
+  use: sci.heat_plate@^1
+  settings: {thickness_mm: 5.0, room_temperature: 20.0}
+  fit:
+    mode: evaluate_then_refit
+    seed: 51
+    tune: 500
+    draws: 500
+    chains: 4
+    engine: pymc
+    target_accept: 0.9
+    keep: {log_likelihood: true}
+evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
+outputs:
+  plots: [core.convergence, core.posterior_forest, core.pair, sci.field_map, sci.image_residuals]

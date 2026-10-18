@@ -1705,6 +1705,78 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "experience": ["expert"],
         },
     ),
+    "sci.heat_plate": _a(
+        "Temperature of a heated plate",
+        "Learns how a metal plate moves and loses heat from a few temperature sensors. It then "
+        "predicts the temperature map of the plate for a new layout of heaters, with a range.",
+        [
+            "You heat a flat plate and measure its temperature at some points",
+            "You want the heat properties of the plate: conduction, heat loss and the part of the "
+            "heater power that goes into the plate",
+            "You want to know the temperature map before you build a new heater layout",
+        ],
+        [
+            "The temperatures change with time and you have no steady readings",
+            "The plate is thick, or it is not flat",
+            "The grid cells are not square, or the positions do not have equal steps",
+            "Much of the heat goes out by radiation at high temperatures (the model is linear)",
+        ],
+        [
+            "A square grid of cells over the plate, with the positions of the cell centers in cm",
+            "One run for each heater layout: the power in W that goes into each cell",
+            "The sensor readings in degC for each run. Cells without a sensor are empty",
+            "Optional: a map of the cells with insulation on the back face",
+        ],
+        [
+            "The plate is at a steady temperature in each run",
+            "Heat moves in the plane of the plate and goes out through the two faces and the edges",
+            "The room temperature does not change, and the heat loss is proportional to the "
+            "temperature above the room",
+            "The sensor noise is the same for all sensors",
+        ],
+        [
+            "The temperature map of each run, and of new heater layouts, with a range",
+            "The conduction, the face and edge heat loss, and the heater efficiency",
+            "The heat-spreading length in cm: how far heat goes from one heater",
+            "Simulated sensor readings with noise",
+        ],
+        _X,
+        _MIN,
+        "Three runs with one 10 W heater each and twelve sensors on a 40 x 20 cm brass plate "
+        "give a conduction of about 59 W/m/K and a heat-spreading length of 12.8 cm.",
+        related=["sci.fisher_kpp", "sci.traction_force"],
+        expert="2-D steady heat equation k delta lap(u) - h (1 + m_back) u + eta q = 0 with edge "
+        "loss h_edge (pymc-challenges E51), discretised by finite volumes on square cells: "
+        "A(theta) u = eta q, A = -k delta L + diag(h (1 + m_back) dx^2 + h_edge delta dx "
+        "n_edge), solved for each run inside the model with pytensor.tensor.linalg.solve "
+        "(gradients through the solve). Readings ~ Normal(T_room + u, sigma) at the finite cells "
+        "only; the pointwise log-likelihood has one value per reading (LOO is valid). Priors: k "
+        "~ LogNormal(log 50, 0.5), h ~ LogNormal(log 10, 0.5), h_edge ~ LogNormal(log 10, 0.7), "
+        "eta ~ Beta(40, 4), sigma ~ HalfNormal(0.5). The field is linear in the heater powers, "
+        "so one fit predicts any new layout. k, h and eta are strongly correlated (rises depend "
+        "on eta/k and eta/h); h_edge is weakly identified from interior sensors (its E51 "
+        "interval misses the truth).",
+        refs=[
+            (
+                "Incropera, DeWitt, Bergman and Lavine, Fundamentals of Heat and Mass Transfer "
+                "(extended surfaces and fins)",
+                None,
+            ),
+            (
+                "Patankar (1980), Numerical Heat Transfer and Fluid Flow (the finite-volume "
+                "method)",
+                None,
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "fit_physics"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -1719,7 +1791,7 @@ SURVIVING_MODEL_IDS: Final[frozenset[str]] = frozenset(
 the scikit-learn models of ``mapi-sklearn``)."""
 
 SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
-    {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens"}
+    {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens", "sci.heat_plate"}
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
 problems ported from the pymc-challenges case studies)."""
