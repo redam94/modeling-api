@@ -34,6 +34,7 @@ each lift likelihood.
 | `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
 | `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
 | `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
+| `sci.ibp_features@1` | `mapi-plugin-science` | draws | predict, evaluate | `e31_ibp` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -351,6 +352,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
 | `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
 | `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
+| `e31` | `sci.ibp_features` | `optdigits_train.csv`, `optdigits_test.csv` | `vision/optdigits_e31` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -476,3 +478,65 @@ The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F81
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
 
+### `sci.ibp_features` — shared parts of small images (E31)
+
+A latent feature model for small images, for example handwritten digits. Each image is the
+average image plus the features that it owns, plus Gaussian noise:
+`x = mu + z A + e`. Each `z` is 0 or 1. The prior of `z` is an Indian buffet process
+(stick-breaking, truncated at `K = n_features`): `alpha ~ Gamma`, `nu_k ~ Beta(alpha, 1)`,
+`pi_k = nu_1 ... nu_k`. The model sums `z` out exactly over the `2^K` patterns of each image
+(a `pm.Potential`). Thus NUTS samples only the feature images `A`, the sticks, `alpha` and
+`sigma_A`. Each extra feature doubles the time, so `n_features` is 10 or less.
+
+**Inputs.** `digit` (categorical, fixed), `y` and `x` (integer, fixed, row 0 at the top) and the
+target `ink(digit, y, x)` from 0 (blank) to 1 (full ink). An empty value is a pixel that the
+model does not see. With `shown_mask: true`, the data also has a bool `shown(digit, y, x)`.
+The fit does not use a pixel where `shown` is false, but the bundle keeps its value for
+comparison. The average image `mu` is the mean of the images with no hidden pixels.
+
+**Outputs.** `ink_hat(digit, y, x)` (a field for each digit, grey scale): the expected image
+given the seen pixels. Where the model did not see a pixel, this is the completion. The
+`predictive` kind draws a pattern and the noise. `features(feature, y, x)` (a field for each
+feature, diverging scale) gives the change of ink that each feature adds to the average image.
+`feature_prob(feature)` gives `pi_k`, and `owns(digit, feature)` gives the probability that
+each image owns each feature. A score uses only the pixels that the bundle keeps, never the
+target values in the score data. Thus a held-out pixel cannot get into its own prediction.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `n_features` | 8 | Truncation `K` (1 to 10). Each image sums over `2^K` patterns |
+| `kind` | `fixed_noise` | `fixed_noise`: the pixel noise is `noise_sd`; `free_noise`: the model learns it (HalfNormal(1) prior) |
+| `noise_sd` | 0.25 | Pixel noise `sigma_X`. It sets the level of detail: a smaller value makes more features useful |
+| `alpha_shape`, `alpha_rate` | 1, 1 | Gamma prior of the IBP mass `alpha` |
+| `feature_scale_sd` | 1 | HalfNormal scale of `sigma_A`, the scale of the feature images |
+| `start` | `digits` | `digits`: all chains start, without jitter, at half of `K` random images with `nu = 0.8`; `default`: the jittered start of the engine |
+| `score_draws` | 200 | Posterior draws for each score |
+| `shown_mask` | false | Read `shown(digit, y, x)` and hide the pixels where it is false |
+| `truncation_warn` | 0.05 | Warn when the mean of the last `pi_K` is more than this value |
+
+**Start.** From the default start, some chains can go to a trap: all `pi_k` go to zero and
+the images use no features. Then no feature gets a gradient again. The `digits` start
+prevents this (the notebook does the same). The engines `pymc` and `nutpie` use the start
+point with no jitter (`EnginePlan.initvals` and `jitter=False`).
+
+**Diagnostics.** The posterior of `A` has many modes, as in a mixture model. Chains usually
+find different features, so expect r-hat and ESS warnings for `logpi` and `sigma_A`. The
+predictions of the chains are almost the same. `TRUNCATION_BINDS` warns when the last `pi_K`
+is not small: more features would be used. `FEATURES_COLLAPSED` warns when a chain has no
+features.
+
+**Splits and comparisons.** `digit` is fixed: a score can use only the digits of the fit. To
+complete a new image, add it to the data with its unseen pixels empty, and fit again. To hold
+out halves of images, use a `mask_block` split over `[digit, y]` with `block: {y: 4}`. With
+`fit.keep.log_likelihood: true`, the bundle keeps the log-likelihood of each image. Then
+`elpd_loo` compares `n_features`, `noise_sd` and `kind`. With `fit.keep.posterior_predictive`,
+the bundle keeps replicate images for `sci.ppc_image_grid` and `sci.image_residuals`.
+
+`from_challenges` reads the UCI optdigits of pymc-challenges as the E31 notebook does: 30
+training digits for each class and 20 test digits for each class by 13 other writers, 8 × 6
+pixels, ink from 0 to 1. The `visible` mask hides the bottom half of each test digit. The
+`learned.heldout` field of the fit gives the completion score of those halves (the mean log
+predictive density for each digit and the RMSE). With the notebook settings (`K = 8`,
+`noise_sd = 0.25`, 4 chains of 1000 draws) a fit on the 300 training digits completes the test
+halves with an RMSE of 0.283 and −0.34 nats for each digit. The notebook gives 0.283 and −0.3.
+The fit takes approximately 4 minutes with the `pymc` engine.

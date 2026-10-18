@@ -410,7 +410,7 @@ class _Images:
 def _average_image(ink: np.ndarray, seen: np.ndarray) -> np.ndarray:
     """The average of the images with every pixel seen (the notebook's training mean); per
     pixel over the seen values when no image is complete; 0 where nothing is seen."""
-    complete = seen.all(1)
+    complete = np.asarray(seen.all(axis=1), dtype=bool)
     use = seen & complete[:, None] if complete.any() else seen
     count = use.sum(0)
     total = np.where(use, ink, 0.0).sum(0)
@@ -502,9 +502,9 @@ class IBPFeaturesModel(CustomModel[IBPFeaturesSettings]):
             prior_z = pt.dot(pt.as_tensor(c), logpi) + pt.dot(
                 pt.as_tensor(1.0 - c), pt.log1mexp(logpi)
             )
-            ll_rows = pt.logsumexp(prior_z[None, :] - sq / (2.0 * sx**2), axis=1) - 0.5 * pt.as_tensor(
-                n_seen
-            ) * pt.log(2.0 * np.pi * sx**2)
+            ll_rows = pt.logsumexp(
+                prior_z[None, :] - sq / (2.0 * sx**2), axis=1
+            ) - 0.5 * pt.as_tensor(n_seen) * pt.log(2.0 * np.pi * sx**2)
             pm.Potential("loglik", ll_rows.sum())
         return model
 
@@ -562,9 +562,7 @@ class IBPFeaturesModel(CustomModel[IBPFeaturesSettings]):
             raise MapiError(
                 f"engine {result.engine!r} returned no posterior", code=ErrorCode.INTERNAL_ERROR
             )
-        keep = ["alpha", "nu", "logpi", "sigma_A"] + (
-            ["sigma_X"] if "sigma_X" in posterior else []
-        )
+        keep = ["alpha", "nu", "logpi", "sigma_A"] + (["sigma_X"] if "sigma_X" in posterior else [])
         a = posterior["A"].transpose("chain", "draw", FEATURE_DIM, "pixel").values
         posterior = posterior[keep].assign(
             {
@@ -589,12 +587,10 @@ class IBPFeaturesModel(CustomModel[IBPFeaturesSettings]):
         image_coords = {DIGIT_DIM: images.digits, Y_DIM: images.ys, X_DIM: images.xs}
         n = images.ink.shape[0]
         groups["observed_data"] = _clean(
-            xr.Dataset(
-                {TARGET: (IMAGE_DIMS, images.image(images.ink))}, coords=image_coords
-            ),
+            xr.Dataset({TARGET: (IMAGE_DIMS, images.image(images.ink))}, coords=image_coords),
             result.engine,
         )
-        const = {PIXEL_MEAN: ((Y_DIM, X_DIM), images.image(images.mean))}
+        const: dict[str, Any] = {PIXEL_MEAN: ((Y_DIM, X_DIM), images.image(images.mean))}
         if s.shown_mask:
             const[SHOWN] = (IMAGE_DIMS, images.image(images.shown))
         groups["constant_data"] = _clean(xr.Dataset(const, coords=image_coords), result.engine)
@@ -641,7 +637,10 @@ class IBPFeaturesModel(CustomModel[IBPFeaturesSettings]):
             "start": s.start,
             "images": int(n),
             "pixels_seen": int(images.seen.sum()),
-            "pi_mean_by_chain": np.exp(posterior["logpi"]).mean("draw").round(4).values.tolist(),
+            "pi_mean_by_chain": xr.apply_ufunc(np.exp, posterior["logpi"])
+            .mean("draw")
+            .round(4)
+            .values.tolist(),
         }
         hidden = ~images.shown & np.isfinite(images.ink)
         if hidden.any():
@@ -672,7 +671,7 @@ class IBPFeaturesModel(CustomModel[IBPFeaturesSettings]):
     def _replicates(
         self, images: _Images, post: xr.Dataset, s: IBPFeaturesSettings, thin: int, seed: int
     ) -> xr.Dataset:
-        """Posterior predictive images ``ink(chain, draw, digit, y, x)`` (every ``thin``-th draw)."""
+        """Replicate images ``ink(chain, draw, digit, y, x)`` of every ``thin``-th draw."""
         sub = post.isel(draw=slice(None, None, thin))
         draws = _flat_draws(sub, s)
         rng = _rng(seed, "posterior_predictive")
@@ -702,7 +701,7 @@ class IBPFeaturesModel(CustomModel[IBPFeaturesSettings]):
         names = [n for n in ("alpha", "sigma_A", "sigma_X", "logpi") if n in post]
         out = convergence_diagnostics(post, fitted.groups.get("sample_stats"), var_names=names)
         s = self.parse_settings(fitted.settings)
-        pi = np.exp(post["logpi"])
+        pi = xr.apply_ufunc(np.exp, post["logpi"])
         last = float(pi.isel({FEATURE_DIM: -1}).mean())
         if last > s.truncation_warn:
             out.append(

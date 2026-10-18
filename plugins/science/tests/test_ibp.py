@@ -8,6 +8,7 @@ import itertools
 import json
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
@@ -20,7 +21,6 @@ from mapi_plugin_science.ibp import (
     IBPFeaturesSettings,
     _Images,
     heldout_scores,
-    pattern_logpost,
     patterns,
     row_loglik,
 )
@@ -43,6 +43,7 @@ from mapi_sdk.schema import validate_dataset
 from mapi_sdk.testing import ModelFixture, check_model
 from mapi_spec import load_model_spec, load_score_request, validate_spec
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.spec import ScoreRequest
 from scipy import stats
 
 CHALLENGES_CSV = challenges_file(CHALLENGES_FILE)
@@ -51,7 +52,7 @@ HEADER = "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://sci/ibp\n"
 CANON = {"row": "y", "col": "x", "pixels": "ink", "visible": "shown"}
 
 
-def _req(body: str) -> object:
+def _req(body: str) -> ScoreRequest:
     return load_score_request(HEADER + body)
 
 
@@ -272,7 +273,7 @@ def test_fit_finds_the_strokes_and_completes_held_out_halves(
     obs = strokes["pixels"]
     noise = IBP_TRUTH["noise_sd"]
     base = float(np.sqrt(((obs - obs.mean("digit")) ** 2).mean()))
-    values = bundle.metrics.values
+    values: dict[str, Any] = dict(bundle.metrics.values)
     assert values["rmse"] < 0.75 * base, (values["rmse"], base)
     assert values["rmse"] < 2.0 * noise
     assert 0.75 <= values["coverage_90"] <= 1.0
@@ -306,7 +307,9 @@ def test_log_likelihood_is_the_numpy_twin(bundle: Bundle) -> None:
 def test_predict_returns_images_features_and_ownership(
     bundle: Bundle, strokes: xr.Dataset, registry: Registry
 ) -> None:
-    out = score_bundle(bundle, _req("mode: predict\n"), strokes, registry=registry, return_full=True)
+    out = score_bundle(
+        bundle, _req("mode: predict\n"), strokes, registry=registry, return_full=True
+    )
     pred = out["predictions"].to_dataset()
     assert pred["ink_hat"].dims == ("chain", "draw", "digit", "row", "col")
     assert pred.sizes["chain"] * pred.sizes["draw"] == 100  # score_draws
@@ -466,11 +469,11 @@ def test_real_digits_fit_and_complete_the_test_writers(registry: Registry) -> No
     ).replace("chains: 4", "chains: 2")  # fmt: skip
     b = fit_spec(spec, ds, registry=registry, raw_schema=IBP_SCHEMA)
     post = b.model.posterior
-    pi = np.exp(post["logpi"]).mean("draw")
+    pi = xr.apply_ufunc(np.exp, post["logpi"]).mean("draw")
     assert float(pi.isel(feature=0).min()) > 0.2  # no chain switched the features off
     assert 1.0 < float(post["alpha"].mean()) < 10.0
     assert abs(float(post["sigma_A"].mean()) - NOTEBOOK_REFERENCE["sigma_A_mean"]) < 0.05
-    held = b.model.learned["heldout"]
+    held: Any = b.model.learned["heldout"]
     assert held["images"] == 200
     assert held["rmse"] < 0.31  # notebook 0.283; PPCA-10 0.291, the average digit ~0.37
     assert held["lpd_per_image"] > -3.0  # notebook -0.3 nats per digit
