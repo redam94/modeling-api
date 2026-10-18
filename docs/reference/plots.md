@@ -238,6 +238,11 @@ the string columns of these DataFrames.
 | `core.model_comparison` | `ic` (auto: precomputed table, else WAIC), `var`, `model_dim` (model) |
 | `core.counterfactual` | `var`, `along`, `hdi_prob` (0.9), `bins` (30) |
 | `core.decision_distribution` | `var`, `candidate`, `hdi_prob`, `higher_is_better` (true), `max_candidates` (12) |
+| `core.pair` | `var_names`, `max_params` (5), `max_draws` (500), `bins` (20), `width` (520) |
+| `core.ridge` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive), `dim`, `select`, `hdi_prob` (0.94), `max_levels` (30), `max_draws` (4 000), `points` (100), `overlap` (1.6), `descending` (true) |
+| `core.rank_matrix` | `var`, `group`, `dim`, `select`, `descending` (true: rank 1 is the largest value), `max_items` (30), `max_draws` (4 000), `labels` (auto \| always \| never) |
+| `core.calibration` | `var`, `observed_var`, `kind` (auto \| continuous \| binary), `prob` (0.95), `bins` (10), `n_sim` (1 000), `seed` (0) |
+| `core.state_sequence` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive \| root), `state_dim` (state), `along`, `observed_var`, `select`, `max_states` (10), `max_times` (2 000), `max_draws` (4 000), `width` (640), `height` (140) |
 | `mmm.response_curves` | `var`, `channel`, `grid`, `spend_var` (spend), `current_var` (current_spend), `hdi_prob`, `facet` |
 | `mmm.marginal_cost` | the same as response curves, + `metric` (cost \| roi), `clip_quantile` (0.98) |
 | `mmm.budget_plans` | `spend_var`, `outcome_var`, `plan`, `channel`, `reference`, `hdi_prob` |
@@ -246,6 +251,18 @@ the string columns of these DataFrames.
 | `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
 | `sci.profile_bands` | `var`, `group`, `observed_var`, `along`, `by`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_curves` (12), `max_draws` (1 000), `colormap` (viridis), `log` (false), `width` (640), `height` (360) |
 | `sci.ensemble` | `var`, `group`, `observed_var`, `along`, `select`, `n_draws` (40), `levels` ([0.9]), `point` (median \| mean \| none), `max_draws` (2 000), `seed` (0), `log` (false), `width` (640), `height` (320) |
+
+### Extra core recipes
+
+These five recipes are in the core pack (`mapi_plots.recipes.extras`, Vega-Lite):
+
+| Recipe | What it shows |
+|---|---|
+| `core.pair` | A corner plot of up to `max_params` scalar parameter elements. Below the diagonal: thinned draws of each pair. On the diagonal: a histogram of each parameter. Red points are divergent transitions (`sample_stats.diverging`). |
+| `core.ridge` | One density for each level of `dim`, sorted by the mean, with a dot for the mean and a bar for the HDI. Each curve has the same peak height. |
+| `core.rank_matrix` | P(rank = k) for each item, sorted by the expected rank, and the matrix of P(row above column). Input: draws `(…, item)`. |
+| `core.calibration` | Continuous targets: the PIT-ECDF difference with a simultaneous envelope (simulated). Targets with values 0 and 1: a reliability diagram with a binomial band for each bin and a histogram of the predicted probabilities. |
+| `core.state_sequence` | The observed series (points coloured by the most likely state) above the stacked state probabilities. Input: probabilities `(…, state, time)` with or without draws, or integer state draws `(chain, draw, time)`. |
 
 ### Scientific-model pack (`sci.*`)
 

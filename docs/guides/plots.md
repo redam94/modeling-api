@@ -67,6 +67,11 @@ Each plot contains these items:
 | `core.model_comparison` | The elpd of each model and the difference to the best model (PSIS-LOO table or WAIC) | `comparison`, or one child for each model with `log_likelihood` |
 | `core.counterfactual` | The scenario compared with the baseline over time, and the distribution of the total change | `draws`/`summary`, `baseline/…`, `delta/…` |
 | `core.decision_distribution` | The distribution of a decision objective for each option, and P(best) | `decision`/`objective` |
+| `core.pair` | A grid of the draws of each pair of parameters, a histogram of each parameter, divergent transitions in red | `posterior`, `sample_stats` |
+| `core.ridge` | One density curve for each level of a dim (such as each group), sorted by the mean, with HDI bars | draws in `posterior`, `predictions` or `posterior_predictive` |
+| `core.rank_matrix` | The probability of each rank for each item, and the probability that one item is above another | draws in `posterior`, `predictions` or `posterior_predictive` |
+| `core.calibration` | The PIT-ECDF difference with a simultaneous band, or a reliability diagram for 0/1 targets | `posterior_predictive`, `observed_data` |
+| `core.state_sequence` | The observed series above the stacked probability of each hidden state over time | state probabilities or state draws, `observed_data` |
 
 The **marketing-mix pack** (`mmm.*`) adds these plots:
 

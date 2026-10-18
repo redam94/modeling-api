@@ -905,4 +905,223 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "the grid's x. Other dims must have one level or be fixed with `select`. The median "
         "line is not itself a possible path.",
     ),
+    # ============================================================ core: extras
+    "core.pair": _a(
+        "Pair plot",
+        "Shows the draws of each pair of model parameters as a cloud of points, with a "
+        "histogram of each parameter. Red points mark draws where the fitting method had "
+        "problems.",
+        [
+            "Sampler convergence reports divergent transitions and you want to see where they are",
+            "You want to see if two parameters trade off against each other",
+            "You want to see the shape of the fitted values, such as two peaks or a funnel",
+        ],
+        [
+            "The model has many parameters and you do not know which ones to look at",
+            "You want the ranges of many parameters at once (use Posterior forest)",
+        ],
+        [
+            "A fitted Bayesian model with draws in chains (the posterior group)",
+            "Optional: sample_stats with the divergence flags",
+        ],
+        [
+            "The chart shows the first 5 parameter values, or the ones that you pick",
+            "A random-looking cloud is good; a narrow line or a curved band is a problem for "
+            "the sampler",
+        ],
+        [
+            "A histogram of each parameter on the diagonal",
+            "A cloud of points for each pair of parameters below the diagonal",
+            "Red points for the divergent transitions",
+            "A caption with the strongest correlation and the number of divergences",
+        ],
+        _X,
+        _SEC,
+        "The cloud of beta[tv] against alpha[north] has two separate groups of points: the "
+        "two chains found different values of beta[tv]. The 3 red points are inside the "
+        "clouds, so they do not point to a funnel.",
+        related=["core.convergence", "core.posterior_forest"],
+        expert="Elements of `var_names` (default: every numeric posterior variable) are taken "
+        "in model order up to `max_params` (5; constant elements are skipped). The scatters "
+        "show up to `max_draws` (500) evenly thinned draws plus the divergent draws; the "
+        "histograms (`bins`, 20) use all draws. Each axis spans the full range of the "
+        "draws. Divergences come from sample_stats.diverging when its (chain, draw) shape "
+        "matches. The caption reports the largest |Pearson r| over all draws; above 0.8 "
+        "it suggests a reparameterisation.",
+        refs=[_GABRY, _ARVIZ],
+    ),
+    "core.ridge": _a(
+        "Ridgeline",
+        "Shows a curve of the possible values for each group, such as each school or each "
+        "region, one above the other and sorted by the average. Use it to compare many groups "
+        "at once.",
+        [
+            "Your model has one value for each group and you want to compare the groups",
+            "You want to see the shape of each range, not only its ends",
+        ],
+        [
+            "There are more than about 40 groups (use Rank matrix or Posterior forest)",
+            "The variable has more than one dimension that you cannot fix to one level",
+        ],
+        [
+            "Draws of a variable with one group dimension, in the posterior, predictions or "
+            "posterior_predictive group",
+        ],
+        [
+            "Each curve is scaled to the same height, so compare widths and positions, not heights",
+            "Other dimensions have one level or are fixed with `select`",
+        ],
+        [
+            "One smoothed curve for each group, sorted by the mean",
+            "A dot for the mean and a bar for the 94% range of each group",
+            "A dashed zero line when the values cross zero",
+            "A caption with the top and bottom groups and how many neighbours overlap",
+        ],
+        _B,
+        _NOW,
+        "School A is at the top with a mean effect of 14 and school E is at the bottom with "
+        "4. The bars of most neighbouring schools overlap, so only the difference between "
+        "the top and the bottom is clear.",
+        related=["core.rank_matrix", "core.posterior_forest"],
+        expert="Gaussian KDE (Silverman bandwidth) per level on a common grid over the "
+        "0.5–99.5 % range of all draws (`points`, 100), each scaled so its peak is "
+        "`overlap` (1.6) row heights. Bars are the HDI at `hdi_prob` (0.94). Rows are "
+        "ordered by mean (`descending` puts the largest on top); above `max_levels` (30), "
+        "evenly spaced rows in that order are kept. `dim` picks the level dim when the "
+        "variable has more than one; `select` fixes the others. Up to `max_draws` (4000) "
+        "draws.",
+        refs=[_ARVIZ],
+    ),
+    "core.rank_matrix": _a(
+        "Rank matrix",
+        "Shows how likely each item is to have each place in a ranking, and how likely each "
+        "item is to be above each other item. Use it when the order of items matters more "
+        "than their values.",
+        [
+            "You want to rank teams, products, schools or regions and know how sure the ranking is",
+            "You want the chance that one item is better than another",
+        ],
+        [
+            "There are more than 60 items",
+            "Ties are common and meaningful (the chart breaks ties in a fixed order)",
+        ],
+        [
+            "Draws of a variable with one item dimension, in the posterior, predictions or "
+            "posterior_predictive group",
+        ],
+        [
+            "Rank 1 is the largest value unless you set `descending: false`",
+            "Each draw gives one full ranking; the chart counts how often each place occurs",
+        ],
+        [
+            "A heatmap of the chance of each rank for each item, sorted by the expected rank",
+            "A heatmap of the chance that the row item is above the column item",
+            "Percentages in the cells when there are 12 items or fewer",
+            "A caption with the top item and how sure its place is",
+        ],
+        _I,
+        _NOW,
+        "School A is first in 49% of the draws and is above school G in 83% of them. The "
+        "middle schools have spread-out rows: their places are not certain.",
+        related=["core.ridge", "core.decision_distribution"],
+        expert="Per draw, items are ranked by value (`descending`: rank 1 = largest; ties "
+        "keep item order). P(rank = k) is the share of draws, the expected rank sorts the "
+        "rows, and P(row above column) = P(x_row > x_col) for `descending` (else <). Up to "
+        "`max_draws` (4000) draws with every item finite; `max_items` (30) items. `labels` "
+        "(auto: at most 12 items) prints the percentages.",
+    ),
+    "core.calibration": _a(
+        "Calibration",
+        "Checks if the ranges and probabilities that the model predicts agree with how often "
+        "things happen in your data. A line inside the band, or dots on the diagonal, show a "
+        "well-calibrated model.",
+        [
+            "You want a sharper check of the predicted ranges than the PIT histogram",
+            "You predict a yes/no outcome and want to know if a 70% prediction comes true "
+            "about 70% of the time",
+        ],
+        [
+            "You have no actual values to compare with",
+            "You have only a few observations (fewer than about 30)",
+        ],
+        [
+            "Predictions with draws (posterior_predictive or predictions group)",
+            "The actual values (observed_data group)",
+        ],
+        [
+            "Each actual value is compared with the draws for the same cell",
+            "For a yes/no outcome the predicted probability is the average of the draws",
+        ],
+        [
+            "For numbers: the PIT-ECDF difference with a 95% band that holds at all points "
+            "together",
+            "For yes/no outcomes: a reliability diagram with a band for each group and a "
+            "histogram of the predicted probabilities",
+            "Red points where the line or a group is outside its band",
+            "A caption with the verdict, and the Brier score for yes/no outcomes",
+        ],
+        _X,
+        _SEC,
+        "The line goes above the band near 0 and below it near 1: too many actual values are "
+        "in the tails. The predicted ranges of the model are too narrow.",
+        related=["core.ppc", "core.ppc_fan"],
+        expert="Continuous: PIT = P(ŷ < y) + ½ P(ŷ = y); the line is ECDF(z) − z on a grid of "
+        "min(max(n, 20), 200) points. The simultaneous envelope at `prob` (0.95) is "
+        "±c·sqrt(z(1−z)/n) with c the `prob` quantile of the largest standardised deviation "
+        "over the grid in `n_sim` (1000) simulated uniform samples (cumulative multinomial "
+        "counts, `seed`). Binary (auto when y ∈ {0, 1} and the draws are in [0, 1]): `bins` "
+        "(10) equal-width bins of the mean prediction; each band is the binomial range "
+        "p ± z·sqrt(p(1−p)/n_bin); the expected calibration error weights |observed − "
+        "predicted| by bin size.",
+        refs=[
+            (
+                "Säilynoja, Bürkner and Vehtari (2022), Graphical test for discrete uniformity "
+                "and its applications in goodness-of-fit evaluation and multiple sample "
+                "comparison",
+                "https://arxiv.org/abs/2103.10522",
+            ),
+            _GABRY,
+        ],
+    ),
+    "core.state_sequence": _a(
+        "State sequence",
+        "Shows your data over time above the probability of each hidden state, such as a calm "
+        "or a busy period. Use it to see when the state changes and how sure the model is.",
+        [
+            "Your model has hidden states or regimes, such as a hidden Markov model",
+            "You want to find change points in a series",
+        ],
+        [
+            "The states have no fixed labels between draws (label switching); fix the order "
+            "in the model first",
+            "There are more than about 10 states",
+        ],
+        [
+            "State probabilities with a state and a time dimension, or draws of the state "
+            "number at each time (posterior, predictions or posterior_predictive group)",
+            "Optional: the observed series (observed_data group)",
+        ],
+        [
+            "State number 0 in one draw is the same state as number 0 in another draw",
+            "The observed series and the states use the same time points",
+        ],
+        [
+            "The observed series with each point coloured by its most likely state",
+            "Stacked areas of the probability of each state at each time",
+            "A caption with the number of changes, the share of time in each state and the "
+            "times with no clear state",
+        ],
+        _I,
+        _NOW,
+        "The volatile state has a high probability from mid-February to early March and in "
+        "late April. The large swings in the data are at the same times. At the edges of "
+        "these periods neither state reaches 80%, so the exact change dates are not certain.",
+        related=["core.ppc_fan", "sci.profile_bands"],
+        expert="With a `state_dim` (default 'state') the variable is a probability per state "
+        "and time: the mean over draws (up to `max_draws`), clipped at 0 and normalised at "
+        "each time. Without it, integer state draws are counted per time. `along` sets the "
+        "time dim, `select` fixes other dims, `observed_var` picks the series (default: the "
+        "first observed variable with the time dim). The most likely state colours the "
+        "points; up to `max_times` (2000) evenly spaced times.",
+    ),
 }
