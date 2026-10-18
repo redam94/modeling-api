@@ -8,6 +8,10 @@ lines, uploads outputs through the signed POST policy, PUTs a signed ``manifest.
 ``ok`` · ``fail_user`` (error event, exit 10) · ``oom`` (exit 137) · ``tamper`` (an object not
 in the manifest) · ``bad_hmac`` (events signed with the wrong key) · ``hang`` (sleeps until
 SIGTERM, then exits 143) · ``partial`` (partial manifest, exit 16).
+
+M4: an ``ingest`` of an assembly (or :func:`outputs_for` with ``mode="tree"``) writes a tree
+version (``data.tree.zip``, ``tree_schema.json``); an ``inspect`` run writes
+``inspection.json``.
 """
 
 from __future__ import annotations
@@ -76,6 +80,46 @@ UNSAFE_PLOT: dict[str, Any] = {
         "encoding": {"url": {"value": "https://attacker.example/beacon.png"}},
     },
 }
+
+
+TREE_SCHEMA: dict[str, Any] = {
+    "nodes": {
+        "/": {},
+        "/observations": {
+            "dims": {
+                "year": {"kind": "categorical"},
+                "row": {"kind": "index"},
+                "col": {"kind": "index"},
+            },
+            "vars": {"image": {"dims": ["year", "row", "col"], "dtype": "float32"}},
+        },
+        "/psf": {
+            "dims": {"prow": {"kind": "index"}, "pcol": {"kind": "index"}},
+            "vars": {"psf": {"dims": ["prow", "pcol"], "dtype": "float64"}},
+        },
+    }
+}
+"""What the fake ingest of an assembly (or ``mode="tree"``) reports: a two-node tree."""
+
+INSPECTION: dict[str, Any] = {
+    "format": "hdf5",
+    "size_bytes": 2048,
+    "groups": ["/", "/observations", "/psf"],
+    "arrays": [
+        {
+            "path": "/observations/image",
+            "shape": [64, 64],
+            "dtype": "float32",
+            "chunks": [64, 64],
+            "filters": ["deflate", "shuffle"],
+            "attrs": {"units": "counts"},
+        },
+        {"path": "/psf/kernel", "shape": [9, 9], "dtype": "float64"},
+    ],
+    "truncated": False,
+    "warnings": [],
+}
+"""What the fake ``inspect`` run reports (an :class:`~mapi_spec.ingest.UploadInspection`)."""
 
 
 class Supervisor:
@@ -155,6 +199,31 @@ def outputs_for(rs: RunSpec, mode: str) -> dict[str, tuple[bytes, str]]:
         if mode == "partial":
             out.pop("bundle.zarr.zip")
         return out
+    spec = getattr(rs, "spec", None) or {}
+    if kind == "ingest" and (mode == "tree" or "assembly" in spec):
+        # an M4 tree version (an assembly, or a NetCDF/HDF5 file with groups): the server
+        # never decodes data.tree.zip, so random bytes stand in for the zarr zip
+        return {
+            "data.tree.zip": (os.urandom(4096), "application/zip"),
+            "tree_schema.json": js(TREE_SCHEMA),
+            "schema.json": js(TREE_SCHEMA["nodes"]["/"]),
+            "summary.json": js(
+                {
+                    "vars": [],
+                    "coords": {},
+                    "nodes": {
+                        "/observations": {
+                            "vars": ["image"],
+                            "coords": {"year": {"kind": "categorical", "size": 2}},
+                        },
+                        "/psf": {"vars": ["psf"]},
+                    },
+                }
+            ),
+            "preview.json": js({"rows": [[1.0]]}),
+        }
+    if kind == "inspect":
+        return {"inspection.json": js(INSPECTION)}
     if kind == "ingest":
         schema = {
             "dims": {"t": {"kind": "time", "policy": "extend", "freq": "MS"}},

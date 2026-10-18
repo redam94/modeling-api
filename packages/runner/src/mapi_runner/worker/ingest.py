@@ -21,6 +21,22 @@ label of a new dim, or use a preset:
   renames variables (and may gather them into wide variables) exactly as for a CSV;
 * ``meridian`` - Google Meridian's column contract on a wide CSV/Parquet table.
 
+M4: an upload with groups (NetCDF-4/HDF5, a zarr zip with nested groups), a raw HDF5 file
+whose mapping places variables below the root, or an :class:`~mapi_spec.ingest.IngestAssembly`
+of several uploads (inputs ``upload.<i>``) becomes a **tree** version
+(:mod:`mapi_runner.worker.tree_ingest`)::
+
+    data.tree.zip     the xr.DataTree (root attr ``mapi_tree_schema`` holds its TreeSchema)
+    tree_schema.json  its TreeSchema
+    schema.json       the root node's DataSchema (possibly empty), for readers before M4
+    summary.json      the root's DataSummary plus ``nodes``: one DataSummary per node
+    profile.json / preview.json   of the default node (``node`` names it)
+    ui/explore/...    the default node's Data Explorer views; every node's under
+                      ``ui/explore/nodes/<slug>/`` and ``ui/explore/nodes/index.json``
+
+Every HDF5 file is checked by :func:`~mapi_runner.worker.hdf5_guard.check_hdf5` before
+anything else opens it.
+
 Every byte of user data is parsed here, in the sandbox, under the caps of
 :class:`~mapi_runner.worker.tabular.IngestLimits`.
 """
@@ -41,6 +57,7 @@ import pandas as pd
 import xarray as xr
 from mapi_sdk.errors import PayloadLimitError, WireFormatError
 from mapi_sdk.schema import data_summary, infer_freq, infer_schema, validate_dataset
+from mapi_sdk.tree import node_dataset, validate_tree, write_tree_zip
 from mapi_sdk.wire import WireLimits, read_zarr_zip, write_zarr_zip
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
 from mapi_spec.guided import ColumnProfile, safe_name
@@ -55,8 +72,10 @@ from mapi_spec.ingest import (
     VarMapping,
     WideVarMapping,
 )
+from mapi_spec.jobs import DATATREE_OUTPUT, TREE_SCHEMA_OUTPUT, upload_input
 from mapi_spec.run import INPUT_DATASET, RunnerPhase
 from mapi_spec.schema import DataSchema, DimPolicy, DimSpec, Role
+from mapi_spec.tree import ROOT, TreeSchema
 from mapi_spec.views import (
     MAX_GRID_COORDS,
     MAX_PREVIEW_ROWS,
@@ -70,20 +89,38 @@ from mapi_spec.views import (
 from mapi_runner.jobs import INGEST_DATA, INGEST_SCHEMA, INPUT_UPLOAD, IngestJob, MffOptions
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import SCHEMA_ATTR
+from mapi_runner.worker.hdf5_guard import check_hdf5, walk_hdf5
+from mapi_runner.worker.hdf5_read import read_hdf5_mapped
 from mapi_runner.worker.tabular import (
-    HDF5_MAGIC,
     IngestLimits,
     check_zip_archive,
     column_profiles,
+    hdf5_superblock_offset,
     problem,
     read_table,
     sniff,
     write_profiles,
 )
+from mapi_runner.worker.tree_ingest import (
+    TREE_SCHEMA_ATTR,
+    Upload,
+    assemble,
+    check_tree_limits,
+    explore_slug,
+    map_tree,
+    prefix_error,
+    read_netcdf_tree,
+    read_zarr_tree,
+    schema_for_nodes,
+    tree_from_nodes,
+    zarr_has_groups,
+)
 
 __all__ = [
+    "EXPLORE_NODES_INDEX",
     "INGEST_COLUMNS",
     "INGEST_NOTES_ATTR",
+    "build_upload",
     "dataset_from_meridian",
     "dataset_from_mff",
     "dataset_from_table",
@@ -92,6 +129,8 @@ __all__ = [
 ]
 
 INGEST_COLUMNS = "columns.json"
+EXPLORE_NODES_INDEX = "ui/explore/nodes/index.json"
+"""M4: the node -> explorer views index of a tree version."""
 INGEST_NOTES_ATTR = "mapi.ingest_notes"
 """``Dataset.attrs`` key of the notes a build leaves for the ingest run (``[{pointer,
 message}]``): reported as ``info`` issues, never stored with the data."""
@@ -787,6 +826,8 @@ def _self_describing(
     fmt: str,
     mapping: IngestMapping | None,
     limits: IngestLimits = _UNLIMITED,
+    *,
+    checked: bool = False,
 ) -> tuple[xr.Dataset, DataSchema]:
     if fmt == "zarr_zip":
         check_zip_archive(path, limits)
@@ -812,7 +853,7 @@ def _self_describing(
                 untrusted_text=exc.detail,
             ) from None
     else:
-        ds = _read_netcdf(path, limits)
+        ds = _read_netcdf(path, limits, checked=checked)
     stored = ds.attrs.get(SCHEMA_ATTR)
     base: DataSchema | None = None
     if isinstance(stored, str):
@@ -854,10 +895,22 @@ def _self_describing(
     return ds, base or infer_schema(ds)
 
 
-def _read_netcdf(path: Path, limits: IngestLimits = _UNLIMITED) -> xr.Dataset:
-    with open(path, "rb") as fh:
-        hdf5 = fh.read(8).startswith(HDF5_MAGIC)
-    engines = ("h5netcdf", "netcdf4") if hdf5 else ("scipy", "h5netcdf", "netcdf4")
+def _is_hdf5(path: Path) -> bool:
+    """True when libhdf5 would open ``path``: its superblock may follow a user block, so
+    the signature is looked for at every offset libhdf5 tries, not only at byte 0."""
+    return hdf5_superblock_offset(path) is not None
+
+
+def _read_netcdf(
+    path: Path, limits: IngestLimits = _UNLIMITED, *, checked: bool = False
+) -> xr.Dataset:
+    hdf5 = _is_hdf5(path)
+    if hdf5 and not checked:
+        # before any xarray/h5py open of the upload
+        check_hdf5(path, limits, lenient_attrs=True)
+    # a file that is not HDF5 (and so skipped the guard) is only ever read as NetCDF-3:
+    # an HDF5-capable engine must never see a file the guard did not check
+    engines = ("h5netcdf", "netcdf4") if hdf5 else ("scipy",)
     budget = limits.expansion_budget(path.stat().st_size)
     last: Exception | None = None
     for engine in engines:
@@ -1014,25 +1067,87 @@ def preview(ds: xr.Dataset, rows: int) -> dict[str, Any]:
 # ==================================================================================== run
 
 
-def build_dataset(
-    path: Path, job: IngestJob
-) -> tuple[xr.Dataset, DataSchema, list[ColumnProfile] | None]:
-    """Parse ``path`` as ``job`` says: ``(dataset, schema, column profiles)``."""
-    limits = IngestLimits.from_job(job)
-    mapping = job.mapping
-    if mapping is None:  # the v0.2 top-level preset
-        mapping = IngestMapping(format="mff", preset=IngestPreset.MFF, mff=job.mff)
-    preset = mapping.preset
-    if mapping.format in ("zarr_zip", "netcdf"):
-        if sniff(path) != mapping.format:
-            raise _schema_error(
-                f"the upload is not a {mapping.format} file",
-                "/mapping/format",
-                action="Set the format of the mapping to the format of the file (csv, parquet, "
-                "mff, zarr_zip or netcdf).",
+def _job_mapping(job: IngestJob) -> IngestMapping:
+    if job.mapping is not None:
+        return job.mapping
+    return IngestMapping(format="mff", preset=IngestPreset.MFF, mff=job.mff)
+
+
+def _check_format(path: Path, fmt: str) -> None:
+    kind = sniff(path)
+    if kind == fmt or (fmt in ("hdf5", "netcdf") and _is_hdf5(path)):
+        return
+    raise _schema_error(
+        f"the upload is not a {fmt} file",
+        "/mapping/format",
+        action="Set the format of the mapping to the format of the file (csv, parquet, "
+        "mff, zarr_zip, netcdf or hdf5).",
+    )
+
+
+def _tree_upload(
+    tree: xr.DataTree, schema: TreeSchema, size: int, warnings: list[tuple[str, str | None]]
+) -> Upload:
+    """A tree, or its root as a plain dataset when the tree has no other node."""
+    if len(schema.nodes) == 1 and ROOT in schema.nodes:
+        ds = tree.to_dataset(inherit=False)
+        return Upload(ds, schema.nodes[ROOT], None, warnings, [], size)
+    return Upload(tree, schema, None, warnings, [], size)
+
+
+def build_upload(path: Path, mapping: IngestMapping, limits: IngestLimits) -> Upload:
+    """Parse one upload as ``mapping`` says: a plain dataset or (M4) a tree."""
+    size = path.stat().st_size
+    if mapping.format in ("zarr_zip", "netcdf", "hdf5"):
+        _check_format(path, mapping.format)
+        if mapping.format == "hdf5":
+            assert mapping.hdf5 is not None
+            walk = walk_hdf5(path, limits)
+            read = read_hdf5_mapped(path, mapping.hdf5, limits, walk)
+            tree = tree_from_nodes(read.nodes, "/mapping/hdf5")
+            check_tree_limits(tree, limits, limits.expansion_budget(size))
+            tschema = schema_for_nodes(
+                tree,
+                var_meta=lambda n, v: read.var_specs.get((n, v)),
+                dim_meta=lambda n, d: read.dim_specs.get((n, d)),
+                layout=mapping.layout,
+                use_stored=False,
             )
-        ds, schema = _self_describing(path, mapping.format, mapping, limits)
-        return ds, schema, None
+            warnings = [(w, None) for w in walk.warnings] + read.warnings
+            return _tree_upload(tree, tschema, size, warnings)
+        if mapping.format == "zarr_zip":
+            check_zip_archive(path, limits)
+            if zarr_has_groups(path):
+                tree, var_meta, dim_meta = map_tree(read_zarr_tree(path, limits), mapping)
+                tschema = schema_for_nodes(
+                    tree,
+                    var_meta=var_meta,
+                    dim_meta=dim_meta,
+                    layout=mapping.layout,
+                    use_stored=not (mapping.dims or mapping.vars),
+                )
+                return Upload(tree, tschema, None, [], [], size)
+            ds, flat = _self_describing(path, mapping.format, mapping, limits)
+            return Upload(ds, flat, None, [], [], size)
+        if _is_hdf5(path):
+            # self-describing NetCDF/xarray HDF5 ingested before M4 without attribute caps
+            walk = walk_hdf5(path, limits, lenient_attrs=True)
+            warnings = [(w, None) for w in walk.warnings]
+            if len(walk.groups) > 1:
+                tree, var_meta, dim_meta = map_tree(read_netcdf_tree(path, limits), mapping)
+                tschema = schema_for_nodes(
+                    tree,
+                    var_meta=var_meta,
+                    dim_meta=dim_meta,
+                    layout=mapping.layout,
+                    use_stored=not (mapping.dims or mapping.vars),
+                )
+                return Upload(tree, tschema, None, warnings, [], size)
+            ds, flat = _self_describing(path, mapping.format, mapping, limits, checked=True)
+            return Upload(ds, flat, None, warnings, [], size)
+        ds, flat = _self_describing(path, mapping.format, mapping, limits)
+        return Upload(ds, flat, None, [], [], size)
+    preset = mapping.preset
     fmt = "parquet" if mapping.format == "parquet" else "csv"
     df = read_table(path, fmt, limits)
     if preset is IngestPreset.MFF:
@@ -1047,28 +1162,75 @@ def build_dataset(
             )
         else:
             ds, schema = dataset_from_mff(df, opts, limits=limits)
-        if notes:
-            ds.attrs[INGEST_NOTES_ATTR] = notes
-        return ds, schema, profiles
+        notes = [*notes, *(ds.attrs.pop(INGEST_NOTES_ATTR, None) or [])]
+        return Upload(ds, schema, profiles, [], notes, size)
     profiles = column_profiles(df)
     if preset is IngestPreset.MERIDIAN:
         ds, schema = dataset_from_meridian(df, mapping, limits=limits)
     else:
         ds, schema = dataset_from_table(df, mapping, limits=limits)
-    return ds, schema, profiles
+    notes = list(ds.attrs.pop(INGEST_NOTES_ATTR, None) or [])
+    return Upload(ds, schema, profiles, [], notes, size)
 
 
-def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
-    ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the upload")
-    name = INPUT_UPLOAD if ctx.has_input(INPUT_UPLOAD) else INPUT_DATASET
-    path = ctx.download(name)
-    assert path is not None
-    ctx.state(RunnerPhase.VALIDATE, "parsing and validating the upload")
-    ds, schema, columns = build_dataset(path, job)
-    ctx.cancel.check()
-    notes = ds.attrs.pop(INGEST_NOTES_ATTR, None) or []
-    found = validate_dataset(schema, ds)
-    issues = [i.to_issue() for i in found]
+def build_dataset(
+    path: Path, job: IngestJob
+) -> tuple[xr.Dataset, DataSchema, list[ColumnProfile] | None]:
+    """Parse ``path`` as ``job`` says: ``(dataset, schema, column profiles)``.
+
+    A plain-dataset upload only (a tree upload raises ``SCHEMA_INVALID``; use
+    :func:`build_upload`). Notes of the build stay in ``ds.attrs[INGEST_NOTES_ATTR]``.
+    """
+    up = build_upload(path, _job_mapping(job), IngestLimits.from_job(job))
+    if not isinstance(up.data, xr.Dataset) or not isinstance(up.schema, DataSchema):
+        raise _schema_error("the upload has groups: it is a tree dataset", "/mapping")
+    if up.notes:
+        up.data.attrs[INGEST_NOTES_ATTR] = up.notes
+    return up.data, up.schema, up.columns
+
+
+def _assembly_upload(ctx: WorkerContext, job: IngestJob, limits: IngestLimits) -> Upload:
+    """Every source of the job's assembly parsed, then combined per node."""
+    assert job.assembly is not None
+    sources = job.assembly.sources
+    if len(sources) > limits.max_sources:
+        raise problem(
+            ErrorCode.PAYLOAD_TOO_LARGE,
+            f"the version combines {len(sources)} uploads (the maximum is {limits.max_sources})",
+            pointer="/assembly/sources",
+        )
+    uploads: list[Upload] = []
+    decoded = 0
+    for i, src in enumerate(sources):
+        ctx.cancel.check()
+        ctx.progress(i / max(1, len(sources)) * 0.5, f"parsing upload {i + 1} of {len(sources)}")
+        path = ctx.download(upload_input(i))
+        assert path is not None
+        prefix = f"/assembly/sources/{i}"
+        try:
+            up = build_upload(path, src.mapping, limits)
+        except MapiError as exc:
+            raise prefix_error(exc, prefix) from None
+        decoded += (
+            int(up.data.nbytes)
+            if isinstance(up.data, xr.Dataset)
+            else sum(int(n.to_dataset(inherit=False).nbytes) for n in up.data.subtree)
+        )
+        if decoded > limits.max_uncompressed_bytes:
+            raise problem(
+                ErrorCode.PAYLOAD_TOO_LARGE,
+                f"the uploads decode to more than {limits.max_uncompressed_bytes:,} bytes",
+                pointer=prefix,
+                action="Combine fewer files, or split the dataset.",
+            )
+        up.notes = [{**n, "pointer": prefix + n.get("pointer", "")} for n in up.notes]
+        uploads.append(up)
+    ctx.state(RunnerPhase.VALIDATE, "combining the uploads")
+    return assemble(job.assembly, uploads, limits)
+
+
+def _note_issues(ctx: WorkerContext, notes: list[dict[str, str]]) -> list[Issue]:
+    issues: list[Issue] = []
     for note in notes:
         issues.append(
             Issue(
@@ -1079,13 +1241,43 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
             )
         )
         ctx.log(str(note["message"]))
+    return issues
+
+
+def _raise_errors(issues: list[Issue]) -> None:
     errors = [i for i in issues if i.severity is Severity.ERROR]
     if errors:
         raise MapiError(
             f"the data does not match its schema: {errors[0].message}",
             code=ErrorCode.SCHEMA_INVALID,
-            issues=issues,
+            issues=issues[:1000],
         )
+
+
+def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
+    limits = IngestLimits.from_job(job)
+    if job.assembly is not None:
+        ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the uploads")
+        up = _assembly_upload(ctx, job, limits)
+    else:
+        ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the upload")
+        name = INPUT_UPLOAD if ctx.has_input(INPUT_UPLOAD) else INPUT_DATASET
+        path = ctx.download(name)
+        assert path is not None
+        ctx.state(RunnerPhase.VALIDATE, "parsing and validating the upload")
+        up = build_upload(path, _job_mapping(job), limits)
+    ctx.cancel.check()
+    for message, untrusted in up.warnings[:100]:
+        ctx.warning("INGEST_WARNING", message, untrusted)
+    if isinstance(up.data, xr.DataTree):
+        assert isinstance(up.schema, TreeSchema)
+        return _write_tree(ctx, job, up.data, up.schema, up.columns, up.notes)
+    ds, schema, columns = up.data, up.schema, up.columns
+    assert isinstance(schema, DataSchema)
+    found = validate_dataset(schema, ds)
+    issues = [i.to_issue() for i in found]
+    issues.extend(_note_issues(ctx, up.notes))
+    _raise_errors(issues)
     for issue in issues:
         if issue.severity is Severity.WARNING:
             ctx.warning("DATA_WARNING", issue.message)
@@ -1108,3 +1300,67 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
     write_data_explorer(ctx, ds, schema, ref=job.dataset or "dataset://runner/upload@latest")
     ctx.progress(1.0, "dataset ready", force=True)
     return schema
+
+
+def _write_tree(
+    ctx: WorkerContext,
+    job: IngestJob,
+    tree: xr.DataTree,
+    schema: TreeSchema,
+    columns: list[ColumnProfile] | None,
+    notes: list[dict[str, str]],
+) -> DataSchema:
+    """The outputs of a tree version (see the module docstring)."""
+    issues = [i.to_issue() for i in validate_tree(tree, schema)]
+    issues.extend(_note_issues(ctx, notes))
+    _raise_errors(issues)
+    for issue in issues:
+        if issue.severity is Severity.WARNING:
+            ctx.warning("DATA_WARNING", issue.message)
+    root = schema.root
+    tree.attrs = {
+        **{k: v for k, v in tree.attrs.items() if k not in (SCHEMA_ATTR, TREE_SCHEMA_ATTR)},
+        TREE_SCHEMA_ATTR: schema.model_dump_json(),
+        SCHEMA_ATTR: root.model_dump_json(),
+    }
+    try:
+        raw = write_tree_zip(tree)
+    except WireFormatError as exc:
+        raise _schema_error(
+            "the tree dataset cannot be stored", untrusted_text=exc.detail
+        ) from None
+    assert raw is not None
+    ctx.write_output(DATATREE_OUTPUT, raw)
+    ctx.write_output(TREE_SCHEMA_OUTPUT, schema.model_dump_json(indent=2).encode())
+    ctx.write_output(INGEST_SCHEMA, root.model_dump_json(indent=2).encode())
+    datasets = {path: node_dataset(tree, path) for path in schema.nodes}
+    summaries = {
+        path: data_summary(ds, schema.nodes[path]).model_dump(mode="json")
+        for path, ds in datasets.items()
+    }
+    ctx.write_json("summary.json", {**summaries[ROOT], "nodes": summaries})
+    default = schema.default_node()
+    dds, dschema = datasets[default], schema.nodes[default]
+    ctx.write_json("profile.json", {**profile(dds, dschema, issues, raw), "node": default})
+    ctx.write_json("preview.json", {**preview(dds, job.preview_rows), "node": default})
+    if columns is not None:
+        ctx.write_output(INGEST_COLUMNS, write_profiles(columns))
+    from mapi_runner.worker.explore import write_data_explorer
+
+    ref = job.dataset or "dataset://runner/upload@latest"
+    ctx.progress(0.9, "computing the Data Explorer overview")
+    write_data_explorer(ctx, dds, dschema, ref=ref, node=default)
+    index: dict[str, Any] = {"default": default, "nodes": {}}
+    with_vars = [p for p, s in schema.nodes.items() if s.vars]
+    for k, path in enumerate(with_vars):
+        ctx.cancel.check()
+        ctx.progress(0.9 + 0.1 * k / max(1, len(with_vars)), f"exploring node {path}")
+        prefix = f"ui/explore/nodes/{explore_slug(path)}/"
+        written = write_data_explorer(
+            ctx, datasets[path], schema.nodes[path], ref=ref, prefix=prefix, node=path
+        )
+        if written is not None:
+            index["nodes"][path] = {"slug": explore_slug(path), "index": f"{prefix}index.json"}
+    ctx.write_json(EXPLORE_NODES_INDEX, index)
+    ctx.progress(1.0, "dataset ready", force=True)
+    return root

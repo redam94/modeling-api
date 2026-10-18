@@ -8,6 +8,9 @@ Fixtures:
     A registry with the toy reference steps and models.
 ``mapi_panel``
     ``(data, fx)``: a small daily markets × channels panel and its FX side table.
+``mapi_check_tree_model`` / ``mapi_tree``
+    The tree-input model checks (:func:`mapi_sdk.testing.check_tree_model`) and a small
+    weekly tree dataset (:func:`mapi_sdk.testing.tree_dataset`, M4).
 
 The ``mapi_contract`` marker tags contract-kit tests. Imports are lazy so that loading the
 plugin costs nothing for test suites that do not use it.
@@ -51,3 +54,17 @@ def mapi_panel() -> Any:
     from mapi_sdk.testing.toy import panel_dataset
 
     return panel_dataset(days=7 * 24)
+
+
+@pytest.fixture
+def mapi_check_tree_model() -> Callable[..., Any]:
+    from mapi_sdk.testing.tree_checks import check_tree_model
+
+    return check_tree_model
+
+
+@pytest.fixture
+def mapi_tree() -> Any:
+    from mapi_sdk.testing.toy import tree_dataset
+
+    return tree_dataset()

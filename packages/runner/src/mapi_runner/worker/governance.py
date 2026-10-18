@@ -156,6 +156,8 @@ class GovernanceEnv:
     seed: int = 0
     side_tables: Mapping[str, xr.Dataset] = field(default_factory=dict)
     log: Callable[[str], None] = lambda _m: None
+    tree: xr.DataTree | None = None
+    """M4: the tree dataset ``data`` was selected from (a tree-input model scores with it)."""
 
     def __post_init__(self) -> None:
         self.kind: ModelKind = bundle_kind(self.bundle)
@@ -245,9 +247,17 @@ class GovernanceEnv:
     def predictions(self) -> list[Prediction]:
         if self._pred is None:
             self._pred = predict(
-                self.bundle, self.data, self.registry, side_tables=self.side_tables
+                self.bundle,
+                self.data,
+                self.registry,
+                side_tables=self.side_tables,
+                tree=self.tree,
             )
         return self._pred
+
+    def predict(self, bundle: Bundle, data: xr.Dataset) -> list[Prediction]:
+        """:func:`predict` with this run's registry, side tables and tree."""
+        return predict(bundle, data, self.registry, side_tables=self.side_tables, tree=self.tree)
 
     def trained(self) -> Bundle:
         """The model fitted on the training data only (refitted if the fit kept none)."""
@@ -867,17 +877,14 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if not env.targets:
         return _skip(check, "the model has no target")
     b = env.refitter.fit(placebo.data, placebo.spec, raw_schema=placebo.schema)
-    full = _first(
-        predict(b, placebo.data, env.registry, side_tables=env.side_tables), env.targets[0]
-    )
+    full = _first(env.predict(b, placebo.data), env.targets[0])
     warn_at = check.thresholds.warn if check.thresholds else GOVERNANCE_CHECKS[check.check].warn
     # the share is taken of the real drivers' total effect (so the limit does not depend on
     # how large the baseline is); of the whole result when the drivers' effect is unknown
     real_num, real_draws = 0.0, None
     if placebo.ablate_real is not None:
         abl_real = _first(
-            predict(b, placebo.ablate_real(placebo.data), env.registry,
-                    side_tables=env.side_tables),
+            env.predict(b, placebo.ablate_real(placebo.data)),
             env.targets[0],
         )  # fmt: skip
         real_num, _d, real_draws = _total_effect(full, abl_real)
@@ -887,7 +894,7 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     material: dict[str, float] = {}
     for nm in placebo.names:
         abl = _first(
-            predict(b, placebo.ablate(placebo.data, nm), env.registry, side_tables=env.side_tables),
+            env.predict(b, placebo.ablate(placebo.data, nm)),
             env.targets[0],
         )
         num, den, per_draw = _total_effect(full, abl)
@@ -1039,11 +1046,11 @@ def _coef_effect(env: GovernanceEnv, b: Bundle, data: xr.Dataset, var: str) -> f
 
 
 def _effect(env: GovernanceEnv, b: Bundle, data: xr.Dataset, drivers: Sequence[str]) -> float:
-    full = _first(predict(b, data, env.registry, side_tables=env.side_tables), env.targets[0])
+    full = _first(env.predict(b, data), env.targets[0])
     off = data
     for v in drivers:
         off = _ablate(env, off, v)
-    abl = _first(predict(b, off, env.registry, side_tables=env.side_tables), env.targets[0])
+    abl = _first(env.predict(b, off), env.targets[0])
     num, _den, _d = _total_effect(full, abl)
     if num <= 0:
         coef = [_coef_effect(env, b, data, v) for v in drivers]
@@ -1139,7 +1146,7 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if mask is None or env.time_dim is None or str(mask.dims[0]) != env.time_dim:
         return _skip(check, "the model has no holdout periods at the end of its data")
     t = env.time_dim
-    preds = predict(trained, env.data, env.registry, side_tables=env.side_tables)
+    preds = env.predict(trained, env.data)
     p = _first(preds, env.targets[0] if env.targets else None)
     mask = holdout_mask(env.bundle, p.observed, trained)  # on the model's periods
     if mask is None:
@@ -1458,9 +1465,7 @@ def _signs(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
                 )
             effects = [(v, _ablate(env, env.data, v)) for v in media]
         for name, off in effects[:30]:
-            abl = _first(
-                predict(env.bundle, off, env.registry, side_tables=env.side_tables), env.targets[0]
-            )
+            abl = _first(env.predict(env.bundle, off), env.targets[0])
             num_signed = float(
                 np.nansum(np.asarray(full.point.values) - np.asarray(abl.point.values))
             )
@@ -1834,7 +1839,7 @@ def _accuracy(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         if mask is None:
             return _skip(check, f"the fit did not evaluate {metric} on holdout data")
         p = _first(
-            predict(trained, env.data, env.registry, side_tables=env.side_tables),
+            env.predict(trained, env.data),
             env.targets[0] if env.targets else None,
         )
         mask = holdout_mask(env.bundle, p.observed, trained)  # on the model's periods
@@ -1971,16 +1976,21 @@ def run_governance(ctx: Any, job: GovernanceJob) -> GovernanceReport:
     ``governance.json``."""
     from mapi_spec.jobs import INPUT_EVALUATION, INPUT_EVALUATION_MANIFEST
 
-    from mapi_runner.worker.data import load_bundle, load_dataset, load_side_tables
+    from mapi_runner.worker.data import load_bundle, load_data_and_tree, load_side_tables
 
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the model and its data")
     bundle = load_bundle(ctx)
-    data = load_dataset(ctx)
-    tables = load_side_tables(ctx)
+    # M4: a tree's nodes per data.nodes, and the tree itself for a tree-input model
+    data, tree = load_data_and_tree(ctx, bundle.spec.data)
+    # M4: a tree side table reads the node the spec names (plain tables need no spec)
+    has_nodes = any(t.node is not None for t in bundle.spec.data.side_tables.values())
+    tables = load_side_tables(ctx, bundle.spec) if has_nodes else load_side_tables(ctx)
     evaluation = None
     if ctx.has_input(INPUT_EVALUATION):
         evaluation = load_bundle(ctx, INPUT_EVALUATION, INPUT_EVALUATION_MANIFEST)
-    refitter = Refitter(bundle, ctx.registry, job.budget, side_tables=tables, cancel=ctx.cancel)
+    refitter = Refitter(
+        bundle, ctx.registry, job.budget, side_tables=tables, cancel=ctx.cancel, tree=tree
+    )
     env = GovernanceEnv(
         bundle,
         data,
@@ -1990,6 +2000,7 @@ def run_governance(ctx: Any, job: GovernanceJob) -> GovernanceReport:
         seed=job.seed,
         side_tables=tables,
         log=ctx.log,
+        tree=tree,
     )
     ctx.state(RunnerPhase.FIT, f"running {len(job.checks)} governance checks")
     results: list[CheckResult] = []

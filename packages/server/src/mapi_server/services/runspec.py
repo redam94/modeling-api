@@ -16,6 +16,7 @@ from typing import Any
 
 from mapi_spec.catalog import Catalog
 from mapi_spec.executor import RunKind
+from mapi_spec.jobs import DATATREE_OUTPUT
 from mapi_spec.loader import spec_hash
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import (
@@ -46,6 +47,7 @@ __all__ = [
     "MANIFEST_MAX_BYTES",
     "StoredRef",
     "build_runspec",
+    "input_layouts",
     "signed_links_ttl",
 ]
 
@@ -58,6 +60,16 @@ _IO_NAME = re.compile(r"[^a-z0-9_.\-]")
 def StoredRef(bucket: str, name: str, generation: int) -> dict[str, Any]:
     """The JSON shape of ``runs.inputs`` entries (a generation-pinned object)."""
     return {"bucket": bucket, "name": name, "generation": generation}
+
+
+def input_layouts(inputs: dict[str, Any]) -> dict[str, Any]:
+    """M4: ``{input name: "tree"}`` for every input that is a tree version's
+    ``data.tree.zip`` (the runner reads those as an ``xr.DataTree``)."""
+    return {
+        name: "tree"
+        for name, ref in sorted(inputs.items())
+        if isinstance(ref, dict) and str(ref.get("name", "")).endswith("/" + DATATREE_OUTPUT)
+    }
 
 
 def _ttl(timeout_s: int) -> timedelta:
@@ -161,4 +173,5 @@ async def build_runspec(
         deadline=max(attempt.deadline, created + timedelta(seconds=1)),
         created_at=created,
         labels={k: str(v) for k, v in run.labels.items()},
+        input_layouts=input_layouts(run.inputs),
     )

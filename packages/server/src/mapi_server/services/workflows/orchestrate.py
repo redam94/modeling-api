@@ -37,11 +37,18 @@ from typing import Any, Final
 
 from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
 from mapi_spec.api import new_id
-from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, MapiError, Problem, ValidationFailed
 from mapi_spec.executor import RunKind
 from mapi_spec.governance import GovernancePolicy
-from mapi_spec.jobs import BUNDLE_MANIFEST_OUTPUT, FIT_BUNDLE, INPUT_DATASET, side_table_input
+from mapi_spec.jobs import (
+    BUNDLE_MANIFEST_OUTPUT,
+    DATATREE_OUTPUT,
+    FIT_BUNDLE,
+    INGEST_DATA,
+    INPUT_DATASET,
+    TREE_SCHEMA_OUTPUT,
+    side_table_input,
+)
 from mapi_spec.loader import canonical_json, spec_hash
 from mapi_spec.refs import DatasetRef, ModelVersionRef, WorkflowRef
 from mapi_spec.resources import ResourceClass
@@ -49,6 +56,7 @@ from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import DEFAULT_FIT_SEED
 from mapi_spec.storage import ObjectMeta, PreconditionFailed, dataset_prefix
+from mapi_spec.tree import TreeSchema
 from mapi_spec.webhooks import WebhookEventType
 from mapi_spec.workflow import (
     NODE_RESULT_MAX_BYTES,
@@ -84,7 +92,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.bundles import verified_bundle_object
-from mapi_server.services.finalizer import dataset_sha
+from mapi_server.services.finalizer import IntegrityError, dataset_sha, parse_data_summary
 from mapi_server.services.runs import Scope, apply_transition, create_run, now
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.specs import (
@@ -1288,19 +1296,36 @@ class WorkflowOrchestrator:
         port: str,
         outputs_meta: Mapping[str, Any],
     ) -> tuple[str, dict[str, JsonValue]]:
-        """Register a node's derived dataset as a version of ``wf-<workflow>-<node>``."""
+        """Register a node's derived dataset as a version of ``wf-<workflow>-<node>``
+        (a tree version, M4, when the node wrote ``data.tree.zip`` + ``tree_schema.json``)."""
         s = env.session
         base = f"out/{port}/"
-        data_meta = ObjectMeta.model_validate(outputs_meta[base + "data.zarr.zip"])
+        tree_out = base + DATATREE_OUTPUT in outputs_meta
+        data_name = DATATREE_OUTPUT if tree_out else INGEST_DATA
+        if tree_out and base + INGEST_DATA in outputs_meta:
+            raise _NodeFailure(
+                ErrorCode.INTEGRITY_FAILURE,
+                f"dataset output {port!r} has both {INGEST_DATA} and {DATATREE_OUTPUT}",
+            )
+        data_meta = ObjectMeta.model_validate(outputs_meta[base + data_name])
         cap = self.ctx.settings.max_sidecar_bytes
+        tree: TreeSchema | None = None
         try:
             schema = DataSchema.model_validate(
                 await self._read_json(outputs_meta[base + "schema.json"], cap)
             )
-            summary = (
-                DataSummary.model_validate(
-                    await self._read_json(outputs_meta[base + "summary.json"], cap)
+            if tree_out:
+                tree = TreeSchema.model_validate(
+                    await self._read_json(outputs_meta[base + TREE_SCHEMA_OUTPUT], cap)
                 )
+                if schema != tree.root:
+                    raise _NodeFailure(
+                        ErrorCode.INTEGRITY_FAILURE,
+                        f"dataset output {port!r}: schema.json is not the root node's schema",
+                    )
+            # a tree output's summary.json adds its nodes' summaries (as an ingest's does)
+            summary = (
+                parse_data_summary(await self._read_json(outputs_meta[base + "summary.json"], cap))
                 if base + "summary.json" in outputs_meta
                 else None
             )
@@ -1309,7 +1334,7 @@ class WorkflowOrchestrator:
                 if base + "meta.json" in outputs_meta
                 else {}
             )
-        except (ValidationError, KeyError) as exc:
+        except (ValidationError, KeyError, IntegrityError) as exc:
             raise _NodeFailure(
                 ErrorCode.INTEGRITY_FAILURE, f"dataset output {port!r} is invalid", str(exc)
             ) from None
@@ -1362,7 +1387,8 @@ class WorkflowOrchestrator:
             return f"dataset://{ds.project_id}/{ds.name}@v{same.version}", dict(meta_doc)
         prefix = dataset_prefix(env.scope.tenant_id, sha_hex)
         stored: dict[str, Any] = {}
-        for fname in ("data.zarr.zip", "schema.json", "summary.json", "meta.json"):
+        names = (data_name, "schema.json", "summary.json", "meta.json")
+        for fname in (*names, TREE_SCHEMA_OUTPUT) if tree_out else names:
             meta = outputs_meta.get(base + fname)
             if meta is None:
                 continue
@@ -1403,9 +1429,11 @@ class WorkflowOrchestrator:
                 size_bytes=data_meta.size,
                 data_schema=schema.model_dump(mode="json"),
                 summary=summary.model_dump(mode="json") if summary else None,
+                layout="tree" if tree is not None else "dataset",
+                tree_schema=tree.model_dump(mode="json") if tree is not None else None,
                 objects={
-                    "data.zarr.zip": stored["data.zarr.zip"],
-                    **{k: v for k, v in stored.items() if k != "data.zarr.zip"},
+                    data_name: stored[data_name],
+                    **{k: v for k, v in stored.items() if k != data_name},
                 },
                 ingest_run_id=child.id,
                 issues=[],

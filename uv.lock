@@ -2455,6 +2455,8 @@ name = "mapi-runner"
 version = "0.7.0"
 source = { editable = "packages/runner" }
 dependencies = [
+    { name = "h5netcdf" },
+    { name = "h5py" },
     { name = "httpx" },
     { name = "mapi-plots", extra = ["recipes", "render"] },
     { name = "mapi-sdk" },
@@ -2476,6 +2478,8 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "h5netcdf", specifier = ">=1.4" },
+    { name = "h5py", specifier = ">=3.11" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mapi-plots", extras = ["recipes", "render"], editable = "packages/plots-core" },
     { name = "mapi-sdk", editable = "packages/sdk" },
@@ -2940,7 +2944,7 @@ version = "1.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "ghp-import" },
     { name = "jinja2" },
     { name = "markdown" },
@@ -5356,7 +5360,7 @@ name = "tqdm"
 version = "4.70.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0d/ea/b2a5bd54b28a324dae8211928b2d730b6547500342c7e6c6dea08bd0a485/tqdm-4.70.1.tar.gz", hash = "sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4", size = 171846 }
 wheels = [
@@ -5369,7 +5373,7 @@ version = "0.27.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "rich" },
     { name = "shellingham" },
 ]
@@ -5868,7 +5872,7 @@ version = "3.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
-    { name = "nvidia-nccl-cu13", marker = "platform_system == 'Linux' and sys_platform != 'win32'" },
+    { name = "nvidia-nccl-cu13", marker = "sys_platform == 'linux'" },
     { name = "scipy" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/38/a9/295320f741c5be4be996c73ee65a2a11852028c50daa7229adb0d61c330b/xgboost-3.4.1.tar.gz", hash = "sha256:6968a4c71efdfa859df0dfcad0d99211c95c28c4ffd6aecff46efff77d18026a", size = 1231819 }

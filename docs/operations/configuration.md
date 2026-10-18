@@ -137,6 +137,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 | Variable | Default | Meaning |
 |---|---|---|
 | `MAPI_RENDER_TIMEOUT_S` | `300` | The wall-clock limit of a `POST /v1/plots:render` run. The sandbox stops the run after this time |
+| `MAPI_INSPECT_TIMEOUT_S` | `300` | The wall-clock limit of an upload inspect run (`POST /v1/datasets/{dataset_id}/uploads/{upload_id}/inspect`). The run reads only the metadata of the file |
 | `MAPI_RENDER_PLOTLY_ENABLED` | `false` | Accept Plotly plots for static rendering. This needs kaleido and a Chrome or Chromium in the runner image. The base images do not include them. While this setting is off, the server refuses Plotly renders with `MODE_NOT_SUPPORTED` |
 | `MAPI_EMBED_RATE_PER_MINUTE` | `300` | The public views in each minute for one embed link. More views get `429 RATE_LIMITED` |
 | `MAPI_EMBED_IP_RATE_PER_MINUTE` | `120` | The public embed requests in each minute from one client address, valid or not valid. This makes token guesses slower |

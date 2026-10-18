@@ -204,3 +204,22 @@ def test_undeclared_dims_are_put_back_in_fit_order() -> None:
     assert err.value.code is ErrorCode.UNSEEN_LEVELS
     fit = BuildContext("fit", xr.Dataset({"spend": spend}))
     assert fit.align(spend.isel(channel=[2, 0, 1])).equals(spend.isel(channel=[2, 0, 1]))
+
+
+def test_tree_is_passed_through_to_build() -> None:
+    from mapi_pymc.model import PyMCModel
+
+    ds = _fit_ds()
+    assert BuildContext("fit", ds).tree is None
+    tree = xr.DataTree.from_dict({"/": ds, "/psf": xr.Dataset({"k": (("q",), [1.0, 2.0])})})
+    ctx = PyMCModel._context(
+        None,  # type: ignore[arg-type]
+        "fit",
+        ds,
+        schema=SCHEMA,
+        policies={},
+        fit_coords={},
+        seed=0,
+        tree=tree,
+    )
+    assert ctx.tree is tree

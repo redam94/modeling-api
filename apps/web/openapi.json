@@ -6291,6 +6291,15 @@
           "code": {
             "$ref": "#/components/schemas/ErrorCode"
           },
+          "errors": {
+            "description": "The typed issues the run failed with (M4), e.g. an INGEST_UNSAFE_FILE refusal: their codes are what clients branch on; text the worker reported is untrusted_text",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "maxItems": 20,
+            "title": "Errors",
+            "type": "array"
+          },
           "failure_class": {
             "$ref": "#/components/schemas/FailureClass"
           },
@@ -10763,6 +10772,126 @@
           "role"
         ],
         "title": "InputTableColumn",
+        "type": "object"
+      },
+      "InspectedArray": {
+        "description": "One array of an inspected upload (from its metadata only; no data is read).\n\n``dims_hint`` comes from the file's own dim metadata where there is some (HDF5\n``DIMENSION_LIST``, zarr ``_ARRAY_DIMENSIONS``, NetCDF dims).",
+        "examples": [
+          {
+            "attrs": {
+              "units": "counts"
+            },
+            "chunks": [
+              64,
+              64
+            ],
+            "dtype": "float32",
+            "filters": [
+              "deflate",
+              "shuffle"
+            ],
+            "path": "/observations/image",
+            "shape": [
+              64,
+              64
+            ]
+          }
+        ],
+        "properties": {
+          "attrs": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxProperties": 64,
+            "propertyNames": {
+              "maxLength": 256
+            },
+            "title": "Attrs",
+            "type": "object"
+          },
+          "chunks": {
+            "anyOf": [
+              {
+                "items": {
+                  "minimum": 1.0,
+                  "type": "integer"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunks"
+          },
+          "dims_hint": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dims Hint"
+          },
+          "dtype": {
+            "maxLength": 64,
+            "title": "Dtype",
+            "type": "string"
+          },
+          "filters": {
+            "items": {
+              "maxLength": 256,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Filters",
+            "type": "array"
+          },
+          "path": {
+            "maxLength": 1025,
+            "title": "Path",
+            "type": "string"
+          },
+          "shape": {
+            "items": {
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "maxItems": 64,
+            "title": "Shape",
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "dtype"
+        ],
+        "title": "InspectedArray",
         "type": "object"
       },
       "InternalService": {
@@ -24421,6 +24550,107 @@
         "title": "UploadCreate",
         "type": "object"
       },
+      "UploadInspection": {
+        "description": "What an ``inspect`` run found in an upload (``inspection.json``; M4): its groups and\narrays, so a raw HDF5 file can be mapped (:class:`Hdf5Mapping`) and a NetCDF/zarr file's\ngroups previewed before ingest.",
+        "examples": [
+          {
+            "arrays": [
+              {
+                "attrs": {
+                  "units": "counts"
+                },
+                "chunks": [
+                  64,
+                  64
+                ],
+                "dtype": "float32",
+                "filters": [
+                  "deflate",
+                  "shuffle"
+                ],
+                "path": "/observations/image",
+                "shape": [
+                  64,
+                  64
+                ]
+              },
+              {
+                "dtype": "float64",
+                "path": "/psf/kernel",
+                "shape": [
+                  9,
+                  9
+                ]
+              }
+            ],
+            "format": "hdf5",
+            "groups": [
+              "/",
+              "/observations",
+              "/psf"
+            ],
+            "size_bytes": 2097152,
+            "truncated": false,
+            "warnings": []
+          }
+        ],
+        "properties": {
+          "arrays": {
+            "items": {
+              "$ref": "#/components/schemas/InspectedArray"
+            },
+            "maxItems": 2000,
+            "title": "Arrays",
+            "type": "array"
+          },
+          "format": {
+            "enum": [
+              "csv",
+              "parquet",
+              "mff",
+              "zarr_zip",
+              "netcdf",
+              "hdf5"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "maxLength": 1025,
+              "type": "string"
+            },
+            "maxItems": 10000,
+            "title": "Groups",
+            "type": "array"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "format",
+          "size_bytes"
+        ],
+        "title": "UploadInspection",
+        "type": "object"
+      },
       "UploadSession": {
         "description": "Where to PUT the file. ``upload.headers`` must be sent verbatim; the URL expires.",
         "examples": [
@@ -31067,6 +31297,372 @@
           }
         },
         "summary": "Create Upload",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}/inspect": {
+      "post": {
+        "description": "List the groups and arrays of an upload (an ``inspect`` run reading metadata only;\nM4). Idempotent per upload: while an inspection runs, or once one succeeded, that run\nis returned instead of starting another (a failed one is started again).",
+        "operationId": "inspect_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "QUOTA_EXCEEDED": {
+                    "summary": "Quota exceeded",
+                    "value": {
+                      "code": "QUOTA_EXCEEDED",
+                      "detail": "Quota exceeded",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Quota exceeded",
+                      "type": "urn:mapi:error:QUOTA_EXCEEDED"
+                    }
+                  },
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED, QUOTA_EXCEEDED"
+          }
+        },
+        "summary": "List the groups and arrays of an upload (an inspect run)",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}/inspection": {
+      "get": {
+        "description": "What the upload's inspect run found (``409 NOT_READY`` while it runs; ``404`` when\nno inspection was requested or its run ended without one - the run's ``problem`` says\nwhy it failed).",
+        "operationId": "get_upload_inspection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadInspection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_READY": {
+                    "summary": "The result is not ready yet",
+                    "value": {
+                      "code": "NOT_READY",
+                      "detail": "The result is not ready yet",
+                      "errors": [],
+                      "status": 409,
+                      "title": "The result is not ready yet",
+                      "type": "urn:mapi:error:NOT_READY"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_READY"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "The groups and arrays an inspect run found",
         "tags": [
           "datasets"
         ]
@@ -43255,7 +43851,7 @@
     },
     "/v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}": {
       "get": {
-        "description": "A dataset output links to its ``data.zarr.zip``, a model output to its bundle; JSON\noutputs (test results, metrics, tables, reports) are inline in the node and have no\nobject (``404``).",
+        "description": "A dataset output links to its ``data.zarr.zip`` (``data.tree.zip`` for a tree), a\nmodel output to its bundle; JSON outputs (test results, metrics, tables, reports) are\ninline in the node and have no object (``404``).",
         "operationId": "get_workflow_node_output",
         "parameters": [
           {

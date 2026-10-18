@@ -205,9 +205,11 @@ def predict(
     side_tables: Mapping[str, xr.Dataset] | None = None,
     seed: int = 0,
     level: float = 0.9,
+    tree: xr.DataTree | None = None,
 ) -> list[Prediction]:
     """Score ``bundle`` on ``data`` (``predict`` mode, dataset names, original units) and
-    pair every target-shaped output with its observed target."""
+    pair every target-shaped output with its observed target. ``tree`` is the tree dataset
+    ``data`` was selected from (M4: a tree-input model gets it as ``ScoreContext.tree``)."""
     request = ScoreRequest.model_validate(
         {
             "apiVersion": "mapi/v1",
@@ -221,7 +223,7 @@ def predict(
         }
     )
     try:  # ``metrics`` adds the observed targets in the predictions' space and stage
-        tree = score_bundle(
+        scored = score_bundle(
             bundle,
             request,
             data,
@@ -229,15 +231,22 @@ def predict(
             registry=registry,
             return_full=True,
             metrics=["rmse"],
+            tree=tree,
         )
     except MapiError:
-        tree = score_bundle(
-            bundle, request, data, side_tables=side_tables, registry=registry, return_full=True
+        scored = score_bundle(
+            bundle,
+            request,
+            data,
+            side_tables=side_tables,
+            registry=registry,
+            return_full=True,
+            tree=tree,
         )
-    node = tree["predictions"]
+    node = scored["predictions"]
     assert isinstance(node, xr.DataTree)
     pred = node.to_dataset(inherit=False)
-    obs_node = tree.children.get("observed")
+    obs_node = scored.children.get("observed")
     staged = (
         obs_node.to_dataset(inherit=False) if isinstance(obs_node, xr.DataTree) else xr.Dataset()
     )

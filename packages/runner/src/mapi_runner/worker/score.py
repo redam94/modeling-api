@@ -43,10 +43,12 @@ from mapi_spec.views import COUNTERFACTUAL_VIEW, FORECAST_VIEW
 from mapi_runner.jobs import INPUT_HISTORY, INPUT_SCENARIO, DeriveJob, EvaluateJob, ScoreJob
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import (
+    flatten,
     load_bundle,
     load_dataset,
     load_inline,
     load_side_tables,
+    load_tree_schema,
     supplied_side_tables,
 )
 from mapi_runner.worker.guided import _kpi_var, counterfactual_view, forecast_view
@@ -62,11 +64,15 @@ _DEFAULT_PLOTS: dict[str, list[str]] = {
 }
 
 
-def _optional_dataset(ctx: WorkerContext, name: str) -> xr.Dataset | None:
+def _optional_dataset(ctx: WorkerContext, name: str) -> xr.Dataset | xr.DataTree | None:
+    """A dataset input when given (M4: a tree dataset stays a tree; the harness selects
+    the bundle's ``data.nodes`` from it)."""
     return load_dataset(ctx, name) if ctx.has_input(name) else None
 
 
-def _payload(ctx: WorkerContext, name: str, inline: str, bundle: Bundle) -> xr.Dataset | None:
+def _payload(
+    ctx: WorkerContext, name: str, inline: str, bundle: Bundle
+) -> xr.Dataset | xr.DataTree | None:
     """A score input: the stored dataset ``name``, else an endpoint call's inline XrJSON
     (named like the endpoint's canonical input contract; renamed to the dataset's names)."""
     data = _optional_dataset(ctx, name)
@@ -280,7 +286,7 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
     data = _payload(ctx, INPUT_DATASET, INPUT_INLINE_DATA, bundle)
     scenario = _payload(ctx, INPUT_SCENARIO, INPUT_INLINE_SCENARIO, bundle)
     history = _optional_dataset(ctx, INPUT_HISTORY)
-    tables = load_side_tables(ctx)
+    tables = load_side_tables(ctx, bundle.spec)
     ctx.state(RunnerPhase.SCORE, f"scoring ({job.request.mode})")
     guided = job.request.mode in ("forecast", "counterfactual")
     tree = score_bundle(
@@ -301,7 +307,10 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
         tree = _without_full(tree)
     plots = job.plots if job.plots is not None else _DEFAULT_PLOTS.get(job.request.mode, [])
     try:
-        actuals = actuals_tables(bundle, job.request, data, tree)
+        flat = (
+            None if data is None else flatten(data, bundle.spec.data, load_tree_schema(ctx, data))
+        )
+        actuals = actuals_tables(bundle, job.request, flat, tree)
     except (ValueError, KeyError) as exc:  # the comparison is a convenience; the score stands
         ctx.warning("VIEW_FAILED", f"the actuals were not added to the summary: {exc}"[:500])
         actuals = []
@@ -336,7 +345,7 @@ def run_evaluate(ctx: WorkerContext, job: EvaluateJob) -> MetricsReport:
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the bundle and the evaluation data")
     bundle = load_bundle(ctx)
     data = load_dataset(ctx)
-    tables = load_side_tables(ctx)
+    tables = load_side_tables(ctx, bundle.spec)
     request = job.request or _default_request(bundle, tables)
     names = job.metrics
     if names is None:
@@ -366,8 +375,9 @@ def run_derive(ctx: WorkerContext, job: DeriveJob) -> dict[str, xr.Dataset]:
     stored step states (never refitted) and mapped to the output space."""
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the bundle and the data")
     bundle = load_bundle(ctx)
-    data = load_dataset(ctx)
-    tables = load_side_tables(ctx)
+    loaded = load_dataset(ctx)
+    data = flatten(loaded, bundle.spec.data, load_tree_schema(ctx, loaded))
+    tables = load_side_tables(ctx, bundle.spec)
     registry = ctx.registry
     manifest = bundle.model.manifest
     plugin = registry.model(f"{manifest.id}@{manifest.version}")()
@@ -410,6 +420,9 @@ def run_derive(ctx: WorkerContext, job: DeriveJob) -> dict[str, xr.Dataset]:
         log=ctx.log,
         cancel=ctx.cancel,
         to_original=_to_original(pipeline, bundle.states, {**tables, **bundle.side_tables}),
+        tree=bundle.binding.apply_tree(loaded)
+        if isinstance(loaded, xr.DataTree) and manifest.capabilities.input == "tree"
+        else None,
     )
     out: dict[str, xr.Dataset] = {}
     for i, name in enumerate(job.names):

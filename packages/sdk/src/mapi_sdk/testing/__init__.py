@@ -2,6 +2,8 @@
 
 * :func:`check_step` / :func:`check_model` run the contract checks of plan §13 and return a
   :class:`ContractReport` (raising :class:`ContractViolation` on failure by default);
+* :func:`check_tree_model` runs the checks of tree-input models (M4) on a
+  :class:`TreeModelFixture` (:func:`tree_dataset` is a small tree fixture);
 * :mod:`mapi_sdk.testing.toy` holds small reference steps and models;
 * :mod:`mapi_sdk.testing.strategies` holds Hypothesis strategies (needs ``hypothesis``);
 * the pytest plugin (:mod:`mapi_sdk.testing.plugin`, auto-loaded) provides fixtures.
@@ -25,7 +27,8 @@ if TYPE_CHECKING:
         check_model,
         check_step,
     )
-    from mapi_sdk.testing.toy import panel_dataset, toy_registry
+    from mapi_sdk.testing.toy import panel_dataset, toy_registry, tree_dataset
+    from mapi_sdk.testing.tree_checks import TreeModelFixture, check_tree_model
 
 _LAZY: dict[str, tuple[str, str | None]] = {
     "CheckResult": ("mapi_sdk.testing.checks", "CheckResult"),
@@ -37,6 +40,9 @@ _LAZY: dict[str, tuple[str, str | None]] = {
     "check_step": ("mapi_sdk.testing.checks", "check_step"),
     "panel_dataset": ("mapi_sdk.testing.toy", "panel_dataset"),
     "toy_registry": ("mapi_sdk.testing.toy", "toy_registry"),
+    "tree_dataset": ("mapi_sdk.testing.toy", "tree_dataset"),
+    "TreeModelFixture": ("mapi_sdk.testing.tree_checks", "TreeModelFixture"),
+    "check_tree_model": ("mapi_sdk.testing.tree_checks", "check_tree_model"),
     "toy": ("mapi_sdk.testing.toy", None),
 }
 
@@ -56,10 +62,13 @@ __all__ = [
     "ContractReport",
     "ContractViolation",
     "ModelFixture",
+    "TreeModelFixture",
     "check_about",
     "check_model",
     "check_step",
+    "check_tree_model",
     "panel_dataset",
     "toy",
     "toy_registry",
+    "tree_dataset",
 ]

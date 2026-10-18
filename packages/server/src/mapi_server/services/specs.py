@@ -32,6 +32,7 @@ from mapi_spec.refs import DatasetRef, EndpointRef, ModelVersionRef
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.tree import ROOT, TreeSchema
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata, validate_score_request, validate_spec
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,6 +54,8 @@ __all__ = [
     "resolve_dataset",
     "resolve_model_version",
     "score_draw_cap",
+    "side_table_node_issue",
+    "tree_schema_of",
     "validate_document",
 ]
 
@@ -82,6 +85,41 @@ class Validation:
 
 def _issue(code: ErrorCode, pointer: str, message: str) -> Issue:
     return Issue(code=code, pointer=pointer, message=message[:2000])
+
+
+def tree_schema_of(dv: m.DatasetVersion) -> TreeSchema | None:
+    """The stored :class:`TreeSchema` of a tree version (M4); ``None`` for a plain dataset."""
+    if dv.layout != "tree" or not dv.tree_schema:
+        return None
+    return TreeSchema.model_validate(dv.tree_schema)
+
+
+def side_table_node_issue(key: str, node: str | None, tree: TreeSchema | None) -> Issue | None:
+    """M4: a tree side table must name ONE node of its version (``SideTable.node``); a plain
+    one names none (or the root). The same rules the runner applies, checked statically."""
+    pointer = f"/data/side_tables/{key}/node"
+    if tree is None:
+        if node not in (None, ROOT):
+            return _issue(
+                ErrorCode.SCHEMA_INVALID,
+                pointer,
+                f"side table {key!r} is a plain dataset: it has no node {node!r}",
+            )
+        return None
+    if node is None:
+        return _issue(
+            ErrorCode.SCHEMA_INVALID,
+            pointer,
+            f"side table {key!r} is a tree dataset: name the node to read in "
+            f"data.side_tables.{key}.node",
+        )
+    if node not in tree.nodes:
+        return _issue(
+            ErrorCode.SCHEMA_INVALID,
+            pointer,
+            f"side table {key!r} has no node {node!r} (nodes: {', '.join(list(tree.nodes)[:20])})",
+        )
+    return None
 
 
 def class_for_size(size_bytes: int) -> ResourceClass | None:
@@ -283,6 +321,9 @@ async def _validate_model_spec(
             )
         else:
             out.side_tables[name] = tv
+            node_issue = side_table_node_issue(name, table.node, tree_schema_of(tv))
+            if node_issue is not None:
+                out.issues.append(node_issue)
     if dv is None:
         out.issues.append(_issue(ErrorCode.REF_UNRESOLVED, pointer, why or "dataset not found"))
         return
@@ -299,7 +340,10 @@ async def _validate_model_spec(
             _issue(ErrorCode.SCHEMA_INVALID, pointer, "the dataset version has no stored schema")
         )
         return
-    result = validate_spec(spec, snapshot.catalog, DataSchema.model_validate(dv.data_schema))
+    tree = tree_schema_of(dv)
+    result = validate_spec(
+        spec, snapshot.catalog, DataSchema.model_validate(dv.data_schema), tree_schema=tree
+    )
     out.issues.extend(result.issues)
     if spec.calibration is not None and dv.summary:
         out.issues.extend(check_spec_calibration(spec, DataSummary.model_validate(dv.summary)))
