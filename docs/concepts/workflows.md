@@ -188,11 +188,12 @@ its ports, parameter schema, result fields and an [About card](about-and-choosin
 | Data processing | `transform.difference`, `transform.seasonal_difference`, `transform.log`, `transform.box_cox`, `transform.steps` (all catalog preprocessing steps), `transform.select` |
 | Train/test plans | `split.holdout`, `split.rolling_origin`, `split.expanding_window`, `split.blocked_kfold`, `split.purged_kfold`, `split.geo_holdout`, `split.nested` |
 | Searches | `search.arma_order`, `search.sarima_order`, `search.var_lag_order`, `search.coint_rank`, `search.grid` |
-| Models | `model.fit` (all catalog models), `model.backtest`, `model.forecast`, `model.summary` |
+| Models | `model.fit` (all catalog models), `model.backtest`, `model.forecast`, `model.summary`, `model.score` |
 | Evaluation | `evaluate.metrics`, `evaluate.baseline`, `evaluate.residuals`, `evaluate.ppc` |
 | Comparison and selection | `compare.models`, `compare.diebold_mariano`, `compare.stacking`, `select.best`, `select.threshold` |
 | Governance | `governance.policy`, `governance.check` (see [Governance](governance.md)) |
 | Reports | `report.summary`, `report.evidence_pack` |
+| Plots | `plot.render` (all catalog plot recipes) |
 | Control | `branch.if`, `subworkflow.run` |
 
 Each test returns a `StatTestResult`. It contains these items:

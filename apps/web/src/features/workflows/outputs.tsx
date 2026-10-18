@@ -3,9 +3,8 @@
  * reports, governance evidence, plots (in the sandbox) and file outputs (signed links).
  * Anything unrecognised is shown as JSON text, never interpreted.
  */
-import type { JsonObject, Row } from "@mapi/plot-sandbox/protocol";
 import { Download, FileJson } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { errorMessage } from "@/api/client";
 import { useProjectScope } from "@/api/queries";
@@ -23,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 import { nodeOutputLink } from "./api";
 import { ModelExplorerLinks } from "./model-link";
+import { inlinePlot, isPlotPayload } from "./plot-payload";
 import { PORT_TYPE_META } from "./ports";
 import type { NodeOutputRef } from "./types";
 
@@ -121,6 +121,7 @@ function ReportPayload({ value }: { value: Obj }) {
             </p>
             {typeof s.text === "string" && s.text ? <p className="text-[13px] text-muted-foreground">{s.text}</p> : null}
             {obj(s.table) ? <TablePayload value={obj(s.table)!} /> : null}
+            {obj(s.plot) ? <PlotPayload value={obj(s.plot)!} title={String(s.title)} caption={false} /> : null}
           </li>
         ))}
       </ol>
@@ -139,12 +140,23 @@ function EvidencePayload({ value }: { value: Obj }) {
   );
 }
 
-function PlotPayload({ value, title }: { value: Obj; title: string }) {
-  const spec = obj(value.spec);
-  const datasets = obj(value.datasets) ?? {};
-  const inline = Object.values(datasets).every((d) => Array.isArray(d));
-  if (!spec || !inline) return <p className="text-[13px] text-muted-foreground">The data for this chart is in a file. Click Download to get the file.</p>;
-  return <PlotFrame kind={value.kind === "plotly" ? "plotly" : "vega-lite"} spec={spec as JsonObject} datasets={datasets as Record<string, Row[]>} title={title} height={260} />;
+function PlotPayload({ value, title, caption = true }: { value: Obj; title: string; caption?: boolean }) {
+  const decoded = useMemo(() => {
+    try {
+      return { plot: inlinePlot(value), error: null };
+    } catch (e) {
+      return { plot: null, error: e instanceof Error ? e.message : String(e) };
+    }
+  }, [value]);
+  if (decoded.error) return <p className="text-[13px] text-destructive">The chart data cannot be read: {decoded.error}</p>;
+  const plot = decoded.plot;
+  if (!plot) return <p className="text-[13px] text-muted-foreground">The data for this chart is in a file. Click Download to get the file.</p>;
+  return (
+    <figure className="grid gap-1" data-testid="workflow-plot">
+      <PlotFrame kind={plot.kind} spec={plot.spec} datasets={plot.datasets} title={title} height={260} />
+      {caption && plot.caption ? <figcaption className="text-xs text-muted-foreground">{plot.caption}</figcaption> : null}
+    </figure>
+  );
 }
 
 /** One inline value of a known payload format, or JSON text. */
@@ -164,7 +176,7 @@ export function PayloadView({ value, title }: { value: unknown; title: string })
       return <EvidencePayload value={o} />;
     default:
       if (typeof o.verdict_plain === "string" && typeof o.test === "string") return <TestVerdict result={o} />;
-      if (o.spec && (o.kind === "vega-lite" || o.kind === "plotly")) return <PlotPayload value={o} title={title} />;
+      if (isPlotPayload(o)) return <PlotPayload value={o} title={title} />;
       return <JsonBlock value={value} maxHeight="16rem" />;
   }
 }

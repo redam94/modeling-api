@@ -4,7 +4,8 @@
 Fits go through the SDK harness exactly like a ``fit`` run (:func:`mapi_sdk.harness.fit_spec`
 on a generated :class:`~mapi_spec.spec.ModelSpec`), forecasts through the score path
 (:func:`mapi_sdk.harness.score_bundle`), so preprocessing is replayed and every model in the
-catalog works the same way.
+catalog works the same way. ``model.forecast`` also draws its fan chart (``core.ppc_fan``) as
+its ``plot`` output (:mod:`mapi_workflows.runtime.plots`).
 
 **Derived data.** When a model node's data comes from transform nodes whose steps have a
 steps-core equivalent (``transform.steps``, ``transform.select``), the spec's pipeline
@@ -812,9 +813,16 @@ def forecast_node(ctx: NodeContext) -> NodeOutcome:
         if have:
             summ = summ.sel(stat=have)
     fds = summ.copy()
+    outputs: dict[str, Any] = {"forecast": DatasetValue(data=fds)}
+    from mapi_workflows.runtime.plots import forecast_plot  # plots imports this module
+
+    plot, warn = forecast_plot(mv, tree, ctx.registry)
+    if plot is not None:
+        outputs["plot"] = plot
     return NodeOutcome(
         result={"total": total, "horizon": horizon, "model": mv.ref},
-        outputs={"forecast": DatasetValue(data=fds)},
+        outputs=outputs,
+        warnings_plain=[warn] if warn else [],
     )
 
 
@@ -830,6 +838,8 @@ class Residuals:
     target: str
     exog: np.ndarray | None
     exog_names: list[str]
+    scored: xr.DataTree | None = None
+    """The in-sample score result the residuals come from (for the residual plot)."""
 
 
 def fit_burn_in(bundle: Bundle) -> int:
@@ -914,6 +924,7 @@ def model_residuals(mv: ModelValue, registry: Registry | None = None) -> Residua
         target=target,
         exog=exog[keep] if exog is not None else None,
         exog_names=exog_names,
+        scored=tree,
     )
 
 

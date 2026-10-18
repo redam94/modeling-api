@@ -8,13 +8,14 @@ so they run wherever the engine runs (the control plane included). Every functio
   margin (its model version is the ``model`` output when one is bound);
 * ``select.threshold``: the candidates that pass a bar;
 * ``report.summary``: a plain-language report of the run (test verdicts, the decisions
-  taken, the search results, the comparison, the chosen model);
+  taken, the search results, the comparison, the plots, the chosen model);
 * :func:`evidence_pack` builds the ``report.evidence_pack`` payload from governance
   evidence (drivers call it; the node runs as a child of the workflow run).
 """
 
 from __future__ import annotations
 
+import json
 import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -470,6 +471,14 @@ def report_summary(
             )
         )
         covered.add(v.source or "")
+    embedded = 0
+    for v in inputs.get("plots", ()):
+        if not keep(v.source):
+            continue
+        section, size = _plot_section(ctx, v, budget=MAX_REPORT_PLOT_BYTES - embedded)
+        embedded += size
+        sections.append(section)
+        covered.add(v.source or "")
     # nodes that were skipped or failed are worth a line too
     for nr in ctx.node_runs:
         if nr.node_id in covered or nr.node_id == ctx.node_id or not keep(nr.node_id):
@@ -534,6 +543,40 @@ def report_summary(
         "n_sections": len(sections),
     }
     return result, {"report": inline(PortType.REPORT, report)}
+
+
+MAX_REPORT_PLOT: Final = 256 * 1024
+"""A plot larger than this stays in its node output; the report section names it."""
+MAX_REPORT_PLOT_BYTES: Final = 1024 * 1024
+"""The plots of one report embed at most this many bytes in all."""
+
+
+def _plot_section(
+    ctx: OrchestratorContext, v: BoundValue, *, budget: int
+) -> tuple[ReportSection, int]:
+    """A ``plot`` section with the plot embedded (when it fits) and its caption as text."""
+    plot = v.ref.inline if isinstance(v.ref.inline, dict) else None
+    where = f"the plot output of {_label(ctx, v.source) or 'the node'}"
+    title = _label(ctx, v.source) or "Plot"
+    if plot is None:
+        return ReportSection(
+            title=title,
+            node_id=v.source,
+            kind="plot",
+            text=f"The plot is in a file. Open {where} to see it.",
+        ), 0
+    caption = plot.get("caption_plain")
+    text = caption if isinstance(caption, str) else ""
+    name = plot.get("title")
+    if isinstance(name, str) and name and name != title:
+        title = f"{title}: {name}"
+    size = len(json.dumps(plot, separators=(",", ":"), default=str))
+    if size > min(MAX_REPORT_PLOT, budget):
+        more = f"The plot is too large to put in the report. Open {where} to see it."
+        return ReportSection(
+            title=title, node_id=v.source, kind="plot", text=f"{text} {more}".strip()
+        ), 0
+    return ReportSection(title=title, node_id=v.source, kind="plot", text=text, plot=plot), size
 
 
 def _search_text(result: Mapping[str, JsonValue]) -> str:
