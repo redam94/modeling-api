@@ -1,0 +1,14 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: primate-social-brain, project: biology, labels: {corpus: e23}}
+data:
+  dataset: dataset://biology/primate_traits@latest
+  bind:
+    vars: {trait: brain}
+  split: {kind: mask_block, dims: [species], fraction: 0.2, seed: 23}
+model:
+  use: sci.phylo_regression@^1
+  settings: {kind: lambda, predictors: [body, group_size], standardise: false}
+  fit: {mode: evaluate_then_refit, seed: 23, tune: 500, draws: 500, chains: 4, engine: pymc}
+evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
+outputs: {plots: [core.convergence, core.posterior_forest, sci.phylogeny]}

@@ -1,0 +1,25 @@
+# E23: traits predicted from relatives, simulated traits, and typed refusals.
+- name: predict_every_species
+  request: {mode: predict, output: {draws: 10}}
+  payload: fit_data
+  expect: {groups: [summary, draws], vars: [brain, slope], sizes: {predictor: 2}}
+- name: predict_missing_from_relatives
+  request: {mode: predict, output: {summary: [mean, q5, q95]}}
+  payload: missing
+  expect: {vars: [brain], sizes: {stat: 3}}
+- name: predictive_first_ten
+  request: {mode: predict, output: {kind: predictive}}
+  payload: first_ten
+  expect: {vars: [brain], sizes: {species: 10}}
+- name: simulate_first_ten
+  request: {mode: simulate}
+  payload: first_ten
+  expect: {vars: [brain], sizes: {species: 10}}
+- name: unseen_species
+  request: {mode: predict}
+  payload: stranger
+  expect_error: UNSEEN_LEVELS
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: body, multiply: 1.1}]}
+  payload: first_ten
+  expect_error: MODE_NOT_SUPPORTED
