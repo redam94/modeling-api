@@ -12,6 +12,7 @@ Their data are maps, images and fields on a regular grid.
 | `sci.strong_lens@1` | Pixel forward model of a galaxy-scale strong lens in an HST image (E80) | draws | predict, simulate, evaluate |
 | `sci.heat_plate@1` | 2-D steady heat equation of a heated plate, a finite-volume system solved in the model graph (E51) | draws | predict, simulate, evaluate |
 | `sci.turing_pattern@1` | Schnakenberg kinetics from early images of a growing Turing pattern, exact Fourier-mode likelihood (E61 part A) | draws | predict, simulate, evaluate |
+| `sci.storm_localisation@1` | Single-molecule localisation in raw EMCCD STORM frames: detection and camera calibration in NumPy, batched pixel-integrated Gaussian PSF fit with Poisson counts (E58) | draws | predict, evaluate |
 
 Outputs that are fields declare a `grid` (`OutputDecl.grid`). The Model Explorer shows them in
 its **Fields** section, and the `sci.*` plot recipes draw them.

@@ -1855,6 +1855,80 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "speed": ["minutes", "can_wait"],
         },
     ),
+    "sci.storm_localisation": _a(
+        "Molecule positions in STORM images",
+        "Finds single glowing molecules in raw frames of a STORM or PALM microscope and "
+        "measures the position of each one to a few nanometres, with an error bar. It also "
+        "makes a super-resolution image from the positions.",
+        [
+            "You have raw camera frames of a STORM, PALM or dSTORM recording (EMCCD camera)",
+            "You need the position of each molecule with an error bar in nm",
+            "You want a super-resolution image where each point shows its own error",
+        ],
+        [
+            "The spots in a frame touch each other (the model fits one molecule in each spot)",
+            "The frames came from an sCMOS camera with a different gain for each pixel",
+            "The molecules are out of focus or you need their depth (3-D)",
+            "You need all spots of a long recording (the model fits a sample of isolated spots)",
+        ],
+        [
+            "The raw camera counts (ADU) of each frame, on a grid of whole pixels",
+            "The size of a camera pixel in the sample, in nm",
+            "The camera offset and gain. Or frames with a range of background brightness, so "
+            "that the model can measure them",
+        ],
+        [
+            "The image of one molecule is a Gaussian spot on a flat (or sloped) background",
+            "Each camera pixel counts photons with the extra noise of an EMCCD gain register "
+            "(half of the photons count)",
+            "Each fitted spot holds one molecule and no other spot is near it",
+        ],
+        [
+            "The position of each molecule in nm, with a range",
+            "The photons, the background and the width of each spot",
+            "A super-resolution image of the positions",
+            "The model image of each spot, to compare with the data",
+        ],
+        _X,
+        _MIN,
+        "200 isolated spots of a dSTORM recording of the protein Unc-13 at a synapse give "
+        "positions with a median error of 7.5 nm and about 2,900 photons in each spot.",
+        related=["sci.strong_lens", "sci.traction_force"],
+        expert="Batched single-emitter localisation (one emitter per 11 x 11 patch, every spot "
+        "with its own position, photons, background and PSF sd) with a pixel-integrated "
+        "Gaussian PSF (erf) and a Poisson likelihood of the EMCCD effective counts "
+        "z = (ADU - offset) / (2 g), mean photons / 2. Detection, the photon-transfer "
+        "calibration (np.polyfit of the robust temporal variance against the median) and the "
+        "patch extraction run in NumPy and scipy.ndimage at fit time. kind plane adds a "
+        "log-linear background slope per patch, so elpd_loo (per pixel, "
+        "fit.keep.log_likelihood) can compare the two backgrounds. Multi-emitter model "
+        "selection, the Laplace fitter of the notebook and blink counting are not part of "
+        "the model.",
+        refs=[
+            (
+                "Mortensen et al. (2010), Optimized localization analysis for single-molecule "
+                "tracking and super-resolution microscopy",
+                "https://doi.org/10.1038/nmeth.1447",
+            ),
+            (
+                "Rust, Bates & Zhuang (2006), Sub-diffraction-limit imaging by stochastic "
+                "optical reconstruction microscopy (STORM)",
+                "https://doi.org/10.1038/nmeth929",
+            ),
+            (
+                "Dannhaeuser et al. (2022), Endogenous tagging of Unc-13 reveals nanoscale "
+                "reorganization at active zones during presynaptic homeostatic potentiation",
+                "https://doi.org/10.3389/fncel.2022.1074304",
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "fit_physics"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential"],
+            "experience": ["expert"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -1876,6 +1950,7 @@ SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
         "sci.strong_lens",
         "sci.heat_plate",
         "sci.turing_pattern",
+        "sci.storm_localisation",
     }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse

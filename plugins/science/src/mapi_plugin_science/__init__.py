@@ -14,7 +14,10 @@ Ported from the pymc-challenges case studies:
   linear system solved inside the model, calibrated on thermocouple readings (E51);
 * ``sci.turing_pattern`` - Schnakenberg reaction-diffusion kinetics from early images of a
   growing Turing pattern, with the exact Fourier-mode likelihood of the linearised dynamics,
-  the dispersion relation, P(Turing) and simulated patterns (E61 part A).
+  the dispersion relation, P(Turing) and simulated patterns (E61 part A);
+* ``sci.storm_localisation`` - single-molecule localisation in raw EMCCD STORM frames: spot
+  detection and camera calibration in NumPy, then a batched pixel-integrated Gaussian PSF
+  fit with Poisson counts, and a super-resolved render (E58).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -27,6 +30,7 @@ from mapi_plugin_science.heat_plate import HeatPlateModel, HeatPlateSettings
 from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
 from mapi_plugin_science.lens import StrongLensModel, StrongLensSettings
 from mapi_plugin_science.lgcp import LGCPGridModel, LGCPGridSettings
+from mapi_plugin_science.storm import StormLocalisationModel, StormLocalisationSettings
 from mapi_plugin_science.traction import TractionForceModel, TractionForceSettings
 from mapi_plugin_science.turing import TuringPatternModel, TuringPatternSettings
 
@@ -42,6 +46,7 @@ PLUGINS = (
     StrongLensModel,
     HeatPlateModel,
     TuringPatternModel,
+    StormLocalisationModel,
 )
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
@@ -53,6 +58,8 @@ __all__ = [
     "HeatPlateSettings",
     "LGCPGridModel",
     "LGCPGridSettings",
+    "StormLocalisationModel",
+    "StormLocalisationSettings",
     "StrongLensModel",
     "StrongLensSettings",
     "TractionForceModel",

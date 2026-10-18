@@ -126,6 +126,7 @@ def test_cards_cover_the_surviving_catalog_and_the_planned_engines() -> None:
         "sci.strong_lens",
         "sci.heat_plate",
         "sci.turing_pattern",
+        "sci.storm_localisation",
     } == SCIENCE_MODEL_IDS
     assert set(MODEL_ABOUTS) == SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS | SCIENCE_MODEL_IDS
     for template in GUIDED_TEMPLATES.values():
