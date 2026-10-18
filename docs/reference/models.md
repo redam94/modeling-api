@@ -34,6 +34,7 @@ each lift likelihood.
 | `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
 | `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
 | `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
+| `sci.network_latent_space@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e21_network` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -297,11 +298,12 @@ For a text target, the server skips numeric metrics, for example `mape`.
 ## Scientific models (`mapi-plugin-science`)
 
 These plugins come from the case studies of
-[pymc-challenges](https://github.com/redam94/pymc-challenges). Their data are maps, images and
-fields on a regular grid. Their outputs are fields with a range for each cell. Each output that
-is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the column dim `x`, an
-optional `frame` dim and an optional `component` dim for a vector field). The platform then
-shows the output in two places:
+[pymc-challenges](https://github.com/redam94/pymc-challenges). Most of their data are maps,
+images and fields on a regular grid (`sci.network_latent_space` reads a graph). Their outputs
+are fields with a range for each cell. Each output that is a field declares a `grid`
+(`OutputDecl.grid`: the row dim `y`, the column dim `x`, an optional `frame` dim and an
+optional `component` dim for a vector field). The platform then shows the output in two
+places:
 
 - The **Fields** section of the Model Explorer. It shows the mean, the sd, mean ÷ sd, the 5% and
   95% maps and single draws, with a frame slider and a draw player.
@@ -351,6 +353,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
 | `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
 | `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
+| `e21` | `sci.network_latent_space` | `lazega_cowork.txt`, `lazega_attributes.txt` | `sociology/lazega_coworkers` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -476,3 +479,69 @@ The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F81
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
 
+### `sci.network_latent_space` — who works with whom (E21)
+
+A model of an undirected graph. Each pair of nodes `i < j` has a tie or not
+(`Bernoulli`, logit link). The log odds have three parts:
+
+- `alpha + x_ij beta`: the pair covariates (homophily), for example the same office.
+- `s_i + s_j`: the sociality of the two nodes (how many ties each node has).
+- `-||z_i - z_j||`: the distance between the latent positions of the two nodes.
+
+The `kind` setting selects the parts: `covariates` (the first part), `sociality` (the first
+two) or `latent_space` (all three). With `covariates: false`, the model has no pair covariates.
+`kind: covariates` with `covariates: false` is the Erdős-Rényi graph.
+
+The distances do not change when the positions turn, flip or move together. Thus the raw
+positions `z_raw` do not converge, but each distance does. After the fit, the model aligns each
+draw to one reference with Procrustes analysis. The aligned draws are the posterior variable
+`position`. The reference is `constant_data/position_ref`. The convergence diagnostics use
+`position`, not `z_raw`.
+
+**Inputs.** `node` and `node_` (the same labels, fixed) and the target `tie(node, node_)`: 1
+for a tie, 0 for no tie, and a missing value when you do not know. The matrix must be
+symmetric. The likelihood uses a pair only when its two cells are not missing. With
+`covariates: true`, the data has `dyad_cov(node, node_, cov)` (`cov` is categorical, fixed).
+With `node_groups: true`, the data has `node_group(node)`, an integer code for the colours of
+the plots.
+
+**Outputs.**
+
+- `tie_prob(node, node_)`: the probability of a tie (a field, 0 on the diagonal).
+- `tie(node, node_)`: the probability, or a simulated graph with `kind: predictive` and in
+  `simulate` mode. The graphs are symmetric. The random numbers belong to the pair, so a
+  subset of the nodes gets the same ties.
+- `degree(node)`: the ties of each node (expected, or in a simulated graph).
+- `sociality(node)` and `position(node, latent_dim)`, when the kind has them.
+- `graph_stat(statistic)`: statistics of each simulated graph (`density`, `sd_degree`,
+  `max_degree`, `isolates`, `triangles`, `transitivity`, `esp0`, `mean_geodesic`,
+  `unreachable`). `esp0` is the number of ties whose two nodes have no shared neighbour.
+  Compare them with the statistics of the data (posterior predictive checks).
+
+The fit always keeps the log-likelihood of each observed pair (dim `dyad`; the pairs are in
+`constant_data/dyad_i` and `dyad_j`). Thus `elpd_loo` is leave-one-pair-out, and the kinds of a
+workflow ladder use the same pairs in the same order. A `mask_block` split over `[node, node_]`
+holds out random cells. A pair is out of the fit when one of its two cells is held out.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kind` | `latent_space` | `covariates`, `sociality` or `latent_space` |
+| `covariates` | true | Use `dyad_cov` |
+| `node_groups` | false | The data has `node_group` |
+| `latent_dims` | 2 | Dimensions of the latent space (1 to 3) |
+| `alpha_mu`, `alpha_sigma` | -2, 2 | Normal prior of the intercept |
+| `beta_sigma` | 1 | Normal prior sd of each covariate effect |
+| `sociality_scale`, `latent_scale` | 1, 2 | Half-normal priors of `sigma_s` and `sigma_z` |
+| `procrustes_iters` | 10 | Passes of the Procrustes alignment |
+
+`from_challenges` reads the coworker network of the 71 lawyers of the Lazega firm (378 ties)
+and makes the six pair covariates of the notebook: same office, practice, status, gender and
+law school, and the gap in years with the firm ÷ 10. `office` is the node group. With 4 chains
+of 1000 draws, the fit takes approximately 15 s (`sociality`) to 45 s (`latent_space`).
+`elpd_loo` is -1060 (Erdős-Rényi), -894 (`covariates`), -764 (`sociality`), -795
+(`latent_space` without covariates) and -761 (`latent_space`), as in the notebook.
+
+A score with fewer covariates than the fit stops with `MISSING_FUTURE_COVARIATE`. A node that
+the fit did not see stops with `UNSEEN_LEVELS`. The model has no `forecast` and no
+`counterfactual` mode. The mixed-membership block models of the notebook are not part of the
+model.

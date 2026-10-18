@@ -1,0 +1,15 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: coworker-latent-space, project: sociology, labels: {corpus: e21}}
+data:
+  dataset: dataset://sociology/coworkers@latest
+  bind:
+    dims: {node: lawyer, node_: lawyer_, cov: covariate}
+    vars: {tie: cowork, dyad_cov: homophily, node_group: office}
+  split: {kind: mask_block, dims: [node, node_], fraction: 0.1, seed: 4}
+model:
+  use: sci.network_latent_space@^1
+  settings: {kind: latent_space, node_groups: true}
+  fit: {mode: evaluate_then_refit, seed: 21, tune: 500, draws: 500, chains: 4, engine: pymc}
+evaluate: {metrics: [rmse, mae, elpd_loo]}
+outputs: {plots: [core.convergence, core.posterior_forest, net.graph, sci.field_map]}
