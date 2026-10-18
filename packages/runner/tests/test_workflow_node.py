@@ -132,3 +132,22 @@ def test_node_failures_are_reported_as_errors(gcs: ShimGcs) -> None:
     (err,) = result.of("error")
     assert err.payload["code"] == "USER_CODE_ERROR"
     assert "SCHEMA_INVALID" in str(err.payload["message"])  # the worker is untrusted
+
+
+def test_a_plot_node_draws_a_catalog_recipe_inline(gcs: ShimGcs) -> None:
+    """M5: ``plot.render`` in the sandbox: the sanitized PlotSpec is an inline output."""
+    from mapi_spec.plots import PlotSpec
+
+    data = _put_data(gcs)
+    job = _job(
+        "overview",
+        "plot.render@1.0.0",
+        {"recipe": "core.data_overview", "source": "auto"},
+        input_types={"in.data.0": "dataset"},
+    )
+    result = run_supervisor(make_run(gcs, RunKind.WORKFLOW_NODE, job, inputs={"in.data.0": data}))
+    _ok(result)
+    side = _sidecar(result)
+    assert side.result["recipe"] == "core.data_overview@1.0.0" and side.result["source"] == "data"
+    plot = PlotSpec.model_validate(side.outputs["plot"].inline)
+    assert plot.id == "core.data_overview" and side.outputs["plot"].type.value == "plot"
