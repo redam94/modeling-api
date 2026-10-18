@@ -13,6 +13,7 @@ EXPECTED_IDS = {
     "sci.ibp_features",
     "sci.colour_naming",
     "sci.cmb_field",
+    "sci.areal_bym2",
 }
 
 

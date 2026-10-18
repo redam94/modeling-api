@@ -2160,6 +2160,95 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "experience": ["expert"],
         },
     ),
+    "sci.areal_bym2": _a(
+        "Disease risk on a map of areas",
+        "Estimates the risk of a disease in each area of a map (a district or a county) from "
+        "small counts, and uses the neighbouring areas to make the estimates of small areas "
+        "more stable. It also gives the probability that the risk of each area is above the "
+        "national level.",
+        [
+            "You have counts of cases and expected counts for each area of a map",
+            "Some areas are small, so their raw rates are noisy",
+            "You want a map of the risk and of the areas where it is surely high",
+            "You want to know if a cause (a covariate) explains the map, and how much the "
+            "answer changes when the areas share their risk with their neighbours",
+        ],
+        [
+            "You have the location of each case, not counts for each area (use a point model)",
+            "The values are not counts, for example a mean income for each area",
+            "You must predict areas that are not on the map (the graph has only the fitted areas)",
+            "The data change over time and you want a forecast",
+        ],
+        [
+            "A count of cases and an expected count (age-standardised) for each area",
+            "One covariate for each area, for example a percentage",
+            "Which areas are neighbours (an adjacency matrix), for example from shared borders",
+            "The outline of each area (polygon points), for the maps and to link islands",
+        ],
+        [
+            "The count of an area is Poisson around its expected count times its relative risk",
+            "Neighbouring areas have similar risks (kind icar, car or bym2), or the areas are "
+            "independent (kind iid)",
+            "An island is linked to the area with the closest border, unless you change the "
+            "islands setting",
+            "The covariate has the same effect in every area",
+        ],
+        [
+            "The smoothed relative risk of each area, with a range",
+            "The probability that the relative risk of each area is above 1",
+            "The expected cases of each area, and new counts and maps (simulate)",
+            "The effect of the covariate, the size of the area effects and the share of them "
+            "that follows the map (rho, kind bym2)",
+        ],
+        _X,
+        _SEC,
+        "Map lip cancer in the 56 districts of Scotland from 1975 to 1980. Get the smoothed "
+        "relative risk of each district, find the 19 districts where the risk is surely "
+        "above the national level, and see the effect of outdoor work fall from 1.96 to 1.5 "
+        "per 10 points when neighbours share their risk.",
+        related=["sci.lgcp_grid", "tabular.hierarchical_glm"],
+        expert="Poisson(E_i exp(b0 + b1 x_i + u_i)) with x = (covariate - mean) / "
+        "covariate_scale (pymc-challenges E18). kind: poisson (u = 0), iid (u = sigma "
+        "theta), icar (sigma pm.ICAR(W), soft sum-to-zero), car (pm.CAR with alpha ~ "
+        "U(0, 1), tau = 1 / sigma^2; alpha piles up near 1 and b0 mixes slowly) or bym2 "
+        "(Riebler et al. 2016: u = sigma (sqrt(rho / s) phi + sqrt(1 - rho) theta), s = "
+        "geometric mean of diag(pinv(D - W)), rho ~ Beta(1, 1)). b0, b1 ~ N(0, 1), sigma "
+        "~ HalfNormal(1). islands: link_nearest joins each area without neighbours (then "
+        "each separate piece) to the area with the closest polygon vertex; isolate keeps "
+        "them (iid and icar only: an isolated ICAR node has a flat prior); error refuses. "
+        "The pointwise log-likelihood is always kept, so elpd_loo compares the kinds (Pareto "
+        "k is often high: one parameter per area). A mask_block split over area holds "
+        "districts out of the likelihood but keeps them in the graph (leave-areas-out). "
+        "simulate draws new area effects per draw with a hand-written ICAR sampler "
+        "(eigenvectors of the Laplacian), as pm.ICAR cannot be forward-sampled. On the "
+        "Scottish data the AFF effect drops from 0.67 (iid) to about 0.4 (spatial kinds): "
+        "spatial confounding.",
+        refs=[
+            (
+                "Riebler et al. (2016), An intuitive Bayesian spatial model for disease "
+                "mapping that accounts for scaling",
+                "https://arxiv.org/abs/1601.01180",
+            ),
+            (
+                "Besag, York and Mollié (1991), Bayesian image restoration, with two "
+                "applications in spatial statistics",
+                None,  # lead: add the DOI (not given in the E18 source)
+            ),
+            (
+                "Clayton and Kaldor (1987), Empirical Bayes estimates of age-standardized "
+                "relative risks for use in disease mapping",
+                None,  # lead: add the DOI (not given in the E18 source)
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "explain_drivers"],
+            "data_shape": ["grid", "table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["intermediate", "expert"],
+            "speed": ["seconds", "minutes"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -2185,6 +2274,7 @@ SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
         "sci.ibp_features",
         "sci.colour_naming",
         "sci.cmb_field",
+        "sci.areal_bym2",
     }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse

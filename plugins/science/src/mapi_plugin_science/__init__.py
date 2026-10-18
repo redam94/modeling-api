@@ -24,7 +24,9 @@ Ported from the pymc-challenges case studies:
   over quadratic CIELAB logits, pooled or with speaker effects, mapped on the chip palette
   (E77, World Color Survey);
 * ``sci.cmb_field`` - field-level inference of a masked CMB map: sky draws behind the mask
-  and bandpowers from a Wandelt-Eriksen Gibbs sampler (E79).
+  and bandpowers from a Wandelt-Eriksen Gibbs sampler (E79);
+* ``sci.areal_bym2`` - disease counts in areas on a graph of neighbours, with iid, ICAR,
+  proper CAR or BYM2 area effects; the polygons go into the bundle for the maps (E18).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -33,6 +35,7 @@ Every plugin registers through the ``mapi.models`` entry point
 
 from importlib import metadata as _metadata
 
+from mapi_plugin_science.areal import ArealBYM2Model, ArealBYM2Settings
 from mapi_plugin_science.cmb import CMBFieldModel, CMBFieldSettings
 from mapi_plugin_science.colour_naming import ColourNamingModel, ColourNamingSettings
 from mapi_plugin_science.heat_plate import HeatPlateModel, HeatPlateSettings
@@ -60,11 +63,14 @@ PLUGINS = (
     IBPFeaturesModel,
     ColourNamingModel,
     CMBFieldModel,
+    ArealBYM2Model,
 )
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
 __all__ = [
     "PLUGINS",
+    "ArealBYM2Model",
+    "ArealBYM2Settings",
     "CMBFieldModel",
     "CMBFieldSettings",
     "ColourNamingModel",

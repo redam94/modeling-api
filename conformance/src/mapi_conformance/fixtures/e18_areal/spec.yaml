@@ -1,0 +1,15 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: synthetic-disease-map, project: epidemiology, labels: {corpus: e18}}
+data:
+  dataset: dataset://epidemiology/synthetic_disease_map@latest
+  bind:
+    dims: {area: district, area_: district_}
+    vars: {covariate: aff}
+  split: {kind: mask_block, dims: [area], fraction: 0.125, seed: 18}
+model:
+  use: sci.areal_bym2@^1
+  settings: {kind: bym2, islands: link_nearest}
+  fit: {mode: evaluate_then_refit, seed: 18, tune: 1000, draws: 1000, chains: 4, target_accept: 0.9, engine: pymc}
+evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
+outputs: {plots: [core.convergence, core.posterior_forest, sci.area_map, net.graph, core.ridge]}
