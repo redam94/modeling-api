@@ -36,7 +36,12 @@ from mapi_spec.run import INPUT_DATASET, RunnerPhase
 
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.hdf5_guard import Hdf5Walk, walk_hdf5
-from mapi_runner.worker.tabular import HDF5_MAGIC, IngestLimits, check_zip_archive, sniff
+from mapi_runner.worker.tabular import (
+    IngestLimits,
+    check_zip_archive,
+    hdf5_superblock_offset,
+    sniff,
+)
 
 __all__ = ["inspect_upload", "run_inspect"]
 
@@ -279,13 +284,20 @@ def _zarr(path: Path, doc: _Doc, limits: IngestLimits) -> None:
                 doc.group(node)
                 continue
             shape = meta.get("shape")
-            if not isinstance(shape, list) or not all(isinstance(s, int) for s in shape):
+            if not isinstance(shape, list) or not all(
+                isinstance(s, int) and not isinstance(s, bool) and s >= 0 for s in shape
+            ):
+                # untrusted metadata: a shape that is not a list of sizes is listed as a
+                # warning, never passed on (UploadInspection refuses negative sizes)
+                doc.warn("a zarr array declares a shape that is not a list of sizes")
                 continue
             grid = meta.get("chunk_grid")
             chunks = None
             if isinstance(grid, dict) and isinstance(grid.get("configuration"), dict):
                 cs = grid["configuration"].get("chunk_shape")
-                if isinstance(cs, list) and all(isinstance(c, int) for c in cs):
+                if isinstance(cs, list) and all(
+                    isinstance(c, int) and not isinstance(c, bool) for c in cs
+                ):
                     chunks = cs
             codecs = meta.get("codecs")
             filters = (
@@ -342,9 +354,9 @@ def inspect_upload(path: Path, job: InspectJob) -> UploadInspection:
         max_uncompressed_bytes=job.max_uncompressed_bytes,
     )
     size = path.stat().st_size
-    with open(path, "rb") as fh:
-        hdf5 = fh.read(8).startswith(HDF5_MAGIC)
-    walk = walk_hdf5(path, limits, collect_attrs=True) if hdf5 else None
+    # libhdf5 finds a superblock behind a user block too: look where it looks
+    hdf5 = hdf5_superblock_offset(path) is not None
+    walk = walk_hdf5(path, limits, collect_attrs=True, lenient_attrs=True) if hdf5 else None
     fmt = job.format or _sniff_format(path, walk)
     doc = _Doc(fmt, size, job.max_arrays)
     if walk is not None:

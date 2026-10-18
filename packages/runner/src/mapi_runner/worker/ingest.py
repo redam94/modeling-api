@@ -92,10 +92,10 @@ from mapi_runner.worker.data import SCHEMA_ATTR
 from mapi_runner.worker.hdf5_guard import check_hdf5, walk_hdf5
 from mapi_runner.worker.hdf5_read import read_hdf5_mapped
 from mapi_runner.worker.tabular import (
-    HDF5_MAGIC,
     IngestLimits,
     check_zip_archive,
     column_profiles,
+    hdf5_superblock_offset,
     problem,
     read_table,
     sniff,
@@ -896,8 +896,9 @@ def _self_describing(
 
 
 def _is_hdf5(path: Path) -> bool:
-    with open(path, "rb") as fh:
-        return fh.read(8).startswith(HDF5_MAGIC)
+    """True when libhdf5 would open ``path``: its superblock may follow a user block, so
+    the signature is looked for at every offset libhdf5 tries, not only at byte 0."""
+    return hdf5_superblock_offset(path) is not None
 
 
 def _read_netcdf(
@@ -905,8 +906,11 @@ def _read_netcdf(
 ) -> xr.Dataset:
     hdf5 = _is_hdf5(path)
     if hdf5 and not checked:
-        check_hdf5(path, limits)  # before any xarray/h5py open of the upload
-    engines = ("h5netcdf", "netcdf4") if hdf5 else ("scipy", "h5netcdf", "netcdf4")
+        # before any xarray/h5py open of the upload
+        check_hdf5(path, limits, lenient_attrs=True)
+    # a file that is not HDF5 (and so skipped the guard) is only ever read as NetCDF-3:
+    # an HDF5-capable engine must never see a file the guard did not check
+    engines = ("h5netcdf", "netcdf4") if hdf5 else ("scipy",)
     budget = limits.expansion_budget(path.stat().st_size)
     last: Exception | None = None
     for engine in engines:
@@ -1071,7 +1075,7 @@ def _job_mapping(job: IngestJob) -> IngestMapping:
 
 def _check_format(path: Path, fmt: str) -> None:
     kind = sniff(path)
-    if kind == fmt or (fmt == "hdf5" and kind == "netcdf" and _is_hdf5(path)):
+    if kind == fmt or (fmt in ("hdf5", "netcdf") and _is_hdf5(path)):
         return
     raise _schema_error(
         f"the upload is not a {fmt} file",
@@ -1126,7 +1130,8 @@ def build_upload(path: Path, mapping: IngestMapping, limits: IngestLimits) -> Up
             ds, flat = _self_describing(path, mapping.format, mapping, limits)
             return Upload(ds, flat, None, [], [], size)
         if _is_hdf5(path):
-            walk = walk_hdf5(path, limits)
+            # self-describing NetCDF/xarray HDF5 ingested before M4 without attribute caps
+            walk = walk_hdf5(path, limits, lenient_attrs=True)
             warnings = [(w, None) for w in walk.warnings]
             if len(walk.groups) > 1:
                 tree, var_meta, dim_meta = map_tree(read_netcdf_tree(path, limits), mapping)

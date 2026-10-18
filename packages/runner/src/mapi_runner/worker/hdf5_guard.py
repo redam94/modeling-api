@@ -17,7 +17,11 @@ never following a soft or external link, and refuses all of that with
 * a user block larger than :data:`MAX_USERBLOCK`;
 * more than ``limits.max_hdf5_objects`` links or attributes, groups deeper than
   :data:`MAX_HDF5_DEPTH`, arrays with more than ``limits.max_ndim`` dims;
-* an attribute value larger than ``limits.max_attr_bytes``;
+* an attribute value larger than ``limits.max_attr_bytes``; with ``lenient_attrs`` (a
+  self-describing NetCDF/xarray file, which ingested before M4 without these caps) the cap
+  is the file's size instead (attributes are stored uncompressed, so the file bounds
+  them) and the file may hold :data:`NETCDF_ATTRS_PER_VARIABLE` attributes per variable
+  the ingest accepts (``limits.max_columns``);
 * declared array bytes (shape x item size, a missing chunk decodes to the fill value) over
   the expansion budget of the upload, or one chunk larger than it;
 * data types whose size cannot be bounded: variable-length sequences, compound, array,
@@ -49,6 +53,7 @@ __all__ = [
     "ALLOWED_FILTERS",
     "MAX_HDF5_DEPTH",
     "MAX_USERBLOCK",
+    "NETCDF_ATTRS_PER_VARIABLE",
     "Hdf5Array",
     "Hdf5Walk",
     "check_hdf5",
@@ -61,6 +66,8 @@ MAX_HDF5_DEPTH: Final = 32
 """Groups below the root."""
 MAX_USERBLOCK: Final = 64 * 1024
 """Bytes of user block before the HDF5 superblock."""
+NETCDF_ATTRS_PER_VARIABLE: Final = 64
+"""Attributes per variable a self-describing NetCDF file may hold (``lenient_attrs``)."""
 MAX_SOFT_LINK_HOPS: Final = 16
 MAX_VLEN_ATTR_ELEMENTS: Final = 4096
 """Elements of one variable-length attribute (``DIMENSION_LIST`` holds one per dim)."""
@@ -168,11 +175,22 @@ def _decode(raw: bytes | str) -> str:
 
 
 class _Walker:
-    def __init__(self, fid: Any, limits: IngestLimits, budget: int, collect_attrs: bool) -> None:
+    def __init__(
+        self,
+        fid: Any,
+        limits: IngestLimits,
+        budget: int,
+        collect_attrs: bool,
+        *,
+        attr_bytes: int,
+        max_attrs: int,
+    ) -> None:
         self.fid = fid
         self.limits = limits
         self.budget = budget
         self.collect_attrs = collect_attrs
+        self.attr_bytes = attr_bytes
+        self.max_attrs = max_attrs
         self.out = Hdf5Walk()
         self.seen_objects: dict[int, str] = {}
 
@@ -192,9 +210,9 @@ class _Walker:
 
         n = h5a.get_num_attrs(obj)
         self.out.attributes += n
-        if self.out.attributes > self.limits.max_hdf5_objects:
+        if self.out.attributes > self.max_attrs:
             raise unsafe(
-                f"the file has more than {self.limits.max_hdf5_objects:,} attributes",
+                f"the file has more than {self.max_attrs:,} attributes",
                 action="Remove the attributes the dataset does not need.",
             )
         kept: dict[str, Any] = {}
@@ -206,10 +224,9 @@ class _Walker:
             nelem = int(math.prod(attr.shape)) if attr.shape else 1
             size = int(attr.get_storage_size())
             where = f"{path} @{name}"
-            if size > self.limits.max_attr_bytes:
+            if size > self.attr_bytes:
                 raise unsafe(
-                    f"an attribute holds {size:,} bytes (the maximum is "
-                    f"{self.limits.max_attr_bytes:,})",
+                    f"an attribute holds {size:,} bytes (the maximum is {self.attr_bytes:,})",
                     untrusted=where,
                 )
             variable = cls == h5t.VLEN or (cls == h5t.STRING and tid.is_variable_str())
@@ -223,10 +240,10 @@ class _Walker:
                 # the text lives in the heap: read it to bound it (attributes are metadata)
                 text = _read_attr(attr)
                 total = sum(len(t) for t in text)
-                if total > self.limits.max_attr_bytes:
+                if total > self.attr_bytes:
                     raise unsafe(
                         f"an attribute holds {total:,} characters of text (the maximum is "
-                        f"{self.limits.max_attr_bytes:,})",
+                        f"{self.attr_bytes:,})",
                         untrusted=where,
                     )
                 if self.collect_attrs and nelem == 1 and not attr.shape:
@@ -505,14 +522,30 @@ def _open(path: Path) -> Iterator[Any]:
         fid.close()
 
 
-def walk_hdf5(path: Path, limits: IngestLimits, *, collect_attrs: bool = False) -> Hdf5Walk:
+def walk_hdf5(
+    path: Path,
+    limits: IngestLimits,
+    *,
+    collect_attrs: bool = False,
+    lenient_attrs: bool = False,
+) -> Hdf5Walk:
     """Check ``path`` (see the module docstring) and describe its groups and datasets.
+
+    ``lenient_attrs`` relaxes the attribute caps for self-describing NetCDF/xarray files
+    (format ``netcdf`` and the ``inspect`` listing): an attribute may hold up to the file's
+    size, and the file up to :data:`NETCDF_ATTRS_PER_VARIABLE` attributes per variable.
 
     Raises :class:`~mapi_spec.errors.UnsafeUpload` for anything unsafe and a
     ``SCHEMA_INVALID`` error when the file is not HDF5 at all.
     """
     disable_plugins()
-    budget = limits.expansion_budget(path.stat().st_size)
+    size = path.stat().st_size
+    budget = limits.expansion_budget(size)
+    attr_bytes = limits.max_attr_bytes
+    max_attrs = limits.max_hdf5_objects
+    if lenient_attrs:
+        attr_bytes = max(attr_bytes, size)
+        max_attrs = max(max_attrs, NETCDF_ATTRS_PER_VARIABLE * limits.max_columns)
     with _open(path) as fid:
         userblock = int(fid.get_create_plist().get_userblock())
         if userblock > MAX_USERBLOCK:
@@ -521,13 +554,16 @@ def walk_hdf5(path: Path, limits: IngestLimits, *, collect_attrs: bool = False) 
                 f"{MAX_USERBLOCK:,})"
             )
         try:
-            return _Walker(fid, limits, budget, collect_attrs).walk()
+            walker = _Walker(
+                fid, limits, budget, collect_attrs, attr_bytes=attr_bytes, max_attrs=max_attrs
+            )
+            return walker.walk()
         except RecursionError:
             raise unsafe(f"the file nests groups deeper than {MAX_HDF5_DEPTH} levels") from None
 
 
-def check_hdf5(path: Path, limits: IngestLimits) -> list[str]:
+def check_hdf5(path: Path, limits: IngestLimits, *, lenient_attrs: bool = False) -> list[str]:
     """Refuse an unsafe HDF5 file (:class:`~mapi_spec.errors.UnsafeUpload`); returns the
     walk's warnings (second names of objects). Call it BEFORE any xarray or h5py high-level
     open of an upload."""
-    return walk_hdf5(path, limits).warnings
+    return walk_hdf5(path, limits, lenient_attrs=lenient_attrs).warnings

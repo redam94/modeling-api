@@ -45,6 +45,7 @@ __all__ = [
     "IngestLimits",
     "check_zip_archive",
     "column_profiles",
+    "hdf5_superblock_offset",
     "problem",
     "read_table",
     "sniff",
@@ -140,6 +141,25 @@ def problem(
 
 def _too_large(message: str, action: str, pointer: str = "") -> MapiError:
     return problem(ErrorCode.PAYLOAD_TOO_LARGE, message, pointer=pointer, action=action)
+
+
+def hdf5_superblock_offset(path: Path) -> int | None:
+    """Where libhdf5 would find the file's superblock, or ``None`` when it is not HDF5.
+
+    libhdf5 looks for the signature at byte 0 and then at every power of two from 512 up
+    (a *user block* of arbitrary bytes may precede it), so a file whose first bytes look
+    like something else (``CDF``...) can still open as HDF5: every one of those offsets is
+    checked, never just the first eight bytes.
+    """
+    size = path.stat().st_size
+    with open(path, "rb") as fh:
+        offset = 0
+        while offset + len(HDF5_MAGIC) <= size:
+            fh.seek(offset)
+            if fh.read(len(HDF5_MAGIC)) == HDF5_MAGIC:
+                return offset
+            offset = 512 if offset == 0 else offset * 2
+    return None
 
 
 def sniff(path: Path) -> str:
