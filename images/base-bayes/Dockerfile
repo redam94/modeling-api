@@ -6,8 +6,8 @@
 # mapi-pymc and the PyMC plugins (mmm.*, tabular.*, sci.*). It is the image of the Cloud Run Jobs
 # and of the docker executor; `ENTRYPOINT` is the runner. Build from the repository root:
 #
-#   docker build -f images/base-bayes/Dockerfile -t mapi/base-bayes:0.6.0 .
-#   docker build -f images/base-bayes/Dockerfile --target worker -t mapi/worker:0.6.0 .
+#   docker build -f images/base-bayes/Dockerfile -t mapi/base-bayes:0.7.0 .
+#   docker build -f images/base-bayes/Dockerfile --target worker -t mapi/worker:0.7.0 .
 #
 # Targets: `runtime` (default, last stage) and `worker` (the compose orchestrator image:
 # runtime + every plugin + mapi-server, running the local-process executor).

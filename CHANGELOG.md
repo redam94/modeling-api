@@ -5,6 +5,26 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.7.0] — Scientific models — 2026-10-17
+
+This release adds scientific models with data on a map, an image or a grid. Four new plugins
+come from the pymc-challenges case studies: event counts on a map, a reaction-diffusion PDE,
+cell forces from gel movement and a strong gravitational lens. A model can now declare that an
+output is a 2-D field. The Model Explorer then shows the field with its uncertainty, and new
+Plotly recipes draw it. The Score page now guides each request in steps, and a forecast with
+actuals shows its predictions next to the actuals.
+
+### Known gaps
+- The docs' Score screenshots still show the previous form; regenerate them against a live
+  stack (`scripts/docs_screenshots.mjs`).
+- The Model Explorer shows the **Fields** section only for fits made with this release. Fit a
+  model again to see its fields.
+- The `sci.*` recipes and the field viewer are not in the plot gallery of the docs, which shows
+  only Vega-Lite plots.
+- The real-data loaders of `mapi-plugin-science` need a local copy of pymc-challenges
+  (`MAPI_PYMC_CHALLENGES_DATA`). The platform does not ingest the `.npz` files directly.
+- The corpus checks run `e80_lens` only at the tiny size. Nobody ran the full size.
+
 ### Added
 - **Scientific models (`mapi-plugin-science`).** Four new plugins from the pymc-challenges
   case studies. They have data on a map, an image or a grid, and their outputs are fields with a
@@ -32,14 +52,6 @@ milestone releases are tagged on `main`.
 - Two new chooser goals ("Make a map or an image from measurements, with its uncertainty" and
   "Fit a physical model to measurements") and a new data shape ("A map, an image or values on a
   regular grid").
-
-### Fixed
-- A score payload with one label on an integer dim with a step larger than 1 (for example
-  hours with an 8 h step) no longer fails with a false "gap" error. The validator now puts the
-  payload on the grid of the fit.
-- The harness no longer treats a vector field (an output with a `component` dim that its
-  `grid` declares) as an additive decomposition.
-
 - **Score page: type values instead of uploading a dataset.** The page now explains what the
   chosen model version needs (what it predicts, the inputs it reads and which of them it needs
   on future periods, the fitted date range and every fitted level) and guides the request in
@@ -67,14 +79,15 @@ milestone releases are tagged on `main`.
   and original units (raw-stage payloads; none for model-space output).
 
 ### Fixed
+- A score payload with one label on an integer dim with a step larger than 1 (for example
+  hours with an 8 h step) no longer fails with a false "gap" error. The validator now puts the
+  payload on the grid of the fit.
+- The harness no longer treats a vector field (an output with a `component` dim that its
+  `grid` declares) as an additive decomposition.
 - The Score page asked every model for `mean`/`hdi_90` summaries, which quantile, interval and
   point models refuse (`CAPABILITY_UNSUPPORTED`). Summaries now default to the model's
   representation (`median`/`q5`/`q95` for quantiles), only the ones it can give are offered,
   and draws are off for models without them.
-
-### Known gaps
-- The docs' Score screenshots still show the previous form; regenerate them against a live
-  stack (`scripts/docs_screenshots.mjs`).
 
 ## [0.6.0] — Spec builder — 2026-10-17
 
