@@ -2691,6 +2691,7 @@ dependencies = [
 
 [package.optional-dependencies]
 runtime = [
+    { name = "mapi-plots", extra = ["recipes"] },
     { name = "mapi-sdk" },
     { name = "mapi-steps" },
     { name = "numpy" },
@@ -2700,6 +2701,7 @@ runtime = [
     { name = "xarray" },
 ]
 testing = [
+    { name = "mapi-plots", extra = ["recipes"] },
     { name = "mapi-plugin-statsmodels" },
     { name = "mapi-sdk" },
     { name = "mapi-steps" },
@@ -2713,6 +2715,7 @@ testing = [
 [package.metadata]
 requires-dist = [
     { name = "jsonschema", specifier = ">=4.23" },
+    { name = "mapi-plots", extras = ["recipes"], marker = "extra == 'runtime'", editable = "packages/plots-core" },
     { name = "mapi-plugin-statsmodels", marker = "extra == 'testing'", editable = "plugins/statsmodels" },
     { name = "mapi-sdk", marker = "extra == 'runtime'", editable = "packages/sdk" },
     { name = "mapi-spec", editable = "packages/spec" },

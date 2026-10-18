@@ -18,12 +18,14 @@ split          ``split.holdout``, ``rolling_origin``, ``expanding_window``, ``bl
                ``purged_kfold``, ``geo_holdout``, ``nested`` (:mod:`mapi_spec.splitplan`)
 search         ``search.arma_order``, ``sarima_order``, ``var_lag_order``, ``coint_rank``,
                ``grid``
-model          ``model.fit`` (any catalog model id), ``model.backtest``, ``model.forecast``
+model          ``model.fit`` (any catalog model id), ``model.backtest``, ``model.forecast``,
+               ``model.score``
 evaluate       ``evaluate.metrics``, ``evaluate.baseline``, ``evaluate.residuals``
 compare        ``compare.models``, ``compare.diebold_mariano``
 select         ``select.best``, ``select.threshold``
 governance     ``governance.policy``, ``governance.check``
 report         ``report.summary``, ``report.evidence_pack``
+plot           ``plot.render`` (any catalog plot recipe)
 branch         ``branch.if`` (a condition in :mod:`mapi_spec.expr`)
 subworkflow    ``subworkflow.run`` (another saved workflow)
 =============  ===============================================================================
@@ -105,6 +107,7 @@ class NodeKind(StrEnum):
     SELECT = "select"
     GOVERNANCE = "governance"
     REPORT = "report"
+    PLOT = "plot"
     SUBWORKFLOW = "subworkflow"
 
 
@@ -113,7 +116,14 @@ BRANCH_ARMS: Final = ("then", "else")
 """The two control outputs of a ``branch`` node (``when: <branch id>.then``)."""
 SUBWORKFLOW_NODE: Final = "subworkflow.run"
 SINK_KINDS: Final = frozenset(
-    {NodeKind.REPORT, NodeKind.GOVERNANCE, NodeKind.SELECT, NodeKind.MODEL, NodeKind.SUBWORKFLOW}
+    {
+        NodeKind.REPORT,
+        NodeKind.GOVERNANCE,
+        NodeKind.SELECT,
+        NodeKind.MODEL,
+        NodeKind.SUBWORKFLOW,
+        NodeKind.PLOT,
+    }
 )
 """Kinds whose outputs may legitimately go unused (the workflow's results)."""
 
@@ -1421,6 +1431,79 @@ _node("governance.check", NodeKind.GOVERNANCE, _a(
            "value": _f("number", "The measured value")},
    runs_in="child_run")  # fmt: skip
 
+# ========================================================================== score and plot
+
+_node("model.score", NodeKind.MODEL, _a(
+    "Score a model",
+    "Uses a fitted model version to predict, simulate, forecast or test a scenario. It "
+    "gives the predictions as a dataset for the next steps.",
+    ["You want predictions or simulations of a fitted model in the workflow",
+     "A plot or a second model must use the predictions"],
+    ["You only want a forecast with a fan chart (use model.forecast)"],
+    ["A model version and, for new cases, a dataset with their inputs"],
+    ["The model can do the score mode (look at its score modes)"],
+    ["A dataset with the predictions (draws or a summary)"],
+    _I, _SEC, "Simulate 200 graphs from the fitted network model to check its fit.",
+    related=["model.forecast", "plot.render", "model.fit"],
+    fits={"goal": ["forecast", "validate_model"]},
+    expert="The node runs the score path of a score run (mapi_sdk.harness.score_bundle) with "
+    "the full representation. 'request' takes the fields of a ScoreRequest (horizon, "
+    "output, select, interventions, seed, future_covariates).",
+), params={"mode": _enum("The score mode", ["predict", "simulate", "forecast", "counterfactual"],
+                         "predict"),
+           "request": {"type": "object",
+                       "description": "More fields of the score request (horizon, output, "
+                       "select, interventions, seed, future_covariates)"},
+           "group": {"type": "string", "pattern": r"^[A-Za-z_][A-Za-z0-9_/]{0,127}$",
+                     "description": "The group of the score result to output (default: "
+                     "predictions, else summary)"}},
+   inputs={"model": PortSpec(type=PortType.MODEL_VERSION),
+           "data": PortSpec(type=PortType.DATASET, required=False,
+                            description="The inputs to score (default: the fit data; for a "
+                            "forecast, the future drivers)")},
+   outputs={"scores": PortType.DATASET},
+   fields={"mode": _f("string", "The score mode that the node used"),
+           "n_vars": _f("integer", "The number of variables in the output dataset"),
+           "group": _f("string", "The group of the score result in the output"),
+           "representation": _f("string", "draws, quantiles, interval, moments or point")},
+   )  # fmt: skip
+
+_RECIPE_REF = {"type": "string",
+               "description": "Plot recipe ref (id or id@range), for example core.ppc_fan",
+               "pattern": r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+(@\S+)?$"}  # fmt: skip
+
+_node("plot.render", NodeKind.PLOT, _a(
+    "Draw a plot",
+    "Draws a plot from the plot catalog with a model or a dataset of earlier steps. The "
+    "run shows the plot, and a report can include it.",
+    ["You want a chart of a model or of predictions in the run and in the report"],
+    ["The Model Explorer already shows the chart that you need"],
+    ["A model version or a dataset that has the data the recipe needs"],
+    ["The recipe can read the data (see the About card of the recipe)"],
+    ["A plot that the run and the report show"],
+    _B, _SEC, "Draw sci.field_map of the fitted heat plate model.",
+    related=["model.score", "report.summary", "model.forecast"],
+    fits={"goal": ["validate_model", "forecast"]},
+    expert="The node renders the recipe with mapi_plots.recipes.render_plots and the "
+    "sanitizer. With 'source: auto' it tries the dataset, the model bundle and then the "
+    "in-sample predictions of the model with the observed values.",
+), params={"recipe": _RECIPE_REF,
+           "settings": {"type": "object", "description": "The settings of the recipe"},
+           "source": _enum("Where the recipe reads its data", ["auto", "data", "model",
+                                                               "predictions"], "auto"),
+           "title": {"type": "string", "maxLength": 300,
+                     "description": "The title of the plot (default: the recipe title)"}},
+   required=["recipe"],
+   inputs={"model": PortSpec(type=PortType.MODEL_VERSION, required=False,
+                             description="A model version (its bundle and predictions)"),
+           "data": PortSpec(type=PortType.DATASET, required=False,
+                            description="A dataset, for example the output of model.score")},
+   outputs={"plot": PortType.PLOT},
+   fields={"recipe": _f("string", "The recipe that drew the plot (id@version)"),
+           "kind": _f("string", "vega-lite or plotly"),
+           "source": _f("string", "data, model or predictions"),
+           "bytes": _f("integer", "The size of the plot in bytes")})  # fmt: skip
+
 # =================================================================================== report
 
 _node("report.summary", NodeKind.REPORT, _a(
@@ -1441,7 +1524,9 @@ _node("report.summary", NodeKind.REPORT, _a(
    inputs={"items": PortSpec(type=PortType.TABLE, multiple=True, required=False),
            "tests": PortSpec(type=PortType.TEST_RESULT, multiple=True, required=False),
            "metrics": PortSpec(type=PortType.METRICS, multiple=True, required=False),
-           "model": PortSpec(type=PortType.MODEL_VERSION, required=False)},
+           "model": PortSpec(type=PortType.MODEL_VERSION, required=False),
+           "plots": PortSpec(type=PortType.PLOT, multiple=True, required=False,
+                             description="Plots to include in the report")},
    outputs={"report": PortType.REPORT}, runs_in="orchestrator")  # fmt: skip
 
 _node("report.evidence_pack", NodeKind.REPORT, _a(
@@ -1672,6 +1757,19 @@ NODE_KIND_ABOUTS: Final[dict[NodeKind, About]] = {
         _NOW,
         "A one-page summary.",
         related=["report.summary"],
+    ),
+    NodeKind.PLOT: _a(
+        "Plot",
+        "Draws a plot from the plot catalog in the run, for the run view and the report.",
+        ["You want a chart in the run or in the report"],
+        ["Nobody reads the chart"],
+        ["A model version or a dataset"],
+        ["The recipe can read the data"],
+        ["A plot"],
+        _B,
+        _SEC,
+        "Draw the forecast fan chart.",
+        related=["plot.render"],
     ),
     NodeKind.SUBWORKFLOW: _a(
         "Sub-workflow",

@@ -11,7 +11,10 @@ split_plan     ``mapi.split-plan/v1`` the plan, the dim and length it was cut ov
 metrics        ``mapi.metrics/v1``    one candidate per model or benchmark: averages, per
                                      horizon, per fold, and the model ref it came from
 table          ``mapi.table/v1``      columns and rows (search grids, comparisons)
-report         ``mapi.report/v1``     a plain-language report: summary and sections
+report         ``mapi.report/v1``     a plain-language report: summary and sections (a
+                                     ``plot`` section carries a plot payload)
+plot           (PlotSpec)            :class:`mapi_spec.plots.PlotSpec` JSON: ``kind``,
+                                     ``spec`` and ``inline_arrow`` datasets
 evidence       ``mapi.evidence/v1``   governance :class:`~mapi_spec.governance.CheckResult` s
 =============  ====================  ===================================================
 
@@ -113,12 +116,21 @@ class TablePayload(_Payload):
 
 
 class ReportSection(_Payload):
+    """One section of a report. ``kind`` is ``text``, ``test``, ``decision``, ``table``,
+    ``metrics``, ``plot``, ``selection``, ``search``, ``skipped``, ``failed`` or ``model``
+    (evidence packs add ``evidence``, ``lineage`` and ``scorecard``)."""
+
     title: str
     node_id: str | None = None
     kind: str = "text"
     status: str | None = None
     text: str = ""
     table: TablePayload | None = None
+    plot: dict[str, JsonValue] | None = Field(
+        None,
+        description="A plot section's PlotSpec JSON (None when it is too large to embed: "
+        "the node output has it)",
+    )
 
 
 class ReportPayload(_Payload):
