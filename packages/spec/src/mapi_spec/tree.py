@@ -19,12 +19,13 @@ This module is pure Pydantic (no numpy/xarray): the control plane imports it.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import Annotated, Final, Literal
 
 from pydantic import Field, StringConstraints, ValidationError, model_validator
 
-from mapi_spec._types import Name, StrictModel
+from mapi_spec._types import NAME_RE, Name, StrictModel
 from mapi_spec.schema import DataSchema, DimSpec, RaggedSpec, VarSpec
 
 __all__ = [
@@ -108,13 +109,16 @@ def is_ancestor(ancestor: str, path: str) -> bool:
 
 def node_join(base: str, sub: str) -> str:
     """Mount ``sub`` (a path inside a file) under ``base``: ``("/instrument", "/psf")`` gives
-    ``/instrument/psf``. Raises ``ValueError`` when the result is deeper than
-    :data:`MAX_TREE_DEPTH`."""
-    if sub == ROOT:
-        return base
-    joined = sub if base == ROOT else base + sub
+    ``/instrument/psf``. Raises ``ValueError`` when either is not a :data:`NodePath` or the
+    result is deeper than :data:`MAX_TREE_DEPTH`."""
+    for p in (base, sub):
+        if not p.startswith(ROOT) or (p != ROOT and p.endswith("/")):
+            raise ValueError(f"{p!r} is not a node path (absolute, no trailing '/')")
+    joined = base if sub == ROOT else sub if base == ROOT else base + sub
     if node_depth(joined) > MAX_TREE_DEPTH:
         raise ValueError(f"node {joined!r} is deeper than {MAX_TREE_DEPTH} levels")
+    if not re.fullmatch(NODE_PATH_RE, joined):
+        raise ValueError(f"{joined!r} is not a valid node path")
     return joined
 
 
@@ -166,9 +170,10 @@ class NodeSelectionError(ValueError):
 class TreeSchema(StrictModel):
     """Schema of an ``xr.DataTree``: one :class:`~mapi_spec.schema.DataSchema` per node.
 
-    Every node's ancestors are present (an empty schema stands for a pure group), and a
+    Every node's ancestors are present (an empty schema stands for a pure group), a
     dim a node shares with an ancestor has an equal spec (children align with inherited
-    coords).
+    coords), and no variable has the name of an ancestor's dim (the inherited coord would
+    hide it).
     """
 
     nodes: dict[NodePath, DataSchema] = Field(..., min_length=1, max_length=MAX_TREE_NODES)
@@ -189,6 +194,11 @@ class TreeSchema(StrictModel):
                             f"dim {dim!r} of node {path!r} differs from the same dim of "
                             f"its ancestor {anc!r}"
                         )
+                if hidden := sorted(set(schema.vars) & set(parent_dims)):
+                    problems.append(
+                        f"variable(s) {hidden} of node {path!r} have the name of a dim of its "
+                        f"ancestor {anc!r} (the inherited coord would hide them)"
+                    )
         if problems:
             raise ValueError("; ".join(problems[:20]))
         return self
@@ -269,6 +279,13 @@ class TreeSchema(StrictModel):
                 dim_from.setdefault(dim, key)
             for n in names:
                 new = rename[n]
+                if not re.fullmatch(NAME_RE, new):
+                    raise NodeSelectionError(
+                        f"variable {n!r} of node {sel.path!r} renamed {new!r} is not a valid "
+                        "name (at most 128 characters): use a shorter prefix",
+                        key=key,
+                        name=n,
+                    )
                 if new in variables or new in dims:
                     other = var_from.get(new) or dim_from.get(new)
                     raise NodeSelectionError(

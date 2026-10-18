@@ -110,3 +110,41 @@ async def test_dataset_artifacts_and_views(client: httpx.AsyncClient, ctx: Serve
     assert r.status_code == 404  # this fixture version has no preview.json
     r = await client.get(f"/v1/datasets/{ds.id}/versions/1/secrets", follow_redirects=False)
     assert r.status_code == 422
+
+
+async def test_m4_versions_refused_until_the_backend_lands(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    ds = await _dataset(client)
+    up = UploadSession.model_validate(
+        (
+            await client.post(
+                f"/v1/datasets/{ds.id}/uploads",
+                json={"filename": "obs.h5", "content_type": "application/x-hdf5", "size_bytes": 64},
+            )
+        ).json()
+    )
+    await ctx.store.put(ctx.buckets.quarantine, up.upload.name, b"\x89HDF\r\n\x1a\n" + b"\0" * 8)
+    hdf5 = {
+        "format": "hdf5",
+        "hdf5": {"vars": [{"path": "/img", "name": "image", "dims": ["row"]}]},
+    }
+    r = await client.post(
+        f"/v1/datasets/{ds.id}/versions", json={"upload_id": up.id, "mapping": hdf5}
+    )
+    assert r.status_code == 422 and r.json()["code"] == "CAPABILITY_UNSUPPORTED", r.text
+    asm = {"sources": [{"upload_id": up.id, "mapping": {"format": "netcdf"}}]}
+    r = await client.post(f"/v1/datasets/{ds.id}/versions", json={"assembly": asm})
+    assert r.status_code == 422 and r.json()["code"] == "CAPABILITY_UNSUPPORTED", r.text
+    # neither consumed the upload: a supported mapping still works and reports its source
+    r = await client.post(
+        f"/v1/datasets/{ds.id}/versions",
+        json={"upload_id": up.id, "mapping": {"format": "netcdf"}},
+    )
+    assert r.status_code == 202, r.text
+    dv = DatasetVersion.model_validate(r.json())
+    assert dv.sources == [up.id]
+    got = DatasetVersion.model_validate(
+        (await client.get(f"/v1/datasets/{ds.id}/versions/{dv.version}")).json()
+    )
+    assert got.sources == [up.id]

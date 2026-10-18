@@ -7208,6 +7208,11 @@ export interface components {
              */
             format?: "mapi.explorer-index/v1";
             /**
+             * Node
+             * @description M4: the node of a tree dataset explored (absent for a flat dataset)
+             */
+            node?: string | null;
+            /**
              * Ref
              * @description dataset://… or model://…
              */
@@ -15342,9 +15347,10 @@ export interface components {
          * TreeSchema
          * @description Schema of an ``xr.DataTree``: one :class:`~mapi_spec.schema.DataSchema` per node.
          *
-         *     Every node's ancestors are present (an empty schema stands for a pure group), and a
+         *     Every node's ancestors are present (an empty schema stands for a pure group), a
          *     dim a node shares with an ancestor has an equal spec (children align with inherited
-         *     coords).
+         *     coords), and no variable has the name of an ancestor's dim (the inherited coord would
+         *     hide it).
          */
         TreeSchema: {
             /** Nodes */

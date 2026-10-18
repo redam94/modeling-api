@@ -7519,6 +7519,19 @@
             "title": "Format",
             "type": "string"
           },
+          "node": {
+            "anyOf": [
+              {
+                "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M4: the node of a tree dataset explored (absent for a flat dataset)",
+            "title": "Node"
+          },
           "ref": {
             "description": "dataset://… or model://…",
             "maxLength": 512,
@@ -24256,7 +24269,7 @@
       },
       "TreeSchema": {
         "additionalProperties": false,
-        "description": "Schema of an ``xr.DataTree``: one :class:`~mapi_spec.schema.DataSchema` per node.\n\nEvery node's ancestors are present (an empty schema stands for a pure group), and a\ndim a node shares with an ancestor has an equal spec (children align with inherited\ncoords).",
+        "description": "Schema of an ``xr.DataTree``: one :class:`~mapi_spec.schema.DataSchema` per node.\n\nEvery node's ancestors are present (an empty schema stands for a pure group), a\ndim a node shares with an ancestor has an equal spec (children align with inherited\ncoords), and no variable has the name of an ancestor's dim (the inherited coord would\nhide it).",
         "properties": {
           "nodes": {
             "maxProperties": 256,

@@ -99,6 +99,7 @@ def version_dto(ds: m.Dataset, dv: m.DatasetVersion) -> DatasetVersion:
         profile=ObjectRef.model_validate(dv.profile) if dv.profile else None,
         preview=ObjectRef.model_validate(dv.preview) if dv.preview else None,
         ingest_run_id=dv.ingest_run_id,
+        sources=[dv.upload_id] if dv.upload_id else [],
         issues=[Issue.model_validate(i) for i in dv.issues],
         message=dv.message,
         created_at=dv.created_at,
@@ -257,6 +258,13 @@ async def create_dataset_version(
             "multi-file dataset versions (assembly) are not supported by this server yet",
             code=ErrorCode.CAPABILITY_UNSUPPORTED,
             pointer="/body/assembly",
+        )
+    if body.mapping.format == "hdf5":
+        # M4 contract: raw HDF5 is read once the runner's hdf5 guard and reader land
+        raise MapiError(
+            "raw HDF5 uploads (format 'hdf5') are not supported by this server yet",
+            code=ErrorCode.CAPABILITY_UNSUPPORTED,
+            pointer="/body/mapping/format",
         )
     upload_id, mapping = body.upload_id, body.mapping
     idem = Idempotency(session, ctx.scope, idempotency_key)

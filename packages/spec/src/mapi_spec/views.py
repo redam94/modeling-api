@@ -38,6 +38,7 @@ from mapi_spec._types import JsonValue
 from mapi_spec.calibration import DistributionSummary, FanChart
 from mapi_spec.splitplan import Fold
 from mapi_spec.stattests import StatTestResult
+from mapi_spec.tree import NodePath
 
 __all__ = [
     "COUNTERFACTUAL_FORMAT",
@@ -516,10 +517,16 @@ Facet = dict[str, Coord]
 
 
 class _Explore(_View):
-    """Base of explorer views: a plain-language caption and warnings."""
+    """Base of explorer views: a plain-language caption and warnings (and, M4, the tree
+    node a data-explorer view describes)."""
 
     caption_plain: str | None = Field(None, max_length=1000)
     warnings_plain: list[str] = Field(default_factory=list, max_length=50)
+    node: NodePath | None = Field(
+        None,
+        description="M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+        exclude_if=lambda v: v is None,
+    )
 
 
 # ----------------------------------------------------------------------------- Data Explorer
@@ -1185,6 +1192,11 @@ class ExplorerIndex(_View):
     format: Literal["mapi.explorer-index/v1"] = EXPLORER_INDEX_FORMAT
     target: Literal["dataset", "model"]
     ref: str = Field(..., max_length=512, description="dataset://… or model://…")
+    node: NodePath | None = Field(
+        None,
+        description="M4: the node of a tree dataset explored (absent for a flat dataset)",
+        exclude_if=lambda v: v is None,
+    )
     sections: list[ExplorerSectionRef] = Field(default_factory=list, max_length=32)
 
     model_config = ConfigDict(

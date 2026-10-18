@@ -4,6 +4,7 @@ inspection, the dataset-version DTOs and static validation of ``data.nodes``."""
 from __future__ import annotations
 
 import copy
+import json
 from typing import Any
 
 import pytest
@@ -733,3 +734,168 @@ def test_reference_docs_cover_m4() -> None:
             assert f"`{dto}`" in text, dto
     for dto in ("TreeSchema", "IngestAssembly", "Hdf5Mapping", "InspectedArray"):
         assert f"`{dto}`" in text, dto
+
+
+# ======================================================================= review fixes
+
+
+def test_concat_labels_equal_numbers_are_duplicates() -> None:
+    for a, b in ((2024, 2024.0), (1, 1.0)):
+        with pytest.raises(ValidationError, match="labels must be unique"):
+            _asm(
+                _src(_UPL, combine="concat", concat_dim="year", concat_label=a),
+                _src(_UPL2, combine="concat", concat_dim="year", concat_label=b),
+            )
+    a = _src(_UPL, combine="concat", concat_dim="year", concat_label=2024)
+    b = _src(_UPL2, combine="concat", concat_dim="year", concat_label=2024.0)
+    body = json.dumps({"sources": [a, b]})
+    assert '"concat_label": 2024.0' in body  # the JSON keeps the float
+    with pytest.raises(ValidationError, match="labels must be unique"):
+        IngestAssembly.model_validate_json(body)
+    ok = _asm(
+        _src(_UPL, combine="concat", concat_dim="year", concat_label=2024),
+        _src(_UPL2, combine="concat", concat_dim="year", concat_label=2024.5),
+    )
+    assert [s.concat_label for s in ok.sources] == [2024, 2024.5]
+
+
+@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity"])
+def test_coord_values_must_be_finite(literal: str) -> None:
+    src = (
+        f'{{"upload_id": "{_UPL}", "mapping": {{"format": "netcdf"}}, "combine": "concat", '
+        f'"concat_dim": "year", "concat_label": {literal}}}'
+    )
+    with pytest.raises(ValidationError, match="finite"):
+        AssemblySource.model_validate_json(src)
+    with pytest.raises(ValidationError, match="finite"):
+        Hdf5Coord.model_validate_json(f'{{"dim": "t", "start": 0.0, "step": {literal}}}')
+    with pytest.raises(ValidationError, match="finite"):
+        Hdf5Coord.model_validate_json(f'{{"dim": "t", "start": {literal}}}')
+
+
+def test_hdf5_coord_range_rules() -> None:
+    with pytest.raises(ValidationError, match="must not be 0"):
+        Hdf5Coord(dim="t", start=0, step=0)
+    with pytest.raises(ValidationError, match="must not be 0"):
+        Hdf5Coord(dim="t", start=1.5, step=0.0)
+    with pytest.raises(ValidationError, match="not a mix"):
+        Hdf5Coord(dim="t", start="2024-01-01", step=0.5)
+    with pytest.raises(ValidationError, match="not a mix"):
+        Hdf5Coord(dim="t", start=0, step="W-MON")
+    assert Hdf5Coord(dim="t", start="2024-01-01").step is None  # a date with no step
+    assert Hdf5Coord(dim="t", start=10, step=-1).step == -1
+
+
+def test_child_variable_named_like_ancestor_dim_refused() -> None:
+    root = {"dims": {"geo": _IDX}, "vars": {"y": _var("geo")}}
+    with pytest.raises(ValidationError, match="name of a dim of its ancestor"):
+        _tree({"/": root, "/c": {"dims": {"t": _IDX}, "vars": {"geo": _var("t")}}})
+    with pytest.raises(ValidationError, match="name of a dim of its ancestor"):
+        _tree(
+            {
+                "/": root,
+                "/c": {},
+                "/c/d": {"dims": {"t": _IDX}, "vars": {"geo": _var("t")}},
+            }
+        )
+    # a dim of a sibling, or of a descendant, does not hide anything
+    _tree(
+        {
+            "/": {},
+            "/a": {"dims": {"geo": _IDX}, "vars": {"y": _var("geo")}},
+            "/b": {"dims": {"t": _IDX}, "vars": {"geo": _var("t")}},
+        }
+    )
+    with pytest.raises(ValidationError, match="name of a dim of its ancestor"):
+        _h5(
+            [
+                {"path": "/y", "name": "y", "dims": ["geo"]},
+                {"path": "/c/geo", "node": "/c", "name": "geo", "dims": ["t"]},
+            ]
+        )
+    with pytest.raises(ValidationError, match="name of a dim of its ancestor"):
+        _h5(
+            [
+                {"path": "/a/y", "node": "/a", "name": "y", "dims": ["geo"]},
+                {"path": "/a/b/geo", "node": "/a/b", "name": "geo", "dims": ["t"]},
+            ]
+        )
+    assert (
+        len(
+            _h5(
+                [
+                    {"path": "/a/y", "node": "/a", "name": "y", "dims": ["geo"]},
+                    {"path": "/b/geo", "node": "/b", "name": "geo", "dims": ["t"]},
+                ]
+            ).vars
+        )
+        == 2
+    )
+
+
+def test_node_join_refuses_malformed_paths() -> None:
+    for base, sub in (("/a", "psf"), ("/a", "/b/"), ("a", "/b"), ("/a/", "/b"), ("/a", "/b c")):
+        with pytest.raises(ValueError, match="node path"):
+            node_join(base, sub)
+    assert node_join("/", "/") == "/"
+
+
+def test_flat_reports_an_overlong_prefixed_name_at_its_entry() -> None:
+    tree = _tree({"/": {"dims": {"t": _IDX}, "vars": {"v" * 128: _var("t")}}})
+    with pytest.raises(NodeSelectionError, match="shorter prefix") as exc:
+        tree.flat({"A": NodeSelect(path="/", prefix="p")})
+    assert (exc.value.key, exc.value.name) == ("A", "v" * 128)
+    assert "v" * 128 in tree.flat({"A": NodeSelect(path="/")}).vars
+
+
+def test_upload_inspection_strings_and_sizes_are_bounded() -> None:
+    from mapi_spec.ingest import MAX_INSPECT_ATTR_CHARS, MAX_INSPECTION_BYTES
+
+    base = {"format": "hdf5", "size_bytes": 1}
+    for bad in (
+        {"groups": ["/" + "x" * 2000]},
+        {"warnings": ["y" * 2001]},
+        {"arrays": [{"path": "/a", "dtype": "f", "attrs": {"k" * 257: 1}}]},
+        {
+            "arrays": [
+                {"path": "/a", "dtype": "f", "attrs": {"k": "v" * (MAX_INSPECT_ATTR_CHARS + 1)}}
+            ]
+        },
+        {"arrays": [{"path": "/a", "dtype": "f", "filters": ["f" * 257]}]},
+        {"arrays": [{"path": "/a", "dtype": "f", "dims_hint": ["d" * 257]}]},
+        {"arrays": [{"path": "/a", "dtype": "f", "shape": [-5]}]},
+        {"arrays": [{"path": "/a", "dtype": "f", "chunks": [0]}]},
+        {"arrays": [{"path": "/a", "dtype": "f", "chunks": [-1]}]},
+    ):
+        with pytest.raises(ValidationError):
+            UploadInspection.model_validate({**base, **bad})
+    ok = UploadInspection.model_validate(
+        {**base, "arrays": [{"path": "/a", "dtype": "f", "shape": [0, 3], "chunks": [1, 3]}]}
+    )
+    assert ok.arrays[0].shape == [0, 3]
+    # every field within its own cap, but too much in all
+    big_attrs = {f"k{i}": "v" * MAX_INSPECT_ATTR_CHARS for i in range(64)}
+    n = MAX_INSPECTION_BYTES // (64 * MAX_INSPECT_ATTR_CHARS) + 1
+    arrays = [{"path": f"/a{i}", "dtype": "f", "attrs": big_attrs} for i in range(n)]
+    with pytest.raises(ValidationError, match="bytes of JSON"):
+        UploadInspection.model_validate({**base, "arrays": arrays})
+
+
+def test_explorer_views_carry_the_node() -> None:
+    from mapi_spec.views import DataOverviewView, ExplorerIndex
+
+    idx = ExplorerIndex(target="dataset", ref="dataset://p/d@v1", node="/psf")
+    assert idx.model_dump(mode="json")["node"] == "/psf"
+    assert "node" not in ExplorerIndex(target="dataset", ref="dataset://p/d@v1").model_dump(
+        mode="json"
+    )
+    view = DataOverviewView(n_cells=0, summary_plain="empty", node="/psf")
+    assert view.node == "/psf"
+    assert "node" not in DataOverviewView(n_cells=0, summary_plain="e").model_dump(mode="json")
+    with pytest.raises(ValidationError):
+        ExplorerIndex(target="dataset", ref="x", node="psf")
+
+
+def test_create_dataset_version_declares_capability_unsupported() -> None:
+    decl = next(e for e in ALL_ENDPOINTS if e.operation_id == "create_dataset_version")
+    assert ErrorCode.CAPABILITY_UNSUPPORTED in decl.errors

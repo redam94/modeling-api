@@ -1709,7 +1709,8 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "POST", "/v1/datasets/{dataset_id}/versions", "create_dataset_version",
         "Ingest an upload as a new version (starts an ingest run)", "DatasetVersion", 202,
-        request="DatasetVersionCreate", errors=(*_BODY, *_NF, _E.CONFLICT),
+        request="DatasetVersionCreate",
+        errors=(*_BODY, *_NF, _E.CONFLICT, _E.CAPABILITY_UNSUPPORTED),
         headers=("Idempotency-Key",),
     ),
     EndpointDecl(

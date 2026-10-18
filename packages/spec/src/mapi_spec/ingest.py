@@ -21,12 +21,14 @@ This module only *describes* files; every byte of an upload is parsed inside the
 
 from __future__ import annotations
 
+import math
 from enum import StrEnum
 from typing import Annotated, Any, Final, Literal, Self
 
 from pydantic import (
     ConfigDict,
     Field,
+    StringConstraints,
     field_validator,
     model_validator,
 )
@@ -34,13 +36,15 @@ from pydantic import (
 from mapi_spec._dto import Id, RequestModel, ResponseModel, dto_examples
 from mapi_spec._types import Name, StrictModel, unique
 from mapi_spec.schema import DimSpec, Role
-from mapi_spec.tree import ROOT, NodePath, TreeJoin
+from mapi_spec.tree import ROOT, NodePath, TreeJoin, is_ancestor
 
 __all__ = [
     "COMBINE_SEPARATOR",
     "MAX_ASSEMBLY_SOURCES",
+    "MAX_INSPECTION_BYTES",
     "MAX_INSPECT_ARRAYS",
     "MAX_INSPECT_ATTRS",
+    "MAX_INSPECT_ATTR_CHARS",
     "MFF_COLUMNS",
     "MFF_KEY_COLUMNS",
     "MFF_PANEL_KEY_COLUMNS",
@@ -362,9 +366,18 @@ CoordValue = int | float | str
 
 
 def _no_bool(value: Any) -> Any:
+    """A coord value (a label, a range start or step): a number or a string, never a
+    boolean, NaN or an infinity (a NaN label never matches itself)."""
     if isinstance(value, bool):
         raise ValueError("expected a number or a string, not a boolean")
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("expected a finite number, not NaN or an infinity")
     return value
+
+
+def _label_key(value: CoordValue) -> tuple[str, Any]:
+    """Equal labels compare equal (``2024`` and ``2024.0`` are the same coord value)."""
+    return ("str", value) if isinstance(value, str) else ("number", float(value))
 
 
 class Hdf5Var(RequestModel):
@@ -430,6 +443,14 @@ class Hdf5Coord(RequestModel):
             raise ValueError("give either path or start (a range), not both")
         if self.step is not None and self.start is None:
             raise ValueError("step needs start")
+        if self.step is not None:
+            if isinstance(self.start, str) != isinstance(self.step, str):
+                raise ValueError(
+                    "a range is numbers (start and step) or a date and a frequency string "
+                    "(start '2024-01-01', step 'W-MON'), not a mix"
+                )
+            if not isinstance(self.step, str) and self.step == 0:
+                raise ValueError("step must not be 0")
         return self
 
 
@@ -470,6 +491,15 @@ class Hdf5Mapping(RequestModel):
         for node, names in node_vars.items():
             if clash := sorted(names & node_dims[node]):
                 raise ValueError(f"node {node!r}: names used both as dim and variable: {clash}")
+        for node, names in node_vars.items():
+            # a child sees its ancestors' dims as inherited coords, which hide a variable
+            # of the same name
+            for anc, dims in node_dims.items():
+                if is_ancestor(anc, node) and (clash := sorted(names & dims)):
+                    raise ValueError(
+                        f"node {node!r}: variable(s) {clash} have the name of a dim of its "
+                        f"ancestor {anc!r}"
+                    )
         for c in self.coords:
             # a coord serves its node and every node below it (inherited coords)
             users = [
@@ -722,12 +752,11 @@ class IngestAssembly(RequestModel):
             if rule == "concat":
                 if len({s.concat_dim for s in group}) > 1:
                     raise ValueError(f"node {node!r}: concat sources need the same concat_dim")
-                labels = [s.concat_label for s in group]
-                if len({repr(x) for x in labels}) != len(labels):
-                    raise ValueError(f"node {node!r}: concat labels must be unique")
-                kinds = {"str" if isinstance(x, str) else "number" for x in labels}
-                if len(kinds) > 1:
+                keys = [_label_key(s.concat_label) for s in group if s.concat_label is not None]
+                if len({k for k, _ in keys}) > 1:
                     raise ValueError(f"node {node!r}: concat labels mix numbers and strings")
+                if len(set(keys)) != len(keys):
+                    raise ValueError(f"node {node!r}: concat labels must be unique")
             if rule in ("concat", "merge") and len({s.join for s in group}) > 1:
                 raise ValueError(f"node {node!r}: {rule} sources need the same join")
         return self
@@ -746,8 +775,19 @@ MAX_INSPECT_ARRAYS: Final = 2000
 """Arrays an inspection lists; past it the listing is ``truncated``."""
 MAX_INSPECT_ATTRS: Final = 64
 """Attributes kept per array (small scalars only; the rest are dropped)."""
+MAX_INSPECT_ATTR_CHARS: Final = 1024
+"""Characters of one string attribute value an inspection keeps (longer ones are dropped
+or truncated by the inspector)."""
+MAX_INSPECTION_BYTES: Final = 8 * 1024**2
+"""The whole inspection as JSON (it is stored on the upload row and served as is)."""
 
 JsonScalar = str | int | float | bool | None
+_InspectStr = Annotated[str, StringConstraints(max_length=MAX_INSPECT_ATTR_CHARS)]
+InspectAttr = _InspectStr | int | float | bool | None
+_AttrKey = Annotated[str, StringConstraints(max_length=256)]
+_ObjectPath = Annotated[str, StringConstraints(max_length=1025)]
+_ShortStr = Annotated[str, StringConstraints(max_length=256)]
+_Message = Annotated[str, StringConstraints(max_length=2000)]
 
 
 class InspectedArray(ResponseModel):
@@ -758,12 +798,12 @@ class InspectedArray(ResponseModel):
     """
 
     path: str = Field(..., max_length=1025)
-    shape: list[int] = Field(default_factory=list, max_length=64)
+    shape: list[Annotated[int, Field(ge=0)]] = Field(default_factory=list, max_length=64)
     dtype: str = Field(..., max_length=64)
-    chunks: list[int] | None = Field(None, max_length=64)
-    filters: list[str] = Field(default_factory=list, max_length=32)
-    dims_hint: list[str] | None = Field(None, max_length=64)
-    attrs: dict[str, JsonScalar] = Field(default_factory=dict, max_length=MAX_INSPECT_ATTRS)
+    chunks: list[Annotated[int, Field(ge=1)]] | None = Field(None, max_length=64)
+    filters: list[_ShortStr] = Field(default_factory=list, max_length=32)
+    dims_hint: list[_ShortStr] | None = Field(None, max_length=64)
+    attrs: dict[_AttrKey, InspectAttr] = Field(default_factory=dict, max_length=MAX_INSPECT_ATTRS)
 
     model_config = dto_examples(
         {
@@ -785,10 +825,10 @@ class UploadInspection(ResponseModel):
 
     format: IngestFormat
     size_bytes: int = Field(..., ge=0)
-    groups: list[str] = Field(default_factory=list, max_length=10_000)
+    groups: list[_ObjectPath] = Field(default_factory=list, max_length=10_000)
     arrays: list[InspectedArray] = Field(default_factory=list, max_length=MAX_INSPECT_ARRAYS)
     truncated: bool = False
-    warnings: list[str] = Field(default_factory=list, max_length=1000)
+    warnings: list[_Message] = Field(default_factory=list, max_length=1000)
 
     model_config = dto_examples(
         {
@@ -803,3 +843,13 @@ class UploadInspection(ResponseModel):
             "warnings": [],
         }
     )
+
+    @model_validator(mode="after")
+    def _size(self) -> Self:
+        size = len(self.model_dump_json().encode())
+        if size > MAX_INSPECTION_BYTES:
+            raise ValueError(
+                f"the inspection is {size} bytes of JSON, over {MAX_INSPECTION_BYTES}: "
+                "list fewer arrays (truncated) or fewer attributes"
+            )
+        return self
