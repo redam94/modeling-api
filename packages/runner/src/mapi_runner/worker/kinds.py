@@ -14,6 +14,7 @@ from mapi_runner.jobs import (
     DescribeJob,
     EvaluateJob,
     IngestJob,
+    InspectJob,
     RenderJob,
     ScoreJob,
     parse_job,
@@ -32,6 +33,11 @@ def run_kind(ctx: WorkerContext) -> None:
 
         assert isinstance(job, IngestJob)
         run_ingest(ctx, job)
+    elif kind is RunKind.INSPECT:
+        from mapi_runner.worker.inspection import run_inspect
+
+        assert isinstance(job, InspectJob)
+        run_inspect(ctx, job)
     elif kind is RunKind.DESCRIBE:
         from mapi_runner.worker.validate import run_describe
 
