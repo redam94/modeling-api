@@ -4,7 +4,7 @@
  */
 import type { JsonObject, JsonValue, PlotDatasets, Row, Scalar, Theme } from "./protocol";
 import { PLOTLY_DATA_KEYS, themeRecipeColours } from "./recipe-palette";
-import { plotlyLayout, vegaConfig } from "./theme";
+import { plotlyLayout, plotlyPolar, vegaConfig } from "./theme";
 
 export class SpecError extends Error {
   override name = "SpecError";
@@ -55,6 +55,20 @@ export function resolvePlotlyRefs(node: JsonValue, datasets: PlotDatasets): Json
   return out;
 }
 
+const POLAR_TRACES = new Set(["barpolar", "scatterpolar", "scatterpolargl"]);
+const POLAR_KEY = /^polar(?:[2-9]|[1-9]\d+)?$/;
+
+/** The polar subplot ids (`polar`, `polar2`, ...) that the traces or the layout use. */
+export function polarSubplots(data: JsonValue[], layout: Record<string, unknown>): string[] {
+  const ids = new Set(Object.keys(layout).filter((k) => POLAR_KEY.test(k)));
+  for (const trace of data) {
+    if (!isObject(trace) || typeof trace.type !== "string" || !POLAR_TRACES.has(trace.type)) continue;
+    const subplot = typeof trace.subplot === "string" && POLAR_KEY.test(trace.subplot) ? trace.subplot : "polar";
+    ids.add(subplot);
+  }
+  return [...ids].sort();
+}
+
 export interface PreparedPlotly {
   data: JsonValue[];
   layout: Record<string, unknown>;
@@ -68,6 +82,8 @@ export function preparePlotly(spec: JsonObject, datasets: PlotDatasets, theme: T
   const data = resolved.data;
   if (!Array.isArray(data)) throw new SpecError("a Plotly spec needs a 'data' array");
   const layout = deepMerge(plotlyLayout(theme), resolved.layout);
+  // Plotly paints polar subplots white: theme each one that a trace or the layout uses
+  for (const key of polarSubplots(data, layout)) layout[key] = deepMerge(plotlyPolar(theme), layout[key]);
   layout.autosize = true;
   const frames = Array.isArray(resolved.frames) ? resolved.frames : [];
   return { data, layout, frames };
