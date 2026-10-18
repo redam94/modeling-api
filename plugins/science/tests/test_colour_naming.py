@@ -8,6 +8,7 @@ import json
 import numpy as np
 import pytest
 import xarray as xr
+from mapi_plots.recipes import render_plots
 from mapi_plugin_science.challenges import challenges_file
 from mapi_plugin_science.colour_naming import (
     FEATURE_NAMES,
@@ -29,7 +30,6 @@ from mapi_plugin_science.colour_naming_data import (
     from_challenges,
     naming_dataset,
 )
-from mapi_plots.recipes import render_plots
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import fit_spec, score_bundle
 from mapi_sdk.registry import Registry, default_registry
@@ -156,7 +156,8 @@ def test_the_pymc_graph_matches_the_numpy_twin(naming: xr.Dataset) -> None:
         names = ["W", "sd", "z"] if kind == "hierarchical" else ["W"]
         values = model.compile_fn(
             model.replace_rvs_by_values([model[n] for n in names]),
-            inputs=model.value_vars, on_unused_input="ignore"
+            inputs=model.value_vars,
+            on_unused_input="ignore",
         )(point)
         (pot,) = model.replace_rvs_by_values([model["loglik"]])
         got = model.compile_fn(pot, inputs=model.value_vars, on_unused_input="ignore")(point)
@@ -237,7 +238,7 @@ def test_fit_recovers_the_language_shares(bundle: Bundle, naming: xr.Dataset) ->
     draws = p.values[:, :, row - int(p["lightness"][0]), col - int(p["hue"][0])]
     assert np.abs(draws.mean(0).T - true).mean() < 0.1
     lo, hi = np.quantile(draws, [0.01, 0.99], axis=0)
-    assert ((lo.T <= true + 1e-3) & (true - 1e-3 <= hi.T)).mean() > 0.8
+    assert ((true + 1e-3 >= lo.T) & (true - 1e-3 <= hi.T)).mean() > 0.8
     # the signs the truth fixes: light rises with L*, dark falls, warm rises with a*
     w = post["W"].mean(("chain", "draw"))
     assert float(w.sel(feat="L", term="light")) > 0 > float(w.sel(feat="L", term="dark"))
@@ -453,3 +454,25 @@ def test_nafaanra_pooled_held_out_log_score_matches_the_notebook(registry: Regis
     assert b.metrics.values["log_score"] == pytest.approx(-0.392, abs=0.004)
     k = float(b.model.posterior["k_eff_language"].mean())
     assert 1.6 < k < 2.1
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(WCS is None, reason="pymc-challenges data not present")
+def test_nafaanra_hierarchical_matches_the_notebook(registry: Registry) -> None:
+    """E77 parts C and E: all 29 speakers; B is the term only some speakers use."""
+    assert WCS is not None
+    ds = from_challenges(WCS)
+    groups = ", ".join(NAFAANRA_HELD_OUT)
+    split = f"  split: {{kind: leave_group_out, dim: speaker, groups: [{groups}]}}\n"
+    spec = NAFAANRA_SPEC_YAML.replace(split, "").replace(
+        "tune: 1000, draws: 1000, chains: 4", "tune: 500, draws: 500, chains: 2"
+    )
+    assert "split" not in spec
+    b = fit_spec(spec, ds, registry=registry, raw_schema=NAMING_SCHEMA)
+    post = b.model.posterior
+    sd = post["sd"].mean(("chain", "draw"))
+    assert float(sd.sel(rfeat="1", term="B")) > 1.8  # notebook: 2.61
+    assert float(sd.sel(rfeat="1", term="W")) < 0.5  # notebook: 0.25
+    assert float(post["k_eff_speaker"].mean()) == pytest.approx(1.92, abs=0.05)
+    assert float(post["k_eff_language"].mean()) == pytest.approx(1.84, abs=0.05)
+    assert int(b.model.groups["sample_stats"]["diverging"].sum()) == 0

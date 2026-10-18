@@ -247,7 +247,9 @@ def from_challenges(
         raise ValueError(f"language {language} has no speakers in {path.name}")
     chips = chips.sort_values("chip").reset_index(drop=True)
     if naming.shape[1] != len(chips):
-        raise ValueError(f"{path.name} has {naming.shape[1]} chips but wcs_chips.csv has {len(chips)}")
+        raise ValueError(
+            f"{path.name} has {naming.shape[1]} chips but wcs_chips.csv has {len(chips)}"
+        )
     y = naming[rows].astype(int)
     tl = terms[terms["lang"] == language].sort_values("code")
     major = (tl["n_speakers"] >= share * rows.size).to_numpy()

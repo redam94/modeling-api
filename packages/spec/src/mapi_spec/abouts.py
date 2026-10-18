@@ -1723,8 +1723,7 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "You have more than 40 different words (merge the rare words into one word first)",
         ],
         [
-            "The word that each speaker gave to each chip (an empty cell when there is no "
-            "answer)",
+            "The word that each speaker gave to each chip (an empty cell when there is no answer)",
             "The CIELAB colour (L*, a*, b*) of each chip",
             "The row and the column of each chip on the palette (for the maps)",
         ],

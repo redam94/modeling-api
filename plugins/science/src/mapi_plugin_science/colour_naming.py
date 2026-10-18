@@ -485,9 +485,7 @@ class ColourNamingModel(CustomModel[ColourNamingSettings]):
         groups["observed_data"] = _clean(
             xr.Dataset(
                 {
-                    TARGET: xr.DataArray(
-                        data.codes.astype(np.int16), dims=(SPEAKER_DIM, CHIP_DIM)
-                    ),
+                    TARGET: xr.DataArray(data.codes.astype(np.int16), dims=(SPEAKER_DIM, CHIP_DIM)),
                     "mode_term_rgb": lang.observed_rgb,
                 },
                 coords={SPEAKER_DIM: list(data.speakers), CHIP_DIM: data.chips},
