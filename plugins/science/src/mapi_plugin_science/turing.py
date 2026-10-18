@@ -1,6 +1,7 @@
 """``sci.turing_pattern``: Turing pattern kinetics from images of a growing pattern (E61 A).
 
-Canonical inputs (bind dataset names onto them in the spec)::
+Canonical inputs (the dataset names equal the canonical names; the specs need no
+``data.bind``)::
 
     dims  t: float, policy extend, max_extension = settings.max_extension  (time since the
              start, in the time unit of the reaction rates)
@@ -42,7 +43,7 @@ modes are independent given the parameters, so PSIS-LOO over modes is valid.
 
 **Outputs** (representation ``draws``; a subset of ``field_draws`` evenly spaced draws):
 
-* ``pattern(t, y, x)`` - in ``predict``/``forecast``/``evaluate``: an exact draw of the
+* ``pattern(t, y, x)`` - in ``predict``/``evaluate``: an exact draw of the
   noiseless activator field at the requested times given the fitted images (Gaussian
   conditioning, mode by mode); ``kind: predictive`` adds the camera noise. In ``simulate``:
   a new pattern grown by the nonlinear semi-implicit spectral solver from fresh seeded
@@ -465,7 +466,7 @@ class TuringPatternSettings(ModelSettings):
         2,
         ge=0,
         le=100,
-        description="Image times a forecast may reach past the last fitted time (the "
+        description="Image times a prediction may reach past the last fitted time (the "
         "linear theory holds only while the pattern is small)",
     )
     d_median: float = Field(10.0, gt=0, description="Prior median of the diffusion ratio d")

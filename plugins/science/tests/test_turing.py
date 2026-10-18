@@ -101,6 +101,18 @@ def test_manifest_declares_grids_modes_and_loo() -> None:
     assert {"sci.field_map", "sci.ppc_image_grid", "sci.profile_bands"} <= set(m.plots)
 
 
+def test_docs_name_only_the_supported_modes_and_no_bind() -> None:
+    """The module docstring and settings describe the modes and data naming the model has."""
+    import mapi_plugin_science.turing as turing
+
+    doc = turing.__doc__ or ""
+    assert "forecast" not in TuringPatternModel.capabilities.score_modes
+    assert "``forecast``" not in doc and "/``forecast``" not in doc
+    assert "bind dataset names" not in doc and "need no\n``data.bind``" in doc
+    ext = TuringPatternSettings.model_fields["max_extension"].description or ""
+    assert "forecast" not in ext and "prediction" in ext
+
+
 def test_schema_template_and_static_validation(registry: Registry) -> None:
     plain = TuringPatternModel.manifest().schema_template.resolve({"max_extension": 3})
     assert plain.vars["activator"].dims == ("t", "y", "x")
