@@ -2,7 +2,8 @@
 
 Scientific model plugins for modeling-api (`sci.*`, entry point `mapi.models: science`). They
 are ports of the case studies of [pymc-challenges](https://github.com/redam94/pymc-challenges).
-Their data are maps, images and fields on a regular grid.
+Most of their data are maps, images and fields on a regular grid. `sci.circular_regression`
+reads angles (directions and times of day).
 
 | Plugin | Model | Representation | Score modes |
 |---|---|---|---|
@@ -10,6 +11,7 @@ Their data are maps, images and fields on a regular grid.
 | `sci.fisher_kpp@1` | Fisher-KPP reaction-diffusion PDE solved in the model graph (E50) | draws | predict, forecast, evaluate |
 | `sci.traction_force@1` | Traction force microscopy as a Gaussian inverse problem in Fourier space (E60) | draws | predict, evaluate |
 | `sci.strong_lens@1` | Pixel forward model of a galaxy-scale strong lens in an HST image (E80) | draws | predict, simulate, evaluate |
+| `sci.circular_regression@1` | Von Mises regression with a canonical link on harmonics of the hour and the day of year, and log-Fourier activity densities (E81) | draws | predict, simulate, evaluate |
 
 Outputs that are fields declare a `grid` (`OutputDecl.grid`). The Model Explorer shows them in
 its **Fields** section, and the `sci.*` plot recipes draw them.

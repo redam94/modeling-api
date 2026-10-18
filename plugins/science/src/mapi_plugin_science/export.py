@@ -62,7 +62,7 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
-from mapi_plugin_science import kpp_data, lens_data, lgcp_data, traction_data
+from mapi_plugin_science import circular_data, kpp_data, lens_data, lgcp_data, traction_data
 from mapi_plugin_science.challenges import CHALLENGES_ENV
 
 __all__ = [
@@ -422,6 +422,28 @@ _register(
         project="astronomy",
         dataset="slacs_j1627_f814w",
         spec=lens_data.SLACS_SPEC_YAML,
+    )
+)
+
+
+def _dataset(data: ExportData) -> xr.Dataset:
+    assert isinstance(data, xr.Dataset)
+    return data
+
+
+_register(
+    ExportCase(
+        case="e81",
+        title="Hourly wind directions at Santa Barbara airport (circular regression)",
+        notebook="E81_circular_data.py",
+        model="sci.circular_regression",
+        files=(circular_data.CHALLENGES_FILE,),
+        loader=lambda d: circular_data.from_challenges(d / circular_data.CHALLENGES_FILE),
+        synthetic=lambda: circular_data.wind_dataset(),
+        schema=circular_data.WIND_SCHEMA,
+        project="meteorology",
+        dataset="ksba_wind_2021_2023",
+        spec=lambda data: circular_data.ksba_spec_yaml(_dataset(data)),
     )
 )
 

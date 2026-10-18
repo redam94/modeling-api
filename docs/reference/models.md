@@ -34,6 +34,7 @@ each lift likelihood.
 | `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
 | `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
 | `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
+| `sci.circular_regression@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e81_circular` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -351,6 +352,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
 | `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
 | `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
+| `e81` | `sci.circular_regression` | `asos_ksba_2021_2023.csv.gz` | `meteorology/ksba_wind_2021_2023` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -476,3 +478,82 @@ The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F81
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
 
+### `sci.circular_regression` — directions and times of day (E81)
+
+The data are angles: the direction that a wind comes from, or the time of day of a
+photograph. 359 degrees is next to 1 degree, and 23:59 is next to 00:01. Thus the model uses
+densities on the circle, as the E81 case study does. It has four kinds:
+
+- `von_mises` (default). The hour of the day and the day of the year are features: an
+  intercept, `cos` and `sin` of `k 2π h / 24` and of `k 2π d / 365.25`, and the products of the
+  first daily harmonics with the first annual harmonic. The defaults give 19 features `F`. The
+  natural parameters of a von Mises are `η = F B` (the canonical link). The mean direction is
+  `atan2(η₂, η₁)` and the concentration is `|η|`. This model has one mode. It has no wrapped
+  prior and no seam at ±π.
+- `projected_normal`. The angle of a vector `z ~ N(F B, I)`.
+- `regime_mixture`. Two von Mises regimes (for example the easterly night wind and the
+  westerly sea breeze). Each regime uses fewer features. A logistic gate on all features gives
+  the probability of the second regime. The prior directions of the regimes keep their labels.
+- `activity`. A log-Fourier density for each group (species):
+  `log f(θ) = Σ aₖ cos kθ + bₖ sin kθ − log Z`, with the prior `aₖ, bₖ ~ N(0, (τ/k)²)`. The
+  model uses only the sums of `cos kθ` and `sin kθ` for each group.
+
+The priors are N(0, 2) on the intercepts and N(0, 1) on the other coefficients. NUTS samples
+the coefficients. With `fit.keep.log_likelihood: true`, the bundle keeps the log density of
+each row (per radian). Thus `elpd_loo` compares the kinds on the same rows, for example in a
+workflow ladder `von_mises` → `projected_normal` → `regime_mixture`.
+
+**Inputs.** `obs` (integer, policy `extend`, one row for each report) and the target
+`direction(obs)` in `units`. The regression kinds also need `hour(obs)` (hours since midnight,
+0 to 24) and `day(obs)` (days since 1 January). The kind `activity` needs a categorical dim
+(`group_dim`, fixed) and the index `<group_dim>_idx(obs)`. Remove rows with no direction (a calm
+wind has no direction) before the fit.
+
+**Outputs.**
+
+- `direction_hat(obs)`: the mean direction of the row, in `units` from 0 to one turn. With
+  `kind: predictive` and in `simulate` mode, it is one simulated angle.
+- `resultant(obs)`: the mean resultant length of the row (1: one direction, 0: no preferred
+  direction).
+- `density(frame, angle)`: the density per unit of `units` on `angle_points` angles (a field:
+  frames on the rows, angles on the columns). For the regression kinds, a frame is a block of
+  `24 / frames` hours. Its density is the mean of the densities of up to `rows_per_frame` fit
+  rows in that block (the rose diagram of the model). For `activity`, a frame is a group.
+- `mean_direction(frame)` and `resultant_length(frame)`: the mean resultant vector of each
+  frame.
+- `activity` only: `activity_level(frame)` (`1 / (2π max f)`, the part of the day that the
+  group is active) and `overlap(frame, frame_)` (the area under the lower of two densities, a
+  field).
+
+With `fit.keep.posterior_predictive`, the bundle keeps simulated angles `theta` (radians, 0 to
+2π) and the observed `theta` in `observed_data`. Then `sci.rose` shows the observed rose with
+the range of the model in its default settings. For the density of each frame, use
+`sci.rose` with `var: density`, `frame: frame` and `units` set to the units of the data.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kind` | `von_mises` | `von_mises`, `projected_normal`, `regime_mixture` or `activity` |
+| `units` | `degrees` | Units of the direction: `degrees`, `radians` or `hours` |
+| `daily_harmonics`, `annual_harmonics` | 3, 2 | Harmonics of the hour and of the day of the year |
+| `interaction_harmonics` | 2 | Daily harmonics multiplied by the first annual harmonic |
+| `intercept_sd`, `coef_sd` | 2, 1 | Prior sd of the intercepts and of the other coefficients |
+| `regime_directions_deg`, `regime_names` | [90, 250], [easterly, westerly] | `regime_mixture`: prior directions and names of the two regimes |
+| `regime_daily_harmonics`, `regime_annual_harmonics` | 2, 1 | `regime_mixture`: features of each regime |
+| `group_dim` | `group` | `activity`: the dim of the groups |
+| `harmonics`, `tau_sd`, `grid_points` | 16, 2, 256 | `activity`: Fourier terms, prior scale of `τ`, angles of the sum for `Z` |
+| `frames`, `angle_points`, `rows_per_frame` | 8, 72, 200 | Blocks of the day, angles and fit rows of the `density` output |
+| `score_draws` | 400 | Posterior draws for each score |
+
+`from_challenges` reads the hourly wind reports of Santa Barbara airport (2021–2023). It removes
+the calm reports and uses Pacific standard time (UTC − 8). `ksba_spec_yaml(ds)` holds out 2023 as
+the notebook does. On the 12,023 reports of 2021–2022, `elpd_loo` is −17,385 (the notebook:
+−17,385). The mean log score of 2023 is −1.517 for each report (the notebook: −1.517).
+`from_challenges_activity` reads the camera-trap times of Barro Colorado Island for the ocelot
+and five species that it hunts. With `BCI_SPEC_YAML`, the overlap of the ocelot and the agouti
+is 0.30 (the notebook: 0.30).
+
+Platform holdout metrics such as `rmse` and `coverage_90` are linear. They are not correct for
+angles. Use `elpd_loo`, or `CircularRegressionModel().holdout_log_score(bundle.model, ds)` for
+the log score of held-out rows. Errors: `SCHEMA_INVALID` for a missing direction, an hour out of
+range or a bad group index; `MISSING_FUTURE_COVARIATE` when the score data have no `hour` or
+`day`; `SETTINGS_INVALID` for more interaction harmonics than daily harmonics.
