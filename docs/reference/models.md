@@ -34,6 +34,7 @@ each lift likelihood.
 | `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
 | `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
 | `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
+| `sci.storm_localisation@1` | `mapi-plugin-science` | draws | predict, evaluate | `e58_storm` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -351,6 +352,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
 | `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
 | `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
+| `e58` | `sci.storm_localisation` | `dannhauser2022_unc13_dstorm_roi.npz` | `microscopy/dannhauser2022_unc13_dstorm` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -476,3 +478,93 @@ The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F81
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
 
+
+### `sci.storm_localisation` — molecule positions in STORM frames (E58)
+
+Single-molecule localisation microscopy (STORM, PALM, dSTORM). The data are the raw frames of
+an EMCCD camera. The model finds isolated spots and gives the position of each molecule with an
+error bar in nm. Detection, camera calibration and the patches use NumPy and `scipy.ndimage` at
+fit time. Then NUTS fits all patches in one model. Each patch has one emitter with its own
+position, photons, background and PSF sd. The image of the emitter is a Gaussian PSF that is
+integrated over each pixel (`erf`). The counts are Poisson.
+
+**Camera.** An EMCCD at high gain doubles the variance of the photon counts. The effective
+counts `z = round((ADU - offset_adu) / scale_adu)` are Poisson with a mean of half the photons.
+`scale_adu` is twice the EM gain. Set `offset_adu` and `scale_adu` together. If you do not set
+them, the model fits the photon-transfer curve of the frames: the robust temporal variance of
+each pixel against its median, without the brightest 10 % of the pixels. This calibration needs
+pixels with a range of background brightness. A small crop over one bright structure is not
+sufficient. For such data, calibrate on a larger field and set the two values.
+
+**Detection.** The model subtracts the per-pixel time median from each frame, smooths with a
+Gaussian (`smooth_px`) and keeps the connected regions above `threshold_sd` robust noise sds.
+A blob is isolated when no other blob is in its `patch_px` × `patch_px` patch and it has
+`min_blob_px` to `max_blob_px` pixels. The fit uses `max_spots` isolated blobs, evenly spaced
+in frame order.
+
+**Inputs.** `frame`, `row` and `col` (integer, fixed; rows and columns are consecutive pixel
+numbers) and the target `frames(frame, row, col)` (int32, ADU). The frames must have no missing
+values. Thus the model has no split: evaluate it in sample.
+
+**Outputs.**
+
+- `x`, `y` (spot): the position in nm. It is the column (row) number times `pixel_nm`.
+- `photons`, `background` (photons per pixel) and `psf_sd` (nm) of each spot.
+- `render(render_y, render_x)`: the super-resolution image (a field). Each draw puts each spot
+  at its drawn position as a small Gaussian. The mean of the draws is the usual image where
+  each localisation is a Gaussian with its own error.
+- `patch_fit(spot, py, px)`: the effective counts of each patch (a field with a frame for each
+  spot). With `kind: predictive`, these are Poisson draws.
+- `frames_hat(frame, row, col)`: the camera image in ADU. Inside a fitted patch it is
+  `offset_adu + scale_adu × patch_fit`. Outside the patches it is the per-pixel time median.
+  `evaluate` compares it with the frames. Spots that the model did not fit count as misfit.
+
+The bundle also keeps `posterior_predictive/patch_fit` (`ppc_draws` draws) and
+`observed_data/patch_fit`. Thus `sci.image_residuals` shows the data, the fit and the residuals
+of each spot. `sci.point_pattern` shows the positions with error ellipses over `render`.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `pixel_nm` | 100 | Size of a camera pixel in the sample (nm) |
+| `kind` | `flat` | Background in each patch: `flat`, or `plane` (a log-linear slope in x and y) |
+| `offset_adu`, `scale_adu` | unset | Camera offset (ADU) and ADU per effective count; unset: from the frames |
+| `max_spots` | 200 | Isolated spots to fit |
+| `threshold_sd`, `smooth_px` | 5, 1 | Detection threshold (robust sds) and smoothing (px) |
+| `patch_px` | 11 | Side of each patch (odd, px) |
+| `min_blob_px`, `max_blob_px` | 13, 39 | Size limits of a fitted blob (px) |
+| `amplitude_band` | 0, 1 | Quantile band of the blob amplitude to fit |
+| `photons_median`, `photons_log_sd` | 1500, 1 | Log-normal prior of the photons |
+| `psf_sd_px`, `psf_log_sd` | 1, 0.2 | Log-normal prior of the PSF sd (px) |
+| `position_sd_px` | 2 | Prior sd of the position around the blob centre (px) |
+| `background_photons`, `background_log_sd` | unset, 0.5 | Log-normal prior of the background; unset: twice the median effective count |
+| `gradient_sd` | 0.05 | Prior sd of the background slopes (`kind: plane`) |
+| `score_draws`, `ppc_draws` | 40, 20 | Posterior draws in a score, and predictive patch draws in the bundle |
+| `render_px_nm` | 16 | Pixel size of `render` (nm) |
+
+To compare `flat` and `plane` by `elpd_loo`, fit both with `fit.keep.log_likelihood: true`. The
+pointwise values are per patch pixel, and the two kinds use the same patches. The
+`PATCH_MISFIT` diagnostic warns when the Pearson χ² per patch pixel at the posterior mean is
+more than 1.5.
+
+Typed errors:
+
+- `SETTINGS_INVALID`: only one of `offset_adu` and `scale_adu`, an even `patch_px`,
+  `min_blob_px` > `max_blob_px`, or a bad `amplitude_band`.
+- `SCHEMA_INVALID`: missing frames or pixels, rows or columns that are not consecutive, fewer
+  than 3 frames, frames smaller than a patch, no spot above the threshold, no isolated spot, or
+  frames that cannot calibrate the camera.
+- `UNSEEN_LEVELS`: a score with frames, rows or columns that the fit did not have.
+- `PAYLOAD_TOO_LARGE`: `frames_hat` for the scored frames has more than 50 million values.
+  Score fewer frames, for example the frames with a fitted spot (`constant_data/spot_frame`).
+- `MODE_NOT_SUPPORTED`: `forecast`, `counterfactual`, `simulate` and `filter`.
+
+`from_challenges` reads `dannhauser2022_unc13_dstorm_roi.npz`: 2,000 frames of 40 × 40 pixels
+(127 nm) of a dSTORM recording of Unc-13 at a *Drosophila* synapse. Its attributes keep the
+camera calibration of the notebook (offset 457 ADU, 13.86 ADU per effective count), from the
+photon-transfer curve of the full 200 × 200 field. `challenges_settings(ds)` gives these
+values as settings. The detector finds 4,192 blobs, as in the notebook. With
+`amplitude_band: [0.45, 0.55]` and `max_spots: 1`, the fit is the spot of the notebook (blob
+12, frame 5): x = 4.46 ± 0.05 px, about 2,160 photons, a PSF sd of 125 nm and a position error
+of 7 nm. 200 spots take approximately one minute with nutpie (4 chains of 1,000 draws). The
+model does not do the multi-emitter selection, the Laplace fits for the full movie or the
+blink counting of the notebook.
