@@ -760,8 +760,16 @@ def _categorical_sources(
 
 
 def _decompositions(fitted: Fitted) -> list[str]:
-    """Outputs that decompose a prediction along a ``component`` dim (contributions)."""
-    return [n for n, d in fitted.manifest.outputs.items() if "component" in d.dims]
+    """Outputs that decompose a prediction along a ``component`` dim (contributions).
+
+    A vector field (``grid.component``) also has a ``component`` dim, but its components are
+    the axes of one quantity, not additive parts of a prediction, so it is left out.
+    """
+    return [
+        n
+        for n, d in fitted.manifest.outputs.items()
+        if "component" in d.dims and (d.grid is None or d.grid.component != "component")
+    ]
 
 
 def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, xr.DataArray]:

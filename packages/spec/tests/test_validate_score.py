@@ -7,12 +7,18 @@ from typing import Any
 
 import pytest
 from mapi_spec import Catalog, DataSchema, ModelSpec, Representation, ScoreRequest
-from mapi_spec.coords import DataSummary
+from mapi_spec.coords import CoordSummary, DataSummary
 from mapi_spec.errors import ErrorCode, Issue, Severity, http_status
 from mapi_spec.examples import E33_RAW, E33_YAML, SCORE_YAML, XGB_RAW, XGB_YAML
 from mapi_spec.loader import load_score_request, parse_yaml
 from mapi_spec.schema import DimPolicy
-from mapi_spec.validate import ResolvedSpec, ScoreMetadata, validate_score_request, validate_spec
+from mapi_spec.validate import (
+    ResolvedSpec,
+    ScoreMetadata,
+    _check_coord,
+    validate_score_request,
+    validate_spec,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -521,3 +527,19 @@ def test_draws_and_quota(e33_meta: ScoreMetadata) -> None:
     assert "QUOTA_EXCEEDED@/output/draws" in errs
     agg = {"aggregate": {"over": ["geo", "channel"], "how": "sum"}, "summary": ["mean", "hdi_90"]}
     assert validate_score_request(_req(output=agg), e33_meta, _plan_inputs()) == []
+
+
+def test_one_label_extension_uses_the_fit_step() -> None:
+    # a payload with one label has no step of its own: it is placed on the fit's grid
+    fit = CoordSummary.model_validate(
+        {"kind": "integer", "size": 5, "start": 0, "end": 32, "step": 8}
+    )
+    one = CoordSummary.model_validate({"kind": "integer", "size": 1, "start": 40, "end": 40})
+    assert _check_coord("t", one, fit, DimPolicy.EXTEND, "error", 4, "/data", "predict") == []
+    gap = CoordSummary.model_validate({"kind": "integer", "size": 1, "start": 56, "end": 56})
+    issues = _check_coord("t", gap, fit, DimPolicy.EXTEND, "error", 4, "/data", "predict")
+    assert [i.code for i in issues] == [ErrorCode.NON_CONTIGUOUS_EXTENSION]
+    assert "gap of 2 period" in issues[0].message
+    off = CoordSummary.model_validate({"kind": "integer", "size": 1, "start": 44, "end": 44})
+    issues = _check_coord("t", off, fit, DimPolicy.EXTEND, "error", 4, "/data", "predict")
+    assert "do not align" in issues[0].message

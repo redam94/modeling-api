@@ -1880,7 +1880,9 @@ def _check_coord(
     # EXTEND
     if cs.start is None or cs.end is None or fit.start is None or fit.end is None:
         return issues
-    s, e = cs.ordinal(cs.start), cs.ordinal(cs.end)
+    # the payload is placed on the fit's grid: a payload with one label has no step (or
+    # frequency) of its own, so its own summary would count periods of 1
+    s, e = fit.ordinal(cs.start), fit.ordinal(cs.end)
     fs, fe = fit.ordinal(fit.start), fit.ordinal(fit.end)
     if None in (s, e, fs, fe):
         issues.append(
