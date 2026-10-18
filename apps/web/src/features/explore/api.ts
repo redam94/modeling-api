@@ -27,11 +27,29 @@ export type EvidenceItem = S["EvidenceItem"];
 export type ValidationStatus = S["ValidationStatus"];
 export type SplitPlan = NonNullable<ModelExploreRequest["backtest"]>;
 
-/** What an explorer looks at. */
-export type ExplorerTarget = { kind: "dataset"; id: string; version: number } | { kind: "model"; id: string; version: number };
+/**
+ * What an explorer looks at. M4: `node` is the node of a tree dataset (its ingest views are
+ * under `ui/explore/nodes/<slug>/`, listed in `ui/explore/nodes/index.json`).
+ */
+export type ExplorerTarget = { kind: "dataset"; id: string; version: number; node?: string | null } | { kind: "model"; id: string; version: number };
 
 export function targetKey(t: ExplorerTarget): string {
-  return `${t.kind}:${t.id}@${t.version}`;
+  const node = t.kind === "dataset" && t.node ? `#${t.node}` : "";
+  return `${t.kind}:${t.id}@${t.version}${node}`;
+}
+
+/** M4: the node → explorer index map a tree ingest writes. */
+export const EXPLORE_NODES_INDEX = "ui/explore/nodes/index.json";
+
+/** The per-node index of `node` from `ui/explore/nodes/index.json` (`null`: not listed). */
+export function nodeIndexName(raw: unknown, node: string): string | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const nodes = (raw as { nodes?: unknown }).nodes;
+  if (typeof nodes !== "object" || nodes === null) return null;
+  const entry = (nodes as Record<string, unknown>)[node];
+  const index = typeof entry === "object" && entry !== null ? (entry as { index?: unknown }).index : null;
+  // Only an index under ui/explore/nodes/ (the server serves nothing else there either).
+  return typeof index === "string" && index.startsWith("ui/explore/nodes/") && index.endsWith(".json") && !index.includes("..") ? index : null;
 }
 
 export const exploreKeys = {
@@ -58,6 +76,12 @@ export function useBaseIndex(t: ExplorerTarget | null) {
     queryFn: async ({ signal }): Promise<ExplorerIndexView | null> => {
       if (!t) return null;
       try {
+        if (t.kind === "dataset" && t.node) {
+          const nodes = await fetchArtifactJson(await artifactLink(t, EXPLORE_NODES_INDEX), { signal });
+          const name = nodeIndexName(nodes, t.node);
+          if (!name) return null;
+          return parseIndex(await fetchArtifactJson(await artifactLink(t, name), { signal }));
+        }
         const link = await artifactLink(t, EXPLORE_INDEX);
         return parseIndex(await fetchArtifactJson(link, { signal }));
       } catch (err) {
@@ -157,7 +181,14 @@ export interface SectionState<T extends ExplorerSection = ExplorerSection> {
   /** Where the view lives: written by the ingest/fit, or by an explore run. */
   origin: "base" | "run";
   hasPlots: boolean;
+  /** The view's object name (M4: under `ui/explore/nodes/<slug>/` for a node of a tree). */
+  view?: string | undefined;
+  /** The plots' object name, when `hasPlots`. */
+  plots?: string | undefined;
 }
+
+const VIEW_NAME_RE = /^ui\/explore\/[A-Za-z0-9_.~\-/]{1,240}\.json$/;
+const safeView = (v: unknown): string | undefined => (typeof v === "string" && VIEW_NAME_RE.test(v) && !v.includes("..") ? v : undefined);
 
 /**
  * One state per section, in `order`: an explore run's result wins over the base index
@@ -174,12 +205,15 @@ export function mergeSections<T extends ExplorerSection>(order: readonly T[], ba
     const ref = r && (r.status ?? "ok") === "ok" ? r : b && (b.status ?? "ok") === "ok" ? b : (r ?? b);
     if (!ref) return { section, status: "missing", message: null, origin: "base", hasPlots: false };
     const status = ref.status ?? "ok";
+    const plots = safeView((ref as Record<string, unknown>).plots);
     return {
       section,
       status,
       message: ref.message_plain ?? null,
       origin: ref === r ? "run" : "base",
       hasPlots: typeof (ref as Record<string, unknown>).plots === "string",
+      view: safeView(ref.view),
+      plots,
     };
   });
 }
@@ -202,7 +236,7 @@ export function useSectionView<K extends ExplorerSection>(t: ExplorerTarget, sta
     enabled: state?.status === "ok",
     staleTime: 10 * 60_000,
     queryFn: async ({ signal }): Promise<SectionViews[K]> => {
-      const link = await resolveLink(qc, s, t, origin, runId, viewName(section));
+      const link = await resolveLink(qc, s, t, origin, runId, state?.view ?? viewName(section));
       return parseView(section, await fetchArtifactJson(link, { signal }));
     },
   });
@@ -219,7 +253,7 @@ export function useSectionPlots(t: ExplorerTarget, state: SectionState | undefin
     enabled: enabled && state?.status === "ok" && state.hasPlots,
     staleTime: 10 * 60_000,
     queryFn: async ({ signal }): Promise<PlotSpec[]> => {
-      const link = await resolveLink(qc, s, t, origin, runId, plotsName(section));
+      const link = await resolveLink(qc, s, t, origin, runId, state?.plots ?? plotsName(section));
       const raw = await fetchArtifactJson(link, { signal });
       if (!Array.isArray(raw)) return [];
       return raw.filter((p): p is PlotSpec => typeof p === "object" && p !== null && typeof (p as { spec?: unknown }).spec === "object" && (p as { kind?: unknown }).kind === "vega-lite");

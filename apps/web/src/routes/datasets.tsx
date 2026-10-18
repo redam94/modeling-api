@@ -1,7 +1,7 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Database, Plus, Telescope, Upload } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { errorMessage } from "@/api/client";
 import { useCreateDataset, useDataset, useDatasets, useDatasetVersion, useDatasetVersions } from "@/api/queries";
@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Ta
 import { Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Textarea } from "@/components/ui/primitives";
 import { DatasetAboutCard } from "@/features/about/dataset-about";
 import { UploadWizard } from "@/features/datasets/upload-wizard";
+import { isTree } from "@/features/datasets/tree";
+import { TreeBrowser } from "@/features/datasets/tree-view";
 import { CoordBrowser, MissingnessPanel, PreviewPanel, SchemaTable } from "@/features/datasets/version-views";
 import { formatBytes, relativeTime, shortId } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -107,7 +109,7 @@ export function DatasetsPage() {
             />
           ) : (
             <EmptyState icon={<Database />} title="No datasets yet" action={<Button onClick={() => setOpen(true)}><Plus /> New dataset</Button>}>
-              Create a dataset. Then upload a CSV, Parquet, zarr zip or netCDF file as its first version.
+              Create a dataset. Then upload a CSV, Parquet, zarr zip, netCDF or HDF5 file (or several files) as its first version.
             </EmptyState>
           )
         }
@@ -121,6 +123,20 @@ const detailRoute = getRouteApi("/datasets/$datasetId");
 
 const VERSION_STATUS = { ready: "success", ingesting: "info", failed: "danger" } as const;
 
+function VersionAbout({ version }: { version: DatasetVersion }) {
+  const items: [string, ReactNode][] = [
+    ["Content hash", version.sha256 ? <Mono key="h">{version.sha256}</Mono> : "—"],
+    ["Size", formatBytes(version.size_bytes)],
+    ["Created", relativeTime(version.created_at)],
+    ["Ready", relativeTime(version.ready_at)],
+    ["Message", version.message ?? "—"],
+  ];
+  // M4: tree versions and versions made from several files.
+  if (version.layout === "tree") items.push(["Layout", `tree of ${Object.keys(version.tree_schema?.nodes ?? {}).length} nodes`]);
+  if ((version.sources ?? []).length > 1) items.push(["Made from", `${version.sources!.length} uploaded files`]);
+  return <KeyValues items={items} />;
+}
+
 function VersionDetail({ version }: { version: DatasetVersion }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
@@ -128,6 +144,7 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
         <Mono className="min-w-0 text-[15px] font-semibold break-all">{version.ref}</Mono>
         <CopyButton value={version.ref} label="Copy reference" />
         <Badge variant={VERSION_STATUS[version.status]}>{version.status}</Badge>
+        {version.layout === "tree" ? <Badge variant="outline">tree</Badge> : null}
         {version.status === "ready" ? (
           // M3.5: the Data Explorer of this version.
           <Button asChild size="sm" className="ml-auto">
@@ -155,7 +172,19 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
       {version.status === "ingesting" ? (
         <p className="text-muted-foreground">The ingest run reads the upload and does a check of it. This page refreshes automatically.</p>
       ) : null}
-      {version.status === "ready" ? (
+      {version.status === "ready" && isTree(version) ? (
+        // M4: a tree version shows its nodes first.
+        <Tabs defaultValue="nodes">
+          <TabsList>
+            <TabsTrigger value="nodes">Nodes</TabsTrigger>
+            <TabsTrigger value="missing">Missingness</TabsTrigger>
+            <TabsTrigger value="about">About</TabsTrigger>
+          </TabsList>
+          <TabsContent value="nodes"><TreeBrowser version={version} nodes={version.tree_schema.nodes} /></TabsContent>
+          <TabsContent value="missing"><MissingnessPanel version={version} /></TabsContent>
+          <TabsContent value="about"><VersionAbout version={version} /></TabsContent>
+        </Tabs>
+      ) : version.status === "ready" ? (
         <Tabs defaultValue="schema">
           <TabsList>
             <TabsTrigger value="schema">Schema</TabsTrigger>
@@ -168,17 +197,7 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
           <TabsContent value="coords"><CoordBrowser version={version} /></TabsContent>
           <TabsContent value="missing"><MissingnessPanel version={version} /></TabsContent>
           <TabsContent value="preview"><PreviewPanel version={version} /></TabsContent>
-          <TabsContent value="about">
-            <KeyValues
-              items={[
-                ["Content hash", version.sha256 ? <Mono key="h">{version.sha256}</Mono> : "—"],
-                ["Size", formatBytes(version.size_bytes)],
-                ["Created", relativeTime(version.created_at)],
-                ["Ready", relativeTime(version.ready_at)],
-                ["Message", version.message ?? "—"],
-              ]}
-            />
-          </TabsContent>
+          <TabsContent value="about"><VersionAbout version={version} /></TabsContent>
         </Tabs>
       ) : null}
     </div>
