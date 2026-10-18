@@ -1135,7 +1135,7 @@ Gives the estimate, the spread and the credible range of each parameter of a fit
 Result fields (`nodes.<id>.<field>` in conditions): `params` (object), `max_rhat` (number), `min_ess` (number), `n_divergent` (integer), `n_params` (integer), `truncated` (boolean).
 
 ??? note "Expert detail"
-    Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of several dims joined by ', '), at most 200 values; read them with nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no sample_stats.
+    Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of several dims joined by ', '), at most 200 values; max_rhat and min_ess check all the values (up to 20 000). Read the values with nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no sample_stats.
 
 ## Evaluation (`evaluate`)
 
@@ -1304,7 +1304,7 @@ Gives each candidate model a weight from how well it predicts each data point th
 
 *Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* seconds.
 
-**Use it when:** You fitted several Bayesian models of the same data and none is clearly best; You want to average the predictions of the models instead of selecting one.
+**Use it when:** You fitted several Bayesian models of the same data and none is clearly best; You want to average the predictions of the models, not select one of them.
 
 **Avoid it when:** The models used different data (the scores are not comparable).
 

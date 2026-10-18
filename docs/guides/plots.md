@@ -84,6 +84,13 @@ The **tabular pack** (`ml.*`) adds `ml.feature_importance`. This plot shows rank
 importances, or signed coefficients for linear estimators. It reads them from the groups that
 the scikit-learn plugin and the xgboost plugin keep in their bundles.
 
+The **science pack** (`sci.*`) draws gridded fields and images (`sci.field_map`,
+`sci.image_residuals`, `sci.ppc_image_grid`, `sci.power_spectrum`), areas on a map
+(`sci.area_map`), trees (`sci.phylogeny`), angles (`sci.rose`), colours (`sci.swatches`),
+points with error ellipses (`sci.point_pattern`) and profiles and ensembles of curves. The
+**network pack** (`net.*`) adds `net.graph`, a node-link drawing and an adjacency matrix of an
+edge variable. The [plot reference](../reference/plots.md) lists the settings of each recipe.
+
 <div class="grid" markdown>
 
 ![Convergence](../assets/plots/core_convergence.png)

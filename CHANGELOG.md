@@ -43,10 +43,30 @@ milestone releases are tagged on `main`.
 
 #### Changed
 - `mapi-workflows[runtime]` depends on `mapi-plots[recipes]`.
+- The server puts the plot outputs of workflow nodes through the plot sanitizer when it
+  collects them (an unsafe plot fails its node with `PLOT_UNSAFE`) and again when it serves
+  node runs, run outputs and report plot sections.
+- Workflow validation resolves the `recipe` of `plot.render` against the bundled recipes and
+  the plot catalog (`REF_UNRESOLVED`).
+- `model.summary` computes `max_rhat` and `min_ess` over all the values of the selected
+  variables (up to 20 000), not only the 200 values of the table.
+- `model.score`, `model.forecast` and `plot.render` (`source: predictions`) send a tree input
+  whole and give a tree-input model the tree of that input. `plot.render` with
+  `source: data` keeps the groups of a tree input.
+
+#### Fixed
+- `sci.phylogeny` matched tips by label when a 0-based tip coord shared a label or two with
+  the node positions by chance; most tips were then empty.
+- `sci.image_residuals` with `log` divided log10 residuals by a σ in data units. The
+  normalised residual is now in data units.
+- A non-finite `elpd_loo` (a log-likelihood of `-inf`) made the fitted bundle impossible to
+  load. Such an estimate is now left out, and bundles that already hold one load.
+- The pseudo-BMA+ bootstrap of `compare.stacking` no longer holds a `(n_bootstrap, N)`
+  matrix (800 MB at the limits).
 
 #### Known gaps
 - A backtest of a tree dataset gives the full tree to each fold. A tree-input model that
-  reads its target from the tree can see the test window.
+  reads its target from the tree can see the test window. The node shows a warning.
 - `search.grid` has no `nodes` parameter.
 - The HTML report does not show plot sections. Only the JSON report and the web run view
   show them.

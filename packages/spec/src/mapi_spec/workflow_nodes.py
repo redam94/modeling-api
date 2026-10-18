@@ -1705,7 +1705,7 @@ _node("compare.stacking", NodeKind.COMPARE, _a(
     "Gives each candidate model a weight from how well it predicts each data point that it "
     "did not see. A mix of the models with these weights predicts best.",
     ["You fitted several Bayesian models of the same data and none is clearly best",
-     "You want to average the predictions of the models instead of selecting one"],
+     "You want to average the predictions of the models, not select one of them"],
     ["The models used different data (the scores are not comparable)"],
     ["Metrics of two or more model.fit nodes with evaluate: {metrics: [elpd_loo]}"],
     ["All candidates are fitted on the same data points in the same order"],

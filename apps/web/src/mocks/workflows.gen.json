@@ -7859,11 +7859,11 @@
     },
     "max_rhat": {
      "type": "number",
-     "description": "The largest R-hat (null if it cannot be measured)"
+     "description": "The largest R-hat of all the values, also the ones the table does not keep (null if it cannot be measured)"
     },
     "min_ess": {
      "type": "number",
-     "description": "The smallest bulk effective sample size"
+     "description": "The smallest bulk effective sample size of all the values"
     },
     "n_divergent": {
      "type": "integer",
@@ -7912,7 +7912,7 @@
       "title": "Vehtari, Gelman, Simpson, Carpenter & Bürkner (2021), Rank-normalization, folding, and localization: an improved R-hat"
      }
     ],
-    "expert_notes": "Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of several dims joined by ', '), at most 200 values; read them with nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no sample_stats.",
+    "expert_notes": "Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of several dims joined by ', '), at most 200 values; max_rhat and min_ess check all the values (up to 20 000). Read the values with nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no sample_stats.",
     "fits": {
      "goal": [
       "validate_model",
@@ -8126,7 +8126,7 @@
     "summary_plain": "Gives each candidate model a weight from how well it predicts each data point that it did not see. A mix of the models with these weights predicts best.",
     "use_when": [
      "You fitted several Bayesian models of the same data and none is clearly best",
-     "You want to average the predictions of the models instead of selecting one"
+     "You want to average the predictions of the models, not select one of them"
     ],
     "avoid_when": [
      "The models used different data (the scores are not comparable)"

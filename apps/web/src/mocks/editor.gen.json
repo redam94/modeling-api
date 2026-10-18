@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:6012ef315c2a5143f5e33c09c96d4fdf8331a5621f6363e5f3c4ef83dcbcd930",
+  "digest": "sha256:866a3184c0fa8886c4b8d36deee2cfce84b5de7b5b69d09d4fa4aa12b8e4ab2b",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -18583,7 +18583,7 @@
     "about": {
      "assumptions": [
       "The chart shows the first 5 parameter values, or the ones that you pick",
-      "A random-looking cloud is good; a narrow line or a curved band is a problem for the sampler"
+      "A random-looking cloud is good. A narrow line or a curved band is a problem for the sampler"
      ],
      "avoid_when": [
       "The model has many parameters and you do not know which ones to look at",
@@ -18872,10 +18872,10 @@
     "about": {
      "assumptions": [
       "Rank 1 is the largest value unless you set `descending: false`",
-      "Each draw gives one full ranking; the chart counts how often each place occurs"
+      "Each draw gives one full ranking. The chart counts how often each place occurs"
      ],
      "avoid_when": [
-      "There are more than 60 items",
+      "There are more than 30 items (raise `max_items` to 60 at most)",
       "Ties are common and meaningful (the chart breaks ties in a fixed order)"
      ],
      "data_needs": [
@@ -18969,7 +18969,7 @@
       "Other dimensions have one level or are fixed with `select`"
      ],
      "avoid_when": [
-      "There are more than about 40 groups (use Rank matrix or Posterior forest)",
+      "There are more than 30 groups. The chart then shows only 30 of them (raise `max_levels` to 100, or use Posterior forest)",
       "The variable has more than one dimension that you cannot fix to one level"
      ],
      "data_needs": [
@@ -19021,7 +19021,7 @@
       "The observed series and the states use the same time points"
      ],
      "avoid_when": [
-      "The states have no fixed labels between draws (label switching); fix the order in the model first",
+      "The states have no fixed labels between draws (label switching). Fix the order in the model first",
       "There are more than about 10 states"
      ],
      "data_needs": [
@@ -19375,8 +19375,8 @@
    {
     "about": {
      "assumptions": [
-      "Only links above the threshold are drawn; the grid shows all of them",
-      "Without positions, the drawing puts linked nodes near each other; distances have no other meaning"
+      "Only links above the threshold are drawn. The grid shows all of them",
+      "Without positions, the drawing puts linked nodes near each other. Distances have no other meaning"
      ],
      "avoid_when": [
       "There are more than 300 nodes (the drawing becomes too dense)",
@@ -19519,7 +19519,7 @@
    {
     "about": {
      "assumptions": [
-      "Each cell is summarised on its own; the chart does not show how cells vary together",
+      "Each cell is summarised on its own. The chart does not show how cells vary together",
       "Large grids are averaged in blocks of cells so that the chart stays small"
      ],
      "avoid_when": [
@@ -19566,7 +19566,7 @@
    {
     "about": {
      "assumptions": [
-      "Each cell is compared on its own; the chart does not show how cells vary together",
+      "Each cell is compared on its own. The chart does not show how cells vary together",
       "Large images are averaged in blocks of cells so that the chart stays small"
      ],
      "avoid_when": [
@@ -19580,7 +19580,7 @@
      ],
      "difficulty": "intermediate",
      "example": "The residual of a galaxy image is grey noise except for a red spot at the bottom right. The model has the main galaxy but not a small companion next to it. The normalised residuals have an sd of 1.04, so the noise level is right.",
-     "expert_notes": "Mean and sd (ddof 1) per cell over up to `max_draws` draws; residual = obs - mean; normalised = residual / sqrt(sd\u00b2 + \u03c3\u00b2). \u03c3\u00b2 comes from `sigma` (a variable: posterior draws are averaged as E[\u03c3\u00b2]; or a number), read as `sigma_kind` sd, variance or inverse_variance. Without `sigma`, a variable named sigma is used, but only for noise-free images: draws from posterior_predictive already hold the noise. The histogram uses all cells at full resolution, bins of 0.25 on [-4.5, 4.5] (the tails go to the end bins). `log` compares log10 values.",
+     "expert_notes": "Mean and sd (ddof 1) per cell over up to `max_draws` draws; residual = obs - mean; normalised = residual / sqrt(sd\u00b2 + \u03c3\u00b2). \u03c3\u00b2 comes from `sigma` (a variable: posterior draws are averaged as E[\u03c3\u00b2]; or a number), read as `sigma_kind` sd, variance or inverse_variance. Without `sigma`, a variable named sigma is used, but only for noise-free images: draws from posterior_predictive already hold the noise. The histogram uses all cells at full resolution, bins of 0.25 on [-4.5, 4.5] (the tails go to the end bins). `log` colours the observed, mean and residual panels as log10 (the residual is a log10 ratio); the normalised residual stays in data units, as \u03c3 is.",
      "fits": {},
      "outputs": [
       "Heatmaps of the observed image and the model mean on one colour scale",
@@ -19623,7 +19623,7 @@
    {
     "about": {
      "assumptions": [
-      "Each node has one parent; a root has none",
+      "Each node has one parent. A root has no parent",
       "Tips match the output by label, else in the order of the nodes",
       "With more tips than the limit, the chart shows evenly spaced tips"
      ],
@@ -19719,7 +19719,7 @@
    {
     "about": {
      "assumptions": [
-      "The bands show the uncertainty of each bin on its own; bins can be correlated",
+      "The bands show the uncertainty of each bin on its own. Bins can be correlated",
       "A log axis hides values at or below zero"
      ],
      "avoid_when": [
@@ -19799,7 +19799,7 @@
       "sci.field_map",
       "core.ppc"
      ],
-     "summary_plain": "Shows the observed image next to a few images that the model makes. If the model fits, you cannot easily tell which image is the real one.",
+     "summary_plain": "Shows the observed image next to a few images that the model makes. If the model fits, it is difficult to tell which image is the real one.",
      "title": "Predictive image grid",
      "typical_runtime": "seconds",
      "use_when": [
@@ -19917,7 +19917,7 @@
    {
     "about": {
      "assumptions": [
-      "The values are sRGB in [0, 1]; values outside are clipped",
+      "The values are sRGB in [0, 1]. The chart clips values outside this range",
       "The mean colour is the average in sRGB, not in a perceptual colour space",
       "Screens show colours differently, so compare squares on the same screen"
      ],
@@ -19968,7 +19968,7 @@
     "about": {
      "assumptions": [
       "The two components use the same units, so the length makes sense",
-      "Arrows show the mean vector; colours show the mean length over the draws"
+      "Arrows show the mean vector. Colours show the mean length over the draws"
      ],
      "avoid_when": [
       "The output has one value for each cell (use Field map)",

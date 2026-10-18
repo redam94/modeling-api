@@ -768,7 +768,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "Two grid dimensions, from the output's grid declaration or the settings",
         ],
         [
-            "Each cell is summarised on its own; the chart does not show how cells vary together",
+            "Each cell is summarised on its own. The chart does not show how cells vary together",
             "Large grids are averaged in blocks of cells so that the chart stays small",
         ],
         [
@@ -806,7 +806,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         ],
         [
             "The two components use the same units, so the length makes sense",
-            "Arrows show the mean vector; colours show the mean length over the draws",
+            "Arrows show the mean vector. Colours show the mean length over the draws",
         ],
         [
             "A heatmap of the mean length with arrows of the mean direction",
@@ -926,7 +926,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         ],
         [
             "The chart shows the first 5 parameter values, or the ones that you pick",
-            "A random-looking cloud is good; a narrow line or a curved band is a problem for "
+            "A random-looking cloud is good. A narrow line or a curved band is a problem for "
             "the sampler",
         ],
         [
@@ -960,7 +960,8 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "You want to see the shape of each range, not only its ends",
         ],
         [
-            "There are more than about 40 groups (use Rank matrix or Posterior forest)",
+            "There are more than 30 groups. The chart then shows only 30 of them (raise "
+            "`max_levels` to 100, or use Posterior forest)",
             "The variable has more than one dimension that you cannot fix to one level",
         ],
         [
@@ -1002,7 +1003,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "You want the chance that one item is better than another",
         ],
         [
-            "There are more than 60 items",
+            "There are more than 30 items (raise `max_items` to 60 at most)",
             "Ties are common and meaningful (the chart breaks ties in a fixed order)",
         ],
         [
@@ -1011,7 +1012,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         ],
         [
             "Rank 1 is the largest value unless you set `descending: false`",
-            "Each draw gives one full ranking; the chart counts how often each place occurs",
+            "Each draw gives one full ranking. The chart counts how often each place occurs",
         ],
         [
             "A heatmap of the chance of each rank for each item, sorted by the expected rank",
@@ -1092,7 +1093,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "You want to find change points in a series",
         ],
         [
-            "The states have no fixed labels between draws (label switching); fix the order "
+            "The states have no fixed labels between draws (label switching). Fix the order "
             "in the model first",
             "There are more than about 10 states",
         ],
@@ -1190,7 +1191,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "Optional: the observed trait for each tip (observed_data)",
         ],
         [
-            "Each node has one parent; a root has none",
+            "Each node has one parent. A root has no parent",
             "Tips match the output by label, else in the order of the nodes",
             "With more tips than the limit, the chart shows evenly spaced tips",
         ],
@@ -1275,7 +1276,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "Optional: the noise of the data (a sigma variable or a number)",
         ],
         [
-            "Each cell is compared on its own; the chart does not show how cells vary together",
+            "Each cell is compared on its own. The chart does not show how cells vary together",
             "Large images are averaged in blocks of cells so that the chart stays small",
         ],
         [
@@ -1297,13 +1298,15 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "variance or inverse_variance. Without `sigma`, a variable named sigma is used, but "
         "only for noise-free images: draws from posterior_predictive already hold the noise. "
         "The histogram uses all cells at full resolution, bins of 0.25 on [-4.5, 4.5] (the "
-        "tails go to the end bins). `log` compares log10 values.",
+        "tails go to the end bins). `log` colours the observed, mean and residual panels as "
+        "log10 (the residual is a log10 ratio); the normalised residual stays in data units, "
+        "as σ is.",
         refs=[_GABRY],
     ),
     "sci.ppc_image_grid": _a(
         "Predictive image grid",
         "Shows the observed image next to a few images that the model makes. If the model "
-        "fits, you cannot easily tell which image is the real one.",
+        "fits, it is difficult to tell which image is the real one.",
         [
             "You want a quick visual check that the model can make images like the data",
             "You want to test yourself or others with a shuffled grid",
@@ -1358,7 +1361,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "Optional: a probability for each item, shown as border width or opacity",
         ],
         [
-            "The values are sRGB in [0, 1]; values outside are clipped",
+            "The values are sRGB in [0, 1]. The chart clips values outside this range",
             "The mean colour is the average in sRGB, not in a perceptual colour space",
             "Screens show colours differently, so compare squares on the same screen",
         ],
@@ -1400,7 +1403,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "Optional: a theory curve in any group",
         ],
         [
-            "The bands show the uncertainty of each bin on its own; bins can be correlated",
+            "The bands show the uncertainty of each bin on its own. Bins can be correlated",
             "A log axis hides values at or below zero",
         ],
         [
@@ -1486,8 +1489,8 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "known or observed links",
         ],
         [
-            "Only links above the threshold are drawn; the grid shows all of them",
-            "Without positions, the drawing puts linked nodes near each other; distances have "
+            "Only links above the threshold are drawn. The grid shows all of them",
+            "Without positions, the drawing puts linked nodes near each other. Distances have "
             "no other meaning",
         ],
         [
