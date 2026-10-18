@@ -18,6 +18,7 @@ from mapi_plots import examples as ex  # noqa: E402
 from mapi_plots.convert import arrow_to_frame  # noqa: E402
 from mapi_plots.packs.ml import ml_recipes  # noqa: E402
 from mapi_plots.packs.mmm import mmm_recipes  # noqa: E402
+from mapi_plots.packs.net import net_recipes  # noqa: E402
 from mapi_plots.packs.sci import sci_recipes  # noqa: E402
 from mapi_plots.recipes import (  # noqa: E402
     Recipe,
@@ -64,7 +65,7 @@ def caption(plot: PlotSpec) -> str:
 
 def check_plot(plot: PlotSpec, recipe: Recipe[Any]) -> None:
     """The contract every recipe output satisfies (the sci pack draws with Plotly)."""
-    assert plot.kind == ("plotly" if recipe.id.startswith("sci.") else "vega-lite")
+    assert plot.kind == ("plotly" if recipe.id.startswith(("sci.", "net.")) else "vega-lite")
     assert plot.id == recipe.id
     assert plot.provenance.recipe == recipe.ref
     assert plot.persona == recipe.persona
@@ -88,6 +89,7 @@ def test_catalog_covers_the_plan() -> None:
     sci = {r.id for r in sci_recipes()}
     assert set(EXAMPLES) == ids  # every recipe has example data (the catalog renders it)
     packs = {r.id for r in mmm_recipes()} | {r.id for r in ml_recipes()} | sci
+    packs |= {r.id for r in net_recipes()}
     assert {r.id for r in standard_recipes()} | packs == ids
     catalog = Catalog(plots=[r.catalog_entry() for r in all_recipes()])
     assert catalog.resolve_plot("core.ppc_fan@^1") is not None

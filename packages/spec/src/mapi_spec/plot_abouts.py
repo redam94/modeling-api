@@ -1,4 +1,4 @@
-"""About cards of the built-in plot recipes: the core, MMM, ML and science packs.
+"""About cards of the built-in plot recipes: the core, MMM, ML, science and network packs.
 
 The text is written for people who read the charts, not for people who make them: the summary
 says what the chart shows for them, the lists say when to open it, what the model or run must
@@ -904,5 +904,93 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "draws. `point` is median, mean or none. `along` defaults to the time-like dim, else "
         "the grid's x. Other dims must have one level or be fixed with `select`. The median "
         "line is not itself a possible path.",
+    ),
+    "sci.point_pattern": _a(
+        "Point pattern",
+        "Shows points, such as events or light sources, at their positions on a map or an "
+        "image. A ring around each point shows where its true position can be.",
+        [
+            "The model finds the positions of points, such as molecules in a microscope image",
+            "You want to see which positions are certain and which are not",
+            "You want to compare the points with an image or a map of the intensity",
+        ],
+        [
+            "The output is a value on a grid without points (use Field map)",
+            "There are more than 20 000 points (the plot shows a thinned set)",
+        ],
+        [
+            "Variables x and y with one value for each point, as draws, a score summary or "
+            "plain values",
+            "Optional: sd_x and sd_y (or radius) for each point, a group for each point, and a "
+            "gridded output for the background",
+        ],
+        [
+            "The rings come from the spread of the draws, or from the sd of each position",
+            "The background uses the same units as the positions",
+        ],
+        [
+            "A dot for each point at its mean position, coloured by group",
+            "A ring (an error ellipse) for each point that holds its true position with 90% "
+            "probability",
+            "A background image or intensity map",
+            "Open circles for the actual points, when the data has them",
+        ],
+        _I,
+        _SEC,
+        "Spots in the membrane have small rings, so their positions are clear. Two dim spots "
+        "have large, tilted rings: they could be one spot or two near spots.",
+        related=["sci.field_map", "sci.vector_field"],
+        expert="Positions are the posterior mean of `x` and `y` (or the summary's point "
+        "statistic). Ellipses use the 2 x 2 sample covariance of the draws (else `sd_x`, "
+        "`sd_y` or the summary `sd`, uncorrelated) scaled by sqrt(-2 ln(1 - `level`)), the "
+        "chi-square radius for 2 dims; a `radius` variable is drawn as a circle as given. "
+        "`field` (auto: a grid output) is drawn as the `field_stat` per cell, block-averaged "
+        "to `max_cells`. `group` draws with more than 12 levels use a colour scale.",
+    ),
+    # ============================================================ network pack
+    "net.graph": _a(
+        "Network graph",
+        "Shows a network as dots joined by lines, where thick lines are strong links. A "
+        "second panel shows every pair of nodes as a grid of colours.",
+        [
+            "The model estimates links between pairs of things, such as people or genes",
+            "You want to see groups of nodes that link to each other",
+            "You want to compare the estimated links with the known links",
+        ],
+        [
+            "There are more than 300 nodes (the drawing becomes too dense)",
+            "The links change over time (pick one time with select)",
+        ],
+        [
+            "A variable with two node dimensions, such as (node, node_): a probability, a "
+            "weight or a partial correlation, as draws, a score summary or plain values",
+            "Optional: node positions (node, latent_dim), a group for each node, and the "
+            "known or observed links",
+        ],
+        [
+            "Only links above the threshold are drawn; the grid shows all of them",
+            "Without positions, the drawing puts linked nodes near each other; distances have "
+            "no other meaning",
+        ],
+        [
+            "A drawing of the nodes and the links above the threshold, with blue for positive "
+            "and red for negative links",
+            "Arrows when the links have a direction",
+            "A grid of the link values for every pair, ordered so that groups are together",
+            "Dotted lines and open squares for the known links",
+        ],
+        _I,
+        _SEC,
+        "The lawyers form three clusters that match their offices. Most known links are "
+        "inside an office. Lawyer L11 links to all three clusters, so it is a bridge between "
+        "the offices.",
+        related=["sci.field_map", "core.posterior_forest"],
+        expert="The edge value is the posterior mean (or the summary point). Undirected graphs "
+        "use the mean of both directions; `directed` defaults to an asymmetric matrix and "
+        "`signed` to any negative value. `threshold` defaults to 0.5 for values in [0, 1], "
+        "else 10% of the largest |value|; hover shows P(|value| > threshold) over the draws. "
+        "Positions are the posterior mean of `positions` (first two coordinates); else a "
+        "spectral layout of the normalised Laplacian refined with seeded Fruchterman-Reingold "
+        "steps. The matrix order is the Fiedler vector, within `group` levels.",
     ),
 }

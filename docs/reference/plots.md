@@ -180,6 +180,7 @@ standard_recipes() -> list[Recipe]       # entry point  mapi.plots: core
 mapi_plots.packs.mmm.mmm_recipes()       # entry point  mapi.plots: mmm
 mapi_plots.packs.ml.ml_recipes()         # entry point  mapi.plots: ml
 mapi_plots.packs.sci.sci_recipes()       # entry point  mapi.plots: sci (Plotly)
+mapi_plots.packs.net.net_recipes()       # entry point  mapi.plots: net (Plotly)
 Recipe.render(data, **settings) -> PlotSpec       # also Recipe(data, **settings)
 Recipe.catalog_entry() -> PlotCatalogEntry        # id, version, persona, required groups/representation
 
@@ -246,6 +247,8 @@ the string columns of these DataFrames.
 | `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
 | `sci.profile_bands` | `var`, `group`, `observed_var`, `along`, `by`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_curves` (12), `max_draws` (1 000), `colormap` (viridis), `log` (false), `width` (640), `height` (360) |
 | `sci.ensemble` | `var`, `group`, `observed_var`, `along`, `select`, `n_draws` (40), `levels` ([0.9]), `point` (median \| mean \| none), `max_draws` (2 000), `seed` (0), `log` (false), `width` (640), `height` (320) |
+| `sci.point_pattern` | `points` (the point dim), `x` (x), `y` (y), `sd_x` (sd_x), `sd_y` (sd_y), `radius` (radius), `group` (auto \| none \| a variable), `field` (auto \| none \| a variable), `field_stat` (mean \| median \| sd), `ellipses` (auto), `level` (0.9), `observed` (true), `select`, `max_points` (20 000), `max_ellipses` (2 000), `max_cells` (40 000), `colormap`, `origin`, `marker_size` (6), `width` (640), `height` (560) |
+| `net.graph` | `var`, `node_dim`, `positions` (auto \| none \| a variable), `threshold` (auto), `signed` (auto), `directed` (auto), `group` (auto \| none \| a variable), `truth` (auto \| none \| a variable), `panels` (both \| graph \| matrix), `select`, `labels` (auto), `max_nodes` (300), `max_edges` (2 000), `seed` (0), `width` (900), `height` (440) |
 
 ### Scientific-model pack (`sci.*`)
 
@@ -260,6 +263,7 @@ profiles and trajectories. They read draws (`chain`/`draw` or `sample` dims) fro
 | `sci.vector_field` | The length of a vector as colours, arrows of the mean vector, and the sd of the length. |
 | `sci.profile_bands` | The median and the 50% and 90% bands along `along`, one curve for each level of `by`, and the actual values. A slider shows one level with its bands. |
 | `sci.ensemble` | Some draws as thin lines, the 90% band of all draws, the median and the actual values. |
+| `sci.point_pattern` | One dot for each point (localisation, event) at its mean position, an error ellipse for each point, and an optional image or intensity field below the points. |
 
 Statistics of `sci.field_map`:
 
@@ -284,6 +288,36 @@ The size of a field plot has limits:
 - A field of 189 × 193 cells with six panels and one frame has its full resolution.
 - `max_frames` sets the maximum number of frames. The slider shows frames at equal
   intervals.
+
+`sci.point_pattern` reads the variables `x` and `y` with one value for each level of the
+point dim. Draws give the posterior mean and an ellipse from the 2 × 2 covariance of the
+draws. A score summary gives its point statistic and an ellipse from its `sd`. Plain values
+use the `sd_x` and `sd_y` variables (or a `radius` variable, drawn as a circle) when they
+exist. The ellipse holds the position with probability `level`. The `field` is a gridded
+output (by default the first output with a `grid`), drawn below the points in the same units.
+
+### Network pack (`net.*`)
+
+| Recipe | What it shows |
+|---|---|
+| `net.graph` | A node-link drawing of the links above `threshold` (line width shows the value, blue and red show the sign, arrows show the direction) and a heatmap of the full matrix. Dotted lines and open squares show the known or observed links. |
+
+`net.graph` reads an edge variable with two node dims: the second dim has the name of the
+first plus `_`, for example `(node, node_)` or `(var, var_)`. The values can be draws (the
+recipe uses the posterior mean), a score summary (its point statistic) or plain values. They
+can be probabilities, weights or partial correlations.
+
+- `positions`: a variable `(node, latent_dim)`, for example the latent positions of a latent
+  space model. The recipe uses the posterior mean of the first two coordinates. Without it,
+  the recipe calculates a layout from the mean weights (a spectral start and seeded
+  Fruchterman–Reingold steps). The layout puts strongly linked nodes near each other.
+- `group`: a variable with one value for each node (by default `node_group` or `group`).
+  Categories get one colour each and a legend. Continuous values get a colour scale.
+- `truth`: a known or observed adjacency `(node, node_)`. By default the recipe uses one from
+  `observed_data` or `constant_data`.
+- `threshold`: by default 0.5 for values in [0, 1], else 10% of the largest absolute value.
+  With draws, the tooltip at the middle of a link shows the share of draws above the
+  threshold.
 
 The plot sandbox shows the Plotly `frames`, `sliders` and `updatemenus` of these plots. In
 dark mode, it changes the palette colours of the traces to their dark variants, the same as

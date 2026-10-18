@@ -27,8 +27,10 @@ __all__ = [
     "example_inputs",
     "feature_importance_tree",
     "field_tree",
+    "network_tree",
     "panel_data",
     "plans_dataset",
+    "point_pattern_tree",
     "prior_beliefs_dataset",
     "profile_tree",
     "response_curves",
@@ -372,6 +374,82 @@ def ensemble_tree() -> xr.DataTree:
     )
 
 
+def network_tree() -> xr.DataTree:
+    """``posterior.tie_prob(chain, draw, node, node_)`` and ``position(chain, draw, node,
+    latent_dim)``: 18 lawyers in three offices. Lawyers in the same office work together more
+    often; ``observed_data.tie`` holds the actual ties and ``constant_data.node_group`` the
+    office of each lawyer."""
+    rng = _rng(15)
+    n = 18
+    office = np.repeat(["Boston", "Hartford", "Providence"], 6)
+    centre = {"Boston": (-0.8, 0.4), "Hartford": (0.7, 0.6), "Providence": (0.0, -0.8)}
+    base = np.array([centre[o] for o in office]) + rng.normal(0, 0.3, (n, 2))
+    pos = base[None, None] + rng.normal(0, 0.08, (CHAINS, 30, n, 2))
+    dist = np.sqrt(((pos[..., :, None, :] - pos[..., None, :, :]) ** 2).sum(-1))
+    prob = 1 / (1 + np.exp(-(2.2 - 3.0 * dist)))
+    idx = np.arange(n)
+    prob[..., idx, idx] = np.nan
+    ties = (rng.random((n, n)) < np.nan_to_num(prob).mean(axis=(0, 1))).astype(float)
+    ties = np.triu(ties, 1) + np.triu(ties, 1).T
+    names = [f"L{i + 1:02d}" for i in range(n)]
+    coords = {"node": names, "node_": names}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-net"}),
+            "/posterior": xr.Dataset(
+                {
+                    "tie_prob": (("chain", "draw", "node", "node_"), prob),
+                    "position": (("chain", "draw", "node", "latent_dim"), pos),
+                },
+                coords={**coords, "latent_dim": [0, 1]},
+            ),
+            "/observed_data": xr.Dataset({"tie": (("node", "node_"), ties)}, coords),
+            "/constant_data": xr.Dataset({"node_group": (("node",), office)}, {"node": names}),
+        }
+    )
+
+
+def point_pattern_tree() -> xr.DataTree:
+    """``posterior.x(chain, draw, spot)`` and ``y``: 40 fluorescent spots found in a
+    microscope image, in two clusters, with ``posterior.render(chain, draw, row, col)`` (the
+    image the model draws). Dim spots have larger, tilted error ellipses."""
+    rng = _rng(16)
+    n = 40
+    cluster = np.where(np.arange(n) < 24, "membrane", "vesicle")
+    cx = np.where(cluster == "membrane", 0.35, 0.7) + rng.normal(0, 0.1, n)
+    cy = np.where(cluster == "membrane", 0.6, 0.3) + rng.normal(0, 0.08, n)
+    bright = rng.uniform(0.3, 1.0, n)
+    sd = 0.006 + 0.012 * (1 - bright)
+    rho = rng.uniform(-0.6, 0.6, n)
+    z1, z2 = rng.normal(size=(2, CHAINS, 40, n))
+    x = cx + sd * z1
+    y = cy + sd * (rho * z1 + np.sqrt(1 - rho**2) * z2)
+    g = np.linspace(0, 1, 40)
+    yy, xx = np.meshgrid(g, g, indexing="ij")
+    img = sum(
+        b * np.exp(-((xx - a) ** 2 + (yy - c) ** 2) / (2 * 0.02**2))
+        for a, c, b in zip(cx, cy, bright, strict=True)
+    )
+    render = img[None, None] + rng.normal(0, 0.03, (CHAINS, 40, 40, 40))
+    spots = [f"s{i + 1}" for i in range(n)]
+    post = xr.Dataset(
+        {
+            "x": (("chain", "draw", "spot"), x),
+            "y": (("chain", "draw", "spot"), y),
+            "render": (("chain", "draw", "row", "col"), render),
+        },
+        coords={"spot": spots, "row": g, "col": g},
+    )
+    post["render"].attrs["grid"] = json.dumps({"y": "row", "x": "col", "origin": "lower"})
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior": post,
+            "/constant_data": xr.Dataset({"group": (("spot",), cluster)}, {"spot": spots}),
+        }
+    )
+
+
 def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     """``{recipe id: (input data, render options)}`` for every bundled recipe."""
     bundle = bundle_tree()
@@ -399,4 +477,6 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "sci.vector_field": (vector_tree(), {}),
         "sci.profile_bands": (profile_tree(), {}),
         "sci.ensemble": (ensemble_tree(), {}),
+        "sci.point_pattern": (point_pattern_tree(), {}),
+        "net.graph": (network_tree(), {}),
     }
