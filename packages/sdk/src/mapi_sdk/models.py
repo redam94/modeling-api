@@ -93,6 +93,11 @@ class FitContext:
     back to the output space with the *fitted* preprocessing state (as
     :attr:`ScoreContext.to_original` does for derived quantities), so a plugin can turn
     business-unit calibration data into model units. Both are ``None`` outside the harness.
+
+    ``tree`` (M4) is the whole tree dataset, binding renames applied per node
+    (:meth:`~mapi_sdk.binding.BindingMap.apply_tree`), for models whose capabilities declare
+    ``input="tree"`` and were fitted from a tree dataset; ``None`` otherwise. ``ds`` is still
+    the flat pipeline output (the nodes ``data.nodes`` selects, preprocessed).
     """
 
     seed: int = 0
@@ -107,6 +112,7 @@ class FitContext:
     stage_schema: DataSchema | None = None
     calibration: Calibration | None = None
     to_original: Callable[[xr.DataArray, str], xr.DataArray] | None = None
+    tree: xr.DataTree | None = None
     rng: np.random.Generator = field(init=False)
 
     def __post_init__(self) -> None:
@@ -215,6 +221,10 @@ class ScoreContext:
     units of input variable ``src`` (e.g. a contribution in ``y`` units, a spend level in
     ``spend`` units) to the output space - the pipeline inverse back to its last reshape
     step - and labels it with ``units`` and ``output_space`` attributes.
+
+    ``tree`` (M4) is the bound tree dataset the payload came from, for models whose
+    capabilities declare ``input="tree"`` (as :attr:`FitContext.tree`); ``None`` when the
+    payload is a flat dataset or the model reads datasets only.
     """
 
     mode: ScoreMode = "predict"
@@ -227,6 +237,7 @@ class ScoreContext:
     log: Callable[[str], None] | None = None
     cancel: CancelToken | None = None
     to_original: Callable[[xr.DataArray, str], xr.DataArray] | None = None
+    tree: xr.DataTree | None = None
     rng: np.random.Generator = field(init=False)
 
     def __post_init__(self) -> None:
