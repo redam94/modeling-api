@@ -71,7 +71,24 @@ def _open_dataset(f: Any, path: str, pointer: str) -> Any:
     return obj
 
 
-def _values(obj: Any, limits: IngestLimits, pointer: str) -> np.ndarray:
+_VLEN_STRING_COST = 64
+"""Bytes one variable-length string is budgeted at before it is read (as the guard does)."""
+_UNICODE_BYTES = 4
+"""Bytes numpy's fixed-width unicode (``<U``) takes per character."""
+
+
+def _read_cost(obj: Any) -> int:
+    """Bytes reading ``obj`` costs before its values are checked (a variable-length string
+    is budgeted as the guard budgets it; its decoded size is checked after the read)."""
+    import h5py
+
+    info = h5py.check_string_dtype(obj.dtype)
+    per = _VLEN_STRING_COST if info is not None and info.length is None else obj.dtype.itemsize
+    return int(obj.size) * max(int(per), 8)
+
+
+def _values(obj: Any, limits: IngestLimits, pointer: str, room: int) -> np.ndarray:
+    """The values of ``obj``; text must decode to at most ``room`` bytes."""
     import h5py
 
     if h5py.check_string_dtype(obj.dtype) is not None:
@@ -83,6 +100,18 @@ def _values(obj: Any, limits: IngestLimits, pointer: str) -> np.ndarray:
                 f"an array holds text of {longest:,} characters (the maximum is "
                 f"{limits.max_cell_chars:,})",
                 pointer=pointer,
+            )
+        # a fixed-width unicode array takes size x longest x 4 bytes: one long string among
+        # many short ones expands far past the file, so check before allocating it
+        decoded = int(raw.size) * max(longest, 1) * _UNICODE_BYTES
+        if decoded > room:
+            raise problem(
+                ErrorCode.PAYLOAD_TOO_LARGE,
+                f"an array of text decodes to {decoded:,} bytes ({raw.size:,} values padded to "
+                f"the longest, {longest:,} characters), more than the {max(room, 0):,} left "
+                "of the upload's budget",
+                pointer=pointer,
+                action="Shorten the longest strings, or store codes and a lookup table.",
             )
         return raw.astype(str) if raw.size else np.array([], dtype=str).reshape(raw.shape)
     values = np.asarray(obj[()])
@@ -111,7 +140,7 @@ def _range(coord: Hdf5Coord, n: int, pointer: str) -> np.ndarray:
             )
         try:
             dates = pd.date_range(start=start, periods=n, freq=step)
-            return np.asarray(dates, dtype="datetime64[ns]")
+            first = pd.Timestamp(start)
         except (ValueError, TypeError, OverflowError) as exc:
             raise _bad(
                 "the date range cannot be built from this start and frequency",
@@ -119,6 +148,17 @@ def _range(coord: Hdf5Coord, n: int, pointer: str) -> np.ndarray:
                 action="Use an ISO date such as 2024-01-01 and a pandas frequency such as 'W-MON'.",
                 untrusted=f"{start!r} {step!r}: {exc}"[:2000],
             ) from None
+        if n and dates[0] != first:
+            # pandas rolls a start that is not on the frequency's anchor forward to the next
+            # anchor: every label would be up to one period late, so refuse instead
+            raise _bad(
+                f"the date range starts at {start[:40]!r}, which is not a {step[:20]!r} date: "
+                f"its first label would be {dates[0].isoformat()}",
+                f"{pointer}/start",
+                action=f"Start the range on a {step[:20]!r} date (such as "
+                f"{dates[0].isoformat()}), or use a frequency anchored on the start.",
+            )
+        return np.asarray(dates, dtype="datetime64[ns]")
     step = 1 if step is None else step
     assert start is not None and not isinstance(step, str)
     if isinstance(start, int) and isinstance(step, int):
@@ -159,15 +199,16 @@ def read_hdf5_mapped(
                     f"{pointer}/dims",
                     action="Name one dim for each axis of the array, in order.",
                 )
-            used += int(obj.size) * max(int(obj.dtype.itemsize), 8)
-            if used > budget:
+            cost = _read_cost(obj)
+            if used + cost > budget:
                 raise problem(
                     ErrorCode.PAYLOAD_TOO_LARGE,
                     f"the mapped arrays hold more than {budget:,} bytes",
                     pointer=pointer,
                     action="Map fewer arrays, or split the file.",
                 )
-            values = _values(obj, limits, f"{pointer}/path")
+            values = _values(obj, limits, f"{pointer}/path", budget - used)
+            used += max(cost, int(values.nbytes))
             read_addrs.add(_addr(obj))
             per_node.setdefault(var.node, {})[var.name] = (list(var.dims), values)
             for dim, n in zip(var.dims, values.shape, strict=True):
@@ -216,9 +257,9 @@ def read_hdf5_mapped(
                         )
                 if dim in coords.get(coord.node, {}):
                     continue
-                coords.setdefault(coord.node, {})[dim] = _coord_values(
-                    f, coord, n, limits, pointer, read_addrs
-                )
+                values = _coord_values(f, coord, n, limits, pointer, read_addrs, budget - used)
+                used += int(values.nbytes)
+                coords.setdefault(coord.node, {})[dim] = values
                 if coord.spec is not None:
                     out.dim_specs[(coord.node, dim)] = coord.spec
                 elif coord.path is None and coord.start is None:
@@ -254,6 +295,7 @@ def _coord_values(
     limits: IngestLimits,
     pointer: str,
     read_addrs: set[int],
+    room: int,
 ) -> np.ndarray:
     if coord.path is not None:
         obj = _open_dataset(f, coord.path, f"{pointer}/path")
@@ -264,7 +306,7 @@ def _coord_values(
                 f"{pointer}/path",
                 action="Use a 1-D array with one label per position along the dim.",
             )
-        values = _values(obj, limits, f"{pointer}/path")
+        values = _values(obj, limits, f"{pointer}/path", room)
         read_addrs.add(_addr(obj))
         if coord.spec is not None and coord.spec.kind == "time":
             try:
