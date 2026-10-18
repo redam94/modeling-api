@@ -95,8 +95,8 @@ from mapi_runner.worker.tabular import (
     IngestLimits,
     check_zip_archive,
     column_profiles,
-    hdf5_superblock_offset,
     problem,
+    read_as_hdf5,
     read_table,
     sniff,
     write_profiles,
@@ -896,9 +896,10 @@ def _self_describing(
 
 
 def _is_hdf5(path: Path) -> bool:
-    """True when libhdf5 would open ``path``: its superblock may follow a user block, so
-    the signature is looked for at every offset libhdf5 tries, not only at byte 0."""
-    return hdf5_superblock_offset(path) is not None
+    """True when ``path`` is read as HDF5 (guard first): libhdf5 would find a superblock in
+    it - after a user block too, so every offset libhdf5 tries is looked at - and it does not
+    start with the NetCDF-3 magic (such a file only ever goes to the scipy reader)."""
+    return read_as_hdf5(path)
 
 
 def _read_netcdf(

@@ -39,7 +39,7 @@ from mapi_runner.worker.hdf5_guard import Hdf5Walk, walk_hdf5
 from mapi_runner.worker.tabular import (
     IngestLimits,
     check_zip_archive,
-    hdf5_superblock_offset,
+    read_as_hdf5,
     sniff,
 )
 
@@ -354,8 +354,9 @@ def inspect_upload(path: Path, job: InspectJob) -> UploadInspection:
         max_uncompressed_bytes=job.max_uncompressed_bytes,
     )
     size = path.stat().st_size
-    # libhdf5 finds a superblock behind a user block too: look where it looks
-    hdf5 = hdf5_superblock_offset(path) is not None
+    # libhdf5 finds a superblock behind a user block too: look where it looks (a NetCDF-3
+    # file is listed by the scipy reader even when its data holds the HDF5 signature)
+    hdf5 = read_as_hdf5(path)
     walk = walk_hdf5(path, limits, collect_attrs=True, lenient_attrs=True) if hdf5 else None
     fmt = job.format or _sniff_format(path, walk)
     doc = _Doc(fmt, size, job.max_arrays)
