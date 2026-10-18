@@ -11,4 +11,5 @@ def test_plugins_tuple() -> None:
         "sci.traction_force",
         "sci.strong_lens",
         "sci.heat_plate",
+        "sci.turing_pattern",
     } <= ids

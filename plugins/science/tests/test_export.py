@@ -50,7 +50,8 @@ def test_the_ported_cases_are_registered() -> None:
         assert case.case == cid and cid[0] == "e" and cid[1:].isdigit()
         assert case.model in models
         assert case.notebook.startswith(f"E{cid[1:]}_")
-        # a notebook that simulates its data (E51) has no file: its loader needs none
+        # a notebook that simulates its data (E51, E61 part A) has no file: its loader
+        # needs none
         assert case.files or case.load(Path("/nonexistent")) is not None
 
 
@@ -176,7 +177,8 @@ def test_real_data_export(cid: str, tmp_path: Path, registry: Registry) -> None:
         pytest.skip("pymc-challenges data not present")
     case = EXPORTS[cid]
     first = challenges_file(case.files[0]) if case.files else None
-    data_dir = first.parent if first is not None else tmp_path
+    assert first is not None or not case.files
+    data_dir = first.parent if first is not None else tmp_path  # E51, E61: no file to read
     path, data = export_case(cid, tmp_path / f"{cid}.nc", data_dir=data_dir)
     assert isinstance(data, xr.Dataset) and isinstance(case.schema, DataSchema)
     back = xr.open_dataset(path, engine="h5netcdf").load()

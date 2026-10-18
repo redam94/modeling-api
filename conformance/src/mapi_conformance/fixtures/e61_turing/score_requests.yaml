@@ -1,0 +1,33 @@
+# E61: images conditioned on the fit, the next image time, new patterns from the solver, and
+# typed coordinate and mode errors.
+- name: predict_fit_images
+  request: {mode: predict, output: {summary: [mean, sd, q5, q95], draws: 4}}
+  payload: fit_data
+  expect:
+    groups: [summary, draws]
+    vars: [pattern, growth, p_turing, wavelength, turing_space]
+    sizes: {t: 4, stat: 4}
+- name: predict_next_time
+  request: {mode: predict, output: {kind: predictive}}
+  payload: next
+  expect: {vars: [pattern], sizes: {t: 1}}
+- name: simulate_new_patterns
+  request: {mode: simulate, output: {draws: 2}}
+  payload: "tail:1"
+  expect: {groups: [summary, draws], vars: [pattern, settled, growth], sizes: {t: 1}}
+- name: gap_after_fit
+  request: {mode: predict}
+  payload: gapped
+  expect_error: NON_CONTIGUOUS_EXTENSION
+- name: beyond_max_extension
+  request: {mode: predict}
+  payload: too_far
+  expect_error: HORIZON_EXCEEDS_FIT
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: t, periods: 1}}
+  expect_error: MODE_NOT_SUPPORTED
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: activator, multiply: 1.1}]}
+  payload: fit_data
+  drop_targets: false
+  expect_error: MODE_NOT_SUPPORTED

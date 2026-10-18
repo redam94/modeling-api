@@ -1777,6 +1777,84 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "speed": ["minutes", "can_wait"],
         },
     ),
+    "sci.turing_pattern": _a(
+        "Turing patterns from early images",
+        "Measures the reaction and diffusion rates of two chemicals that make spots or stripes, "
+        "from images taken while the pattern starts to grow. It also gives the expected spacing "
+        "of the pattern and the probability that the chemicals can make a pattern at all.",
+        [
+            "You have images of a pattern (spots or stripes) taken while it is still faint",
+            "You want the rates of an activator and an inhibitor (or substrate) system, with a "
+            "range",
+            "You want to know if the rates satisfy the Turing conditions, and the expected "
+            "wavelength of the pattern",
+        ],
+        [
+            "You have only one image of a pattern that is already fully formed (it gives only "
+            "the wavelength)",
+            "The images are not square, have gaps or are not periodic at the edges",
+            "The chemistry is not an activator and a substrate of the Schnakenberg type",
+        ],
+        [
+            "Images of the activator on a square grid of pixels at some early times, with the "
+            "time since the start",
+            "The side of the square in the length unit of the model (the activator diffuses at "
+            "a rate of 1 in this unit)",
+        ],
+        [
+            "The pattern starts from a uniform state with small random noise in each pixel",
+            "The images are taken while the pattern is still small (a few percent of the mean "
+            "level), so its growth is linear",
+            "The camera noise is independent from pixel to pixel",
+            "The square repeats at its edges (the Fourier transform uses this)",
+        ],
+        [
+            "The supply rates a and b, the diffusion ratio d and the reaction scale, with a range",
+            "The growth rate of each wavenumber (the dispersion relation) and the wavelength",
+            "The probability that the Turing conditions hold, and a map of it over the supply "
+            "rates",
+            "Predicted and simulated pattern images, and the pattern after it has settled",
+        ],
+        _X,
+        _MIN,
+        "Four noisy 128 x 128 images at t = 4, 8, 12 and 16 recover a diffusion ratio of 20 to "
+        "within about 12% and a wavelength of 13 length units.",
+        related=["sci.fisher_kpp", "sci.traction_force"],
+        expert="Schnakenberg kinetics u_t = g (a - u + u^2 v) + lap u, v_t = g (b - u^2 v) + "
+        "d lap v (pymc-challenges E61 part A). Linearised about the uniform state, each Fourier "
+        "mode of the activator images is complex Gaussian with C(k) = s0^2 U U^T + sigma^2 I, U "
+        "the first row of exp(A(k) t) from a closed-form 2 x 2 matrix exponential; modes are "
+        "independent and grouped by integer |k|^2 into summed outer products, and a Woodbury "
+        "identity reduces the likelihood to 2 x 2 algebra (a pm.Potential). Only |k|^2 < k2_max "
+        "enters. Priors: s ~ LogNormal(0, 0.5), rho ~ Beta(2, 5), d ~ LogNormal(log 10, 1), "
+        "g ~ LogNormal(0, 0.7), s0 and sigma ~ LogNormal(log 1e-3, 1.5). NUTS samples a "
+        "parameterisation whitened by the Laplace approximation at the mode. Predictions "
+        "condition each mode on the fitted images; simulate runs a semi-implicit spectral "
+        "solver per draw. Pointwise log-likelihood per Fourier mode (PSIS-LOO over modes).",
+        refs=[
+            (
+                "Turing (1952), The chemical basis of morphogenesis",
+                "https://doi.org/10.1098/rstb.1952.0012",
+            ),
+            (
+                "Schnakenberg (1979), Simple chemical reaction systems with limit cycle behaviour",
+                "https://doi.org/10.1016/0022-5193(79)90042-0",
+            ),
+            (
+                "Murray (2003), Mathematical Biology II: Spatial Models and Biomedical "
+                "Applications",
+                None,
+            ),
+        ],
+        fits={
+            "goal": ["fit_physics", "map_fields"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -1791,7 +1869,14 @@ SURVIVING_MODEL_IDS: Final[frozenset[str]] = frozenset(
 the scikit-learn models of ``mapi-sklearn``)."""
 
 SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
-    {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens", "sci.heat_plate"}
+    {
+        "sci.lgcp_grid",
+        "sci.fisher_kpp",
+        "sci.traction_force",
+        "sci.strong_lens",
+        "sci.heat_plate",
+        "sci.turing_pattern",
+    }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
 problems ported from the pymc-challenges case studies)."""

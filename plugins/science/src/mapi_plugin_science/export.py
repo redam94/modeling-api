@@ -62,7 +62,14 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
-from mapi_plugin_science import heat_plate_data, kpp_data, lens_data, lgcp_data, traction_data
+from mapi_plugin_science import (
+    heat_plate_data,
+    kpp_data,
+    lens_data,
+    lgcp_data,
+    traction_data,
+    turing_data,
+)
 from mapi_plugin_science.challenges import CHALLENGES_ENV
 
 __all__ = [
@@ -99,7 +106,8 @@ class ExportCase:
     """The catalog model that fits the data (``sci.lgcp_grid``)."""
     files: tuple[str, ...]
     """The files the loader reads from the pymc-challenges ``data/`` directory (empty when
-    the notebook simulates its data: the loader then needs no directory)."""
+    the notebook simulates its data, as E51 and E61 part A do: the loader then needs no
+    directory)."""
     loader: Callable[[Path], ExportData]
     """Builds the data from the ``data/`` directory (``from_challenges``)."""
     synthetic: Callable[[], ExportData]
@@ -274,7 +282,8 @@ def _list() -> str:
         kind = "tree" if c.tree else "dataset"
         lines.append(
             f"{c.case}  {c.model:<22} {kind:<7} {c.title}\n"
-            f"     notebook: {c.notebook}; files: {', '.join(c.files) or 'none (simulated)'}; "
+            f"     notebook: {c.notebook}; "
+            f"files: {', '.join(c.files) or 'none (the notebook simulates the data)'}; "
             f"suggested dataset: {c.project}/{c.dataset}"
         )
     return "\n".join(lines)
@@ -438,6 +447,22 @@ _register(
         project="engineering",
         dataset="heat_plate_e51",
         spec=heat_plate_data.E51_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e61",
+        title="Early images of a growing Turing pattern (Schnakenberg, part A)",
+        notebook=turing_data.NOTEBOOK,
+        model="sci.turing_pattern",
+        files=(),
+        loader=lambda d: turing_data.from_challenges(d),
+        synthetic=lambda: turing_data.turing_dataset(),
+        schema=turing_data.TURING_SCHEMA,
+        project="biology",
+        dataset="e61_turing_early_images",
+        spec=turing_data.NOTEBOOK_SPEC_YAML,
     )
 )
 
