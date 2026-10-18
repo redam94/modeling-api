@@ -96,7 +96,8 @@ async def _start(client: httpx.AsyncClient, wf_id: str, **body: Any) -> dict[str
 async def test_node_catalog_and_template_gallery(client: httpx.AsyncClient) -> None:
     page = (await client.get("/v1/catalog/workflow-nodes", params={"limit": 200})).json()
     ids = [n["id"] for n in page["items"]]
-    assert "test.adf" in ids and "model.fit" in ids and len(ids) == len(NODE_IMPLEMENTATIONS)
+    assert "test.adf" in ids and "model.fit" in ids and set(ids) == set(NODE_IMPLEMENTATIONS)
+    assert len(ids) == 56  # pinned: a catalog change updates this count on purpose
     tests = (await client.get("/v1/catalog/workflow-nodes", params={"kind": "test"})).json()
     assert all(n["kind"] == "test" for n in tests["items"])
     adf = (await client.get("/v1/catalog/workflow-nodes/test.adf")).json()
@@ -863,3 +864,67 @@ async def test_plot_nodes_run_in_the_sandbox_and_reach_the_report(
     report = nodes["report"]["outputs"]["report"]["inline"]
     plots = [s for s in report["sections"] if s["kind"] == "plot"]
     assert [s["node_id"] for s in plots] == ["fan", "fc"] and all(s["plot"] for s in plots)
+
+
+async def test_an_unsafe_plot_output_fails_its_node(
+    client: httpx.AsyncClient, ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sandbox-written plot JSON goes through the plot sanitizer before it is stored: a
+    plot the sanitizer refuses fails its node with ``PLOT_UNSAFE`` and never reaches a
+    viewer or a report."""
+    from mapi_workflows.runtime import plots as plots_mod
+
+    real = plots_mod.render_recipe
+
+    def evil(*args: Any, **kwargs: Any) -> tuple[dict[str, Any], str]:
+        plot, used = real(*args, **kwargs)
+        bad = copy.deepcopy(plot)
+        bad["kind"], bad["datasets"] = "plotly", {}
+        bad["spec"] = {
+            "data": [],
+            "layout": {"images": [{"source": "https://evil.example/x.png"}]},
+        }
+        return bad, used
+
+    monkeypatch.setattr(plots_mod, "render_recipe", evil)
+    await put_dataset(ctx, "sales", weekly_series(80))
+    doc = _doc(
+        [
+            {
+                "id": "fit",
+                "use": "model.fit",
+                "inputs": {"data": "inputs.data"},
+                "with": {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
+            },
+            {"id": "scores", "use": "model.score", "inputs": {"model": "fit.model"}},
+            {
+                "id": "fan",
+                "use": "plot.render",
+                "inputs": {"data": "scores.scores"},
+                "with": {"recipe": "core.ppc_fan"},
+            },
+        ],
+        name="evilplot",
+    )
+    wf = await _create(client, doc)
+    run = await _start(client, wf["id"])
+    assert await drive(ctx, run["run_id"], max_rounds=40) is WorkflowRunStatus.FAILED
+    view = (await client.get(f"/v1/workflow-runs/{run['run_id']}")).json()
+    fan = next(n for n in view["nodes"] if n["node_id"] == "fan")
+    assert fan["error"]["code"] == "PLOT_UNSAFE"
+    assert "plot" not in fan["outputs"]
+
+
+def test_stored_plot_outputs_are_sanitized_again_on_read() -> None:
+    from mapi_server.services.workflows.runs import output_dto
+    from mapi_spec.workflow_nodes import PortType
+
+    unsafe = {
+        "id": "x",
+        "kind": "plotly",
+        "spec": {"layout": {"images": [{"source": "https://evil.example/x.png"}]}},
+    }
+    assert output_dto({"type": "plot", "inline": unsafe}).inline is None
+    report = {"title": "r", "sections": [{"title": "p", "kind": "plot", "plot": unsafe}]}
+    out = output_dto({"type": PortType.REPORT.value, "inline": report}).inline
+    assert isinstance(out, dict) and out["sections"][0]["plot"] is None

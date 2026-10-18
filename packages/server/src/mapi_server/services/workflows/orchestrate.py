@@ -35,6 +35,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Final
 
+from mapi_plots.sanitize import SanitizeError
 from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
 from mapi_spec.api import new_id
 from mapi_spec.errors import ErrorCode, MapiError, Problem, ValidationFailed
@@ -108,6 +109,7 @@ from mapi_server.services.workflows.events import append_events
 from mapi_server.services.workflows.hooks import governance_hooks
 from mapi_server.services.workflows.runs import (
     ACTIVE_STATUSES,
+    clean_plot,
     node_run_dto,
     request_cancel,
     set_parent_state,
@@ -1130,13 +1132,24 @@ class WorkflowOrchestrator:
                 pinned, meta_doc = await self._register_dataset(env, row, child, port, outputs_meta)
                 outputs[port] = NodeOutputRef(type=PortType.DATASET, ref=pinned)
                 lineage[port] = meta_doc
-            elif ref.inline is not None:
-                outputs[port] = NodeOutputRef(type=ref.type, inline=ref.inline)
-            elif ref.object is not None and ref.object in outputs_meta:
-                doc = await self._read_json(outputs_meta[ref.object], cap)
-                outputs[port] = NodeOutputRef(type=ref.type, inline=doc)
             else:
-                raise _NodeFailure(ErrorCode.INTEGRITY_FAILURE, f"output {port!r} has no value")
+                if ref.inline is not None:
+                    doc = ref.inline
+                elif ref.object is not None and ref.object in outputs_meta:
+                    doc = await self._read_json(outputs_meta[ref.object], cap)
+                else:
+                    raise _NodeFailure(ErrorCode.INTEGRITY_FAILURE, f"output {port!r} has no value")
+                if ref.type is PortType.PLOT:
+                    # sandbox-written JSON: the same sanitizer as a fit's plots.json
+                    try:
+                        doc = clean_plot(doc)
+                    except SanitizeError as exc:
+                        raise _NodeFailure(
+                            ErrorCode.PLOT_UNSAFE,
+                            f"the plot output {port!r} is not safe to show",
+                            exc.detail,
+                        ) from None
+                outputs[port] = NodeOutputRef(type=ref.type, inline=doc)
         result: dict[str, JsonValue] = dict(side.result)
         if side.warnings_plain:
             result.setdefault("warnings_plain", list(side.warnings_plain))
