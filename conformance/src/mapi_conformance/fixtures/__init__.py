@@ -40,6 +40,7 @@ FIXTURES: list[str] = [
     "e50_kpp",
     "e60_traction",
     "e80_lens",
+    "e31_ibp",
 ]
 
 DEFERRED: dict[str, str] = {

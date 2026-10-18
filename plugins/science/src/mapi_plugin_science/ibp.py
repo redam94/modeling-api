@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import hashlib
 import itertools
+import json
 import logging
 import warnings
 from collections.abc import Iterator
@@ -95,6 +96,7 @@ from scipy.special import logsumexp
 
 __all__ = [
     "DIGIT_DIM",
+    "FEATURES",
     "FEATURE_DIM",
     "PIXEL_MEAN",
     "SHOWN",
@@ -116,6 +118,8 @@ FEATURE_DIM = "feature"
 TARGET = "ink"
 SHOWN = "shown"
 PIXEL_MEAN = "pixel_mean"
+FEATURES = "features"
+"""Posterior variable (and output) of the feature images ``A(feature, y, x)``."""
 IMAGE_DIMS = (DIGIT_DIM, Y_DIM, X_DIM)
 SCALARS = ("alpha", "sigma_A", "sigma_X")
 """Scalar parameters (``sigma_X`` only with ``kind: free_noise``)."""
@@ -558,11 +562,20 @@ class IBPFeaturesModel(CustomModel[IBPFeaturesSettings]):
             raise MapiError(
                 f"engine {result.engine!r} returned no posterior", code=ErrorCode.INTERNAL_ERROR
             )
-        keep = ["alpha", "nu", "logpi", "sigma_A", "A"] + (
+        keep = ["alpha", "nu", "logpi", "sigma_A"] + (
             ["sigma_X"] if "sigma_X" in posterior else []
         )
-        posterior = posterior[keep].assign_coords(
-            {FEATURE_DIM: np.arange(s.n_features), "pixel": np.arange(images.ink.shape[1])}
+        a = posterior["A"].transpose("chain", "draw", FEATURE_DIM, "pixel").values
+        posterior = posterior[keep].assign(
+            {
+                FEATURES: (
+                    ("chain", "draw", FEATURE_DIM, Y_DIM, X_DIM),
+                    a.reshape(*a.shape[:3], *images.shape),
+                )
+            }
+        )
+        posterior = posterior.assign_coords(
+            {FEATURE_DIM: np.arange(s.n_features), Y_DIM: images.ys, X_DIM: images.xs}
         )
         groups: dict[str, xr.Dataset] = {"posterior": _clean(posterior, result.engine)}
         stats = result.group("sample_stats")
@@ -607,9 +620,9 @@ class IBPFeaturesModel(CustomModel[IBPFeaturesSettings]):
                 if isinstance(cfg.keep.posterior_predictive, PosteriorPredictiveKeep)
                 else 1
             )
-            groups["posterior_predictive"] = _clean(
-                self._replicates(images, groups["posterior"], s, thin, seed), result.engine
-            )
+            pp = _clean(self._replicates(images, groups["posterior"], s, thin, seed), result.engine)
+            pp[TARGET].attrs["grid"] = _grid("ink_hat")
+            groups["posterior_predictive"] = pp
         with _quiet():
             prior = pm.sample_prior_predictive(
                 draws=200, model=model, var_names=["alpha", "sigma_A"], random_seed=seed
@@ -764,12 +777,12 @@ class IBPFeaturesModel(CustomModel[IBPFeaturesSettings]):
                 "ink_hat": xr.DataArray(
                     np.asarray(inks).reshape(nc, nd, n, *images.shape),
                     dims=("chain", "draw", *IMAGE_DIMS),
-                    attrs={"kind": ctx.kind, "noise": noise},
+                    attrs={"kind": ctx.kind, "noise": noise, "grid": _grid("ink_hat")},
                 ),
-                "features": xr.DataArray(
+                FEATURES: xr.DataArray(
                     images.image(draws.a).reshape(nc, nd, k, *images.shape),
                     dims=("chain", "draw", FEATURE_DIM, Y_DIM, X_DIM),
-                    attrs={"kind": "posterior", "units": "ink"},
+                    attrs={"kind": "posterior", "units": "ink", "grid": _grid(FEATURES)},
                 ),
                 "feature_prob": xr.DataArray(
                     np.exp(draws.logpi).reshape(nc, nd, k),
@@ -812,11 +825,17 @@ class _Draws:
     """``(S,)``"""
 
 
+def _grid(output: str) -> str:
+    """The output's grid declaration as JSON (a ``grid`` attribute the sci recipes read)."""
+    return json.dumps(IBPFeaturesModel.outputs[output]["grid"])
+
+
 def _flat_draws(post: xr.Dataset, s: IBPFeaturesSettings) -> _Draws:
     """Posterior draws stacked over ``(chain, draw)`` in C order."""
-    a = post["A"].transpose("chain", "draw", FEATURE_DIM, "pixel").values
+    a = post[FEATURES].transpose("chain", "draw", FEATURE_DIM, Y_DIM, X_DIM).values
     lp = post["logpi"].transpose("chain", "draw", FEATURE_DIM).values
     nc, nd = a.shape[:2]
+    a = a.reshape(nc, nd, a.shape[2], -1)
     if "sigma_X" in post:
         sx = post["sigma_X"].transpose("chain", "draw").values.reshape(-1)
     else:
@@ -845,7 +864,7 @@ def _draw_images(
     lp = pattern_logpost(images.centred, images.seen, a, logpi, sx, c)
     w = np.exp(lp - logsumexp(lp, axis=1, keepdims=True))
     means = c @ a
-    own = w @ c
+    own = np.clip(w @ c, 0.0, 1.0)
     if not predictive:
         return w @ means + images.mean[None, :], own
     u = rng.random((w.shape[0], 1))

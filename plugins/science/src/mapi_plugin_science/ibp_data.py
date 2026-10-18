@@ -79,7 +79,7 @@ model:
     draws: 100
     chains: 2
     engine: pymc
-    keep: {log_likelihood: true}
+    keep: {log_likelihood: true, posterior_predictive: {thin: 10}}
 evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
 outputs: {plots: [core.convergence, sci.field_map, sci.ppc_image_grid]}
 """
@@ -104,7 +104,7 @@ model:
     tune: 1000
     draws: 1000
     chains: 4
-    keep: {log_likelihood: true}
+    keep: {log_likelihood: true, posterior_predictive: {thin: 100}}
 evaluate: {metrics: [rmse, mae]}
 outputs:
   plots: [core.convergence, core.posterior_forest, sci.field_map, sci.ppc_image_grid]
@@ -129,13 +129,15 @@ NOTEBOOK_REFERENCE: dict[str, Any] = {
 
 
 def stroke_features(shape: tuple[int, int] = (8, 6), amplitude: float = 0.8) -> np.ndarray:
-    """Three stroke images ``(3, ny, nx)``: a bar across the top, a stroke down the left side
-    and a bar across the bottom-right quarter."""
+    """Three stroke images ``(3, ny, nx)``: a stroke down the left side, one down the right
+    side and a diagonal. Each runs through the top and the bottom half, so either half of an
+    image tells which strokes it has."""
     ny, nx = shape
     f = np.zeros((3, ny, nx))
-    f[0, 1, :] = amplitude
-    f[1, :, 1] = amplitude
-    f[2, ny - 2, nx // 2 :] = amplitude
+    f[0, :, 1] = amplitude
+    f[1, :, nx - 2] = amplitude
+    rows = np.arange(ny)
+    f[2, rows, (rows * nx) // ny] = amplitude
     return f
 
 
