@@ -186,6 +186,11 @@ def list_catalog_steps(limit: int | None, cursor: str | None) -> Call[Page[StepC
     )
 
 
+def get_catalog_plot_example(plot_id: str, version: str) -> Call[PlotSpec]:
+    path = f"{V1}/catalog/plots/{segment(plot_id)}/{segment(version)}/example"
+    return Call("GET", path, parse_model(PlotSpec), scoped=False)
+
+
 def list_catalog_plots(limit: int | None, cursor: str | None) -> Call[Page[PlotCatalogEntry]]:
     return Call(
         "GET",

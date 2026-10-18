@@ -63,11 +63,12 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
 
 M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010_trust_lifecycle")
 M35_CHAIN = ("0011_workflows", "0012_governance")
-CHAIN = (*M3_CHAIN, *M35_CHAIN)
+CHAIN = (*M3_CHAIN, *M35_CHAIN, "0013_plot_examples")
 
 
 def test_m3_migrations_are_linear_and_step_down_and_up(scratch_db: str) -> None:
-    """The M3 and M3.5 revisions chain off 0006 in order, and each steps down and up cleanly."""
+    """The M3, M3.5 and later revisions chain off 0006 in order, and each steps down and up
+    cleanly (0013 adds ``catalogs.plot_examples``)."""
     script = ScriptDirectory.from_config(alembic_config(scratch_db))
     assert script.get_heads() == [CHAIN[-1]]
     down = "0006_executor_disable"

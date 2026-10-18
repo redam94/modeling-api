@@ -33,6 +33,7 @@ from mapi_spec.catalog import (
     StepCatalogEntry,
 )
 from mapi_spec.jsonschema_export import export_schemas
+from mapi_spec.plots import PlotSpec
 from mapi_spec.refs import Version
 from sqlalchemy import text
 
@@ -235,6 +236,27 @@ async def list_catalog_plots(
     return Page[PlotCatalogEntry](items=chunk, next_cursor=nxt)
 
 
+@router.get(
+    "/v1/catalog/plots/{plot_id}/{version}/example",
+    response_model=PlotSpec,
+    tags=["catalog"],
+    operation_id="get_catalog_plot_example",
+    responses=responses_for("get_catalog_plot_example"),
+)
+async def get_catalog_plot_example(
+    ctx: Ctx, session: SystemSession, plot_id: str, version: str
+) -> PlotSpec:
+    """The plot recipe rendered on its synthetic example data (made by the describe run,
+    datasets inline). ``404`` when the recipe, or its example, does not exist."""
+    snap = await ctx.catalogs.require(session)
+    if not any(e.id == plot_id and e.version == version for e in snap.catalog.plots):
+        raise NotFoundError("catalog plot", f"{plot_id}@{version}")
+    example = await ctx.catalogs.example(session, f"{plot_id}@{version}")
+    if example is None:
+        raise NotFoundError("plot example", f"{plot_id}@{version}")
+    return example
+
+
 @lru_cache(maxsize=1)
 def _schemas() -> dict[str, dict[str, Any]]:
     return export_schemas()
@@ -281,8 +303,8 @@ _BUILDING_BLOCKS: frozenset[AboutKind] = frozenset(
 
 
 def catalog_abouts(catalog: Catalog) -> list[CatalogAbout]:
-    """Every selectable item's About, ordered by ``(kind, id)``: the installed steps and
-    models (latest version of each id; yanked ones left out) from the catalog, and the
+    """Every selectable item's About, ordered by ``(kind, id)``: the installed steps,
+    models and plots (latest version of each id; yanked ones left out) from the catalog, and the
     platform's splits, guided templates, workflow templates, workflow node kinds and nodes
     and governance checks. Built-in cards of models that are not installed are left out."""
     found: dict[tuple[AboutKind, str], About] = {}
@@ -292,6 +314,9 @@ def catalog_abouts(catalog: Catalog) -> list[CatalogAbout]:
     for model in sorted(catalog.models, key=lambda e: (e.id, Version.parse(e.version))):
         if not model.yanked and model.manifest.about is not None:
             found[(AboutKind.MODEL, model.id)] = model.manifest.about
+    for plot in sorted(catalog.plots, key=lambda e: (e.id, Version.parse(e.version))):
+        if not plot.yanked and plot.about is not None:
+            found[(AboutKind.PLOT, plot.id)] = plot.about
     for item_id, about in builtin_abouts().items():
         kind = builtin_about_kind(item_id)
         if kind in _BUILTIN_KINDS and kind is not None:

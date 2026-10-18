@@ -26,6 +26,7 @@ from typing import Any, Literal
 import altair as alt
 import pandas as pd
 import xarray as xr
+from mapi_spec.about import About
 from mapi_spec.capabilities import Representation
 from mapi_spec.catalog import PlotCatalogEntry
 from mapi_spec.errors import ErrorCode, MapiError
@@ -36,6 +37,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from mapi_plots.convert import from_altair, from_plotly
 
 __all__ = [
+    "ExampleFn",
     "Figure",
     "Recipe",
     "RecipeDataError",
@@ -237,6 +239,8 @@ class RecipeInput:
 
 
 RecipeFn = Callable[[RecipeInput, Any], Figure]
+ExampleFn = Callable[[], tuple[Any, Mapping[str, Any]]]
+"""Synthetic ``(data, options)`` a recipe renders for its catalog example."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,12 +257,16 @@ class Recipe[S: RecipeSettings]:
     requires_representation: tuple[Representation, ...] = ()
     summary: str = ""
     tags: tuple[str, ...] = field(default_factory=tuple)
+    about: About | None = None
+    example: ExampleFn | None = field(default=None, compare=False)
 
     @property
     def ref(self) -> str:
         return f"{self.id}@{self.version}"
 
     def catalog_entry(self) -> PlotCatalogEntry:
+        from mapi_spec.plot_abouts import PLOT_ABOUTS
+
         return PlotCatalogEntry(
             id=self.id,
             version=self.version,
@@ -266,7 +274,23 @@ class Recipe[S: RecipeSettings]:
             persona=self.persona,
             requires_representation=list(self.requires_representation),
             requires_groups=list(self.requires_groups),
+            summary=self.summary[:300] or None,
+            about=self.about or PLOT_ABOUTS.get(self.id),
         )
+
+    def example_spec(self) -> PlotSpec | None:
+        """The recipe rendered on its synthetic example data (``None`` when it has none):
+        ``example`` if given, else the bundled one (:mod:`mapi_plots.examples`)."""
+        if self.example is not None:
+            data, options = self.example()
+        else:
+            from mapi_plots.examples import example_inputs
+
+            found = example_inputs().get(self.id)
+            if found is None:
+                return None
+            data, options = found
+        return self.render(data, **options)
 
     def parse_settings(self, options: Mapping[str, Any]) -> S:
         try:
@@ -412,8 +436,14 @@ def recipe(
     requires_representation: Iterable[Representation] = (),
     summary: str = "",
     tags: Iterable[str] = (),
+    about: About | None = None,
+    example: ExampleFn | None = None,
 ) -> Callable[[Callable[[RecipeInput, Any], Figure]], Recipe[Any]]:
-    """Decorator turning ``fn(inp, settings) -> Figure`` into a registered :class:`Recipe`."""
+    """Decorator turning ``fn(inp, settings) -> Figure`` into a registered :class:`Recipe`.
+
+    ``about`` is the plot's About card (built-in recipes take theirs from
+    :data:`mapi_spec.plot_abouts.PLOT_ABOUTS`); ``example`` returns synthetic ``(data,
+    options)`` for the catalog's example render."""
 
     def wrap(fn: Callable[[RecipeInput, Any], Figure]) -> Recipe[Any]:
         doc = (fn.__doc__ or "").strip()
@@ -428,6 +458,8 @@ def recipe(
             requires_representation=tuple(requires_representation),
             summary=summary or (doc.splitlines()[0] if doc else ""),
             tags=tuple(tags),
+            about=about,
+            example=example,
         )
         _REGISTRY[id] = r
         return r

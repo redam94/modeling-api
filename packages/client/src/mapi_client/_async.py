@@ -393,6 +393,10 @@ class AsyncCatalog(_Resource, AsyncCatalogAboutMixin):
     def plots(self, *, limit: int | None = None) -> AsyncPaginator[PlotCatalogEntry]:
         return self._c.page_iter(lambda cur: calls.list_catalog_plots(limit, cur))
 
+    async def plot_example(self, plot_id: str, version: str) -> PlotSpec:
+        """A plot recipe rendered on synthetic example data."""
+        return await self._c.send(calls.get_catalog_plot_example(plot_id, version))
+
     async def schema(self, name: str) -> dict[str, Any]:
         return await self._c.send(calls.get_schema(name))
 

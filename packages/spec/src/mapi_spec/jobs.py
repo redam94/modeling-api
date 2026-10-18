@@ -94,6 +94,7 @@ __all__ = [
     "NODE_RESULT_OUTPUT",
     "OPTIMIZE_OUTPUT",
     "PLOT_DATA_INPUT_PREFIX",
+    "PLOT_EXAMPLES_OUTPUT",
     "PRIOR_TRANSLATION_OUTPUT",
     "RENDER_OUTPUT_PREFIX",
     "SCORE_INPUTS",
@@ -199,6 +200,8 @@ BUNDLE_MANIFEST_OUTPUT: Final = "bundle.manifest.json"
 runner's :class:`~mapi_spec.run.OutputManifest`."""
 
 DESCRIBE_OUTPUT: Final = "catalog.json"
+PLOT_EXAMPLES_OUTPUT: Final = "plot_examples.json"
+"""Optional output of a describe run: :class:`~mapi_spec.plots.PlotExamples`."""
 SCORE_OUTPUT: Final = "score.zarr.zip"
 
 

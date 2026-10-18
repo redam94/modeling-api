@@ -142,7 +142,14 @@ from mapi_spec.loader import (
     upgrade,
 )
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
-from mapi_spec.plots import DataRef, InlineArrow, PlotBindings, PlotProvenance, PlotSpec
+from mapi_spec.plots import (
+    DataRef,
+    InlineArrow,
+    PlotBindings,
+    PlotExamples,
+    PlotProvenance,
+    PlotSpec,
+)
 from mapi_spec.quotas import (
     PriorityClass,
     QuotaDecision,
@@ -364,6 +371,7 @@ __all__ = [
     "PlotBindings",
     "PlotCatalogEntry",
     "PlotEmbed",
+    "PlotExamples",
     "PlotProvenance",
     "PlotSpec",
     "PolicyCheck",

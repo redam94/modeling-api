@@ -23,6 +23,7 @@ from mapi_sdk.pipeline import RAW, Pipeline
 from mapi_sdk.schema import check_dataset, infer_schema
 from mapi_spec.api import StageSchema, ValidateResponse
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
+from mapi_spec.jobs import PLOT_EXAMPLES_OUTPUT
 from mapi_spec.run import RunnerPhase, catalog_digest
 from mapi_spec.spec import ModelSpec
 
@@ -39,6 +40,15 @@ def run_describe(ctx: WorkerContext) -> dict[str, Any]:
     catalog = ctx.registry.catalog()
     digest = catalog_digest(catalog)
     ctx.write_output("catalog.json", catalog.model_dump_json(indent=2).encode())
+    ctx.state(RunnerPhase.VALIDATE, "rendering the plot examples")
+    examples = ctx.registry.plot_examples(
+        on_error=lambda ref, exc: ctx.warning(
+            "PLOT_EXAMPLE_FAILED",
+            f"the example of plot {ref} could not be rendered; the catalog shows it without one",
+            untrusted_text=f"{type(exc).__name__}: {exc}"[:2000],
+        )
+    )
+    ctx.write_output(PLOT_EXAMPLES_OUTPUT, examples.model_dump_json().encode())
     versions: dict[str, str] = {}
     for dist in _DISTS:
         try:
@@ -50,6 +60,7 @@ def run_describe(ctx: WorkerContext) -> dict[str, Any]:
         "models": len(catalog.models),
         "steps": len(catalog.steps),
         "plots": len(catalog.plots),
+        "plot_examples": len(examples.plots),
         "distributions": versions,
     }
     ctx.write_json("describe.json", info)

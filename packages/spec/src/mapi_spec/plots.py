@@ -18,10 +18,12 @@ from mapi_spec._types import StrictModel
 from mapi_spec.schema import Role
 
 __all__ = [
+    "MAX_PLOT_EXAMPLES",
     "DataRef",
     "InlineArrow",
     "PlotBindings",
     "PlotDataset",
+    "PlotExamples",
     "PlotProvenance",
     "PlotSpec",
     "referenced_datasets",
@@ -203,4 +205,24 @@ class PlotSpec(StrictModel):
         missing = sorted(names - declared)
         if missing:
             raise ValueError(f"spec references undeclared datasets {missing}")
+        return self
+
+
+MAX_PLOT_EXAMPLES = 256
+
+
+class PlotExamples(StrictModel):
+    """Example renders of the catalog's plot recipes (``plot_examples.json`` of a describe
+    run), keyed by recipe ref ``id@version``. Each is made from the recipe's own synthetic
+    data, so its datasets must be inline: an example has no bundle to point into."""
+
+    plots: dict[str, PlotSpec] = Field(default_factory=dict, max_length=MAX_PLOT_EXAMPLES)
+
+    @model_validator(mode="after")
+    def _inline_only(self) -> PlotExamples:
+        for ref, spec in self.plots.items():
+            if not re.fullmatch(r"[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*@\d+\.\d+\.\d+", ref):
+                raise ValueError(f"plot examples are keyed by recipe ref, not {ref[:80]!r}")
+            if any(ds.kind != "inline_arrow" for ds in spec.datasets.values()):
+                raise ValueError(f"example {ref} must embed its datasets (inline_arrow only)")
         return self

@@ -3,7 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
 import { useCatalog } from "@/api/queries";
-import type { ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry } from "@/api/types";
+import type { ModelCatalogEntry, StepCatalogEntry } from "@/api/types";
 import { JsonBlock, KeyValues, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/primitives";
 import { AboutCard } from "@/features/about/about-card";
 import { CatalogBrowser } from "@/features/about/catalog-browser";
 import { StartButton } from "@/features/about/chooser";
+import { PlotCatalogGrid } from "@/features/plots/plot-catalog";
 
 const route = getRouteApi("/catalog");
 
@@ -33,15 +34,7 @@ const stepColumns: ColumnDef<StepCatalogEntry, unknown>[] = [
   { id: "summary", header: "What it does", accessorFn: (s) => s.about?.summary_plain ?? s.summary ?? "", cell: ({ getValue }) => <span className="line-clamp-1 text-muted-foreground">{String(getValue())}</span> },
 ];
 
-const plotColumns: ColumnDef<PlotCatalogEntry, unknown>[] = [
-  { accessorKey: "id", header: "Recipe", cell: ({ getValue }) => <Mono className="font-medium">{String(getValue())}</Mono> },
-  { accessorKey: "title", header: "Title" },
-  { accessorKey: "version", header: "Version", cell: ({ getValue }) => (getValue() as string | null) ?? "—" },
-  { accessorKey: "persona", header: "Audience", cell: ({ getValue }) => (getValue() as string | null) ?? "both" },
-  { id: "groups", header: "Needs groups", accessorFn: (p) => (p.requires_groups ?? []).join(", ") || "—" },
-];
-
-type Selected = { kind: "model"; entry: ModelCatalogEntry } | { kind: "step"; entry: StepCatalogEntry } | { kind: "plot"; entry: PlotCatalogEntry };
+type Selected = { kind: "model"; entry: ModelCatalogEntry } | { kind: "step"; entry: StepCatalogEntry };
 
 function Detail({ selected, onClose }: { selected: Selected | null; onClose: () => void }) {
   if (!selected) return null;
@@ -61,7 +54,7 @@ function Detail({ selected, onClose }: { selected: Selected | null; onClose: () 
         <JsonBlock value={m.fit_schema} maxHeight="14rem" />
       </div>
     );
-  } else if (selected.kind === "step") {
+  } else {
     const s = selected.entry;
     title = `${s.id}@${s.version}`;
     body = (
@@ -75,9 +68,6 @@ function Detail({ selected, onClose }: { selected: Selected | null; onClose: () 
         <JsonBlock value={s.settings_schema} maxHeight="18rem" />
       </div>
     );
-  } else {
-    title = selected.entry.id;
-    body = <JsonBlock value={selected.entry} />;
   }
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -99,7 +89,7 @@ export function CatalogPage() {
     <>
       <PageHeader
         title="Catalog"
-        description="This page tells you, in plain words, about all the items that you can select. These are models, preparation steps, splits, guided analyses, workflow templates, workflow nodes and governance checks. The page also shows the technical catalog of plugins, steps and plot recipes."
+        description="This page tells you, in plain words, about all the items that you can select. These are models, preparation steps, splits, guided analyses, workflow templates, workflow nodes and governance checks. The page also shows the technical catalog of plugins and steps, and each plot with an example of what it looks like."
         meta={catalog.data ? <Mono title={catalog.data.digest}>digest {catalog.data.digest.slice(0, 19)}</Mono> : null}
       />
       <QueryView query={catalog}>
@@ -121,7 +111,7 @@ export function CatalogPage() {
               <DataTable label="Steps" data={c.steps ?? []} columns={stepColumns} filterPlaceholder="Filter steps" onRowClick={(entry) => setSelected({ kind: "step", entry })} />
             </TabsContent>
             <TabsContent value="plots">
-              <DataTable label="Plot recipes" data={c.plots ?? []} columns={plotColumns} filterPlaceholder="Filter recipes" onRowClick={(entry) => setSelected({ kind: "plot", entry })} />
+              <PlotCatalogGrid plots={c.plots ?? []} />
             </TabsContent>
           </Tabs>
         )}

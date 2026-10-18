@@ -165,6 +165,12 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.7.0-mock", contract_version: "0.2" })),
     // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real.
     http.get(`${API}/v1/catalog`, () => HttpResponse.json(editorGen.catalog)),
+    // What each plot looks like (plot-examples.gen.json, loaded on first use: it is large).
+    http.get(`${API}/v1/catalog/plots/:id/:version/example`, async ({ params }) => {
+      const { plots } = (await import("./plot-examples.gen.json")).default as { plots: Record<string, unknown> };
+      const spec = plots[`${String(params.id)}@${String(params.version)}`];
+      return spec ? HttpResponse.json(spec) : problem(404, "NOT_FOUND", "Not found", "no example for this plot");
+    }),
     http.get(`${API}/v1/schemas/:name`, ({ params }) =>
       params.name === "modelspec.json" ? HttpResponse.json(editorGen.modelspec_schema) : problem(404, "NOT_FOUND", "Not found"),
     ),

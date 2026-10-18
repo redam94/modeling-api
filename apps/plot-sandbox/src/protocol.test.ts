@@ -160,6 +160,9 @@ describe("findUnsafeConstructs", () => {
         { type: "scattermapbox", lat: [1], lon: [2] },
         { type: "scatter", x: [1], y: [2], text: ['<a href="https://evil.test">x</a>'] },
         { type: "bar", x: [1], y: [2], hovertemplate: "<b>%{y}</b><br>ok" },
+        // <extra> hides the secondary hover box (the server's sanitizer keeps it too)
+        { type: "heatmap", z: [[1]], hovertemplate: "z %{z}<extra></extra>", text: ["<extra>no</extra>"] },
+        { type: "scatter", x: [1], y: [2], hovertemplate: ["<img src=x>", "%{y}<extra></extra>"] },
       ],
       layout: { images: [{ source: "https://evil.test/logo.png" }] },
     };
@@ -168,5 +171,9 @@ describe("findUnsafeConstructs", () => {
     expect(issues).toContain("/spec/data/1/text/0");
     expect(issues).toContain("/spec/layout/images");
     expect(issues.some((p) => p.startsWith("/spec/data/2"))).toBe(false);
+    expect(issues).toEqual(expect.not.arrayContaining(["/spec/data/3/hovertemplate"]));
+    expect(issues).toContain("/spec/data/3/text/0"); // only hover templates may use <extra>
+    expect(issues).toContain("/spec/data/4/hovertemplate/0");
+    expect(issues).not.toContain("/spec/data/4/hovertemplate/1");
   });
 });

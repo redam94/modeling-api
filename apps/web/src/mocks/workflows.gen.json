@@ -9115,7 +9115,9 @@
      "The data and the settings of the model, and a test period"
     ],
     "assumptions": [
-     "Shuffling the drivers breaks any real link between them and the result, while trend, season and the result itself stay as they are"
+     "A random order of the drivers removes each real link between the drivers and the result",
+     "The trend, the season and the result stay as they are",
+     "For a model without drivers, the check shuffles the ups and downs of the result"
     ],
     "outputs": [
      "The fraction of shuffled fits that were as good as the real fit (a p-value)",
@@ -10244,7 +10246,9 @@
      "The data and the settings of the model, and a test period"
     ],
     "assumptions": [
-     "Shuffling the drivers breaks any real link between them and the result, while trend, season and the result itself stay as they are"
+     "A random order of the drivers removes each real link between the drivers and the result",
+     "The trend, the season and the result stay as they are",
+     "For a model without drivers, the check shuffles the ups and downs of the result"
     ],
     "outputs": [
      "The fraction of shuffled fits that were as good as the real fit (a p-value)",
@@ -15273,7 +15277,7 @@
      "status": "succeeded",
      "attempt": 1,
      "child_runs": [],
-     "cache_key": "sha256:61c1611faa52e926d4f674a93e643ecf53bdd9ea3f2a65787efe8a59f965a1d3",
+     "cache_key": "sha256:8104efcf2aef971b2ffa344d392c5a31d3d600d44962750e7616447742b7a5de",
      "params": {
       "title": "Time-series readiness and ARIMAX"
      },

@@ -15,7 +15,11 @@ Usage::
 
     uv run python apps/web/scripts/gen_editor_fixtures.py [--check]
 
-``--check`` exits 1 when the committed file differs from what would be written.
+``plot-examples.gen.json`` holds what the describe run renders for the catalog's plot cards
+(``GET /v1/catalog/plots/{id}/{version}/example``): every recipe on its synthetic example
+data, stamped with a fixed time. The mock API imports it lazily (it is the largest fixture).
+
+``--check`` exits 1 when a committed file differs from what would be written.
 """
 
 from __future__ import annotations
@@ -32,6 +36,7 @@ from mapi_spec.jsonschema_export import export_schemas
 
 WEB = Path(__file__).resolve().parent.parent
 OUT = WEB / "src" / "mocks" / "editor.gen.json"
+EXAMPLES_OUT = WEB / "src" / "mocks" / "plot-examples.gen.json"
 
 #: Fixed so the file is deterministic (the server stamps the catalog when it loads it).
 GENERATED_AT = "2026-10-14T09:00:00Z"
@@ -90,19 +95,27 @@ def build() -> str:
     return json.dumps(doc, indent=1, sort_keys=True) + "\n"
 
 
+def build_examples() -> str:
+    examples = default_registry().plot_examples().model_dump(mode="json", exclude_none=True)
+    for spec in examples["plots"].values():
+        spec["provenance"]["generated_at"] = GENERATED_AT
+    return json.dumps(examples, separators=(",", ":"), sort_keys=True) + "\n"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="fail if the committed file is stale")
     args = parser.parse_args()
-    text = build()
-    if args.check:
-        if not OUT.exists() or OUT.read_text("utf-8") != text:
-            print(f"{OUT.relative_to(WEB)} is stale: run this script", file=sys.stderr)
-            return 1
-        return 0
-    OUT.write_text(text, encoding="utf-8")
-    print(f"wrote {OUT.relative_to(WEB)} ({len(text):,} bytes)")
-    return 0
+    stale = 0
+    for out, text in ((OUT, build()), (EXAMPLES_OUT, build_examples())):
+        if args.check:
+            if not out.exists() or out.read_text("utf-8") != text:
+                print(f"{out.relative_to(WEB)} is stale: run this script", file=sys.stderr)
+                stale = 1
+            continue
+        out.write_text(text, encoding="utf-8")
+        print(f"wrote {out.relative_to(WEB)} ({len(text):,} bytes)")
+    return stale
 
 
 if __name__ == "__main__":

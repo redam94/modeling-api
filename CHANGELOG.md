@@ -5,6 +5,26 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Added
+- **Plot cards with examples.** The catalog's Plots tab shows each plot recipe as a card with
+  a picture of the plot, a plain-language summary and what the plot needs. A card opens the
+  plot's full About card (when to use it, how to read it, notes for experts) with a larger,
+  interactive example. Plots are also in **Browse** and in `GET /v1/catalog/abouts`
+  (`kind=plot`).
+- Every built-in recipe has an About card (`mapi_spec.plot_abouts`) and synthetic example
+  data, the science pack included. `PlotCatalogEntry` carries `summary` and `about`; a
+  recipe can set its own with `@recipe(..., about=, example=)`.
+- A describe run also renders each recipe on its example data (`plot_examples.json`). The
+  finalizer sanitizes the examples and stores them with the catalog (migration
+  `0013_plot_examples`), and `GET /v1/catalog/plots/{plot_id}/{version}/example` serves them.
+  A broken example never fails the describe run.
+- The docs' plot recipes catalog has a section and a picture for each recipe;
+  `render_gallery.py` now draws every recipe (Plotly through kaleido).
+
+### Fixed
+- The plot sandbox refused every `sci.*` plot: its client-side check did not allow Plotly's
+  `<extra>` tag in hover templates, which the server's sanitizer keeps.
+
 ## [0.7.0] — Scientific models — 2026-10-17
 
 This release adds scientific models with data on a map, an image or a grid. Four new plugins

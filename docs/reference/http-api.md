@@ -211,6 +211,7 @@ endpoint. This table does not show the common codes from the [Errors](#errors) s
 | `GET /v1/catalog/models/{model_id}/{version}` | One plugin version (manifest, sanitized schemas, schema template) | — | `ModelCatalogEntry` | 200 | `NOT_FOUND` |
 | `GET /v1/catalog/steps` | Steps | — | `Page[StepCatalogEntry]` | 200 | — |
 | `GET /v1/catalog/plots` | Plot recipes | — | `Page[PlotCatalogEntry]` | 200 | — |
+| `GET /v1/catalog/plots/{plot_id}/{version}/example` | The recipe drawn on synthetic example data (datasets inline), made by the describe run | — | `PlotSpec` | 200 | `NOT_FOUND` |
 | `GET /v1/schemas/{name}` | An exported JSON Schema, for example `modelspec.json`. Monaco and JSON Forms use it | — | JSON Schema | 200 | `NOT_FOUND` |
 
 ### Datasets

@@ -99,7 +99,7 @@ def test_every_builtin_card_is_complete_and_cross_references_resolve() -> None:
     problems = {k: about_issues(v, known_ids=known) for k, v in cards.items()}
     assert not {k: v for k, v in problems.items() if v}
     kinds = {builtin_about_kind(k) for k in cards}
-    assert kinds == set(AboutKind) - {AboutKind.DATASET, AboutKind.SPEC}
+    assert kinds == set(AboutKind) - {AboutKind.DATASET, AboutKind.SPEC, AboutKind.PLOT}
     assert builtin_about("core.resample") is STEP_ABOUTS["core.resample"]
     assert builtin_about("nope") is None and builtin_about_kind("nope") is None
     assert builtin_about("kind.branch") is not None
@@ -313,3 +313,16 @@ def test_specs_and_workflows_may_carry_an_about_card() -> None:
     meta = Metadata(name="geo", project="growth", about=About.model_validate(EXAMPLE))
     described = spec.model_copy(update={"metadata": meta})
     assert spec_hash(described) != spec_hash(spec)
+
+
+def test_plot_examples_are_self_contained_and_keyed_by_ref() -> None:
+    from mapi_spec.plots import PlotExamples, PlotSpec
+
+    doc = PlotSpec.model_json_schema()["examples"][0]
+    inline = {**doc, "datasets": {"fan": {"kind": "inline_arrow", "data": "QUJD"}}}
+    assert PlotExamples.model_validate({"plots": {"core.ppc_fan@1.0.0": inline}}).plots
+    with pytest.raises(ValidationError, match="inline_arrow only"):
+        PlotExamples.model_validate({"plots": {"core.ppc_fan@1.0.0": doc}})  # a data_ref
+    with pytest.raises(ValidationError, match="keyed by recipe ref"):
+        PlotExamples.model_validate({"plots": {"core.ppc_fan": inline}})
+    assert AboutKind.PLOT.value == "plot"

@@ -1595,6 +1595,10 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "Page[PlotCatalogEntry]", 200, paginated=True, query=_PAGE,
     ),
     EndpointDecl(
+        "GET", "/v1/catalog/plots/{plot_id}/{version}/example", "get_catalog_plot_example",
+        "A plot recipe rendered on synthetic example data", "PlotSpec", 200, errors=_NF,
+    ),
+    EndpointDecl(
         "GET", "/v1/schemas/{name}", "get_schema", "Exported JSON Schema (e.g. modelspec.json)",
         None, 200, errors=_NF,
     ),
@@ -3245,6 +3249,7 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "get_catalog_model": _AUTH,
     "list_catalog_steps": _AUTH,
     "list_catalog_plots": _AUTH,
+    "get_catalog_plot_example": _AUTH,
     "create_dataset": _p(_RK.DATASET, _AC.CREATE),
     "list_datasets": _p(_RK.DATASET, _AC.READ),
     "get_dataset": _p(_RK.DATASET, _AC.READ),

@@ -108,6 +108,8 @@ export interface AboutCardProps {
   onRelated?: ((id: string) => void) | undefined;
   /** Buttons under the card ("Start with this", "Use this model"). */
   actions?: ReactNode;
+  /** Shown under the summary: what the item looks like (a plot's example render). */
+  media?: ReactNode;
   /** Heading level of the title (cards inside a page section use h3). */
   as?: "h2" | "h3" | "h4";
   /** The same as `as`, by number (`headingLevel={2}` is `as="h2"`). */
@@ -131,6 +133,7 @@ export function AboutCard({
   expertOpen = false,
   onRelated,
   actions,
+  media,
   as,
   headingLevel,
   heading,
@@ -163,6 +166,7 @@ export function AboutCard({
         {id ? <p className="font-mono text-[11px] text-muted-foreground">{id}</p> : null}
         <p className={cn("max-w-[72ch] leading-relaxed", compact ? "text-[13px]" : "text-[15px]")}>{about.summary_plain}</p>
       </header>
+      {media}
       {compact ? null : (
       <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
         <Section icon={<CheckCircle2 />} title="Use it when" items={about.use_when} tone="good" />
@@ -263,6 +267,7 @@ export function AboutDialog({
   open,
   onOpenChange,
   actions,
+  media,
 }: {
   about: About;
   kind?: AboutKind | undefined;
@@ -270,13 +275,14 @@ export function AboutDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   actions?: ReactNode;
+  media?: ReactNode;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide>
         <DialogTitle className="sr-only">About {about.title}</DialogTitle>
         <DialogDescription className="sr-only">{about.summary_plain}</DialogDescription>
-        <AboutCard about={about} kind={kind} id={id} actions={actions} as="h2" />
+        <AboutCard about={about} kind={kind} id={id} actions={actions} media={media} as="h2" />
       </DialogContent>
     </Dialog>
   );

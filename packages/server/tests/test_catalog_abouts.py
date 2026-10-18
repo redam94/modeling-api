@@ -1,7 +1,7 @@
 """About cards everywhere (M3.5): ``GET /v1/catalog/abouts``, the "Help me choose"
 questions and the ranked recommendations, over the full installed catalog. Every item a
 user can pick - models, preprocessing steps, splits, guided templates, workflow templates,
-workflow node kinds and nodes, governance checks - must have a complete About."""
+workflow node kinds and nodes, governance checks, plots - must have a complete About."""
 
 from __future__ import annotations
 
@@ -57,6 +57,7 @@ async def test_every_selectable_item_has_a_complete_about(client: httpx.AsyncCli
     assert by_kind["node"] == set(NODE_IMPLEMENTATIONS)
     assert len(by_kind["node_kind"]) == len(NodeKind)
     assert by_kind["check"] == set(GOVERNANCE_CHECKS)
+    assert by_kind["plot"] == {p.id for p in catalog.plots if not p.yanked}
     assert len(by_kind["split"]) >= 5
     # the MMM engine is mmm-framework and the statsmodels models are installed
     assert {"mmm.bayesian", "mmm.frequentist", "ts.sarimax", "ts.var", "ts.vecm"} <= by_kind[

@@ -127,6 +127,7 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "get_catalog_model": lambda: c.get_catalog_model("mmm.geo", "1.0.0"),
     "list_catalog_steps": lambda: c.list_catalog_steps(None, None),
     "list_catalog_plots": lambda: c.list_catalog_plots(None, None),
+    "get_catalog_plot_example": lambda: c.get_catalog_plot_example("core.ppc", "1.0.0"),
     "get_schema": lambda: c.get_schema("modelspec.json"),
     "create_dataset": lambda: c.create_dataset(DatasetCreate(name="d")),
     "list_datasets": lambda: c.list_datasets(None, None),

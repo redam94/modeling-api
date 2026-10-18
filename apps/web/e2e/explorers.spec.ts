@@ -89,6 +89,39 @@ test("the catalog browses every item by its About card", async ({ page }) => {
   await expect(page.getByRole("table", { name: "Model plugins" })).toBeVisible();
 });
 
+test("the catalog shows every plot as a card with an example", async ({ page }) => {
+  await page.goto("/catalog?tab=plots");
+  const cards = page.getByRole("list", { name: "Plot recipes" }).getByRole("listitem");
+  await expect(cards).toHaveCount(22);
+  // the first card's thumbnail renders in the sandbox (Vega-Lite)
+  const first = page.getByTestId("plot-card").first();
+  await expect(first.locator('iframe[data-testid="plot-frame"]').contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: /^Science/ }).click();
+  await expect(cards).toHaveCount(4);
+  await page.getByRole("button", { name: /^All plots/ }).click();
+  await page.getByRole("searchbox", { name: "Search the plots" }).or(page.getByLabel("Search the plots")).fill("residuals");
+  await page.getByTestId("plot-card").filter({ hasText: "core.residuals_over_time" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Use it when")).toBeVisible();
+  await expect(dialog.getByText("An example made from synthetic data")).toBeVisible();
+  await expect(dialog.locator('iframe[data-testid="plot-frame"]').contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
+  await dialog.getByRole("button", { name: "Close" }).click();
+  // a Plotly example (science pack) renders too
+  await page.getByLabel("Search the plots").fill("");
+  await page.getByRole("button", { name: /^Science/ }).click();
+  await page.getByTestId("plot-card").filter({ hasText: "sci.field_map" }).click();
+  await expect(page.getByRole("dialog").locator('iframe[data-testid="plot-frame"]').contentFrame().locator(".main-svg").first()).toBeVisible({ timeout: 20_000 });
+});
+
+test("a plot's About card in Browse shows its example", async ({ page }) => {
+  await page.goto("/catalog");
+  await page.getByRole("button", { name: /^Plots/ }).click();
+  await page.getByRole("list", { name: "Catalog items" }).getByRole("button").first().click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByTestId("plot-example")).toBeVisible();
+  await expect(dialog.locator('iframe[data-testid="plot-frame"]').contentFrame().locator("svg.marks, .main-svg").first()).toBeVisible({ timeout: 20_000 });
+});
+
 test("the Data Explorer shows the ingest views and computes the rest on demand", async ({ page }) => {
   await page.goto(`/datasets/${DATASET}`);
   await expect(page.getByRole("heading", { name: "About this dataset" })).toBeVisible();
