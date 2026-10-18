@@ -1444,4 +1444,6 @@ def ensemble(inp: RecipeInput, s: EnsembleSettings) -> Figure:
 
 def sci_recipes() -> list[Recipe[Any]]:
     """The scientific-model pack (entry point ``mapi.plots: sci``)."""
-    return [field_map, vector_field, profile_bands, ensemble]
+    from mapi_plots.packs.sci_maps import sci_map_recipes
+
+    return [field_map, vector_field, profile_bands, ensemble, *sci_map_recipes()]

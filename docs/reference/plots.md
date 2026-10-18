@@ -246,6 +246,9 @@ the string columns of these DataFrames.
 | `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
 | `sci.profile_bands` | `var`, `group`, `observed_var`, `along`, `by`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_curves` (12), `max_draws` (1 000), `colormap` (viridis), `log` (false), `width` (640), `height` (360) |
 | `sci.ensemble` | `var`, `group`, `observed_var`, `along`, `select`, `n_draws` (40), `levels` ([0.9]), `point` (median \| mean \| none), `max_draws` (2 000), `seed` (0), `log` (false), `width` (640), `height` (320) |
+| `sci.area_map` | `var`, `group`, `observed`, `stats` (observed, mean, sd, exceedance; also median), `threshold` (1 for a positive output, else 0), `mark_above` (0.95), `log_scale` (false), `show_edges` (false), `select`, `colormap` (viridis), `classes` (9), `max_draws` (2 000), `max_vertices` (40 000), `columns` (2), `width` (760), `height` (340, one row of panels) |
+| `sci.phylogeny` | `var`, `group`, `tip_dim`, `observed`, `interval` (0.9), `point` (mean \| median), `max_tips` (400), `max_draws` (2 000), `labels` (up to 80 tips), `select`, `colormap` (viridis), `width` (780), `height` (0: from the number of tips) |
+| `sci.rose` | `var`, `group`, `observed`, `angle_dim`, `units` (radians \| degrees \| hours \| days), `period`, `bins` (24), `frame`, `select`, `interval` (0.9), `scale` (auto \| count \| share), `clockwise`, `max_draws` (1 000), `max_frames` (24), `width` (560), `height` (520) |
 
 ### Scientific-model pack (`sci.*`)
 
@@ -260,6 +263,29 @@ profiles and trajectories. They read draws (`chain`/`draw` or `sample` dims) fro
 | `sci.vector_field` | The length of a vector as colours, arrows of the mean vector, and the sd of the length. |
 | `sci.profile_bands` | The median and the 50% and 90% bands along `along`, one curve for each level of `by`, and the actual values. A slider shows one level with its bands. |
 | `sci.ensemble` | Some draws as thin lines, the 90% band of all draws, the median and the actual values. |
+| `sci.area_map` | A map of areas (polygons) coloured by the observed value, the mean, the sd and the probability that the value is above `threshold`. A cross marks each area where this probability is above `mark_above`. |
+| `sci.phylogeny` | A tree of the tips (species) next to a strip with the estimate and its interval for each tip, and the observed values. |
+| `sci.rose` | A polar chart of angles: a rose of the observed angles with the 90% range of simulated data in each sector, or a curve around the circle with its limits. |
+
+Data for the map, tree and polar recipes:
+
+- `sci.area_map` reads the outlines of the areas from `ring_x(area, vertex)` and
+  `ring_y(area, vertex)`. Fill the unused vertices with NaN. A NaN between points starts
+  a new ring, for example an island. The first dim is the area dim. The optional
+  `adjacency(area, area_)` matrix (not zero for neighbours) gives the lines of
+  `show_edges`. The recipe finds these variables in `observed_data`, `constant_data`, a
+  `geometry` group, the group of the output or the root. It draws the areas as filled
+  shapes on axes with equal scales. It does not use a geographic projection or a base
+  map. If the outlines have too many points, the recipe uses fewer points.
+- `sci.phylogeny` reads the tree from `parent(node)`: the position of the parent node, or
+  -1 for the root. The optional variables are `branch_length(node)` (default 1),
+  `is_tip(node)` (default: the nodes that are not a parent) and `tip_label(node)`. The
+  tips match the levels of the output by label. If there are no labels, tip k (in node
+  order) is level k.
+- `sci.rose` reads angles in `units`. One turn is 2π radians, 360 degrees, 24 hours or
+  365.25 days, or `period`. If the output has an angle dim (`angle_dim`, or a dim called
+  `angle`, `direction`, `hour` and so on), the recipe draws a curve. Otherwise it counts
+  the angles in `bins` sectors.
 
 Statistics of `sci.field_map`:
 

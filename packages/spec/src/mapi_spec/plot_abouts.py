@@ -905,4 +905,135 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "the grid's x. Other dims must have one level or be fixed with `select`. The median "
         "line is not itself a possible path.",
     ),
+    "sci.area_map": _a(
+        "Area map",
+        "Shows a map of areas, such as districts, coloured by the model's estimate for each "
+        "area. Other panels show the uncertainty and how likely it is that the value is above "
+        "a limit.",
+        [
+            "The model gives one value for each area of a map, such as a disease risk",
+            "You want to find the areas where the risk is clearly high",
+            "You want to compare the smoothed estimate with the raw observed values",
+        ],
+        [
+            "The output is a value on a regular grid (use Field map)",
+            "You need a base map with roads and place names (the chart draws only the outlines)",
+        ],
+        [
+            "Draws of a per-area output in the posterior, predictions or posterior_predictive "
+            "group (a summary with mean and sd also works)",
+            "The outlines of the areas as ring_x(area, vertex) and ring_y(area, vertex)",
+            "Optional: observed values for each area and a neighbour matrix adjacency(area, area_)",
+        ],
+        [
+            "The outlines use the same units on both axes, such as metres or degrees",
+            "Holes inside an area are filled",
+            "Large outlines use fewer points so that the chart stays small",
+        ],
+        [
+            "One map panel each for the observed values, the mean and the SD",
+            "A panel with the probability that the value is above the threshold",
+            "Crosses on the areas where that probability is above 95%",
+            "Optional grey lines between neighbouring areas",
+        ],
+        _I,
+        _SEC,
+        "The observed panel of lip cancer in Scotland shows extreme values in small "
+        "districts. The mean panel is smoother. The probability panel is dark red in the north, "
+        "and crosses mark the districts where the risk is above 1 with 95% probability.",
+        related=["sci.field_map", "core.posterior_forest"],
+        expert="Statistics per area over up to `max_draws` (2000) draws: mean, median, sd "
+        "(ddof 1) and P(value > `threshold`) (`stats`; default observed, mean, sd and "
+        "exceedance). `threshold` defaults to 1 for a non-negative output (a relative risk) "
+        "and to 0 otherwise. Fills use `classes` (9) equal steps of the colour scale over "
+        "the 0.5 to 99.5% range; the colour bar and the hover show the exact value. "
+        "`log_scale` colours log10 of the value panels. Areas match the outlines by label "
+        "when both have labels, else by position. Polygons are drawn as filled scatter "
+        "shapes on equal-aspect axes, not a geographic projection.",
+    ),
+    "sci.phylogeny": _a(
+        "Phylogeny with tip estimates",
+        "Shows a family tree of species next to the model's estimate for each species. Close "
+        "relatives sit side by side, so you can see if related species have similar values.",
+        [
+            "The model gives one value for each species (or other tip) of a tree",
+            "You want to see how the estimate follows the tree",
+            "Some species have no observed value and you want to see their estimate",
+        ],
+        [
+            "The groups are not related by a tree (use Posterior forest)",
+            "The tree has thousands of tips and you need to see every one of them",
+        ],
+        [
+            "Draws of a per-tip output in the predictions, posterior_predictive or posterior group",
+            "The tree as parent(node) and branch_length(node), with optional is_tip(node) and "
+            "tip_label(node)",
+            "Optional: the observed trait for each tip (observed_data)",
+        ],
+        [
+            "Each node has one parent; a root has none",
+            "Tips match the output by label, else in the order of the nodes",
+            "With more tips than the limit, the chart shows evenly spaced tips",
+        ],
+        [
+            "The tree with the branch lengths along the x axis",
+            "A dot at each tip coloured by the estimate",
+            "A strip with the estimate and its 90% interval for each tip",
+            "Open circles for the observed values",
+        ],
+        _I,
+        _SEC,
+        "The tree of 16 primates puts the large apes together at the top. Their dots in the "
+        "strip are all on the right. Three species have no observed body mass, and their "
+        "intervals are a little wider than those of their relatives.",
+        related=["core.posterior_forest", "sci.profile_bands"],
+        expert="The layout is rectangular: x is the sum of branch lengths from the root, y "
+        "the order of the tips in a depth-first walk; a parent sits midway between its outer "
+        "children. `parent` holds integer positions (or node labels); -1, NaN or the node "
+        "itself marks a root, and several roots join at a common origin. The strip shows the "
+        "mean or median (`point`) and the equal-tailed `interval` (0.9). `max_tips` (400) "
+        "keeps evenly spaced tips and their ancestors.",
+    ),
+    "sci.rose": _a(
+        "Rose of angles",
+        "Shows directions or times of day on a circle. Bars show how often each direction "
+        "occurs, with the range that the model expects for each sector.",
+        [
+            "The data are angles, such as wind directions, hours of the day or days of the year",
+            "You want to check that the model gets the main directions right",
+            "The model gives a density around the circle and you want to see its shape",
+        ],
+        [
+            "The values are not on a circle (use Posterior predictive check)",
+            "You need the exact numbers for each direction (use a table)",
+        ],
+        [
+            "Observed angles (observed_data) and draws of simulated angles "
+            "(posterior_predictive), or a density over an angle dimension with draws",
+            "The units of the angles: radians, degrees, hours or days",
+        ],
+        [
+            "One turn is 2π radians, 360 degrees, 24 hours or 365.25 days (or `period`)",
+            "Sectors have equal widths",
+            "A density curve is in units per one unit of angle",
+        ],
+        [
+            "Bars for the observed count (or share) in each sector",
+            "A thick line in each sector for the 90% range of simulated data, and the median",
+            "Or a median curve with dotted 90% limits",
+            "A slider when the data have a frame dimension, such as season",
+        ],
+        _B,
+        _NOW,
+        "The rose of wind directions has a long bar to the south-west. The model's range "
+        "covers it, but the bars to the north-east end above the range: the model gives too "
+        "few winds from the north-east.",
+        related=["sci.profile_bands", "core.ppc"],
+        expert="Histogram mode: the observed angles and each of up to `max_draws` (1000) "
+        "predictive draws are counted in `bins` (24) equal sectors; the lines are equal-tailed "
+        "`interval` (0.9) quantiles of the counts per sector. `scale` share divides by the "
+        "number of angles (the default with a `frame`). Density mode (an `angle_dim` such as "
+        "angle, hour or direction): quantiles per angle; observed angles are scaled to a "
+        "density per unit. `clockwise` defaults to true (zero at the top) except for radians.",
+    ),
 }
