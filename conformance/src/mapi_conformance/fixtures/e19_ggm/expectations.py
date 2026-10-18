@@ -28,8 +28,8 @@ def check_fit(bundle: Bundle, data: xr.Dataset) -> None:
     ll = groups["log_likelihood"]["value"]
     assert ll.dims == ("chain", "draw", "cell"), f"log-likelihood dims {ll.dims}"
     assert bundle.evaluation is not None, "evaluate_then_refit keeps the evaluation bundle"
-    prob = groups["posterior"]["edge_prob"].mean(("chain", "draw"))
-    prob = prob.transpose(VAR_DIM, PAIR_DIM).values
+    mean = groups["posterior"]["edge_prob"].mean(("chain", "draw"))
+    prob = mean.transpose(VAR_DIM, PAIR_DIM).values
     iu = np.triu_indices(truth.shape[0], 1)
     true_edges = truth[iu] == 1
     assert prob[iu][true_edges].min() > 0.8, "a true edge has a low probability"

@@ -47,6 +47,7 @@ from mapi_sdk.schema import validate_dataset
 from mapi_sdk.testing import ModelFixture, check_model
 from mapi_spec import load_model_spec, load_score_request, validate_spec
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.spec import ScoreRequest
 
 SACHS = challenges_file(CHALLENGES_FILE)
 HEADER = "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://sci/ggm\n"
@@ -65,7 +66,7 @@ NS_SPEC_YAML = (
 """The tiny spec with the neighbourhood model (no holdout: it cannot score new cells)."""
 
 
-def _req(body: str) -> object:
+def _req(body: str) -> ScoreRequest:
     return load_score_request(HEADER + body)
 
 
