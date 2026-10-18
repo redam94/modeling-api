@@ -425,9 +425,6 @@ _register(
     )
 )
 
-
-if __name__ == "__main__":  # pragma: no cover - the CLI
-    raise SystemExit(main())
 _register(
     ExportCase(
         case="e79",
@@ -443,3 +440,7 @@ _register(
         spec=cmb_data.PLANCK_SPEC_YAML,
     )
 )
+
+
+if __name__ == "__main__":  # pragma: no cover - the CLI
+    raise SystemExit(main())
