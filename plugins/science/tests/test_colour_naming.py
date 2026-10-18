@@ -4,6 +4,7 @@ speakers, every score mode, typed refusals, the plots and the World Color Survey
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -437,6 +438,48 @@ def test_from_challenges_reads_nafaanra() -> None:
     assert rgb[white].min() > 0.9
     with pytest.raises(ValueError):
         from_challenges(WCS, language=999)
+
+
+def _write_wcs(folder: Path, abbrevs: list[str]) -> Path:
+    """A two-chip, three-speaker WCS folder for language 1 with the given abbreviations."""
+    (folder / "wcs_chips.csv").write_text(
+        "chip,row,col,grid,L,a,b\n1,A,0,A0,96.0,-0.06,0.06\n2,J,0,J0,15.6,-0.03,0.03\n"
+    )
+    (folder / "wcs_languages.csv").write_text("lang,name\n1,NA\n")
+    rows = [f"1,{i},{a},term{i},3,3" for i, a in enumerate(abbrevs)]
+    (folder / "wcs_terms.csv").write_text(
+        "lang,code,abbrev,term,n_responses,n_speakers\n" + "\n".join(rows) + "\n"
+    )
+    path = folder / "wcs_naming.npz"
+    naming = np.array([[0, 1], [0, -1], [1, 0]])
+    np.savez(path, naming=naming, lang=np.ones(3, int), speaker=np.arange(1, 4))
+    return path
+
+
+def test_from_challenges_keeps_the_abbreviation_na_as_a_term(tmp_path: Path) -> None:
+    """'NA' (naranja in 16 WCS languages) is a term, not a missing value."""
+    ds = from_challenges(_write_wcs(tmp_path, ["NA", "W"]), language=1)
+    assert ds["response"].values.tolist() == [["NA", "W"], ["NA", ""], ["W", "NA"]]
+    assert ds.attrs["language"] == "NA"
+    assert "NA" in json.loads(ds.attrs["glosses"])
+
+
+@pytest.mark.parametrize("abbrev", ["", "nan", "None", "other"])
+def test_from_challenges_refuses_unusable_major_abbreviations(tmp_path: Path, abbrev: str) -> None:
+    with pytest.raises(ValueError, match="unusable abbreviations"):
+        from_challenges(_write_wcs(tmp_path, [abbrev, "W"]), language=1)
+
+
+@pytest.mark.skipif(WCS is None, reason="pymc-challenges data not present")
+def test_from_challenges_reads_the_na_term_of_wcs_language_8() -> None:
+    """Regression: language 8's major term 'NA' (98 answers) used to read as no answer."""
+    assert WCS is not None
+    ds = from_challenges(WCS, language=8)
+    labels, counts = np.unique(ds["response"].values, return_counts=True)
+    got = dict(zip(labels.tolist(), counts.tolist(), strict=True))
+    assert got["NA"] == 98
+    assert got[""] == 1
+    assert "nan" not in got
 
 
 @pytest.mark.slow

@@ -236,11 +236,16 @@ def from_challenges(
         naming = np.asarray(npz["naming"])
         spk_lang = np.asarray(npz["lang"])
         spk_nr = np.asarray(npz["speaker"])
-    terms = pd.read_csv(folder / "wcs_terms.csv")
+    # WCS abbreviations are text: Spanish-loan "NA" (naranja) must not become NaN.
+    terms = pd.read_csv(
+        folder / "wcs_terms.csv",
+        keep_default_na=False,
+        dtype={"abbrev": str, "term": str},
+    )
     _need(terms, ["lang", "code", "abbrev", "term", "n_speakers"], "wcs_terms.csv")
     chips = pd.read_csv(folder / "wcs_chips.csv")
     _need(chips, ["chip", "row", "col", "grid", "L", "a", "b"], "wcs_chips.csv")
-    langs = pd.read_csv(folder / "wcs_languages.csv")
+    langs = pd.read_csv(folder / "wcs_languages.csv", keep_default_na=False, dtype={"name": str})
     _need(langs, ["lang", "name"], "wcs_languages.csv")
     rows = np.flatnonzero(spk_lang == language)
     if rows.size == 0:
@@ -253,8 +258,15 @@ def from_challenges(
     y = naming[rows].astype(int)
     tl = terms[terms["lang"] == language].sort_values("code")
     major = (tl["n_speakers"] >= share * rows.size).to_numpy()
+    abbrevs = tl["abbrev"].astype(str).str.strip().to_numpy()
+    blank = [a for a in abbrevs[major] if a.lower() in ("", "nan", "none", "other")]
+    if blank:
+        raise ValueError(
+            f"language {language} has major terms with unusable abbreviations {blank!r} "
+            "in wcs_terms.csv (they would read as no answer or merge with 'other')"
+        )
     names = np.full(int(tl["code"].max()) + 1, "other", dtype=object)
-    names[tl["code"].to_numpy()[major]] = tl["abbrev"].to_numpy()[major]
+    names[tl["code"].to_numpy()[major]] = abbrevs[major]
     labels = np.where(y < 0, "", names[np.maximum(y, 0)]).astype(str)
     pal = pd.DataFrame(
         {
