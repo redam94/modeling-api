@@ -62,7 +62,7 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
-from mapi_plugin_science import kpp_data, lens_data, lgcp_data, traction_data
+from mapi_plugin_science import cmb_data, kpp_data, lens_data, lgcp_data, traction_data
 from mapi_plugin_science.challenges import CHALLENGES_ENV
 
 __all__ = [
@@ -428,3 +428,18 @@ _register(
 
 if __name__ == "__main__":  # pragma: no cover - the CLI
     raise SystemExit(main())
+_register(
+    ExportCase(
+        case="e79",
+        title="Planck SMICA CMB map around the Large Magellanic Cloud",
+        notebook="E79_cmb_field_level.py",
+        model="sci.cmb_field",
+        files=(cmb_data.CHALLENGES_FILE, cmb_data.THEORY_FILE),
+        loader=lambda d: cmb_data.from_challenges(d / cmb_data.CHALLENGES_FILE),
+        synthetic=lambda: cmb_data.cmb_dataset(),
+        schema=cmb_data.CMB_SCHEMA,
+        project="astronomy",
+        dataset="planck_smica_lmc",
+        spec=cmb_data.PLANCK_SPEC_YAML,
+    )
+)

@@ -1,0 +1,32 @@
+# E79: constrained skies on the fitted map, simulated skies, the cached pixel moments; typed
+# errors off the raster.
+- name: predict_sky
+  request: {mode: predict, output: {summary: [mean, sd, q5, q95], draws: 4}}
+  payload: fit_data
+  expect:
+    groups: [summary, draws]
+    vars: [sky, temperature_hat, bandpower, log_amplitude, tilt]
+    sizes: {stat: 4}
+- name: predictive_map
+  request: {mode: predict, output: {kind: predictive}}
+  payload: fit_data
+  expect: {vars: [temperature_hat, sky]}
+- name: simulate_patch
+  request: {mode: simulate, output: {kind: predictive}}
+  payload: fit_data
+  expect: {vars: [sky, temperature_hat]}
+- name: sky_moments
+  request: {mode: predict, output: {vars: [sky, sky_moments]}}
+  payload: fit_data
+  expect: {groups: [summary, derived/sky_moments], vars: [sky]}
+- name: pixel_window
+  request: {mode: predict}
+  payload: corner
+  expect: {sizes: {row: 8, col: 8}}
+- name: rows_outside_the_map
+  request: {mode: predict}
+  payload: outside
+  expect_error: UNSEEN_LEVELS
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: row, periods: 2}}
+  expect_error: MODE_NOT_SUPPORTED

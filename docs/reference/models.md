@@ -34,6 +34,7 @@ each lift likelihood.
 | `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
 | `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
 | `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
+| `sci.cmb_field@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e79_cmb` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -351,6 +352,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
 | `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
 | `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
+| `e79` | `sci.cmb_field` | `planck_smica_patches.npz`, `planck_theory_tt.txt` | `astronomy/planck_smica_lmc` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -476,3 +478,78 @@ The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F81
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
 
+### `sci.cmb_field` — the CMB sky behind a mask (E79)
+
+Field-level inference of a temperature map of the cosmic microwave background (CMB). Each pixel
+of the sky is a parameter. The model samples the sky together with the power spectrum in bins
+(bandpowers). Masked pixels have no data term, and each pixel has its own noise level. Thus the
+model needs no correction for the mask, as a simple spectrum estimate does.
+
+The sky is a Gaussian random field on a flat, periodic torus. The torus is the map plus a
+border of `border` pixels without data on each side, because a real patch does not repeat at
+its edges. The prior power of each Fourier (Hartley) mode is the reference spectrum after the
+beam, the pixel windows and aliasing, times `exp(q_b)` for bin `b`. `q_b` has a flat prior.
+
+The sampler is not NUTS. It is the Wandelt-Eriksen Gibbs sampler of the notebook, in NumPy:
+
+1. A constrained realisation of the sky for the current bandpowers. Preconditioned conjugate
+   gradients (CG) solve one linear system. The preconditioner is dense below `ell_dense` and
+   diagonal above it.
+2. A draw of each bandpower from its inverse-gamma distribution, given the sky.
+3. A rescaling move for each bin (Metropolis). It helps in the bins where the noise is larger
+   than the signal.
+
+`tune` sets the burn-in iterations and `draws` the kept iterations of each chain. All chains run
+together. The fit is deterministic for a given seed.
+
+**Inputs.** `row` and `col` (integer, fixed, row 0 at the bottom) and `multipole` (integer,
+fixed, 0, 1, 2, ...). The target `temperature(row, col)` is in µK, with NaN where the mask
+removes a pixel. `noise_sd(row, col)` is the noise sd of each pixel (µK). `reference_dl(multipole)`
+is the reference spectrum D_ℓ = ℓ(ℓ+1)C_ℓ/2π in µK². With `pixel_window: true`, the data also has
+`pixel_window(multipole)`, the pixel window of the source map (for example HEALPix).
+
+**Outputs.** `sky(row, col)` and `temperature_hat(row, col)` are fields (diverging colours).
+`sky` is a sky map for each of `field_draws` posterior draws. `temperature_hat` is the same
+map, plus noise with `noise_sd` for `kind: predictive`. `bandpower(bin)` (µK²) and
+`bandpower_ratio(bin)` have the coords `ell`, `ell_low` and `ell_high` on `bin`. The scalars
+`log_amplitude` and `tilt` compare the bandpowers with the reference: they come from the exact
+Gaussian posterior of `q_b = log A + tilt · log(ℓ_b / tilt_pivot)`, with the bins below
+`tilt_max_ell`. The fit keeps the mean and the sd of each pixel over all kept Gibbs draws as the
+derived group `sky_moments`. In `simulate` mode, the model makes skies of a new patch with the
+spectrum of each posterior draw, plus noise.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `pixel_arcmin`, `beam_fwhm_arcmin` | 7.5, 5 | Pixel side and FWHM of the Gaussian beam (arcmin) |
+| `pixel_subsamples` | 8 | Point samples along each side that a map pixel is the mean of (1: no box window) |
+| `pixel_window` | false | The data has `pixel_window(multipole)` |
+| `bin_edges` | the 26 bins of the notebook | Multipole edges of the bandpower bins |
+| `projection` | `gnomonic` | `gnomonic`: correct the multipoles for the mean stretch of a tangent-plane map; `flat`: no correction |
+| `border` | 8 | Pixels without data around the map on the torus |
+| `ell_dense` | 300 | Modes below this multipole get the dense preconditioner |
+| `cg_tol`, `cg_max_iter` | 1e-5, 5000 | Stop rule of CG |
+| `rescale` | true | Use the rescaling move |
+| `tilt_pivot`, `tilt_max_ell`, `tilt_prior_sd` | 500, 1450, 0.5 | The amplitude-and-tilt summary |
+| `field_draws` | 40 | The number of sky maps to draw for each score |
+
+The model has no LOO (`loo_valid` is false), because all pixels share one latent field. To
+compare `projection: gnomonic` with `flat`, compare the bandpowers, the amplitude and the tilt.
+The diagnostic `CG_NOT_CONVERGED` shows that a solve stopped at `cg_max_iter`. Then the
+large-scale bandpowers can be too low.
+
+Typed errors: `SCHEMA_INVALID` when a variable or a dim is missing, when all pixels are masked,
+when `noise_sd` is not positive at an unmasked pixel, when `reference_dl` is negative or all
+zero, or when the map is smaller than 8 × 8 pixels. `SETTINGS_INVALID` when a bin has no mode on
+the torus, when the torus has more than 512 × 512 pixels, or when `ell_dense` puts more than
+2,500 modes in the dense preconditioner.
+
+`from_challenges(path, patch="lmc")` reads the Planck 2018 SMICA patch around the Large
+Magellanic Cloud (or `patch="north"`) from `planck_smica_patches.npz` and the Planck best-fit
+spectrum from `planck_theory_tt.txt`. It prepares the map as the notebook does: 128 × 128 pixels
+of 7.5 arcmin, a pixel is usable only if all its samples are inside the common mask (16.5% of
+the pixels are masked), and the noise sd is the local rms of the half-mission half-difference
+map. `PLANCK_SPEC_YAML` is the notebook fit (4 chains of 80 iterations, the first 16 are
+burn-in). It takes approximately one minute. On this patch, the log amplitude is
+−0.017 ± 0.022 and the tilt is −0.001 ± 0.028 (the notebook: −0.014 ± 0.023 and −0.009 ± 0.030).
+The pixel sd is 2.5 µK where there are data, 32 µK in the small holes and 89 µK in the hole of
+the LMC.
