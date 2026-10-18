@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 from mapi_server.context import ServerContext
+from mapi_server.db import models as m
 from mapi_server_testkit.builders import ready_dataset
 from mapi_spec.api import Dataset, DatasetVersion, UploadSession
 
@@ -112,9 +113,11 @@ async def test_dataset_artifacts_and_views(client: httpx.AsyncClient, ctx: Serve
     assert r.status_code == 422
 
 
-async def test_m4_versions_refused_until_the_backend_lands(
+async def test_raw_hdf5_upload_starts_an_ingest_run(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:
+    """M4: a raw HDF5 upload with its mapping is ingested like any other format (the
+    sandbox's HDF5 guard decides whether the file is safe to read)."""
     ds = await _dataset(client)
     up = UploadSession.model_validate(
         (
@@ -132,18 +135,15 @@ async def test_m4_versions_refused_until_the_backend_lands(
     r = await client.post(
         f"/v1/datasets/{ds.id}/versions", json={"upload_id": up.id, "mapping": hdf5}
     )
-    assert r.status_code == 422 and r.json()["code"] == "CAPABILITY_UNSUPPORTED", r.text
-    asm = {"sources": [{"upload_id": up.id, "mapping": {"format": "netcdf"}}]}
-    r = await client.post(f"/v1/datasets/{ds.id}/versions", json={"assembly": asm})
-    assert r.status_code == 422 and r.json()["code"] == "CAPABILITY_UNSUPPORTED", r.text
-    # neither consumed the upload: a supported mapping still works and reports its source
-    r = await client.post(
-        f"/v1/datasets/{ds.id}/versions",
-        json={"upload_id": up.id, "mapping": {"format": "netcdf"}},
-    )
     assert r.status_code == 202, r.text
     dv = DatasetVersion.model_validate(r.json())
-    assert dv.sources == [up.id]
+    assert dv.sources == [up.id] and dv.layout == "dataset"
+    run = (await client.get(f"/v1/runs/{dv.ingest_run_id}")).json()
+    assert run["kind"] == "ingest"
+    async with ctx.db.session() as s:
+        row = await s.get(m.Run, dv.ingest_run_id)
+        assert row is not None
+        assert row.payload["mapping"]["format"] == "hdf5" and set(row.inputs) == {"upload"}
     got = DatasetVersion.model_validate(
         (await client.get(f"/v1/datasets/{ds.id}/versions/{dv.version}")).json()
     )

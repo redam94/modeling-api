@@ -75,6 +75,7 @@ from mapi_spec.storage import (
     SignedPut,
     check_object_name,
 )
+from mapi_spec.tree import DataLayout
 
 __all__ = [
     "BUNDLE_MANIFEST_SCHEMA",
@@ -781,6 +782,13 @@ class RunSpec(StrictModel):
     deadline: AwareDatetime = Field(..., description="Hard wall-clock deadline (UTC)")
     created_at: AwareDatetime
     labels: dict[str, str] = Field(default_factory=dict, max_length=64)
+    input_layouts: dict[IoName, DataLayout] = Field(
+        default_factory=dict,
+        max_length=256,
+        description="M4: the layout of dataset inputs that are not a plain dataset (input "
+        "name -> 'tree' for a data.tree.zip); absent inputs are 'dataset'",
+        exclude_if=lambda v: not v,
+    )
 
     model_config = ConfigDict(
         json_schema_extra={

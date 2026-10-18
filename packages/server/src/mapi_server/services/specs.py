@@ -32,6 +32,7 @@ from mapi_spec.refs import DatasetRef, EndpointRef, ModelVersionRef
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.tree import TreeSchema
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata, validate_score_request, validate_spec
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,6 +54,7 @@ __all__ = [
     "resolve_dataset",
     "resolve_model_version",
     "score_draw_cap",
+    "tree_schema_of",
     "validate_document",
 ]
 
@@ -82,6 +84,13 @@ class Validation:
 
 def _issue(code: ErrorCode, pointer: str, message: str) -> Issue:
     return Issue(code=code, pointer=pointer, message=message[:2000])
+
+
+def tree_schema_of(dv: m.DatasetVersion) -> TreeSchema | None:
+    """The stored :class:`TreeSchema` of a tree version (M4); ``None`` for a plain dataset."""
+    if dv.layout != "tree" or not dv.tree_schema:
+        return None
+    return TreeSchema.model_validate(dv.tree_schema)
 
 
 def class_for_size(size_bytes: int) -> ResourceClass | None:
@@ -299,7 +308,10 @@ async def _validate_model_spec(
             _issue(ErrorCode.SCHEMA_INVALID, pointer, "the dataset version has no stored schema")
         )
         return
-    result = validate_spec(spec, snapshot.catalog, DataSchema.model_validate(dv.data_schema))
+    tree = tree_schema_of(dv)
+    result = validate_spec(
+        spec, snapshot.catalog, DataSchema.model_validate(dv.data_schema), tree_schema=tree
+    )
     out.issues.extend(result.issues)
     if spec.calibration is not None and dv.summary:
         out.issues.extend(check_spec_calibration(spec, DataSummary.model_validate(dv.summary)))

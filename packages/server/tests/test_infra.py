@@ -63,12 +63,12 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
 
 M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010_trust_lifecycle")
 M35_CHAIN = ("0011_workflows", "0012_governance")
-CHAIN = (*M3_CHAIN, *M35_CHAIN, "0013_plot_examples")
+CHAIN = (*M3_CHAIN, *M35_CHAIN, "0013_plot_examples", "0014_tree_datasets")
 
 
 def test_m3_migrations_are_linear_and_step_down_and_up(scratch_db: str) -> None:
     """The M3, M3.5 and later revisions chain off 0006 in order, and each steps down and up
-    cleanly (0013 adds ``catalogs.plot_examples``)."""
+    cleanly (0013 adds ``catalogs.plot_examples``, 0014 the tree-dataset columns)."""
     script = ScriptDirectory.from_config(alembic_config(scratch_db))
     assert script.get_heads() == [CHAIN[-1]]
     down = "0006_executor_disable"
@@ -110,6 +110,56 @@ def test_governance_migration_steps_down_and_up(scratch_db: str) -> None:
     assert not gov & _tables(scratch_db)
     upgrade(scratch_db)
     assert gov <= _tables(scratch_db)
+    command.check(alembic_config(scratch_db))
+
+
+def _columns(url: str, table: str) -> set[str]:
+    with psycopg.connect(url) as conn:
+        rows = conn.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = %s", (table,)
+        ).fetchall()
+    return {r[0] for r in rows}
+
+
+def test_tree_datasets_migration_backfills_sources_and_steps_down_and_up(
+    scratch_db: str,
+) -> None:
+    """0014 adds ``layout`` (checked, default ``dataset``), ``tree_schema`` and ``sources``
+    (back-filled with ``[upload_id]``) to dataset versions and the inspection columns to
+    uploads; it steps down and up cleanly."""
+    upgrade(scratch_db, "0013_plot_examples")
+    with psycopg.connect(scratch_db, autocommit=True) as conn:
+        conn.execute(
+            "INSERT INTO tenants (id, name, trust_tier, status) VALUES ('t1', 't1', "
+            "'internal', 'active')"
+        )
+        conn.execute(
+            "INSERT INTO projects (tenant_id, id, project_id, name) VALUES ('t1', 'p1', 'p1', 'p1')"
+        )
+        conn.execute(
+            "INSERT INTO datasets (id, tenant_id, project_id, name, labels, next_version) "
+            "VALUES ('ds_1', 't1', 'p1', 'd', '{}', 3)"
+        )
+        for version, upload in ((1, "'upl_1'"), (2, "NULL")):
+            conn.execute(
+                "INSERT INTO dataset_versions (dataset_id, version, tenant_id, project_id, "
+                f"status, objects, issues, upload_id) VALUES ('ds_1', {version}, 't1', 'p1', "
+                f"'ready', '{{}}', '[]', {upload})"
+            )
+    upgrade(scratch_db, "0014_tree_datasets")
+    with psycopg.connect(scratch_db, autocommit=True) as conn:
+        rows = conn.execute(
+            "SELECT version, layout, tree_schema, sources FROM dataset_versions ORDER BY version"
+        ).fetchall()
+        assert rows == [(1, "dataset", None, ["upl_1"]), (2, "dataset", None, [])]
+        with pytest.raises(psycopg.errors.CheckViolation):
+            conn.execute("UPDATE dataset_versions SET layout = 'cube' WHERE version = 1")
+    assert {"inspection", "inspect_run_id"} <= _columns(scratch_db, "uploads")
+    downgrade(scratch_db, "0013_plot_examples")
+    assert not {"layout", "tree_schema", "sources"} & _columns(scratch_db, "dataset_versions")
+    assert not {"inspection", "inspect_run_id"} & _columns(scratch_db, "uploads")
+    upgrade(scratch_db)
+    assert {"layout", "tree_schema", "sources"} <= _columns(scratch_db, "dataset_versions")
     command.check(alembic_config(scratch_db))
 
 

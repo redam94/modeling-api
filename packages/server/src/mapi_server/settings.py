@@ -85,6 +85,7 @@ DEFAULT_ESTIMATE_WALL_S: dict[str, float] = {
     RunKind.TRANSLATE_PRIORS.value: 60.0,
     RunKind.EXPLORE.value: 60.0,
     RunKind.GOVERNANCE.value: 900.0,
+    RunKind.INSPECT.value: 15.0,
 }
 """Wall-time estimate per run kind (seconds, capped at the run's timeout): what a run is
 charged against vCPU-second quotas until its attempts are metered into the cost ledger."""
@@ -545,6 +546,12 @@ class Settings(BaseSettings):
         ge=30,
         le=3600,
         description="Wall-clock limit of a POST /v1/plots:render run (the sandbox kills it)",
+    )
+    inspect_timeout_s: int = Field(
+        300,
+        ge=30,
+        le=3600,
+        description="Wall-clock limit of an upload inspect run (M4; it reads only metadata)",
     )
     render_plotly_enabled: bool = Field(
         False,

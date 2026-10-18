@@ -43,13 +43,13 @@ def _resolve(name: str) -> type[BaseModel]:
 
 
 def test_the_table_is_additive_and_unique() -> None:
-    assert ENDPOINTS[-len(M35_ENDPOINTS) :] == M35_ENDPOINTS
+    m4 = len(api.M4_ENDPOINTS)  # M4 rows follow the M3.5 rows
+    assert ENDPOINTS[-len(M35_ENDPOINTS) - m4 : -m4] == M35_ENDPOINTS
     assert len(M35_ENDPOINTS) >= 55
     keys = [(e.method, e.path) for e in ENDPOINTS]
     ops = [e.operation_id for e in ENDPOINTS]
     assert len(keys) == len(set(keys)) and len(ops) == len(set(ops))
-    # M4 rows (api.M4_ENDPOINTS) are in the contract before the server serves them
-    assert set(ROUTE_ACCESS) == set(ops) | {e.operation_id for e in api.M4_ENDPOINTS}
+    assert set(ROUTE_ACCESS) == set(ops)
 
 
 @pytest.mark.parametrize("e", M35_ENDPOINTS, ids=lambda e: e.operation_id)

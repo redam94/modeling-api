@@ -1710,7 +1710,7 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "POST", "/v1/datasets/{dataset_id}/versions", "create_dataset_version",
         "Ingest an upload as a new version (starts an ingest run)", "DatasetVersion", 202,
         request="DatasetVersionCreate",
-        errors=(*_BODY, *_NF, _E.CONFLICT, _E.CAPABILITY_UNSUPPORTED),
+        errors=(*_BODY, *_NF, _E.CONFLICT, _E.CAPABILITY_UNSUPPORTED, _E.PAYLOAD_TOO_LARGE),
         headers=("Idempotency-Key",),
     ),
     EndpointDecl(
@@ -3231,18 +3231,17 @@ M4_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "UploadInspection", 200, errors=(*_NF, _E.NOT_READY), headers=_PH,
     ),
 )  # fmt: skip
-"""The M4 endpoint table (tree datasets: upload inspection; additive to
-:data:`ENDPOINTS`)."""
+"""The M4 endpoint table (tree datasets: upload inspection; part of :data:`ENDPOINTS`)."""
 
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
-ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V04_ENDPOINTS + M35_ENDPOINTS
-"""Every endpoint of the v0.5 API (M1 + M2 + M3 + M3.5); the server serves every row."""
+ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V04_ENDPOINTS + M35_ENDPOINTS + M4_ENDPOINTS
+"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4); the server serves every row."""
 
-ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS + M4_ENDPOINTS
-"""Every endpoint of the contract: :data:`ENDPOINTS` plus the M4 rows
-(:data:`M4_ENDPOINTS`), which join :data:`ENDPOINTS` once the server serves them."""
+ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
+"""Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
+that were written against it)."""
 
 _RK, _AC = ResourceKind, Action
 

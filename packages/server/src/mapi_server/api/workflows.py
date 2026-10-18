@@ -67,6 +67,7 @@ from mapi_server.services.bundles import artifact_link, verified_bundle_object
 from mapi_server.services.quotas import charge_egress
 from mapi_server.services.runs import now
 from mapi_server.services.specs import resolve_dataset, resolve_model_version
+from mapi_server.services.submit import data_object_name
 from mapi_server.services.workflows.automation import schedule_next
 from mapi_server.services.workflows.events import event_dto, workflow_event_stream
 from mapi_server.services.workflows.runs import (
@@ -620,9 +621,9 @@ async def get_workflow_node_output(
     node_id: NodeId,
     port: Annotated[str, Path(pattern=r"^[a-z][a-z0-9_]{0,62}$")],
 ) -> ArtifactLink:
-    """A dataset output links to its ``data.zarr.zip``, a model output to its bundle; JSON
-    outputs (test results, metrics, tables, reports) are inline in the node and have no
-    object (``404``)."""
+    """A dataset output links to its ``data.zarr.zip`` (``data.tree.zip`` for a tree), a
+    model output to its bundle; JSON outputs (test results, metrics, tables, reports) are
+    inline in the node and have no object (``404``)."""
     row = await _node(ctx, session, run_id, node_id)
     out = (row.outputs or {}).get(port)
     if not isinstance(out, dict) or not isinstance(out.get("ref"), str):
@@ -630,12 +631,13 @@ async def get_workflow_node_output(
     ref = str(out["ref"])
     if ref.startswith("dataset://"):
         dv, _ = await resolve_dataset(session, ctx.scope, DatasetRef.parse(ref))
-        obj = dv.objects.get("data.zarr.zip") if dv is not None else None
+        data_name = data_object_name(dv) if dv is not None else "data.zarr.zip"
+        obj = dv.objects.get(data_name) if dv is not None else None
         if dv is None or obj is None:
             raise NotFoundError("output object", ref)
         link = await artifact_link(
             ctx.store,
-            name="data.zarr.zip",
+            name=data_name,
             bucket=obj["bucket"],
             key=obj["name"],
             generation=int(obj["generation"]),

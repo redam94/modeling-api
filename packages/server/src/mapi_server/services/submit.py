@@ -19,8 +19,10 @@ from mapi_spec.capabilities import Capabilities
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, ValidationFailed
 from mapi_spec.executor import RunKind
+from mapi_spec.ingest import IngestAssembly
 from mapi_spec.jobs import (
     BUNDLE_MANIFEST_OUTPUT,
+    DATATREE_OUTPUT,
     FIT_BUNDLE,
     INGEST_DATA,
     INPUT_BUNDLE,
@@ -34,9 +36,11 @@ from mapi_spec.jobs import (
     EvaluateJob,
     IngestJob,
     IngestSource,
+    InspectJob,
     RenderJob,
     parse_model_job_params,
     side_table_input,
+    upload_input,
 )
 from mapi_spec.loader import spec_hash
 from mapi_spec.quotas import QuotaDemand, default_priority
@@ -76,9 +80,11 @@ from mapi_server.services.verification import require_uploaded_code_allowed
 __all__ = [
     "DEFAULT_TIMEOUT_S",
     "admit",
+    "data_object_name",
     "data_ref",
     "submit_describe",
     "submit_ingest",
+    "submit_inspect",
     "submit_model_run",
     "submit_retry",
     "submit_run",
@@ -89,7 +95,16 @@ DEFAULT_TIMEOUT_S = 1800
 BUNDLE_INPUT = INPUT_BUNDLE
 
 
-def data_ref(dv: m.DatasetVersion, name: str = INGEST_DATA) -> dict[str, Any]:
+def data_object_name(dv: m.DatasetVersion) -> str:
+    """The data object of a dataset version: ``data.tree.zip`` for a tree version (M4),
+    else ``data.zarr.zip``."""
+    return DATATREE_OUTPUT if dv.layout == "tree" else INGEST_DATA
+
+
+def data_ref(dv: m.DatasetVersion, name: str | None = None) -> dict[str, Any]:
+    """The generation-pinned input ref of a version's data (``name`` defaults to
+    :func:`data_object_name`; the RunSpec then tells the runner its layout)."""
+    name = name or data_object_name(dv)
     obj = dv.objects.get(name)
     if obj is None:
         raise MapiError(
@@ -557,9 +572,10 @@ async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate)
 
 
 async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
-    """Workflow runs, their node runs and governance runs are driven by their owner (the
-    workflow orchestrator, a validation): a stand-alone retry would be a run nobody
-    collects, so it is refused (``CONFLICT``) with where to start again instead."""
+    """Workflow runs, their node runs, governance runs and (M4) inspect runs are driven by
+    their owner (the workflow orchestrator, a validation, an upload): a stand-alone retry
+    would be a run nobody collects, so it is refused (``CONFLICT``) with where to start
+    again instead."""
     kind = RunKind(old.kind)
     if kind in (RunKind.WORKFLOW, RunKind.WORKFLOW_NODE):
         workflow_id: object = (old.payload or {}).get("workflow_id")
@@ -571,6 +587,13 @@ async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
         raise Conflict(
             f"{kind.value} runs are not retried one by one: start the workflow again "
             f"({where}); unchanged nodes are reused from the cache"
+        )
+    if kind is RunKind.INSPECT:
+        # M4: the upload records its inspect run; ask the upload instead
+        upload = (old.labels or {}).get("upload") or "{upload_id}"
+        raise Conflict(
+            "inspect runs are not retried one by one: inspect the upload again "
+            f"(POST /v1/datasets/{old.dataset_id or '{dataset_id}'}/uploads/{upload}/inspect)"
         )
     if kind is RunKind.GOVERNANCE:
         validation = (old.labels or {}).get("validation")
@@ -629,27 +652,46 @@ async def submit_ingest(
     *,
     dataset: m.Dataset,
     version: int,
-    upload: m.Upload,
-    generation: int,
-    mapping: dict[str, Any],
+    uploads: list[tuple[m.Upload, int]],
+    mapping: dict[str, Any] | None = None,
+    assembly: IngestAssembly | None = None,
 ) -> m.Run:
-    # plan §8.5: the smallest class whose dataset cap holds the upload (uploads are capped
-    # at class L's limit, so one always fits)
-    resource_class = class_for_size(upload.size_bytes) or ResourceClass.L
+    """One ``ingest`` run for a new dataset version: a single upload with its ``mapping``
+    (input ``upload``) or, M4, the uploads of an ``assembly`` in source order (inputs
+    ``upload.<i>``). ``uploads`` pairs each upload with the generation it is pinned to."""
+    if (mapping is None) == (assembly is None) or not uploads:
+        raise ValueError("give a mapping (one upload) or an assembly")
+    total = sum(upload.size_bytes for upload, _ in uploads)
+    # plan §8.5: the smallest class whose dataset cap holds the upload(s) (the API caps the
+    # total at class L's limit, so one always fits)
+    resource_class = class_for_size(total) or ResourceClass.L
     # M3: whatever an upload decodes to must fit the class's scratch budget (Cloud Run's
     # filesystem lives in RAM), so a decompression bomb fails as PAYLOAD_TOO_LARGE first
     scratch = RESOURCE_CLASSES[resource_class].scratch_bytes
     caps: dict[str, Any] = {} if scratch is None else {"max_uncompressed_bytes": scratch}
-    job = IngestJob(
-        mapping=mapping,
-        dataset=f"dataset://{dataset.project_id}/{dataset.name}@v{version}",
-        source=IngestSource(
-            filename=upload.filename,
-            content_type=upload.content_type,
-            size_bytes=upload.size_bytes,
-        ),
-        **caps,
-    )
+    ref = f"dataset://{dataset.project_id}/{dataset.name}@v{version}"
+    inputs: dict[str, Any]
+    if assembly is not None:
+        if len(uploads) != len(assembly.sources):
+            raise ValueError("one upload per assembly source")
+        job = IngestJob(assembly=assembly, dataset=ref, **caps)
+        inputs = {
+            upload_input(i): StoredRef(upload.bucket, upload.object_name, generation)
+            for i, (upload, generation) in enumerate(uploads)
+        }
+    else:
+        upload, generation = uploads[0]
+        job = IngestJob(
+            mapping=mapping,
+            dataset=ref,
+            source=IngestSource(
+                filename=upload.filename,
+                content_type=upload.content_type,
+                size_bytes=upload.size_bytes,
+            ),
+            **caps,
+        )
+        inputs = {INPUT_UPLOAD: StoredRef(upload.bucket, upload.object_name, generation)}
     payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
     snapshot = await ctx.catalogs.get(session)
     run = await create_run(
@@ -659,11 +701,48 @@ async def submit_ingest(
         resource_class=resource_class,
         timeout_s=DEFAULT_TIMEOUT_S,
         payload=payload,
-        inputs={INPUT_UPLOAD: StoredRef(upload.bucket, upload.object_name, generation)},
+        inputs=inputs,
         spec_hash=spec_hash(payload),
         dataset_id=dataset.id,
         dataset_version=version,
         catalog_digest=snapshot.digest if snapshot else None,
+    )
+    return await _accept(session, ctx, run)
+
+
+async def submit_inspect(
+    session: AsyncSession,
+    ctx: ServerContext,
+    *,
+    dataset: m.Dataset,
+    upload: m.Upload,
+    generation: int,
+) -> m.Run:
+    """An ``inspect`` run (M4) listing the groups and arrays of ``upload`` from its metadata:
+    resource class S, the short ``inspect_timeout_s``, interactive priority. The caller
+    records the run on the upload (``inspect_run_id``)."""
+    scratch = RESOURCE_CLASSES[ResourceClass.S].scratch_bytes
+    caps: dict[str, Any] = {} if scratch is None else {"max_uncompressed_bytes": scratch}
+    job = InspectJob(
+        source=IngestSource(
+            filename=upload.filename,
+            content_type=upload.content_type,
+            size_bytes=upload.size_bytes,
+        ),
+        **caps,
+    )
+    payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
+    run = await create_run(
+        session,
+        ctx.scope,
+        kind=RunKind.INSPECT,
+        resource_class=ResourceClass.S,
+        timeout_s=ctx.settings.inspect_timeout_s,
+        payload=payload,
+        inputs={INPUT_UPLOAD: StoredRef(upload.bucket, upload.object_name, generation)},
+        labels={"upload": upload.id},
+        spec_hash=spec_hash(payload),
+        dataset_id=dataset.id,
     )
     return await _accept(session, ctx, run)
 
