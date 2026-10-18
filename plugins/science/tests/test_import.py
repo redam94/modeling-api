@@ -14,3 +14,5 @@ def test_plugins_tuple() -> None:
         "sci.turing_pattern",
         "sci.storm_localisation",
     } <= ids
+    assert {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens"} <= ids
+    assert "sci.ibp_features" in ids

@@ -17,7 +17,9 @@ Ported from the pymc-challenges case studies:
   the dispersion relation, P(Turing) and simulated patterns (E61 part A);
 * ``sci.storm_localisation`` - single-molecule localisation in raw EMCCD STORM frames: spot
   detection and camera calibration in NumPy, then a batched pixel-integrated Gaussian PSF
-  fit with Poisson counts, and a super-resolved render (E58).
+  fit with Poisson counts, and a super-resolved render (E58);
+* ``sci.ibp_features`` - latent binary features of small images, a truncated Indian buffet
+  process with every image's pattern summed out (E31, handwritten digits).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -27,6 +29,7 @@ Every plugin registers through the ``mapi.models`` entry point
 from importlib import metadata as _metadata
 
 from mapi_plugin_science.heat_plate import HeatPlateModel, HeatPlateSettings
+from mapi_plugin_science.ibp import IBPFeaturesModel, IBPFeaturesSettings
 from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
 from mapi_plugin_science.lens import StrongLensModel, StrongLensSettings
 from mapi_plugin_science.lgcp import LGCPGridModel, LGCPGridSettings
@@ -47,6 +50,7 @@ PLUGINS = (
     HeatPlateModel,
     TuringPatternModel,
     StormLocalisationModel,
+    IBPFeaturesModel,
 )
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
@@ -56,6 +60,8 @@ __all__ = [
     "FisherKPPSettings",
     "HeatPlateModel",
     "HeatPlateSettings",
+    "IBPFeaturesModel",
+    "IBPFeaturesSettings",
     "LGCPGridModel",
     "LGCPGridSettings",
     "StormLocalisationModel",

@@ -64,6 +64,7 @@ from mapi_spec.tree import TreeSchema
 
 from mapi_plugin_science import (
     heat_plate_data,
+    ibp_data,
     kpp_data,
     lens_data,
     lgcp_data,
@@ -491,6 +492,21 @@ _register(
         project="microscopy",
         dataset="dannhauser2022_unc13_dstorm",
         spec=_storm_spec,
+    )
+)
+_register(
+    ExportCase(
+        case="e31",
+        title="Handwritten digits (UCI optdigits), latent binary features",
+        notebook="E31_indian_buffet_process.py",
+        model="sci.ibp_features",
+        files=(ibp_data.CHALLENGES_FILE, ibp_data.CHALLENGES_TEST_FILE),
+        loader=lambda d: ibp_data.from_challenges(d / ibp_data.CHALLENGES_FILE),
+        synthetic=lambda: ibp_data.ibp_dataset(),
+        schema=ibp_data.IBP_SCHEMA,
+        project="vision",
+        dataset="optdigits_e31",
+        spec=ibp_data.DIGITS_SPEC_YAML,
     )
 )
 

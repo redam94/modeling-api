@@ -79,3 +79,27 @@ def test_schema_renames() -> None:
     canon = bm.apply_schema(raw)
     assert set(canon.dims) == {"geo", "time"} and set(canon.vars) == {"y"}
     assert bm.reverse_schema(canon) == raw
+
+
+def test_reverse_and_apply_rename_grid_attrs() -> None:
+    """A ``grid`` attr names dims, so it follows the dims through a rename (JSON or dict)."""
+    import json
+
+    bm = BindingMap({"dims": {"y": "row", "x": "col"}})
+    grid = {"y": "y", "x": "x", "frame": "digit", "origin": "upper"}
+    out = xr.Dataset(
+        {
+            "img": (("digit", "y", "x"), np.zeros((1, 2, 3)), {"grid": json.dumps(grid)}),
+            "raw": (("y", "x"), np.zeros((2, 3)), {"grid": dict(grid), "units": "1"}),
+            "bad": (("y",), np.zeros(2), {"grid": "not json"}),
+        }
+    )
+    rev = bm.reverse(out)
+    assert json.loads(rev["img"].attrs["grid"]) == {**grid, "y": "row", "x": "col"}
+    assert rev["raw"].attrs == {"grid": {**grid, "y": "row", "x": "col"}, "units": "1"}
+    assert rev["bad"].attrs["grid"] == "not json"
+    # the input is not mutated
+    assert json.loads(out["img"].attrs["grid"]) == grid
+    assert out["raw"].attrs["grid"] == grid
+    back = bm.apply(rev, missing="ignore")
+    assert json.loads(back["img"].attrs["grid"]) == grid

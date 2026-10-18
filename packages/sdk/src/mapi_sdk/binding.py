@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Hashable, Mapping
 from typing import Any, Literal, TypeVar
 
@@ -112,8 +113,39 @@ class BindingMap:
         )
 
 
+#: the keys of a ``grid`` attr (an output's ``GridDecl``) that name dims
+_GRID_DIM_KEYS = ("y", "x", "frame", "component")
+
+
 def _rename(ds: xr.Dataset, renames: Mapping[str, str]) -> xr.Dataset:
     if not renames:
         return ds
     names: dict[Hashable, Hashable] = {k: v for k, v in renames.items()}
-    return ds.rename(names)
+    out = ds.rename(names)
+    for name in out.data_vars:
+        var = out.variables[name]
+        if "grid" in var.attrs:
+            # a fresh dict: the renamed dataset may share its attrs dicts with the input
+            var.attrs = {**var.attrs, "grid": _rename_grid(var.attrs["grid"], renames)}
+    return out
+
+
+def _rename_grid(raw: Any, renames: Mapping[str, str]) -> Any:
+    """A ``grid`` attr (dict or JSON text) with its dim names renamed, in the same form.
+
+    A grid attr names the variable's dims, so it must follow the dims when they are renamed;
+    otherwise a recipe reading it looks for a dim the variable no longer has.
+    """
+    text = isinstance(raw, str)
+    try:
+        grid = json.loads(raw) if text else raw
+    except ValueError:
+        return raw
+    if not isinstance(grid, Mapping):
+        return raw
+    new = dict(grid)
+    for key in _GRID_DIM_KEYS:
+        dim = new.get(key)
+        if isinstance(dim, str) and dim in renames:
+            new[key] = renames[dim]
+    return json.dumps(new) if text else new

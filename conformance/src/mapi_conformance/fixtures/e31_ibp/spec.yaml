@@ -1,0 +1,23 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: stroke-features-ibp, project: vision, labels: {corpus: e31}}
+data:
+  dataset: dataset://vision/stroke_images@latest
+  bind:
+    dims: {y: row, x: col}
+    vars: {ink: pixels}
+  split: {kind: mask_block, dims: [digit, y], fraction: 0.15, block: {y: 4}, seed: 3}
+model:
+  use: sci.ibp_features@^1
+  settings: {n_features: 6, noise_sd: 0.2, score_draws: 200}
+  fit:
+    mode: evaluate_then_refit
+    seed: 31
+    tune: 500
+    draws: 500
+    chains: 4
+    engine: pymc
+    keep: {log_likelihood: true, posterior_predictive: {thin: 10}}
+evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
+outputs:
+  plots: [core.convergence, core.posterior_forest, sci.field_map, sci.ppc_image_grid]

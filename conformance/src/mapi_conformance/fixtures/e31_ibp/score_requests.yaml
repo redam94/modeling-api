@@ -1,0 +1,27 @@
+# E31: completed images, feature images and ownership; typed refusals of new digits and modes.
+- name: predict_two_digits
+  request: {mode: predict, output: {draws: 10}}
+  payload: two_digits
+  expect:
+    groups: [summary, draws]
+    vars: [ink_hat, features, feature_prob, owns]
+    sizes: {digit: 2, row: 8, col: 6}
+- name: predict_bottom_half
+  request: {mode: predict, output: {summary: [mean, q5, q95]}}
+  payload: bottom_half
+  expect: {vars: [ink_hat], sizes: {row: 4, col: 6, stat: 3}}
+- name: predictive_draws
+  request: {mode: predict, output: {kind: predictive, vars: [ink_hat]}}
+  payload: fit_data
+  expect: {vars: [ink_hat], sizes: {row: 8, col: 6}}
+- name: new_digit_refused
+  request: {mode: predict}
+  payload: new_digit
+  expect_error: UNSEEN_LEVELS
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: y, periods: 2}}
+  expect_error: MODE_NOT_SUPPORTED
+- name: simulate_unsupported
+  request: {mode: simulate}
+  payload: fit_data
+  expect_error: MODE_NOT_SUPPORTED
