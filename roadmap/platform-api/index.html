@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4599,6 +4629,8 @@
       
         
       
+        
+      
     
     
     
@@ -4687,6 +4719,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4814,14 +4874,15 @@
 <h1 id="the-local-platform-v02">The local platform <span class="mapi-badge">v0.2</span><a class="headerlink" href="#the-local-platform-v02" title="Permanent link">&para;</a></h1>
 <div class="admonition success">
 <p class="admonition-title">Status: available in v0.2 (milestone M1)</p>
-<p>The documents the platform accepts (<code>ModelSpec</code>, <code>ScoreRequest</code>), the error codes it returns
-and the executor protocol it drives were defined in v0.1. v0.2 puts an HTTP API, a job
-queue, a sandboxed runner, a local object store and the Expert web app around them, and
-runs it all on one machine. Start with the <a href="../../getting-started/quickstart/">quickstart</a>.</p>
+<p>v0.1 defined the documents that the platform accepts (<code>ModelSpec</code>, <code>ScoreRequest</code>). It
+also defined the error codes that the platform returns and the executor protocol that it
+controls. v0.2 puts an HTTP API, a job queue, a sandboxed runner, a local object store and
+the Expert web app around them. All of it runs on one machine. Start with the
+<a href="../../getting-started/quickstart/">quickstart</a>.</p>
 </div>
 <h2 id="what-changed-for-you">What changed for you<a class="headerlink" href="#what-changed-for-you" title="Permanent link">&para;</a></h2>
-<p>Everything you do in a notebook is also an API call, and the work runs in a sandbox instead
-of your process:</p>
+<p>Each thing that you do in a notebook is also an API call. The work runs in a sandbox, not in
+your process:</p>
 <table>
 <thead>
 <tr>
@@ -4832,11 +4893,11 @@ of your process:</p>
 <tbody>
 <tr>
 <td><code>validate_spec(spec, catalog, schema)</code></td>
-<td><code>POST /v1/specs:validate</code>, every problem at once with JSON pointers, and the editor's live squiggles</td>
+<td><code>POST /v1/specs:validate</code>, all problems at one time with JSON pointers, and the live squiggles in the editor</td>
 </tr>
 <tr>
 <td><code>fit_spec(spec, data, ...)</code></td>
-<td><code>POST /v1/runs</code> with <code>kind: fit</code>; progress streamed as server-sent events</td>
+<td><code>POST /v1/runs</code> with <code>kind: fit</code>. Progress comes as server-sent events.</td>
 </tr>
 <tr>
 <td><code>score_bundle(bundle, request, data)</code></td>
@@ -4864,15 +4925,16 @@ of your process:</p>
 <ul>
 <li><strong>The API never imports plugin code and never decodes your arrays.</strong> It validates specs and
   score requests from the exported catalog JSON and stored metadata. An import-linter contract
-  keeps numpy, xarray and every plugin out of the server, and the server image build checks
-  it against the installed packages.</li>
-<li><strong>Runs are idempotent and observable.</strong> Submissions carry idempotency keys; the executor's
-  status is the source of truth; events drive progress bars, never liveness decisions.</li>
-<li><strong>Errors are RFC 7807 problems</strong> with the same stable codes you see in Python.</li>
-<li><strong>OpenAPI 3.1</strong> describes every endpoint, and the generated clients are checked for drift in
-  CI.</li>
-<li><strong>Outputs are verified.</strong> A run's outputs are checked against the object store's own
-  checksums and generations, copied where runs cannot write, and signed.</li>
+  keeps numpy, xarray and all plugins out of the server. The build of the server image checks
+  this contract against the installed packages.</li>
+<li><strong>Runs are idempotent and observable.</strong> Submissions have idempotency keys. The status from
+  the executor is the source of truth. Events control progress bars. They never decide if a
+  run is alive.</li>
+<li><strong>Errors are RFC 7807 problems</strong> with the same stable codes that you see in Python.</li>
+<li><strong>OpenAPI 3.1</strong> describes each endpoint. CI checks the generated clients for drift.</li>
+<li><strong>Outputs are verified.</strong> The platform checks the outputs of a run against the checksums
+  and generations of the object store. Then it copies the outputs to a location where runs
+  cannot write, and signs them.</li>
 </ul>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Permanent link">&para;</a></h2>
 <ul>

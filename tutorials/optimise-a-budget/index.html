@@ -1134,6 +1134,8 @@
       
         
       
+        
+      
     
     
     
@@ -1371,6 +1373,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4599,6 +4629,8 @@
       
         
       
+        
+      
     
     
     
@@ -4687,6 +4719,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4812,13 +4872,14 @@
 
 
 <h1 id="optimise-a-budget">Optimise a budget<a class="headerlink" href="#optimise-a-budget" title="Permanent link">&para;</a></h1>
-<p>You have a fitted marketing-mix model (<code>mmm.bayesian</code> or <code>mmm.frequentist</code>) and next
-quarter's budget to split. The platform answers with mmm-framework's planning module,
-straight from the model's posterior: which channel should get what, how sure that is, and
-what each extra euro would buy. No external optimiser, no copy of the model elsewhere.</p>
-<p><strong>You need:</strong> a ready model version of an MMM (the <a href="../../guides/guided-tutorial/">Guided tutorial</a>
-or the <a href="../../guides/mmm/">marketing-mix guide</a> gets you one) and a token with
-<code>runs:create</code> on the project.</p>
+<p>You have a fitted marketing-mix model (<code>mmm.bayesian</code> or <code>mmm.frequentist</code>). You must divide
+the budget for the next quarter. The platform answers with the planning module of
+mmm-framework, directly from the posterior of the model. It tells you how much each channel
+must get and how sure that is. It also tells you what each extra euro would buy. You do not
+need an external optimiser or a copy of the model in a different location.</p>
+<p><strong>You need:</strong> a ready model version of an MMM and a token with <code>runs:create</code> on the project.
+To get a model version, use the <a href="../../guides/guided-tutorial/">Guided tutorial</a> or the
+<a href="../../guides/mmm/">marketing-mix guide</a>.</p>
 <h2 id="1-ask-for-a-plan">1. Ask for a plan<a class="headerlink" href="#1-ask-for-a-plan" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models/</span><span class="nv">$MODEL</span><span class="s2">/versions/</span><span class="nv">$VERSION</span><span class="s2">:optimize"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-Mapi-Project: </span><span class="nv">$PROJECT</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
@@ -4830,13 +4891,14 @@ or the <a href="../../guides/mmm/">marketing-mix guide</a> gets you one) and a t
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s1">  }'</span>
 </span></code></pre></div>
 <ul>
-<li><code>budget_change_pct: 0</code> reallocates today's total (or give <code>total_budget</code>, or
-  <code>mode: "free"</code> with <code>value_per_kpi</code> to let the plan choose the total).</li>
-<li>Bounds keep the plan inside what the model has seen: here TV may move between half and
-  one and a half times its current spend. Unlisted channels move within <code>default_bounds</code>
-  (0 to 2x).</li>
-<li><code>objective: "p10"</code> would plan for a cautious outcome (the 10th percentile of the KPI
-  across posterior draws) instead of the expected one.</li>
+<li><code>budget_change_pct: 0</code> divides the current total again. Alternatively, give
+  <code>total_budget</code>. To let the plan select the total, give <code>mode: "free"</code> with
+  <code>value_per_kpi</code>.</li>
+<li>Bounds keep the plan inside the data that the model has seen. Here, TV can move between
+  half and one and a half times its current spend. Channels that are not in the list move
+  inside <code>default_bounds</code> (0 to 2x).</li>
+<li><code>objective: "p10"</code> makes a plan for a cautious result instead of the expected result. The
+  cautious result is the 10th percentile of the KPI across posterior draws.</li>
 </ul>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Python</label><label for="__tabbed_1_2">Command line</label></div>
 <div class="tabbed-content">
@@ -4861,20 +4923,23 @@ or the <a href="../../guides/mmm/">marketing-mix guide</a> gets you one) and a t
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--channel<span class="w"> </span><span class="s1">'tv={"min_multiplier": 0.5, "max_multiplier": 1.5}'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--objective<span class="w"> </span>p10<span class="w"> </span>--frontier<span class="w"> </span><span class="m">8</span>
 </span></code></pre></div>
-<p>The plan prints as a table (current and recommended spend, change, the next unit's
-return, a note when a channel goes beyond the spend the model has seen), then the
-frontier; <code>--json</code> gives the whole <code>Optimization</code>.</p>
+<p>The command shows the plan as a table, and then the frontier. The table gives the
+current and recommended spend, the change and the return of the next unit. It also
+gives a note when a channel goes above the spend that the model has seen. <code>--json</code>
+gives the full <code>Optimization</code>.</p>
 </div>
 </div>
 </div>
-<p>The answer is an <code>Optimization</code>: <code>200</code> with the plan when the sandboxed run finished
-within <code>Prefer: wait</code>, else <code>202</code> with the run - poll <code>GET /v1/optimizations/{run_id}</code>
-until <code>done</code> (the client and the CLI do this for you, resending with the same
-<code>Idempotency-Key</code> so the plan is computed once).</p>
+<p>The answer is an <code>Optimization</code>. If the sandboxed run finished within <code>Prefer: wait</code>, you
+get <code>200</code> with the plan. If not, you get <code>202</code> with the run. Then poll
+<code>GET /v1/optimizations/{run_id}</code> until <code>done</code>. The client and the CLI do this for you. They
+send the request again with the same <code>Idempotency-Key</code>, so that the platform calculates the
+plan only one time.</p>
 <h2 id="2-read-the-plan">2. Read the plan<a class="headerlink" href="#2-read-the-plan" title="Permanent link">&para;</a></h2>
-<p>The <code>result</code> of a real plan - the demo's two-channel model from the
-<a href="../../guides/python-client/">Python client guide</a>, <code>objective: "mean"</code>, five frontier points,
-rounded and shortened - computed in 9 seconds of sandbox time on a laptop:</p>
+<p>This is the <code>result</code> of a real plan. It is for the two-channel demo model from the
+<a href="../../guides/python-client/">Python client guide</a>, with <code>objective: "mean"</code> and five frontier
+points. We rounded and shortened the values. The plan took 9 seconds of sandbox time on a
+laptop:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">"format"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mapi.optimize/v1"</span><span class="p">,</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">"objective_label"</span><span class="p">:</span><span class="w"> </span><span class="s2">"expected KPI (posterior mean)"</span><span class="p">,</span>
@@ -4903,33 +4968,38 @@ rounded and shortened - computed in 9 seconds of sandbox time on a laptop:</p>
 </span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="w">  </span><span class="nt">"notes_plain"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"Frontier optimizes the expected KPI (posterior mean) at each budget; …"</span><span class="p">]</span>
 </span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>On this model the honest answer is "move a little from search to TV, but do not expect
-much": the plan adds about 10,000 EUR on average, but the uplift's 90% range runs from -61,000
-to +70,000 and only 62.5% of the posterior draws prefer it. At the plan both channels return
-the same 3.48 per extra euro, which is what an optimum looks like.</p>
+<p>For this model, the honest answer is "move a small amount from search to TV, but do not
+expect much". On average, the plan adds about 10,000 EUR. But the 90% range of the uplift is
+from -61,000 to +70,000. Only 62.5% of the posterior draws prefer the plan. With the plan,
+the two channels return the same 3.48 for each extra euro. This is what an optimum looks
+like.</p>
 <ul>
-<li><strong><code>uplift</code></strong> is the plan's KPI minus today's plan's, per posterior draw;
-  <strong><code>prob_positive_uplift</code></strong> the chance the change helps at all.</li>
-<li><strong><code>marginal_roi</code></strong> is what the next euro on each channel returns at the plan; at a good
-  plan the channels that are not at a bound return about the same.</li>
-<li><strong><code>stability</code></strong> is the share of posterior draws whose own best plan moves the channel
-  the same way - low values mean the data cannot tell.</li>
-<li><strong><code>expected_regret</code></strong> is the KPI left on the table by committing to one plan under
+<li><strong><code>uplift</code></strong> is the KPI of the plan minus the KPI of the current plan, for each posterior
+  draw. <strong><code>prob_positive_uplift</code></strong> is the probability that the change helps.</li>
+<li><strong><code>marginal_roi</code></strong> is the return of the next euro on each channel, with the plan. In a good
+  plan, the channels that are not at a bound return about the same.</li>
+<li><strong><code>stability</code></strong> is the fraction of posterior draws whose own best plan moves the channel
+  in the same direction. Low values tell you that the data cannot give an answer.</li>
+<li><strong><code>expected_regret</code></strong> is the KPI that you lose because you select one plan when there is
   uncertainty.</li>
-<li><strong><code>shadow_price</code></strong> is what the next unit of money would add to the KPI at this plan;
-  <strong><code>extrapolated</code></strong> marks a channel pushed beyond the spend range seen in the data.</li>
-<li><strong><code>frontier</code></strong> shows the best plan at other totals: invest while its marginal ROI stays
-  above what a euro is worth to you.</li>
-<li><strong><code>notes_plain</code></strong> says, for example, when a channel is pushed beyond the spend the model
-  has seen (its numbers then extrapolate the response curve).</li>
+<li><strong><code>shadow_price</code></strong> is the KPI that the next unit of money would add, with this plan.
+  <strong><code>extrapolated</code></strong> marks a channel that the plan pushes above the spend range in the data.</li>
+<li><strong><code>frontier</code></strong> shows the best plan at other totals. Invest while its marginal ROI stays
+  above the value that a euro has for you.</li>
+<li><strong><code>notes_plain</code></strong> gives notes. For example, it tells you when the plan pushes a channel
+  above the spend that the model has seen. Then the numbers of that channel extrapolate the
+  response curve.</li>
 </ul>
-<p>The run's plot, <code>mmm.budget_plans</code>, compares today's allocation and expected KPI with the
-plan's (<code>GET /v1/runs/{run_id}/plots</code>).</p>
+<p>The plot of the run, <code>mmm.budget_plans</code>, compares the current allocation and expected KPI
+with those of the plan (<code>GET /v1/runs/{run_id}/plots</code>).</p>
 <h2 id="3-check-it-with-a-forecast">3. Check it with a forecast<a class="headerlink" href="#3-check-it-with-a-forecast" title="Permanent link">&para;</a></h2>
-<p>A plan is a model's answer, not a measurement. Before you commit, score the plan's weekly
-spend as a forecast (<code>mode: forecast</code>, <code>inputs_stage: weekly</code>) and, better, test the
-biggest move with a lift test - then add the result to the model's <code>calibration</code> block so
-the next plan knows.</p>
+<p>A plan is the answer of a model. It is not a measurement. Before you commit, do these steps:</p>
+<ol>
+<li>Score the weekly spend of the plan as a forecast (<code>mode: forecast</code>,
+   <code>inputs_stage: weekly</code>).</li>
+<li>If possible, test the largest move with a lift test.</li>
+<li>Add the result to the <code>calibration</code> block of the model, so that the next plan uses it.</li>
+</ol>
 
 
 

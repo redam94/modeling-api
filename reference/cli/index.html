@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4608,6 +4638,8 @@
       
         
       
+        
+      
     
     
     
@@ -4696,6 +4728,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4827,17 +4887,19 @@
 
 
 <h1 id="cli-and-python-client-v05">CLI and Python client <span class="mapi-badge">v0.5</span><a class="headerlink" href="#cli-and-python-client-v05" title="Permanent link">&para;</a></h1>
-<p>Two Apache-2.0 packages talk to the <code>/v1</code> <a href="../http-api/">HTTP API</a>:</p>
+<p>Two Apache-2.0 packages send requests to the <code>/v1</code> <a href="../http-api/">HTTP API</a>:</p>
 <ul>
-<li><strong><code>mapi-client</code></strong> (<code>mapi_client</code>): a typed Python client, sync and async, built on <code>httpx</code>;</li>
-<li><strong><code>mapi-cli</code></strong> (<code>mapi</code>): the command line, built on the client and on the SDK for local runs.</li>
+<li><strong><code>mapi-client</code></strong> (<code>mapi_client</code>): a typed Python client. It has a sync and an async
+  version. It uses <code>httpx</code>.</li>
+<li><strong><code>mapi-cli</code></strong> (<code>mapi</code>): the command line. It uses the client, and the SDK for local runs.</li>
 </ul>
-<p>Both use the Pydantic DTOs from <code>mapi_spec.api</code> for every request and response, and raise
-<code>mapi_spec.errors.MapiError</code> subclasses rebuilt from RFC 7807 problem documents.</p>
-<p>This page is a compact summary. The guides walk through each with tested examples
-(<a href="../../guides/cli/">command line</a>, <a href="../../guides/python-client/">Python client</a>), and the
-<a href="../generated/cli-reference/">CLI reference</a> lists every command's <code>--help</code>, generated from the
-installed CLI.</p>
+<p>The two packages use the Pydantic DTOs from <code>mapi_spec.api</code> for each request and response.
+For errors, they raise <code>mapi_spec.errors.MapiError</code> subclasses. They make these subclasses from
+RFC 7807 problem documents.</p>
+<p>This page is a short summary. The guides give tested examples for each package
+(<a href="../../guides/cli/">command line</a>, <a href="../../guides/python-client/">Python client</a>). The
+<a href="../generated/cli-reference/">CLI reference</a> shows the <code>--help</code> text of each command. The
+installed CLI makes that page.</p>
 <h2 id="python-client">Python client<a class="headerlink" href="#python-client" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
@@ -4962,62 +5024,81 @@ installed CLI.</p>
 </tbody>
 </table>
 <p><strong>v0.4.</strong> <code>api.endpoint(alias)</code> is a <code>RemoteEndpoint</code> (<code>schema()</code>, <code>validate(ds)</code>,
-<code>score(ds) -&gt; xr.Dataset</code> with inline XrJSON); <code>api.signup()</code> and <code>api.verify_email()</code> are
-public calls sent without credentials. <code>mapi_client.webhooks.verify(headers, body, secret)</code>
-checks a delivery's <code>Mapi-Signature</code> (<a href="../../guides/webhook-receivers/">Receiving webhooks</a>);
-<code>mapi_client.xrjson</code> encodes and decodes inline payloads; budgets are optimised by the
-platform (<a href="../../tutorials/optimise-a-budget/">Optimise a budget</a>).
-Every operation of the endpoint table has a request builder, checked against the
-contract by the client's tests.</p>
-<p><strong>v0.5.</strong> <code>api.workflows.stream_events(run_id)</code> follows a workflow run's server-sent events:
-<code>WorkflowSnapshot</code> (the run with every node, first on each connection),
-<code>WorkflowEventFrame</code> (<code>workflow.node.*</code>, <code>workflow.branch.decided</code>, ...; its <code>id</code> is the
-event's <code>seq</code>) and <code>WorkflowEnd</code>; a dropped connection resumes with <code>Last-Event-ID</code> and no
-event is yielded twice. Workflow documents are accepted as a <code>WorkflowSpec</code>, a mapping, YAML
-text or a file path (<code>api.workflows.validate(Path("wf.yaml"))</code>); <code>upsert</code> adds a revision only
-when the document's hash changed. <code>models.optimize</code> repeats a keyed <code>Prefer: wait</code> request
-until the plan is ready; <code>datasets.explore</code>, <code>models.explore</code> and <code>models.compare</code> wait for
-the explore run and <code>explorations.view(exploration, section)</code> downloads one view.
-<code>catalog.recommend(goal=..., data_shape=[...])</code> checks the answers against the chooser's
-questions before sending. <code>validations.decide</code> (and <code>approve</code>, <code>reject</code>) is never resent
-after a lost response; reviewers sign in (<code>mapi login</code>), since no API token can approve.
-Failed workflow runs raise the failing node's error from <code>wait</code> and <code>run(wait=True)</code>
-(<code>raise_on_failure=False</code> returns the run instead).</p>
+<code>score(ds) -&gt; xr.Dataset</code> with inline XrJSON). <code>api.signup()</code> and <code>api.verify_email()</code> are
+public calls. The client sends them without credentials.
+<code>mapi_client.webhooks.verify(headers, body, secret)</code> does a check of the <code>Mapi-Signature</code> of a
+delivery (<a href="../../guides/webhook-receivers/">Receiving webhooks</a>). <code>mapi_client.xrjson</code> encodes
+and decodes inline payloads. The platform optimises budgets
+(<a href="../../tutorials/optimise-a-budget/">Optimise a budget</a>).
+Each operation in the endpoint table has a request builder. The tests of the client do a check
+of each builder against the contract.</p>
+<p><strong>v0.5.</strong> <code>api.workflows.stream_events(run_id)</code> follows the server-sent events of a workflow
+run. It gives these items:</p>
+<ul>
+<li><code>WorkflowSnapshot</code>: the run with all its nodes. It is the first item on each connection.</li>
+<li><code>WorkflowEventFrame</code>: <code>workflow.node.*</code>, <code>workflow.branch.decided</code> and other events. Its <code>id</code>
+  is the <code>seq</code> of the event.</li>
+<li><code>WorkflowEnd</code>.</li>
+</ul>
+<p>If the connection stops, the client continues with <code>Last-Event-ID</code>. It does not give an event
+two times.</p>
+<p>The client accepts a workflow document as a <code>WorkflowSpec</code>, a mapping, YAML text or a file
+path (<code>api.workflows.validate(Path("wf.yaml"))</code>). <code>upsert</code> adds a revision only when the hash
+of the document changed. <code>models.optimize</code> sends a keyed <code>Prefer: wait</code> request again until
+the plan is ready. <code>datasets.explore</code>, <code>models.explore</code> and <code>models.compare</code> wait for the
+explore run. <code>explorations.view(exploration, section)</code> downloads one view.</p>
+<p><code>catalog.recommend(goal=..., data_shape=[...])</code> does a check of the answers against the
+questions of the chooser before it sends them. The client does not send
+<code>validations.decide</code> (and <code>approve</code>, <code>reject</code>) again after a lost response. Reviewers sign in
+(<code>mapi login</code>), because an API token cannot approve. If a workflow run fails, <code>wait</code> and
+<code>run(wait=True)</code> raise the error of the node that failed. With <code>raise_on_failure=False</code>, they
+return the run.</p>
 <ul>
 <li><code>AsyncClient</code> has the same resources with <code>await</code> and <code>async for</code>.</li>
 <li>List calls return lazy paginators that follow <code>next_cursor</code>.</li>
-<li>Calls that accept an <code>Idempotency-Key</code> get a fresh UUID unless you pass one. Idempotent
-  calls are retried on 502, 503, 504 and connection errors, honouring <code>Retry-After</code>.</li>
-<li><code>429 RATE_LIMITED</code> is waited out (<code>Retry-After</code>, then exponential back-off) and resent for
-  every method, because the server refused it before acting; <code>RateLimited</code> is raised after
-  <code>RetryPolicy.rate_limit_retries</code> attempts. <code>429 QUOTA_EXCEEDED</code> raises <code>QuotaExceeded</code> at
-  once, and <code>retry_after_of(exc)</code> gives the seconds until the quota resets (v0.3).</li>
-<li><code>api.tokens.create</code> returns the token's secret once (<code>TokenCreated.secret</code>, kept out of
-  <code>repr</code>) and is never resent after a lost response, so it cannot mint two tokens.</li>
+<li>If a call accepts an <code>Idempotency-Key</code> and you do not give one, the client makes a new
+  UUID. The client tries idempotent calls again after 502, 503, 504 and connection errors. It
+  obeys <code>Retry-After</code>.</li>
+<li>For <code>429 RATE_LIMITED</code>, the client waits (<code>Retry-After</code>, then exponential back-off). Then it
+  sends the request again, for all methods. This is safe because the server refused the
+  request before it did an action. After <code>RetryPolicy.rate_limit_retries</code> attempts, the client
+  raises <code>RateLimited</code>.</li>
+<li><code>429 QUOTA_EXCEEDED</code> raises <code>QuotaExceeded</code> immediately. <code>retry_after_of(exc)</code> gives the
+  number of seconds until the quota resets (v0.3).</li>
+<li><code>api.tokens.create</code> returns the secret of the token one time (<code>TokenCreated.secret</code>). The
+  secret is not in the <code>repr</code>. The client does not send the call again after a lost response.
+  Thus it cannot make two tokens.</li>
 <li><code>datasets.upload</code> accepts a path, bytes or an <code>xr.Dataset</code> (with the <code>xarray</code> extra). It
-  creates the dataset if needed, PUTs the file to the signed URL, starts the ingest run and
-  waits for the version to be ready. A dataset that carries its raw schema in the
-  <code>mapi_schema</code> attribute keeps its dim policies and roles.</li>
-<li><code>runs.stream_events</code> yields <code>RunSnapshot</code>, <code>RunEventFrame</code> (persisted events, with an id),
-  <code>RunLiveFrame</code> (live <code>progress</code> and <code>log</code> frames, without an id) and finally <code>RunEnd</code>.</li>
-<li><code>models.score</code> sends <code>Prefer: wait=N</code>. While the run is still going it repeats the same
-  request with the same <code>Idempotency-Key</code>; the server's idempotent replay returns the finished
-  <code>ScoreCallResult</code> with fresh output links.</li>
-<li>Signed storage URLs are fetched without the API's <code>Authorization</code> header, and every
-  transfer is checked against the storage-computed CRC32C and size.</li>
+  makes the dataset if necessary. Then it PUTs the file to the signed URL and starts the ingest
+  run. Then it waits until the version is ready. If a dataset has its raw schema in the
+  <code>mapi_schema</code> attribute, the dataset keeps its dim policies and roles.</li>
+<li><code>runs.stream_events</code> gives <code>RunSnapshot</code>, <code>RunEventFrame</code> (persisted events, with an id),
+  <code>RunLiveFrame</code> (live <code>progress</code> and <code>log</code> frames, without an id) and at the end <code>RunEnd</code>.</li>
+<li><code>models.score</code> sends <code>Prefer: wait=N</code>. While the run continues, the client sends the same
+  request again with the same <code>Idempotency-Key</code>. The idempotent replay of the server returns
+  the completed <code>ScoreCallResult</code> with new output links.</li>
+<li>The client gets signed storage URLs without the <code>Authorization</code> header of the API. It does a
+  check of each transfer against the CRC32C and size that the storage calculated.</li>
 </ul>
-<p><strong>Configuration.</strong> Arguments beat <code>MAPI_URL</code> (fallback <code>MAPI_API_URL</code>), <code>MAPI_TOKEN</code>,
-<code>MAPI_PROJECT</code> and <code>MAPI_PROFILE</code>, which beat a profile in <code>~/.config/mapi/config.toml</code>
-(<code>$MAPI_CONFIG</code>, <code>$XDG_CONFIG_HOME</code>), which beats <code>http://127.0.0.1:8000</code>. A token is never
-sent over plain HTTP to a non-loopback host. v0.2 has no authentication.</p>
+<p><strong>Configuration.</strong> The client uses the first value that it finds in this sequence:</p>
+<ol>
+<li>Arguments.</li>
+<li><code>MAPI_URL</code> (fallback <code>MAPI_API_URL</code>), <code>MAPI_TOKEN</code>, <code>MAPI_PROJECT</code> and <code>MAPI_PROFILE</code>.</li>
+<li>A profile in <code>~/.config/mapi/config.toml</code> (<code>$MAPI_CONFIG</code>, <code>$XDG_CONFIG_HOME</code>).</li>
+<li><code>http://127.0.0.1:8000</code>.</li>
+</ol>
+<p>The client does not send a token over plain HTTP to a host that is not a loopback host. v0.2
+has no authentication.</p>
 <p><strong>Credentials and project (v0.3).</strong> The client authenticates with an API token (argument,
-<code>MAPI_TOKEN</code> or the profile's <code>token</code>) or, when none is set, with the OpenID Connect sign-in
-<code>mapi login</code> stored for the profile in <code>credentials.json</code> (mode <code>0600</code>, next to the config
-file, or <code>$MAPI_CREDENTIALS</code>). A stored sign-in is used only for the API URL it was made for;
-its ID token is renewed with the refresh token shortly before it expires and after a <code>401</code>.
-<code>project</code> (<code>Client(project=…)</code>, <code>MAPI_PROJECT</code>, the profile's <code>project</code>) is sent as
-<code>X-Mapi-Project: &lt;tenant&gt;/&lt;project&gt;</code> on project-scoped requests only: not on identity, tenant
-and operator routes, nor where the path already names the project.</p>
+<code>MAPI_TOKEN</code> or the <code>token</code> of the profile). If there is no token, the client uses the OpenID
+Connect sign-in from <code>mapi login</code>. <code>mapi login</code> keeps this sign-in for the profile in
+<code>credentials.json</code> (mode <code>0600</code>, next to the config file, or <code>$MAPI_CREDENTIALS</code>). The client
+uses a stored sign-in only for the API URL of that sign-in. The client renews the ID token with
+the refresh token a short time before it expires, and after a <code>401</code>.</p>
+<p>The client sends <code>project</code> (<code>Client(project=…)</code>, <code>MAPI_PROJECT</code>, the <code>project</code> of the profile)
+as <code>X-Mapi-Project: &lt;tenant&gt;/&lt;project&gt;</code>. It sends this header only on project-scoped requests.
+It does not send it on identity, tenant and operator routes, or when the path names the
+project.</p>
 <table>
 <thead>
 <tr>
@@ -5029,13 +5110,13 @@ and operator routes, nor where the path already names the project.</p>
 <tbody>
 <tr>
 <td><code>~/.config/mapi/config.toml</code></td>
-<td><code>0600</code> when written by <code>mapi</code></td>
+<td><code>0600</code> when <code>mapi</code> writes it</td>
 <td>Profiles: <code>url</code>, <code>project</code>, <code>token</code>, <code>timeout</code>, <code>max_retries</code>, <code>verify</code>, <code>oidc_issuer</code>, <code>oidc_client_id</code>, <code>oidc_client_secret</code></td>
 </tr>
 <tr>
 <td><code>~/.config/mapi/credentials.json</code></td>
 <td><code>0600</code></td>
-<td>Per profile: the API URL, issuer, client id, ID token, refresh token and expiry of a <code>mapi login</code> sign-in</td>
+<td>For each profile: the API URL, issuer, client id, ID token, refresh token and expiry of a <code>mapi login</code> sign-in</td>
 </tr>
 </tbody>
 </table>
@@ -5057,8 +5138,9 @@ and operator routes, nor where the path already names the project.</p>
 </span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>mapi<span class="w"> </span>spec<span class="w"> </span>upgrade<span class="w"> </span>spec.yaml<span class="w"> </span>--check
 </span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>mapi<span class="w"> </span>config<span class="w"> </span>show<span class="w"> </span><span class="p">|</span><span class="w"> </span>path<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nb">set</span><span class="w"> </span>KEY<span class="w"> </span>VALUE<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nb">unset</span><span class="w"> </span>KEY
 </span></code></pre></div>
-<p>Multi-tenant commands (v0.3; walked through in <a href="../../guides/authentication/#the-command-line">Authentication</a>
-and <a href="../../guides/administration/">Administration</a>, both run by the test suite):</p>
+<p>Multi-tenant commands (v0.3). <a href="../../guides/authentication/#the-command-line">Authentication</a>
+and <a href="../../guides/administration/">Administration</a> show these commands step by step. The test
+suite runs the two guides:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mapi<span class="w"> </span>login<span class="w"> </span><span class="o">[</span>--device<span class="w"> </span><span class="p">|</span><span class="w"> </span>--no-browser<span class="w"> </span><span class="p">|</span><span class="w"> </span>--with-token<span class="o">]</span><span class="w"> </span><span class="o">[</span>--issuer<span class="w"> </span>URL<span class="w"> </span>--client-id<span class="w"> </span>ID<span class="o">]</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>mapi<span class="w"> </span>whoami
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>mapi<span class="w"> </span>use<span class="w"> </span><span class="o">[</span>TENANT/PROJECT<span class="w"> </span><span class="p">|</span><span class="w"> </span>--unset<span class="o">]</span><span class="w">          </span><span class="c1"># --project / MAPI_PROJECT for one command</span>
@@ -5082,40 +5164,41 @@ and <a href="../../guides/administration/">Administration</a>, both run by the t
 <tbody>
 <tr>
 <td><code>login</code></td>
-<td>Browser sign-in: authorization code + PKCE (S256) with a loopback redirect to <code>127.0.0.1:&lt;port&gt;/callback</code>, <code>state</code> and <code>nonce</code> checked. <code>--device</code>: the device authorization grant. <code>--with-token</code>: an API token from stdin, checksum-checked and verified with <code>GET /v1/me</code>. <code>--url</code>, <code>--issuer</code> and <code>--client-id</code> are saved in the profile</td>
+<td>Browser sign-in: authorization code + PKCE (S256) with a loopback redirect to <code>127.0.0.1:&lt;port&gt;/callback</code>. The CLI does a check of <code>state</code> and <code>nonce</code>. <code>--device</code>: the device authorization grant. <code>--with-token</code>: an API token from stdin. The CLI does a check of its checksum and verifies it with <code>GET /v1/me</code>. The CLI saves <code>--url</code>, <code>--issuer</code> and <code>--client-id</code> in the profile</td>
 </tr>
 <tr>
 <td><code>whoami</code></td>
-<td><code>GET /v1/me</code>: principal, how you signed in, operator flag, tenants and projects with roles</td>
+<td><code>GET /v1/me</code>: the principal, how you signed in, the operator flag, and the tenants and projects with roles</td>
 </tr>
 <tr>
 <td><code>use</code></td>
-<td>Checks membership with <code>GET /v1/me</code> (a bare project id is qualified when one tenant has it) and saves <code>project</code> in the profile; a token only acts in its own project</td>
+<td>Does a check of membership with <code>GET /v1/me</code>. If only one tenant has a bare project id, the CLI adds the tenant to it. The CLI saves <code>project</code> in the profile. A token acts only in its own project</td>
 </tr>
 <tr>
 <td><code>logout</code></td>
-<td>Forgets the profile's sign-in (revoking its refresh token at the identity provider) and token; <code>--revoke</code> also revokes the token on the server</td>
+<td>Removes the sign-in and token of the profile. It also revokes the refresh token at the identity provider. <code>--revoke</code> also revokes the token on the server</td>
 </tr>
 <tr>
 <td><code>tokens create</code></td>
-<td>Prints the secret once, alone on stdout (or <code>--save</code> stores it in the profile); <code>--json</code> includes it, as requested</td>
+<td>Prints the secret one time, alone on stdout. With <code>--save</code>, the CLI keeps it in the profile. <code>--json</code> includes it, because you asked for it</td>
 </tr>
 <tr>
 <td><code>usage</code></td>
-<td>Exact cost (micro-units, price table named), vCPU- and GiB-seconds, groups, and each quota's use and reset time</td>
+<td>The exact cost (micro-units, with the name of the price table), vCPU-seconds and GiB-seconds, groups, and the use and reset time of each quota</td>
 </tr>
 <tr>
 <td><code>runs get</code>, <code>runs ls</code></td>
-<td>Show the run's metered cost (<code>~</code> while estimated)</td>
+<td>Show the metered cost of the run (<code>~</code> while it is an estimate)</td>
 </tr>
 <tr>
 <td><code>admin ...</code></td>
-<td>Every change prints a before/after table on stderr and asks for confirmation; <code>--yes</code> skips it. <code>quotas set</code> replaces the whole policy</td>
+<td>Each change prints a before/after table on stderr and asks you to confirm. <code>--yes</code> skips this step. <code>quotas set</code> replaces the full policy</td>
 </tr>
 </tbody>
 </table>
-<p>Guided mode and integrations (v0.4; walked through in the
-<a href="../../guides/cli/#endpoints-webhooks-and-sharing">command-line guide</a>):</p>
+<p>Guided mode and integrations (v0.4). The
+<a href="../../guides/cli/#endpoints-webhooks-and-sharing">command-line guide</a> shows these commands step
+by step:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>ls<span class="w"> </span><span class="p">|</span><span class="w"> </span>get<span class="w"> </span>ALIAS<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nb">history</span><span class="w"> </span>ALIAS<span class="w"> </span><span class="p">|</span><span class="w"> </span>schema<span class="w"> </span>ALIAS<span class="w"> </span><span class="o">[</span>--example<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>snippets<span class="w"> </span>ALIAS<span class="w"> </span><span class="o">[</span>-l<span class="w"> </span>LANG<span class="o">]</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>promote<span class="w"> </span>ALIAS<span class="w"> </span>MODEL_REF<span class="w"> </span><span class="o">[</span>--override<span class="w"> </span>--reason<span class="w"> </span>TEXT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--expected-revision<span class="w"> </span>N<span class="o">]</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>rollback<span class="w"> </span>ALIAS<span class="w"> </span>--reason<span class="w"> </span>TEXT<span class="w"> </span><span class="o">[</span>--to-revision<span class="w"> </span>N<span class="o">]</span>
@@ -5140,37 +5223,37 @@ and <a href="../../guides/administration/">Administration</a>, both run by the t
 <tbody>
 <tr>
 <td><code>endpoints promote</code>, <code>endpoints rollback</code></td>
-<td>Show the current version and ask first (<code>--yes</code> skips); <code>--override</code> needs <code>--reason</code></td>
+<td>Show the current version and ask you first (<code>--yes</code> skips this step). <code>--override</code> needs <code>--reason</code></td>
 </tr>
 <tr>
 <td><code>webhooks create</code>, <code>webhooks rotate</code></td>
-<td>Print the signing secret once, alone on stdout; <code>rotate</code> and <code>rm</code> ask first</td>
+<td>Print the signing secret one time, alone on stdout. <code>rotate</code> and <code>rm</code> ask you first</td>
 </tr>
 <tr>
 <td><code>webhooks update</code></td>
-<td><code>--enable</code> switches a paused or automatically disabled webhook back on and resets its failure count; <code>-e</code> replaces the event list</td>
+<td><code>--enable</code> turns on a webhook that is paused or that the server disabled. It also sets the failure count to zero. <code>-e</code> replaces the event list</td>
 </tr>
 <tr>
 <td><code>plots embed</code></td>
-<td>Prints the embed URL (it carries the token) once; <code>revoke</code> asks first</td>
+<td>Prints the embed URL one time. The URL contains the token. <code>revoke</code> asks you first</td>
 </tr>
 <tr>
 <td><code>guided detect</code>, <code>guided draft --csv</code></td>
-<td>Profile the CSV locally and send only column summaries</td>
+<td>Profile the CSV file locally and send only summaries of the columns</td>
 </tr>
 <tr>
 <td><code>signup</code>, <code>verify-email</code></td>
-<td>Public calls: no credentials are sent</td>
+<td>Public calls. The CLI sends no credentials</td>
 </tr>
 <tr>
 <td><code>tenant delete</code></td>
-<td>Lists what is purged and kept and asks you to type the tenant id (<code>--confirm TENANT</code> in scripts)</td>
+<td>Shows the data that the server purges and the data that it keeps. Then it asks you to type the tenant id (<code>--confirm TENANT</code> in scripts)</td>
 </tr>
 </tbody>
 </table>
-<p>Workflows, governance, explorers and choosing (v0.5; walked through in the
+<p>Workflows, governance, explorers and the chooser (v0.5). The
 <a href="../../guides/cli/#workflows-governance-and-explorers">command-line guide</a> and the
-<a href="../../guides/workflow-cookbook/">workflow cookbook</a>):</p>
+<a href="../../guides/workflow-cookbook/">workflow cookbook</a> show these commands step by step:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>templates<span class="w"> </span><span class="p">|</span><span class="w"> </span>template<span class="w"> </span>ID<span class="w"> </span><span class="o">[</span>--expert<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>init<span class="w"> </span>ID<span class="w"> </span><span class="o">[</span>--name<span class="w"> </span>N<span class="o">]</span><span class="w"> </span><span class="o">[</span>--into<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>-o<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--offline<span class="o">]</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>validate<span class="w"> </span>FILE<span class="w"> </span><span class="p">|</span><span class="w"> </span>apply<span class="w"> </span>FILE<span class="w"> </span><span class="o">[</span>-m<span class="w"> </span>MSG<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>create<span class="w"> </span><span class="o">[</span>FILE<span class="w"> </span><span class="p">|</span><span class="w"> </span>--template<span class="w"> </span>ID<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>ls<span class="w"> </span><span class="o">[</span>--archived<span class="o">]</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>get<span class="w"> </span>WF<span class="w"> </span><span class="o">[</span>--yaml<span class="o">]</span><span class="w"> </span><span class="o">[</span>-r<span class="w"> </span>N<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>revisions<span class="w"> </span>WF<span class="w"> </span><span class="p">|</span><span class="w"> </span>archive<span class="w"> </span>WF<span class="w"> </span><span class="o">[</span>--undo<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>rm<span class="w"> </span>WF<span class="w"> </span><span class="o">[</span>--yes<span class="o">]</span>
@@ -5204,49 +5287,49 @@ and <a href="../../guides/administration/">Administration</a>, both run by the t
 <tbody>
 <tr>
 <td><code>workflows run --watch</code>, <code>workflows watch</code></td>
-<td>A live node board fed by the SSE stream (redrawn on a terminal, one line per change otherwise), then the summary; exit status 1 when the run failed or was cancelled. <code>--json</code>: one JSON event per line</td>
+<td>Shows a live board of the nodes. The SSE stream supplies the data. On a terminal, the CLI draws the board again for each change. Otherwise, it prints one line for each change. Then it prints the summary. The exit status is 1 if the run failed or was cancelled. <code>--json</code>: one JSON event on each line</td>
 </tr>
 <tr>
 <td><code>workflows apply</code></td>
-<td>Creates the workflow named by <code>metadata.name</code>, or saves the file as the next revision; an unchanged file adds nothing</td>
+<td>Makes the workflow that <code>metadata.name</code> names, or saves the file as the next revision. If the file did not change, the CLI adds nothing</td>
 </tr>
 <tr>
 <td><code>workflows init</code></td>
-<td>Writes a gallery template as YAML under your name and project (<code>--offline</code> uses the templates bundled with the CLI)</td>
+<td>Writes a gallery template as YAML with your name and project. <code>--offline</code> uses the templates that come with the CLI</td>
 </tr>
 <tr>
 <td><code>-i</code>, <code>-p</code></td>
-<td><code>name=value</code>; <code>-p</code> values are JSON when they parse (<code>-p 'horizons=[1,4]'</code>)</td>
+<td><code>name=value</code>. If a <code>-p</code> value parses as JSON, the CLI uses it as JSON (<code>-p 'horizons=[1,4]'</code>)</td>
 </tr>
 <tr>
 <td><code>validate model</code></td>
-<td><code>MODEL_REF</code> is <code>model://project/name@vN</code>, <code>name@vN</code>, <code>name</code> with <code>-v N</code> or a model id; waits for the checks and prints each result with its plain message and suggested action; exit status 1 on <code>checks_failed</code> or <code>rejected</code></td>
+<td><code>MODEL_REF</code> is <code>model://project/name@vN</code>, <code>name@vN</code>, <code>name</code> with <code>-v N</code>, or a model id. The CLI waits for the checks. Then it prints each result with its plain message and suggested action. The exit status is 1 on <code>checks_failed</code> or <code>rejected</code></td>
 </tr>
 <tr>
 <td><code>approve</code></td>
-<td>Shows the validation and asks first (<code>--yes</code> skips); <code>--reject</code> needs <code>--comment</code>; refused for the submitter (<code>SELF_APPROVAL_FORBIDDEN</code>) and for API tokens</td>
+<td>Shows the validation and asks you first (<code>--yes</code> skips this step). <code>--reject</code> needs <code>--comment</code>. The server refuses the submitter (<code>SELF_APPROVAL_FORBIDDEN</code>) and API tokens</td>
 </tr>
 <tr>
 <td><code>governance policies retire</code>, <code>validations deprecate</code>, <code>workflows rm</code></td>
-<td>Ask first (<code>--yes</code> skips)</td>
+<td>Ask you first (<code>--yes</code> skips this step)</td>
 </tr>
 <tr>
 <td><code>explore …</code></td>
-<td>Waits for the explore run; <code>--out DIR</code> writes every view as JSON, <code>--show SECTION</code> prints one</td>
+<td>Waits for the explore run. <code>--out DIR</code> writes each view as JSON. <code>--show SECTION</code> prints one view</td>
 </tr>
 <tr>
 <td><code>optimize</code></td>
-<td>Prints the plan (current vs recommended spend, the next unit's return, notes), the uplift and its probability, and the frontier</td>
+<td>Prints the plan (the current spend and the recommended spend, the return of the next unit, notes), the uplift and its probability, and the frontier</td>
 </tr>
 <tr>
 <td><code>choose</code></td>
-<td>Asks the chooser's questions (or takes <code>-a</code> answers and asks nothing) and prints the ranking with reasons, cautions and the top About cards</td>
+<td>Asks the questions of the chooser, or uses the <code>-a</code> answers and asks nothing. Then it prints the ranking with reasons, cautions and the top About cards</td>
 </tr>
 </tbody>
 </table>
-<p>Errors: <code>QUOTA_EXCEEDED</code> and <code>RATE_LIMITED</code> print when to retry (<code>retry after 1h 30m</code>); with
-<code>--json</code> the error document carries <code>retry_after_seconds</code>. No command prints a token: they
-appear as <code>mapi_&lt;prefix&gt;_…</code>.</p>
+<p>Errors: for <code>QUOTA_EXCEEDED</code> and <code>RATE_LIMITED</code>, the CLI prints when to try again
+(<code>retry after 1h 30m</code>). With <code>--json</code>, the error document contains <code>retry_after_seconds</code>. No
+command prints a token. Tokens show as <code>mapi_&lt;prefix&gt;_…</code>.</p>
 <table>
 <thead>
 <tr>
@@ -5279,20 +5362,22 @@ appear as <code>mapi_&lt;prefix&gt;_…</code>.</p>
 </tbody>
 </table>
 <ul>
-<li><code>--remote @</code> means "the configured API"; <code>--remote URL</code> overrides it for one command.</li>
-<li><code>--json</code> prints one JSON document on stdout (<code>runs watch --json</code> prints one JSON event per
-  line). Errors become <code>{"error": {...}}</code> with exit status 1; usage errors exit 2.</li>
-<li>Local <code>fit</code> and <code>score</code> run plugins in-process (isolation <code>NONE</code>): use them only with code
-  and data you trust. Server, plugin and log text is printed with ANSI and control sequences
-  and bidi overrides removed.</li>
+<li><code>--remote @</code> means "the configured API". <code>--remote URL</code> overrides it for one command.</li>
+<li><code>--json</code> prints one JSON document on stdout. <code>runs watch --json</code> prints one JSON event on
+  each line. Errors become <code>{"error": {...}}</code> with exit status 1. Usage errors have exit
+  status 2.</li>
+<li>Local <code>fit</code> and <code>score</code> run plugins in the same process (isolation <code>NONE</code>). Use them only
+  with code and data that you trust.</li>
+<li>The CLI removes ANSI sequences, control sequences and bidi overrides from server, plugin and
+  log text before it prints the text.</li>
 </ul>
 <h3 id="mapi-serve"><code>mapi serve</code><a class="headerlink" href="#mapi-serve" title="Permanent link">&para;</a></h3>
-<p><code>mapi serve</code> runs <code>mapi-server dev</code>: database migrations, then the API and the orchestrator
-(dispatcher, reconciler, finalizer and event pump) in one process. Postgres is the embedded
-<code>pgserver</code> unless <code>DATABASE_URL</code> is set, and the <a href="../gcs-shim/">GCS shim</a> is started in-process
-when nothing listens at <code>MAPI_GCS_ENDPOINT</code>. Runs execute through the <code>local-process</code>
-executor with the real <code>mapi-runner</code>. For the web app as well, use <code>make dev</code>
-(<a href="../../operations/local-development/">Local development</a>).</p>
+<p><code>mapi serve</code> runs <code>mapi-server dev</code>. This command runs the database migrations. Then it runs
+the API and the orchestrator (dispatcher, reconciler, finalizer and event pump) in one process.
+If <code>DATABASE_URL</code> is not set, Postgres is the embedded <code>pgserver</code>. If nothing listens at
+<code>MAPI_GCS_ENDPOINT</code>, the command starts the <a href="../gcs-shim/">GCS shim</a> in the same process. Runs
+use the <code>local-process</code> executor with the real <code>mapi-runner</code>. To also run the web app, use
+<code>make dev</code> (<a href="../../operations/local-development/">Local development</a>).</p>
 
 
 

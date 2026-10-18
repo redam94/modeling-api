@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -2707,10 +2737,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#through-a-running-stack" class="md-nav__link">
+  <a href="#through-a-stack-that-runs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Through a running stack
+        Through a stack that runs
       
     </span>
   </a>
@@ -2751,10 +2781,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#porting-time" class="md-nav__link">
+  <a href="#time-to-port" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Porting time
+        Time to port
       
     </span>
   </a>
@@ -4657,6 +4687,8 @@
       
         
       
+        
+      
     
     
     
@@ -4765,6 +4797,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../project/changelog/" class="md-nav__link">
         
   
@@ -4832,10 +4892,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#through-a-running-stack" class="md-nav__link">
+  <a href="#through-a-stack-that-runs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Through a running stack
+        Through a stack that runs
       
     </span>
   </a>
@@ -4876,10 +4936,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#porting-time" class="md-nav__link">
+  <a href="#time-to-port" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Porting time
+        Time to port
       
     </span>
   </a>
@@ -4915,21 +4975,24 @@
 
 
 <h1 id="conformance-corpus">Conformance corpus<a class="headerlink" href="#conformance-corpus" title="Permanent link">&para;</a></h1>
-<p>The corpus is how the platform defines "supported": a set of small, realistic modelling
-problems (ports of pymc-challenges and of the plan's examples) that must keep working, end to
-end, on every change. Each fixture goes through exactly what a user's model goes through:</p>
+<p>The corpus is how the platform defines "supported". It is a set of small, realistic
+modelling problems. These problems are ports of pymc-challenges and of the examples of the
+plan. They must continue to work, from start to end, after each change. Each fixture goes
+through exactly the same process as the model of a user:</p>
 <ol>
-<li><strong>validate</strong> – the spec is checked statically against the step, model and plot catalogs,
-   as the API does before accepting a run;</li>
-<li><strong>fit</strong> – a <code>fit</code> run on the in-process executor, honouring <code>fit.mode</code>
-   (<code>evaluate_then_refit</code> included);</li>
-<li><strong>score</strong> – every request in <code>score_requests.yaml</code> as a <code>score</code> run; requests that must
-   fail are checked for their typed error code (<code>HORIZON_EXCEEDS_FIT</code>, <code>UNSEEN_LEVELS</code>, ...);</li>
-<li><strong>evaluate</strong> – the holdout scored through the score path; the metrics must equal the
-   ones computed at fit time;</li>
-<li><strong>contract</strong> – the full <code>check_model</code> contract kit;</li>
-<li><strong>plots</strong> – the spec's <code>outputs.plots</code> rendered from real outputs;</li>
-<li><strong>expectations</strong> – the fixture's own checks (recovered effects, terminal state, ...).</li>
+<li><strong>validate</strong>: The runner checks the spec statically against the step, model and plot
+   catalogs. The API does the same before it accepts a run.</li>
+<li><strong>fit</strong>: The runner does a <code>fit</code> run on the in-process executor. It obeys <code>fit.mode</code>
+   (also <code>evaluate_then_refit</code>).</li>
+<li><strong>score</strong>: The runner does each request in <code>score_requests.yaml</code> as a <code>score</code> run. For
+   requests that must fail, it checks the typed error code (for example
+   <code>HORIZON_EXCEEDS_FIT</code> or <code>UNSEEN_LEVELS</code>).</li>
+<li><strong>evaluate</strong>: The runner scores the holdout through the score path. The metrics must be
+   equal to the metrics that the fit calculated.</li>
+<li><strong>contract</strong>: The runner does the full <code>check_model</code> contract kit.</li>
+<li><strong>plots</strong>: The runner renders the <code>outputs.plots</code> of the spec from real outputs.</li>
+<li><strong>expectations</strong>: The runner does the own checks of the fixture (for example, recovered
+   effects or the terminal state).</li>
 </ol>
 <h2 id="run-it">Run it<a class="headerlink" href="#run-it" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_conformance<span class="w"> </span>list
@@ -4941,7 +5004,7 @@ end, on every change. Each fixture goes through exactly what a user's model goes
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>make<span class="w"> </span>conformance-full<span class="w">                                  </span><span class="c1"># every fixture at size full</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_conformance<span class="w"> </span>list<span class="w"> </span>--deferred<span class="w">             </span><span class="c1"># plus the plan fixtures not ported yet</span>
 </span></code></pre></div>
-<p>The runner prints one row per fixture and exits non-zero if any step failed:</p>
+<p>The runner shows one row for each fixture. If a step failed, the exit status is not zero:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>fixture           model                           validate  fit  score   evaluate  contract  plots   expectations  ...  result
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>----------------  ------------------------------  --------  ---  ------  --------  --------  ------  ------------       ------
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>e02               tabular.hierarchical_glm@1.0.0  ok        ok   ok 6/6  ok        ok 13/13  ok 2/2  ok                 PASS
@@ -4951,26 +5014,27 @@ end, on every change. Each fixture goes through exactly what a user's model goes
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>e33               mmm.bayesian@1.0.0              ok        ok   ok 5/5  ok        ok 17/17  ok 4/4  ok                 PASS
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>mmm_frequentist   mmm.frequentist@1.0.0           ok        ok   ok 4/4  ok        ok 18/18  ok 1/1  ok                 PASS
 </span></code></pre></div>
-<p><code>--size tiny</code> (the default, used by <code>pytest -m conformance</code>) keeps data small and MCMC
-short; <code>--size full</code> uses the spec's own fit settings and larger data.</p>
-<h3 id="through-a-running-stack">Through a running stack<a class="headerlink" href="#through-a-running-stack" title="Permanent link">&para;</a></h3>
-<p>The default runner skips the control plane. <code>--stack</code> drives the same fixtures through the
-API of a running stack (<code>make dev</code>), as a user does: spec → <strong>ingest</strong> → fit → score.</p>
+<p><code>--size tiny</code> is the default, and <code>pytest -m conformance</code> uses it. It keeps the data small
+and the MCMC short. <code>--size full</code> uses the own fit settings of the spec and larger data.</p>
+<h3 id="through-a-stack-that-runs">Through a stack that runs<a class="headerlink" href="#through-a-stack-that-runs" title="Permanent link">&para;</a></h3>
+<p>The default runner does not use the control plane. <code>--stack</code> sends the same fixtures through
+the API of a stack that runs (<code>make dev</code>), as a user does: spec → <strong>ingest</strong> → fit → score.</p>
 <ol>
-<li>The data, side tables and score payloads are uploaded as dataset versions (signed PUT,
-   then a sandboxed ingest run).</li>
-<li>The spec, pointed at the uploads, is validated, created and fitted through the
-   dispatcher, the runner and FINALIZING.</li>
-<li>Every score request runs against the registered model. An expected typed error may come
-   from the failed run or from the API refusing the request up front.</li>
-<li>The holdout metrics and stored plots are checked on the model version.</li>
-<li>The bundle is downloaded through signed URLs with every hash verified, and goes through
-   the fixture's <code>check_fit</code>.</li>
+<li>The runner uploads the data, the side tables and the score payloads as dataset versions.
+   It uses a signed PUT, and then a sandboxed ingest run.</li>
+<li>The spec points at the uploads. The platform validates it, creates it and fits it through
+   the dispatcher, the runner and FINALIZING.</li>
+<li>Each score request runs against the registered model. An expected typed error can come
+   from the failed run. It can also come from the API, if the API refuses the request at the
+   start.</li>
+<li>The runner checks the holdout metrics and the stored plots on the model version.</li>
+<li>The runner downloads the bundle through signed URLs and verifies each hash. Then the
+   bundle goes through the <code>check_fit</code> of the fixture.</li>
 </ol>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_conformance<span class="w"> </span>run<span class="w"> </span>--stack<span class="w"> </span>http://127.0.0.1:8000<span class="w"> </span>--fixture<span class="w"> </span>e33<span class="w"> </span>--fixture<span class="w"> </span>xgb_store_demand
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>e2e<span class="w"> </span>tests/e2e/test_corpus_stack.py<span class="w">   </span><span class="c1"># E33, xgboost and sklearn (`make e2e`)</span>
 </span></code></pre></div>
-<p>The contract kit does not run in this mode; it needs the plugin in-process.</p>
+<p>The contract kit does not run in this mode. It needs the plugin in-process.</p>
 <h2 id="the-fixtures">The fixtures<a class="headerlink" href="#the-fixtures" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4984,54 +5048,54 @@ API of a running stack (<code>make dev</code>), as a user does: spec → <strong
 <tr>
 <td><code>e02</code></td>
 <td><code>tabular.hierarchical_glm</code></td>
-<td>long layout, shuffled county labels, hyperprior new counties, LOO, CRN counterfactual</td>
+<td>Long layout, shuffled county labels, new counties from the hyperprior, LOO, CRN counterfactual</td>
 </tr>
 <tr>
 <td><code>c08</code></td>
 <td><code>ts.hsgp_trend</code></td>
-<td>sentinel codes, <code>max_extension</code> from anticipated coords, <code>HORIZON_EXCEEDS_FIT</code>, contiguity</td>
+<td>Sentinel codes, <code>max_extension</code> from anticipated coords, <code>HORIZON_EXCEEDS_FIT</code>, contiguity</td>
 </tr>
 <tr>
 <td><code>e24</code></td>
 <td><code>ts.gaussian_hmm</code></td>
-<td>padded + mask, terminal state, forecast and filter, relabelling, invalid LOO</td>
+<td>Padded data with a mask, terminal state, forecast and filter, relabelling, LOO that is not valid</td>
 </tr>
 <tr>
 <td><code>xgb_store_demand</code></td>
 <td><code>tabular.regressor</code></td>
-<td>pooled new stores, quantile aggregation refused, future-required covariates</td>
+<td>Pooled new stores, refused quantile aggregation, covariates that must have future values</td>
 </tr>
 <tr>
 <td><code>sklearn_store_demand</code></td>
 <td><code>sklearn.tabular_conformal</code></td>
-<td>the same panel with plain scikit-learn (histogram boosting, skops): split-conformal intervals, interval aggregation refused, pooled new stores</td>
+<td>The same panel with plain scikit-learn (histogram boosting, skops): split-conformal intervals, refused interval aggregation, pooled new stores</td>
 </tr>
 <tr>
 <td><code>e33</code></td>
 <td><code>mmm.bayesian</code></td>
-<td>FX (<code>supplied</code>) and holiday (<code>pinned</code>) side tables, split after <code>resample</code>, mmm-framework owning scaling and carry-over (history prepended at score time), new market from the hyperprior, weekly EUR plan via <code>inputs_stage</code>, CRN counterfactual (intervention and baseline-vs-scenario), derived quantities in EUR</td>
+<td>FX (<code>supplied</code>) and holiday (<code>pinned</code>) side tables. Split after <code>resample</code>. mmm-framework owns scaling and carry-over (history added before the data at score time). New market from the hyperprior. Weekly EUR plan through <code>inputs_stage</code>. CRN counterfactual (intervention and baseline-vs-scenario). Derived quantities in EUR.</td>
 </tr>
 <tr>
 <td><code>mmm_frequentist</code></td>
 <td><code>mmm.frequentist</code></td>
-<td>mmm-framework's ridge estimator with bootstrap draws; a model that <code>owns</code> scaling, carry-over and units; a scoring window equals the same weeks of the full series</td>
+<td>The ridge estimator of mmm-framework with bootstrap draws. A model that <code>owns</code> scaling, carry-over and units. A score window is equal to the same weeks of the full series.</td>
 </tr>
 <tr>
 <td><code>e84_lite</code></td>
 <td><code>choice.multinomial_logit</code></td>
-<td>a ragged household × trip panel with a text target, <code>last_per_group</code> split, products off the shelf, new households from the fitted spread, a price-rise counterfactual, next trips, categorical holdout metrics (hit rate against the naive guess, log score, Brier)</td>
+<td>A ragged household × trip panel with a text target. <code>last_per_group</code> split. Products off the shelf. New households from the fitted spread. A price-rise counterfactual. Next trips. Categorical holdout metrics (hit rate against the naive guess, log score, Brier).</td>
 </tr>
 <tr>
 <td><code>guided_mmm</code></td>
 <td><code>mmm.bayesian</code></td>
-<td>the <code>geo_mmm</code> Guided template's draft with business priors (ROI, contribution share, baseline share) translated at fit time and a lift test in the likelihood, both true to the simulation; ROI, baseline share and lift checked against the truth; a forecast and the channel-off preset</td>
+<td>The draft of the <code>geo_mmm</code> Guided template with business priors (ROI, contribution share, baseline share). The fit translates the priors, and a lift test is in the likelihood. Both agree with the simulation. ROI, baseline share and lift are checked against the truth. A forecast and the channel-off preset.</td>
 </tr>
 </tbody>
 </table>
 <h3 id="deferred">Deferred<a class="headerlink" href="#deferred" title="Permanent link">&para;</a></h3>
-<p>The plan's corpus also lists fixtures that need plugins or run kinds that do not exist yet.
-They are listed in <code>mapi_conformance.fixtures.DEFERRED</code> with the reason, and a test keeps the
-plan's list, the fixtures and the deferrals in step:</p>
+<p>The corpus of the plan also lists fixtures that need plugins or run kinds that do not exist
+yet. <code>mapi_conformance.fixtures.DEFERRED</code> lists them with the reason. A test makes sure that
+the list of the plan, the fixtures and the deferrals agree:</p>
 <table>
 <thead>
 <tr>
@@ -5042,27 +5106,28 @@ plan's list, the fixtures and the deferrals in step:</p>
 <tbody>
 <tr>
 <td>E13 state-space</td>
-<td>a state-space plugin with the <code>filter</code> mode (vetted plugins, M4)</td>
+<td>A state-space plugin with the <code>filter</code> mode (vetted plugins, M4)</td>
 </tr>
 <tr>
 <td>E82-slim GP Bayesian optimisation</td>
-<td>the <code>recommend</code> mode and Campaign runs (M6)</td>
+<td>The <code>recommend</code> mode and Campaign runs (M6)</td>
 </tr>
 <tr>
 <td>E45</td>
-<td>a plugin for its model (vetted plugins, M4)</td>
+<td>A plugin for its model (vetted plugins, M4)</td>
 </tr>
 </tbody>
 </table>
-<h2 id="porting-time">Porting time<a class="headerlink" href="#porting-time" title="Permanent link">&para;</a></h2>
-<p>The M0 exit criteria ask for the porting time of every fixture (target: under one day each,
-model plugin plus fixture). It measures human effort, so it cannot be derived from the code or
-from commit timestamps; record it here when a fixture is ported or re-ported.</p>
+<h2 id="time-to-port">Time to port<a class="headerlink" href="#time-to-port" title="Permanent link">&para;</a></h2>
+<p>The M0 exit criteria ask for the time to port each fixture. The target is less than one day
+for each fixture, for the model plugin and the fixture. This time is a measure of human
+effort. Thus you cannot get it from the code or from commit timestamps. Record it here when
+you port a fixture, or port it again.</p>
 <table>
 <thead>
 <tr>
 <th>Fixture</th>
-<th>Porting time</th>
+<th>Time to port</th>
 <th>Recorded</th>
 </tr>
 </thead>
@@ -5105,9 +5170,12 @@ from commit timestamps; record it here when a fixture is ported or re-ported.</p
 </tbody>
 </table>
 <h2 id="add-a-fixture">Add a fixture<a class="headerlink" href="#add-a-fixture" title="Permanent link">&para;</a></h2>
-<p>Create a package <code>conformance/src/mapi_conformance/fixtures/&lt;id&gt;/</code> and list <code>&lt;id&gt;</code> in
-<code>fixtures/__init__.py</code>.</p>
-<p><strong><code>data.py</code></strong> generates the data:</p>
+<ol>
+<li>Create a package <code>conformance/src/mapi_conformance/fixtures/&lt;id&gt;/</code>.</li>
+<li>Put <code>&lt;id&gt;</code> in the list in <code>fixtures/__init__.py</code>.</li>
+<li>Add the files below to the package.</li>
+</ol>
+<p><strong><code>data.py</code></strong> makes the data:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"tiny"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">]]:</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="sd">"""The dataset and its side tables (name -&gt; dataset)."""</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
@@ -5117,9 +5185,9 @@ from commit timestamps; record it here when a fixture is ported or re-ported.</p
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">payload_new_store</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>   <span class="c1"># optional payload builders</span>
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="o">...</span>
 </span></code></pre></div>
-<p><strong><code>spec.yaml</code></strong> is an ordinary ModelSpec with the fit settings of a full run.</p>
-<p><strong><code>score_requests.yaml</code></strong> lists the requests to score. <code>apiVersion</code>, <code>kind</code> and <code>model</code> are
-filled in for you:</p>
+<p><strong><code>spec.yaml</code></strong> is a usual ModelSpec with the fit settings of a full run.</p>
+<p><strong><code>score_requests.yaml</code></strong> lists the requests to score. The runner fills in <code>apiVersion</code>,
+<code>kind</code> and <code>model</code> for you:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">forecast_with_new_store</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">request</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="nv">forecast</span><span class="p p-Indicator">,</span><span class="nt"> horizon</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">dim</span><span class="p">:</span><span class="w"> </span><span class="nv">time</span><span class="p p-Indicator">,</span><span class="nt"> periods</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">}}</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">payload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">new_store</span><span class="w">          </span><span class="c1"># none | fit_data | "tail:&lt;n&gt;" | a payload_&lt;name&gt; builder</span>
@@ -5131,8 +5199,8 @@ filled in for you:</p>
 </span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">  </span><span class="nt">payload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">new_store</span>
 </span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">  </span><span class="nt">expect_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CAPABILITY_UNSUPPORTED</span>
 </span></code></pre></div>
-<p><strong><code>expectations.py</code></strong> (optional) adds fixture-specific checks; raise <code>AssertionError</code> to
-fail:</p>
+<p><strong><code>expectations.py</code></strong> (optional) adds checks for the fixture. To make a check fail, raise
+<code>AssertionError</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">TINY_FIT</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"tune"</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s2">"draws"</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s2">"chains"</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>       <span class="c1"># fit overrides at size tiny</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">TINY_SETTINGS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"m"</span><span class="p">:</span> <span class="mi">20</span><span class="p">}</span>                                  <span class="c1"># model-settings overrides</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">MODEL_CHECKS</span> <span class="o">=</span> <span class="kc">None</span>                                        <span class="c1"># or a subset of check_model checks</span>
@@ -5141,18 +5209,19 @@ fail:</p>
 </span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">check_score</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">bundle</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span> <span class="o">...</span>
 </span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">check_evaluate</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">bundle</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span> <span class="o">...</span>
 </span></code></pre></div>
-<p>A hook that declares a keyword <code>ctx</code> parameter also receives a <code>FixtureContext</code>: the seed,
-size, registry, side tables and <code>results</code>, the trees of the score requests that succeeded
-before this one. Use it to compare requests, as E33 does when it checks that a weekly EUR
-plan forecasts exactly what the raw daily path forecasts:</p>
+<p>A hook that declares a keyword <code>ctx</code> parameter also receives a <code>FixtureContext</code>. The context
+holds the seed, the size, the registry, the side tables and <code>results</code>. <code>results</code> holds the
+trees of the score requests that succeeded before this one. Use it to compare requests. E33
+does this. It checks that a weekly EUR plan forecasts exactly the same as the raw daily path:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">check_score</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">bundle</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">"weekly_eur_plan"</span> <span class="ow">and</span> <span class="s2">"forecast_8w"</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">results</span><span class="p">:</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>        <span class="o">...</span>
 </span></code></pre></div>
-<p>A side table with <code>score_policy: supplied</code> must be named in each score request that
-replays its step (<code>request.side_tables</code>); the runner supplies the data under that name.</p>
-<p>From Python, <code>mapi_conformance.run_fixture("e24")</code> returns a <code>FixtureReport</code> and
-<code>run_corpus()</code> a <code>CorpusReport</code> with <code>.table()</code> and <code>.to_json()</code>.</p>
+<p>A side table can have <code>score_policy: supplied</code>. Then each score request that replays its
+step must name the side table (<code>request.side_tables</code>). The runner supplies the data with
+that name.</p>
+<p>From Python, <code>mapi_conformance.run_fixture("e24")</code> returns a <code>FixtureReport</code>.
+<code>run_corpus()</code> returns a <code>CorpusReport</code> with <code>.table()</code> and <code>.to_json()</code>.</p>
 
 
 

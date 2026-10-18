@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1291,6 +1293,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4655,6 +4685,8 @@
       
         
       
+        
+      
     
     
     
@@ -4743,6 +4775,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4924,19 +4984,20 @@
 
 
 <h1 id="governance-v05">Governance <span class="mapi-badge">v0.5</span><a class="headerlink" href="#governance-v05" title="Permanent link">&para;</a></h1>
-<p>A model that informs decisions should prove it has learned something real. <strong>Governance
-policies</strong> say which checks a model must pass before it counts as <strong>validated</strong>: that it
-does better than on shuffled data, that it gives fake drivers no effect, that it beats a
-naive forecast, that its errors look like noise, and more. Checks run in the sandbox as a
-governance workflow and store their <strong>evidence</strong>; a reviewer can be required to approve; and
-an endpoint can refuse to serve a model that is not validated.</p>
+<p>A model that helps people make decisions must show that it learned a real effect.
+<strong>Governance policies</strong> give the checks that a model must pass before it is <strong>validated</strong>.
+For example, the model must do better than on shuffled data, give no effect to fake drivers
+and do better than a naive forecast. Its errors must look like noise, and there are more
+checks. The checks run in the sandbox as a governance workflow and keep their <strong>evidence</strong>.
+A policy can make approval by a reviewer necessary, and an endpoint can refuse a model that
+is not validated.</p>
 <div class="admonition info">
 <p class="admonition-title">Status</p>
-<p>The contracts are in <code>mapi_spec.governance</code> (and the <code>NOT_VALIDATED</code> rule of the
-promotion gate in <code>mapi_spec.scorecard</code>); the server and the sandbox implement every
-check. The step-by-step guide, the plain-language meaning of each check and the default
-policies are in <a href="../../guides/governance/">Validate models with governance policies</a>;
-every operation is in the <a href="../../reference/http-api/#m35">HTTP API reference</a>.</p>
+<p>The contracts are in <code>mapi_spec.governance</code>. The <code>NOT_VALIDATED</code> rule of the promotion
+gate is in <code>mapi_spec.scorecard</code>. The server and the sandbox do all the checks.
+<a href="../../guides/governance/">Validate models with governance policies</a> gives the procedure,
+the meaning of each check in plain language and the default policies. The
+<a href="../../reference/http-api/#m35">HTTP API reference</a> gives all the operations.</p>
 </div>
 <h2 id="policies">Policies<a class="headerlink" href="#policies" title="Permanent link">&para;</a></h2>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
@@ -4953,25 +5014,35 @@ every operation is in the <a href="../../reference/http-api/#m35">HTTP API refer
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">}</span>
 </span></code></pre></div>
 <ul>
-<li><strong>Scope.</strong> A policy belongs to a project, or to the whole tenant
-  (<code>/v1/tenants/{tenant_id}/governance/policies</code>). Tenant-wide policies are a floor: every
-  project inherits them, and a project's own policy can add checks or tighten thresholds but
-  never loosen them (<code>effective_checks</code> keeps the stricter severity and thresholds). Check
-  parameters merge the same way: the stricter number wins (<code>max_missing</code> the lower,
-  <code>min_history_periods</code>, <code>n_permutations</code>, <code>n_noise</code>, <code>n_sims</code> and <code>lags</code> the higher), lists
-  are combined (<code>methods</code>, <code>shifts</code>, <code>params</code>, <code>scales</code>), expected signs are combined with the
-  tenant's sign winning a conflict, and any other parameter set by the tenant (a metric, a
-  block length) keeps the tenant's value; a project can only add parameters the tenant left
-  unset.</li>
-<li><strong>Matching.</strong> <code>applies_to</code> narrows a policy to model families (<code>mmm</code>, <code>ts</code>, <code>tabular</code>,
-  <code>choice</code>, ...), model ids or guided templates; empty lists match everything. A family
-  matches the family a model declares (the statsmodels forecasters declare <code>forecast</code>,
-  <code>ts_multivariate</code> or <code>regime</code>) or the namespace of its id, so <code>families: [ts]</code> covers
-  every <code>ts.*</code> model.</li>
-<li><strong>Versions.</strong> Editing a policy saves a new version; validations record the versions they
-  were judged by.</li>
-<li><strong>Severity.</strong> A <code>blocking</code> check that fails (or cannot be computed) stops validation; a
-  <code>warning</code> is shown to the reviewer; <code>info</code> is evidence only.</li>
+<li>
+<p><strong>Scope.</strong> A policy belongs to a project, or to the full tenant
+  (<code>/v1/tenants/{tenant_id}/governance/policies</code>). Policies for the full tenant are a
+  minimum. All projects get them. The policy of a project can add checks or make thresholds
+  stricter, but it cannot make them less strict. <code>effective_checks</code> keeps the stricter
+  severity and thresholds.</p>
+<p>Check parameters merge with the same rule:</p>
+<ul>
+<li>The stricter number applies. For <code>max_missing</code>, the lower number applies. For
+  <code>min_history_periods</code>, <code>n_permutations</code>, <code>n_noise</code>, <code>n_sims</code> and <code>lags</code>, the higher
+  number applies.</li>
+<li>The lists merge (<code>methods</code>, <code>shifts</code>, <code>params</code>, <code>scales</code>).</li>
+<li>The expected signs merge. If they conflict, the sign of the tenant applies.</li>
+<li>Other parameters that the tenant sets (for example, a metric or a block length) keep
+  the value of the tenant. A project can only add the parameters that the tenant did not
+  set.</li>
+</ul>
+</li>
+<li>
+<p><strong>Matching.</strong> <code>applies_to</code> limits a policy to model families (<code>mmm</code>, <code>ts</code>, <code>tabular</code>,
+  <code>choice</code>, ...), model ids or guided templates. Empty lists match all models. A family
+  matches the family that a model declares, or the namespace of its id. (The statsmodels
+  forecasters declare <code>forecast</code>, <code>ts_multivariate</code> or <code>regime</code>.) Thus, <code>families: [ts]</code>
+  covers all <code>ts.*</code> models.</p>
+</li>
+<li><strong>Versions.</strong> When you edit a policy, the platform saves a new version. Each validation
+  records the policy versions that it used.</li>
+<li><strong>Severity.</strong> If a <code>blocking</code> check fails or cannot calculate, validation stops. The
+  reviewer sees a <code>warning</code>. An <code>info</code> check gives only evidence.</li>
 </ul>
 <h2 id="the-check-catalog">The check catalog<a class="headerlink" href="#the-check-catalog" title="Permanent link">&para;</a></h2>
 <table>
@@ -4985,80 +5056,83 @@ every operation is in the <a href="../../reference/http-api/#m35">HTTP API refer
 <tbody>
 <tr>
 <td><code>null.permutation_target</code></td>
-<td>Does the model beat refits on the same data with the result <strong>shuffled</strong>?</td>
-<td>p-value: share of shuffled fits at least as good (≤ 0.05 / ≤ 0.10 / more)</td>
+<td>Is the model better than fits again on the same data with the result <strong>shuffled</strong>?</td>
+<td>p-value: the share of shuffled fits that are equally good or better (≤ 0.05 / ≤ 0.10 / more)</td>
 </tr>
 <tr>
 <td><code>null.noise_regressors</code></td>
-<td>Do <strong>fake drivers made of noise</strong> get (almost) no effect?</td>
-<td>largest share of the real drivers' effect given to a fake driver (≤ 2% / ≤ 5% / more)</td>
+<td>Do <strong>fake drivers made of noise</strong> get no effect (or almost no effect)?</td>
+<td>The largest share of the effect of the real drivers that goes to a fake driver (≤ 2% / ≤ 5% / more)</td>
 </tr>
 <tr>
 <td><code>null.placebo_time_shift</code></td>
-<td>Do effects <strong>vanish when the drivers are moved</strong> months away?</td>
-<td>placebo effect / real effect (≤ 0.25 / ≤ 0.5 / more)</td>
+<td>Do the effects <strong>stop when you move the drivers</strong> by some months?</td>
+<td>Placebo effect / real effect (≤ 0.25 / ≤ 0.5 / more)</td>
 </tr>
 <tr>
 <td><code>baseline.beats_naive</code></td>
-<td>Is the forecast better than "same as last week/year"?</td>
-<td>relative skill vs the strongest benchmark (≥ 5% / ≥ 0 / below)</td>
+<td>Is the forecast better than "the same as last week/year"?</td>
+<td>Relative skill compared with the strongest benchmark (≥ 5% / ≥ 0 / below)</td>
 </tr>
 <tr>
 <td><code>residuals.whiteness</code></td>
-<td>Do the errors look like random noise over time?</td>
+<td>Do the errors look like random noise in time?</td>
 <td>Ljung-Box p-value (≥ 0.05 / ≥ 0.01 / below)</td>
 </tr>
 <tr>
 <td><code>stability.rolling_params</code></td>
-<td>Are key estimates stable across rolling windows?</td>
-<td>variation across windows (≤ 25% / ≤ 50% / more)</td>
+<td>Are the important estimates stable across rolling windows?</td>
+<td>Variation across windows (≤ 25% / ≤ 50% / more)</td>
 </tr>
 <tr>
 <td><code>plausibility.signs</code></td>
-<td>Do effects point the expected way (ads help, prices hurt)?</td>
-<td>share on the wrong side (≤ 10% / ≤ 25% / more)</td>
+<td>Do the effects go in the expected direction (ads help, prices hurt)?</td>
+<td>The share on the wrong side (≤ 10% / ≤ 25% / more)</td>
 </tr>
 <tr>
 <td><code>sensitivity.prior</code></td>
-<td>Do the answers survive wider and narrower priors? (Bayesian)</td>
-<td>largest relative change (≤ 20% / ≤ 50% / more)</td>
+<td>Do the answers stay the same with wider and narrower priors? (Bayesian)</td>
+<td>The largest relative change (≤ 20% / ≤ 50% / more)</td>
 </tr>
 <tr>
 <td><code>recovery.simulated</code></td>
-<td>Does the model recover known answers from simulated data?</td>
+<td>Does the model find known answers in simulated data?</td>
 <td>90% interval coverage, target 90% (±10 / ±25 points)</td>
 </tr>
 <tr>
 <td><code>convergence</code></td>
-<td>Did the fit settle on a stable answer?</td>
-<td>max R-hat (≤ 1.01 / ≤ 1.05 / more)</td>
+<td>Did the fit stop at a stable answer?</td>
+<td>Maximum R-hat (≤ 1.01 / ≤ 1.05 / more)</td>
 </tr>
 <tr>
 <td><code>holdout.accuracy</code></td>
 <td>Is the error on unseen periods acceptable?</td>
-<td>the chosen metric, e.g. MAPE (≤ 15% / ≤ 30% / more)</td>
+<td>The selected metric, for example MAPE (≤ 15% / ≤ 30% / more)</td>
 </tr>
 <tr>
 <td><code>data.quality</code></td>
-<td>Is the data good enough to trust the model?</td>
-<td>number of data problems found (0 / ≤ 2 / more)</td>
+<td>Is the data sufficiently good to trust the model?</td>
+<td>The number of data problems found (0 / ≤ 2 / more)</td>
 </tr>
 </tbody>
 </table>
-<p>Each check has an <a href="../about-and-choosing/">About card</a>, a parameter schema and the kinds of
-models it applies to (<code>requires</code>: Bayesian, a holdout, a time series...); a check that does
-not apply is recorded as <code>skipped</code> with the reason. Results are <code>CheckResult</code>s with the
-measured value, the threshold, a plain message and <code>EvidenceItem</code>s (numbers, small tables,
-plots, stored artifacts) - for a permutation test, the real score next to the shuffled ones.</p>
+<p>Each check has an <a href="../about-and-choosing/">About card</a>, a parameter schema and the types of
+models that it applies to (<code>requires</code>: Bayesian, a holdout, a time series...). If a check does
+not apply, the platform records it as <code>skipped</code>, with the reason. The results are
+<code>CheckResult</code>s. Each has the measured value, the threshold, a plain message and
+<code>EvidenceItem</code>s (numbers, small tables, plots, stored artifacts). For a permutation test, the
+evidence shows the real score and the shuffled scores together.</p>
 <h3 id="null-tests-in-plain-words">Null tests in plain words<a class="headerlink" href="#null-tests-in-plain-words" title="Permanent link">&para;</a></h3>
-<p>The three <code>null.*</code> checks answer the question "could noise have produced this?":</p>
+<p>The three <code>null.*</code> checks answer the question "Can noise give this result?":</p>
 <ul>
-<li><strong>Shuffled result.</strong> If the model still does well after the result column is shuffled, it is
-  fitting noise. A real model must beat (almost) every shuffled refit.</li>
-<li><strong>Fake drivers.</strong> Pure-noise channels added to a marketing mix model should get close to
-  zero; if they get a sizeable share, the real channels' shares are suspect too.</li>
-<li><strong>Shifted drivers.</strong> Moving spend half a year away from when it happened should kill its
-  effect; if it does not, the model is picking up timing patterns, not advertising.</li>
+<li><strong>Shuffled result.</strong> If the model does well after you shuffle the result column, it fits
+  noise. A real model must be better than all shuffled fits (or almost all of them).</li>
+<li><strong>Fake drivers.</strong> Add channels of pure noise to a marketing mix model. They must get an
+  effect near zero. If they get a large share, the shares of the real channels are also
+  doubtful.</li>
+<li><strong>Shifted drivers.</strong> Move the spend by half a year from the time when it occurred. This
+  must stop its effect. If the effect stays, the model finds patterns in time, not the effect
+  of the advertising.</li>
 </ul>
 <h2 id="validation-status">Validation status<a class="headerlink" href="#validation-status" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>stateDiagram-v2
@@ -5075,24 +5149,31 @@ plots, stored artifacts) - for a permutation test, the real score next to the sh
   checks_failed --&gt; rejected: reject
   rejected --&gt; checks_running: resubmit
   validated --&gt; deprecated: deprecate</code></pre>
-<p><code>mapi_spec.governance.transition</code> is the whole state machine as a pure function; any other
-move is <code>409 VALIDATION_TRANSITION_INVALID</code>. Every transition is audited
-(<code>model.validation_transition</code>) and sent to webhooks (<code>model.validation.checks_passed</code>,
-<code>model.validated</code>, <code>model.rejected</code>, ...).</p>
+<p><code>mapi_spec.governance.transition</code> is the full state machine as a pure function. All other
+changes of status give <code>409 VALIDATION_TRANSITION_INVALID</code>. The platform records each
+transition in the audit log (<code>model.validation_transition</code>). It also sends each transition to
+webhooks (<code>model.validation.checks_passed</code>, <code>model.validated</code>, <code>model.rejected</code>, ...).</p>
 <h3 id="approval">Approval<a class="headerlink" href="#approval" title="Permanent link">&para;</a></h3>
-<p>With <code>require_approval</code>, a version that passed its checks waits for a <strong>reviewer</strong>: a member
-with the <code>reviewer</code> capability (project admins hold it implicitly) who is <strong>not</strong> the person
-who submitted it (<code>403 SELF_APPROVAL_FORBIDDEN</code>). Rejections need a comment. No API token can
-approve, whatever its scopes - approval is a human decision.</p>
+<p>With <code>require_approval</code>, a version that passed its checks waits for a <strong>reviewer</strong>. A
+reviewer is a member with the <code>reviewer</code> capability (project admins have it automatically).
+The reviewer must <strong>not</strong> be the person who submitted the version
+(<code>403 SELF_APPROVAL_FORBIDDEN</code>). A rejection needs a comment. No API token can approve, with
+any scopes. Approval is a decision for a person.</p>
 <h3 id="promotion">Promotion<a class="headerlink" href="#promotion" title="Permanent link">&para;</a></h3>
-<p>A policy with <code>require_validated_for_promotion</code> makes the endpoint promotion gate refuse a
-version that is not <code>validated</code> (<code>409 NOT_VALIDATED</code>, reason <code>NOT_VALIDATED</code> in the gate's
-decision). Unlike a warning on the scorecard, an administrator override does not pass it.</p>
+<p>If a policy has <code>require_validated_for_promotion</code>, the promotion gate of the endpoint refuses
+a version that is not <code>validated</code>. The result is <code>409 NOT_VALIDATED</code>, and the decision of the
+gate gives the reason <code>NOT_VALIDATED</code>. An override by an administrator does not pass this
+gate. This is different from a warning on the scorecard.</p>
 <h2 id="evidence-pack">Evidence pack<a class="headerlink" href="#evidence-pack" title="Permanent link">&para;</a></h2>
-<p><code>POST /v1/validations/{validation_id}/evidence-pack</code> exports everything an auditor needs in
-one document (<code>EvidencePack</code>, JSON or a static HTML rendering): the validation with every
-check result and its evidence, the approvals and the full status history, the policies (with
-their versions), the model's lineage and scorecard, and a digest of the content.</p>
+<p><code>POST /v1/validations/{validation_id}/evidence-pack</code> exports all the data that an auditor
+needs in one document (<code>EvidencePack</code>, as JSON or as static HTML). The document has:</p>
+<ul>
+<li>The validation, with each check result and its evidence.</li>
+<li>The approvals and the full history of the status.</li>
+<li>The policies, with their versions.</li>
+<li>The lineage and the scorecard of the model.</li>
+<li>A digest of the content.</li>
+</ul>
 
 
 

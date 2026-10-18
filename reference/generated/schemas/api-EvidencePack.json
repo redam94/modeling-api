@@ -83,7 +83,7 @@
               "name": "permutation_scores"
             }
           ],
-          "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+          "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
           "metric": "permutation_p_value",
           "severity": "blocking",
           "status": "pass",
@@ -518,7 +518,7 @@
                   "name": "permutation_scores"
                 }
               ],
-              "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+              "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
               "metric": "permutation_p_value",
               "severity": "blocking",
               "status": "pass",
@@ -892,7 +892,7 @@
                 "name": "permutation_scores"
               }
             ],
-            "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+            "message_plain": "The model was better than 19 of the 20 fits on shuffled data.",
             "metric": "permutation_p_value",
             "severity": "blocking",
             "status": "pass",

@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4667,6 +4697,8 @@
       
         
       
+        
+      
     
     
     
@@ -4755,6 +4787,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4935,33 +4995,34 @@
 
 
 <h1 id="your-first-model-in-the-web-app-v02">Your first model in the web app <span class="mapi-badge">v0.2</span><a class="headerlink" href="#your-first-model-in-the-web-app-v02" title="Permanent link">&para;</a></h1>
-<p>This guide fits a hierarchical geo marketing-mix model (the corpus' E33 example) on the
-local stack and then uses it, entirely from the browser:</p>
+<p>This guide fits a hierarchical geo marketing-mix model on the local stack. The model is the
+E33 example of the corpus. Then the guide uses the model. You do all the work in the browser:</p>
 <ol>
-<li>upload daily spend and revenue per market and channel, an FX table and a holiday table;</li>
-<li>paste the model spec into the editor and let it validate as you type;</li>
-<li>fit it and follow the sampler live;</li>
-<li>read the sanity scorecard, the posterior predictive check and the channel decomposition;</li>
-<li>score an 8-week forecast, a market the model has never seen, and a weekly budget in EUR.</li>
+<li>Upload these datasets: daily spend and revenue for each market and channel, an FX table and
+   a holiday table.</li>
+<li>Paste the model spec into the editor. The editor validates the spec while you type.</li>
+<li>Fit the model and monitor the sampler live.</li>
+<li>Read the sanity scorecard, the posterior predictive check and the channel decomposition.</li>
+<li>Score an 8-week forecast, a market that the model did not see, and a weekly budget in EUR.</li>
 </ol>
-<p>It takes about ten minutes, most of it reading. The fit itself uses tiny sampler settings
-and finishes in under a minute on a laptop.</p>
+<p>The guide takes about ten minutes. You use most of this time to read. The fit uses very small
+sampler settings. It finishes in less than one minute on a laptop.</p>
 <h2 id="before-you-start">Before you start<a class="headerlink" href="#before-you-start" title="Permanent link">&para;</a></h2>
-<p>Start the stack and leave it running (<a href="../../operations/local-development/">Local development</a>):</p>
+<p>Start the stack and let it continue to run (<a href="../../operations/local-development/">Local development</a>):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>install
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>dev<span class="w">                      </span><span class="c1"># PostgreSQL, GCS shim, API, worker, web app, plot sandbox</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>open<span class="w"> </span>http://127.0.0.1:5173
 </span></code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Port 8000 taken?</p>
-<p>Move the API with <code>export MAPI_API_URL=http://127.0.0.1:8010</code> before <code>make dev</code>. Every
-other command in this guide (<code>make seed</code>, <code>make e2e</code>) reads the same variable. The other
-three ports move the same way; see <a href="../../operations/troubleshooting/#port-conflicts">Port conflicts</a>.</p>
+<p>You can move the API with <code>export MAPI_API_URL=http://127.0.0.1:8010</code> before <code>make dev</code>.
+All the other commands in this guide (<code>make seed</code>, <code>make e2e</code>) read the same variable. You
+can move the other three ports in the same way. See <a href="../../operations/troubleshooting/#port-conflicts">Port conflicts</a>.</p>
 </div>
-<p>This guide clicks through every step, including the uploads. For the short path (<code>make seed</code>
-loads the data and the spec for you) see the <a href="../../getting-started/quickstart/">quickstart</a>;
-for every page of the app, <a href="../web-ui/">The Expert web app</a>.</p>
-<p>Then write the demo files to a folder. Nothing is uploaded yet:</p>
+<p>This guide clicks through all the steps, and the uploads too. For the short path, see the
+<a href="../../getting-started/quickstart/">quickstart</a>. In the short path, <code>make seed</code> loads the data
+and the spec for you. For all the pages of the app, see <a href="../web-ui/">The Expert web app</a>.</p>
+<p>Then write the demo files to a folder. This command does not upload the files:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/seed.py<span class="w"> </span>--export<span class="w"> </span>demo/
 </span></code></pre></div>
 <table>
@@ -4980,7 +5041,7 @@ for every page of the app, <a href="../web-ui/">The Expert web app</a>.</p>
 </tr>
 <tr>
 <td><code>fx_daily.zarr.zip</code></td>
-<td>Daily EUR per GBP, covering the fit window and the forecast horizon</td>
+<td>Daily EUR for each GBP, for the fit window and the forecast horizon</td>
 <td><code>fx_daily</code></td>
 </tr>
 <tr>
@@ -4995,12 +5056,12 @@ for every page of the app, <a href="../web-ui/">The Expert web app</a>.</p>
 </tr>
 <tr>
 <td><code>eu_media_future_fr.zarr.zip</code></td>
-<td>The same weeks plus FR, a market the model has not seen</td>
+<td>The same weeks and FR, a market that the model did not see</td>
 <td><code>eu_media_future_fr</code></td>
 </tr>
 <tr>
 <td><code>eu_media_weekly_plan.zarr.zip</code></td>
-<td>A planner's budget: weekly spend in EUR</td>
+<td>A budget from a planner: weekly spend in EUR</td>
 <td><code>eu_media_weekly_plan</code></td>
 </tr>
 <tr>
@@ -5010,117 +5071,172 @@ for every page of the app, <a href="../web-ui/">The Expert web app</a>.</p>
 </tr>
 <tr>
 <td><code>eu-geo-mmm.yaml</code></td>
-<td>The model spec, pointing at <code>dataset://default/&lt;name&gt;@latest</code></td>
+<td>The model spec. It points at <code>dataset://default/&lt;name&gt;@latest</code></td>
 <td>(paste it)</td>
 </tr>
 </tbody>
 </table>
 <p><code>make seed</code> does steps 1 and 2 for you through the HTTP API. This guide clicks through them.</p>
 <h2 id="1-upload-the-data">1. Upload the data<a class="headerlink" href="#1-upload-the-data" title="Permanent link">&para;</a></h2>
-<p>Open <strong>Datasets → New dataset</strong>, name it <code>eu_media_daily</code> and create it. The upload panel
-opens: choose <code>eu_media_daily.zarr.zip</code> and press <strong>Upload and ingest</strong>. The browser sends
-the file straight to object storage through a signed URL; a sandboxed <em>ingest</em> run then
-opens it, checks it and stores an immutable, content-addressed version. The page refreshes
-on its own until the version is <code>ready</code>.</p>
+<ol>
+<li>Open <strong>Datasets → New dataset</strong>.</li>
+<li>Name the dataset <code>eu_media_daily</code> and make it. The upload panel opens.</li>
+<li>Select <code>eu_media_daily.zarr.zip</code>.</li>
+<li>Click <strong>Upload and ingest</strong>.</li>
+</ol>
+<p>The browser sends the file directly to object storage through a signed URL. Then a sandboxed
+<em>ingest</em> run opens the file and checks it. The run keeps an immutable, content-addressed
+version. The page refreshes automatically until the version is <code>ready</code>.</p>
 <p><img alt="A ready dataset version with its schema" src="../../assets/first-model/dataset-ready.png" /></p>
-<p>The schema came with the file: <code>market</code> allows <strong>new levels</strong> at score time (with a
-hyperprior), <code>channel</code> is <strong>fixed</strong>, and <code>date</code> may be <strong>extended</strong> into the future.
-<code>revenue_local</code> is the target, <code>spend_local</code> is spend, both in local currency. A CSV upload
-would ask you for the same mapping column by column.</p>
-<p>Repeat for the other six files, using the names in the table above.</p>
+<p>The schema came with the file:</p>
+<ul>
+<li><code>market</code> allows <strong>new levels</strong> at score time, with a hyperprior.</li>
+<li><code>channel</code> is <strong>fixed</strong>.</li>
+<li><code>date</code> can be <strong>extended</strong> into the future.</li>
+<li><code>revenue_local</code> is the target and <code>spend_local</code> is spend. Both are in local currency.</li>
+</ul>
+<p>A CSV upload asks you for the same mapping, one column at a time.</p>
+<p>Do the upload steps again for the other six files. Use the names in the table above.</p>
 <h2 id="2-write-and-validate-the-spec">2. Write and validate the spec<a class="headerlink" href="#2-write-and-validate-the-spec" title="Permanent link">&para;</a></h2>
-<p>Open <strong>Build → New spec</strong>, select everything in the editor and paste <code>eu-geo-mmm.yaml</code>.
-The editor validates as you type: the server resolves every <code>dataset://</code> reference and step,
-checks the settings and propagates the schema through the pipeline without running
-anything. Problems appear as squiggles at the exact YAML path.</p>
+<ol>
+<li>Open <strong>Build → New spec</strong>.</li>
+<li>Select all the text in the editor.</li>
+<li>Paste <code>eu-geo-mmm.yaml</code>.</li>
+</ol>
+<p>The editor validates the spec while you type. The server resolves each <code>dataset://</code> reference
+and each step. It checks the settings. It moves the schema through the pipeline, but it does
+not run anything. Problems show as wavy lines at the exact YAML path.</p>
 <p><img alt="The spec editor with a valid E33 spec and its pipeline" src="../../assets/first-model/editor-valid.png" /></p>
-<p>The pipeline panel shows what each step does to the data. <code>to_eur</code> converts both spend and
-revenue to EUR with the <code>fx</code> side table, <code>weekly</code> resamples days to weeks (only from this
-stage on does a week exist, so the train/holdout split sits right after it), and
-<code>scale_spend</code>, <code>scale_y</code> and <code>lags</code> learn state from the training weeks only. Open
-<strong>Schema after this step</strong> on any card to see the variables and dims at that stage.</p>
-<p>Press <strong>Save spec</strong>. The spec becomes revision <code>r1</code> of <code>spec://default/eu-geo-mmm</code>. (If you
-ran <code>make seed</code> before, that name is taken: change <code>metadata.name</code> first, or open the
-seeded spec under <strong>Build</strong> instead.)</p>
+<p>The pipeline panel shows what each step does to the data:</p>
+<ul>
+<li><code>to_eur</code> changes spend and revenue to EUR with the <code>fx</code> side table.</li>
+<li><code>weekly</code> resamples days to weeks. A week exists only from this stage. Thus the
+  train/holdout split is immediately after this step.</li>
+<li><code>scale_spend</code>, <code>scale_y</code> and <code>lags</code> learn state from the training weeks only.</li>
+</ul>
+<p>To see the variables and dims at a stage, open <strong>Schema after this step</strong> on the card.</p>
+<p>When the spec is valid, click <strong>Save spec</strong>. The spec becomes revision <code>r1</code> of
+<code>spec://default/eu-geo-mmm</code>.</p>
+<p>If you ran <code>make seed</code> before, the name is not available. In this case, change
+<code>metadata.name</code> first. Or open the seeded spec under <strong>Build</strong>.</p>
 <h2 id="3-fit-it">3. Fit it<a class="headerlink" href="#3-fit-it" title="Permanent link">&para;</a></h2>
-<p>Press <strong>Fit</strong>. The run page follows the run over server-sent events:</p>
+<p>Click <strong>Fit</strong>. The run page monitors the run through server-sent events.</p>
 <p><img alt="A fit run while the sampler is drawing" src="../../assets/first-model/run-progress.png" /></p>
 <ul>
-<li><strong>Starting the sandbox</strong>: the run's supervisor read its one-time bootstrap object and
-  deleted it, so the credentials it held are gone before any model code runs.</li>
-<li><code>DEV_MODE_ISOLATION</code> is expected on a laptop: the local executor cannot drop to a separate
-  user for the model code. Containers and Cloud Run do.</li>
-<li>The progress bar and message come straight from the sampler (<code>chain 1/2: sampling
+<li><strong>Starting the sandbox</strong>: The supervisor of the run read its one-time bootstrap object and
+  deleted it. Thus the credentials of the object are gone before model code runs.</li>
+<li><code>DEV_MODE_ISOLATION</code> is usual on a laptop. The local executor cannot change to a different
+  user for the model code. Containers and Cloud Run can.</li>
+<li>The progress bar and the message come directly from the sampler (<code>chain 1/2: sampling
   39/100</code>).</li>
 </ul>
-<p><code>fit.mode: evaluate_then_refit</code> makes the run fit the training weeks, score the 8 holdout
-weeks through the normal scoring path, then refit on all the data, so the model you use
-has seen the latest weeks while its metrics are honest. When the run succeeds, the
-platform checks every file the run claims to have written against the storage's own
-checksums, copies them where the run cannot reach, and signs a manifest. Press
-<strong>Inspect model://default/eu-geo-mmm@v1</strong>.</p>
-<h2 id="4-inspect-the-model">4. Inspect the model<a class="headerlink" href="#4-inspect-the-model" title="Permanent link">&para;</a></h2>
-<p>The <strong>Overview</strong> tab opens on the sanity scorecard, the holdout metrics and what the model
-can do.</p>
-<p><img alt="The scorecard of a tiny fit" src="../../assets/first-model/scorecard.png" /></p>
-<p>With 2 chains of 100 draws the sampler has not converged: R-hat above 1.01 and fewer than
-200 effective samples are flagged as warnings, each with a suggested action. That is the
-point of the tiny settings; raise <code>tune</code> and <code>draws</code> (and use more chains) for a model you
-mean to use. <strong>Diagnostics</strong> lists the same checks per variable.</p>
-<p><strong>Plots</strong> has the recipes the spec asked for. Every plot renders inside an
-<code>&lt;iframe sandbox="allow-scripts"&gt;</code> served from a separate origin (port 5174), so even a
-malicious plot spec could not read the app, its cookies or your data.</p>
-<p><img alt="Posterior predictive check: the 8 holdout weeks per market" src="../../assets/first-model/plot-ppc.png" /></p>
-<p><strong>Fit and forecast</strong> compares the model's predictions for the holdout weeks with what
-happened: the line is the median, the bands are the 50% and 90% intervals, the dots are the
-actual weekly EUR revenue.</p>
-<p><img alt="Decomposition of revenue into baseline and channels" src="../../assets/first-model/plot-decomposition.png" /></p>
-<p><strong>Contribution by component</strong> splits revenue over time into the baseline, each channel,
-seasonality and holidays, in EUR, with the totals and their uncertainty below.
-<strong>Response curves</strong> shows what an extra euro of spend returns per channel, and <strong>Sampler
-convergence</strong> has the trace and rank plots behind the scorecard. <strong>Provenance</strong> shows the
-signed manifest, every stored object with its generation, and the lineage: data and side
-table versions, spec hash, plugin, seed and library versions.</p>
-<h2 id="5-score-it">5. Score it<a class="headerlink" href="#5-score-it" title="Permanent link">&para;</a></h2>
-<p>Press <strong>Score</strong>. The form only offers what this model supports, and the fitted
-preprocessing is replayed exactly: nothing is refitted.</p>
-<p><strong>An 8-week forecast.</strong> Keep mode <code>forecast</code> with 8 periods along <code>time</code>, set <strong>Input data</strong>
-to <code>dataset://default/eu_media_future@v1</code> and press <strong>Score</strong>. The <code>fx</code> side table defaults
-to the one the fit used; it covers the horizon, so the planned local-currency spend can be
-converted to EUR. The result shows a fan per market, then the outputs: the result tree
-(<code>score.zarr.zip</code>), its summary as a table, and a quick chart you can re-plot by any column.</p>
-<p><strong>A new market.</strong> Score again with <code>dataset://default/eu_media_future_fr@v1</code>. FR was never
-seen in training; its effects are drawn from the hierarchical prior over markets, so its
-band is visibly wider than the others'. The result's <code>issues</code> record an <code>UNSEEN_LEVELS</code>
-note saying so.</p>
-<p><img alt="Forecast for the fitted markets plus FR" src="../../assets/first-model/score-new-market.png" /></p>
-<p><strong>A weekly plan in EUR.</strong> Planners think in weekly euros, not daily local currency. Set
-<strong>Inputs enter at stage</strong> to <code>weekly</code> and <strong>Input data</strong> to
-<code>dataset://default/eu_media_weekly_plan@v1</code>. The request enters the pipeline after <code>to_eur</code>
-and <code>weekly</code>, so no FX table is needed. Because this plan is the same spend as the daily
-file, the forecast is identical to the first one, which is exactly what replaying the
-preprocessing promises.</p>
-<p><strong>A counterfactual.</strong> Choose mode <code>counterfactual</code>, set <strong>Input data</strong> to
-<code>dataset://default/eu_media_window@v1</code>, add an intervention <code>spend_local</code> where
-<code>channel=tv</code>, multiply by <code>1.2</code>, choose <strong>Predictive</strong> output and set <strong>Draws</strong> to <code>100</code> (with
-0 draws you get the means, but not the uncertainty of the change). The result holds the
-baseline, the scenario and their difference, computed with common random numbers so the
-delta is not drowned in sampling noise.</p>
-<h2 id="what-was-checked-along-the-way">What was checked along the way<a class="headerlink" href="#what-was-checked-along-the-way" title="Permanent link">&para;</a></h2>
-<p>The same flow runs as two automated suites against the running stack (<code>make e2e</code>):</p>
+<p><code>fit.mode: evaluate_then_refit</code> makes the run do three things:</p>
+<ol>
+<li>The run fits the training weeks.</li>
+<li>It scores the 8 holdout weeks through the usual score path.</li>
+<li>It fits again on all the data.</li>
+</ol>
+<p>Thus the model that you use has seen the latest weeks, and its metrics are honest. When the run
+succeeds, the platform does three things:</p>
 <ul>
-<li><code>tests/e2e/test_m1_stack.py</code> drives it through the Python client. It also verifies the
-  manifest signature, that every bundle object sits in the bundles bucket at its signed
-  generation, that the bundle reads back with all hashes intact, that the bootstrap object
-  is gone, and that forged run events are refused.</li>
-<li><code>apps/web/e2e/m1-flow.e2e.spec.ts</code> clicks through the pages above with Playwright and
-  checks that the plot frame is an opaque origin with no access to its parent.</li>
+<li>It checks each file that the run wrote against the checksums of the storage.</li>
+<li>It copies the files to a location that the run cannot get to.</li>
+<li>It signs a manifest.</li>
+</ul>
+<p>When the run succeeds, click <strong>Inspect model://default/eu-geo-mmm@v1</strong>.</p>
+<h2 id="4-inspect-the-model">4. Inspect the model<a class="headerlink" href="#4-inspect-the-model" title="Permanent link">&para;</a></h2>
+<p>The <strong>Overview</strong> tab opens on the sanity scorecard, the holdout metrics and the things that the
+model can do.</p>
+<p><img alt="The scorecard of a tiny fit" src="../../assets/first-model/scorecard.png" /></p>
+<p>With 2 chains of 100 draws, the sampler did not converge. The scorecard shows warnings for
+R-hat above 1.01 and for fewer than 200 effective samples. Each warning has a suggested action.
+The very small settings have this result on purpose. For a model that you will use, increase
+<code>tune</code> and <code>draws</code>, and use more chains. <strong>Diagnostics</strong> lists the same checks for each
+variable.</p>
+<p><strong>Plots</strong> has the recipes that the spec asked for. Each plot renders in an
+<code>&lt;iframe sandbox="allow-scripts"&gt;</code> from a separate origin (port 5174). Thus a malicious plot
+spec cannot read the app, its cookies or your data.</p>
+<p><img alt="Posterior predictive check: the 8 holdout weeks per market" src="../../assets/first-model/plot-ppc.png" /></p>
+<p><strong>Fit and forecast</strong> compares the predictions of the model for the holdout weeks with the
+actual results:</p>
+<ul>
+<li>The line is the median.</li>
+<li>The bands are the 50% and 90% intervals.</li>
+<li>The dots are the actual weekly EUR revenue.</li>
+</ul>
+<p><img alt="Decomposition of revenue into baseline and channels" src="../../assets/first-model/plot-decomposition.png" /></p>
+<p><strong>Contribution by component</strong> divides revenue over time into the baseline, each channel,
+seasonality and holidays, in EUR. The totals and their uncertainty are below. <strong>Response
+curves</strong> shows the return of one more euro of spend for each channel. <strong>Sampler convergence</strong>
+has the trace and rank plots for the scorecard. <strong>Provenance</strong> shows these items:</p>
+<ul>
+<li>The signed manifest.</li>
+<li>Each stored object with its generation.</li>
+<li>The lineage: the versions of the data and the side tables, the spec hash, the plugin, the
+  seed and the library versions.</li>
+</ul>
+<h2 id="5-score-it">5. Score it<a class="headerlink" href="#5-score-it" title="Permanent link">&para;</a></h2>
+<p>Click <strong>Score</strong>. The form shows only the modes that the model can do. The server uses the same
+preprocessing as the fit. It does not fit the model again.</p>
+<p><strong>An 8-week forecast.</strong></p>
+<ol>
+<li>Keep <strong>Forecast</strong> with 8 periods.</li>
+<li>Under <strong>Values to score</strong>, select <strong>Use a dataset</strong>.</li>
+<li>Type <code>dataset://default/eu_media_future@v1</code>.</li>
+<li>Click <strong>Forecast</strong>.</li>
+</ol>
+<p>For a quick plan, you can keep <strong>Type values</strong> and type the spend into the grid. The grid
+starts with the periods after the fit for each market and channel. By default, the <code>fx</code> side
+table is the table that the fit used. This table includes the horizon. Thus the server can
+change the planned spend from local currency to EUR. The result shows a fan for each market.
+Then it shows the outputs: the result tree (<code>score.zarr.zip</code>) and its summary as a table. It
+also shows a quick chart that you can plot again by any column.</p>
+<p><strong>A new market.</strong> Score again with <code>dataset://default/eu_media_future_fr@v1</code>. The training data did not have FR. The model draws the effects of FR from the hierarchical
+prior over markets. Thus the band of FR is clearly wider than the bands of the other markets.
+The <code>issues</code> of the result have an <code>UNSEEN_LEVELS</code> note that tells this.</p>
+<p><img alt="Forecast for the fitted markets plus FR" src="../../assets/first-model/score-new-market.png" /></p>
+<p><strong>A weekly plan in EUR.</strong> Planners use weekly euros, not daily local currency.</p>
+<ol>
+<li>Under <strong>Advanced</strong>, set <strong>Inputs enter at stage</strong> to <code>weekly</code>.</li>
+<li>Use the dataset <code>dataset://default/eu_media_weekly_plan@v1</code>.</li>
+</ol>
+<p>The request goes into the pipeline after <code>to_eur</code> and <code>weekly</code>. Thus you do not need an FX
+table. This plan has the same spend as the daily file. Thus the forecast is the same as the
+first forecast. This is the result that the server promises when it uses the same
+preprocessing again.</p>
+<p><strong>A counterfactual.</strong></p>
+<ol>
+<li>Select <strong>What if</strong>.</li>
+<li>Use the dataset <code>dataset://default/eu_media_window@v1</code>.</li>
+<li>Add a change to <code>spend_local</code> where <code>channel=tv</code>, and multiply by <code>1.2</code>.</li>
+<li>Under <strong>Advanced</strong>, select <strong>Predictive</strong> output.</li>
+<li>Set <strong>Draws</strong> to <code>100</code>.</li>
+</ol>
+<p>With 0 draws, you get the means, but not the uncertainty of the change. The result has the
+baseline, the scenario and their difference. The server calculates them with common random
+numbers. Thus the sampling noise does not hide the difference.</p>
+<h2 id="what-was-checked-along-the-way">What was checked along the way<a class="headerlink" href="#what-was-checked-along-the-way" title="Permanent link">&para;</a></h2>
+<p>Two automatic suites run the same flow against the running stack (<code>make e2e</code>):</p>
+<ul>
+<li>
+<p><code>tests/e2e/test_m1_stack.py</code> runs the flow through the Python client. It also verifies these
+  items:</p>
+<ul>
+<li>The manifest signature.</li>
+<li>Each bundle object is in the bundles bucket at its signed generation.</li>
+<li>The bundle reads back with all hashes correct.</li>
+<li>The bootstrap object is gone.</li>
+<li>The server refuses forged run events.</li>
+<li><code>apps/web/e2e/m1-flow.e2e.spec.ts</code> clicks through the pages above with Playwright. It checks
+  that the plot frame is an opaque origin with no access to its parent.</li>
+</ul>
+</li>
 </ul>
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../mmm/">Marketing-mix models</a>: the model, its priors, derived quantities and budget plots.</li>
-<li><a href="../../reference/spec-format/">Spec format</a> and the <a href="../../reference/steps/">steps</a> used here.</li>
-<li><a href="../../reference/web-app/">Web app and plot sandbox</a>: every page and how plots are isolated.</li>
+<li><a href="../../reference/spec-format/">Spec format</a> and the <a href="../../reference/steps/">steps</a> that this guide uses.</li>
+<li><a href="../../reference/web-app/">Web app and plot sandbox</a>: all the pages, and how the app isolates plots.</li>
 </ul>
 
 

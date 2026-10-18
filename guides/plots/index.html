@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4634,6 +4664,8 @@
       
         
       
+        
+      
     
     
     
@@ -4722,6 +4754,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4869,21 +4929,21 @@
 
 
 <h1 id="plots-recipes-templates-and-safe-sharing">Plots: recipes, templates and safe sharing<a class="headerlink" href="#plots-recipes-templates-and-safe-sharing" title="Permanent link">&para;</a></h1>
-<p>Every model you fit gets a set of standard plots for free: data overview, convergence, posterior
-predictive checks, a fit-and-forecast fan, decomposition, scenario comparisons and more. Plots
-are <strong>Vega-Lite</strong> (or <strong>Plotly</strong> for 3D, maps and animation) wrapped in a small envelope called a
-<code>PlotSpec</code>. The data travels next to the spec as named Arrow tables — never as a URL — and
-every plot passes a sanitizer before anyone sees it.</p>
+<p>Each model that you fit gets a set of standard plots at no cost. The set includes a data
+overview, convergence, posterior predictive checks, a fan of the fit and forecast, decomposition,
+scenario comparisons and more. Plots are <strong>Vega-Lite</strong> (or <strong>Plotly</strong> for 3D, maps and
+animation). A small envelope, the <code>PlotSpec</code>, contains each plot. The data goes next to the spec
+as named Arrow tables, never as a URL. Each plot goes through a sanitizer before a person sees it.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">"mapi-plots[recipes]"</span><span class="w">   </span><span class="c1"># recipes + Altair/Plotly helpers (runner images, notebooks)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>uv<span class="w"> </span>add<span class="w"> </span>mapi-plots<span class="w">              </span><span class="c1"># sanitizer and templates only (JSON in, JSON out)</span>
 </span></code></pre></div>
 <figure>
-<p><img alt="Fit and forecast fan" src="../../assets/plots/core_ppc_fan.png" />
+<p><img alt="The fan of the fit and the forecast" src="../../assets/plots/core_ppc_fan.png" />
   </p>
-<figcaption>`core.ppc_fan`: model estimate, 50% and 90% bands, actual values and the end of the training data, one panel per market.</figcaption>
+<figcaption>`core.ppc_fan`: the model estimate, the 50% and 90% bands, the actual values and the end of the training data. The plot shows one panel for each market.</figcaption>
 </figure>
 <h2 id="render-a-recipe-in-a-notebook">Render a recipe in a notebook<a class="headerlink" href="#render-a-recipe-in-a-notebook" title="Permanent link">&para;</a></h2>
-<p>A recipe is a function from a fitted bundle or a score output to a <code>PlotSpec</code>:</p>
+<p>A recipe is a function. It changes a fitted bundle or a score output into a <code>PlotSpec</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plots.examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">example_inputs</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plots.recipes</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_recipe</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
@@ -4895,22 +4955,28 @@ every plot passes a sanitizer before anyone sees it.</p>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">plot</span><span class="o">.</span><span class="n">datasets</span><span class="p">))</span>  <span class="c1"># named Arrow tables travel next to the spec, never as URLs</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">plot</span><span class="o">.</span><span class="n">caption_plain</span><span class="p">[:</span><span class="mi">60</span><span class="p">],</span> <span class="s2">"..."</span><span class="p">)</span>
 </span></code></pre></div>
-<p>Inputs are flexible: an <code>xr.DataTree</code> (bundle or score output), an <code>xr.Dataset</code>, or a plain
-<code>{"group": Dataset}</code> mapping. Recipes find their groups at the root, under <code>model/</code> (bundles) or
-anywhere in the tree. Options are validated; an unknown option or a missing group raises a typed
-<code>RecipeDataError</code> (<code>SCHEMA_INVALID</code>) that says what was expected.</p>
-<p>Every plot carries:</p>
+<p>A recipe accepts different inputs:</p>
 <ul>
-<li><strong><code>persona</code></strong> — <code>guided</code> (analysts), <code>expert</code> (data scientists) or <code>both</code>;</li>
-<li><strong><code>caption_plain</code></strong> — a plain-language reading of the chart with the actual numbers
-  ("The scenario changes total revenue by 184 (90% interval 139 to 251) compared with the
-  baseline. Probability of an increase: 100%.");</li>
-<li><strong><code>provenance</code></strong> — the recipe and version, the bundle id and a timestamp.</li>
+<li>An <code>xr.DataTree</code> (a bundle or a score output)</li>
+<li>An <code>xr.Dataset</code></li>
+<li>A plain <code>{"group": Dataset}</code> mapping</li>
+</ul>
+<p>A recipe finds its groups at the root, under <code>model/</code> (for bundles) or at other positions in the
+tree. The recipe does a check of its options. If an option is unknown or a group is missing, the
+recipe raises a typed <code>RecipeDataError</code> (<code>SCHEMA_INVALID</code>). The error tells what the recipe
+expected.</p>
+<p>Each plot contains these items:</p>
+<ul>
+<li><strong><code>persona</code></strong>: <code>guided</code> (analysts), <code>expert</code> (data scientists) or <code>both</code>.</li>
+<li><strong><code>caption_plain</code></strong>: a description of the chart in plain language, with the actual numbers.
+  For example: "The scenario changes total revenue by 184 (90% interval 139 to 251) compared
+  with the baseline. Probability of an increase: 100%."</li>
+<li><strong><code>provenance</code></strong>: the recipe and its version, the bundle id and a timestamp.</li>
 </ul>
 <div class="admonition tip">
-<p class="admonition-title">Try every recipe without a model</p>
-<p><code>mapi_plots.examples.example_inputs()</code> returns synthetic bundle and score trees for every
-recipe, built with xarray only:</p>
+<p class="admonition-title">Try each recipe without a model</p>
+<p><code>mapi_plots.examples.example_inputs()</code> returns synthetic bundle trees and score trees for
+each recipe. It makes them with xarray only:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">for</span> <span class="n">recipe_id</span><span class="p">,</span> <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span> <span class="ow">in</span> <span class="n">example_inputs</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">rendered</span> <span class="o">=</span> <span class="n">get_recipe</span><span class="p">(</span><span class="n">recipe_id</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">recipe_id</span><span class="si">:</span><span class="s2">28</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">rendered</span><span class="o">.</span><span class="n">kind</span><span class="si">:</span><span class="s2">10</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">rendered</span><span class="o">.</span><span class="n">persona</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
@@ -4928,84 +4994,89 @@ recipe, built with xarray only:</p>
 <tbody>
 <tr>
 <td><code>core.data_overview</code></td>
-<td>Each variable over time per group, a missingness heatmap, group sizes</td>
+<td>Each variable over time for each group, a heatmap of missing values, the group sizes</td>
 <td>raw data / <code>observed_data</code></td>
 </tr>
 <tr>
 <td><code>core.prior_predictive</code></td>
-<td>Datasets the model generates before seeing data vs your data, plus a prior fan</td>
+<td>The datasets that the model makes before it sees data, compared with your data. Also a prior fan.</td>
 <td><code>prior_predictive</code>, <code>observed_data</code></td>
 </tr>
 <tr>
 <td><code>core.convergence</code></td>
-<td>R-hat and ESS per parameter, a table of the worst, trace and rank plots, divergences</td>
+<td>R-hat and ESS for each parameter, a table of the worst parameters, trace plots and rank plots, divergences</td>
 <td><code>posterior</code>, <code>sample_stats</code></td>
 </tr>
 <tr>
 <td><code>core.posterior_forest</code></td>
-<td>Median, 50% and 94% HDI per parameter, one panel per variable</td>
+<td>The median, the 50% HDI and the 94% HDI for each parameter. One panel for each variable.</td>
 <td><code>posterior</code></td>
 </tr>
 <tr>
 <td><code>core.ppc</code></td>
-<td>Predictive densities vs observed, PIT histogram, interval coverage</td>
+<td>Predictive densities compared with observed values, a PIT histogram, interval coverage</td>
 <td><code>posterior_predictive</code>, <code>observed_data</code></td>
 </tr>
 <tr>
 <td><code>core.ppc_fan</code></td>
-<td>Fit + forecast fan with the train/forecast split line</td>
+<td>A fan of the fit and the forecast, with the line between the training data and the forecast</td>
 <td>draws or <code>summary</code>, <code>observed</code></td>
 </tr>
 <tr>
 <td><code>core.fit_vs_actual</code></td>
-<td>Predicted against actual with R² and MAPE</td>
+<td>Predicted values against actual values, with R² and MAPE</td>
 <td>predictions + observed</td>
 </tr>
 <tr>
 <td><code>core.residuals_over_time</code></td>
-<td>Actual minus predicted over time</td>
+<td>Actual values minus predicted values over time</td>
 <td>predictions + observed</td>
 </tr>
 <tr>
 <td><code>core.decomposition</code></td>
-<td>Stacked contributions over time and each component's total share</td>
+<td>Stacked contributions over time, and the total share of each component</td>
 <td><code>contributions</code></td>
 </tr>
 <tr>
 <td><code>core.model_comparison</code></td>
-<td>elpd per model and the difference to the best (PSIS-LOO table or WAIC)</td>
-<td><code>comparison</code>, or one child per model with <code>log_likelihood</code></td>
+<td>The elpd of each model and the difference to the best model (PSIS-LOO table or WAIC)</td>
+<td><code>comparison</code>, or one child for each model with <code>log_likelihood</code></td>
 </tr>
 <tr>
 <td><code>core.counterfactual</code></td>
-<td>Scenario vs baseline over time and the distribution of the total change</td>
+<td>The scenario compared with the baseline over time, and the distribution of the total change</td>
 <td><code>draws</code>/<code>summary</code>, <code>baseline/…</code>, <code>delta/…</code></td>
 </tr>
 <tr>
 <td><code>core.decision_distribution</code></td>
-<td>Distribution of a decision objective per option and P(best)</td>
+<td>The distribution of a decision objective for each option, and P(best)</td>
 <td><code>decision</code>/<code>objective</code></td>
 </tr>
 </tbody>
 </table>
-<p>The <strong>marketing-mix pack</strong> (<code>mmm.*</code>) adds response curves with current spend marked, marginal
-cost (or marginal ROI) per channel, a budget-plan comparison and a channel decomposition.
-The <strong>tabular pack</strong> (<code>ml.*</code>) adds <code>ml.feature_importance</code>: ranked tree importances, or signed
-coefficients for linear estimators, read from the groups the scikit-learn and xgboost plugins
-store in their bundles.</p>
+<p>The <strong>marketing-mix pack</strong> (<code>mmm.*</code>) adds these plots:</p>
+<ul>
+<li>Response curves that mark the current spend</li>
+<li>The marginal cost (or the marginal ROI) for each channel</li>
+<li>A comparison of budget plans</li>
+<li>A channel decomposition</li>
+</ul>
+<p>The <strong>tabular pack</strong> (<code>ml.*</code>) adds <code>ml.feature_importance</code>. This plot shows ranked tree
+importances, or signed coefficients for linear estimators. It reads them from the groups that
+the scikit-learn plugin and the xgboost plugin keep in their bundles.</p>
 <div class="grid">
 <p><img alt="Convergence" src="../../assets/plots/core_convergence.png" /></p>
 <p><img alt="Response curves" src="../../assets/plots/mmm_response_curves.png" /></p>
 <p><img alt="Counterfactual" src="../../assets/plots/core_counterfactual.png" /></p>
 <p><img alt="Budget plans" src="../../assets/plots/mmm_budget_plans.png" /></p>
 </div>
-<p>Recipes respect each output's <strong>representation</strong>: they sum joint draws when a dim has to go,
-but never add up quantiles or intervals — a summary with an extra dim asks you to request an
-aggregated output instead (summed means are shown without a band). Predicted-vs-actual and
-residual plots never need a total, so they compare such summaries cell by cell (one dot or line
-per <code>store × sku</code>, coloured by the facet dim).</p>
+<p>Recipes obey the <strong>representation</strong> of each output. If a dim must go, a recipe adds the joint
+draws. A recipe never adds quantiles or intervals. If a summary has an extra dim, the recipe
+tells you to request an aggregated output. The recipe shows summed means without a band.
+Predicted-vs-actual plots and residual plots never need a total. Thus they compare these
+summaries cell by cell (one dot or line for each <code>store × sku</code>, with the color of the facet dim).</p>
 <h2 id="bring-your-own-chart">Bring your own chart<a class="headerlink" href="#bring-your-own-chart" title="Permanent link">&para;</a></h2>
-<p>Build with Altair or Plotly as usual, then wrap it:</p>
+<p>Make the chart with Altair or Plotly as usual. Then put it in an envelope:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">altair</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">alt</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plots</span><span class="w"> </span><span class="kn">import</span> <span class="n">from_altair</span>
@@ -5024,24 +5095,25 @@ per <code>store × sku</code>, coloured by the facet dim).</p>
 </span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">theirs</span><span class="o">.</span><span class="n">datasets</span><span class="p">))</span>  <span class="c1"># one dataset per trace, referenced as {"$ref": "trace0.y"}</span>
 </span></code></pre></div>
 <ul>
-<li><code>from_altair</code> moves Altair's inline data (and any <code>data.values</code>) into named Arrow datasets
-  and rewrites the references; named data (<code>alt.Data(name="pts")</code>) is filled from
-  <code>datasets={"pts": frame}</code>.</li>
+<li><code>from_altair</code> moves the inline data of Altair (and all <code>data.values</code>) into named Arrow
+  datasets. It also writes the references again. The function fills named data
+  (<code>alt.Data(name="pts")</code>) from <code>datasets={"pts": frame}</code>.</li>
 <li><code>from_plotly</code> decodes plotly.py 6 typed arrays (<code>{"dtype": "f8", "bdata": ...}</code>) into Arrow
-  datasets, one per trace, and binds them with <code>{"$ref": "trace0.y"}</code>. The default plotly.py
-  template is dropped (the renderer themes plots) unless <code>keep_template=True</code>.</li>
+  datasets, one for each trace. It binds them with <code>{"$ref": "trace0.y"}</code>. The function removes
+  the default plotly.py template, because the renderer applies the theme to plots. To keep the
+  template, set <code>keep_template=True</code>.</li>
 </ul>
-<p>Both run the sanitizer and raise a <code>SanitizeError</code> if the chart breaks a rule. <code>from_plotly</code>
-also strips HTML from the strings it moves into datasets (see below).</p>
-<p><strong>Colours and dark mode.</strong> An explicit mark colour wins over any theme, so the platform
-recipes draw only with <code>mapi_plots.palette</code> (for example <code>OBSERVED</code>, <code>ESTIMATE</code>, <code>BAND</code>,
-<code>ALERT</code>). In dark mode the plot sandbox swaps each palette colour for its dark variant; every
-stroke, dot and text colour keeps at least 3:1 contrast on both card backgrounds. Use the
-palette in your own charts to get the same behaviour. Any other colour is drawn as written in
-both themes.</p>
+<p>Both functions run the sanitizer. If the chart breaks a rule, they raise a <code>SanitizeError</code>.
+<code>from_plotly</code> also removes HTML from the strings that it moves into datasets (see below).</p>
+<p><strong>Colors and dark mode.</strong> An explicit mark color has priority over all themes. Thus the platform
+recipes use only colors from <code>mapi_plots.palette</code> (for example <code>OBSERVED</code>, <code>ESTIMATE</code>, <code>BAND</code>,
+<code>ALERT</code>). In dark mode, the plot sandbox replaces each palette color with its dark variant. Each
+stroke, dot and text color keeps a contrast of 3:1 or more on the two card backgrounds. To get
+the same behavior in your own charts, use the palette. The plot shows all other colors as
+written, in the two themes.</p>
 <h2 id="role-and-dim-bound-templates">Role- and dim-bound templates<a class="headerlink" href="#role-and-dim-bound-templates" title="Permanent link">&para;</a></h2>
-<p>A template binds channels to <strong>roles and dims</strong> instead of one model's variable names, so a
-"target over time, one line per geo" plot applies to every model of a family:</p>
+<p>A template binds channels to <strong>roles and dims</strong>, not to the variable names of one model. Thus a
+plot of "the target over time, one line for each geo" applies to all models of a family:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
@@ -5057,13 +5129,15 @@ both themes.</p>
 </span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">chart</span> <span class="o">=</span> <span class="n">render_template</span><span class="p">(</span><span class="n">tmpl</span><span class="p">,</span> <span class="n">weekly</span><span class="p">)</span>  <span class="c1"># the schema is inferred; roles come from attrs</span>
 </span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">one_market</span> <span class="o">=</span> <span class="n">render_template</span><span class="p">(</span><span class="n">tmpl</span><span class="p">,</span> <span class="n">weekly</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">geo</span><span class="o">=</span><span class="s2">"DE"</span><span class="p">,</span> <span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">optional</span><span class="o">=</span><span class="p">[</span><span class="s2">"color"</span><span class="p">])</span>
 </span></code></pre></div>
-<p>Inside a template spec, <code>{"$bind": "y"}</code> becomes a Vega-Lite field definition and <code>"{{y}}"</code>
-(also <code>{{y.field}}</code>, <code>{{y.type}}</code>, <code>{{y.title}}</code>) is replaced by the bound name. Binding kinds
-are <code>dim:</code>, <code>role:</code>, <code>var:</code>, <code>coord:</code> and <code>stat:</code> (a summary statistic such as
-<code>stat:hdi_90_lower</code>). The JSON-only half, <code>mapi_plots.templates.apply_template</code>, runs in the API
-to check that a saved template applies to a model before anything is rendered.</p>
+<p>In a template spec, <code>{"$bind": "y"}</code> becomes a Vega-Lite field definition. The bound name
+replaces <code>"{{y}}"</code> (also <code>{{y.field}}</code>, <code>{{y.type}}</code>, <code>{{y.title}}</code>). The kinds of binding are
+<code>dim:</code>, <code>role:</code>, <code>var:</code>, <code>coord:</code> and <code>stat:</code> (a summary statistic, for example
+<code>stat:hdi_90_lower</code>). The API runs the half that uses only JSON,
+<code>mapi_plots.templates.apply_template</code>. It does a check that a saved template applies to a model
+before the app renders a plot.</p>
 <h2 id="what-the-sanitizer-allows">What the sanitizer allows<a class="headerlink" href="#what-the-sanitizer-allows" title="Permanent link">&para;</a></h2>
-<p>Plots run in an isolated iframe on a separate origin, but the server checks every plot first:</p>
+<p>Plots run in an isolated iframe on a different origin. But the server does a check of each plot
+first:</p>
 <table>
 <thead>
 <tr>
@@ -5073,53 +5147,54 @@ to check that a saved template applies to a model before anything is rendered.</
 </thead>
 <tbody>
 <tr>
-<td><code>url</code> data (anywhere, including lookups and topojson)</td>
-<td>data must be referenced by name; no fetching</td>
+<td><code>url</code> data (in all positions, also lookups and topojson)</td>
+<td>Data must have a name as its reference. The plot cannot fetch data.</td>
 </tr>
 <tr>
 <td><code>href</code> encodings and mark properties</td>
-<td>no navigation out of the plot</td>
+<td>The plot cannot go to other pages.</td>
 </tr>
 <tr>
-<td><code>image</code> marks, <code>url</code> channels, <code>layout.images</code> / <code>image</code> traces with non-<code>data:</code> sources</td>
-<td>no external fetches (only base64 PNG/JPEG/GIF/WebP)</td>
+<td><code>image</code> marks, <code>url</code> channels, <code>layout.images</code> / <code>image</code> traces with sources that are not <code>data:</code></td>
+<td>The plot cannot fetch external data (only base64 PNG/JPEG/GIF/WebP).</td>
 </tr>
 <tr>
 <td>Tile-map traces and subplots (<code>scattermap</code>, <code>choroplethmap</code>, <code>densitymap</code>, <code>layout.map</code>)</td>
-<td>tiles come from third-party servers; use <code>scattergeo</code>/<code>choropleth</code></td>
+<td>The tiles come from third-party servers. Use <code>scattergeo</code>/<code>choropleth</code>.</td>
 </tr>
 <tr>
 <td><code>__proto__</code>, <code>constructor</code>, <code>prototype</code> keys or field paths</td>
-<td>prototype pollution</td>
+<td>Prototype pollution</td>
 </tr>
 <tr>
-<td><code>javascript:</code>, <code>data:text/html</code>, SVG data URIs, CSS <code>url()</code> in any string</td>
-<td>script and fetch vectors</td>
+<td><code>javascript:</code>, <code>data:text/html</code>, SVG data URIs, CSS <code>url()</code> in a string</td>
+<td>Vectors for scripts and fetches</td>
 </tr>
 <tr>
-<td>Vega expressions outside a small allow-list of functions, method calls, <code>window</code>/<code>document</code>/<code>fetch</code>, computed member names</td>
-<td>expression sandbox escapes</td>
+<td>Vega expressions that are not in a small allow-list of functions, method calls, <code>window</code>/<code>document</code>/<code>fetch</code>, computed member names</td>
+<td>Escapes from the expression sandbox</td>
 </tr>
 <tr>
 <td>Custom format types, Plotly network options (<code>topojsonURL</code>, <code>showLink</code>, ...)</td>
-<td>code and network hooks</td>
+<td>Hooks for code and the network</td>
 </tr>
 <tr>
-<td>Anything that does not match the pinned Vega-Lite v6.4.1 / plotly.js 4.1.1 schemas</td>
-<td>unknown keys are where exploits hide</td>
+<td>All items that do not agree with the pinned Vega-Lite v6.4.1 / plotly.js 4.1.1 schemas</td>
+<td>Unknown keys are where exploits hide.</td>
 </tr>
 </tbody>
 </table>
-<p>Plotly text keeps only <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;br&gt;</code>, <code>&lt;sub&gt;</code> and <code>&lt;sup&gt;</code> (plus <code>&lt;extra&gt;</code> in hover
-templates); everything else is stripped and reported as a change. The server never decodes
-Arrow, so text that <code>from_plotly</code> moves into a dataset (<code>text</code>, <code>hovertext</code>, category labels)
-is stripped and scanned on the sandbox side during conversion; the plot iframe must still
-treat dataset strings as untrusted and re-strip them before handing them to plotly.js. Vega
-renders dataset strings as text (and the iframe's tooltip handler escapes them). Method
-<code>args</code> of Plotly buttons and sliders are checked in both the <code>{attr: value}</code> and positional
-<code>[attr, value]</code> forms, and <code>usermeta.embedOptions</code> is rejected in Vega-Lite specs. Specs are
-capped in size, depth, node count and string length. See the <a href="../../reference/plots/">plots reference</a> for the
-full rule list and error codes.</p>
+<p>Plotly text keeps only <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;br&gt;</code>, <code>&lt;sub&gt;</code> and <code>&lt;sup&gt;</code> (and <code>&lt;extra&gt;</code> in hover
+templates). The sanitizer removes all other tags and reports each removal as a change. The server
+never decodes Arrow. Thus the sandbox removes tags from the text that <code>from_plotly</code> moves into a
+dataset (<code>text</code>, <code>hovertext</code>, category labels), and scans it, during conversion. The plot iframe
+must also treat dataset strings as not trusted. It must remove the tags again before it gives the
+strings to plotly.js.</p>
+<p>Vega shows dataset strings as text, and the tooltip handler of the iframe escapes them. The
+sanitizer does a check of the method <code>args</code> of Plotly buttons and sliders. It checks the
+<code>{attr: value}</code> form and the positional <code>[attr, value]</code> form. It rejects <code>usermeta.embedOptions</code>
+in Vega-Lite specs. Specs have limits on size, depth, node count and string length. For the full
+list of rules and error codes, see the <a href="../../reference/plots/">plots reference</a>.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plots</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_plot</span><span class="p">,</span> <span class="n">sanitize_plot</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plots.sanitize</span><span class="w"> </span><span class="kn">import</span> <span class="n">SanitizeError</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>

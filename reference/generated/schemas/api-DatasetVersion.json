@@ -178,13 +178,23 @@
     },
     "DataSummary": {
       "additionalProperties": false,
-      "description": "Summary of a dataset (or score payload): variable names and coordinate summaries.",
+      "description": "Summary of a dataset (or score payload): variable names and coordinate summaries.\n\n``observed`` (forecasts conditioned on actuals, :mod:`mapi_spec.actuals`) maps a target\nvariable - and a driver the forecast needs (``future_required``) - to, per ordered dim,\nthe summary of the labels at which it holds at least one value. Only summarisers that\nread the values set it (the sandbox, and the control plane for inline JSON payloads,\nwhere it is a null check); a variable left out is unknown.",
       "properties": {
         "coords": {
           "additionalProperties": {
             "$ref": "#/$defs/CoordSummary"
           },
           "title": "Coords",
+          "type": "object"
+        },
+        "observed": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/CoordSummary"
+            },
+            "type": "object"
+          },
+          "title": "Observed",
           "type": "object"
         },
         "vars": {
@@ -367,7 +377,9 @@
         "SELF_APPROVAL_FORBIDDEN",
         "NOT_VALIDATED",
         "EXPLORE_INVALID",
-        "OPTIMIZE_INFEASIBLE"
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID"
       ],
       "title": "ErrorCode",
       "type": "string"

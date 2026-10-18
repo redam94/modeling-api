@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4781,6 +4811,8 @@
       
         
       
+        
+      
     
     
     
@@ -4869,6 +4901,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5176,106 +5236,115 @@
 
 
 <h1 id="deploy-to-google-cloud-v03">Deploy to Google Cloud <span class="mapi-badge">v0.3</span><a class="headerlink" href="#deploy-to-google-cloud-v03" title="Permanent link">&para;</a></h1>
-<p>This page takes an environment (<code>dev</code>, <code>staging</code> or <code>prod</code>) from empty Google Cloud projects to
-a running, multi-tenant platform: the API and web app on Cloud Run, runs executing as Cloud Run
-Jobs in a zero-egress sandbox project, and data in private buckets behind a VPC Service Controls
-perimeter. Everything is in <code>infra/terraform</code> and driven by four scripts in <code>deploy/gcp</code>.</p>
+<p>This page tells how to change empty Google Cloud projects into a multi-tenant platform that
+operates. It applies to an environment (<code>dev</code>, <code>staging</code> or <code>prod</code>). At the end, you have
+these items:</p>
+<ul>
+<li>The API and the web app on Cloud Run.</li>
+<li>Runs that execute as Cloud Run Jobs in a zero-egress sandbox project.</li>
+<li>Data in private buckets behind a VPC Service Controls perimeter.</li>
+</ul>
+<p>All the configuration is in <code>infra/terraform</code>. Four scripts in <code>deploy/gcp</code> operate it.</p>
 <div class="admonition warning">
 <p class="admonition-title">Status: written, validated and tested offline; not yet applied</p>
-<p>The Terraform passes <code>terraform validate</code> for every environment and a <code>terraform test</code> suite
-that applies every module against mocked providers (see
-<a href="#testing-the-infrastructure">Testing the infrastructure</a>). It has <strong>not</strong> been applied to a
-real organisation yet. The server's cloud adapters (Cloud Run Jobs executor, Cloud Storage,
-KMS signing, Pub/Sub push verification) ship in the same release and are tested against
-fakes only; the environment variables they read are listed
+<p>The Terraform passes <code>terraform validate</code> for each environment. It also passes a
+<code>terraform test</code> suite that applies each module against mocked providers (refer to
+<a href="#testing-the-infrastructure">Testing the infrastructure</a>). We have <strong>not</strong> applied it to
+a real organisation yet. The cloud adapters of the server (Cloud Run Jobs executor, Cloud
+Storage, KMS signing, Pub/Sub push verification) are in the same release. We tested them
+only against fakes. The environment variables that they read are
 <a href="#environment-of-the-cloud-run-workloads">below</a>. Read the next section before you start.</p>
 </div>
 <h2 id="before-you-start-the-verify-m0-checklist">Before you start: the [verify M0] checklist<a class="headerlink" href="#before-you-start-the-verify-m0-checklist" title="Permanent link">&para;</a></h2>
-<p>The design rests on cloud behaviours that the documentation of Google Cloud suggests but that
-nobody has yet confirmed against a real Cloud Run Jobs execution. The plan marks each one
-<strong>[verify M0]</strong>. Nothing here is broken by them in a <code>dev</code> environment, but <strong>do not admit
-untrusted tenants until each one has a recorded pass</strong>. The full procedure, with the probe for
-each item, is the <a href="../security-hardening/#m0-verification-checklist">M0 verification checklist</a>;
-the steps that remain after the offline M2 verification are in
+<p>The design depends on cloud behaviours that the Google Cloud documentation suggests. But
+nobody has confirmed them against a real Cloud Run Jobs execution yet. The plan marks each
+behaviour <strong>[verify M0]</strong>. These behaviours do not break a <code>dev</code> environment. But <strong>do not
+admit untrusted tenants until each one has a recorded pass</strong>. The full procedure, with the
+probe for each item, is the
+<a href="../security-hardening/#m0-verification-checklist">M0 verification checklist</a>. The steps that
+remain after the offline M2 verification are in
 <a href="../m2-verification/#what-remains-for-real-gcp">M2 verification</a>.</p>
 <table>
 <thead>
 <tr>
 <th>Assumption</th>
 <th>What depends on it</th>
-<th>If it does not hold</th>
+<th>If it is not true</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>The Direct VPC egress resolver honours the <strong>DNS response policy</strong> (<code>*.</code> to NXDOMAIN, Google APIs to the restricted VIP)</td>
-<td>DNS exfiltration is blocked; <code>MAPI_CLOUDRUN_DNS_ENFORCED</code> may be set to <code>true</code>, which is what lets <code>verified</code> and <code>public</code> tenants run at all</td>
-<td>Cloud Run Jobs cannot host untrusted code. Keep shared tiers off it; fall back to GKE Sandbox behind the same executor protocol</td>
+<td>The Direct VPC egress resolver obeys the <strong>DNS response policy</strong> (<code>*.</code> to NXDOMAIN, Google APIs to the restricted VIP)</td>
+<td>DNS exfiltration is stopped. You can set <code>MAPI_CLOUDRUN_DNS_ENFORCED</code> to <code>true</code>. Only this setting lets <code>verified</code> and <code>public</code> tenants run</td>
+<td>Cloud Run Jobs cannot host untrusted code. Keep shared tiers off it. Use GKE Sandbox behind the same executor protocol</td>
 </tr>
 <tr>
 <td><strong>Deny-all egress</strong> and <strong>VPC Service Controls</strong> apply to Jobs executions</td>
-<td>Runs cannot reach the internet or buckets outside the perimeter</td>
-<td>Same as above</td>
+<td>Runs cannot connect to the internet or to buckets outside the perimeter</td>
+<td>The same as above</td>
 </tr>
 <tr>
-<td>gen2 allows the <strong>supervisor/worker uid split</strong> with <code>no_new_privs</code>, seccomp and no <code>ptrace</code></td>
-<td>The worker cannot read the supervisor's credentials</td>
-<td>Runs report <code>DEV_MODE_ISOLATION</code>; the runner images must start the supervisor as root for the split</td>
+<td>gen2 permits the <strong>supervisor/worker uid split</strong> with <code>no_new_privs</code>, seccomp and no <code>ptrace</code></td>
+<td>The worker cannot read the credentials of the supervisor</td>
+<td>Runs report <code>DEV_MODE_ISOLATION</code>. The runner images must start the supervisor as root for the split</td>
 </tr>
 <tr>
 <td>Execution <strong>overrides are env-only</strong> (no image, resources, service account or network)</td>
-<td><code>jobs.run</code> can pass only the run id and nonce</td>
-<td>The dispatcher's role must be narrowed further</td>
+<td><code>jobs.run</code> can give only the run id and nonce</td>
+<td>The role of the dispatcher must have fewer permissions</td>
 </tr>
 <tr>
-<td>The <strong>in-memory filesystem</strong> limits behave as planned (no ephemeral disk; exit 137 at the limit)</td>
-<td>Scratch budgets of 3/6/12 GiB for classes S/M/L; <code>RESOURCE_EXHAUSTED</code> with a retry one class up</td>
-<td>Large-data fits move to GKE</td>
+<td>The limits of the <strong>in-memory filesystem</strong> operate as planned (no ephemeral disk, exit 137 at the limit)</td>
+<td>Scratch budgets of 3/6/12 GiB for classes S/M/L. <code>RESOURCE_EXHAUSTED</code> with a retry in the next larger class</td>
+<td>Fits with large data move to GKE</td>
 </tr>
 <tr>
-<td>A <strong>deleted bootstrap object</strong> cannot be restored</td>
+<td>You cannot restore a <strong>deleted bootstrap object</strong></td>
 <td>The nonce in the audit log points at nothing</td>
-<td>Terraform already sets the bootstrap bucket's soft-delete window to 0; if a copy can still be restored, the bootstrap design needs a second look before launch</td>
+<td>Terraform already sets the soft-delete window of the bootstrap bucket to 0. If you can still restore a copy, examine the bootstrap design again before launch</td>
 </tr>
 <tr>
-<td><strong>Quotas</strong>: 180 <code>jobs.run</code> per minute and 1,000 running executions per region</td>
-<td>The dispatcher's token bucket (150 a minute by default) and the global limit of 700 concurrent runs</td>
-<td>Lower <code>MAPI_CLOUDRUN_SUBMITS_PER_MINUTE</code>, shard across exec projects</td>
+<td><strong>Quotas</strong>: 180 <code>jobs.run</code> in each minute and 1,000 running executions in each region</td>
+<td>The token bucket of the dispatcher (150 a minute by default) and the global limit of 700 concurrent runs</td>
+<td>Decrease <code>MAPI_CLOUDRUN_SUBMITS_PER_MINUTE</code>. Divide the work across exec projects</td>
 </tr>
 <tr>
-<td><strong>Cold start</strong> of a ~2.5 GB base image keeps time-to-<code>RUNNING</code> p95 under 90 s</td>
-<td>The M2 latency target (met offline against the fake backend only)</td>
-<td>Slimmer images, or warm capacity (M6)</td>
+<td>The <strong>cold start</strong> of a base image of about 2.5 GB keeps the p95 of time-to-<code>RUNNING</code> below 90 s</td>
+<td>The M2 latency target (met offline, only against the fake backend)</td>
+<td>Smaller images, or warm capacity (M6)</td>
 </tr>
 <tr>
-<td>The <strong>Logging sink to Pub/Sub</strong> path carries the execution's labels within seconds, and Pub/Sub can push to an internal-only service</td>
+<td>The path from the <strong>Logging sink to Pub/Sub</strong> carries the labels of the execution in some seconds. Pub/Sub can push to an internal-only service</td>
 <td>Run events and progress</td>
-<td>Runs still finish (the executor's status decides liveness), but progress goes quiet</td>
+<td>Runs still finish (the status of the executor decides if a run is alive), but there is no progress</td>
 </tr>
 <tr>
-<td>Cloud SQL <strong>managed connection pooling</strong> works in transaction mode with the server's driver, and the migrate role can grant <strong><code>BYPASSRLS</code></strong></td>
-<td>Row-level security for requests; the platform role for the orchestrator</td>
-<td>Give <code>mapi_orchestrator</code> its own policy-based access (the explicit policy already exists)</td>
+<td>Cloud SQL <strong>managed connection pooling</strong> works in transaction mode with the driver of the server. The migrate role can grant <strong><code>BYPASSRLS</code></strong></td>
+<td>Row-level security for requests. The platform role for the orchestrator</td>
+<td>Give <code>mapi_orchestrator</code> its own policy-based access (the explicit policy is already there)</td>
 </tr>
 <tr>
 <td><code>run.jobs.runWithOverrides</code> works <strong>without <code>iam.serviceAccounts.actAs</code></strong> on the execution account</td>
-<td>The orchestrator's least-privilege role</td>
+<td>The least-privilege role of the orchestrator</td>
 <td>Grant <code>actAs</code> on that one account</td>
 </tr>
 <tr>
-<td>Cloud Run accepts the <strong>image indexes</strong> <code>build-push.sh</code> pushes (with attestations)</td>
+<td>Cloud Run accepts the <strong>image indexes</strong> that <code>build-push.sh</code> pushes (with attestations)</td>
 <td>Deploys</td>
 <td>Build with <code>--no-attestations</code></td>
 </tr>
 </tbody>
 </table>
-<p>Two further limits of v0.3 are not cloud facts but matter on day one: browser sign-in uses an
-OpenID provider with an authorization-code endpoint (Google by default; Identity Platform's own
-tokens are not accepted yet, see <a href="../../guides/authentication/#identity-platform">Authentication</a>),
-and the nightly security suite has no probe Job in Terraform yet
-(<a href="../security-suite/#where-the-probes-run">Security suite</a>).</p>
+<p>Two more limits of v0.3 are not cloud facts, but they are important on the first day:</p>
+<ul>
+<li>Browser sign-in uses an OpenID provider with an authorization-code endpoint (Google by
+  default). The server does not accept the tokens of Identity Platform yet. Refer to
+  <a href="../../guides/authentication/#identity-platform">Authentication</a>.</li>
+<li>The nightly security suite has no probe Job in Terraform yet
+  (<a href="../security-suite/#where-the-probes-run">Security suite</a>).</li>
+</ul>
 <h2 id="topology">Topology<a class="headerlink" href="#topology" title="Permanent link">&para;</a></h2>
-<p>One environment spans five kinds of project, one per trust zone (plan §8.1):</p>
+<p>One environment has five types of project, one for each trust zone (plan §8.1):</p>
 <pre class="mermaid"><code>flowchart TB
     users(("browsers ·&lt;br/&gt;clients")) --&gt;|HTTPS| lb["global HTTPS load balancer&lt;br/&gt;app.example.com · plots.example.net"]
     subgraph control["control project (trusted)"]
@@ -5319,7 +5388,7 @@ and the nightly security suite has no probe Job in Terraform yet
 <tr>
 <td><code>control</code></td>
 <td>control</td>
-<td>Cloud Run <code>api</code>, <code>events</code>, <code>web</code>, <code>plots</code>; orchestrator worker pool; <code>migrate</code> job; Cloud SQL (private IP, managed connection pooling); Secret Manager secrets; Pub/Sub topic, push subscription and dead letters; one Logging sink per exec project; KMS signing key; Identity Platform; optional load balancer</td>
+<td>Cloud Run <code>api</code>, <code>events</code>, <code>web</code>, <code>plots</code>. Orchestrator worker pool. <code>migrate</code> job. Cloud SQL (private IP, managed connection pooling). Secret Manager secrets. Pub/Sub topic, push subscription and dead letters. One Logging sink for each exec project. KMS signing key. Identity Platform. Optional load balancer</td>
 </tr>
 <tr>
 <td><code>exec</code></td>
@@ -5344,13 +5413,13 @@ and the nightly security suite has no probe Job in Terraform yet
 <tr>
 <td><code>stack</code></td>
 <td>all</td>
-<td>Wires the modules together and enables the APIs</td>
+<td>Connects the modules and enables the APIs</td>
 </tr>
 </tbody>
 </table>
-<p><code>envs/&lt;env&gt;/main.tf</code> holds each environment's <strong>policy</strong> (database size and availability,
-deletion protection, retention lock, perimeter mode) where code review sees it;
-<code>terraform.tfvars</code> holds only names and ids.</p>
+<p><code>envs/&lt;env&gt;/main.tf</code> holds the <strong>policy</strong> of each environment, where code review sees it.
+The policy includes the database size and availability, the deletion protection, the
+retention lock and the perimeter mode. <code>terraform.tfvars</code> holds only names and ids.</p>
 <table>
 <thead>
 <tr>
@@ -5370,14 +5439,14 @@ deletion protection, retention lock, perimeter mode) where code review sees it;
 <tr>
 <td>VPC-SC perimeter</td>
 <td>dry-run (optional)</td>
-<td>enforced, required</td>
-<td>enforced, required</td>
+<td>enforced, necessary</td>
+<td>enforced, necessary</td>
 </tr>
 <tr>
 <td>Load balancer + domains</td>
 <td>optional</td>
 <td>optional</td>
-<td><strong>required</strong></td>
+<td><strong>necessary</strong></td>
 </tr>
 <tr>
 <td>Deletion protection</td>
@@ -5408,16 +5477,17 @@ deletion protection, retention lock, perimeter mode) where code review sees it;
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>An organisation</strong> with an Access Context Manager policy (<code>gcloud access-context-manager
-  policies list --organization ORG_ID</code>). Without one, only <code>dev</code> can be deployed, without the
-  perimeter (every plan then warns).</li>
-<li><strong>Projects</strong>, created by your organisation's project vending: <code>control</code>, <code>data</code>, <code>build</code>,
-  and one exec project per pool (<code>exec-paid</code>, plus <code>exec-public</code> once public tenants exist),
-  all linked to billing. Keep the exec projects free of anything else.</li>
+  policies list --organization ORG_ID</code>). Without a policy, you can deploy only <code>dev</code>, without
+  the perimeter. Each plan then shows a warning.</li>
+<li><strong>Projects</strong> that the project vending of your organisation makes: <code>control</code>, <code>data</code>,
+  <code>build</code>, and one exec project for each pool. The pools are <code>exec-paid</code>, and also
+  <code>exec-public</code> when you have public tenants. Link all projects to billing. Put nothing else
+  in the exec projects.</li>
 <li><strong>Tools</strong>: Terraform ≥ 1.11 (tested with 1.14), <code>gcloud</code>, Docker with <code>buildx</code>, <code>python3</code>
   and <code>curl</code>.</li>
-<li><strong>Permissions</strong> for the first run: project owner (or equivalent) on every project, and
-  <code>roles/accesscontextmanager.policyEditor</code> on the organisation policy. Later runs use the
-  CI identities Terraform creates.</li>
+<li><strong>Permissions</strong> for the first run: project owner (or equivalent) on each project, and
+  <code>roles/accesscontextmanager.policyEditor</code> on the organisation policy. Later runs use the CI
+  identities that Terraform makes.</li>
 <li><strong>An OAuth client</strong> (web application) for the app origin, for browser sign-in.</li>
 </ul>
 <h2 id="step-by-step">Step by step<a class="headerlink" href="#step-by-step" title="Permanent link">&para;</a></h2>
@@ -5428,80 +5498,94 @@ deletion protection, retention lock, perimeter mode) where code review sees it;
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>--exec-project<span class="w"> </span><span class="nv">paid</span><span class="o">=</span>acme-mapi-stg-exec-paid<span class="w"> </span>--exec-project<span class="w"> </span><span class="nv">public</span><span class="o">=</span>acme-mapi-stg-exec-public<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span>--state-project<span class="w"> </span>acme-mapi-stg-build<span class="w"> </span>--dry-run<span class="w">       </span><span class="c1"># read what it will do, then drop --dry-run</span>
 </span></code></pre></div>
-<p>It enables each project's APIs (the same lists as <code>modules/stack/apis.tf</code>; a test keeps them
-identical), creates the state bucket (uniform access, public access prevention, object
-versioning) and writes <code>infra/terraform/envs/staging/backend.hcl</code>.</p>
+<p>The script enables the APIs of each project. It uses the same lists as
+<code>modules/stack/apis.tf</code>, and a test keeps the lists identical. It makes the state bucket
+(uniform access, public access prevention, object versioning). Then it writes
+<code>infra/terraform/envs/staging/backend.hcl</code>.</p>
 <h3 id="2-describe-the-environment">2. Describe the environment<a class="headerlink" href="#2-describe-the-environment" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cp<span class="w"> </span>infra/terraform/envs/staging/terraform.tfvars.example<span class="w"> </span>infra/terraform/envs/staging/terraform.tfvars
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">$EDITOR</span><span class="w"> </span>infra/terraform/envs/staging/terraform.tfvars
 </span></code></pre></div>
-<p>Fill in the project ids, region, bucket location (follow your tenants' data residency), the
-exec pools, the access policy id, the domains, the OAuth client id and the GitHub repository.
-The file holds no secrets and is not committed.</p>
+<p>Type these values:</p>
+<ul>
+<li>The project ids and the region.</li>
+<li>The bucket location. Use the data residency of your tenants.</li>
+<li>The exec pools and the access policy id.</li>
+<li>The domains, the OAuth client id and the GitHub repository.</li>
+</ul>
+<p>The file holds no secrets. Do not commit it.</p>
 <div class="admonition warning">
 <p class="admonition-title">Data residency and the exec region</p>
-<p>A run is placed only on an executor whose region satisfies its tenant's data residency.
-The default residency (the platform tenant's, and that of every tenant created without
-one) is therefore what the dispatch pool's region satisfies: <code>eu</code> for <code>europe-west4</code>.
-Override it with the control module's <code>default_residency</code>. A tenant whose residency the
-exec region cannot satisfy has its runs refused at submission (<code>403</code>, "no executor of
-this platform can run this tenant's work"), and the worker logs a warning for it at
-start-up. Change it with <code>PATCH /v1/admin/tenants/{id}</code> (<code>data_residency</code>).</p>
+<p>The dispatcher puts a run only on an executor whose region satisfies the data residency
+of its tenant. The default residency is the residency that the region of the dispatch
+pool satisfies: <code>eu</code> for <code>europe-west4</code>. This default applies to the platform tenant and
+to each tenant that you make without a residency. To change the default, use the
+<code>default_residency</code> of the control module.</p>
+<p>The exec region can be unable to satisfy the residency of a tenant. Then the server
+refuses its runs at submission (<code>403</code>, "no executor of this platform can run this
+tenant's work"). The
+worker also logs a warning for the tenant at start-up. To change the residency of a
+tenant, use <code>PATCH /v1/admin/tenants/{id}</code> (<code>data_residency</code>).</p>
 </div>
 <h3 id="3-apply-the-foundation">3. Apply the foundation<a class="headerlink" href="#3-apply-the-foundation" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>deploy/gcp/deploy.sh<span class="w"> </span>--env<span class="w"> </span>staging<span class="w"> </span>--foundation
 </span></code></pre></div>
-<p>A foundation apply creates everything except the Cloud Run workloads and Jobs, which need
-images: the registry, networks, DNS policy, database, secrets, buckets, perimeter and CI
-identities. <code>deploy.sh</code> always shows the plan and asks you to type the environment name
-before applying it.</p>
-<p>Database passwords, the token pepper and the session key are generated during this apply by
-ephemeral resources and written with write-only arguments: they are in Secret Manager and
-nowhere else (not in the state, not in the plan file).</p>
+<p>A foundation apply makes all resources except the Cloud Run workloads and Jobs, which need
+images. It makes the registry, networks, DNS policy, database, secrets, buckets, perimeter
+and CI identities. <code>deploy.sh</code> always shows the plan. Before it applies the plan, it asks you
+to type the environment name.</p>
+<p>During this apply, ephemeral resources make the database passwords, the token pepper and the
+session key. Write-only arguments write them. They are in Secret Manager only. They are not
+in the state and not in the plan file.</p>
 <h3 id="4-add-the-oauth-client-secret">4. Add the OAuth client secret<a class="headerlink" href="#4-add-the-oauth-client-secret" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">TF_VAR_oidc_client_secret</span><span class="o">=</span><span class="s1">'...'</span><span class="w">      </span><span class="c1"># from the OAuth client</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># in terraform.tfvars: oidc_client_secret_version = 1</span>
 </span></code></pre></div>
-<p>The secret is an <em>ephemeral</em> Terraform variable: it is written to Secret Manager as a new
-version and never stored. Raise <code>oidc_client_secret_version</code> whenever you rotate it. Add the
-identity providers you want to Identity Platform (console, or
-<code>google_identity_platform_*_idp_config</code> resources outside this module).</p>
+<p>The secret is an <em>ephemeral</em> Terraform variable. Terraform writes it to Secret Manager as a
+new version and never keeps it. When you rotate the secret, increase
+<code>oidc_client_secret_version</code>. Add the identity providers that you want to Identity Platform.
+Use the console, or <code>google_identity_platform_*_idp_config</code> resources outside this module.</p>
 <h3 id="5-build-and-push-the-images">5. Build and push the images<a class="headerlink" href="#5-build-and-push-the-images" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>deploy/gcp/build-push.sh<span class="w"> </span>--env<span class="w"> </span>staging
 </span></code></pre></div>
-<p>It builds <code>server</code>, <code>web</code>, <code>base-bayes</code>, <code>base-ml</code> and <code>base-forecast</code> for <code>linux/amd64</code>,
-pushes them as <code>&lt;version&gt;-&lt;git sha&gt;</code> (tags are immutable in the registry, so re-running for the
-same commit reuses what is there) and writes their <strong>digests</strong> to
-<code>deploy/gcp/.out/staging/images.tfvars.json</code>. Terraform refuses any image that is not pinned by
-digest.</p>
+<p>The script builds <code>server</code>, <code>web</code>, <code>base-bayes</code>, <code>base-ml</code> and <code>base-forecast</code> for
+<code>linux/amd64</code>. It pushes them as <code>&lt;version&gt;-&lt;git sha&gt;</code>. Tags are immutable in the registry.
+Thus, if you run the script again for the same commit, it uses the images that are there. The
+script writes the <strong>digests</strong> of the images to <code>deploy/gcp/.out/staging/images.tfvars.json</code>.
+Terraform refuses all images that are not pinned by digest.</p>
 <h3 id="6-deploy-the-release">6. Deploy the release<a class="headerlink" href="#6-deploy-the-release" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>deploy/gcp/deploy.sh<span class="w"> </span>--env<span class="w"> </span>staging
 </span></code></pre></div>
+<p>The script does these steps:</p>
 <ol>
-<li><code>terraform plan</code> with <code>terraform.tfvars</code> and the images file, saved to a plan file.</li>
-<li>Confirmation (type the environment name; <code>--yes</code> skips it in automation).</li>
-<li><strong>Migrations first</strong>: the <code>mapi-staging-migrate</code> job is pointed at the new server image and
-   executed (<code>deploy/gcp/migrate.sh</code>). Migrations are expand/contract, so the release still
-   serving keeps working on the new schema. On the very first release the job does not exist
-   yet, so they run right after the apply instead.</li>
-<li><code>terraform apply</code> of exactly the saved plan.</li>
-<li>The images file is recorded as a release in
-   <code>gs://&lt;state bucket&gt;/mapi/staging/releases/&lt;UTC timestamp&gt;-&lt;release id&gt;.json</code>. The release id
-   is a hash of the images, so a retried deploy of the same images is the same release.</li>
-<li>Smoke test: API <code>/healthz</code> and <code>/readyz</code>, the web app (with a Content-Security-Policy), the
-   plot sandbox, and a check that the events service refuses requests from the internet.</li>
+<li>It does a <code>terraform plan</code> with <code>terraform.tfvars</code> and the images file, and saves the
+   plan to a plan file.</li>
+<li>It asks for confirmation. Type the environment name. In automation, <code>--yes</code> skips this
+   step.</li>
+<li><strong>Migrations first</strong>: it points the <code>mapi-staging-migrate</code> job at the new server image and
+   executes the job (<code>deploy/gcp/migrate.sh</code>). Migrations are expand/contract. Thus the
+   release that serves now continues to work on the new schema. On the first release, the job
+   is not there yet. Thus the migrations run immediately after the apply.</li>
+<li>It does a <code>terraform apply</code> of exactly the saved plan.</li>
+<li>It records the images file as a release in
+   <code>gs://&lt;state bucket&gt;/mapi/staging/releases/&lt;UTC timestamp&gt;-&lt;release id&gt;.json</code>. The release
+   id is a hash of the images. Thus, if you retry a deploy of the same images, it is the same
+   release.</li>
+<li>It does a smoke test. The test does a check of the API <code>/healthz</code> and <code>/readyz</code>, the web
+   app (with a Content-Security-Policy) and the plot sandbox. It also makes sure that the
+   events service refuses requests from the internet.</li>
 </ol>
 <h3 id="7-point-dns-at-the-load-balancer">7. Point DNS at the load balancer<a class="headerlink" href="#7-point-dns-at-the-load-balancer" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>terraform<span class="w"> </span>-chdir<span class="o">=</span>infra/terraform/envs/staging<span class="w"> </span>output<span class="w"> </span>lb_ip
 </span></code></pre></div>
-<p>Create <code>A</code> records for both domains. The Google-managed certificate provisions once DNS
-resolves (often 15–60 minutes); until then run <code>deploy.sh --skip-smoke</code>. Without <code>domains</code>,
-the services answer on their <code>run.app</code> URLs (<code>terraform output urls</code>).</p>
+<p>Make <code>A</code> records for the two domains. The Google-managed certificate becomes available when
+DNS resolves. This often takes 15–60 minutes. Until then, run <code>deploy.sh --skip-smoke</code>.
+Without <code>domains</code>, the services answer on their <code>run.app</code> URLs (<code>terraform output urls</code>).</p>
 <h3 id="8-verify-the-controls">8. Verify the controls<a class="headerlink" href="#8-verify-the-controls" title="Permanent link">&para;</a></h3>
-<p>Work through the <a href="../security-hardening/">security hardening</a> page, and the
-<a href="../security-hardening/#m0-verification-checklist">M0 verification checklist</a> before the first
-production deploy. Once the DNS item has a recorded pass, tell the orchestrator so, in the
-environment's <code>main.tf</code>, and deploy again:</p>
+<p>Before the first production deploy, read the <a href="../security-hardening/">security hardening</a> page
+and do the <a href="../security-hardening/#m0-verification-checklist">M0 verification checklist</a>. When
+the DNS item has a recorded pass, tell the orchestrator in the <code>main.tf</code> of the environment.
+Then deploy again:</p>
 <div class="language-hcl highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">control</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1">  # ...</span>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nb">extra_env</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
@@ -5509,11 +5593,11 @@ environment's <code>main.tf</code>, and deploy again:</p>
 </span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="p">}</span>
 </span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>Until then the executor declares DNS as not enforced, and the dispatcher refuses to place
+<p>Until then, the executor declares that DNS is not enforced. The dispatcher then does not put
 <code>verified</code> and <code>public</code> tenants on it (<a href="../../guides/administration/#trust-tiers">trust tiers</a>).</p>
 <h3 id="9-name-the-operators-and-create-the-first-tenant">9. Name the operators and create the first tenant<a class="headerlink" href="#9-name-the-operators-and-create-the-first-tenant" title="Permanent link">&para;</a></h3>
-<p>Platform operators are the people whose <strong>verified</strong> e-mail is in <code>MAPI_OPERATOR_EMAILS</code>. Set it
-on the API (plain values only; never secrets in <code>extra_env</code>):</p>
+<p>Platform operators are the persons whose <strong>verified</strong> e-mail is in <code>MAPI_OPERATOR_EMAILS</code>.
+Set it on the API. Use only plain values. Never put secrets in <code>extra_env</code>:</p>
 <div class="language-hcl highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">control</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">  # ...</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nb">extra_env</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
@@ -5521,36 +5605,36 @@ on the API (plain values only; never secrets in <code>extra_env</code>):</p>
 </span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span><span class="p">}</span>
 </span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>After <code>deploy/gcp/deploy.sh --env staging</code>, an operator signs in to the web app (or with
-<code>mapi login --issuer https://accounts.google.com --client-id &lt;the CLI's client id&gt;</code>) and creates
-each organisation's tenant with its first admin, who is invited by e-mail and becomes tenant
-admin at their first sign-in:</p>
+<p>Run <code>deploy/gcp/deploy.sh --env staging</code>. Then an operator signs in to the web app, or with
+<code>mapi login --issuer https://accounts.google.com --client-id &lt;the CLI's client id&gt;</code>. The
+operator makes the tenant of each organisation with its first admin. The server sends an
+invitation to the admin by e-mail. The admin becomes tenant admin at the first sign-in:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>mapi<span class="w"> </span>admin<span class="w"> </span>tenants<span class="w"> </span>create<span class="w"> </span>acme<span class="w"> </span>--name<span class="w"> </span><span class="s2">"Acme Retail"</span><span class="w"> </span>--tier<span class="w"> </span>verified<span class="w"> </span>--residency<span class="w"> </span>eu<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span>--admin-email<span class="w"> </span>it@acme.example
 </span></code></pre></div>
-<p>From there the tenant admin creates projects and invites people
-(<a href="../../guides/administration/">Administration</a>). Check the platform with the
-<a href="../observability/">observability</a> dashboards, and import the alerts before you let anyone in.</p>
+<p>After this, the tenant admin makes projects and invites persons
+(<a href="../../guides/administration/">Administration</a>). Monitor the platform with the
+<a href="../observability/">observability</a> dashboards. Import the alerts before you let users in.</p>
 <div class="admonition warning">
 <p class="admonition-title">Verified tenants cannot run until DNS enforcement is verified</p>
-<p><code>verified</code> (the default tier of new tenants, the private beta) and <code>public</code> tenants need
-an executor with egress <strong>and</strong> DNS enforced. A fresh stack sets neither
-<code>MAPI_CLOUDRUN_DNS_ENFORCED</code> nor any suite evidence, so their runs are refused at
-submission (<code>INFRA_ERROR</code>, 503) and only <code>internal</code> and <code>self_hosted_trusted</code> tenants run.
-To open the shared tiers:</p>
+<p><code>verified</code> and <code>public</code> tenants need an executor with egress <strong>and</strong> DNS enforced.
+<code>verified</code> is the default tier of new tenants (the private beta). A new stack does not
+set <code>MAPI_CLOUDRUN_DNS_ENFORCED</code> and has no suite evidence. Thus the server refuses their
+runs at submission (<code>INFRA_ERROR</code>, 503). Only <code>internal</code> and <code>self_hosted_trusted</code>
+tenants run. To open the shared tiers, do these steps:</p>
 <ol>
-<li>pass the DNS red-team gate of the M0 checklist from a Job of this environment;</li>
-<li>set <code>MAPI_CLOUDRUN_DNS_ENFORCED = "true"</code> for the orchestrator through
-   <code>control.extra_env</code> (<code>{ orchestrator = { MAPI_CLOUDRUN_DNS_ENFORCED = "true" } }</code>) and
-   deploy;</li>
-<li>run the executor conformance suite and the security suite against the deployed
-   executor and record both with <code>PUT /v1/admin/executors/cloudrun-jobs/evidence</code>
+<li>Pass the DNS red-team gate of the M0 checklist from a Job of this environment.</li>
+<li>Set <code>MAPI_CLOUDRUN_DNS_ENFORCED = "true"</code> for the orchestrator through
+   <code>control.extra_env</code> (<code>{ orchestrator = { MAPI_CLOUDRUN_DNS_ENFORCED = "true" } }</code>).
+   Then deploy.</li>
+<li>Run the executor conformance suite and the security suite against the deployed
+   executor. Record the two results with <code>PUT /v1/admin/executors/cloudrun-jobs/evidence</code>
    (<a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>). Evidence expires after
    <code>MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S</code>, so record the nightly runs.</li>
 </ol>
 </div>
 <h2 id="continuous-deployment">Continuous deployment<a class="headerlink" href="#continuous-deployment" title="Permanent link">&para;</a></h2>
-<p><code>.github/workflows/deploy.yml</code> deploys on manual dispatch only, without service-account keys:</p>
+<p><code>.github/workflows/deploy.yml</code> deploys only on manual dispatch, without service-account keys:</p>
 <table>
 <thead>
 <tr>
@@ -5565,13 +5649,13 @@ To open the shared tiers:</p>
 <td>build</td>
 <td><code>&lt;env&gt;-build</code></td>
 <td><code>mapi-&lt;env&gt;-ci-push</code></td>
-<td><code>build-push.sh</code>; uploads the images file</td>
+<td><code>build-push.sh</code>. Uploads the images file</td>
 </tr>
 <tr>
 <td>plan</td>
 <td><code>&lt;env&gt;-plan</code></td>
 <td><code>mapi-&lt;env&gt;-planner</code> (read-only)</td>
-<td><code>deploy.sh --plan-only</code>; the plan goes to the job summary</td>
+<td><code>deploy.sh --plan-only</code>. The plan goes to the job summary</td>
 </tr>
 <tr>
 <td>apply</td>
@@ -5581,103 +5665,120 @@ To open the shared tiers:</p>
 </tr>
 </tbody>
 </table>
-<p>Set up, per environment:</p>
+<p>Do these steps for each environment:</p>
 <ol>
-<li>Create the three GitHub environments and put <strong>required reviewers</strong> on <code>&lt;env&gt;</code> (the apply).
-   Restrict <code>&lt;env&gt;</code> to protected branches.</li>
+<li>Make the three GitHub environments. Put <strong>required reviewers</strong> on <code>&lt;env&gt;</code> (the apply).</li>
+<li>Restrict <code>&lt;env&gt;</code> to protected branches.</li>
 <li>Copy the values of <code>terraform output github</code> into environment variables:
-   <code>GCP_WIF_PROVIDER</code>, <code>GCP_CI_PUSH_SA</code>, <code>GCP_PLANNER_SA</code>, <code>GCP_DEPLOYER_SA</code>; also
-   <code>GCP_IMAGE_REPOSITORY</code> (<code>terraform output image_repository</code>), <code>TF_STATE_BUCKET</code> and
-   <code>TERRAFORM_TFVARS</code> (the contents of the environment's <code>terraform.tfvars</code>).</li>
-<li>Optionally add <code>OIDC_CLIENT_SECRET</code> as a secret of <code>&lt;env&gt;-plan</code> and <code>&lt;env&gt;</code> (an ephemeral
-   variable must be given to both the plan and the apply).</li>
+   <code>GCP_WIF_PROVIDER</code>, <code>GCP_CI_PUSH_SA</code>, <code>GCP_PLANNER_SA</code>, <code>GCP_DEPLOYER_SA</code>.</li>
+<li>Also add <code>GCP_IMAGE_REPOSITORY</code> (<code>terraform output image_repository</code>), <code>TF_STATE_BUCKET</code>
+   and <code>TERRAFORM_TFVARS</code> (the contents of the <code>terraform.tfvars</code> of the environment).</li>
+<li>Optionally, add <code>OIDC_CLIENT_SECRET</code> as a secret of <code>&lt;env&gt;-plan</code> and <code>&lt;env&gt;</code>. You must give
+   an ephemeral variable to the plan and to the apply.</li>
 </ol>
-<p>The workload identity provider accepts tokens from your repository only, and each service
-account trusts exactly one GitHub environment, so a job can never assume more than its
-environment allows. The very first apply of an environment (which creates these identities)
-is run by a person.</p>
-<p>The perimeter is an organisation-level resource, which project-level grants cannot cover:
-give the deployer <code>roles/accesscontextmanager.policyEditor</code> and the planner
-<code>roles/accesscontextmanager.policyReader</code> on the access policy yourself (or use a scoped
-access policy for the platform's projects). Once the perimeter is enforced, people who run
-Terraform or read the exec projects' logs from outside it need an access level
-(<code>vpc_sc.access_levels</code>); the deployer has its own ingress rule.</p>
+<p>The workload identity provider accepts tokens only from your repository. Each service
+account trusts exactly one GitHub environment. Thus a job can never get more permissions than
+its environment permits. A person runs the first apply of an environment, which makes these
+identities.</p>
+<p>The perimeter is an organisation-level resource. Project-level grants cannot include it. Thus
+give these roles on the access policy yourself, or use a scoped access policy for the
+projects of the platform:</p>
+<ul>
+<li><code>roles/accesscontextmanager.policyEditor</code> to the deployer.</li>
+<li><code>roles/accesscontextmanager.policyReader</code> to the planner.</li>
+</ul>
+<p>When the perimeter is enforced, persons outside it need an access level
+(<code>vpc_sc.access_levels</code>) to run Terraform or to read the logs of the exec projects. The
+deployer has its own ingress rule.</p>
 <h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Bucket names are global.</strong> The storage contract names buckets <code>mapi-{env}-{purpose}</code>
-  (<code>mapi_spec.storage.bucket_name</code>), so <code>mapi-prod-data</code> must be free in all of Cloud
-  Storage. If a name is taken, choose a more specific environment name (any name matching
-  <code>^[a-z][a-z0-9-]{0,15}$</code>, e.g. <code>acme-prod</code>, as a new <code>envs/</code> directory).</li>
-<li><strong>KMS key rings are permanent.</strong> Recreating a destroyed environment needs
+  (<code>mapi_spec.storage.bucket_name</code>). Thus <code>mapi-prod-data</code> must be free in all of Cloud
+  Storage. If a different user has the name, select a more specific environment name as a
+  new <code>envs/</code> directory. The name must agree with <code>^[a-z][a-z0-9-]{0,15}$</code>, for example
+  <code>acme-prod</code>.</li>
+<li><strong>KMS key rings are permanent.</strong> If you make a destroyed environment again, you must do a
   <code>terraform import</code> of its key rings.</li>
-<li><strong><code>--traffic-only</code> rollbacks</strong> cover the HTTP services only; the orchestrator and the Jobs
-  roll back with a release redeploy.</li>
+<li><strong><code>--traffic-only</code> rollbacks</strong> apply only to the HTTP services. To roll back the
+  orchestrator and the Jobs, deploy a release again.</li>
 </ul>
 <h2 id="metrics">Metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h2>
 <p>The alert policies in <code>ops/alerts/cloud-monitoring-alerts.yaml</code> and the Cloud Monitoring
 dashboard read the <code>mapi_*</code> series from Managed Service for Prometheus. Nothing outside an
-instance can scrape them: the load balancer routes only <code>/v1</code>, <code>/auth/*</code> and the health
-checks, and the orchestrator has no ingress at all. So each server workload (api, events,
-orchestrator) runs a <strong>collector sidecar</strong>, an OpenTelemetry Collector that scrapes the
-workload's <code>/metrics</code> over <code>127.0.0.1</code> every 30 s with the <code>metrics-token</code> bearer and writes
-the series to Managed Service for Prometheus. The orchestrator serves its own series (dispatch
-latency, finalize outcomes, integrity failures, running executions, jobs.run 429s) on
-<code>127.0.0.1:9464</code>. The runtime identities already hold <code>roles/monitoring.metricWriter</code>.</p>
-<p>Mirror the Google-built collector image into the build project's registry, pin it by digest,
-and set it per environment:</p>
+instance can scrape them. The load balancer routes only <code>/v1</code>, <code>/auth/*</code> and the health
+checks, and the orchestrator has no ingress. Thus each server workload (api, events,
+orchestrator) runs a <strong>collector sidecar</strong>.</p>
+<p>The sidecar is an OpenTelemetry Collector. It scrapes the <code>/metrics</code> of the workload over
+<code>127.0.0.1</code> each 30 s, with the <code>metrics-token</code> bearer. It writes the series to Managed
+Service for Prometheus. The orchestrator serves its own series on <code>127.0.0.1:9464</code>: dispatch
+latency, finalize outcomes, integrity failures, running executions and jobs.run 429s. The
+runtime identities already have <code>roles/monitoring.metricWriter</code>.</p>
+<p>Copy the collector image from Google into the registry of the build project. Pin it by
+digest, and set it for each environment:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>gcloud<span class="w"> </span>artifacts<span class="w"> </span>docker<span class="w"> </span>images<span class="w"> </span>copy<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-opentelemetry-collector/otelcol-google:&lt;version&gt;<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>europe-west4-docker.pkg.dev/&lt;build<span class="w"> </span>project&gt;/mirror/otelcol-google:&lt;version&gt;
 </span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># terraform.tfvars</span>
 </span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nv">metrics_collector_image</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"europe-west4-docker.pkg.dev/&lt;build project&gt;/mirror/otelcol-google@sha256:&lt;digest&gt;"</span>
 </span></code></pre></div>
-<p>Without it, a release still deploys, but Terraform warns (<code>check.metrics_collection</code>) and
-no <code>mapi_*</code> series reaches Cloud Monitoring. Then the PromQL alerts (integrity failure,
-<code>STALLED</code> rate, spend caps) can never fire. <code>control.metrics_collector</code> also takes
-<code>scrape_interval</code>, <code>cpu</code> and <code>memory</code>. The api and events services allocate CPU only
-while they serve requests, so an idle instance is scraped late; that is acceptable for
-alerts evaluated over 5 to 15 minutes.</p>
-<p>The security-suite series (<code>mapi_security_probe_unexpected</code>) comes from the nightly
-workflow, which pushes it to the Pushgateway named by the <code>MAPI_PUSHGATEWAY_URL</code> repository
-secret (<code>ops/README.md</code>).</p>
+<p>Without the image, a release still deploys, but Terraform shows a warning
+(<code>check.metrics_collection</code>). Then no <code>mapi_*</code> series goes to Cloud Monitoring, and the
+PromQL alerts (integrity failure, <code>STALLED</code> rate, spend caps) can never fire.
+<code>control.metrics_collector</code> also accepts <code>scrape_interval</code>, <code>cpu</code> and <code>memory</code>. The api and
+events services get CPU only while they serve requests. Thus the sidecar scrapes an idle
+instance late. This is satisfactory for alerts that use a period of 5 to 15 minutes.</p>
+<p>The security-suite series (<code>mapi_security_probe_unexpected</code>) comes from the nightly workflow.
+The workflow pushes it to the Pushgateway that the <code>MAPI_PUSHGATEWAY_URL</code> repository secret
+names (<code>ops/README.md</code>).</p>
 <h2 id="day-2-operations">Day-2 operations<a class="headerlink" href="#day-2-operations" title="Permanent link">&para;</a></h2>
-<p><strong>Rollback.</strong> Two ways:</p>
+<p><strong>Rollback.</strong> There are two procedures:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>deploy/gcp/rollback.sh<span class="w"> </span>--env<span class="w"> </span>prod<span class="w"> </span>--list<span class="w">            </span><span class="c1"># recorded releases, newest first</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>deploy/gcp/rollback.sh<span class="w"> </span>--env<span class="w"> </span>prod<span class="w"> </span>--previous<span class="w">        </span><span class="c1"># redeploy the release before the deployed one</span>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>deploy/gcp/rollback.sh<span class="w"> </span>--env<span class="w"> </span>prod<span class="w"> </span>--traffic-only<span class="w">    </span><span class="c1"># seconds: services back to their previous revision</span>
 </span></code></pre></div>
 <p>A release rollback goes through <code>deploy.sh</code> (plan, confirmation, apply, smoke test) with
-<code>--skip-migrate</code>: schema changes only move forward. It is recorded as
-<code>&lt;UTC timestamp&gt;-&lt;id of the release it redeployed&gt;-rollback.json</code>, and <code>--previous</code> replays the
-records: retried deploys count once, and after rolling back from a bad release a second
-<code>--previous</code> goes one release further back instead of returning to the bad one. <code>--traffic-only</code> shifts traffic with
-<code>gcloud</code> without touching Terraform, for incidents; it leaves the orchestrator and the Jobs as
-they are, and the next deploy moves traffic to the newest revision again.</p>
+<code>--skip-migrate</code>, because schema changes only move forward. The script records it as
+<code>&lt;UTC timestamp&gt;-&lt;id of the release it redeployed&gt;-rollback.json</code>. <code>--previous</code> reads the
+records again. A retried deploy counts one time. After a rollback from a bad release, a
+second <code>--previous</code> goes one more release back. It does not go back to the bad release.</p>
+<p><code>--traffic-only</code> moves traffic with <code>gcloud</code> and does not change Terraform. Use it for
+incidents. It does not change the orchestrator and the Jobs. The next deploy moves traffic
+to the newest revision again.</p>
 <p><strong>Migrations by themselves.</strong> <code>deploy/gcp/migrate.sh --env prod --image &lt;server@sha256:...&gt;</code>.</p>
-<p><strong>Rotate secrets.</strong> Raise <code>control.database.password_version</code> in the environment's <code>main.tf</code>
-(all three database roles and their connection URLs change in one apply), or
-<code>control.secret_versions.session_secret</code> (signs everyone out) or <code>token_pepper</code> (<strong>invalidates
-every API token</strong>). New Cloud Run revisions pick up the latest secret versions.</p>
-<p><strong>Rotate the bundle-signing key.</strong> Create a KMS key version, set <code>control.kms_key_version</code> to
-it and list the previous one in <code>control.kms_trusted_key_versions</code>, then deploy; see
-<code>ops/runbooks/rotating-keys.md</code>. Dropping a version from the trusted list makes every model
-it signed fail <code>INTEGRITY_FAILURE</code>.</p>
-<p><strong>Add an exec pool.</strong> Add an entry to <code>exec_pools</code>, run <code>bootstrap.sh</code> for its project, then
-<code>deploy.sh</code>. The perimeter, the Logging sink, the image-pull grant and the bootstrap-bucket grant
-follow automatically.</p>
-<p><strong>Tear down dev.</strong> KMS keys cannot be deleted (only their versions can be scheduled for
-destruction), so the two signing keys carry <code>prevent_destroy</code>. Release them from the state
-first, then destroy; dev has no deletion protection and lets Terraform empty its buckets,
-while staging and prod refuse:</p>
+<p><strong>Rotate secrets.</strong> Increase one of these values in the <code>main.tf</code> of the environment:</p>
+<ul>
+<li><code>control.database.password_version</code>. All three database roles and their connection URLs
+  change in one apply.</li>
+<li><code>control.secret_versions.session_secret</code>. This signs out all users.</li>
+<li><code>token_pepper</code>. This <strong>makes all API tokens invalid</strong>.</li>
+</ul>
+<p>New Cloud Run revisions use the latest secret versions.</p>
+<p><strong>Rotate the bundle-signing key.</strong> Do these steps (refer to
+<code>ops/runbooks/rotating-keys.md</code>):</p>
+<ol>
+<li>Make a KMS key version.</li>
+<li>Set <code>control.kms_key_version</code> to it.</li>
+<li>List the previous version in <code>control.kms_trusted_key_versions</code>.</li>
+<li>Deploy.</li>
+</ol>
+<p>If you remove a version from the trusted list, each model that it signed fails with
+<code>INTEGRITY_FAILURE</code>.</p>
+<p><strong>Add an exec pool.</strong> Add an entry to <code>exec_pools</code>. Run <code>bootstrap.sh</code> for its project, then
+run <code>deploy.sh</code>. The perimeter, the Logging sink, the image-pull grant and the
+bootstrap-bucket grant change automatically.</p>
+<p><strong>Tear down dev.</strong> You cannot delete KMS keys. You can only schedule their versions for
+destruction. Thus the two signing keys have <code>prevent_destroy</code>. First, remove them from the
+state. Then destroy. Dev has no deletion protection and lets Terraform empty its buckets.
+Staging and prod refuse this:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nb">cd</span><span class="w"> </span>infra/terraform/envs/dev
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>terraform<span class="w"> </span>state<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">'google_kms_crypto_key\.'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-n1<span class="w"> </span>terraform<span class="w"> </span>state<span class="w"> </span>rm
 </span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>terraform<span class="w"> </span>destroy
 </span></code></pre></div>
 <h2 id="environment-of-the-cloud-run-workloads">Environment of the Cloud Run workloads<a class="headerlink" href="#environment-of-the-cloud-run-workloads" title="Permanent link">&para;</a></h2>
 <p>This is the deployment contract between Terraform (<code>modules/control/locals.tf</code>) and
-<code>mapi-server</code>. Every name is a <code>mapi-server</code> setting (see the
-<a href="../configuration/">configuration reference</a>); <code>tests/infra</code> fails if Terraform sets one the
-server does not read. Plain values:</p>
+<code>mapi-server</code>. Each name is a <code>mapi-server</code> setting (refer to the
+<a href="../configuration/">configuration reference</a>). If Terraform sets a variable that the server
+does not read, <code>tests/infra</code> fails. These are the plain values:</p>
 <table>
 <thead>
 <tr>
@@ -5690,7 +5791,7 @@ server does not read. Plain values:</p>
 <tr>
 <td><code>MAPI_ENV</code></td>
 <td>all</td>
-<td>Environment name; buckets are <code>mapi-{env}-*</code></td>
+<td>Environment name. Buckets are <code>mapi-{env}-*</code></td>
 </tr>
 <tr>
 <td><code>MAPI_PROFILE</code></td>
@@ -5700,22 +5801,22 @@ server does not read. Plain values:</p>
 <tr>
 <td><code>MAPI_OBJECT_STORE</code></td>
 <td>all</td>
-<td><code>gcs</code>: real Cloud Storage, URLs signed keylessly</td>
+<td><code>gcs</code>: real Cloud Storage, URLs signed without a key file</td>
 </tr>
 <tr>
 <td><code>MAPI_GCP_PROJECT</code></td>
 <td>all</td>
-<td>Project of the Cloud Storage client</td>
+<td>The project of the Cloud Storage client</td>
 </tr>
 <tr>
 <td><code>MAPI_URL_SIGNER</code></td>
 <td>all</td>
-<td>Service account whose <code>signBlob</code> signs URLs (no key file exists)</td>
+<td>The service account whose <code>signBlob</code> signs URLs (no key file is necessary)</td>
 </tr>
 <tr>
 <td><code>MAPI_URL_UPLOADER</code></td>
 <td>all</td>
-<td>Service account whose <code>signBlob</code> signs create-only upload policies (run outputs); it may create objects in <code>runs</code> and <code>quarantine</code> but never delete them</td>
+<td>The service account whose <code>signBlob</code> signs create-only upload policies (run outputs). It can make objects in <code>runs</code> and <code>quarantine</code>, but it can never delete them</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNER</code>, <code>MAPI_KMS_KEY_VERSION</code></td>
@@ -5725,17 +5826,17 @@ server does not read. Plain values:</p>
 <tr>
 <td><code>MAPI_DB_APP_ROLE</code>, <code>MAPI_DB_SYSTEM_ROLE</code>, <code>MAPI_DB_GATEWAY_ROLE</code></td>
 <td>all</td>
-<td><code>mapi_app</code> (row-level security), <code>mapi_orchestrator</code> (the platform role, the only RLS bypass) and <code>mapi_gateway</code> (the API's lookups before a tenant is known, RLS applies)</td>
+<td><code>mapi_app</code> (row-level security), <code>mapi_orchestrator</code> (the platform role, the only RLS bypass) and <code>mapi_gateway</code> (the look-ups of the API before it knows the tenant, RLS applies)</td>
 </tr>
 <tr>
 <td><code>MAPI_DEFAULT_RESIDENCY</code></td>
 <td>all</td>
-<td>Residency of the platform tenant and of tenants created without one: the control module's <code>default_residency</code>, else what the dispatch pool's region satisfies (<code>eu</code> for <code>europe-west4</code>)</td>
+<td>The residency of the platform tenant and of tenants that you make without a residency. It is the <code>default_residency</code> of the control module. If not set, it is the residency that the region of the dispatch pool satisfies (<code>eu</code> for <code>europe-west4</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_TRUSTED_PROXIES</code></td>
 <td>all</td>
-<td><code>169.254.0.0/16</code> (Cloud Run's front end), <code>35.191.0.0/16</code> and <code>130.211.0.0/22</code> (Google load balancer front ends) and the load balancer's address: the hops skipped when the API reads the caller's address from <code>X-Forwarded-For</code>. Check a sign-up's audit fingerprint differs between two networks after the first deployment; add hops through <code>extra_env</code> if your topology has more</td>
+<td><code>169.254.0.0/16</code> (the Cloud Run front end), <code>35.191.0.0/16</code> and <code>130.211.0.0/22</code> (Google load balancer front ends) and the address of the load balancer. The API skips these hops when it reads the address of the caller from <code>X-Forwarded-For</code>. After the first deployment, make sure that the audit fingerprint of a sign-up is different between two networks. If your topology has more hops, add them through <code>extra_env</code></td>
 </tr>
 <tr>
 <td><code>MAPI_API_URL</code>, <code>MAPI_WEB_ORIGIN</code>, <code>MAPI_PLOTS_ORIGIN</code></td>
@@ -5750,7 +5851,7 @@ server does not read. Plain values:</p>
 <tr>
 <td><code>MAPI_ALLOWED_HOSTS</code></td>
 <td>api, events</td>
-<td>Host names the service answers</td>
+<td>The host names that the service answers</td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_ISSUER</code>, <code>MAPI_OIDC_CLIENT_ID</code></td>
@@ -5760,7 +5861,7 @@ server does not read. Plain values:</p>
 <tr>
 <td><code>MAPI_PUBSUB_PUSH_AUDIENCE</code>, <code>MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT</code>, <code>MAPI_PUBSUB_PUSH_SUBSCRIPTIONS</code></td>
 <td>events</td>
-<td>What a valid Pub/Sub push token must say, and the one subscription allowed to push</td>
+<td>The values that a valid Pub/Sub push token must contain, and the one subscription that can push</td>
 </tr>
 <tr>
 <td><code>MAPI_EXECUTOR</code></td>
@@ -5770,12 +5871,12 @@ server does not read. Plain values:</p>
 <tr>
 <td><code>MAPI_WORKER_METRICS_PORT</code>, <code>MAPI_WORKER_METRICS_HOST</code></td>
 <td>orchestrator</td>
-<td><code>9464</code> on <code>127.0.0.1</code>: the orchestrator's own <code>/metrics</code> (dispatch, reconcile, finalize series), for the collector sidecar</td>
+<td><code>9464</code> on <code>127.0.0.1</code>: the <code>/metrics</code> of the orchestrator (dispatch, reconcile, finalize series), for the collector sidecar</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_PROJECT</code>, <code>MAPI_CLOUDRUN_REGION</code></td>
 <td>orchestrator</td>
-<td>The exec pool it dispatches to (<code>control.dispatch_pool</code>, default the first non-public pool); its Jobs follow the default <code>mapi-{env}-{base}-{class}</code> names</td>
+<td>The exec pool that it dispatches to (<code>control.dispatch_pool</code>, default the first pool that is not public). Its Jobs use the default <code>mapi-{env}-{base}-{class}</code> names</td>
 </tr>
 <tr>
 <td><code>MAPI_BOOTSTRAP_URL</code></td>
@@ -5784,7 +5885,7 @@ server does not read. Plain values:</p>
 </tr>
 </tbody>
 </table>
-<p>From Secret Manager (references, resolved when a revision starts):</p>
+<p>These values come from Secret Manager (references that resolve when a revision starts):</p>
 <table>
 <thead>
 <tr>
@@ -5802,17 +5903,17 @@ server does not read. Plain values:</p>
 <tr>
 <td><code>MAPI_DATABASE_APP_URL</code></td>
 <td>api, events, orchestrator</td>
-<td><code>db-url-app</code>: <code>mapi_app</code> through the pooler (transaction mode); tenant sessions</td>
+<td><code>db-url-app</code>: <code>mapi_app</code> through the pooler (transaction mode). Tenant sessions</td>
 </tr>
 <tr>
 <td><code>MAPI_DATABASE_GATEWAY_URL</code></td>
 <td>api, events</td>
-<td><code>db-url-gateway</code>: <code>mapi_gateway</code> through the pooler; sign-in lookups, operator routes, routing pushed events (no RLS bypass)</td>
+<td><code>db-url-gateway</code>: <code>mapi_gateway</code> through the pooler. Sign-in look-ups, operator routes, the routing of pushed events (no RLS bypass)</td>
 </tr>
 <tr>
 <td><code>MAPI_DATABASE_SYSTEM_URL</code></td>
 <td>orchestrator</td>
-<td><code>db-url-orchestrator</code>: <code>mapi_orchestrator</code>, direct; the orchestrator's loops. Only the orchestrator's service account can read this secret (plan §9)</td>
+<td><code>db-url-orchestrator</code>: <code>mapi_orchestrator</code>, direct. The loops of the orchestrator. Only the service account of the orchestrator can read this secret (plan §9)</td>
 </tr>
 <tr>
 <td><code>MAPI_DATABASE_URL</code></td>
@@ -5827,50 +5928,54 @@ server does not read. Plain values:</p>
 <tr>
 <td><code>MAPI_SERVER_SECRET</code></td>
 <td>all</td>
-<td>The root of the API-token pepper and the audit fingerprint key; rotating it (<code>control.secret_versions.server_secret</code>) invalidates every API token</td>
+<td>The root of the API-token pepper and the audit fingerprint key. If you rotate it (<code>control.secret_versions.server_secret</code>), all API tokens become invalid</td>
 </tr>
 <tr>
 <td><code>MAPI_METRICS_TOKEN</code></td>
 <td>api, events, orchestrator, collector sidecars</td>
-<td>The bearer a scraper presents on <code>GET /metrics</code> (the multi-tenant profile refuses scrapes without it)</td>
+<td>The bearer that a scraper sends on <code>GET /metrics</code> (the multi-tenant profile refuses scrapes without it)</td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_CLIENT_SECRET</code></td>
 <td>api</td>
-<td>Only once a client secret version exists</td>
+<td>Only when a client secret version is available</td>
 </tr>
 </tbody>
 </table>
-<p>One orchestrator serves one exec pool, and an environment deploys <strong>one</strong> orchestrator: runs
-go only to <code>control.dispatch_pool</code>. Until tier placement across pools (M5), keep every tenant
-on that pool. A second pool, such as a separate exec project for <code>public</code> tenants, needs a
-second orchestrator outside this module. <strong>Both</strong> orchestrators must then set disjoint
-<code>MAPI_DISPATCH_TIERS</code>, for example <code>internal,self-hosted-trusted,verified</code> through
-<code>control.extra_env.orchestrator</code> here and <code>public</code> on the other. Without that, leasing is not
-pool-aware: either orchestrator takes any tenant's queued runs, and public-tier code can land
-in the paid pool. Terraform's <code>exec_pools[*].public</code> only chooses the default
-<code>dispatch_pool</code>. The server does not read it.</p>
-<p>Each workload can get extra plain variables through <code>control.extra_env</code> in the environment's
-<code>main.tf</code>; secrets never go there.</p>
+<p>One orchestrator serves one exec pool, and an environment deploys <strong>one</strong> orchestrator. Runs
+go only to <code>control.dispatch_pool</code>. Until tier placement across pools (M5), keep all tenants
+on that pool. A second pool, for example a separate exec project for <code>public</code> tenants, needs
+a second orchestrator outside this module.</p>
+<p><strong>The two</strong> orchestrators must then set <code>MAPI_DISPATCH_TIERS</code> with no common tiers. For
+example, set <code>internal,self-hosted-trusted,verified</code> through <code>control.extra_env.orchestrator</code>
+here, and <code>public</code> on the other orchestrator. If not, leases do not look at pools. Each
+orchestrator then takes the queued runs of all tenants, and public-tier code can go into the
+paid pool. Terraform <code>exec_pools[*].public</code> selects only the default <code>dispatch_pool</code>. The
+server does not read it.</p>
+<p>Each workload can get more plain variables through <code>control.extra_env</code> in the <code>main.tf</code> of
+the environment. Never put secrets there.</p>
 <h2 id="testing-the-infrastructure">Testing the infrastructure<a class="headerlink" href="#testing-the-infrastructure" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/infra<span class="w"> </span>-q<span class="w">                     </span><span class="c1"># everything below</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nv">TF_PLUGIN_CACHE_DIR</span><span class="o">=</span>~/.terraform.d/plugin-cache<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/infra<span class="w"> </span>-q<span class="w">   </span><span class="c1"># reuse providers</span>
 </span></code></pre></div>
 <ul>
-<li><strong>Static invariants</strong> (always run): deny-all egress with exactly two exceptions, no public
-  buckets or principals, <code>max_retries = 0</code> and gen2 on every Job, the VPC-SC perimeter and DNS
-  policy, write-only secrets, digest-pinned images, and agreement with the <code>mapi_spec</code>
-  contracts (bucket names, resource class sizes, runner environment, the push endpoint).</li>
-<li><strong><code>terraform fmt</code>, <code>terraform validate</code></strong> for every environment (with <code>-backend=false</code>).</li>
-<li><strong><code>terraform test</code></strong> for every module: each is applied against mocked Google providers, so
-  every expression and wiring is evaluated, and the security properties are asserted on the
-  resulting values (no credentials, no cloud calls).</li>
-<li><strong>Deploy scripts</strong>: <code>--help</code>, argument checks, the confirmation guard and full dry runs, with
-  stub <code>terraform</code>/<code>gcloud</code>/<code>docker</code>/<code>curl</code> binaries that prove nothing executes; under
-  <code>/bin/bash</code> 3.2 and the <code>bash</code> on <code>PATH</code>. <code>shellcheck</code> runs when installed.</li>
+<li><strong>Static invariants</strong> (they always run): deny-all egress with exactly two exceptions, no
+  public buckets or principals, <code>max_retries = 0</code> and gen2 on each Job, the VPC-SC perimeter
+  and DNS policy, write-only secrets, and digest-pinned images. They also make sure that the
+  infrastructure agrees with the <code>mapi_spec</code> contracts (bucket names, resource class sizes,
+  runner environment, the push endpoint).</li>
+<li><strong><code>terraform fmt</code>, <code>terraform validate</code></strong> for each environment (with <code>-backend=false</code>).</li>
+<li><strong><code>terraform test</code></strong> for each module. The test applies each module against mocked Google
+  providers. Thus it evaluates each expression and connection, and it asserts the security
+  properties on the result values. It uses no credentials and makes no cloud calls.</li>
+<li><strong>Deploy scripts</strong>: <code>--help</code>, argument checks, the confirmation guard and full dry runs.
+  These tests use stub <code>terraform</code>/<code>gcloud</code>/<code>docker</code>/<code>curl</code> binaries that prove that nothing
+  executes. They run under <code>/bin/bash</code> 3.2 and under the <code>bash</code> on <code>PATH</code>. If <code>shellcheck</code> is
+  installed, it also runs.</li>
 </ul>
-<p>The Terraform tests are skipped when <code>terraform</code> is not installed; the first run downloads the
-Google providers (about 250 MB, into a temporary cache unless <code>TF_PLUGIN_CACHE_DIR</code> is set).</p>
+<p>If <code>terraform</code> is not installed, the Terraform tests are skipped. The first run downloads the
+Google providers (about 250 MB). It puts them into a temporary cache, but not if
+<code>TF_PLUGIN_CACHE_DIR</code> is set.</p>
 
 
 

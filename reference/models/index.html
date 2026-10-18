@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -3045,6 +3075,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#scientific-models-mapi-plugin-science" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scientific models (mapi-plugin-science)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scientific models (mapi-plugin-science)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scilgcp_grid-event-counts-on-a-map-over-time-e07" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sci.lgcp_grid — event counts on a map over time (E07)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scifisher_kpp-a-reaction-diffusion-pde-e50" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sci.fisher_kpp — a reaction-diffusion PDE (E50)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scitraction_force-cell-forces-from-gel-movement-e60" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sci.traction_force — cell forces from gel movement (E60)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4646,6 +4726,8 @@
       
         
       
+        
+      
     
     
     
@@ -4734,6 +4816,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4885,6 +4995,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#scientific-models-mapi-plugin-science" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scientific models (mapi-plugin-science)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scientific models (mapi-plugin-science)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scilgcp_grid-event-counts-on-a-map-over-time-e07" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sci.lgcp_grid — event counts on a map over time (E07)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scifisher_kpp-a-reaction-diffusion-pde-e50" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sci.fisher_kpp — a reaction-diffusion PDE (E50)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scitraction_force-cell-forces-from-gel-movement-e60" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sci.traction_force — cell forces from gel movement (E60)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4903,15 +5063,15 @@
 
 
 <h1 id="built-in-models">Built-in models<a class="headerlink" href="#built-in-models" title="Permanent link">&para;</a></h1>
-<p>These model plugins ship with the platform (tier T0). They register through the
-<code>mapi.models</code> entry point, so <code>default_registry()</code> and the control-plane catalog list them
-without any configuration. Every one passes the contract kit (<code>mapi_sdk.testing.check_model</code>)
-and has a conformance fixture (see <a href="../../guides/conformance/">Conformance corpus</a>).
-From v0.5 the marketing-mix models run on <a href="../../models/mmm-framework/">mmm-framework</a>, the
-platform's only marketing-mix engine.</p>
-<p><strong>Calibration</strong> (M3, the spec's <code>calibration</code> block, Guided task 3) is declared per plugin in
-<code>Capabilities.calibration</code>; a spec with calibration data for a plugin that does not declare
-it fails static validation with <code>CALIBRATION_UNSUPPORTED</code>:</p>
+<p>These model plugins come with the platform (tier T0). They register through the
+<code>mapi.models</code> entry point. Thus <code>default_registry()</code> and the control-plane catalog show them
+without configuration. Each plugin passes the contract kit (<code>mapi_sdk.testing.check_model</code>).
+Each plugin also has a conformance fixture (see <a href="../../guides/conformance/">Conformance corpus</a>).
+From v0.5, the marketing-mix models run on <a href="../../models/mmm-framework/">mmm-framework</a>. This is
+the only marketing-mix engine of the platform.</p>
+<p><strong>Calibration</strong> (M3, the <code>calibration</code> block of the spec, Guided task 3): each plugin declares
+it in <code>Capabilities.calibration</code>. A spec can have calibration data for a plugin that does not
+declare it. Such a spec fails static validation with <code>CALIBRATION_UNSUPPORTED</code>:</p>
 <table>
 <thead>
 <tr>
@@ -4923,7 +5083,7 @@ it fails static validation with <code>CALIBRATION_UNSUPPORTED</code>:</p>
 <tbody>
 <tr>
 <td><code>mmm.bayesian</code></td>
-<td>yes - log-normal ROI priors per channel (<code>priors.roi</code>) and the <code>intercept</code></td>
+<td>yes - log-normal ROI priors for each channel (<code>priors.roi</code>) and the <code>intercept</code></td>
 <td>yes - mmm-framework experiment likelihoods (marginal ROAS or contribution)</td>
 </tr>
 <tr>
@@ -4933,8 +5093,8 @@ it fails static validation with <code>CALIBRATION_UNSUPPORTED</code>:</p>
 </tr>
 </tbody>
 </table>
-<p>The math of the translation and of each lift likelihood is in
-<a href="../../guides/guided-modelling/">Guided modelling</a>.</p>
+<p><a href="../../guides/guided-modelling/">Guided modelling</a> gives the math of the translation and of
+each lift likelihood.</p>
 <table>
 <thead>
 <tr>
@@ -5010,6 +5170,27 @@ it fails static validation with <code>CALIBRATION_UNSUPPORTED</code>:</p>
 <td><code>sm_vecm_macro</code></td>
 </tr>
 <tr>
+<td><code>sci.lgcp_grid@1</code></td>
+<td><code>mapi-plugin-science</code></td>
+<td>draws</td>
+<td>predict, forecast, evaluate</td>
+<td><code>e07_lgcp</code></td>
+</tr>
+<tr>
+<td><code>sci.fisher_kpp@1</code></td>
+<td><code>mapi-plugin-science</code></td>
+<td>draws</td>
+<td>predict, forecast, evaluate</td>
+<td><code>e50_kpp</code></td>
+</tr>
+<tr>
+<td><code>sci.traction_force@1</code></td>
+<td><code>mapi-plugin-science</code></td>
+<td>draws</td>
+<td>predict, evaluate</td>
+<td><code>e60_traction</code></td>
+</tr>
+<tr>
 <td><code>ts.arima@1</code>, <code>ts.ets@1</code>, <code>ts.theta@1</code>, <code>ts.unobserved_components@1</code>, <code>ts.ardl@1</code>, <code>ts.ecm@1</code>, <code>ts.var@1</code>, <code>ts.varmax@1</code>, <code>ts.dynamic_factor@1</code>, <code>ts.markov_switching@1</code></td>
 <td><code>mapi-plugin-statsmodels</code></td>
 <td>quantiles</td>
@@ -5018,59 +5199,72 @@ it fails static validation with <code>CALIBRATION_UNSUPPORTED</code>:</p>
 </tr>
 </tbody>
 </table>
-<p>The statsmodels plugins (ARIMA family, exponential smoothing, theta, ARDL and error
-correction, VAR, VECM, VARMAX, dynamic factors and Markov switching) are described in
-<a href="../../models/statsmodels/">statsmodels time-series models</a>.</p>
-<p>Plugins use <strong>canonical names</strong> for their inputs; bind your dataset's names onto them in the
-spec's <code>data.bind</code> block. Outputs come back under your names (reverse binding) unless they
-are new variables such as <code>y_hat</code>.</p>
-<p>The <code>mapi-sklearn</code> package also registers five general-purpose tabular plugins,
-<code>sklearn.tabular_regressor</code>, <code>sklearn.tabular_quantiles</code>, <code>sklearn.tabular_bootstrap</code>,
-<code>sklearn.tabular_conformal</code> and <code>sklearn.tabular_classifier</code>; see
-<a href="../../guides/sklearn/">Tabular models</a>.</p>
+<p><a href="../../models/statsmodels/">statsmodels time-series models</a> describes the statsmodels
+plugins. These are the ARIMA family, exponential smoothing, theta, ARDL and error correction,
+VAR, VECM, VARMAX, dynamic factors and Markov switching.</p>
+<p>Plugins use <strong>canonical names</strong> for their inputs. Bind the names of your dataset to them in
+the <code>data.bind</code> block of the spec. Outputs come back with your names (reverse binding). New
+variables, for example <code>y_hat</code>, keep their names.</p>
+<p>The <code>mapi-sklearn</code> package also registers five general tabular plugins (see
+<a href="../../guides/sklearn/">Tabular models</a>):</p>
+<ul>
+<li><code>sklearn.tabular_regressor</code></li>
+<li><code>sklearn.tabular_quantiles</code></li>
+<li><code>sklearn.tabular_bootstrap</code></li>
+<li><code>sklearn.tabular_conformal</code></li>
+<li><code>sklearn.tabular_classifier</code></li>
+</ul>
 <div class="admonition tip">
 <p class="admonition-title">Every setting, generated</p>
-<p>The <a href="../generated/models-catalog/">models catalog</a> is generated from the installed
-manifests: capabilities, outputs, derived quantities, every setting with its default and
-Guided-mode level, and the input data contract.</p>
+<p>The platform makes the <a href="../generated/models-catalog/">models catalog</a> from the installed
+manifests. It shows the capabilities, outputs and derived quantities. It also shows each
+setting with its default and Guided-mode level, and the contract for the input data.</p>
 </div>
 <h2 id="mmmbayesian-marketing-mix-on-mmm-framework"><code>mmm.bayesian</code>: marketing mix on mmm-framework<a class="headerlink" href="#mmmbayesian-marketing-mix-on-mmm-framework" title="Permanent link">&para;</a></h2>
-<p>mmm-framework's <code>BayesianMMM</code>: adstock (geometric, delayed, Weibull) and saturation
-(logistic, Hill, Michaelis-Menten, tanh, root) per channel, a trend (none, linear,
-piecewise, spline, GP), Fourier seasonality, baselines partially pooled across geos and
-products (optionally channel effects per geo), and channel effects stated as returns on
-spend. The model owns scaling, carry-over and units (<code>owns: [scaling, carryover,
-inverse_units]</code>): the pipeline only converts currencies and resamples. With
-<code>outputs.derived</code> the fit caches contributions, per-draw response curves and marginal
-costs; budgets are optimised with mmm-framework planning (<code>POST …:optimize</code>) and the
-model declares a decision objective.</p>
-<p><strong>Inputs.</strong> <code>y(*panel, time)</code>, <code>spend(*panel, channel, time)</code> and any other numeric
-variable over time as a control; the panel dims are <code>hierarchy.pool_over</code> (<code>geo</code>,
-<code>product</code>). New panel levels follow <code>new_levels</code> (<code>pooled</code> by default), <code>channel</code> is
-<code>fixed</code>, <code>time</code> extends.</p>
-<p><strong>Outputs.</strong> <code>y_hat(*panel, time)</code> and <code>contributions(component, *panel, time)</code> (one
-component per channel, <code>baseline</code>, <code>trend</code>, <code>seasonality</code> and one per control; they sum to
-<code>y_hat</code>).</p>
-<p>Read <a href="../../models/mmm-framework/">Marketing-mix models on mmm-framework</a> for how the
-settings map onto mmm-framework, priors, lift tests and optimisation, and the
-<a href="../../guides/mmm/">marketing-mix guide</a> for a complete analysis.</p>
+<p>This plugin uses the <code>BayesianMMM</code> of mmm-framework. It has these parts:</p>
+<ul>
+<li>Adstock (geometric, delayed, Weibull) and saturation (logistic, Hill, Michaelis-Menten,
+  tanh, root) for each channel.</li>
+<li>A trend (none, linear, piecewise, spline, GP).</li>
+<li>Fourier seasonality.</li>
+<li>Baselines with partial pooling across geos and products. Channel effects for each geo are
+  optional.</li>
+<li>Channel effects as returns on spend.</li>
+</ul>
+<p>The model owns scaling, carry-over and units (<code>owns: [scaling, carryover,
+inverse_units]</code>). Thus the pipeline only converts currencies and resamples. With
+<code>outputs.derived</code>, the fit caches contributions, response curves for each draw and marginal
+costs. The mmm-framework planning optimises budgets (<code>POST …:optimize</code>). The model declares a
+decision objective.</p>
+<p><strong>Inputs.</strong> <code>y(*panel, time)</code>, <code>spend(*panel, channel, time)</code>, and other numeric variables
+over time as controls. The panel dims are <code>hierarchy.pool_over</code> (<code>geo</code>, <code>product</code>). New panel
+levels follow <code>new_levels</code> (<code>pooled</code> by default). <code>channel</code> is <code>fixed</code>. <code>time</code> extends.</p>
+<p><strong>Outputs.</strong> <code>y_hat(*panel, time)</code> and <code>contributions(component, *panel, time)</code>. The
+components are one for each channel, <code>baseline</code>, <code>trend</code>, <code>seasonality</code> and one for each
+control. Their sum is <code>y_hat</code>.</p>
+<p><a href="../../models/mmm-framework/">Marketing-mix models on mmm-framework</a> tells how the settings
+map to mmm-framework. It also tells about priors, lift tests and optimisation. For a complete
+analysis, read the <a href="../../guides/mmm/">marketing-mix guide</a>.</p>
 <h2 id="mmmfrequentist-fast-marketing-mix"><code>mmm.frequentist</code>: fast marketing mix<a class="headerlink" href="#mmmfrequentist-fast-marketing-mix" title="Permanent link">&para;</a></h2>
-<p>mmm-framework's ridge estimator: adstock and saturation chosen by an out-of-sample search,
-non-negative channel effects, bootstrap confidence intervals (the replicates are the
-draws). Same data contract and outputs as <code>mmm.bayesian</code>; no priors, no lift tests, no
-convergence diagnostics. Seed-deterministic, seconds to fit.</p>
+<p>This plugin uses the ridge estimator of mmm-framework. An out-of-sample search selects the
+adstock and saturation. The channel effects are not negative. The bootstrap gives confidence
+intervals (the replicates are the draws). The data contract and outputs are the same as
+<code>mmm.bayesian</code>. There are no priors, no lift tests and no convergence diagnostics. The same
+seed gives the same result, and a fit takes seconds.</p>
 <h2 id="tshsgp_trend-smooth-trend-with-seasonality"><code>ts.hsgp_trend</code> — smooth trend with seasonality<a class="headerlink" href="#tshsgp_trend-smooth-trend-with-seasonality" title="Permanent link">&para;</a></h2>
-<p>A Hilbert-space Gaussian process (HSGP) trend plus an optional linear drift and Fourier
-seasonality, for one regularly spaced series (Mauna-Loa style CO2, sales, traffic).</p>
-<p><strong>Inputs.</strong> <code>t</code> (time, policy <code>extend</code>) and the target <code>y(t)</code>. Missing months are allowed:
-replace sentinel codes with <code>core.replace_sentinel</code> and they are left out of the likelihood
-while the model still interpolates them. Put <code>core.standardize</code> on <code>y</code>; the priors are on the
-standardised scale and outputs are mapped back to your units.</p>
-<p><strong>Forecast horizon.</strong> <code>max_extension</code> (default 24 periods) is part of the model's input
-schema. The HSGP domain is sized at fit time from the <em>anticipated</em> coordinates (the fitted
-range plus <code>max_extension</code> periods), so every forecast up to that horizon evaluates exactly
-the fitted functions. A longer horizon is rejected before any compute with
-<code>HORIZON_EXCEEDS_FIT</code> (HTTP 409): refit with a larger <code>max_extension</code>.</p>
+<p>This plugin has a Hilbert-space Gaussian process (HSGP) trend, an optional linear drift and
+Fourier seasonality. It is for one series with regular spaces between periods (CO2 as at
+Mauna Loa, sales, traffic).</p>
+<p><strong>Inputs.</strong> <code>t</code> (time, policy <code>extend</code>) and the target <code>y(t)</code>. Missing months are
+permitted. Replace sentinel codes with <code>core.replace_sentinel</code>. The likelihood then does not
+use these months, but the model interpolates them. Put <code>core.standardize</code> on <code>y</code>. The priors
+are on the standardised scale, and the model changes the outputs back to your units.</p>
+<p><strong>Forecast horizon.</strong> <code>max_extension</code> (default 24 periods) is part of the input schema of the
+model. At fit time, the model sets the size of the HSGP domain from the <em>anticipated</em>
+coordinates. These are the fitted range plus <code>max_extension</code> periods. Thus each forecast up to
+that horizon evaluates exactly the fitted functions. The server rejects a longer horizon with
+<code>HORIZON_EXCEEDS_FIT</code> (HTTP 409) before it starts to compute. Fit again with a larger
+<code>max_extension</code>.</p>
 <table>
 <thead>
 <tr>
@@ -5083,7 +5277,7 @@ the fitted functions. A longer horizon is rejected before any compute with
 <tr>
 <td><code>max_extension</code></td>
 <td>24</td>
-<td>Periods a forecast may reach past the fit without a refit</td>
+<td>The number of periods after the fit that a forecast can reach without a new fit</td>
 </tr>
 <tr>
 <td><code>kernel</code></td>
@@ -5108,7 +5302,7 @@ the fitted functions. A longer horizon is rejected before any compute with
 <tr>
 <td><code>linear_trend</code></td>
 <td>true</td>
-<td>Add <code>intercept + slope * t</code></td>
+<td>Adds <code>intercept + slope * t</code></td>
 </tr>
 <tr>
 <td><code>season_period</code>, <code>season_order</code></td>
@@ -5122,8 +5316,9 @@ the fitted functions. A longer horizon is rejected before any compute with
 </tr>
 </tbody>
 </table>
-<p><strong>Outputs.</strong> <code>y_hat(t)</code> (expected value or a predictive draw) and <code>trend(t)</code>, the long-term
-component without seasonality, both in the target's units.</p>
+<p><strong>Outputs.</strong> <code>y_hat(t)</code> (the expected value or a predictive draw) and <code>trend(t)</code>. <code>trend(t)</code>
+is the long-term component without seasonality. The two outputs are in the units of the
+target.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">data</span><span class="p">:</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">bind</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">dims</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">t</span><span class="p">:</span><span class="w"> </span><span class="nv">date</span><span class="p p-Indicator">},</span><span class="nt"> vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="nv">co2</span><span class="p p-Indicator">}}</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="nv">time_holdout</span><span class="p p-Indicator">,</span><span class="nt"> dim</span><span class="p">:</span><span class="w"> </span><span class="nv">t</span><span class="p p-Indicator">,</span><span class="nt"> last</span><span class="p">:</span><span class="w"> </span><span class="nv">12</span><span class="p p-Indicator">}</span>
@@ -5136,25 +5331,28 @@ component without seasonality, both in the target's units.</p>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">fit</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="nv">evaluate_then_refit</span><span class="p p-Indicator">,</span><span class="nt"> engine</span><span class="p">:</span><span class="w"> </span><span class="nv">pymc</span><span class="p p-Indicator">,</span><span class="nt"> seed</span><span class="p">:</span><span class="w"> </span><span class="nv">11</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
 <h2 id="tsgaussian_hmm-hidden-states-with-a-terminal-state"><code>ts.gaussian_hmm</code> — hidden states with a terminal state<a class="headerlink" href="#tsgaussian_hmm-hidden-states-with-a-terminal-state" title="Permanent link">&para;</a></h2>
-<p>A K-state Gaussian hidden Markov model over many sequences at once (animal tracks, machine
-regimes, customer phases). Hidden states are summed out with the forward algorithm, so
-sampling is fast and exact.</p>
-<p><strong>Inputs.</strong> Padded layout: <code>animal</code> (the sequence dim, <code>new_levels</code> with strategy <code>pooled</code>),
-<code>step</code> (<code>extend</code>), <code>y(animal, step)</code> with NaN padding and a boolean <code>mask(animal, step)</code>.</p>
-<p><strong>Terminal state.</strong> After the fit the filtered state distribution at the last fitted step
-is stored as the bundle's <code>terminal_state</code> group, <code>alpha_T(chain, draw, animal, state)</code>.</p>
+<p>This plugin is a Gaussian hidden Markov model with K states. It uses many sequences at the
+same time (animal tracks, machine regimes, customer phases). The forward algorithm sums out the
+hidden states. Thus the sampler is fast and exact.</p>
+<p><strong>Inputs.</strong> A padded layout with these items: <code>animal</code> (the sequence dim, <code>new_levels</code> with
+strategy <code>pooled</code>), <code>step</code> (<code>extend</code>), <code>y(animal, step)</code> with NaN padding, and a boolean
+<code>mask(animal, step)</code>.</p>
+<p><strong>Terminal state.</strong> After the fit, the bundle keeps the filtered state distribution at the
+last fitted step. It is the <code>terminal_state</code> group of the bundle,
+<code>alpha_T(chain, draw, animal, state)</code>.</p>
 <ul>
-<li><code>predict</code> / <code>evaluate</code> use the one-step-ahead state distribution of the fit inside the
-  fitted range and <code>alpha_T</code> propagated by the transition matrix after it; they never look at
-  targets in the payload.</li>
+<li><code>predict</code> / <code>evaluate</code> use the one-step-ahead state distribution of the fit in the fitted
+  range. After the fitted range, they use <code>alpha_T</code>, propagated by the transition matrix. They
+  do not use targets in the payload.</li>
 <li><code>forecast</code> propagates <code>alpha_T</code> over the horizon.</li>
-<li><code>filter</code> runs the forward filter over new observations that continue the fitted steps and
+<li><code>filter</code> runs the forward filter over new observations that continue the fitted steps. It
   returns an <strong>updated</strong> <code>terminal_state</code> group with the filtered <code>state_prob</code>.</li>
 <li>New animals start from the initial distribution <code>pi</code> at the first fitted step.</li>
 </ul>
-<p>Draws are relabelled after sampling so that the state means increase (label switching);
-<code>identification: ordered</code> uses an ordered prior instead. Pointwise LOO is declared invalid
-(<code>elpd_loo</code> is rejected at validation): steps within a track are dependent.</p>
+<p>After the sampler stops, the model gives new labels to the draws so that the state means
+increase (label switching). <code>identification: ordered</code> uses an ordered prior instead. The
+manifest declares pointwise LOO as not valid, because the steps in a track are dependent.
+Validation rejects <code>elpd_loo</code>.</p>
 <table>
 <thead>
 <tr>
@@ -5177,12 +5375,12 @@ is stored as the bundle's <code>terminal_state</code> group, <code>alpha_T(chain
 <tr>
 <td><code>sigma_scale</code></td>
 <td>1.0</td>
-<td>Half-normal scale of the per-state sds</td>
+<td>Half-normal scale of the sds for each state</td>
 </tr>
 <tr>
 <td><code>stickiness</code></td>
 <td>2.0</td>
-<td>Extra Dirichlet weight on staying in a state</td>
+<td>Additional Dirichlet weight to stay in the same state</td>
 </tr>
 <tr>
 <td><code>pi_concentration</code></td>
@@ -5192,22 +5390,30 @@ is stored as the bundle's <code>terminal_state</code> group, <code>alpha_T(chain
 <tr>
 <td><code>identification</code></td>
 <td><code>relabel</code></td>
-<td><code>relabel</code> (sort draws by mean) or <code>ordered</code></td>
+<td><code>relabel</code> (sort the draws by mean) or <code>ordered</code></td>
 </tr>
 </tbody>
 </table>
-<p><strong>Outputs.</strong> <code>y_hat(animal, step)</code> in your units and <code>state_prob(animal, step, state)</code>
-(units <code>probability</code>, never inverse-transformed).</p>
+<p><strong>Outputs.</strong> <code>y_hat(animal, step)</code> in your units, and <code>state_prob(animal, step, state)</code>. The
+units of <code>state_prob</code> are <code>probability</code>. The model does not inverse-transform it.</p>
 <h2 id="tabularhierarchical_glm-partial-pooling-in-long-layout"><code>tabular.hierarchical_glm</code> — partial pooling in long layout<a class="headerlink" href="#tabularhierarchical_glm-partial-pooling-in-long-layout" title="Permanent link">&para;</a></h2>
-<p>Varying intercepts (and optionally slopes) by group with group-level predictors: the radon
-model and its many relatives (schools, stores, clinics).</p>
-<p><strong>Inputs.</strong> Long layout: rows along <code>obs</code> (<code>extend</code>), a group dim (<code>group_dim</code>, default
-<code>county</code>, <code>new_levels</code> with strategy <code>hyperprior</code>), the index <code>&lt;group_dim&gt;_idx(obs)</code>, the
-target <code>y(obs)</code>, observation-level <code>covariates</code> and group-level <code>group_covariates</code>. Covariates
-are part of the input schema, so a spec naming a missing one fails validation.</p>
-<p><strong>New groups.</strong> A county the model never saw is drawn from the fitted hyperprior for every
-posterior draw; its group-level covariates shift its prior mean exactly as for fitted
-counties. Score payloads may list counties in any order: the platform remaps <code>county_idx</code>.</p>
+<p>This plugin has intercepts that change by group, and optionally slopes that change by group.
+It has group-level predictors. Examples are the radon model and many similar models (schools,
+stores, clinics).</p>
+<p><strong>Inputs.</strong> A long layout with these items:</p>
+<ul>
+<li>Rows along <code>obs</code> (<code>extend</code>).</li>
+<li>A group dim (<code>group_dim</code>, default <code>county</code>, <code>new_levels</code> with strategy <code>hyperprior</code>).</li>
+<li>The index <code>&lt;group_dim&gt;_idx(obs)</code>.</li>
+<li>The target <code>y(obs)</code>.</li>
+<li>Observation-level <code>covariates</code> and group-level <code>group_covariates</code>.</li>
+</ul>
+<p>Covariates are part of the input schema. Thus, if a spec names a covariate that is missing,
+the spec fails validation.</p>
+<p><strong>New groups.</strong> For a county that the model did not see, the model draws its effect from the
+fitted hyperprior for each posterior draw. Its group-level covariates move its prior mean in
+the same way as for fitted counties. Score payloads can list counties in any sequence. The
+platform maps <code>county_idx</code> again.</p>
 <table>
 <thead>
 <tr>
@@ -5245,52 +5451,57 @@ counties. Score payloads may list counties in any order: the platform remaps <co
 <tr>
 <td><code>centered</code></td>
 <td>false</td>
-<td>Centred group effects</td>
+<td>Use centred group effects</td>
 </tr>
 </tbody>
 </table>
 <h2 id="tabularregressor-quantile-regression-for-panels"><code>tabular.regressor</code> — quantile regression for panels<a class="headerlink" href="#tabularregressor-quantile-regression-for-panels" title="Permanent link">&para;</a></h2>
-<p>The plan's store-demand model: rows are stacked from labelled dims (store × sku × week), the
-coordinates become categorical features, and an allow-listed estimator predicts conditional
-quantiles. Its <code>estimator</code> setting accepts exactly the quantile-capable estimators of the
-registry (xgboost, scikit-learn's gradient boosting and histogram boosting, and quantile
-regression), so other estimators are rejected at validation.</p>
+<p>This plugin is the store-demand model of the plan. The model stacks rows from labelled dims
+(store × sku × week). The coordinates become categorical features. An estimator from the allow
+list predicts conditional quantiles. The <code>estimator</code> setting accepts only the estimators of the
+registry that can predict quantiles. These are xgboost, the gradient boosting and histogram
+boosting of scikit-learn, and quantile regression. Validation rejects other estimators.</p>
 <ul>
 <li>Defaults: xgboost (300 trees, depth 5, learning rate 0.05) and quantiles <code>[0.1, 0.5, 0.9]</code>.</li>
-<li>New stores are pooled (<code>new_levels: pooled</code>); forecasting is direct, so future covariates
-  marked <code>future_required</code> must be supplied (<code>MISSING_FUTURE_COVARIATE</code> otherwise).</li>
-<li>Quantiles are per cell: aggregating them across stores is refused
+<li>The model pools new stores (<code>new_levels: pooled</code>).</li>
+<li>The forecast is direct. Thus you must supply the future covariates that have the
+  <code>future_required</code> mark. If you do not, the error is <code>MISSING_FUTURE_COVARIATE</code>.</li>
+<li>Quantiles are for each cell. The server refuses to aggregate them across stores
   (<code>CAPABILITY_UNSUPPORTED</code>).</li>
 <li>The manifest lists <code>core.fit_vs_actual</code>, <code>core.residuals_over_time</code> and
   <code>ml.feature_importance</code>.</li>
 </ul>
-<p>All other settings are those of <code>mapi_sklearn</code> (see
+<p>All other settings are the settings of <code>mapi_sklearn</code> (see
 <a href="../../guides/sklearn/">Tabular models</a>).</p>
 <h2 id="choicemultinomial_logit-which-product-customers-pick"><code>choice.multinomial_logit</code> — which product customers pick<a class="headerlink" href="#choicemultinomial_logit-which-product-customers-pick" title="Permanent link">&para;</a></h2>
-<p>The built-in model of the Guided <strong>customer choice</strong> template (E84-style household panels): on
-every shopping trip a household picks one product, and price and promotions shift the choice.</p>
-<p><strong>Inputs.</strong> A dense <code>hh × trip</code> panel - <code>hh</code> (categorical, <code>new_levels</code> with strategy
-<code>hyperprior</code>), <code>trip</code> (<code>index</code>, <code>extend</code>) - with the alternatives along <code>product</code>
-(categorical, <code>fixed</code>). The target <code>y(hh, trip)</code> is text: the product chosen, empty where a
-household made no trip (ragged panels are fine). Covariates are alternative-specific
-variables along <code>product</code>, such as <code>price(hh, trip, product)</code> and <code>promo(hh, trip, product)</code>;
-by default every numeric variable with the <code>product</code> dim is one. A product whose covariates
-are missing on a trip was not available on that trip (off the shelf).</p>
-<p><strong>Model.</strong> A conditional logit with household-specific product intercepts:
-<code>U[h, t, j] = asc[j] + Σ_k beta[k]·x_k[h, t, j] + u[h, j]</code>, the choice probabilities a softmax
-over the available products, <code>u[h, j] ~ Normal(0, effect_sd)</code> (a random-intercept logit). It
-is fitted by penalised maximum likelihood, the posterior mode of that model. <strong>Uncertainty</strong>
-comes from the Bayesian bootstrap: each of <code>fit.draws</code> draws refits with Dirichlet weights on
-households, so every household keeps its own effect in every draw and the draws are joint
-(<code>draws</code> representation: shares, counterfactual deltas and sums over trips are valid).
-There is no pointwise log-likelihood, so LOO is not offered.</p>
-<p><strong>Scoring.</strong> <code>y_hat(hh, trip, product)</code> is the choice probability (<code>expected</code>) or one sampled
-choice per draw (<code>predictive</code>, one-hot). A household never seen at fit draws its preferences
-from <code>Normal(0, sd)</code> per draw, <code>sd</code> being the spread of the fitted effects in that draw. Trips
-never made have probability 0 for every product, so sums over trips count expected
-purchases. Price scenarios are interventions, e.g.
-<code>{var: price, sel: {product: cola}, multiply: 1.1}</code> in a <code>counterfactual</code> request. Choice
-values match product labels after lower-casing and replacing punctuation with <code>_</code>.</p>
+<p>This plugin is the built-in model of the Guided <strong>customer choice</strong> template (household panels
+as in E84). On each shopping trip, a household selects one product. Price and promotions change
+the choice.</p>
+<p><strong>Inputs.</strong> A dense <code>hh × trip</code> panel, with the alternatives along <code>product</code> (categorical,
+<code>fixed</code>). <code>hh</code> is categorical, with <code>new_levels</code> with strategy <code>hyperprior</code>. <code>trip</code> is <code>index</code>
+and <code>extend</code>. The target <code>y(hh, trip)</code> is text: the product that the household selected. It
+is empty when a household made no trip (ragged panels are permitted). Covariates are variables
+for each alternative along <code>product</code>, for example <code>price(hh, trip, product)</code> and
+<code>promo(hh, trip, product)</code>. By default, each numeric variable with the <code>product</code> dim is a
+covariate. If the covariates of a product are missing on a trip, that product was not
+available on that trip (not on the shelf).</p>
+<p><strong>Model.</strong> A conditional logit with product intercepts for each household:
+<code>U[h, t, j] = asc[j] + Σ_k beta[k]·x_k[h, t, j] + u[h, j]</code>. The choice probabilities are a
+softmax over the available products. <code>u[h, j] ~ Normal(0, effect_sd)</code> (a random-intercept
+logit). The fit uses penalised maximum likelihood, that is, the posterior mode of that model.</p>
+<p><strong>Uncertainty</strong> comes from the Bayesian bootstrap. Each of the <code>fit.draws</code> draws is a new fit
+with Dirichlet weights on households. Thus each household keeps its own effect in each draw,
+and the draws are joint. In the <code>draws</code> representation, shares, counterfactual deltas and sums
+over trips are valid. There is no pointwise log-likelihood, so LOO is not available.</p>
+<p><strong>Scoring.</strong> <code>y_hat(hh, trip, product)</code> is the choice probability (<code>expected</code>), or one sampled
+choice for each draw (<code>predictive</code>, one-hot). The fit did not see some households. For each
+draw, the model draws their preferences from <code>Normal(0, sd)</code>. <code>sd</code> is the spread of the fitted
+effects in that draw. A trip that the household did not make has probability 0 for all
+products. Thus sums over trips count the expected purchases.</p>
+<p>Price scenarios are interventions, for example
+<code>{var: price, sel: {product: cola}, multiply: 1.1}</code> in a <code>counterfactual</code> request. To match
+choice values to product labels, the model changes them to lower case and replaces
+punctuation with <code>_</code>.</p>
 <table>
 <thead>
 <tr>
@@ -5302,8 +5513,8 @@ values match product labels after lower-casing and replacing punctuation with <c
 <tbody>
 <tr>
 <td><code>covariates</code></td>
-<td>every numeric variable along <code>product</code></td>
-<td>Alternative-specific covariates</td>
+<td>each numeric variable along <code>product</code></td>
+<td>Covariates for each alternative</td>
 </tr>
 <tr>
 <td><code>random_effects</code></td>
@@ -5313,7 +5524,7 @@ values match product labels after lower-casing and replacing punctuation with <c
 <tr>
 <td><code>effect_sd</code></td>
 <td>1.0</td>
-<td>Prior sd of the household effects (smaller pools more)</td>
+<td>Prior sd of the household effects (a smaller value pools more)</td>
 </tr>
 <tr>
 <td><code>coef_sd</code></td>
@@ -5332,16 +5543,202 @@ values match product labels after lower-casing and replacing punctuation with <c
 </tr>
 </tbody>
 </table>
-<p><code>fit.draws</code> (default 100, at most 2000) sets the bootstrap draws and <code>fit.seed</code> makes them
-reproducible. The in-sample hit rate is reported as the <code>CHOICE_HIT_RATE</code> diagnostic.</p>
-<p><strong>Holdout metrics.</strong> A text target scored as one probability per product gets the
-categorical metrics of <code>evaluate.metrics</code>: <code>accuracy</code> (the hit rate of the most likely
-product), <code>accuracy_naive</code> (always guessing the holdout's most common product),
-<code>accuracy_lift</code> (their difference), <code>log_score</code> (mean log probability of the product
-bought) and <code>brier</code> (multi-class Brier score). The Guided <code>customer_choice</code> template
-evaluates all five on each household's last trip and its scorecard runs
-<a href="../../concepts/guided-mode/#check-holdout-hit-rate"><code>holdout.hit_rate</code></a>; numeric metrics
-such as <code>mape</code> are skipped for a text target.</p>
+<p><code>fit.draws</code> (default 100, maximum 2000) sets the number of bootstrap draws. With <code>fit.seed</code>,
+you get the same draws each time. The <code>CHOICE_HIT_RATE</code> diagnostic gives the in-sample hit
+rate.</p>
+<p><strong>Holdout metrics.</strong> A text target with one score probability for each product gets the
+categorical metrics of <code>evaluate.metrics</code>:</p>
+<ul>
+<li><code>accuracy</code>: the hit rate of the most likely product.</li>
+<li><code>accuracy_naive</code>: the hit rate if you always select the most common product of the holdout.</li>
+<li><code>accuracy_lift</code>: the difference between the two.</li>
+<li><code>log_score</code>: the mean log probability of the product that the household bought.</li>
+<li><code>brier</code>: the multi-class Brier score.</li>
+</ul>
+<p>The Guided <code>customer_choice</code> template evaluates all five on the last trip of each household.
+Its scorecard runs <a href="../../concepts/guided-mode/#check-holdout-hit-rate"><code>holdout.hit_rate</code></a>.
+For a text target, the server skips numeric metrics, for example <code>mape</code>.</p>
+<h2 id="scientific-models-mapi-plugin-science">Scientific models (<code>mapi-plugin-science</code>)<a class="headerlink" href="#scientific-models-mapi-plugin-science" title="Permanent link">&para;</a></h2>
+<p>These plugins come from the case studies of
+<a href="https://github.com/redam94/pymc-challenges">pymc-challenges</a>. Their data are maps, images and
+fields on a regular grid. Their outputs are fields with a range for each cell. Each output that
+is a field declares a <code>grid</code> (<code>OutputDecl.grid</code>: the row dim <code>y</code>, the column dim <code>x</code>, an
+optional <code>frame</code> dim and an optional <code>component</code> dim for a vector field). The platform then
+shows the output in two places:</p>
+<ul>
+<li>The <strong>Fields</strong> section of the Model Explorer. It shows the mean, the sd, mean ÷ sd, the 5% and
+  95% maps and single draws, with a frame slider and a draw player.</li>
+<li>The <code>sci.*</code> plot recipes (see <a href="../plots/#scientific-model-pack-sci">Plot recipes</a>).</li>
+</ul>
+<p>The runner images of <code>base-bayes</code> contain these plugins (namespace <code>sci</code>).</p>
+<div class="admonition note">
+<p class="admonition-title">Real data</p>
+<p>Each data module has a <code>from_challenges(path)</code> function. It reads the real data file of the
+case study from a local copy of pymc-challenges. To run the tests that use the real files,
+set <code>MAPI_PYMC_CHALLENGES_DATA</code> to the <code>data/</code> directory of that copy. Without it, these
+tests are skipped.</p>
+</div>
+<h3 id="scilgcp_grid-event-counts-on-a-map-over-time-e07"><code>sci.lgcp_grid</code> — event counts on a map over time (E07)<a class="headerlink" href="#scilgcp_grid-event-counts-on-a-map-over-time-e07" title="Permanent link">&para;</a></h3>
+<p>A log-Gaussian Cox process on a space-time grid. The total for each period follows a random
+walk. The share of each cell comes from a 2-D Hilbert-space GP (Matérn 5/2) whose map changes
+from one era (a group of periods) to the next.</p>
+<p><strong>Inputs.</strong> <code>period</code> (time, policy <code>extend</code>), <code>row</code> and <code>col</code> (integer, fixed) and the target
+<code>count(period, row, col)</code>. Row 0 is the south edge of the grid.</p>
+<p><strong>Outputs.</strong> <code>rate(period, row, col)</code> (a field with a frame for each period, log colour scale)
+and <code>total(period)</code>. The sum of <code>rate</code> over the cells is equal to <code>total</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max_extension</code></td>
+<td>8</td>
+<td>The number of periods after the fit that a forecast can reach without a new fit</td>
+</tr>
+<tr>
+<td><code>era_periods</code></td>
+<td>4</td>
+<td>The number of periods in one era. The map changes from era to era</td>
+</tr>
+<tr>
+<td><code>field</code></td>
+<td><code>era_walk</code></td>
+<td><code>era_walk</code> (a new map for each era) or <code>static</code> (one map)</td>
+</tr>
+<tr>
+<td><code>cell_km</code></td>
+<td>25</td>
+<td>The width of one cell in km</td>
+</tr>
+<tr>
+<td><code>m_row</code>, <code>m_col</code>, <code>c</code></td>
+<td>10, 14, 1.5</td>
+<td>Basis functions and boundary factor of the approximation</td>
+</tr>
+<tr>
+<td><code>ell_lower_km</code>, <code>ell_upper_km</code></td>
+<td>15, 100</td>
+<td>The 5% and 95% quantiles of the lengthscale prior</td>
+</tr>
+<tr>
+<td><code>likelihood</code></td>
+<td><code>negbin</code></td>
+<td><code>negbin</code> or <code>poisson</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>from_challenges</code> puts the Oklahoma earthquake catalogue into 12 × 9 cells of 25 km for each
+quarter from 2009 to 2019. A fit on 2009–2017 takes approximately one minute with nutpie.</p>
+<h3 id="scifisher_kpp-a-reaction-diffusion-pde-e50"><code>sci.fisher_kpp</code> — a reaction-diffusion PDE (E50)<a class="headerlink" href="#scifisher_kpp-a-reaction-diffusion-pde-e50" title="Permanent link">&para;</a></h3>
+<p>The Fisher-KPP equation <code>du/dt = D d²u/dx² + lam u (1 - u)</code> moves and grows cells into a
+scratch wound. The model solves the equation in the model graph (explicit Euler in
+<code>pytensor.scan</code>, zero flux at the edges). The counts are Poisson. With <code>delay: true</code>, the
+movement and the growth start slowly after the scratch (<code>tanh(beta t)</code>).</p>
+<p><strong>Inputs.</strong> <code>t</code> (integer hours, policy <code>extend</code>), <code>x</code> (float positions in µm, equal spaces,
+fixed) and the target <code>count(t, x)</code>. The first time is the initial condition. The likelihood
+does not use it. Each time after the first must be on the Euler grid.</p>
+<p><strong>Outputs.</strong> <code>density(t, x)</code> (a field: time on the rows, position on the columns) and the
+scalar <code>wave_speed</code> (<code>2 sqrt(D lam)</code>, µm/h). A forecast continues the PDE to later times.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>steps_per_hour</code></td>
+<td>10</td>
+<td>Euler steps for each hour</td>
+</tr>
+<tr>
+<td><code>delay</code></td>
+<td>true</td>
+<td>Multiply the movement and the growth by <code>tanh(beta t)</code></td>
+</tr>
+<tr>
+<td><code>max_extension</code></td>
+<td>4</td>
+<td>The number of periods after the fit that a forecast can reach</td>
+</tr>
+<tr>
+<td><code>diffusivity_median</code>, <code>growth_median</code></td>
+<td>1000, 0.05</td>
+<td>Prior medians of <code>D</code> (µm²/h) and <code>lam</code> (1/h)</td>
+</tr>
+<tr>
+<td><code>capacity_mu</code>, <code>capacity_sigma</code></td>
+<td>122, 15</td>
+<td>Prior of the capacity <code>K</code> (cells for each column)</td>
+</tr>
+<tr>
+<td><code>cfl_quantile</code></td>
+<td>0.99</td>
+<td>The prior quantile of <code>D</code> that must keep the Euler steps stable</td>
+</tr>
+</tbody>
+</table>
+<p>If the Euler steps are not stable at the <code>cfl_quantile</code> of the prior of <code>D</code>, the model stops
+with <code>SETTINGS_INVALID</code>. The message gives the smallest <code>steps_per_hour</code> that is stable.</p>
+<h3 id="scitraction_force-cell-forces-from-gel-movement-e60"><code>sci.traction_force</code> — cell forces from gel movement (E60)<a class="headerlink" href="#scitraction_force-cell-forces-from-gel-movement-e60" title="Permanent link">&para;</a></h3>
+<p>Fourier-transform traction cytometry as a Gaussian inverse problem. The data are a displacement
+field of a soft gel. The output is the traction field that the cells apply. NUTS samples only
+the noise sd and the prior spectrum. The model integrates the field out, with one closed-form
+likelihood for each Fourier mode. At score time, the model draws each traction field exactly
+with two FFTs for each posterior draw.</p>
+<p><strong>Inputs.</strong> <code>component</code> (categorical <code>x</code>, <code>y</code>), <code>row</code> and <code>col</code> (integer, fixed) and the target
+<code>displacement(component, row, col)</code> in µm. The raster must have no missing pixels. Thus the
+model has no split: evaluate it in sample. With <code>force_mask: true</code>, the data also has a
+<code>force_mask(row, col)</code>.</p>
+<p><strong>Outputs.</strong> <code>traction(component, row, col)</code> (a vector field, Pa), <code>displacement_hat</code>, and the
+scalars <code>strain_energy</code> (fJ) and <code>contractility</code> (µN).</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>grid_um</code>, <code>young_pa</code>, <code>poisson</code></td>
+<td>1, 10000, 0.49</td>
+<td>Grid spacing (µm), Young's modulus (Pa) and Poisson ratio of the gel</td>
+</tr>
+<tr>
+<td><code>young_cv</code></td>
+<td>0</td>
+<td>Relative uncertainty of Young's modulus (0 = known)</td>
+</tr>
+<tr>
+<td><code>prior</code></td>
+<td><code>matern</code></td>
+<td><code>white</code> (Tikhonov), <code>smooth</code> or <code>matern</code></td>
+</tr>
+<tr>
+<td><code>field_draws</code></td>
+<td>100</td>
+<td>The number of traction fields to draw for each score</td>
+</tr>
+<tr>
+<td><code>force_mask</code></td>
+<td>false</td>
+<td>Sum the strain energy and the contractility inside <code>force_mask</code> only</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>NOISE_SPECTRUM_MISMATCH</code> diagnostic compares the power of the data in the finest modes with
+the model. Correlated noise from overlapping PIV windows causes it, and then the ranges are too
+narrow. <code>challenges_settings(ds)</code> gives the settings for the real pyTFM colony of
+<code>from_challenges</code>.</p>
 
 
 

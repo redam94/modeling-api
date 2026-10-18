@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4727,6 +4757,8 @@
       
         
       
+        
+      
     
     
     
@@ -4815,6 +4847,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5070,29 +5130,31 @@
 <h1 id="m3-verification-v04">M3 verification <span class="mapi-badge">v0.4</span><a class="headerlink" href="#m3-verification-v04" title="Permanent link">&para;</a></h1>
 <p>Milestone M3 (Guided mode and integrations) has three exit criteria:</p>
 <ol>
-<li>five non-technical testers complete <strong>upload → report → scenario</strong> unaided in under 30
-   minutes;</li>
-<li><strong>an external budget optimiser works against an endpoint</strong>;</li>
-<li><strong>cut line A</strong>: public launch of declarative specs and built-ins (untrusted data, trusted
+<li>Five non-technical testers complete <strong>upload → report → scenario</strong> without help in less
+   than 30 minutes.</li>
+<li><strong>An external budget optimiser works against an endpoint</strong>.</li>
+<li><strong>Cut line A</strong>: public launch of declarative specs and built-ins (untrusted data, trusted
    code).</li>
 </ol>
-<p>This page records how far each was verified <strong>locally</strong>, the numbers measured, what the runs
-found and fixed, and what remains. Real testers cannot be simulated, so the first criterion
-was prepared, not met: an automated "unaided tester" script measures the floor of the time
-budget and the screens were reviewed as a first-time analyst would read them; the
-<a href="#protocol-for-the-five-non-technical-testers">protocol for the five testers</a> below is what
-remains to run.</p>
-<p>Verified on 2026-10-16 on branch <code>feat/m3-e2e</code> (v0.4 development), on an Apple-silicon
-laptop (8 cores, 16 GB, macOS), against a live <code>make dev</code> stack:</p>
+<p>This page records how much of each criterion we verified <strong>locally</strong>, and the measured
+numbers. It also tells what the runs found and fixed, and what remains. We cannot simulate
+real testers. Thus we prepared the first criterion, but it is not met. An automated "unaided
+tester" script measures the minimum of the time budget. We also examined the screens as an
+analyst who uses them for the first time. The
+<a href="#protocol-for-the-five-non-technical-testers">protocol for the five testers</a> below is the
+work that remains.</p>
+<p>We did the verification on 2026-10-16 on branch <code>feat/m3-e2e</code> (v0.4 development), on an
+Apple-silicon laptop (8 cores, 16 GB, macOS), against a live <code>make dev</code> stack:</p>
 <ul>
-<li>the API, worker, web app and plot sandbox on non-default ports (API <code>18000</code>, GCS shim
-  <code>14443</code>, web <code>15173</code>, plot sandbox <code>15174</code>);</li>
-<li>the <code>dev</code> profile: the development identity provider and the outbox mailer;</li>
-<li>the GCS shim instead of Cloud Storage and the embedded <code>pgserver</code> Postgres;</li>
-<li>every run on the <code>local-process</code> executor (no Docker daemon, no cloud project);</li>
-<li><code>MAPI_TENANT_DELETION_GRACE_S=0</code> and <code>MAPI_BUNDLE_RETENTION_DAYS=0</code>, so a deletion can be
-  watched to the end; higher <code>MAPI_SIGNUP_PER_IP_PER_HOUR</code> and
-  <code>MAPI_SIGNUP_PER_DOMAIN_PER_DAY</code>, since every run signs up new workspaces from one address.</li>
+<li>The API, worker, web app and plot sandbox on ports that are not the defaults (API <code>18000</code>,
+  GCS shim <code>14443</code>, web <code>15173</code>, plot sandbox <code>15174</code>).</li>
+<li>The <code>dev</code> profile: the development identity provider and the outbox mailer.</li>
+<li>The GCS shim in place of Cloud Storage, and the embedded <code>pgserver</code> Postgres.</li>
+<li>All runs on the <code>local-process</code> executor (no Docker daemon, no cloud project).</li>
+<li><code>MAPI_TENANT_DELETION_GRACE_S=0</code> and <code>MAPI_BUNDLE_RETENTION_DAYS=0</code>, so that we could
+  watch a deletion to the end.</li>
+<li>Higher <code>MAPI_SIGNUP_PER_IP_PER_HOUR</code> and <code>MAPI_SIGNUP_PER_DOMAIN_PER_DAY</code>, because each run
+  signs up new workspaces from one address.</li>
 </ul>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
@@ -5106,33 +5168,33 @@ laptop (8 cores, 16 GB, macOS), against a live <code>make dev</code> stack:</p>
 </thead>
 <tbody>
 <tr>
-<td>5 non-technical testers: upload → report → scenario unaided in &lt; 30 min</td>
-<td>The browser script <code>apps/web/e2e/m3-guided.e2e.spec.ts</code> clicks the whole Guided flow on a realistic spreadsheet, timing each step; every screen was reviewed for plain language, next steps and dead ends</td>
-<td><strong>135 s</strong> of automated wall time, nearly all of it the system working (the beliefs preview, the fit, the exact runs). Six usability defects found and fixed, among them two dead ends</td>
+<td>5 non-technical testers: upload → report → scenario without help in &lt; 30 min</td>
+<td>The browser script <code>apps/web/e2e/m3-guided.e2e.spec.ts</code> clicks through the whole Guided flow on a realistic spreadsheet, and measures the time of each step. We examined each screen for plain language, next steps and dead ends</td>
+<td><strong>135 s</strong> of automated wall time. The system used almost all of this time (the beliefs preview, the fit, the exact runs). We found and repaired six usability defects. Two of them were dead ends</td>
 <td>Five real testers (<a href="#protocol-for-the-five-non-technical-testers">protocol</a>)</td>
 </tr>
 <tr>
 <td>An external optimiser works against an endpoint</td>
-<td>The v0.4 client's optimiser adapter (removed in v0.5) against the live endpoint, an optimiser written against the external framework's protocol</td>
-<td>The chosen allocation beats the current one under the model: <strong>+0.22 %</strong> revenue for next quarter at the same budget, from 25 candidate allocations (22 score requests) in 220 s</td>
+<td>The optimiser adapter of the v0.4 client (removed in v0.5) against the live endpoint. The optimiser uses the protocol of the external framework</td>
+<td>Under the model, the selected allocation is better than the current one: <strong>+0.22 %</strong> revenue for next quarter at the same budget. It came from 25 candidate allocations (22 score requests) in 220 s</td>
 <td>The in-sandbox <code>optimize</code> job (M4)</td>
 </tr>
 <tr>
 <td>Cut line A</td>
-<td>A self-service sign-up creates a <code>public</code> workspace: e-mail verified, uploaded code refused (<code>uploaded_code_allowed: false</code>); built-ins and declarative specs run (here on an operator-promoted <code>internal</code> workspace, because the local executor admits only trusted tiers)</td>
+<td>A self-service sign-up makes a <code>public</code> workspace. The e-mail is verified, and the server refuses uploaded code (<code>uploaded_code_allowed: false</code>). Built-ins and declarative specs run. Here they ran on an <code>internal</code> workspace that an operator promoted, because the local executor admits only trusted tiers</td>
 <td>Pass</td>
-<td>Public workspaces running on <code>docker-gvisor</code> or Cloud Run Jobs, the only executors shared tiers may use</td>
+<td>Public workspaces that run on <code>docker-gvisor</code> or Cloud Run Jobs. Shared tiers can use only these executors</td>
 </tr>
 </tbody>
 </table>
-<p>Everything M3 added was also exercised end to end through the API by
-<code>tests/e2e/test_m3_guided_stack.py</code> (15 tests, 7 minutes): <strong>15 passed</strong>.</p>
+<p><code>tests/e2e/test_m3_guided_stack.py</code> (15 tests, 7 minutes) also tested all M3 additions from
+end to end through the API: <strong>15 passed</strong>.</p>
 <h2 id="the-api-journey">The API journey<a class="headerlink" href="#the-api-journey" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>dev<span class="w">        </span><span class="c1"># with the variables above</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>e2e<span class="w">        </span><span class="c1"># or: uv run --with-editable ../optimizer-framework python -m pytest -s -m e2e tests/e2e/test_m3_guided_stack.py</span>
 </span></code></pre></div>
-<p>One analyst's workspace, from outside the processes. Each row is one test, in order; the
-times are wall-clock seconds of the last run.</p>
+<p>The tests use the workspace of one analyst, from outside the processes. Each row is one
+test, in sequence. The times are the wall-clock seconds of the last run.</p>
 <table>
 <thead>
 <tr>
@@ -5144,12 +5206,12 @@ times are wall-clock seconds of the last run.</p>
 <tbody>
 <tr>
 <td>Sign-up</td>
-<td><code>POST /auth/signup</code> → the verification e-mail read from <code>GET /dev/outbox</code> → <code>POST /auth/verify-email</code> creates a <code>public</code> workspace whose signer is admin; the operator promotes it to <code>internal</code> (the local executor runs trusted tiers only)</td>
+<td><code>POST /auth/signup</code> → the test reads the verification e-mail from <code>GET /dev/outbox</code> → <code>POST /auth/verify-email</code> makes a <code>public</code> workspace, with the person who signed up as admin. The operator promotes it to <code>internal</code> (the local executor runs only trusted tiers)</td>
 <td>0.03</td>
 </tr>
 <tr>
 <td>Guided data</td>
-<td>All four templates listed; the analyst's CSV (5 regions × 3 channels × 104 weeks, columns <code>Week, Region, Revenue, TV Spend, Search Spend, Social Spend, Avg Price</code>) profiled locally like the browser does; role detection fills every question correctly, each with a plain reason; the draft validates; the upload ingests with the draft's mapping; detection on the stored version (<code>columns.json</code>) gives the same answers</td>
+<td>All four templates are in the list. The test profiles the CSV of the analyst locally, as the browser does (5 regions × 3 channels × 104 weeks, columns <code>Week, Region, Revenue, TV Spend, Search Spend, Social Spend, Avg Price</code>). Role detection answers each question correctly, each with a plain reason. The draft validates. The upload ingests with the mapping of the draft. Detection on the stored version (<code>columns.json</code>) gives the same answers</td>
 <td>13.3</td>
 </tr>
 <tr>
@@ -5159,73 +5221,73 @@ times are wall-clock seconds of the last run.</p>
 </tr>
 <tr>
 <td>Business priors</td>
-<td>ROI and share ranges and a baseline share (true to the simulation) plus a lift test, translated by a sandboxed <code>translate_priors</code> run: the translated priors hold 81 %, 76 % and 80 % of their mass inside the stated 80 % ranges; written into the spec with the run's id</td>
+<td>ROI and share ranges and a baseline share (true to the simulation), and a lift test. A sandboxed <code>translate_priors</code> run translates them. The translated priors hold 81 %, 76 % and 80 % of their mass in the stated 80 % ranges. The test writes them into the spec with the id of the run</td>
 <td>13.3</td>
 </tr>
 <tr>
 <td>Tiny fit</td>
-<td>150 tuning steps and draws × 2 chains: every check of the template's scorecard is measured, in plain words with a docs anchor and an action; its gate (<strong>blocked</strong>: chains disagree) is exactly what <code>mapi_spec.scorecard.promotion_gate</code> derives, and the server refuses the promotion with that gate's checks</td>
+<td>150 tuning steps and draws × 2 chains. The test measures each check of the scorecard of the template, in plain words with a docs anchor and an action. Its gate (<strong>blocked</strong>: the chains do not agree) is exactly what <code>mapi_spec.scorecard.promotion_gate</code> calculates. The server refuses the promotion with the checks of that gate</td>
 <td>30.9</td>
 </tr>
 <tr>
 <td>Endpoint fit</td>
-<td>1000 × 4 chains, <code>target_accept</code> 0.95: convergence passes or warns, holdout error under 1 %, coverage passes, every plausibility check passes</td>
+<td>1000 × 4 chains, <code>target_accept</code> 0.95. Convergence passes or gives a warning. The holdout error is below 1 %, coverage passes, and each plausibility check passes</td>
 <td>61.0</td>
 </tr>
 <tr>
 <td>What-if vs Run exact</td>
-<td>The per-draw response grid answers a slider at once; "Run exact" (compiled by the server) scores the fit window: tv × 0.5 → grid −454,590 vs exact −454,241 (sd 14,003); search × 1.5 and tv × 0.8 → −4,762 vs −4,255 (sd 14,980). Out-of-grid multipliers are refused</td>
-<td>10–13 per exact run</td>
+<td>The response grid for each draw answers a slider immediately. "Run exact" (compiled by the server) scores the fit window. tv × 0.5 → grid −454,590 vs exact −454,241 (sd 14,003). search × 1.5 and tv × 0.8 → −4,762 vs −4,255 (sd 14,980). The server refuses multipliers outside the grid</td>
+<td>10–13 for each exact run</td>
 </tr>
 <tr>
 <td>Forecast, channel off</td>
-<td>An 8-week forecast fan with history and the split line; tv off over the fit window −1,046,519, against −1,046,414 from the grid's multiplier 0</td>
+<td>An 8-week forecast fan with history and the split line. tv off over the fit window gives −1,046,519, against −1,046,414 from the multiplier 0 of the grid</td>
 <td>10 each</td>
 </tr>
 <tr>
 <td>Promotion</td>
-<td><code>409 OVERRIDE_REQUIRED</code> naming the warned checks, then an audited admin override with a reason; history, schema with an example call, snippets (none carries a secret)</td>
+<td><code>409 OVERRIDE_REQUIRED</code>, which names the checks with warnings. Then an admin override with a reason, which the audit log records. History, schema with an example call, and snippets (no snippet contains a secret)</td>
 <td>0.01</td>
 </tr>
 <tr>
 <td>Score token</td>
-<td>A <code>score:&lt;alias&gt;</code> token scores the endpoint's example (8-week forecast) as an <code>xarray</code> tree, and gets <code>403</code> on datasets, specs, webhooks and models</td>
+<td>A <code>score:&lt;alias&gt;</code> token scores the example of the endpoint (8-week forecast) as an <code>xarray</code> tree. It gets <code>403</code> on datasets, specs, webhooks and models</td>
 <td>10.0</td>
 </tr>
 <tr>
 <td>Webhooks</td>
-<td>An HTTPS receiver on <code>127.0.0.1</code> (the dev profile's certificate) receives <code>run.succeeded</code>, <code>model.version.ready</code>, <code>endpoint.promoted</code> and <code>score.completed</code>, each verified with <code>mapi_client.webhooks.verify</code>; no body carries a data value, link or secret; the delivery log shows them; a replay arrives as the same event with a new delivery id; another secret fails verification</td>
+<td>An HTTPS receiver on <code>127.0.0.1</code> (with the certificate of the dev profile) gets <code>run.succeeded</code>, <code>model.version.ready</code>, <code>endpoint.promoted</code> and <code>score.completed</code>. The test verifies each with <code>mapi_client.webhooks.verify</code>. No body contains a data value, link or secret. The delivery log shows them. A replay comes as the same event with a new delivery id. A different secret fails verification</td>
 <td>0.3</td>
 </tr>
 <tr>
 <td>Embed</td>
-<td>A saved platform-recipe plot as an embed link: the public view needs no credentials, every write method answers <code>405</code>, the sandbox page carries its CSP; after revocation <code>410 LINK_EXPIRED</code></td>
+<td>A saved platform-recipe plot as an embed link. The public view needs no credentials. Each write method answers <code>405</code>. The sandbox page has its CSP. After revocation, <code>410 LINK_EXPIRED</code></td>
 <td>&lt; 1</td>
 </tr>
 <tr>
 <td>Budget optimisation</td>
-<td>See <a href="#an-external-optimiser-against-the-live-endpoint">An external optimiser</a></td>
+<td>Refer to <a href="#an-external-optimiser-against-the-live-endpoint">An external optimiser</a></td>
 <td>219.6</td>
 </tr>
 <tr>
 <td>GDPR export</td>
-<td>A 49-file zip downloads; it holds the workspace's records and objects, and none of the webhook secret, the score token or the ID token</td>
+<td>A zip with 49 files downloads. It holds the records and objects of the workspace. It does not contain the webhook secret, the score token or the ID token</td>
 <td>16.4</td>
 </tr>
 <tr>
 <td>Deletion</td>
-<td>645 tenant rows and 285 objects before. After the purge: no row in any table with a <code>tenant_id</code> except the retained <code>audit_events</code> (53), <code>cost_ledger</code> (33) and the deletion record; <strong>no object</strong> under <code>t/&lt;tenant&gt;/</code> in any of the five buckets; a signed <code>tenant.deletion.completed</code> reaches the receiver; the admin and the score token are refused</td>
+<td>645 tenant rows and 285 objects before the purge. After the purge, no table with a <code>tenant_id</code> has a row, but these are retained: <code>audit_events</code> (53), <code>cost_ledger</code> (33) and the deletion record. There is <strong>no object</strong> under <code>t/&lt;tenant&gt;/</code> in the five buckets. A signed <code>tenant.deletion.completed</code> goes to the receiver. The server refuses the admin and the score token</td>
 <td>13.4</td>
 </tr>
 </tbody>
 </table>
 <h3 id="an-external-optimiser-against-the-live-endpoint">An external optimiser against the live endpoint<a class="headerlink" href="#an-external-optimiser-against-the-live-endpoint" title="Permanent link">&para;</a></h3>
-<p>An external optimisation framework (a sibling project) ships the model and optimiser
-<em>interfaces</em>. The test registered the v0.4 client's endpoint-backed model adapter as one of
-its models and ran an optimiser written against its protocol: it moves
-a step of budget between two channels while that raises the endpoint's predicted revenue,
-halving the step when no move does. Every candidate is one score request against the live
-endpoint (inline XrJSON, <code>score:&lt;alias&gt;</code> token).</p>
+<p>An external optimisation framework (a sibling project) has the model and optimiser
+<em>interfaces</em>. The test registered the endpoint-backed model adapter of the v0.4 client as one
+of its models. Then it ran an optimiser that uses its protocol. The optimiser moves a step of
+budget between two channels while this increases the predicted revenue of the endpoint. When
+no move increases it, the optimiser makes the step half as large. Each candidate is one score
+request against the live endpoint (inline XrJSON, <code>score:&lt;alias&gt;</code> token).</p>
 <table>
 <thead>
 <tr>
@@ -5253,19 +5315,19 @@ endpoint (inline XrJSON, <code>score:&lt;alias&gt;</code> token).</p>
 </tr>
 </tbody>
 </table>
-<p>25 candidates cost 22 requests (the cache answered the rest); 220 s in all. Each request is
-a sandboxed score run, so the wall time is run start-up; a geo MMM's markets cannot be
-batched into one request (new markets are pooled), which is why the in-sandbox <code>optimize</code>
-job (M4) is the path for longer optimisations.</p>
+<p>25 candidates used 22 requests (the cache answered the others). The total time was 220 s.
+Each request is a sandboxed score run, so the wall time is mostly run start-up. You cannot
+put the markets of a geo MMM into one request (new markets are pooled). For this reason, the
+in-sandbox <code>optimize</code> job (M4) is the path for longer optimisations.</p>
 <h2 id="the-unaided-tester-script">The unaided-tester script<a class="headerlink" href="#the-unaided-tester-script" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">MAPI_E2E</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>pnpm<span class="w"> </span>--filter<span class="w"> </span>@mapi/web<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>playwright<span class="w"> </span><span class="nb">test</span><span class="w"> </span>e2e/m3-guided.e2e.spec.ts
 </span></code></pre></div>
-<p><code>tests/e2e/m3_browser_seed.py</code> creates a fresh project and writes the analyst's spreadsheet;
-the script then does what the five testers will be asked to do, with no hesitation, as the
-default tenant's admin. Screenshots land in <code>apps/web/e2e/screenshots/m3-*.png</code>
-(git-ignored); timings in <code>m3-timings.json</code>.</p>
-<p>The timings below are from the release check of v0.4.0 on the integrated <code>develop</code> branch
-(2026-10-16, same laptop and settings); the first run on <code>feat/m3-e2e</code> took 137 s.</p>
+<p><code>tests/e2e/m3_browser_seed.py</code> makes a new project and writes the spreadsheet of the analyst.
+The script then does the tasks that the five testers will do, without hesitation, as the
+admin of the default tenant. Screenshots go to <code>apps/web/e2e/screenshots/m3-*.png</code> (git
+ignores them). The times go to <code>m3-timings.json</code>.</p>
+<p>The times below are from the release check of v0.4.0 on the integrated <code>develop</code> branch
+(2026-10-16, the same laptop and settings). The first run on <code>feat/m3-e2e</code> took 137 s.</p>
 <table>
 <thead>
 <tr>
@@ -5277,32 +5339,32 @@ default tenant's admin. Screenshots land in <code>apps/web/e2e/screenshots/m3-*.
 <tbody>
 <tr>
 <td>1. Template</td>
-<td>Starts where sign-in lands (<code>/</code>), finds <strong>Guided</strong>; "What do you want to learn?" → Geo marketing mix</td>
+<td>Starts where sign-in goes (<code>/</code>) and finds <strong>Guided</strong>. "What do you want to learn?" → Geo marketing mix</td>
 <td>0.7</td>
 </tr>
 <tr>
 <td>2. Your data</td>
-<td>Names the analysis, chooses the CSV; checks that every question is pre-filled correctly; Upload and continue (upload, sandboxed check)</td>
+<td>Gives the analysis a name and selects the CSV. Makes sure that each question has the correct answer. Upload and continue (upload, sandboxed check)</td>
 <td>4.7</td>
 </tr>
 <tr>
 <td>3. What you believe</td>
-<td>Ticks tv, states an ROI of 1.5 to 4, previews what it means (a sandboxed run) and continues</td>
+<td>Selects tv, states an ROI of 1.5 to 4, shows a preview of what it means (a sandboxed run) and continues</td>
 <td>20.7</td>
 </tr>
 <tr>
 <td>4. Fit the model</td>
-<td>Fit the model; plain-language phases and progress; See the results</td>
+<td>Fit the model. Phases and progress in plain language. See the results</td>
 <td>78.5</td>
 </tr>
 <tr>
 <td>5. Results</td>
-<td>Headline numbers, ROI and share per channel, two charts, the sanity scorecard</td>
+<td>Headline numbers, ROI and share for each channel, two charts, the sanity scorecard</td>
 <td>0.4</td>
 </tr>
 <tr>
 <td>6. What if…</td>
-<td>Search spend +20 % on the slider (instant), Run exact, Turn off tv, a 13-week forecast</td>
+<td>Search spend +20 % on the slider (immediate), Run exact, Turn off tv, a 13-week forecast</td>
 <td>29.6</td>
 </tr>
 <tr>
@@ -5312,25 +5374,29 @@ default tenant's admin. Screenshots land in <code>apps/web/e2e/screenshots/m3-*.
 </tr>
 <tr>
 <td>7. Share</td>
-<td>The gate explained; an admin's reason; Approve and go live; an embed link</td>
+<td>The gate explained. The reason of an admin. Approve and go live. An embed link</td>
 <td>0.4</td>
 </tr>
 </tbody>
 </table>
-<p>Nearly all of the 135 s is the system working: the beliefs preview, the fit (79 s), the exact
-run, the channel-off run and the forecast; clicks, typing and page loads take a few seconds. A person reads, hesitates and
-explores, so the 30-minute budget is about how long the testers take to <em>understand</em> each
-screen: the script shows that the system's share is about two and a half minutes on this
-laptop.</p>
-<p>The second test walks the <strong>Integrations hub</strong>: the overview cards, the endpoint page, Try it
-(validate, then score: 8.6 s), the curl snippet copied, a <code>score:&lt;alias&gt;</code> token from the
-snippet's shortcut, a webhook with its one-time secret, and the embed link: it renders
-read-only in a new page (no button to press) and, once revoked in the hub, the page says
-"This link has expired or was revoked".</p>
+<p>The system uses almost all of the 135 s: the beliefs preview, the fit (79 s), the exact run,
+the channel-off run and the forecast. Clicks, typing and page loads take some seconds. A
+person reads, hesitates and explores. Thus the 30-minute budget is mostly the time that the
+testers need to <em>understand</em> each screen. The script shows that the system uses about two and
+a half minutes of it on this laptop.</p>
+<p>The second test goes through the <strong>Integrations hub</strong>:</p>
+<ul>
+<li>The overview cards and the endpoint page.</li>
+<li>Try it (validate, then score: 8.6 s), and a copy of the curl snippet.</li>
+<li>A <code>score:&lt;alias&gt;</code> token from the shortcut of the snippet.</li>
+<li>A webhook with its one-time secret.</li>
+<li>The embed link. It shows read-only in a new page (no button to push). After the hub
+  revokes it, the page shows "This link has expired or was revoked".</li>
+</ul>
 <h3 id="what-the-review-found-and-fixed">What the review found and fixed<a class="headerlink" href="#what-the-review-found-and-fixed" title="Permanent link">&para;</a></h3>
-<p>Every screenshot was read as a first-time analyst would: is it plain language, is the next
-step obvious, is there a dead end, is an error explained? Fixed on this branch, each with a
-test:</p>
+<p>We read each screenshot as an analyst who uses the app for the first time. We asked these
+questions: Is the language plain? Is the next step clear? Is there a dead end? Does the app
+explain each error? We fixed these items on this branch, each with a test:</p>
 <table>
 <thead>
 <tr>
@@ -5341,24 +5407,24 @@ test:</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>"Run exact" always failed</strong> on the live stack ("User or plugin code failed"): the compiled counterfactual named no data</td>
+<td><strong>"Run exact" always failed</strong> on the live stack ("User or plugin code failed"). The compiled counterfactual named no data</td>
 <td>What if…</td>
-<td><code>POST /v1/guided/requests:compile</code> names the fit dataset in <code>data</code> for what-ifs and presets over the fit window; a score request without data is refused with <code>422</code> before a run starts</td>
+<td><code>POST /v1/guided/requests:compile</code> names the fit dataset in <code>data</code> for what-ifs and presets over the fit window. The server refuses a score request without data with <code>422</code> before a run starts</td>
 </tr>
 <tr>
-<td><strong>"Forecast error on held-back weeks: 83 %"</strong> for a 0.8 % error (<code>mapi_sdk</code> reports MAPE in percent)</td>
+<td><strong>"Forecast error on held-back weeks: 83 %"</strong> for an error of 0.8 % (<code>mapi_sdk</code> reports MAPE in percent)</td>
 <td>Results</td>
-<td>The headline reads the scorecard's measured fraction</td>
+<td>The headline reads the measured fraction of the scorecard</td>
 </tr>
 <tr>
-<td><strong>Dead end</strong>: the template's fit failed the convergence checks on two years of weekly data, the checks' advice ("raise target_accept") names settings Guided screens hide, and Share said "cannot go live"</td>
+<td><strong>Dead end</strong>: the fit of the template failed the convergence checks on two years of weekly data. The advice of the checks ("raise target_accept") names settings that Guided screens do not show. Share showed "cannot go live"</td>
 <td>Results, Share</td>
-<td>The <code>geo_mmm</code> template (1.1.0) samples longer and more carefully; a warned or failed convergence check offers <strong>Fit again, more carefully</strong>; a blocked Share step links to it</td>
+<td>The <code>geo_mmm</code> template (1.1.0) samples longer and more carefully. A convergence check with a warning or failure offers <strong>Fit again, more carefully</strong>. A blocked Share step links to it</td>
 </tr>
 <tr>
-<td><strong>Beliefs the analyst never stated</strong>: every channel started ticked with a 0.5–4 ROI range (search's true ROI was 6.3) although the page says "leave a channel unticked if you have no view"</td>
+<td><strong>Beliefs that the analyst did not state</strong>: each channel started selected with an ROI range of 0.5–4 (the true ROI of search was 6.3). But the page says "leave a channel unticked if you have no view"</td>
 <td>What you believe</td>
-<td>Channels start unticked; ticking one starts from the sensible range</td>
+<td>Channels start not selected. When you select one, it starts from the sensible range</td>
 </tr>
 <tr>
 <td>"Results without any media: between −164 % and 271 %"</td>
@@ -5366,66 +5432,66 @@ test:</p>
 <td>Without a stated baseline: "anything from none to all of your results - the model has no view yet"</td>
 </tr>
 <tr>
-<td>A revoked embed link kept rendering for a minute (<code>Cache-Control: public, max-age=60</code>)</td>
+<td>A revoked embed link continued to show for one minute (<code>Cache-Control: public, max-age=60</code>)</td>
 <td>Embed page</td>
 <td><code>private, no-cache</code>: revocation applies on the next load</td>
 </tr>
 <tr>
-<td>Jargon: "y_hat" on the fit chart's axis and caption; "evenly spaced (W-SUN)"; "the host did not resolve (gaierror)"; "Sampler convergence" offered first under Share a chart</td>
+<td>Jargon: "y_hat" on the axis and caption of the fit chart. "evenly spaced (W-SUN)". "the host did not resolve (gaierror)". "Sampler convergence" first under Share a chart</td>
 <td>Report, data step, webhook dialog, Share</td>
-<td>The dataset's name ("revenue"); "weekly, on Sundays"; "no such name"; result charts first</td>
+<td>The name of the dataset ("revenue"). "weekly, on Sundays". "no such name". Result charts first</td>
 </tr>
 </tbody>
 </table>
-<p>Also fixed: <code>mapi_client</code> refused to upload an MFF table (a CSV file) with a Guided MFF
-draft's mapping.</p>
-<p>Seen and left for later (not blocking the flow, noted for the testers' sessions):</p>
+<p>We also fixed this item: <code>mapi_client</code> refused to upload an MFF table (a CSV file) with the
+mapping of a Guided MFF draft.</p>
+<p>We saw these items and left them for later. They do not block the flow, and we noted them
+for the sessions of the testers:</p>
 <ul>
-<li>the fit chart facets markets under the dim name <code>geo</code>, and the forecast chart's y axis
-  starts at zero, which flattens the fan (both fixed in the M3 review: panels take the
-  dataset's own name and the axis fits the band);</li>
-<li>the endpoint page showed who promoted a version as a user id, not a name (fixed in the M3
-  review: names come from the project's members);</li>
-<li>the header showed Expert mode on the Integrations hub: that test runs in a new browser
-  context, and the default tenant (not a self-service one) started in Expert mode there.
-  The choice is remembered per browser; since then a self-service workspace starts in
-  Guided mode, and Expert navigation and Home link to Guided;</li>
-<li>the fit takes about 80 s with the sturdier settings (30 s before), still well within the
-  budget.</li>
+<li>The fit chart showed markets under the dim name <code>geo</code>. The y axis of the forecast chart
+  started at zero, and this made the fan flat. The M3 review fixed the two items: panels use
+  the name of the dataset, and the axis fits the band.</li>
+<li>The endpoint page showed the user id of the person who promoted a version, not a name. The
+  M3 review fixed this: names come from the members of the project.</li>
+<li>The header showed Expert mode on the Integrations hub. That test runs in a new browser
+  context, and there the default tenant (not a self-service tenant) started in Expert mode.
+  The browser remembers the selection. Since then, a self-service workspace starts in Guided
+  mode, and Expert navigation and Home link to Guided.</li>
+<li>The fit takes about 80 s with the stronger settings (30 s before). This is still well in
+  the budget.</li>
 </ul>
 <h2 id="protocol-for-the-five-non-technical-testers">Protocol for the five non-technical testers<a class="headerlink" href="#protocol-for-the-five-non-technical-testers" title="Permanent link">&para;</a></h2>
-<p>The exit criterion needs people. Run this protocol with <strong>five</strong> testers, one at a time,
-against a stack like the one above (or staging), and record the results on the observation
-sheet.</p>
+<p>The exit criterion needs people. Do this protocol with <strong>five</strong> testers, one at a time.
+Use a stack like the stack above (or staging). Record the results on the observation sheet.</p>
 <h3 id="who">Who<a class="headerlink" href="#who" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Five people who analyse marketing or sales results in spreadsheets (marketing analysts,
-  media planners, finance business partners), with <strong>no</strong> statistics or programming
-  training beyond spreadsheet formulas. Screen them with two questions: "Have you fitted a
-  regression or written Python or R?" (no) and "Do you work with weekly spend and sales by
-  market?" (yes).</li>
+<li>Five persons who analyse marketing or sales results in spreadsheets (marketing analysts,
+  media planners, finance business partners). They must have <strong>no</strong> statistics or
+  programming training, other than spreadsheet formulas. Select them with two questions:
+  "Have you fitted a regression or written Python or R?" (no) and "Do you work with weekly
+  spend and sales by market?" (yes).</li>
 <li>None of them has seen modeling-api before. Nobody from the team that built it.</li>
 </ul>
 <h3 id="setup-before-each-session">Setup (before each session)<a class="headerlink" href="#setup-before-each-session" title="Permanent link">&para;</a></h3>
 <ol>
-<li>A fresh workspace for the tester: sign up at <code>/signup</code> with their work address, in a
-   fresh browser profile. Signing in after the e-mail link opens an empty Guided page, and a
-   self-service workspace starts in Guided mode on any browser. With an operator-created
-   <code>internal</code> tenant instead (a stack without a sandboxed executor), the session starts on
-   Expert Home: finding <strong>Guided</strong> in the sidebar is then part of T1.</li>
-<li>The spreadsheet on their desktop: <code>uv run python tests/e2e/m3_browser_seed.py seed --run
-   &lt;id&gt;</code> writes <code>weekly_media_by_region.csv</code> (two years, five regions, three channels), or
-   the tester's own anonymised data in the same shape.</li>
-<li>A screen recorder, a stopwatch, and the observation sheet. The facilitator sits beside or
-   behind the tester and does not touch the keyboard.</li>
+<li>Make a new workspace for the tester. Sign up at <code>/signup</code> with their work address, in a
+   new browser profile. Sign in after the e-mail link. This opens an empty Guided page. A
+   self-service workspace starts in Guided mode on all browsers. If you use an <code>internal</code>
+   tenant that an operator made (a stack without a sandboxed executor), the session starts
+   on Expert Home. Then the tester must find <strong>Guided</strong> in the sidebar as part of T1.</li>
+<li>Put the spreadsheet on the desktop of the tester. <code>uv run python tests/e2e/m3_browser_seed.py seed --run
+   &lt;id&gt;</code> writes <code>weekly_media_by_region.csv</code> (two years, five regions, three channels). You
+   can also use the anonymised data of the tester in the same shape.</li>
+<li>Prepare a screen recorder, a stopwatch and the observation sheet. The facilitator sits
+   next to or behind the tester. The facilitator does not touch the keyboard.</li>
 </ol>
 <h3 id="script">Script<a class="headerlink" href="#script" title="Permanent link">&para;</a></h3>
 <p>Read this aloud, word for word:</p>
 <blockquote>
-<p>"Thank you for helping. We are testing the software, not you; anything that is hard is our
-fault. Please think aloud: say what you are looking for and what you expect to happen. I
-cannot help you during the tasks - if you would give up in real life, tell me and we move
-on. You have up to 30 minutes in all."</p>
+<p>"Thank you for your help. We test the software, not you. If something is difficult, it is
+our fault. Please think aloud: say what you look for and what you think will occur. I
+cannot help you during the tasks. If you would stop in real life, tell me, and we go to the
+next task. You have a maximum of 30 minutes for all tasks."</p>
 </blockquote>
 <p>Then give one task card at a time.</p>
 <table>
@@ -5440,43 +5506,48 @@ on. You have up to 30 minutes in all."</p>
 <tr>
 <td>T1 Upload</td>
 <td>"Here is last two years' media spend and revenue by region. Load it into the tool so it can explain what each channel brings in."</td>
-<td>The analysis reaches "What you believe" with Revenue, Week, Region, the three spend columns and Avg Price answered correctly</td>
+<td>The analysis gets to "What you believe" with correct answers for Revenue, Week, Region, the three spend columns and Avg Price</td>
 </tr>
 <tr>
 <td>T2 Report</td>
 <td>"Get the tool to tell you which channel returns the most per euro, and whether you can trust the numbers."</td>
-<td>The fit finishes; the tester names the best channel and its range, and says what the scorecard concluded, in their own words</td>
+<td>The fit finishes. The tester names the best channel and its range, and says in their own words what the scorecard concluded</td>
 </tr>
 <tr>
 <td>T3 Scenario</td>
 <td>"Next quarter you could move 20 % more into search. What would it do to revenue? How sure is the tool?"</td>
-<td>The tester gives the change in revenue with its range (instant or exact), from the What if… step</td>
+<td>The tester gives the change in revenue with its range (immediate or exact), from the What if… step</td>
 </tr>
 </tbody>
 </table>
-<p>The optional "What you believe" step counts as part of T1 to T2: testers may skip it.</p>
+<p>The optional "What you believe" step is part of T1 to T2. Testers can skip it.</p>
 <h3 id="rules">Rules<a class="headerlink" href="#rules" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Unaided</strong>: the facilitator answers no question about the product. Allowed: repeating the
-  task card, "what would you do if I were not here?", "please keep thinking aloud". Any other
-  help is an <strong>assist</strong> and is recorded; a task with an assist does not count as unaided.</li>
-<li><strong>Give-up</strong>: the tester says so, or 12 minutes pass on one task. Record it, give the next
-  card; if a later task needs the earlier one's result, the facilitator performs that step
-  silently and the later task's time starts afterwards.</li>
-<li>Waiting for the fit counts towards the 30 minutes (about 1.5 minutes on a laptop).</li>
+<li><strong>Unaided</strong>: the facilitator answers no question about the product. Permitted: say the
+  task card again, "what would you do if I were not here?", "please keep thinking aloud".
+  All other help is an <strong>assist</strong>. Record it. A task with an assist is not unaided.</li>
+<li><strong>Give-up</strong>: the tester says that they stop, or 12 minutes go by on one task. Record it
+  and give the next card. A later task can need the result of an earlier task. If this
+  occurs, the facilitator does that step without comment. The time of the later task starts
+  after this step.</li>
+<li>The time to wait for the fit is part of the 30 minutes (about 1.5 minutes on a laptop).</li>
 </ul>
 <h3 id="metrics-and-pass-mark">Metrics and pass mark<a class="headerlink" href="#metrics-and-pass-mark" title="Permanent link">&para;</a></h3>
-<p>Per tester and task: completion (unaided, assisted or failed), time on task, the number of
-errors (a wrong turn the tester had to undo), and the Single Ease Question (1 = very
-difficult to 7 = very easy) after each task. After the session: the System Usability Scale
-(10 items) and two open questions: "What was most confusing?" and "What would you trust
-least?".</p>
+<p>For each tester and task, record these items:</p>
+<ul>
+<li>Completion (unaided, assisted or failed).</li>
+<li>Time on task.</li>
+<li>The number of errors (a wrong turn that the tester had to undo).</li>
+<li>The Single Ease Question (1 = very difficult to 7 = very easy) after each task.</li>
+</ul>
+<p>After the session, record the System Usability Scale (10 items) and two open questions:
+"What was most confusing?" and "What would you trust least?".</p>
 <p>The criterion is met when <strong>all five</strong> testers complete T1, T2 and T3 <strong>unaided</strong> with a
-<strong>total under 30 minutes</strong>. Also report the median and maximum total time, the mean SEQ per
-task and the mean SUS (aim: above 68). Every assist, give-up or recurring error is a defect
-to fix before the public launch, even when the five pass.</p>
+<strong>total under 30 minutes</strong>. Also report the median and maximum total time, the mean SEQ for
+each task and the mean SUS (target: more than 68). Each assist, give-up or error that occurs
+again is a defect. Repair it before the public launch, also when the five testers pass.</p>
 <h3 id="observation-sheet">Observation sheet<a class="headerlink" href="#observation-sheet" title="Permanent link">&para;</a></h3>
-<p>Copy one per tester.</p>
+<p>Copy one sheet for each tester.</p>
 <table>
 <thead>
 <tr>
@@ -5567,28 +5638,28 @@ to fix before the public launch, even when the five pass.</p>
 </table>
 <h2 id="what-remains-unverified">What remains unverified<a class="headerlink" href="#what-remains-unverified" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>The five testers.</strong> Only the automated floor and an expert review were done (above).</li>
-<li><strong>Real Google Cloud.</strong> Cloud Storage (the GCS shim stood in), Cloud Run Jobs (the
-  <code>local-process</code> executor ran every run), Pub/Sub, Cloud SQL, Identity Platform, Cloud
-  Armor (the policy is Terraform, validated and never applied) and Cloud Logging retention.
-  The cold start of the base images adds to every fit, exact run and optimiser evaluation.</li>
-<li><strong>Docker.</strong> No daemon here: the images, the <code>docker</code> and <code>docker-gvisor</code> executors and
-  the compose stack were not run, so public (shared-tier) workspaces never ran a fit; cut
-  line A's admission rule was checked, its sandbox was not.</li>
-<li><strong>Plotly rendering.</strong> Static renders and embeds were Vega-Lite only; Plotly needs kaleido
-  and a Chrome in the runner image (<code>MAPI_RENDER_PLOTLY_ENABLED</code>), which this laptop does not
-  provide.</li>
-<li><strong>Identity verification by a vendor.</strong> Only the fake <code>IdentityVerifier</code> and the
-  operators' manual verification exist; no vendor integration was exercised.</li>
-<li><strong>Real e-mail.</strong> The dev outbox stood in for SMTP: deliverability, SPF/DKIM and bounce
-  handling are untested.</li>
-<li><strong>Webhooks to the internet.</strong> Deliveries went to a receiver on <code>127.0.0.1</code> through the
-  dev allow-list; the full SSRF policy for public hosts is covered by unit tests only.</li>
-<li><strong>Bundle retention.</strong> With a retention lock (the default, and 30 days when deployed) a
-  purge stops at the model bundles and resumes when the lock expires; locally this was
-  checked only up to the stop (the journey's deletion test does so on a stack without
-  <code>MAPI_BUNDLE_RETENTION_DAYS=0</code>), not the resumption after 30 days.</li>
-<li><strong>The in-sandbox <code>optimize</code> job</strong> came later (v0.5, on mmm-framework); here the optimiser
+<li><strong>The five testers.</strong> We did only the automated minimum and an expert review (above).</li>
+<li><strong>Real Google Cloud.</strong> Cloud Storage (the GCS shim was in its place), Cloud Run Jobs (the
+  <code>local-process</code> executor ran all runs), Pub/Sub, Cloud SQL, Identity Platform, Cloud Armor
+  (the policy is Terraform, validated and never applied) and Cloud Logging retention. The
+  cold start of the base images adds time to each fit, exact run and optimiser evaluation.</li>
+<li><strong>Docker.</strong> There is no daemon here. We did not run the images, the <code>docker</code> and
+  <code>docker-gvisor</code> executors or the compose stack. Thus public (shared-tier) workspaces never
+  ran a fit. We did a check of the admission rule of cut line A, but not of its sandbox.</li>
+<li><strong>Plotly rendering.</strong> Static renders and embeds were only Vega-Lite. Plotly needs kaleido
+  and a Chrome in the runner image (<code>MAPI_RENDER_PLOTLY_ENABLED</code>). This laptop does not have
+  them.</li>
+<li><strong>Identity verification by a vendor.</strong> Only the fake <code>IdentityVerifier</code> and the manual
+  verification of the operators are available. We did not test a vendor integration.</li>
+<li><strong>Real e-mail.</strong> The dev outbox was in place of SMTP. We did not test deliverability,
+  SPF/DKIM and bounce handling.</li>
+<li><strong>Webhooks to the internet.</strong> Deliveries went to a receiver on <code>127.0.0.1</code> through the dev
+  allow-list. Only unit tests include the full SSRF policy for public hosts.</li>
+<li><strong>Bundle retention.</strong> With a retention lock (the default, and 30 days when deployed), a
+  purge stops at the model bundles. It continues when the lock expires. Locally, we did a
+  check only up to the stop, not of the continuation after 30 days. The deletion test of the
+  journey does this check on a stack without <code>MAPI_BUNDLE_RETENTION_DAYS=0</code>.</li>
+<li><strong>The in-sandbox <code>optimize</code> job</strong> came later (v0.5, on mmm-framework). Here the optimiser
   ran on the client.</li>
 </ul>
 

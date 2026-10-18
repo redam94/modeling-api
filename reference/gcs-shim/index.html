@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -3277,15 +3307,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#running-it" class="md-nav__link">
+  <a href="#start-the-shim" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running it
+        Start the shim
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Running it">
+    <nav class="md-nav" aria-label="Start the shim">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4702,6 +4732,8 @@
       
         
       
+        
+      
     
     
     
@@ -4810,6 +4842,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../project/changelog/" class="md-nav__link">
         
   
@@ -4865,15 +4925,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#running-it" class="md-nav__link">
+  <a href="#start-the-shim" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running it
+        Start the shim
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Running it">
+    <nav class="md-nav" aria-label="Start the shim">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5015,20 +5075,21 @@
 
 
 <h1 id="gcs-shim-local-cloud-storage">GCS shim (local Cloud Storage)<a class="headerlink" href="#gcs-shim-local-cloud-storage" title="Permanent link">&para;</a></h1>
-<p><code>mapi-gcs-shim</code> is a local emulator of the parts of Google Cloud Storage the platform relies on.
-The local stack, the test suites and the runner use it in place of real GCS. It implements:</p>
+<p><code>mapi-gcs-shim</code> is a local emulator of the parts of Google Cloud Storage that the platform
+uses. The local stack, the test suites and the runner use it instead of real GCS. It
+implements:</p>
 <ul>
-<li>object <strong>generations</strong> and <strong>metagenerations</strong>, with generation preconditions;</li>
-<li><strong>server-computed CRC32C and MD5</strong>, in the GCS wire forms (base64);</li>
-<li><strong>V4 signed URLs</strong>: GET with HTTP <code>Range</code>, and PUT;</li>
-<li><strong>V4 POST policies</strong> that limit uploads to a key prefix and a <code>content-length-range</code>;</li>
-<li><strong>IAM-lite</strong>: per-principal tokens and keys, with per-bucket role bindings;</li>
-<li>a <strong>retention lock</strong> (write-once buckets) and <strong>lifecycle</strong> (age-based delete).</li>
+<li>object <strong>generations</strong> and <strong>metagenerations</strong>, with generation preconditions</li>
+<li><strong>CRC32C and MD5 that the server calculates</strong>, in the GCS wire forms (base64)</li>
+<li><strong>V4 signed URLs</strong>: GET with HTTP <code>Range</code>, and PUT</li>
+<li><strong>V4 POST policies</strong> that limit uploads to a key prefix and a <code>content-length-range</code></li>
+<li><strong>IAM-lite</strong>: tokens and keys for each principal, with role bindings for each bucket</li>
+<li>a <strong>retention lock</strong> (write-once buckets) and <strong>lifecycle</strong> (delete after an age).</li>
 </ul>
-<p>The control plane talks to it through <code>ShimObjectStore</code>, which implements the
-<a href="../run-protocol/#storage-layout"><code>ObjectStore</code></a> protocol from <code>mapi_spec.storage</code>.
-<code>GcsObjectStore</code> implements the same protocol on real GCS.</p>
-<h2 id="running-it">Running it<a class="headerlink" href="#running-it" title="Permanent link">&para;</a></h2>
+<p>The control plane uses <code>ShimObjectStore</code> to communicate with the shim. <code>ShimObjectStore</code>
+implements the <a href="../run-protocol/#storage-layout"><code>ObjectStore</code></a> protocol from
+<code>mapi_spec.storage</code>. <code>GcsObjectStore</code> implements the same protocol on real GCS.</p>
+<h2 id="start-the-shim">Start the shim<a class="headerlink" href="#start-the-shim" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mapi-gcs-shim<span class="w">                                   </span><span class="c1"># serve .local/gcs on 127.0.0.1:4443</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_gcs_shim<span class="w"> </span>--root<span class="w"> </span>.local/gcs<span class="w"> </span>--port<span class="w"> </span><span class="m">4443</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mapi-gcs-shim<span class="w"> </span>init<span class="w"> </span>--root<span class="w"> </span>.local/gcs<span class="w">            </span><span class="c1"># write config + key files, then exit</span>
@@ -5036,12 +5097,12 @@ The local stack, the test suites and the runner use it in place of real GCS. It 
 </span></code></pre></div>
 <p>The defaults come from the local-dev variables:</p>
 <ul>
-<li><code>MAPI_DATA_DIR</code>: the root is <code>$MAPI_DATA_DIR/gcs</code>;</li>
-<li><code>MAPI_ENV</code>: bucket names are <code>mapi-{env}-*</code>;</li>
-<li><code>MAPI_GCS_ENDPOINT</code>: the host and port.</li>
+<li><code>MAPI_DATA_DIR</code>: the root is <code>$MAPI_DATA_DIR/gcs</code>.</li>
+<li><code>MAPI_ENV</code>: the bucket names are <code>mapi-{env}-*</code>.</li>
+<li><code>MAPI_GCS_ENDPOINT</code>: the host and the port.</li>
 </ul>
-<p><code>--port 0</code> picks a free port. The server stops gracefully on SIGINT or SIGTERM. Only one
-server may serve a root at a time, which is enforced by a lock file.</p>
+<p><code>--port 0</code> selects a free port. The server stops correctly on SIGINT or SIGTERM. Only one
+server can serve a root at a time. A lock file controls this.</p>
 <h3 id="state-on-disk">State on disk<a class="headerlink" href="#state-on-disk" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5053,23 +5114,23 @@ server may serve a root at a time, which is enforced by a lock file.</p>
 <tbody>
 <tr>
 <td><code>_shim/config.json</code></td>
-<td>Buckets and principals, including secrets. Mode <code>0600</code>.</td>
+<td>Buckets and principals, with their secrets. Mode <code>0600</code>.</td>
 </tr>
 <tr>
 <td><code>_shim/keys/{principal}.json</code></td>
-<td>One key file per principal: email, bearer token, HMAC secret and endpoint. Mode <code>0600</code>.</td>
+<td>One key file for each principal: email, bearer token, HMAC secret and endpoint. Mode <code>0600</code>.</td>
 </tr>
 <tr>
 <td><code>buckets/{bucket}/bucket.json</code></td>
-<td>The bucket's retention and lifecycle policies.</td>
+<td>The retention and lifecycle policies of the bucket.</td>
 </tr>
 <tr>
 <td><code>buckets/{bucket}/objects/{h[:2]}/{h}.json</code></td>
-<td>The live generation's metadata, where <code>h = sha256(object name)</code>.</td>
+<td>The metadata of the live generation, where <code>h = sha256(object name)</code>.</td>
 </tr>
 <tr>
 <td><code>buckets/{bucket}/objects/{h[:2]}/{h}.{generation}.bin</code></td>
-<td>The object's bytes.</td>
+<td>The bytes of the object.</td>
 </tr>
 <tr>
 <td><code>tmp/</code></td>
@@ -5077,21 +5138,21 @@ server may serve a root at a time, which is enforced by a lock file.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>No object name ever becomes a filesystem path.</strong> Names are hashed, and bucket names must
-match the GCS bucket grammar. Names with empty, <code>.</code> or <code>..</code> segments, a leading <code>/</code> or control
-characters are rejected with <code>400</code>, whether they arrive in the JSON API, the XML API or a
-POST-policy <code>key</code>.</p>
-<p>Writes are crash-safe:</p>
+<p><strong>An object name never becomes a filesystem path.</strong> The shim hashes the names. Bucket names
+must agree with the GCS bucket grammar. The shim rejects some names with <code>400</code>: names with
+empty, <code>.</code> or <code>..</code> segments, a leading <code>/</code> or control characters. This rule applies to the
+JSON API, the XML API and the <code>key</code> of a POST policy.</p>
+<p>The shim writes data safely, also if it crashes:</p>
 <ol>
-<li>bytes are streamed into <code>tmp/</code> while the CRC32C and MD5 are computed;</li>
-<li>the data file is renamed into place;</li>
-<li>the metadata sidecar is atomically replaced, which is the commit point.</li>
+<li>It streams the bytes into <code>tmp/</code> and calculates the CRC32C and the MD5 during the stream.</li>
+<li>It renames the data file into its final location.</li>
+<li>It replaces the metadata sidecar atomically. This is the commit point.</li>
 </ol>
-<p>On startup, the shim deletes leftover staging files and any data files that never committed.
-Only the live generation is kept, as in a bucket without object versioning. Reading a
-superseded generation therefore returns <code>404</code>.</p>
+<p>When the shim starts, it deletes the staging files that stay from before. It also deletes all
+data files that it did not commit. The shim keeps only the live generation, as in a bucket
+without object versioning. Thus, if you read a superseded generation, the shim returns <code>404</code>.</p>
 <h2 id="buckets-and-principals">Buckets and principals<a class="headerlink" href="#buckets-and-principals" title="Permanent link">&para;</a></h2>
-<p>By default <code>init</code> creates the five buckets from the plan's storage layout:</p>
+<p>By default, <code>init</code> makes the five buckets from the storage layout of the plan:</p>
 <table>
 <thead>
 <tr>
@@ -5102,11 +5163,11 @@ superseded generation therefore returns <code>404</code>.</p>
 <tbody>
 <tr>
 <td><code>mapi-{env}-quarantine</code></td>
-<td>Lifecycle: objects are deleted after 7 days.</td>
+<td>Lifecycle: the shim deletes objects after 7 days.</td>
 </tr>
 <tr>
 <td><code>mapi-{env}-bootstrap</code></td>
-<td>Lifecycle: objects are deleted after 1 day.</td>
+<td>Lifecycle: the shim deletes objects after 1 day.</td>
 </tr>
 <tr>
 <td><code>mapi-{env}-runs</code></td>
@@ -5114,7 +5175,7 @@ superseded generation therefore returns <code>404</code>.</p>
 </tr>
 <tr>
 <td><code>mapi-{env}-bundles</code></td>
-<td>Locked retention of about 100 years. Objects cannot be overwritten or deleted, even by an admin. <code>--bundle-retention-days N</code> (default <code>$MAPI_BUNDLE_RETENTION_DAYS</code>) locks it for <code>N</code> days instead, like the deployed bucket (30); <code>0</code> sets no retention, so a test stack's tenant deletions finish at once. The choice applies when the root is created; an existing root keeps its policy.</td>
+<td>Locked retention of about 100 years. Nobody can overwrite or delete objects, also not an admin. <code>--bundle-retention-days N</code> (default <code>$MAPI_BUNDLE_RETENTION_DAYS</code>) locks it for <code>N</code> days instead, as the deployed bucket does (30). <code>0</code> sets no retention. Thus the tenant deletions of a test stack finish immediately. The shim uses this value when it makes the root. A root that exists keeps its policy.</td>
 </tr>
 <tr>
 <td><code>mapi-{env}-data</code></td>
@@ -5122,7 +5183,7 @@ superseded generation therefore returns <code>404</code>.</p>
 </tr>
 </tbody>
 </table>
-<p>It also creates two principals:</p>
+<p>It also makes two principals:</p>
 <table>
 <thead>
 <tr>
@@ -5133,11 +5194,11 @@ superseded generation therefore returns <code>404</code>.</p>
 <tbody>
 <tr>
 <td><code>control</code> (<code>control@mapi-{env}.iam.gserviceaccount.com</code>)</td>
-<td><code>roles/storage.admin</code> on every bucket. Used by the control plane and the finalizer.</td>
+<td><code>roles/storage.admin</code> on all buckets. The control plane and the finalizer use it.</td>
 </tr>
 <tr>
 <td><code>exec</code> (<code>exec@…</code>)</td>
-<td><code>storage.objects.get</code> and <code>storage.objects.delete</code> on the bootstrap bucket <strong>only</strong>. It cannot list that bucket and has no access to the bundles bucket. Its token is the local executor's <code>MAPI_EXEC_TOKEN</code>.</td>
+<td><code>storage.objects.get</code> and <code>storage.objects.delete</code> on the bootstrap bucket <strong>only</strong>. It cannot list that bucket. It has no access to the bundles bucket. Its token is the <code>MAPI_EXEC_TOKEN</code> of the local executor.</td>
 </tr>
 </tbody>
 </table>
@@ -5150,18 +5211,19 @@ superseded generation therefore returns <code>404</code>.</p>
 <li><code>roles/storage.objectCreator</code></li>
 <li><code>roles/storage.legacyBucketReader</code></li>
 </ul>
-<p>A binding targets one bucket, or <code>"*"</code> for every bucket.</p>
-<p>Permissions are checked as follows:</p>
+<p>A binding applies to one bucket, or to all buckets with <code>"*"</code>.</p>
+<p>The shim does a check of the permissions as follows:</p>
 <ul>
-<li><strong>JSON-API calls</strong> are checked against the caller's bearer token. A missing or unknown token
-  returns <code>401</code>, and a missing permission returns <code>403</code>.</li>
-<li><strong>Signed URLs and POST policies</strong> carry the <strong>signer's</strong> authority, which is checked when the
-  URL is <em>used</em>. A URL signed by <code>exec</code> for the runs bucket is refused.</li>
-<li><strong>Overwriting an existing object</strong> also requires <code>storage.objects.delete</code>, as in GCS.</li>
+<li><strong>JSON-API calls:</strong> the shim uses the bearer token of the caller. If the token is missing
+  or unknown, the shim returns <code>401</code>. If a permission is missing, it returns <code>403</code>.</li>
+<li><strong>Signed URLs and POST policies:</strong> these have the authority of the <strong>signer</strong>. The shim
+  does the check when a client <em>uses</em> the URL. The shim refuses a URL that <code>exec</code> signed for
+  the runs bucket.</li>
+<li><strong>Overwrite of an object that exists:</strong> this also needs <code>storage.objects.delete</code>, as in GCS.</li>
 </ul>
 <h2 id="http-surface">HTTP surface<a class="headerlink" href="#http-surface" title="Permanent link">&para;</a></h2>
 <h3 id="json-api">JSON API<a class="headerlink" href="#json-api" title="Permanent link">&para;</a></h3>
-<p>Every JSON-API request needs <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+<p>All JSON-API requests need <code>Authorization: Bearer &lt;token&gt;</code>.</p>
 <table>
 <thead>
 <tr>
@@ -5176,7 +5238,7 @@ superseded generation therefore returns <code>404</code>.</p>
 </tr>
 <tr>
 <td><code>POST /storage/v1/b</code></td>
-<td>Create a bucket. The body may set <code>retentionPolicy</code> and <code>lifecycle</code> (<code>Delete</code> with an <code>age</code> condition).</td>
+<td>Make a bucket. The body can set <code>retentionPolicy</code> and <code>lifecycle</code> (<code>Delete</code> with an <code>age</code> condition).</td>
 </tr>
 <tr>
 <td><code>GET</code> or <code>DELETE /storage/v1/b/{bucket}</code></td>
@@ -5188,11 +5250,11 @@ superseded generation therefore returns <code>404</code>.</p>
 </tr>
 <tr>
 <td><code>GET /storage/v1/b/{bucket}/o/{object}</code></td>
-<td>Get metadata. With <code>alt=media</code> it returns the content, and <code>Range</code> gives <code>206</code>.</td>
+<td>Get metadata. With <code>alt=media</code>, it returns the content. With <code>Range</code>, it returns <code>206</code>.</td>
 </tr>
 <tr>
 <td><code>PATCH /storage/v1/b/{bucket}/o/{object}</code></td>
-<td>Update <code>contentType</code> or <code>metadata</code>, which increments <code>metageneration</code>.</td>
+<td>Update <code>contentType</code> or <code>metadata</code>. This increases <code>metageneration</code>.</td>
 </tr>
 <tr>
 <td><code>DELETE /storage/v1/b/{bucket}/o/{object}</code></td>
@@ -5212,9 +5274,9 @@ superseded generation therefore returns <code>404</code>.</p>
 </tr>
 </tbody>
 </table>
-<p>Every object operation accepts the <code>ifGenerationMatch</code>, <code>ifGenerationNotMatch</code>,
-<code>ifMetagenerationMatch</code> and <code>ifMetagenerationNotMatch</code> preconditions. A rewrite also accepts
-the <code>ifSource…</code> forms.</p>
+<p>All object operations accept the preconditions <code>ifGenerationMatch</code>, <code>ifGenerationNotMatch</code>,
+<code>ifMetagenerationMatch</code> and <code>ifMetagenerationNotMatch</code>. A rewrite also accepts the
+<code>ifSource…</code> forms.</p>
 <ul>
 <li>On writes, a failed precondition returns <code>412</code>.</li>
 <li>On reads, a failed <code>…NotMatch</code> returns <code>304</code>.</li>
@@ -5233,7 +5295,7 @@ the <code>ifSource…</code> forms.</p>
 <tbody>
 <tr>
 <td><code>GET /{bucket}/{object}?X-Goog-…</code></td>
-<td>Download. With <code>Range</code> it returns <code>206</code>, with <code>Content-Range</code>. An unsatisfiable range returns <code>416</code>.</td>
+<td>Download. With <code>Range</code>, it returns <code>206</code> with <code>Content-Range</code>. If the shim cannot satisfy the range, it returns <code>416</code>.</td>
 </tr>
 <tr>
 <td><code>PUT /{bucket}/{object}?X-Goog-…</code></td>
@@ -5241,64 +5303,71 @@ the <code>ifSource…</code> forms.</p>
 </tr>
 <tr>
 <td><code>POST /{bucket}</code> (<code>multipart/form-data</code>)</td>
-<td>Upload through a V4 POST policy. The <code>file</code> field must be last.</td>
+<td>Upload through a V4 POST policy. The <code>file</code> field must be the last field.</td>
 </tr>
 </tbody>
 </table>
-<p>Signing follows <strong>GOOG4-HMAC-SHA256</strong> with per-principal HMAC keys:</p>
+<p>The signature uses <strong>GOOG4-HMAC-SHA256</strong> with an HMAC key for each principal:</p>
 <ul>
-<li><strong>Canonical request:</strong> method, path, every query parameter except <code>X-Goog-Signature</code>, the
-  signed headers (always including <code>host</code>) and <code>UNSIGNED-PAYLOAD</code>.</li>
-<li><strong>Signed values:</strong> <code>X-Goog-Expires</code> (at most 7 days) and <code>X-Goog-Date</code> are signed. Expiry is
-  strict, but <code>X-Goog-Date</code> may be up to 5 minutes in the future to allow for clock skew.</li>
-<li><strong>Bound to the signature:</strong> the method, path, host, query (for example <code>generation</code>) and
-  signed header values. Changing any of them returns <code>403 SignatureDoesNotMatch</code>.</li>
-<li><strong>Unsigned headers:</strong> any <code>x-goog-*</code> header that was not signed returns <code>400</code>, except
-  <code>x-goog-hash</code>.</li>
-<li><strong>Expiry:</strong> an expired URL returns <code>400 ExpiredToken</code>.</li>
+<li><strong>Canonical request:</strong> the method, the path, all query parameters except
+  <code>X-Goog-Signature</code>, the signed headers (always with <code>host</code>) and <code>UNSIGNED-PAYLOAD</code>.</li>
+<li><strong>Signed values:</strong> <code>X-Goog-Expires</code> (maximum 7 days) and <code>X-Goog-Date</code>. The expiry is
+  strict. But <code>X-Goog-Date</code> can be a maximum of 5 minutes in the future, because clocks can
+  have small differences.</li>
+<li><strong>Bound to the signature:</strong> the method, the path, the host, the query (for example
+  <code>generation</code>) and the values of the signed headers. If you change one of them, the shim
+  returns <code>403 SignatureDoesNotMatch</code>.</li>
+<li><strong>Unsigned headers:</strong> an <code>x-goog-*</code> header that is not signed returns <code>400</code>. The exception
+  is <code>x-goog-hash</code>.</li>
+<li><strong>Expiry:</strong> a URL that expired returns <code>400 ExpiredToken</code>.</li>
 </ul>
-<p>Signed <strong>GET</strong> URLs from <code>sign_get</code> are pinned to a <code>generation</code>. If the object is overwritten,
-the URL returns <code>404</code>; it never silently serves the new bytes.</p>
-<p>Signed <strong>PUT</strong> URLs from <code>sign_put</code> sign these headers, which the uploader must send verbatim:</p>
+<p>Signed <strong>GET</strong> URLs from <code>sign_get</code> are pinned to a <code>generation</code>. If a client overwrites the
+object, the URL returns <code>404</code>. The URL never serves the new bytes without an error.</p>
+<p>Signed <strong>PUT</strong> URLs from <code>sign_put</code> sign these headers. The uploader must send them with no
+change:</p>
 <ul>
-<li><code>content-type</code>;</li>
-<li><code>x-goog-if-generation-match: 0</code>, so the object is write-once by default;</li>
+<li><code>content-type</code></li>
+<li><code>x-goog-if-generation-match: 0</code>. Thus the object is write-once by default.</li>
 <li><code>x-goog-content-length-range: 0,&lt;max&gt;</code>.</li>
 </ul>
-<p>The uploader may also send <code>Content-MD5</code> or <code>x-goog-hash: crc32c=…,md5=…</code>. A mismatch returns
-<code>400 BadDigest</code>, and nothing is stored.</p>
-<p><strong>POST policies</strong> from <code>post_policy</code> are a base64 JSON document of conditions, with an HMAC
-signature over the document. The conditions are:</p>
+<p>The uploader can also send <code>Content-MD5</code> or <code>x-goog-hash: crc32c=…,md5=…</code>. If a value does
+not agree, the shim returns <code>400 BadDigest</code> and keeps nothing.</p>
+<p><strong>POST policies</strong> from <code>post_policy</code> are a base64 JSON document of conditions. They have an
+HMAC signature on the document. The conditions are:</p>
 <ul>
-<li><code>{"bucket": …}</code>;</li>
-<li><code>["starts-with", "$key", prefix]</code>;</li>
-<li><code>["starts-with", "$content-type", ""]</code>;</li>
-<li><code>["content-length-range", min, max]</code>;</li>
-<li>the <code>x-goog-*</code> credential fields;</li>
-<li>with <code>create_only=True</code>, <code>{"x-goog-if-generation-match": "0"}</code> (also sent as a form field).</li>
+<li><code>{"bucket": …}</code></li>
+<li><code>["starts-with", "$key", prefix]</code></li>
+<li><code>["starts-with", "$content-type", ""]</code></li>
+<li><code>["content-length-range", min, max]</code></li>
+<li>the <code>x-goog-*</code> credential fields</li>
+<li>with <code>create_only=True</code>, <code>{"x-goog-if-generation-match": "0"}</code> (the client also sends it
+  as a form field).</li>
 </ul>
-<p>When the policy is used, the shim enforces:</p>
+<p>When a client uses the policy, the shim enforces these rules:</p>
 <ul>
-<li>the signature and the <code>expiration</code>;</li>
-<li>every condition;</li>
-<li>that every form field is covered by a condition, except <code>x-goog-signature</code>, <code>policy</code>,
-  <code>file</code> and <code>x-ignore-*</code>;</li>
-<li>the size range. A body that is too large is rejected while it streams;</li>
-<li>an <code>x-goog-if-generation-match</code> form field as a precondition, so a create-only policy
-  returns <code>412</code> for a key that already exists, whatever the signer may delete.</li>
+<li>The signature and the <code>expiration</code> must be valid.</li>
+<li>All conditions must be true.</li>
+<li>A condition must cover each form field. The exceptions are <code>x-goog-signature</code>, <code>policy</code>,
+  <code>file</code> and <code>x-ignore-*</code>.</li>
+<li>The size must be in the range. The shim rejects a body that is too large during the
+  stream.</li>
+<li>An <code>x-goog-if-generation-match</code> form field is a precondition. Thus a create-only policy
+  returns <code>412</code> for a key that exists. This occurs also if the signer has permission to
+  delete.</li>
 </ul>
-<p>Real GCS takes no generation precondition in a POST form. <code>GcsObjectStore</code> signs create-only
-policies with <code>uploader_credentials</code> instead: a principal without <code>storage.objects.delete</code>,
-which GCS requires to overwrite.</p>
+<p>Real GCS does not accept a generation precondition in a POST form. Thus <code>GcsObjectStore</code>
+signs create-only policies with <code>uploader_credentials</code> instead. This is a principal without
+<code>storage.objects.delete</code>, which GCS needs for an overwrite.</p>
 <p><code>success_action_status</code> (<code>200</code>, <code>201</code> with an XML <code>PostResponse</code>, or <code>204</code> by default) and
-<code>${filename}</code> in <code>key</code> behave as in GCS.</p>
+<code>${filename}</code> in <code>key</code> operate as in GCS.</p>
 <h3 id="shim-only-endpoints">Shim-only endpoints<a class="headerlink" href="#shim-only-endpoints" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>GET /_shim/healthz</code>: no authentication.</li>
-<li><code>POST /_shim/v1/lifecycle:sweep?now=&lt;iso&gt;</code>: needs <code>shim.admin</code>. It runs the lifecycle rules
-  now; objects under retention are never swept.</li>
+<li><code>POST /_shim/v1/lifecycle:sweep?now=&lt;iso&gt;</code>: needs <code>shim.admin</code>. It applies the lifecycle
+  rules now. It never deletes objects that have retention.</li>
 </ul>
-<p>The server also sweeps every <code>--sweep-interval</code> seconds. The default is 300.</p>
+<p>The server also applies the lifecycle rules at each <code>--sweep-interval</code> seconds. The default is
+300.</p>
 <h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">timedelta</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_gcs_shim</span><span class="w"> </span><span class="kn">import</span> <span class="n">ShimObjectStore</span>
@@ -5310,66 +5379,68 @@ which GCS requires to overwrite.</p>
 </span></code></pre></div>
 <p><code>ShimObjectStore</code> has three constructors:</p>
 <ul>
-<li><code>ShimObjectStore(endpoint, credentials, public_endpoint=None)</code>. <code>public_endpoint</code> is the host
-  written into signed URLs, so a sandbox can reach the shim under another name. The host is
-  signed.</li>
+<li><code>ShimObjectStore(endpoint, credentials, public_endpoint=None)</code>. <code>public_endpoint</code> is the
+  host that the shim writes into signed URLs. Thus a sandbox can get access to the shim with
+  a different name. The host is signed.</li>
 <li><code>.from_root(root, principal)</code>.</li>
 <li><code>.from_local_dev(LocalDev)</code>.</li>
 </ul>
-<p>Besides the protocol methods, it offers <code>create_bucket</code>, <code>get_bucket</code> and <code>sweep_lifecycle</code>.
-Errors map to <code>NotFound</code>, <code>PreconditionFailed</code>, <code>AccessDenied</code>, <code>InvalidRange</code> and
-<code>StorageError</code>:</p>
+<p>It has the protocol methods. It also has <code>create_bucket</code>, <code>get_bucket</code> and
+<code>sweep_lifecycle</code>. Errors map to <code>NotFound</code>, <code>PreconditionFailed</code>, <code>AccessDenied</code>,
+<code>InvalidRange</code> and <code>StorageError</code>:</p>
 <ul>
-<li><code>get(max_bytes=…)</code> raises <code>PAYLOAD_TOO_LARGE</code> before it reads the body;</li>
-<li>a full read whose CRC32C does not match raises <code>INTEGRITY_FAILURE</code>.</li>
+<li><code>get(max_bytes=…)</code> raises <code>PAYLOAD_TOO_LARGE</code> before it reads the body.</li>
+<li>A full read with a CRC32C that does not agree raises <code>INTEGRITY_FAILURE</code>.</li>
 </ul>
-<p><code>mapi_gcs_shim.transfer</code> has helpers for whoever <em>holds</em> a URL:</p>
+<p><code>mapi_gcs_shim.transfer</code> has helpers for a client that <em>has</em> a URL:</p>
 <ul>
-<li><code>download_signed</code>;</li>
-<li><code>upload_signed_put</code>;</li>
+<li><code>download_signed</code></li>
+<li><code>upload_signed_put</code></li>
 <li><code>upload_post_policy</code>.</li>
 </ul>
-<p>They speak plain GCS XML semantics, so they also work against real GCS.</p>
+<p>They use only GCS XML semantics. Thus they also operate with real GCS.</p>
 <h2 id="real-cloud-storage">Real Cloud Storage<a class="headerlink" href="#real-cloud-storage" title="Permanent link">&para;</a></h2>
 <p><code>GcsObjectStore</code> (install <code>mapi-gcs-shim[gcp]</code>) implements the same protocol with
-<code>google-cloud-storage</code>. It has been tested only with a fake client, never against live GCP.</p>
+<code>google-cloud-storage</code>. The tests use only a fake client. Nobody tested it with live GCP.</p>
 <ul>
-<li><strong>Signing.</strong> With a <code>BlobSigner</code> (<code>blob_signer=</code>), signed GET/PUT URLs and POST policies
-  are built by <code>mapi_gcs_shim.gcs_signing</code> (<code>GOOG4-RSA-SHA256</code>, byte-identical to the
-  library's V4 signer) and only the string to sign goes to the signer.
-  <code>IamSignBlobSigner</code> signs with the IAM Credentials <code>signBlob</code> API and a token provider that
-  refreshes (<code>google_token_provider()</code>), retrying <code>429</code>/5xx. <code>GcsObjectStore.for_cloud_run(
-  service_account_email=..., uploader_service_account_email=...)</code> wires both: the control
-  account for URLs, the uploader account (create but no delete) for create-only POST policies.</li>
-<li><strong>Integrity.</strong> A write whose server-computed CRC32C, MD5 or size differs from the bytes
-  sent is deleted (that generation only) and raises <code>INTEGRITY_FAILURE</code>. A copy pins the
-  source generation (<code>ifSourceGenerationMatch</code>) and compares the destination's size and
-  CRC32C with the source.</li>
-<li><strong>Preconditions.</strong> Signed GETs are pinned to a generation; signed PUTs carry a signed
-  <code>x-goog-if-generation-match</code> (<code>0</code>, write-once, by default); <code>put</code>, <code>copy</code> and <code>delete</code> pass
-  <code>if_generation_match</code> through.</li>
+<li><strong>Signatures.</strong> If you give a <code>BlobSigner</code> (<code>blob_signer=</code>), <code>mapi_gcs_shim.gcs_signing</code>
+  makes the signed GET/PUT URLs and the POST policies. It uses <code>GOOG4-RSA-SHA256</code>, and the
+  result is byte-identical to the V4 signer of the library. Only the string to sign goes to
+  the signer. <code>IamSignBlobSigner</code> signs with the IAM Credentials <code>signBlob</code> API. It uses a
+  token provider that refreshes the token (<code>google_token_provider()</code>), and it retries on
+  <code>429</code>/5xx. <code>GcsObjectStore.for_cloud_run(service_account_email=...,
+  uploader_service_account_email=...)</code> connects the two accounts. The control account signs
+  URLs. The uploader account (create, but no delete) signs create-only POST policies.</li>
+<li><strong>Integrity.</strong> If the CRC32C, MD5 or size that the server calculates is different from the
+  bytes that it got, the store deletes that write (that generation only). Then it raises
+  <code>INTEGRITY_FAILURE</code>. A copy pins the source generation (<code>ifSourceGenerationMatch</code>). It
+  compares the size and the CRC32C of the destination with the source.</li>
+<li><strong>Preconditions.</strong> Signed GETs are pinned to a generation. Signed PUTs have a signed
+  <code>x-goog-if-generation-match</code> (<code>0</code>, write-once, by default). <code>put</code>, <code>copy</code> and <code>delete</code> send
+  <code>if_generation_match</code> to GCS.</li>
 </ul>
 <h2 id="pytest-fixtures">pytest fixtures<a class="headerlink" href="#pytest-fixtures" title="Permanent link">&para;</a></h2>
-<p>The package registers a <code>pytest11</code> plugin, so every workspace test can use these fixtures:</p>
+<p>The package registers a <code>pytest11</code> plugin. Thus all workspace tests can use these fixtures:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_something</span><span class="p">(</span><span class="n">gcs_shim</span><span class="p">):</span>            <span class="c1"># a fresh shim per test, on a free port</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">gcs_shim</span><span class="o">.</span><span class="n">store</span><span class="p">()</span> <span class="k">as</span> <span class="n">store</span><span class="p">:</span>       <span class="c1"># the control principal; store("exec") also works</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        <span class="k">await</span> <span class="n">store</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">gcs_shim</span><span class="o">.</span><span class="n">buckets</span><span class="o">.</span><span class="n">runs</span><span class="p">,</span> <span class="s2">"t/default/x"</span><span class="p">,</span> <span class="sa">b</span><span class="s2">"..."</span><span class="p">)</span>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">headers</span> <span class="o">=</span> <span class="n">gcs_shim</span><span class="o">.</span><span class="n">auth_headers</span><span class="p">(</span><span class="s2">"exec"</span><span class="p">)</span>     <span class="c1"># for raw httpx calls</span>
 </span></code></pre></div>
-<p><code>gcs_shim_session</code> gives one shim for the whole session. For use outside pytest,
-<code>ShimServer(root)</code> is a context manager that runs the shim on a background thread.</p>
+<p><code>gcs_shim_session</code> gives one shim for the full session. To use the shim outside pytest, use
+<code>ShimServer(root)</code>. It is a context manager that runs the shim on a background thread.</p>
 <h2 id="differences-from-real-gcs">Differences from real GCS<a class="headerlink" href="#differences-from-real-gcs" title="Permanent link">&para;</a></h2>
 <ul>
-<li>There is no object versioning: only the live generation is kept.</li>
-<li>Resumable uploads (<code>uploadType=resumable</code>) are not implemented. Use <code>media</code> or <code>multipart</code>
-  uploads, or a signed PUT.</li>
-<li>Signing uses HMAC keys (<code>GOOG4-HMAC-SHA256</code>) instead of service-account RSA keys
+<li>There is no object versioning. The shim keeps only the live generation.</li>
+<li>The shim does not implement resumable uploads (<code>uploadType=resumable</code>). Use <code>media</code> or
+  <code>multipart</code> uploads, or a signed PUT.</li>
+<li>The signatures use HMAC keys (<code>GOOG4-HMAC-SHA256</code>), not the RSA keys of a service account
   (<code>GOOG4-RSA-SHA256</code>). <code>GcsObjectStore</code> signs RSA URLs itself through a <code>BlobSigner</code>
-  (IAM <code>signBlob</code> on Cloud Run), or falls back to the library's signing.</li>
-<li>There are no ACLs, CMEK, storage classes, notifications or bucket <code>PATCH</code>. Bucket policies
-  are set when the bucket is created or in <code>config.json</code>.</li>
-<li>A signed URL is valid only for the method it was signed for. A <code>HEAD</code> request needs its own
-  signature, as in GCS.</li>
+  (IAM <code>signBlob</code> on Cloud Run). If it has no <code>BlobSigner</code>, it uses the signatures of the
+  library.</li>
+<li>There are no ACLs, CMEK, storage classes, notifications or bucket <code>PATCH</code>. You set bucket
+  policies when you make the bucket, or in <code>config.json</code>.</li>
+<li>A signed URL is valid only for the method that it was signed for. A <code>HEAD</code> request needs
+  its own signature, as in GCS.</li>
 </ul>
 
 

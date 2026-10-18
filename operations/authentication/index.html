@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4671,6 +4701,8 @@
       
         
       
+        
+      
     
     
     
@@ -4759,6 +4791,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4956,55 +5016,65 @@
 
 
 <h1 id="authentication-and-tenant-isolation-v03">Authentication and tenant isolation <span class="mapi-badge">v0.3</span><a class="headerlink" href="#authentication-and-tenant-isolation-v03" title="Permanent link">&para;</a></h1>
-<p>This page is for whoever runs <code>mapi-server</code>. The concepts (roles, scopes, project
-selection) are in <a href="../../concepts/tenancy-and-auth/">Tenancy and authentication</a>; every
-variable named here is in the <a href="../configuration/">configuration reference</a>.</p>
+<p>This page is for the person who operates <code>mapi-server</code>. The concepts (roles, scopes, project
+selection) are in <a href="../../concepts/tenancy-and-auth/">Tenancy and authentication</a>. Each
+variable on this page is in the <a href="../configuration/">configuration reference</a>.</p>
 <h2 id="profiles">Profiles<a class="headerlink" href="#profiles" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th><code>MAPI_PROFILE</code></th>
-<th>Who may call the API</th>
+<th>Who can call the API</th>
 <th>Sign-in</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>single-tenant</code> (default)</td>
-<td>Anyone who can reach it (it listens on loopback): credential-less requests act as the <strong>local administrator</strong> of the <code>default</code> tenant. Sessions and API tokens work too</td>
+<td>All persons who can get access to the API (it listens on loopback). Requests without credentials act as the <strong>local administrator</strong> of the <code>default</code> tenant. Sessions and API tokens also work</td>
 <td>Optional</td>
 </tr>
 <tr>
 <td><code>multi-tenant</code></td>
-<td>Only callers with a browser session or an API token; everything else is <code>401</code></td>
+<td>Only callers with a browser session or an API token. All other requests get <code>401</code></td>
 <td><code>MAPI_OIDC_*</code></td>
 </tr>
 <tr>
 <td><code>dev</code></td>
-<td>As <code>multi-tenant</code></td>
+<td>The same as <code>multi-tenant</code></td>
 <td>The built-in development IdP (below)</td>
 </tr>
 </tbody>
 </table>
-<p>In every profile, each request is checked against the operation's rule in
-<code>mapi_spec.api.ROUTE_ACCESS</code> (a route without one cannot start), the caller's roles are read
-from memberships <em>at that moment</em>, and every database query of a request runs in a
-transaction pinned to the request's tenant (row-level security, below).</p>
+<p>These rules apply in all profiles:</p>
+<ul>
+<li>The server does a check of each request against the rule of the operation in
+  <code>mapi_spec.api.ROUTE_ACCESS</code>. A route without a rule cannot start.</li>
+<li>The server reads the roles of the caller from the memberships <em>at that moment</em>.</li>
+<li>Each database query of a request runs in a transaction that is pinned to the tenant of the
+  request (row-level security, below).</li>
+</ul>
 <h2 id="browser-sign-in-bff">Browser sign-in (BFF)<a class="headerlink" href="#browser-sign-in-bff" title="Permanent link">&para;</a></h2>
 <p>The web app never sees an OAuth token. The API does the OpenID Connect work:</p>
 <ol>
-<li><code>GET /auth/login?return_to=/runs</code> stores a login transaction (state, nonce and PKCE
-   verifier) server-side, sets a 10-minute <code>__Host-mapi_login</code> cookie and redirects to the
-   provider (Authorization Code flow, PKCE S256, nonce).</li>
-<li><code>GET /auth/callback</code> consumes the transaction exactly once, compares <code>state</code> in constant
-   time, exchanges the code with the verifier and verifies the ID token against the
-   provider's JWKS: signature (asymmetric algorithms only; <code>alg</code> must match the key),
-   issuer, audience (and <code>azp</code>), expiry, issued-at and nonce. Keys are cached for an hour and
-   refetched when a token names an unknown key id (rotation).</li>
-<li>It finds the user by <code>(issuer, subject)</code>. A first sign-in with a <strong>verified</strong> e-mail
-   claims pending invitations for that address; an unverified e-mail claims nothing.</li>
+<li><code>GET /auth/login?return_to=/runs</code> keeps a login transaction (state, nonce and PKCE
+   verifier) on the server. It sets a <code>__Host-mapi_login</code> cookie for 10 minutes. Then it
+   redirects to the provider (Authorization Code flow, PKCE S256, nonce).</li>
 <li>
-<p>It starts a server-side session and sets two cookies:</p>
+<p><code>GET /auth/callback</code> uses the transaction one time only. It compares <code>state</code> in constant
+   time and exchanges the code with the verifier. Then it verifies the ID token against the
+   JWKS of the provider. It verifies these items:</p>
+<ul>
+<li>The signature. Only asymmetric algorithms are permitted, and <code>alg</code> must agree with the
+  key.</li>
+<li>The issuer, the audience (and <code>azp</code>), the expiry, the issue time and the nonce.</li>
+</ul>
+<p>The server keeps the keys in a cache for one hour. If a token names a key id that the
+server does not know (rotation), the server gets the keys again.
+3. The server finds the user by <code>(issuer, subject)</code>. At the first sign-in with a <strong>verified</strong>
+   e-mail, the user gets the pending invitations for that address. An e-mail that is not
+   verified gets no invitations.
+4. The server starts a session on the server and sets two cookies:</p>
 <table>
 <thead>
 <tr>
@@ -5017,31 +5087,33 @@ transaction pinned to the request's tenant (row-level security, below).</p>
 <tr>
 <td><code>__Host-mapi_session</code></td>
 <td><code>HttpOnly; Secure; SameSite=Strict; Path=/</code></td>
-<td>The session (the server stores only its SHA-256). 2 h idle, 12 h absolute</td>
+<td>The session (the server keeps only its SHA-256). 2 h idle, 12 h absolute</td>
 </tr>
 <tr>
 <td><code>__Host-mapi_csrf</code></td>
-<td><code>Secure; SameSite=Strict; Path=/</code> (readable by the app)</td>
+<td><code>Secure; SameSite=Strict; Path=/</code> (the app can read it)</td>
 <td>The CSRF token</td>
 </tr>
 </tbody>
 </table>
 </li>
 </ol>
-<p>Without TLS (<code>MAPI_COOKIE_SECURE=false</code>, the default for <code>http://</code> API URLs) the cookies are
-<code>mapi_session</code> and <code>mapi_csrf</code> without <code>Secure</code>. Use that for local development only.</p>
-<p><strong>CSRF.</strong> Every cookie-authenticated <code>POST</code>, <code>PUT</code>, <code>PATCH</code> and <code>DELETE</code> (logout included)
-must send the session's token in <code>X-CSRF-Token</code> (the <code>mapi_csrf</code> cookie, or the
-<code>X-CSRF-Token</code> response header of <code>GET /auth/session</code>). Requests whose <code>Origin</code> is not the
-web app or the API, or with <code>Sec-Fetch-Site: cross-site</code>, are refused too. API-token
-requests are not cookie-authenticated and need no CSRF token.</p>
-<p><code>GET /auth/session</code> answers whether the browser is signed in; <code>POST /auth/logout</code> ends the
-session. Failed sign-ins answer <code>401</code> with a generic message; the reason is in the audit
-log (<code>auth.login_failed</code>).</p>
+<p>Without TLS, the cookies are <code>mapi_session</code> and <code>mapi_csrf</code> without <code>Secure</code>. This occurs
+with <code>MAPI_COOKIE_SECURE=false</code>, which is the default for <code>http://</code> API URLs. Use this
+configuration only for local development.</p>
+<p><strong>CSRF.</strong> Each <code>POST</code>, <code>PUT</code>, <code>PATCH</code> and <code>DELETE</code> that uses cookie authentication must send
+the token of the session in <code>X-CSRF-Token</code>. This includes logout. The token is in the
+<code>mapi_csrf</code> cookie, or in the <code>X-CSRF-Token</code> response header of <code>GET /auth/session</code>. The
+server also refuses requests with <code>Sec-Fetch-Site: cross-site</code>. It also refuses requests
+whose <code>Origin</code> is not the web app or the API. API-token requests do not use cookie
+authentication, and they do not need a CSRF token.</p>
+<p><code>GET /auth/session</code> tells if the browser is signed in. <code>POST /auth/logout</code> stops the
+session. If a sign-in fails, the server sends <code>401</code> with a general message. The reason is in
+the audit log (<code>auth.login_failed</code>).</p>
 <h3 id="google-sign-in">Google sign-in<a class="headerlink" href="#google-sign-in" title="Permanent link">&para;</a></h3>
 <ol>
-<li>In the Google Cloud console, create an OAuth client ID of type <strong>Web application</strong> with
-   the authorized redirect URI <code>https://&lt;api host&gt;/auth/callback</code>.</li>
+<li>In the Google Cloud console, make an OAuth client ID of type <strong>Web application</strong>. Set the
+   authorized redirect URI to <code>https://&lt;api host&gt;/auth/callback</code>.</li>
 <li>
 <p>Configure the API:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">MAPI_PROFILE</span><span class="o">=</span>multi-tenant
@@ -5051,85 +5123,98 @@ log (<code>auth.login_failed</code>).</p>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nv">MAPI_OIDC_CLIENT_SECRET</span><span class="o">=</span>...<span class="w">            </span><span class="c1"># from Secret Manager, never in images</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nv">MAPI_OPERATOR_EMAILS</span><span class="o">=</span>oncall@mapi.example
 </span></code></pre></div>
-<p>Google's ID tokens use the issuer <code>https://accounts.google.com</code> (older ones
-<code>accounts.google.com</code>); both are accepted. <code>MAPI_OIDC_EXTRA_PARAMS='{"hd": "acme.com"}'</code>
-pre-selects a Workspace domain in the account chooser. It is only a hint: who may do
-what is decided by memberships.</p>
+<p>Google ID tokens use the issuer <code>https://accounts.google.com</code>. Older tokens use
+<code>accounts.google.com</code>. The server accepts the two issuers.
+<code>MAPI_OIDC_EXTRA_PARAMS='{"hd": "acme.com"}'</code> selects a Workspace domain in the account
+chooser before the user selects. It is only a hint. The memberships control who can do
+which actions.</p>
 </li>
 </ol>
-<p><strong>Other providers</strong> (Okta, Entra ID, Keycloak, Auth0, an Identity Platform tenant fronted by
-an OIDC-compliant provider): set <code>MAPI_OIDC_ISSUER</code> to the issuer whose
-<code>/.well-known/openid-configuration</code> lists an authorization endpoint, a token endpoint and a
-JWKS. Identity Platform's own client-SDK tokens (issuer <code>securetoken.google.com/&lt;project&gt;</code>,
-obtained without an authorization-code endpoint) are not accepted by the BFF yet.</p>
+<p><strong>Other providers</strong> include Okta, Entra ID, Keycloak, Auth0, and an Identity Platform tenant
+behind an OIDC-compliant provider. For these providers, set <code>MAPI_OIDC_ISSUER</code> to the
+issuer. The <code>/.well-known/openid-configuration</code> of the issuer must list an authorization
+endpoint, a token endpoint and a JWKS. The BFF does not accept the client-SDK tokens of
+Identity Platform yet. These tokens have the issuer <code>securetoken.google.com/&lt;project&gt;</code>, and
+you get them without an authorization-code endpoint.</p>
 <h3 id="the-development-idp-offline">The development IdP (offline)<a class="headerlink" href="#the-development-idp-offline" title="Permanent link">&para;</a></h3>
-<p><code>MAPI_PROFILE=dev</code> mounts a small OpenID provider in the API at <code>/dev/idp</code>, so sign-in
+<p><code>MAPI_PROFILE=dev</code> mounts a small OpenID provider in the API at <code>/dev/idp</code>. Thus sign-in
 works without a network:</p>
 <ul>
-<li><code>/auth/login</code> redirects to <code>/dev/idp/authorize</code>, a page listing the accounts in
-  <code>MAPI_DEVIDP_USERS</code> (default <code>admin@dev.local</code>, <code>analyst@dev.local</code>, <code>viewer@dev.local</code>);</li>
-<li>at start-up these accounts are invited: the first as admin of the <code>default</code> tenant and
-  platform operator, the second as <code>runner</code> and the others as <code>viewer</code> of the <code>default</code>
-  project;</li>
-<li>its ID tokens are RS256-signed with a key generated at start-up and go through exactly
-  the same verification as a real provider's; PKCE is enforced and codes are single-use.</li>
+<li><code>/auth/login</code> redirects to <code>/dev/idp/authorize</code>. This page lists the accounts in
+  <code>MAPI_DEVIDP_USERS</code>. The default accounts are <code>admin@dev.local</code>, <code>analyst@dev.local</code> and
+  <code>viewer@dev.local</code>.</li>
+<li>At start-up, the server invites these accounts. The first account becomes the admin of the
+  <code>default</code> tenant and a platform operator. The second account becomes <code>runner</code> of the
+  <code>default</code> project, and the other accounts become <code>viewer</code>.</li>
+<li>The IdP signs its ID tokens with RS256 and a key that it makes at start-up. These tokens go
+  through the same verification as the tokens of a real provider. The IdP enforces PKCE, and
+  you can use each code only one time.</li>
 </ul>
-<p>There are no passwords: anyone who can reach a <code>dev</code> API can sign in as any listed account.
-The IdP refuses to mount in any other profile.</p>
-<p>The CLI can use it too (see <a href="#the-cli">The CLI</a>). Its issuer is the identifier
-<code>https://dev-idp.mapi.localhost</code>, and the API serves its discovery document:</p>
+<p>There are no passwords. Each person who can get access to a <code>dev</code> API can sign in as each
+listed account. The IdP does not mount in other profiles.</p>
+<p>The CLI can also use the IdP (refer to <a href="#the-cli">The CLI</a>). Its issuer is the identifier
+<code>https://dev-idp.mapi.localhost</code>. The API serves its discovery document:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mapi<span class="w"> </span>login<span class="w"> </span>--issuer<span class="w"> </span>https://dev-idp.mapi.localhost<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">           </span>--discovery-url<span class="w"> </span>http://127.0.0.1:8000/dev/idp
 </span></code></pre></div>
 <h2 id="the-cli">The CLI<a class="headerlink" href="#the-cli" title="Permanent link">&para;</a></h2>
-<p><code>mapi login</code> signs in with the identity provider directly, using the authorization code flow
-with PKCE and a one-off listener on <code>127.0.0.1</code>. It then sends the ID token as
-<code>Authorization: Bearer</code>. The API accepts such a bearer when all of these hold:</p>
+<p><code>mapi login</code> signs in with the identity provider directly. It uses the authorization code
+flow with PKCE and a temporary listener on <code>127.0.0.1</code>. Then it sends the ID token as
+<code>Authorization: Bearer</code>. The API accepts this bearer only when all of these conditions are
+true:</p>
 <ul>
-<li>it is a JWT, not a <code>mapi_</code> API token;</li>
-<li>it is signed by the configured issuer (checked against its JWKS), and has not expired;</li>
-<li>its audience is one of <code>MAPI_OIDC_CLI_CLIENT_IDS</code> (default <code>mapi-cli</code>). The BFF's own client
-  id is not accepted.</li>
+<li>It is a JWT, not a <code>mapi_</code> API token.</li>
+<li>The configured issuer signed it (the server does a check against the JWKS of the issuer),
+  and it is not expired.</li>
+<li>Its audience is one of <code>MAPI_OIDC_CLI_CLIENT_IDS</code> (default <code>mapi-cli</code>). The server does not
+  accept the client id of the BFF.</li>
 </ul>
-<p>The caller is then the same user as in a browser session. The first use claims a pending
-invitation, exactly like <code>/auth/callback</code>. No cookie is involved, so no CSRF token is needed,
-and <code>GET /v1/me</code> reports <code>auth: session</code>. Set <code>MAPI_OIDC_CLI_CLIENT_IDS=</code> (empty) to accept
-API tokens only. Register the CLI as a public "installed app" client with your provider; it
-needs a loopback redirect URI, PKCE and the <code>openid email</code> scopes.</p>
+<p>The caller is then the same user as in a browser session. At the first use, the user gets a
+pending invitation, in the same way as with <code>/auth/callback</code>. The CLI does not use a cookie.
+Thus it does not need a CSRF token, and <code>GET /v1/me</code> reports <code>auth: session</code>. To accept only
+API tokens, set <code>MAPI_OIDC_CLI_CLIENT_IDS=</code> (empty). Register the CLI with your provider as a
+public "installed app" client. The client needs a loopback redirect URI, PKCE and the
+<code>openid email</code> scopes.</p>
 <h2 id="api-tokens">API tokens<a class="headerlink" href="#api-tokens" title="Permanent link">&para;</a></h2>
-<p>Programs send <code>Authorization: Bearer mapi_&lt;prefix&gt;_&lt;secret&gt;&lt;checksum&gt;</code>. A token is minted
-for its caller in the selected project (<code>POST /v1/tokens</code>, shown once), acts as its owner
-narrowed by its scopes, and is bound to that project:</p>
+<p>Programs send <code>Authorization: Bearer mapi_&lt;prefix&gt;_&lt;secret&gt;&lt;checksum&gt;</code>. The server mints a
+token for its caller in the selected project (<code>POST /v1/tokens</code>). The server shows the token
+one time only. The token acts as its owner, with the limits of its scopes, and it is bound to
+that project. These rules apply:</p>
 <ul>
-<li>the server stores only HMAC-SHA256 of the token under a pepper derived from
-  <code>MAPI_SERVER_SECRET</code> and compares in constant time; a typo is caught by the checksum
-  before any database lookup, and no error ever echoes the presented value;</li>
-<li>expired, revoked or orphaned tokens (owner disabled) answer <code>401</code>; a wrong secret for a
-  known prefix, expiry and revocation are audited as <code>token.auth_failed</code>, at most five times
-  per token prefix and minute (anyone who knows a prefix can cause them). An unknown prefix
-  and a wrong secret get the same answer, <code>the API token is invalid</code>;</li>
-<li>a disabled account stays disabled: signing in again is refused (a generic <code>401</code>, audited
-  as <code>auth.login_failed</code>), and only an invitation becomes active at its first sign-in;</li>
-<li>a token never carries operator powers, even if its owner is an operator;</li>
-<li>a token cannot mint tokens, whatever its scopes (<code>admin</code> included): a child would escape
-  its parent's expiry, budget, rate limit and revocation, so <code>POST /v1/tokens</code> needs a
-  signed-in session (<code>mapi login</code> or the browser);</li>
-<li>per-token <code>rate_limit_per_minute</code> (<code>RATE_LIMITED</code>, <code>Retry-After</code>) and a vCPU-second
-  budget per UTC day or month apply in addition to the tenant's quotas.</li>
+<li>The server keeps only the HMAC-SHA256 of the token, with a pepper from
+  <code>MAPI_SERVER_SECRET</code>. It compares in constant time. The checksum finds a typing error
+  before the server looks in the database. No error message shows the value that the caller
+  sent.</li>
+<li>Tokens that are expired, revoked or orphaned (the owner is disabled) get <code>401</code>. The audit
+  log records a wrong secret for a known prefix, an expiry and a revocation as
+  <code>token.auth_failed</code>. It records a maximum of five of these events for each token prefix in
+  each minute. Each person who knows a prefix can cause them. An unknown prefix and
+  a wrong secret get the same answer, <code>the API token is invalid</code>.</li>
+<li>A disabled account stays disabled. If the user signs in again, the server refuses it with a
+  general <code>401</code> and records <code>auth.login_failed</code>. Only an invitation becomes active at its
+  first sign-in.</li>
+<li>A token never has operator powers, also when its owner is an operator.</li>
+<li>A token cannot mint tokens, with all scopes (also <code>admin</code>). A child token would not have
+  the expiry, budget, rate limit and revocation of its parent. Thus <code>POST /v1/tokens</code> needs a
+  signed-in session (<code>mapi login</code> or the browser).</li>
+<li>Each token has a <code>rate_limit_per_minute</code> (<code>RATE_LIMITED</code>, <code>Retry-After</code>) and a budget of
+  vCPU-seconds for each UTC day or month. These limits apply in addition to the quotas of the
+  tenant.</li>
 </ul>
-<p>Rotate the root secret only together with every token: all existing tokens stop working.</p>
+<p>Change the root secret only together with all tokens. When you change it, all the tokens that
+you have now stop working.</p>
 <h2 id="operators">Operators<a class="headerlink" href="#operators" title="Permanent link">&para;</a></h2>
 <p>Users whose <strong>verified</strong> e-mail is in <code>MAPI_OPERATOR_EMAILS</code> are platform operators. The
-server decides this on every request from the current configuration, so removing an address
-takes effect at once for browser sessions and <code>mapi login</code> ID tokens alike; nobody needs to
-sign in again. With a browser session they may use
-<code>/v1/admin/*</code> (tenants, quota policies, kill switches, executor health, the platform audit
-log) and read metadata of every tenant: tenants, members, token listings, runs and usage.
-No role, flag or token lets them read datasets, specs, models or plots. Every change and
-every refused attempt at an operator endpoint is audited.</p>
+server decides this for each request from the current configuration. Thus, when you remove
+an address, the change applies immediately for browser sessions and <code>mapi login</code> ID tokens.
+Nobody must sign in again. With a browser session, operators can use <code>/v1/admin/*</code>
+(tenants, quota policies, kill switches, executor health, the platform audit log). They can
+also read the metadata of all tenants: tenants, members, token lists, runs and usage.</p>
+<p>No role, flag or token lets operators read datasets, specs, models or plots. The audit log
+records each change and each refused attempt at an operator endpoint.</p>
 <h2 id="row-level-security">Row-level security<a class="headerlink" href="#row-level-security" title="Permanent link">&para;</a></h2>
-<p><code>mapi-server migrate</code> creates three cluster-wide roles and turns on <code>FORCE ROW LEVEL
-SECURITY</code> for every table that holds tenant data, with a fail-closed policy on
+<p><code>mapi-server migrate</code> makes three roles for the full cluster. It turns on <code>FORCE ROW LEVEL
+SECURITY</code> for each table that holds tenant data. The policy is fail-closed, on
 <code>current_setting('app.tenant_id', false)</code>:</p>
 <table>
 <thead>
@@ -5142,59 +5227,71 @@ SECURITY</code> for every table that holds tenant data, with a fail-closed polic
 <tbody>
 <tr>
 <td><code>mapi_app</code></td>
-<td>Request handlers (one transaction per request, pinned with <code>set_config('app.tenant_id', &lt;tenant&gt;, true)</code>)</td>
-<td>Applies: it sees and writes only that tenant's rows. Owns no table</td>
+<td>Request handlers (one transaction for each request, pinned with <code>set_config('app.tenant_id', &lt;tenant&gt;, true)</code>)</td>
+<td>Applies: the role sees and writes only the rows of that tenant. It owns no table</td>
 </tr>
 <tr>
 <td><code>mapi_gateway</code></td>
-<td>What the API and the events service look up before a tenant is known: authentication (which token is this, which tenants does this user belong to), tenant and member administration, operator endpoints, and routing a pushed event to its run's tenant</td>
-<td>Applies, with explicit policies: tenants, projects, memberships, API tokens (read, and touch <code>last_used_at</code>) and audit events (read, append), plus a few metadata columns of <code>runs</code> and <code>cost_ledger</code> (state, estimate, attempt, executor, amounts) for global quotas, the spend cap and executor health. No access at all to datasets, uploads, specs, models, plots, attempts, events or logs</td>
+<td>The look-ups that the API and the events service do before they know the tenant: authentication (which token is this, which tenants this user is a member of), the administration of tenants and members, operator endpoints, and the routing of a pushed event to the tenant of its run</td>
+<td>Applies, with explicit policies: tenants, projects, memberships, API tokens (read, and touch <code>last_used_at</code>) and audit events (read, append). Also some metadata columns of <code>runs</code> and <code>cost_ledger</code> (state, estimate, attempt, executor, amounts) for global quotas, the spend cap and executor health. No access to datasets, uploads, specs, models, plots, attempts, events or logs</td>
 </tr>
 <tr>
 <td><code>mapi_system</code></td>
-<td>The orchestrator only: dispatcher, reconciler, finalizer, housekeeper (plan §9)</td>
-<td><code>BYPASSRLS</code> where the migrating login is a superuser, plus an explicit policy, so it also works on managed Postgres and for logins that are members of it</td>
+<td>Only the orchestrator: dispatcher, reconciler, finalizer, housekeeper (plan §9)</td>
+<td><code>BYPASSRLS</code> if the login that migrates is a superuser, and also an explicit policy. Thus the role also works on managed Postgres and for logins that are members of it</td>
 </tr>
 </tbody>
 </table>
-<p>Every API request runs its platform sessions as <code>mapi_gateway</code>, whatever the handler does,
-and in a cloud deployment the API and events services cannot even read the URL of the
-orchestrator's login. An authorization slip in a handler that runs before the tenant is
-known is therefore still contained by row-level security.</p>
-<p>A transaction that forgot to pin a tenant fails closed: on a fresh connection every query
-errors, on a pooled connection the setting is empty and matches no row. The test suite runs
-deliberately unscoped queries for two tenants over one pooled connection to prove it.</p>
-<p>The audit log (<code>audit_events</code>) and the cost ledger (<code>cost_ledger</code>) are append-only. Neither
-runtime role may <code>UPDATE</code> or <code>DELETE</code> them, and a trigger refuses any change to an existing
-row whoever asks, so a bug or an injection cannot rewrite a tenant's audit trail or billing
-history. Purging them (tenant deletion, retention) is a deliberate act of the table owner,
-who must drop the <code>*_append_only</code> trigger first.</p>
-<p>With a single <code>DATABASE_URL</code> (local development, the default Compose file) both pools log
-in as the migrating user and select their role with the start-up option <code>role=...</code>
-(<code>RESET ROLE</code> returns to that role). In production give each its own login:</p>
+<p>Each API request runs its platform sessions as <code>mapi_gateway</code>, independently of what the
+handler does. In a cloud deployment, the API and events services cannot read the URL of the
+login of the orchestrator. Thus, if a handler makes an authorization error before it knows
+the tenant, row-level security still contains the error.</p>
+<p>If a transaction does not pin a tenant, it fails closed. On a new connection, each query
+gives an error. On a pooled connection, the setting is empty and agrees with no row. To prove
+this, the test suite runs unscoped queries for two tenants over one pooled connection.</p>
+<p>The audit log (<code>audit_events</code>) and the cost ledger (<code>cost_ledger</code>) are append-only. The
+runtime roles cannot <code>UPDATE</code> or <code>DELETE</code> them. A trigger refuses all changes to a row that
+is there now, for all users. Thus a bug or an injection cannot change the audit trail or the
+billing history of a tenant. Only the table owner can purge them (tenant deletion,
+retention). Before the purge, the owner must drop the <code>*_append_only</code> trigger.</p>
+<p>With one <code>DATABASE_URL</code> (local development, the default Compose file), the two pools log in
+as the user that migrates. They select their role with the start-up option <code>role=...</code>
+(<code>RESET ROLE</code> goes back to that role). In production, give each pool its own login:</p>
 <div class="language-sql highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">CREATE</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">mapi_api</span><span class="w"> </span><span class="n">LOGIN</span><span class="w"> </span><span class="n">PASSWORD</span><span class="w"> </span><span class="s1">'...'</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">mapi_app</span><span class="p">;</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">CREATE</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">mapi_api_gateway</span><span class="w"> </span><span class="n">LOGIN</span><span class="w"> </span><span class="n">PASSWORD</span><span class="w"> </span><span class="s1">'...'</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">mapi_gateway</span><span class="p">;</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">CREATE</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">mapi_orchestrator</span><span class="w"> </span><span class="n">LOGIN</span><span class="w"> </span><span class="n">PASSWORD</span><span class="w"> </span><span class="s1">'...'</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">mapi_system</span><span class="p">;</span>
 </span></code></pre></div>
-<p>and set <code>MAPI_DATABASE_APP_URL</code> (API and worker), <code>MAPI_DATABASE_GATEWAY_URL</code> (API) and
-<code>MAPI_DATABASE_SYSTEM_URL</code> (worker only).
-<code>DATABASE_URL</code> (the owner) is then needed by <code>mapi-server migrate</code> and procrastinate only.</p>
+<p>Then set <code>MAPI_DATABASE_APP_URL</code> (API and worker), <code>MAPI_DATABASE_GATEWAY_URL</code> (API) and
+<code>MAPI_DATABASE_SYSTEM_URL</code> (only worker). After this, only <code>mapi-server migrate</code> and
+procrastinate need <code>DATABASE_URL</code> (the owner).</p>
 <h2 id="pubsub-push">Pub/Sub push<a class="headerlink" href="#pubsub-push" title="Permanent link">&para;</a></h2>
-<p>In the cloud, run events reach <code>POST /internal/events</code> from a Pub/Sub push subscription
-with OIDC authentication. Configure the subscription with a dedicated service account and
-the audience <code>https://&lt;api host&gt;/internal/events</code>, then set</p>
+<p>In the cloud, run events go to <code>POST /internal/events</code> from a Pub/Sub push subscription with
+OIDC authentication. To configure it, do these steps:</p>
+<ol>
+<li>Configure the subscription with a dedicated service account and the audience
+   <code>https://&lt;api host&gt;/internal/events</code>.</li>
+<li>
+<p>Set these variables:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">MAPI_PUBSUB_PUSH_AUDIENCE</span><span class="o">=</span>https://api.mapi.example/internal/events
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nv">MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT</span><span class="o">=</span>pubsub-push@mapi-prod-control.iam.gserviceaccount.com
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1"># optional: only accept pushes from these subscriptions</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nv">MAPI_PUBSUB_PUSH_SUBSCRIPTIONS</span><span class="o">=</span>projects/mapi-prod-control/subscriptions/mapi-run-events-push
 </span></code></pre></div>
-<p>Each push must carry a Google-signed ID token (RS256, checked against
-<code>MAPI_GOOGLE_JWKS_URL</code>) whose issuer is Google, audience the configured one, <code>email</code> the
-service account with <code>email_verified: true</code>, and which has not expired (a valid Google token for another audience or account gets 403).
-With <code>MAPI_PUBSUB_PUSH_SUBSCRIPTIONS</code> set, the envelope must also come from one of those
-subscriptions. Without these
-settings <code>MAPI_INTERNAL_TOKEN</code> is required when set, and a multi-tenant deployment with
-neither refuses every push. Refused pushes are audited as <code>event.rejected</code>.</p>
+</li>
+</ol>
+<p>Each push must have an ID token that Google signed (RS256, with a check against
+<code>MAPI_GOOGLE_JWKS_URL</code>). The token must agree with these conditions:</p>
+<ul>
+<li>The issuer is Google.</li>
+<li>The audience is the configured audience.</li>
+<li><code>email</code> is the service account, with <code>email_verified: true</code>.</li>
+<li>The token is not expired.</li>
+</ul>
+<p>A valid Google token for a different audience or account gets 403. If you set
+<code>MAPI_PUBSUB_PUSH_SUBSCRIPTIONS</code>, the envelope must also come from one of those
+subscriptions. Without these settings, the server needs <code>MAPI_INTERNAL_TOKEN</code> if it is set.
+A multi-tenant deployment with neither of the two refuses all pushes. The audit log records
+refused pushes as <code>event.rejected</code>.</p>
 
 
 

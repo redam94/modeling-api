@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -1816,22 +1846,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#against-a-running-platform" class="md-nav__link">
+  <a href="#with-a-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Against a running platform
+        With a server
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Against a running platform">
+    <nav class="md-nav" aria-label="With a server">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#choosing-the-api" class="md-nav__link">
+  <a href="#select-the-api" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choosing the API
+        Select the API
       
     </span>
   </a>
@@ -1949,10 +1979,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#scripting-with-json" class="md-nav__link">
+  <a href="#use-json-in-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scripting with --json
+        Use --json in scripts
       
     </span>
   </a>
@@ -4750,6 +4780,8 @@
       
         
       
+        
+      
     
     
     
@@ -4858,6 +4890,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../project/changelog/" class="md-nav__link">
         
   
@@ -4924,22 +4984,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#against-a-running-platform" class="md-nav__link">
+  <a href="#with-a-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Against a running platform
+        With a server
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Against a running platform">
+    <nav class="md-nav" aria-label="With a server">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#choosing-the-api" class="md-nav__link">
+  <a href="#select-the-api" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choosing the API
+        Select the API
       
     </span>
   </a>
@@ -5057,10 +5117,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#scripting-with-json" class="md-nav__link">
+  <a href="#use-json-in-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scripting with --json
+        Use --json in scripts
       
     </span>
   </a>
@@ -5101,27 +5161,28 @@
 
 
 <h1 id="the-command-line-v02">The command line <span class="mapi-badge">v0.2</span><a class="headerlink" href="#the-command-line-v02" title="Permanent link">&para;</a></h1>
-<p><code>mapi</code> (package <code>mapi-cli</code>, Apache-2.0) works in two places:</p>
+<p><code>mapi</code> (package <code>mapi-cli</code>, Apache-2.0) works in two locations:</p>
 <ul>
-<li><strong>locally</strong>, without any server: scaffold a spec, check it, fit it and score it in your own
-  Python process with the installed plugins (<code>new</code>, <code>check</code>, <code>fit</code>, <code>score</code>, <code>catalog</code>,
-  <code>plugin</code>, <code>spec</code>);</li>
-<li><strong>remotely</strong>, against the <a href="../http-api/">HTTP API</a> of a running platform: upload datasets,
-  fit, follow runs and score model versions (<code>datasets</code>, <code>runs</code>, and <code>--remote</code> on <code>check</code>,
-  <code>fit</code>, <code>score</code> and <code>catalog</code>).</li>
+<li><strong>Locally</strong>, without a server. You scaffold a spec, check it, fit it and score it in your
+  own Python process, with the installed plugins (<code>new</code>, <code>check</code>, <code>fit</code>, <code>score</code>, <code>catalog</code>,
+  <code>plugin</code>, <code>spec</code>).</li>
+<li><strong>Remotely</strong>, against the <a href="../http-api/">HTTP API</a> of a platform that runs. You upload
+  datasets, fit, follow runs and score model versions (<code>datasets</code>, <code>runs</code>, and <code>--remote</code> on
+  <code>check</code>, <code>fit</code>, <code>score</code> and <code>catalog</code>).</li>
 </ul>
-<p>Every command and option is listed in the generated <a href="../../reference/generated/cli-reference/">CLI reference</a>.
-The examples on this page are scripts that the test suite runs: the local ones in the default
-suite, the remote ones in <code>make e2e</code>.</p>
+<p>The generated <a href="../../reference/generated/cli-reference/">CLI reference</a> lists all commands and
+options. The examples on this page are scripts that the test suite runs. The default suite
+runs the local scripts. <code>make e2e</code> runs the remote scripts.</p>
 <div class="admonition note">
 <p class="admonition-title">Running the commands</p>
-<p><code>make install</code> puts <code>mapi</code> into the workspace environment. Either activate it
-(<code>source .venv/bin/activate</code>) or prefix every command with <code>uv run</code>
-(<code>uv run mapi --help</code>).</p>
+<p><code>make install</code> puts <code>mapi</code> into the workspace environment. You can activate the
+environment (<code>source .venv/bin/activate</code>). Alternatively, you can put <code>uv run</code> before
+each command (<code>uv run mapi --help</code>).</p>
 </div>
 <h2 id="without-a-server">Without a server<a class="headerlink" href="#without-a-server" title="Permanent link">&para;</a></h2>
-<p><strong>Scaffold</strong> a spec from a template. <code>--with-data</code> also writes the matching conformance
-fixture's sample data (it needs the <code>mapi-conformance</code> package, which the workspace has):</p>
+<p><strong>Scaffold</strong> a spec from a template. <code>--with-data</code> also writes the sample data of the
+conformance fixture that matches. This option needs the <code>mapi-conformance</code> package. The
+workspace has this package.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mapi<span class="w"> </span>new<span class="w"> </span>tabular<span class="w"> </span>-o<span class="w"> </span>spec.yaml<span class="w"> </span>--with-data<span class="w">     </span><span class="c1"># an XGBoost demand model plus its sample data</span>
 </span></code></pre></div>
 <table>
@@ -5155,14 +5216,14 @@ fixture's sample data (it needs the <code>mapi-conformance</code> package, which
 </tr>
 </tbody>
 </table>
-<p><strong>Check</strong> it statically against the installed plugins and the data's schema. <code>--stages</code>
-prints the schema after every pipeline step; the exit status is 1 when there are errors, so
-it works in CI:</p>
+<p><strong>Check</strong> the spec statically against the installed plugins and the schema of the data.
+<code>--stages</code> shows the schema after each pipeline step. If there are errors, the exit status
+is 1. Thus the command works in CI:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mapi<span class="w"> </span>check<span class="w"> </span>spec.yaml<span class="w"> </span>--data<span class="w"> </span>data.zarr.zip<span class="w"> </span>--stages
 </span></code></pre></div>
-<p><strong>Fit</strong> in-process. The bundle (zarr zip, sidecars, plots, metrics and the evaluation bundle
-of <code>evaluate_then_refit</code>) goes to <code>bundles/&lt;name&gt;/</code>; <code>--side-table NAME=PATH</code> supplies side
-tables:</p>
+<p><strong>Fit</strong> in-process. The bundle goes to <code>bundles/&lt;name&gt;/</code>. It contains the zarr zip,
+sidecars, plots, metrics and the evaluation bundle of <code>evaluate_then_refit</code>.
+<code>--side-table NAME=PATH</code> supplies side tables:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mapi<span class="w"> </span>fit<span class="w"> </span>spec.yaml<span class="w"> </span>--data<span class="w"> </span>data.zarr.zip<span class="w">       </span><span class="c1"># in-process: writes bundles/&lt;name&gt;/</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ls<span class="w"> </span>bundles/tabular
 </span></code></pre></div>
@@ -5171,26 +5232,30 @@ scores a local bundle with a <code>ScoreRequest</code> document.</p>
 <div class="admonition warning">
 <p class="admonition-title">Local means trusted</p>
 <p>Local <code>fit</code> and <code>score</code> import and run the plugins in your own process (isolation
-<code>NONE</code>), exactly like a notebook. Use them with code and data you trust. On the platform,
-the same work runs in a sandbox.</p>
+<code>NONE</code>), exactly as a notebook does. Use them only with code and data that you trust. On
+the platform, the same work runs in a sandbox.</p>
 </div>
-<p><strong>Inspect</strong> the catalog of installed plugins, and upgrade spec documents across <code>apiVersion</code>s:</p>
+<p><strong>Inspect</strong> the catalog of installed plugins. <strong>Upgrade</strong> spec documents across
+<code>apiVersion</code>s:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>mapi<span class="w"> </span>catalog<span class="w"> </span>models
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>mapi<span class="w"> </span>--json<span class="w"> </span>catalog<span class="w"> </span>steps<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.steps[].id'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">5</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>mapi<span class="w"> </span>spec<span class="w"> </span>upgrade<span class="w"> </span>spec.yaml<span class="w"> </span>--check<span class="w">           </span><span class="c1"># exit 0: already the current apiVersion</span>
 </span></code></pre></div>
-<p><code>mapi plugin init NAME</code> scaffolds a plugin package (model, entry point, contract-kit tests)
-and <code>mapi plugin test NAME</code> runs its tests; see <a href="../plugins/">Write a plugin</a>.</p>
-<h2 id="against-a-running-platform">Against a running platform<a class="headerlink" href="#against-a-running-platform" title="Permanent link">&para;</a></h2>
-<p>Start the stack first (<code>make dev</code>, then <code>make seed</code>; see the <a href="../../getting-started/quickstart/">quickstart</a>).</p>
-<h3 id="choosing-the-api">Choosing the API<a class="headerlink" href="#choosing-the-api" title="Permanent link">&para;</a></h3>
-<p>Every remote command resolves the API the same way as the Python client, first match wins:</p>
+<p><code>mapi plugin init NAME</code> scaffolds a plugin package (model, entry point, contract-kit tests).
+<code>mapi plugin test NAME</code> runs its tests. See <a href="../plugins/">Write a plugin</a>.</p>
+<h2 id="with-a-server">With a server<a class="headerlink" href="#with-a-server" title="Permanent link">&para;</a></h2>
+<p>First, start the stack (<code>make dev</code>, then <code>make seed</code>). See the
+<a href="../../getting-started/quickstart/">quickstart</a>.</p>
+<h3 id="select-the-api">Select the API<a class="headerlink" href="#select-the-api" title="Permanent link">&para;</a></h3>
+<p>Each remote command finds the API in the same way as the Python client. The first match in
+this list wins:</p>
 <ol>
-<li><code>--url</code> and <code>--token</code> (global options, before the command: <code>mapi --url http://… runs ls</code>);</li>
-<li><code>MAPI_URL</code> (falling back to <code>MAPI_API_URL</code>, the name <code>make dev</code> uses), <code>MAPI_TOKEN</code> and
-   <code>MAPI_PROFILE</code>;</li>
-<li>the selected profile in <code>~/.config/mapi/config.toml</code> (<code>$MAPI_CONFIG</code> or
-   <code>$XDG_CONFIG_HOME/mapi/config.toml</code> if set);</li>
+<li><code>--url</code> and <code>--token</code>. These are global options. Put them before the command:
+   <code>mapi --url http://… runs ls</code>.</li>
+<li><code>MAPI_URL</code>, <code>MAPI_TOKEN</code> and <code>MAPI_PROFILE</code>. If <code>MAPI_URL</code> is not set, the CLI uses
+   <code>MAPI_API_URL</code>, the name that <code>make dev</code> uses.</li>
+<li>The selected profile in <code>~/.config/mapi/config.toml</code>. If <code>$MAPI_CONFIG</code> or
+   <code>$XDG_CONFIG_HOME/mapi/config.toml</code> is set, the CLI uses that file.</li>
 <li><code>http://127.0.0.1:8000</code>.</li>
 </ol>
 <div class="language-toml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># ~/.config/mapi/config.toml</span>
@@ -5203,18 +5268,21 @@ and <code>mapi plugin test NAME</code> runs its tests; see <a href="../plugins/"
 </span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"http://127.0.0.1:18000"</span>
 </span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span>
 </span></code></pre></div>
-<p><code>mapi config show</code> prints the resolved URL, profile, project and credentials and where each
-value came from (never a token: an API token appears as <code>mapi_&lt;prefix&gt;_…</code>, a sign-in as who
-signed in and until when); <code>mapi config path</code> prints the file's location. <code>mapi config set
-KEY VALUE</code> and <code>mapi config unset KEY</code> change the selected profile (<code>--profile</code>, else
-<code>MAPI_PROFILE</code>, else the file's default). They rewrite the file with mode <code>0600</code> and do not
-keep comments. Secrets cannot be set this way: use <code>mapi login --with-token</code>. <code>--remote @</code> on <code>check</code>, <code>fit</code>,
-<code>score</code> and <code>catalog</code> means "the configured API"; <code>--remote URL</code> overrides it for one command.</p>
+<p><code>mapi config show</code> shows the resolved URL, profile, project and credentials. It also shows
+the source of each value. It never shows a token. An API token shows as <code>mapi_&lt;prefix&gt;_…</code>. A
+sign-in shows as the person who signed in and the time when the sign-in ends.
+<code>mapi config path</code> shows the location of the file.</p>
+<p><code>mapi config set KEY VALUE</code> and <code>mapi config unset KEY</code> change the selected profile. The
+selected profile is <code>--profile</code>. If you do not give it, it is <code>MAPI_PROFILE</code>, and then the
+default of the file. These commands write the file again with mode <code>0600</code>. They do not keep
+comments. You cannot set secrets in this way. Use <code>mapi login --with-token</code>.</p>
+<p><code>--remote @</code> on <code>check</code>, <code>fit</code>, <code>score</code> and <code>catalog</code> means "the configured API".
+<code>--remote URL</code> overrides it for one command.</p>
 <div class="admonition info">
 <p class="admonition-title">Tokens</p>
-<p>v0.2 is single-tenant and has no authentication: the API listens on <code>127.0.0.1</code> only.
-The client sends <code>MAPI_TOKEN</code> as a bearer token when one is set, and refuses to send it
-over plain HTTP to anything but a loopback address.</p>
+<p>v0.2 is single-tenant and has no authentication. The API listens only on <code>127.0.0.1</code>.
+When <code>MAPI_TOKEN</code> is set, the client sends it as a bearer token. The client refuses to
+send it over plain HTTP to an address that is not a loopback address.</p>
 </div>
 <h3 id="sign-in-and-choose-a-project">Sign in and choose a project <span class="mapi-badge">v0.3</span><a class="headerlink" href="#sign-in-and-choose-a-project" title="Permanent link">&para;</a></h3>
 <p>A multi-tenant API (v0.3) needs credentials and a project
@@ -5226,28 +5294,36 @@ over plain HTTP to anything but a loopback address.</p>
 </span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>mapi<span class="w"> </span>whoami<span class="w">                                     </span><span class="c1"># who, how, and your projects and roles</span>
 </span></code></pre></div>
 <ul>
-<li><strong><code>mapi login</code></strong> opens the identity provider in your browser (OpenID Connect,
-  authorization code with PKCE, redirected to a one-off listener on <code>127.0.0.1</code>).
-  <code>--device</code> signs in with a code typed on another device instead, and <code>--no-browser</code> only
-  prints the address. <code>--issuer</code>, <code>--client-id</code> and <code>--discovery-url</code> are saved in the
-  profile, so later logins need none of them. Against a local <code>MAPI_PROFILE=dev</code> stack, use
-  <code>mapi login --issuer https://dev-idp.mapi.localhost --discovery-url
-  http://127.0.0.1:8000/dev/idp</code> and pick an account on the page that opens. The sign-in is kept in <code>credentials.json</code> next to the config file
-  (mode <code>0600</code>) and renewed automatically with its refresh token. It is only ever sent to
-  the API it was made for.</li>
-<li><strong><code>mapi login --with-token</code></strong> reads an API token from stdin, checks its checksum (a typo
-  is caught before any request), verifies it with <code>GET /v1/me</code> and saves it in the profile
-  (the config file is rewritten with mode <code>0600</code>). An API token in the profile or in
-  <code>MAPI_TOKEN</code> takes precedence over a browser sign-in.</li>
-<li><strong><code>mapi whoami</code></strong> shows who you are, how you signed in, and every project you can act in
-  with your role there.</li>
-<li><strong><code>mapi logout</code></strong> forgets the sign-in (revoking its refresh token at the identity provider)
-  and the profile's token; <code>--revoke</code> also revokes that token on the server.</li>
+<li><strong><code>mapi login</code></strong> opens the identity provider in your browser. It uses OpenID Connect and
+  the authorization code with PKCE. The provider redirects to a one-time listener on
+  <code>127.0.0.1</code>.<ul>
+<li><code>--device</code> signs in with a code that you type on a different device.</li>
+<li><code>--no-browser</code> only shows the address.</li>
+<li>The CLI saves <code>--issuer</code>, <code>--client-id</code> and <code>--discovery-url</code> in the profile. Thus
+  later logins do not need them.</li>
+<li>Against a local <code>MAPI_PROFILE=dev</code> stack, use <code>mapi login --issuer
+  https://dev-idp.mapi.localhost --discovery-url http://127.0.0.1:8000/dev/idp</code>. Then
+  select an account on the page that opens.</li>
+<li>The CLI keeps the sign-in in <code>credentials.json</code> next to the config file (mode
+  <code>0600</code>). It renews the sign-in automatically with its refresh token. It sends the
+  sign-in only to the API that it was made for.</li>
 </ul>
-<p>Every v0.2 resource (datasets, specs, runs, models, plots) now lives in a project.
-<code>mapi use</code> checks that you are a member and saves the selection in the profile; the CLI sends
-it as <code>X-Mapi-Project</code> on project-scoped requests only. <code>--project</code> or <code>MAPI_PROJECT</code>
-override it for one command or one shell. An API token acts in its own project only.</p>
+</li>
+<li><strong><code>mapi login --with-token</code></strong> reads an API token from stdin and checks its checksum. Thus
+  it finds an incorrect character before it sends a request. Then it verifies the token with
+  <code>GET /v1/me</code> and saves it in the profile. It writes the config file again with mode
+  <code>0600</code>. An API token in the profile or in <code>MAPI_TOKEN</code> has priority over a browser sign-in.</li>
+<li><strong><code>mapi whoami</code></strong> shows who you are and how you signed in. It also shows each project
+  where you can act, with your role there.</li>
+<li><strong><code>mapi logout</code></strong> removes the sign-in and revokes its refresh token at the identity
+  provider. It also removes the token of the profile. <code>--revoke</code> also revokes that token on
+  the server.</li>
+</ul>
+<p>Each v0.2 resource (datasets, specs, runs, models, plots) is now in a project. <code>mapi use</code>
+checks that you are a member. Then it saves the selection in the profile. The CLI sends the
+project as <code>X-Mapi-Project</code>, but only on project-scoped requests. <code>--project</code> overrides it
+for one command. <code>MAPI_PROJECT</code> overrides it for one shell. An API token acts only in its own
+project.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mapi<span class="w"> </span>use<span class="w"> </span>acme/growth<span class="w">                            </span><span class="c1"># sent as X-Mapi-Project from now on</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>mapi<span class="w"> </span>--project<span class="w"> </span>acme/retail<span class="w"> </span>runs<span class="w"> </span>ls<span class="w">              </span><span class="c1"># another project, for one command</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>mapi<span class="w"> </span>use<span class="w">                                        </span><span class="c1"># show the selection and where it came from</span>
@@ -5261,21 +5337,31 @@ override it for one command or one shell. An API token acts in its own project o
 </span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>mapi<span class="w"> </span>usage<span class="w"> </span>--tenant<span class="w"> </span>acme<span class="w"> </span>--period<span class="w"> </span>day<span class="w">           </span><span class="c1"># the whole tenant today (tenant admins)</span>
 </span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>mapi<span class="w"> </span>runs<span class="w"> </span>get<span class="w"> </span>run_01jaf3q2x8m9v7k5h4g3f2e1d0<span class="w">    </span><span class="c1"># includes the run's metered cost</span>
 </span></code></pre></div>
-<p><code>mapi tokens create</code> prints the new token's secret once, alone on stdout, so redirecting it
-to a file captures exactly the token; <code>--save</code> stores it in the profile instead. Nothing else
-ever prints a token: listings, <code>whoami</code> and <code>config show</code> use the redacted form
-<code>mapi_&lt;prefix&gt;_…</code>. <code>mapi usage</code> shows the exact cost of the period (integer micro-units of
-the currency, priced by a named price table), the vCPU- and GiB-seconds behind it, and how
-much of each quota is used and when it resets. <code>mapi runs get</code> and <code>mapi runs ls</code> show each
-run's cost (<code>~</code> while it is still an estimate).</p>
-<p>When the API answers <code>429</code>, the client handles it: <code>RATE_LIMITED</code> is waited out (the
-server's <code>Retry-After</code>, then exponential back-off) and retried; <code>QUOTA_EXCEEDED</code> stops at
-once with the reason, when the quota resets (<code>retry after 1h 30m</code>) and, with <code>--json</code>,
-<code>retry_after_seconds</code>.</p>
+<p><code>mapi tokens create</code> shows the secret of the new token one time, alone on stdout. Thus, if
+you redirect stdout to a file, the file contains exactly the token. <code>--save</code> stores the
+token in the profile instead. No other command ever shows a token. Lists, <code>whoami</code> and
+<code>config show</code> use the redacted form <code>mapi_&lt;prefix&gt;_…</code>.</p>
+<p><code>mapi usage</code> shows these data:</p>
+<ul>
+<li>The exact cost of the period, in integer micro-units of the currency. A named price table
+  gives the prices.</li>
+<li>The vCPU-seconds and GiB-seconds behind the cost.</li>
+<li>How much of each quota is used, and when it resets.</li>
+</ul>
+<p><code>mapi runs get</code> and <code>mapi runs ls</code> show the cost of each run. While the cost is still an
+estimate, it has a <code>~</code>.</p>
+<p>When the API answers <code>429</code>, the client does these actions:</p>
+<ul>
+<li>For <code>RATE_LIMITED</code>, the client waits and then tries again. It waits for the <code>Retry-After</code>
+  of the server, and then uses exponential back-off.</li>
+<li>For <code>QUOTA_EXCEEDED</code>, the client stops immediately. It shows the reason and the time when
+  the quota resets (<code>retry after 1h 30m</code>). With <code>--json</code>, it also gives
+  <code>retry_after_seconds</code>.</li>
+</ul>
 <h3 id="operators">Operators <span class="mapi-badge">v0.3</span><a class="headerlink" href="#operators" title="Permanent link">&para;</a></h3>
-<p>Platform operators manage tenants, quotas, kill switches and executors with <code>mapi admin</code>.
-Each change shows a before-and-after table and asks for confirmation (<code>--yes</code> skips it, for
-runbooks); the server audits it. Kill-switch changes need <code>--reason</code>.</p>
+<p>Platform operators use <code>mapi admin</code> to manage tenants, quotas, kill switches and executors.
+Each change shows a before-and-after table and asks for confirmation. For runbooks, <code>--yes</code>
+skips the confirmation. The server audits each change. Kill-switch changes need <code>--reason</code>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mapi<span class="w"> </span>admin<span class="w"> </span>kill-switches<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--untrusted-code<span class="w"> </span>off<span class="w"> </span>--reason<span class="w"> </span><span class="s2">"incident 2026-10-15"</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>mapi<span class="w"> </span>admin<span class="w"> </span>quotas<span class="w"> </span><span class="nb">set</span><span class="w"> </span>tenant<span class="w"> </span>acme<span class="w"> </span>--vcpu-seconds-per-day<span class="w"> </span><span class="m">172800</span><span class="w"> </span>--concurrent-runs<span class="w"> </span><span class="m">40</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span>--storage<span class="w"> </span>200GiB<span class="w"> </span>--note<span class="w"> </span><span class="s2">"beta customer"</span>
@@ -5284,28 +5370,33 @@ runbooks); the server audits it. Kill-switch changes need <code>--reason</code>.
 </span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>mapi<span class="w"> </span>admin<span class="w"> </span>executors<span class="w"> </span>disable<span class="w"> </span>cloudrun-jobs<span class="w"> </span>--reason<span class="w"> </span><span class="s2">"incident 2026-10-15: contain"</span>
 </span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>mapi<span class="w"> </span>admin<span class="w"> </span>audit<span class="w"> </span>--tenant<span class="w"> </span>acme<span class="w"> </span>--action<span class="w"> </span>token.create<span class="w"> </span>--since<span class="w"> </span><span class="m">2026</span>-10-01
 </span></code></pre></div>
-<p><code>mapi admin quotas set</code> replaces the whole policy of a subject: limits you leave out are
-removed (the tier defaults and the other levels still apply).</p>
+<p><code>mapi admin quotas set</code> replaces the full policy of a subject. It removes the limits that you
+do not give. The tier defaults and the other levels still apply.</p>
 <h3 id="upload-data">Upload data<a class="headerlink" href="#upload-data" title="Permanent link">&para;</a></h3>
-<p><code>mapi datasets upload</code> creates the dataset if it does not exist, sends the file to the signed
-URL the API returns, starts the sandboxed ingest run and waits until the version is ready.
-CSV and Parquet files need <code>--mapping mapping.yaml</code>, an <code>IngestMapping</code> with the column of each
-dim and variable:</p>
+<p><code>mapi datasets upload</code> does these steps:</p>
+<ol>
+<li>If the dataset does not exist, it creates the dataset.</li>
+<li>It sends the file to the signed URL that the API returns.</li>
+<li>It starts the sandboxed ingest run.</li>
+<li>It waits until the version is ready.</li>
+</ol>
+<p>CSV and Parquet files need <code>--mapping mapping.yaml</code>. This file is an <code>IngestMapping</code> that
+gives the column of each dim and variable:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>scripts/seed.py<span class="w"> </span>--export<span class="w"> </span>demo/<span class="w">      </span><span class="c1"># the E33 tables, score payloads and spec</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>upload<span class="w"> </span>demo/eu_media_future.zarr.zip<span class="w"> </span>--name<span class="w"> </span>eu_media_future
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>ls
 </span></code></pre></div>
 <h3 id="fit-and-follow">Fit and follow<a class="headerlink" href="#fit-and-follow" title="Permanent link">&para;</a></h3>
-<p><code>mapi fit SPEC --remote @</code> creates the spec (or adds a revision when the text changed),
-submits a fit run and follows its event stream until it ends, printing warnings, diagnostics
-and metrics as they arrive. <code>--no-wait</code> returns after submitting; <code>mapi runs watch RUN</code>
-follows any run later.</p>
+<p><code>mapi fit SPEC --remote @</code> creates the spec. If the text changed, it adds a revision. Then it
+submits a fit run and follows its event stream until the run ends. It shows warnings,
+diagnostics and metrics when they arrive. With <code>--no-wait</code>, the command returns after it
+submits the run. <code>mapi runs watch RUN</code> follows a run at a later time.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>mapi<span class="w"> </span>check<span class="w"> </span>demo/eu-geo-mmm.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w">   </span><span class="c1"># the server's static validation</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>mapi<span class="w"> </span>fit<span class="w"> </span>demo/eu-geo-mmm.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w">     </span><span class="c1"># create or revise the spec, fit, follow</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>mapi<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span>--kind<span class="w"> </span>fit<span class="w"> </span>--limit<span class="w"> </span><span class="m">3</span>
 </span></code></pre></div>
-<p><code>mapi runs cancel RUN</code> requests cancellation, and <code>mapi runs retry RUN --resource-class L</code>
-starts a new run from a failed one.</p>
+<p><code>mapi runs cancel RUN</code> asks for cancellation. <code>mapi runs retry RUN --resource-class L</code> starts
+a new run from a run that failed.</p>
 <h3 id="score">Score<a class="headerlink" href="#score" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>cat<span class="w"> </span>&gt;<span class="w"> </span>forecast.yaml<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="s">apiVersion: mapi/v1</span>
@@ -5326,9 +5417,9 @@ starts a new run from a failed one.</p>
 </span><span id="__span-11-17"><a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>mapi<span class="w"> </span>score<span class="w"> </span>forecast.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w"> </span>--model<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span>.id<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">"</span><span class="nv">$MODEL</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-11-18"><a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="w">  </span>--version<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span>.latest_version<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">"</span><span class="nv">$MODEL</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span>forecast.zarr.zip
 </span></code></pre></div>
-<p><code>mapi score --remote @</code> sends <code>Prefer: wait=60</code> (change it with <code>--wait</code>), follows the run if it
-takes longer, prints the outputs with their sizes and CRC32C, and with <code>-o</code> downloads the
-result tree, checking it against that CRC32C.</p>
+<p><code>mapi score --remote @</code> sends <code>Prefer: wait=60</code>. To change the time, use <code>--wait</code>. If the run
+takes longer, the command follows the run. It shows the outputs with their sizes and CRC32C.
+With <code>-o</code>, it downloads the result tree and checks it against that CRC32C.</p>
 <h3 id="endpoints-webhooks-and-sharing">Endpoints, webhooks and sharing <span class="mapi-badge">v0.4</span><a class="headerlink" href="#endpoints-webhooks-and-sharing" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>promote<span class="w"> </span>geo-mmm-prod<span class="w"> </span>model://growth/eu-geo-mmm@v3<span class="w">   </span><span class="c1"># asks first; --yes skips</span>
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>ls
@@ -5339,156 +5430,190 @@ result tree, checking it against that CRC32C.</p>
 </span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>snippets<span class="w"> </span>geo-mmm-prod<span class="w"> </span>-l<span class="w"> </span>python<span class="w"> </span>&gt;<span class="w"> </span>score.py
 </span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>rollback<span class="w"> </span>geo-mmm-prod<span class="w"> </span>--reason<span class="w"> </span><span class="s2">"v3 over-forecasts"</span>
 </span></code></pre></div>
-<p><code>promote</code> goes through the <a href="../../concepts/integrations/#promotion-gate">promotion gate</a>: a
-warning scorecard needs <code>--override --reason TEXT</code> from a signed-in project admin, a failing
-one is blocked. Promotions and rollbacks change what every integration calling the alias
-receives, so both show the current version and ask before acting. <code>score</code> sends a JSON
-<code>EndpointScoreCall</code> (a file, <code>-</code> for stdin, or <code>--example</code>), with flags for the mode, the
-horizon, <code>--data</code>/<code>--scenario</code> (a <code>dataset://</code> reference, an XrJSON <code>.json</code>, a <code>.zarr.zip</code>
-or a netCDF file, sent inline) and <code>--draws</code>; it waits like <code>mapi score --remote</code> and <code>-o</code>
-downloads the result tree. With one <code>--language</code>, <code>snippets</code> prints only the code.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>create<span class="w"> </span>https://hooks.example.com/mapi<span class="w"> </span>-e<span class="w"> </span>endpoint.promoted<span class="w"> </span>-e<span class="w"> </span>run.failed<span class="w"> </span>&gt;<span class="w"> </span>hook.secret
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>ls
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>deliveries<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>--status<span class="w"> </span>failed
-</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>replay<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>DELIVERY_ID
-</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>update<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>--enable<span class="w">           </span><span class="c1"># back on after --inactive or an auto-disable</span>
-</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>update<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>-e<span class="w"> </span>run.failed<span class="w"> </span>--description<span class="w"> </span><span class="s2">"on-call"</span>
-</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>rotate<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>&gt;<span class="w"> </span>hook.secret<span class="w">      </span><span class="c1"># asks first; the old secret signs for 24 h</span>
-</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>rm<span class="w"> </span>WEBHOOK_ID<span class="w">                        </span><span class="c1"># asks first</span>
+<p><code>promote</code> goes through the <a href="../../concepts/integrations/#promotion-gate">promotion gate</a>. A
+scorecard with warnings needs <code>--override --reason TEXT</code> from a signed-in project admin. The
+gate blocks a scorecard that fails. Promotions and rollbacks change what each integration
+that calls the alias receives. Thus both commands show the current version and ask before
+they act.</p>
+<p><code>score</code> sends a JSON <code>EndpointScoreCall</code>. The call comes from a file, from stdin (<code>-</code>) or
+from <code>--example</code>. Flags set these values:</p>
+<ul>
+<li>The mode and the horizon.</li>
+<li><code>--data</code>/<code>--scenario</code>: a <code>dataset://</code> reference, an XrJSON <code>.json</code>, a <code>.zarr.zip</code> or a
+  netCDF file. The command sends the file inline.</li>
+<li><code>--draws</code>.</li>
+</ul>
+<p><code>score</code> waits in the same way as <code>mapi score --remote</code>. <code>-o</code> downloads the result tree. With
+one <code>--language</code>, <code>snippets</code> shows only the code.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>schema<span class="w"> </span>ts-forecast<span class="w">                           </span><span class="c1"># the Input table's columns</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>forecast<span class="w"> </span>ts-forecast<span class="w"> </span>input.csv<span class="w">               </span><span class="c1"># actuals + blank-target future rows</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>forecast<span class="w"> </span>ts-forecast<span class="w"> </span>--actuals<span class="w"> </span>new.csv<span class="w"> </span>--periods<span class="w"> </span><span class="m">6</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>forecast<span class="w"> </span>ts-forecast<span class="w"> </span>--actuals<span class="w"> </span>new.csv<span class="w"> </span>--future<span class="w"> </span><span class="m">1961</span>-04-01<span class="w"> </span>--future<span class="w"> </span><span class="m">1961</span>-05-01
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>forecast<span class="w"> </span>ts-forecast<span class="w"> </span>input.csv<span class="w"> </span>--dry-run<span class="w">     </span><span class="c1"># print the call, send nothing</span>
 </span></code></pre></div>
-<p>Like tokens, a webhook's signing secret is printed once, alone on stdout, by <code>create</code> and
-<code>rotate</code>; listings show <code>whsec_…&lt;last 4&gt;</code>. <code>update</code> changes the events (<code>-e</code> replaces the
-whole list), <code>--url</code> or <code>--description</code>, and <code>--enable</code>/<code>--disable</code> switches deliveries on or
-off: a webhook created with <code>--inactive</code>, or disabled automatically after repeated failures,
-goes back on with <code>--enable</code>, which also resets its failure count. Delivery responses are the receiver's text and
-are printed with control sequences removed. Verifying deliveries is described in
-<a href="../webhook-receivers/">Receiving webhooks</a>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>mapi<span class="w"> </span>plots<span class="w"> </span>render<span class="w"> </span>--model<span class="w"> </span>MODEL_ID<span class="w"> </span>--version<span class="w"> </span><span class="m">3</span><span class="w"> </span>--plot<span class="w"> </span>mmm.response_curves<span class="w"> </span>-f<span class="w"> </span>pdf<span class="w"> </span>-o<span class="w"> </span>curves.pdf
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>mapi<span class="w"> </span>plots<span class="w"> </span>render<span class="w"> </span>--saved<span class="w"> </span>PLOT_ID<span class="w"> </span>--width<span class="w"> </span><span class="m">1200</span>
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>mapi<span class="w"> </span>plots<span class="w"> </span>embed<span class="w"> </span>PLOT_ID<span class="w"> </span>--expires-in-days<span class="w"> </span><span class="m">30</span><span class="w"> </span>--allow-origin<span class="w"> </span>https://bi.example.com
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>mapi<span class="w"> </span>plots<span class="w"> </span>embeds<span class="w"> </span>PLOT_ID
-</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>mapi<span class="w"> </span>plots<span class="w"> </span>revoke<span class="w"> </span>PLOT_ID<span class="w"> </span>EMBED_ID<span class="w">                 </span><span class="c1"># asks first</span>
+<p><code>forecast</code> sends <a href="../../concepts/forecasting-with-actuals/">actuals and the dates to forecast</a>
+without a new fit. The CSV has a header row with the columns of the input table of the
+endpoint: the time column, the target and the drivers. <code>schema</code> lists them.</p>
+<ul>
+<li>Rows with a target value are actuals.</li>
+<li>Rows after the actuals with an empty target are the forecast.</li>
+<li>If there are no such rows, the command adds <code>--periods</code> (default 8) after the last actual.</li>
+<li>The command carries empty drivers on future rows forward (<code>--future-covariates</code>).</li>
+</ul>
+<p>The command shows the data that the forecast used ("Forecast updated with 3 actuals …") and
+the summary table. <code>score</code> also shows them.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>create<span class="w"> </span>https://hooks.example.com/mapi<span class="w"> </span>-e<span class="w"> </span>endpoint.promoted<span class="w"> </span>-e<span class="w"> </span>run.failed<span class="w"> </span>&gt;<span class="w"> </span>hook.secret
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>ls
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>deliveries<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>--status<span class="w"> </span>failed
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>replay<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>DELIVERY_ID
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>update<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>--enable<span class="w">           </span><span class="c1"># back on after --inactive or an auto-disable</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>update<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>-e<span class="w"> </span>run.failed<span class="w"> </span>--description<span class="w"> </span><span class="s2">"on-call"</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>rotate<span class="w"> </span>WEBHOOK_ID<span class="w"> </span>&gt;<span class="w"> </span>hook.secret<span class="w">      </span><span class="c1"># asks first; the old secret signs for 24 h</span>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>rm<span class="w"> </span>WEBHOOK_ID<span class="w">                        </span><span class="c1"># asks first</span>
 </span></code></pre></div>
-<p><code>render</code> draws the plot in the sandbox (vl-convert) and downloads the file; <code>embed</code> prints the
-link - which carries its token - once (<a href="../sharing-plots/">Sharing plots</a>).</p>
+<p><code>create</code> and <code>rotate</code> show the signing secret of a webhook one time, alone on stdout, as for
+tokens. Lists show <code>whsec_…&lt;last 4&gt;</code>. <code>update</code> changes the events, <code>--url</code> or
+<code>--description</code>. <code>-e</code> replaces the full list of events. <code>--enable</code>/<code>--disable</code> turns
+deliveries on or off.</p>
+<p>A webhook that you created with <code>--inactive</code> goes back on with <code>--enable</code>. This also applies
+to a webhook that the platform disabled automatically after many failures. <code>--enable</code> also
+resets the failure count. Delivery responses are the text of the receiver. The CLI shows them
+with control sequences removed. <a href="../webhook-receivers/">Receiving webhooks</a> tells how to
+verify deliveries.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>mapi<span class="w"> </span>plots<span class="w"> </span>render<span class="w"> </span>--model<span class="w"> </span>MODEL_ID<span class="w"> </span>--version<span class="w"> </span><span class="m">3</span><span class="w"> </span>--plot<span class="w"> </span>mmm.response_curves<span class="w"> </span>-f<span class="w"> </span>pdf<span class="w"> </span>-o<span class="w"> </span>curves.pdf
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>mapi<span class="w"> </span>plots<span class="w"> </span>render<span class="w"> </span>--saved<span class="w"> </span>PLOT_ID<span class="w"> </span>--width<span class="w"> </span><span class="m">1200</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>mapi<span class="w"> </span>plots<span class="w"> </span>embed<span class="w"> </span>PLOT_ID<span class="w"> </span>--expires-in-days<span class="w"> </span><span class="m">30</span><span class="w"> </span>--allow-origin<span class="w"> </span>https://bi.example.com
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>mapi<span class="w"> </span>plots<span class="w"> </span>embeds<span class="w"> </span>PLOT_ID
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>mapi<span class="w"> </span>plots<span class="w"> </span>revoke<span class="w"> </span>PLOT_ID<span class="w"> </span>EMBED_ID<span class="w">                 </span><span class="c1"># asks first</span>
+</span></code></pre></div>
+<p><code>render</code> draws the plot in the sandbox (vl-convert) and downloads the file. <code>embed</code> shows the
+link one time. The link contains its token (<a href="../sharing-plots/">Sharing plots</a>).</p>
 <h3 id="guided-mode-and-business-priors">Guided mode and business priors <span class="mapi-badge">v0.4</span><a class="headerlink" href="#guided-mode-and-business-priors" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>mapi<span class="w"> </span>guided<span class="w"> </span>templates<span class="w"> </span><span class="o">[</span>geo_mmm<span class="o">]</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>mapi<span class="w"> </span>guided<span class="w"> </span>detect<span class="w"> </span>geo_mmm<span class="w"> </span>--csv<span class="w"> </span>media.csv<span class="w">          </span><span class="c1"># or --dataset dataset://growth/media@v2</span>
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>mapi<span class="w"> </span>guided<span class="w"> </span>draft<span class="w"> </span>geo_mmm<span class="w"> </span>--name<span class="w"> </span>eu-geo-mmm<span class="w"> </span>--dataset<span class="w"> </span>eu_media<span class="w"> </span>--csv<span class="w"> </span>media.csv<span class="w"> </span>--detect<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span>-a<span class="w"> </span><span class="nv">spend</span><span class="o">=</span>tv_spend,search_spend<span class="w"> </span>-a<span class="w"> </span><span class="nv">holdout_periods</span><span class="o">=</span><span class="m">8</span><span class="w"> </span>--yaml-out<span class="w"> </span>spec.yaml
-</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>mapi<span class="w"> </span>priors<span class="w"> </span>preview<span class="w"> </span>--beliefs<span class="w"> </span>beliefs.yaml<span class="w"> </span>--spec<span class="w"> </span>SPEC_ID<span class="w"> </span>--revision<span class="w"> </span><span class="m">2</span><span class="w"> </span>-o<span class="w"> </span>priors.json
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>mapi<span class="w"> </span>guided<span class="w"> </span>templates<span class="w"> </span><span class="o">[</span>geo_mmm<span class="o">]</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>mapi<span class="w"> </span>guided<span class="w"> </span>detect<span class="w"> </span>geo_mmm<span class="w"> </span>--csv<span class="w"> </span>media.csv<span class="w">          </span><span class="c1"># or --dataset dataset://growth/media@v2</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>mapi<span class="w"> </span>guided<span class="w"> </span>draft<span class="w"> </span>geo_mmm<span class="w"> </span>--name<span class="w"> </span>eu-geo-mmm<span class="w"> </span>--dataset<span class="w"> </span>eu_media<span class="w"> </span>--csv<span class="w"> </span>media.csv<span class="w"> </span>--detect<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span>-a<span class="w"> </span><span class="nv">spend</span><span class="o">=</span>tv_spend,search_spend<span class="w"> </span>-a<span class="w"> </span><span class="nv">holdout_periods</span><span class="o">=</span><span class="m">8</span><span class="w"> </span>--yaml-out<span class="w"> </span>spec.yaml
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>mapi<span class="w"> </span>priors<span class="w"> </span>preview<span class="w"> </span>--beliefs<span class="w"> </span>beliefs.yaml<span class="w"> </span>--spec<span class="w"> </span>SPEC_ID<span class="w"> </span>--revision<span class="w"> </span><span class="m">2</span><span class="w"> </span>-o<span class="w"> </span>priors.json
 </span></code></pre></div>
-<p><code>detect</code> and <code>draft --csv</code> profile the file <strong>locally</strong> - types, counts, ranges and a few
-sample values per column - and send only those summaries, as the web app does. <code>--detect</code>
-pre-fills every answer detection is sure of; <code>-a QUESTION=VALUE</code> answers (or overrides) one,
-with <code>a,b,c</code> for lists and JSON for numbers. A draft stores nothing: review <code>spec.yaml</code>, then
-upload the data with the mapping (<code>--mapping-out</code>) and fit. <code>priors preview</code> turns ROI or
-contribution-share ranges into model priors in a sandboxed run and shows what the model then
-believes, per channel (<a href="../guided-modelling/">Guided modelling</a>).</p>
+<p><code>detect</code> and <code>draft --csv</code> profile the file <strong>locally</strong>. They find the types, counts, ranges
+and some sample values of each column. They send only those summaries, as the web app does.</p>
+<ul>
+<li><code>--detect</code> fills each answer that detection is sure of.</li>
+<li><code>-a QUESTION=VALUE</code> answers one question, or overrides the answer. Use <code>a,b,c</code> for lists
+  and JSON for numbers.</li>
+</ul>
+<p>A draft stores nothing. Examine <code>spec.yaml</code>. Then upload the data with the mapping
+(<code>--mapping-out</code>) and fit. <code>priors preview</code> changes ROI ranges or contribution-share ranges
+into model priors in a sandboxed run. It shows what the model then believes, for each channel
+(<a href="../guided-modelling/">Guided modelling</a>).</p>
 <h3 id="sign-up-and-your-workspace">Sign-up and your workspace <span class="mapi-badge">v0.4</span><a class="headerlink" href="#sign-up-and-your-workspace" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>mapi<span class="w"> </span>--url<span class="w"> </span>https://api.mapi.example<span class="w"> </span>signup<span class="w"> </span>--email<span class="w"> </span>ana@acme.example<span class="w"> </span>--name<span class="w"> </span><span class="s2">"Ana Analyst"</span><span class="w"> </span>--accept-terms
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>mapi<span class="w"> </span>--url<span class="w"> </span>https://api.mapi.example<span class="w"> </span>verify-email<span class="w"> </span>mev_…<span class="w">   </span><span class="c1"># the token from the e-mail link</span>
-</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>mapi<span class="w"> </span>tenant<span class="w"> </span>status<span class="w">                                       </span><span class="c1"># verification, any scheduled deletion</span>
-</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>mapi<span class="w"> </span>tenant<span class="w"> </span><span class="nb">export</span><span class="w"> </span>-o<span class="w"> </span>acme-export.zip<span class="w">                    </span><span class="c1"># GDPR export, waited for and downloaded</span>
-</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>mapi<span class="w"> </span>tenant<span class="w"> </span>delete<span class="w">                                       </span><span class="c1"># type the tenant id to confirm</span>
-</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>mapi<span class="w"> </span>tenant<span class="w"> </span>delete<span class="w"> </span>--cancel<span class="w">                              </span><span class="c1"># within the grace period</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>mapi<span class="w"> </span>--url<span class="w"> </span>https://api.mapi.example<span class="w"> </span>signup<span class="w"> </span>--email<span class="w"> </span>ana@acme.example<span class="w"> </span>--name<span class="w"> </span><span class="s2">"Ana Analyst"</span><span class="w"> </span>--accept-terms
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>mapi<span class="w"> </span>--url<span class="w"> </span>https://api.mapi.example<span class="w"> </span>verify-email<span class="w"> </span>mev_…<span class="w">   </span><span class="c1"># the token from the e-mail link</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>mapi<span class="w"> </span>tenant<span class="w"> </span>status<span class="w">                                       </span><span class="c1"># verification, any scheduled deletion</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>mapi<span class="w"> </span>tenant<span class="w"> </span><span class="nb">export</span><span class="w"> </span>-o<span class="w"> </span>acme-export.zip<span class="w">                    </span><span class="c1"># GDPR export, waited for and downloaded</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>mapi<span class="w"> </span>tenant<span class="w"> </span>delete<span class="w">                                       </span><span class="c1"># type the tenant id to confirm</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>mapi<span class="w"> </span>tenant<span class="w"> </span>delete<span class="w"> </span>--cancel<span class="w">                              </span><span class="c1"># within the grace period</span>
 </span></code></pre></div>
-<p><code>signup</code> and <code>verify-email</code> send no credentials. <code>tenant delete</code> explains what is purged and
-kept, and asks you to type the tenant id; scripts pass <code>--confirm TENANT</code>. The tenant is
-<code>--tenant</code>, else the selected project's, else your only one
+<p><code>signup</code> and <code>verify-email</code> send no credentials. <code>tenant delete</code> tells what the platform
+purges and what it keeps. Then it asks you to type the tenant id. Scripts give
+<code>--confirm TENANT</code>. The tenant is <code>--tenant</code>. If you do not give it, the tenant is the tenant
+of the selected project. If there is no selected project, it is your only tenant
 (<a href="../data-deletion/">Deleting and exporting data</a>).</p>
 <h3 id="workflows-governance-and-explorers">Workflows, governance and explorers <span class="mapi-badge">v0.5</span><a class="headerlink" href="#workflows-governance-and-explorers" title="Permanent link">&para;</a></h3>
 <p><strong>Help me choose</strong> and <strong>About cards</strong>, in the terminal:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>mapi<span class="w"> </span>choose<span class="w">                                   </span><span class="c1"># questions, one at a time; Enter skips one</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>mapi<span class="w"> </span>choose<span class="w"> </span>-a<span class="w"> </span><span class="nv">goal</span><span class="o">=</span>forecast<span class="w"> </span>-a<span class="w"> </span><span class="nv">data_shape</span><span class="o">=</span>one_series<span class="w"> </span>-a<span class="w"> </span><span class="nv">drivers</span><span class="o">=</span>yes<span class="w"> </span>-a<span class="w"> </span><span class="nv">experience</span><span class="o">=</span>beginner
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.sarimax<span class="w">                         </span><span class="c1"># one item's About card</span>
-</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.sarimax<span class="w"> </span>--expert<span class="w">                </span><span class="c1"># ... with the maths and references</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>mapi<span class="w"> </span>choose<span class="w">                                   </span><span class="c1"># questions, one at a time; Enter skips one</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>mapi<span class="w"> </span>choose<span class="w"> </span>-a<span class="w"> </span><span class="nv">goal</span><span class="o">=</span>forecast<span class="w"> </span>-a<span class="w"> </span><span class="nv">data_shape</span><span class="o">=</span>one_series<span class="w"> </span>-a<span class="w"> </span><span class="nv">drivers</span><span class="o">=</span>yes<span class="w"> </span>-a<span class="w"> </span><span class="nv">experience</span><span class="o">=</span>beginner
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.sarimax<span class="w">                         </span><span class="c1"># one item's About card</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.sarimax<span class="w"> </span>--expert<span class="w">                </span><span class="c1"># ... with the maths and references</span>
 </span></code></pre></div>
-<p><strong>Workflows</strong>: start from the gallery, check the file on the server, save it, run it and watch
-every node live. <code>--watch</code> exits with status 1 when the run fails, so it works in CI:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>templates<span class="w">                      </span><span class="c1"># the gallery, in plain words</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>init<span class="w"> </span>ts_readiness_arimax<span class="w"> </span>--name<span class="w"> </span>weekly-readiness<span class="w">   </span><span class="c1"># writes weekly-readiness.yaml</span>
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>validate<span class="w"> </span>weekly-readiness.yaml<span class="w"> </span><span class="c1"># checked by the server: pointers to every problem</span>
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>apply<span class="w"> </span>weekly-readiness.yaml<span class="w"> </span>-m<span class="w"> </span><span class="s2">"first version"</span><span class="w">     </span><span class="c1"># create, or save a revision</span>
-</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>run<span class="w"> </span>weekly-readiness<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="w">  </span>--input<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://growth/weekly_sales@latest<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="w">  </span>--param<span class="w"> </span><span class="s1">'drivers=["price"]'</span><span class="w"> </span>--param<span class="w"> </span><span class="nv">window</span><span class="o">=</span><span class="m">104</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="w">  </span>--watch<span class="w">                                     </span><span class="c1"># live node status; exit 1 if the run fails</span>
+<p><strong>Workflows</strong>: start from the gallery and check the file on the server. Then save it, run it
+and watch each node live. If the run fails, <code>--watch</code> exits with status 1. Thus it works in
+CI:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>templates<span class="w">                      </span><span class="c1"># the gallery, in plain words</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>init<span class="w"> </span>ts_readiness_arimax<span class="w"> </span>--name<span class="w"> </span>weekly-readiness<span class="w">   </span><span class="c1"># writes weekly-readiness.yaml</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>validate<span class="w"> </span>weekly-readiness.yaml<span class="w"> </span><span class="c1"># checked by the server: pointers to every problem</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>apply<span class="w"> </span>weekly-readiness.yaml<span class="w"> </span>-m<span class="w"> </span><span class="s2">"first version"</span><span class="w">     </span><span class="c1"># create, or save a revision</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>run<span class="w"> </span>weekly-readiness<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">  </span>--input<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://growth/weekly_sales@latest<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="w">  </span>--param<span class="w"> </span><span class="s1">'drivers=["price"]'</span><span class="w"> </span>--param<span class="w"> </span><span class="nv">window</span><span class="o">=</span><span class="m">104</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="w">  </span>--watch<span class="w">                                     </span><span class="c1"># live node status; exit 1 if the run fails</span>
 </span></code></pre></div>
-<p><code>validate</code> and <code>apply</code> print the order the nodes will run in (captured on a local stack, with
-the <a href="../workflow-cookbook/#readiness-to-arimax">cookbook's</a> document):</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>weekly-readiness.yaml: valid (23 nodes)
-</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>order: adf → kpss → pp → za → seas → folds → holdout → wanders → seasonal → naive → order → sdiff → backtest → fit → diff → compare → dm → acf → select → governance → report → trusted → pack
+<p><code>validate</code> and <code>apply</code> show the sequence in which the nodes will run. This output is from a
+local stack, with the document of the <a href="../workflow-cookbook/#readiness-to-arimax">cookbook</a>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>weekly-readiness.yaml: valid (23 nodes)
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>order: adf → kpss → pp → za → seas → folds → holdout → wanders → seasonal → naive → order → sdiff → backtest → fit → diff → compare → dm → acf → select → governance → report → trusted → pack
 </span></code></pre></div>
-<p>The live board of <code>--watch</code> and the summary it ends with are in the
-<a href="../workflow-cookbook/#run-it-with-the-cli">cookbook</a>. Then inspect a run node by node:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nv">RUN</span><span class="o">=</span><span class="k">$(</span>mapi<span class="w"> </span>--json<span class="w"> </span>workflows<span class="w"> </span>runs<span class="w"> </span>weekly-readiness<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[0].run_id'</span><span class="k">)</span>
-</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>status<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w">                  </span><span class="c1"># nodes, what each found, decisions, outputs</span>
-</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>node<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>order<span class="w">              </span><span class="c1"># one node: parameters, result, outputs</span>
-</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>output<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>diff<span class="w"> </span>data<span class="w"> </span>--out<span class="w"> </span>diff.zarr.zip<span class="w">   </span><span class="c1"># a derived dataset, verified</span>
+<p>The <a href="../workflow-cookbook/#run-it-with-the-cli">cookbook</a> shows the live board of <code>--watch</code>
+and the summary at its end. Then examine a run, one node at a time:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nv">RUN</span><span class="o">=</span><span class="k">$(</span>mapi<span class="w"> </span>--json<span class="w"> </span>workflows<span class="w"> </span>runs<span class="w"> </span>weekly-readiness<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[0].run_id'</span><span class="k">)</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>status<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w">                  </span><span class="c1"># nodes, what each found, decisions, outputs</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>node<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>order<span class="w">              </span><span class="c1"># one node: parameters, result, outputs</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>output<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>diff<span class="w"> </span>data<span class="w"> </span>--out<span class="w"> </span>diff.zarr.zip<span class="w">   </span><span class="c1"># a derived dataset, verified</span>
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a> node        order
-</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a> uses        search.arma_order@1.0.0
-</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a> status      succeeded
-</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a> attempt     1
-</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a> child runs  run_01m53hawz719exdgb6kcw5ysp3
-</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a> params      {"d": 1, "exog": ["price"], "max_p": 3, "max_q": 3, "trend": "c", "criterion": "aic"}
-</span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a> result      {"best_p": 1, "best_q": 1, "best_order": [1, 1, 1], "criterion": "aic",
-</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>              "best_score": 430.4823790539326, "n_failed": 0, "suggested_p": 0, "suggested_q": 0}
-</span><span id="__span-21-9"><a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a> outputs     table: table
+<div class="language-text highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a> node        order
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a> uses        search.arma_order@1.0.0
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a> status      succeeded
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a> attempt     1
+</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a> child runs  run_01m53hawz719exdgb6kcw5ysp3
+</span><span id="__span-22-6"><a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a> params      {"d": 1, "exog": ["price"], "max_p": 3, "max_q": 3, "trend": "c", "criterion": "aic"}
+</span><span id="__span-22-7"><a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a> result      {"best_p": 1, "best_q": 1, "best_order": [1, 1, 1], "criterion": "aic",
+</span><span id="__span-22-8"><a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>              "best_score": 430.4823790539326, "n_failed": 0, "suggested_p": 0, "suggested_q": 0}
+</span><span id="__span-22-9"><a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a> outputs     table: table
 </span></code></pre></div>
-<p>(<code>mapi workflows node "$RUN" order</code>, the JSON folded onto fewer lines here: the search was
-given <code>d = 1</code> by the differencing decision and the run's <code>price</code> driver, and chose ARIMA(1, 1, 1)
-by AIC.)</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>schedules<span class="w"> </span>add<span class="w"> </span>weekly-readiness<span class="w"> </span><span class="s2">"0 6 * * 1"</span><span class="w"> </span>--tz<span class="w"> </span>Europe/Berlin<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span>--input<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://growth/weekly_sales@latest
-</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>triggers<span class="w"> </span>add<span class="w"> </span>weekly-readiness<span class="w"> </span>dataset://growth/weekly_sales<span class="w"> </span>--debounce<span class="w"> </span><span class="m">600</span>
-</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>schedules<span class="w"> </span>ls<span class="w"> </span>weekly-readiness
+<p>This is the output of <code>mapi workflows node "$RUN" order</code>. Here, we folded the JSON onto fewer
+lines. The differencing decision gave <code>d = 1</code> to the search, and the run gave the <code>price</code>
+driver. The search selected ARIMA(1, 1, 1) by AIC.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>schedules<span class="w"> </span>add<span class="w"> </span>weekly-readiness<span class="w"> </span><span class="s2">"0 6 * * 1"</span><span class="w"> </span>--tz<span class="w"> </span>Europe/Berlin<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">  </span>--input<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://growth/weekly_sales@latest
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>triggers<span class="w"> </span>add<span class="w"> </span>weekly-readiness<span class="w"> </span>dataset://growth/weekly_sales<span class="w"> </span>--debounce<span class="w"> </span><span class="m">600</span>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>schedules<span class="w"> </span>ls<span class="w"> </span>weekly-readiness
 </span></code></pre></div>
-<p><code>-i name=ref</code> binds a workflow input (<code>@latest</code> is pinned to a version when the run starts);
-<code>-p name=value</code> sets a parameter, as JSON when it parses (<code>-p 'horizons=[1,4,13]'</code>). The
-<a href="../workflow-cookbook/">workflow cookbook</a> has complete documents to start from.</p>
-<p><strong>Governance</strong>: the check catalog, policies, validations and second-person approval. <code>mapi
-validate model</code> waits for the checks and prints each result in plain words with the suggested
-action; <code>mapi approve</code> needs a signed-in reviewer who did not submit the model:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>mapi<span class="w"> </span>governance<span class="w"> </span>checks<span class="w">                        </span><span class="c1"># what a policy can require</span>
-</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>mapi<span class="w"> </span>governance<span class="w"> </span>checks<span class="w"> </span>--about<span class="w"> </span>null.permutation_target<span class="w"> </span>--expert
-</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>mapi<span class="w"> </span>governance<span class="w"> </span>policies<span class="w"> </span>ls<span class="w">                   </span><span class="c1"># in force here: tenant-wide first</span>
-</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>mapi<span class="w"> </span>governance<span class="w"> </span>policies<span class="w"> </span>create<span class="w"> </span>forecast-policy.yaml
-</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>mapi<span class="w"> </span>validate<span class="w"> </span>model<span class="w"> </span>model://growth/wf-weekly-readiness-fit@v1<span class="w">   </span><span class="c1"># runs the checks, waits</span>
-</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>mapi<span class="w"> </span>validations<span class="w"> </span>ls<span class="w"> </span>--queue<span class="w">                   </span><span class="c1"># reviewers: what waits for a decision</span>
-</span><span id="__span-23-7"><a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>mapi<span class="w"> </span>approve<span class="w"> </span><span class="s2">"</span><span class="nv">$VALIDATION</span><span class="s2">"</span><span class="w"> </span>--comment<span class="w"> </span><span class="s2">"Null tests convincing; beats naive by 25%"</span>
-</span><span id="__span-23-8"><a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>mapi<span class="w"> </span>validations<span class="w"> </span>pack<span class="w"> </span><span class="s2">"</span><span class="nv">$VALIDATION</span><span class="s2">"</span><span class="w"> </span>--out<span class="w"> </span>evidence.html<span class="w">          </span><span class="c1"># for the auditor</span>
+<p><code>-i name=ref</code> binds a workflow input. When the run starts, the platform pins <code>@latest</code> to a
+version. <code>-p name=value</code> sets a parameter. If the value parses as JSON, the CLI sends it as
+JSON (<code>-p 'horizons=[1,4,13]'</code>). The <a href="../workflow-cookbook/">workflow cookbook</a> has complete
+documents that you can start from.</p>
+<p><strong>Governance</strong>: the check catalog, policies, validations and approval by a second person.
+<code>mapi validate model</code> waits for the checks. It shows each result in plain words with the
+suggested action. <code>mapi approve</code> needs a signed-in reviewer who did not submit the model:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>mapi<span class="w"> </span>governance<span class="w"> </span>checks<span class="w">                        </span><span class="c1"># what a policy can require</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>mapi<span class="w"> </span>governance<span class="w"> </span>checks<span class="w"> </span>--about<span class="w"> </span>null.permutation_target<span class="w"> </span>--expert
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>mapi<span class="w"> </span>governance<span class="w"> </span>policies<span class="w"> </span>ls<span class="w">                   </span><span class="c1"># in force here: tenant-wide first</span>
+</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>mapi<span class="w"> </span>governance<span class="w"> </span>policies<span class="w"> </span>create<span class="w"> </span>forecast-policy.yaml
+</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>mapi<span class="w"> </span>validate<span class="w"> </span>model<span class="w"> </span>model://growth/wf-weekly-readiness-fit@v1<span class="w">   </span><span class="c1"># runs the checks, waits</span>
+</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>mapi<span class="w"> </span>validations<span class="w"> </span>ls<span class="w"> </span>--queue<span class="w">                   </span><span class="c1"># reviewers: what waits for a decision</span>
+</span><span id="__span-24-7"><a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>mapi<span class="w"> </span>approve<span class="w"> </span><span class="s2">"</span><span class="nv">$VALIDATION</span><span class="s2">"</span><span class="w"> </span>--comment<span class="w"> </span><span class="s2">"Null tests convincing; beats naive by 25%"</span>
+</span><span id="__span-24-8"><a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>mapi<span class="w"> </span>validations<span class="w"> </span>pack<span class="w"> </span><span class="s2">"</span><span class="nv">$VALIDATION</span><span class="s2">"</span><span class="w"> </span>--out<span class="w"> </span>evidence.html<span class="w">          </span><span class="c1"># for the auditor</span>
 </span></code></pre></div>
 <p><strong>Explorers and budget plans</strong>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>mapi<span class="w"> </span>explore<span class="w"> </span>dataset<span class="w"> </span>dataset://growth/weekly_sales@latest<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span>-s<span class="w"> </span>overview<span class="w"> </span>-s<span class="w"> </span>stationarity<span class="w"> </span>-s<span class="w"> </span>ccf<span class="w"> </span>-s<span class="w"> </span>stl<span class="w"> </span>--kpi<span class="w"> </span>sales<span class="w"> </span>--out<span class="w"> </span>views/
-</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>mapi<span class="w"> </span>explore<span class="w"> </span>dataset<span class="w"> </span>weekly_sales<span class="w"> </span>--show<span class="w"> </span>stationarity<span class="w">            </span><span class="c1"># one view as JSON</span>
-</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>mapi<span class="w"> </span>explore<span class="w"> </span>model<span class="w"> </span>model://growth/wf-weekly-readiness-fit@v1<span class="w"> </span>-s<span class="w"> </span>params<span class="w"> </span>-s<span class="w"> </span>residuals
-</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>mapi<span class="w"> </span>explore<span class="w"> </span>compare<span class="w"> </span>model://growth/arimax@v3<span class="w"> </span>model://growth/ets@v1<span class="w"> </span>--horizon<span class="w"> </span><span class="m">4</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>mapi<span class="w"> </span>explore<span class="w"> </span>dataset<span class="w"> </span>dataset://growth/weekly_sales@latest<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="w">  </span>-s<span class="w"> </span>overview<span class="w"> </span>-s<span class="w"> </span>stationarity<span class="w"> </span>-s<span class="w"> </span>ccf<span class="w"> </span>-s<span class="w"> </span>stl<span class="w"> </span>--kpi<span class="w"> </span>sales<span class="w"> </span>--out<span class="w"> </span>views/
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>mapi<span class="w"> </span>explore<span class="w"> </span>dataset<span class="w"> </span>weekly_sales<span class="w"> </span>--show<span class="w"> </span>stationarity<span class="w">            </span><span class="c1"># one view as JSON</span>
+</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>mapi<span class="w"> </span>explore<span class="w"> </span>model<span class="w"> </span>model://growth/wf-weekly-readiness-fit@v1<span class="w"> </span>-s<span class="w"> </span>params<span class="w"> </span>-s<span class="w"> </span>residuals
+</span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>mapi<span class="w"> </span>explore<span class="w"> </span>compare<span class="w"> </span>model://growth/arimax@v3<span class="w"> </span>model://growth/ets@v1<span class="w"> </span>--horizon<span class="w"> </span><span class="m">4</span>
 </span></code></pre></div>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>mapi<span class="w"> </span>optimize<span class="w"> </span>model://growth/geo-mmm@v7<span class="w"> </span>--change-pct<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="w">  </span>--channel<span class="w"> </span><span class="s1">'tv={"min_multiplier": 0.5, "max_multiplier": 1.5}'</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">  </span>--objective<span class="w"> </span>p10<span class="w"> </span>--frontier<span class="w"> </span><span class="m">8</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>mapi<span class="w"> </span>optimize<span class="w"> </span>model://growth/geo-mmm@v7<span class="w"> </span>--change-pct<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="w">  </span>--channel<span class="w"> </span><span class="s1">'tv={"min_multiplier": 0.5, "max_multiplier": 1.5}'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="w">  </span>--objective<span class="w"> </span>p10<span class="w"> </span>--frontier<span class="w"> </span><span class="m">8</span>
 </span></code></pre></div>
-<p>Model references are <code>model://project/name@vN</code>, <code>name@vN</code>, <code>name</code> with <code>-v N</code>, or a model id;
-datasets the same with <code>dataset://</code>. Every command takes <code>--json</code>.</p>
-<h3 id="scripting-with-json">Scripting with <code>--json</code><a class="headerlink" href="#scripting-with-json" title="Permanent link">&para;</a></h3>
-<p><code>--json</code> (a global option) prints one JSON document on stdout instead of tables; <code>runs watch
---json</code> and <code>workflows watch --json</code> print one JSON event per line. Errors become <code>{"error": {...}}</code> with exit status 1,
-and usage errors exit with 2.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="nv">RUN</span><span class="o">=</span><span class="k">$(</span>mapi<span class="w"> </span>--json<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span>--kind<span class="w"> </span>score<span class="w"> </span>--limit<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[0].id'</span><span class="k">)</span>
-</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>mapi<span class="w"> </span>--json<span class="w"> </span>runs<span class="w"> </span>get<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'{state, attempt, kind}'</span>
-</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>mapi<span class="w"> </span>runs<span class="w"> </span>logs<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span><span class="m">5</span>
+<p>These are the forms of a model reference: <code>model://project/name@vN</code>, <code>name@vN</code>, <code>name</code> with
+<code>-v N</code>, or a model id. Dataset references have the same forms with <code>dataset://</code>. All
+commands accept <code>--json</code>.</p>
+<h3 id="use-json-in-scripts">Use <code>--json</code> in scripts<a class="headerlink" href="#use-json-in-scripts" title="Permanent link">&para;</a></h3>
+<p><code>--json</code> is a global option. It shows one JSON document on stdout instead of tables.
+<code>runs watch --json</code> and <code>workflows watch --json</code> show one JSON event on each line. Errors
+become <code>{"error": {...}}</code> with exit status 1. Usage errors exit with status 2.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="nv">RUN</span><span class="o">=</span><span class="k">$(</span>mapi<span class="w"> </span>--json<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span>--kind<span class="w"> </span>score<span class="w"> </span>--limit<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[0].id'</span><span class="k">)</span>
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>mapi<span class="w"> </span>--json<span class="w"> </span>runs<span class="w"> </span>get<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'{state, attempt, kind}'</span>
+</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>mapi<span class="w"> </span>runs<span class="w"> </span>logs<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span><span class="m">5</span>
 </span></code></pre></div>
-<p>Text that came from the server, a plugin or a run log is printed with ANSI and control
-sequences removed, so a hostile log line cannot rewrite your terminal.</p>
+<p>The CLI removes ANSI and control sequences from text that came from the server, a plugin or a
+run log. Thus a hostile log line cannot write over your terminal.</p>
 <h2 id="mapi-serve"><code>mapi serve</code><a class="headerlink" href="#mapi-serve" title="Permanent link">&para;</a></h2>
-<p><code>mapi serve</code> runs <code>mapi-server dev</code>: database migrations, then the API and the orchestrator
-in one process, with an embedded PostgreSQL unless <code>DATABASE_URL</code> is set and an in-process
-GCS shim unless one already listens at <code>MAPI_GCS_ENDPOINT</code>. It is the smallest way to get an
-API for the CLI or the client. For the web app as well, use <code>make dev</code>
-(<a href="../../operations/local-development/">Local deployment</a>).</p>
+<p><code>mapi serve</code> runs <code>mapi-server dev</code>. It does the database migrations. Then it runs the API and
+the orchestrator in one process. It uses an embedded PostgreSQL, unless <code>DATABASE_URL</code> is set.
+It uses an in-process GCS shim, unless a shim already listens at <code>MAPI_GCS_ENDPOINT</code>. This is
+the smallest way to get an API for the CLI or the client. If you also want the web app, use
+<code>make dev</code> (<a href="../../operations/local-development/">Local deployment</a>).</p>
 
 
 

@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4943,6 +4973,8 @@
       
         
       
+        
+      
     
     
     
@@ -5031,6 +5063,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5495,8 +5555,8 @@
 
 
 <h1 id="mapi_plots"><code>mapi_plots</code><a class="headerlink" href="#mapi_plots" title="Permanent link">&para;</a></h1>
-<p>The JSON-only sanitizer and templates (core install) and the recipes and converters (extra
-<code>recipes</code>).</p>
+<p>This package has a sanitizer and templates that use only JSON. These are in the core install.
+The package also has recipes and converters. These are in the <code>recipes</code> extra.</p>
 <h2 id="sanitizer">Sanitizer<a class="headerlink" href="#sanitizer" title="Permanent link">&para;</a></h2>
 
 
@@ -6257,7 +6317,9 @@ the runner from a fitted bundle or a score output, so every plugin gets them for
 <code>core.decision_distribution</code> scalar decision objective per option
 ============================  ==========================================================</p>
 <p>The MMM domain pack lives in :mod:<code>mapi_plots.packs.mmm</code> and the tabular-ML pack
-(<code>ml.feature_importance</code>) in :mod:<code>mapi_plots.packs.ml</code>. All are exposed through the
+(<code>ml.feature_importance</code>) in :mod:<code>mapi_plots.packs.ml</code>, and the scientific-model pack
+(<code>sci.field_map</code>, <code>sci.vector_field</code>, <code>sci.profile_bands</code>, <code>sci.ensemble</code>; Plotly) in
+:mod:<code>mapi_plots.packs.sci</code>. All are exposed through the
 <code>mapi.plots</code> entry-point group, so <code>mapi_sdk.registry.default_registry()</code> finds them.</p>
 
 
@@ -6422,7 +6484,8 @@ the runner from a fitted bundle or a score output, so every plugin gets them for
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">caption</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">title</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">bindings</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            PlotBindings (mapi_spec.plots.PlotBindings)" href="../spec/#mapi_spec.plots.PlotBindings">PlotBindings</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">kind</span><span class="p">:</span> <span class="n"><span title="typing.Literal">Literal</span></span><span class="p">[</span><span class="s2">"auto"</span><span class="p">,</span> <span class="s2">"vega-lite"</span><span class="p">,</span> <span class="s2">"plotly"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"auto"</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -6430,6 +6493,8 @@ the runner from a fitted bundle or a score output, so every plugin gets them for
 
 
         <p>What a recipe function returns.</p>
+<p><code>chart</code> is an Altair chart (or a Vega-Lite dict), or a Plotly figure (<code>go.Figure</code> or a
+<code>{data, layout, frames}</code> dict). <code>kind</code> tells them apart; <code>auto</code> detects it.</p>
 
 
 

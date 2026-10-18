@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4713,6 +4743,8 @@
       
         
       
+        
+      
     
     
     
@@ -4801,6 +4833,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5037,10 +5097,10 @@
 
 
 <h1 id="marketing-mix-models-on-mmm-framework">Marketing-mix models on mmm-framework<a class="headerlink" href="#marketing-mix-models-on-mmm-framework" title="Permanent link">&para;</a></h1>
-<p>From v0.5 every marketing-mix model (MMM) on the platform runs on
+<p>From v0.5, all marketing-mix models (MMM) on the platform run on
 <a href="https://redam94.github.io/mmm-framework/">mmm-framework</a> (PyPI <code>mmm-framework==1.5.0</code>,
-Apache-2.0), a Bayesian MMM framework built on PyMC. <code>mapi-plugin-mmm</code> wraps it behind the
-platform contract as two built-in models:</p>
+Apache-2.0). mmm-framework is a Bayesian MMM framework that uses PyMC. <code>mapi-plugin-mmm</code>
+puts it behind the platform contract as two built-in models:</p>
 <table>
 <thead>
 <tr>
@@ -5052,28 +5112,29 @@ platform contract as two built-in models:</p>
 <tbody>
 <tr>
 <td><code>mmm.bayesian</code></td>
-<td>Measures how much each marketing channel adds to your sales, in total or per market, and what would happen if you moved budget between channels.</td>
+<td>Measures how much each marketing channel adds to your sales, in total or per market. It also shows what will occur if you move budget between channels.</td>
 <td>mmm-framework <code>BayesianMMM</code>: NUTS (nutpie, PyMC or NumPyro), or fast approximations (MAP, ADVI, Pathfinder)</td>
 </tr>
 <tr>
 <td><code>mmm.frequentist</code></td>
-<td>A first estimate in seconds, with simpler ranges from resampling the data instead of a full Bayesian model's uncertainty.</td>
+<td>Gives a first estimate in seconds. Its ranges come from samples of the data, not from the uncertainty of a full Bayesian model.</td>
 <td>mmm-framework's ridge estimator with bootstrap intervals</td>
 </tr>
 </tbody>
 </table>
-<p>Both carry a plain-language <strong>About card</strong> (what the model is for, when not to use it,
-what data it needs, what you get out); the web app's <em>Help me choose</em> recommends them
-for "explain my marketing" and "plan my budget" goals (<code>mapi choose -a goal=plan_budget</code>,
-see <a href="../../guides/choosing-a-model/">Choosing a model</a>). mmm-framework is the platform's only
-marketing-mix engine, and budgets are optimised by the platform itself
-(<a href="#budget-optimisation">below</a>).</p>
+<p>Each model has an <strong>About card</strong> in plain language. The card tells what the model is for,
+when not to use it, what data it needs and what you get from it. <em>Help me choose</em> in the web
+app recommends these models for the goals "explain my marketing" and "plan my budget"
+(<code>mapi choose -a goal=plan_budget</code>, see <a href="../../guides/choosing-a-model/">Choosing a model</a>).
+mmm-framework is the only marketing-mix engine on the platform. The platform itself optimises
+budgets (<a href="#budget-optimisation">below</a>).</p>
 <h2 id="what-the-data-looks-like">What the data looks like<a class="headerlink" href="#what-the-data-looks-like" title="Permanent link">&para;</a></h2>
-<p>mmm-framework owns <strong>scaling, carry-over and the conversion back to your units</strong>
-(<code>owns: [scaling, carryover, inverse_units]</code>), so the pipeline only converts currencies,
-aggregates to weeks and adds controls. A scaling or lag step on the KPI or the spend is
-refused when the spec is validated (<code>CAPABILITY_UNSUPPORTED</code>), so nothing is scaled twice.</p>
-<p>Canonical names (bind your dataset's names onto them in <code>data.bind</code>):</p>
+<p>mmm-framework does the <strong>scaling, the carry-over and the conversion back to your units</strong>
+(<code>owns: [scaling, carryover, inverse_units]</code>). Thus, the pipeline only converts currencies,
+adds the data up to weeks and adds controls. The spec validation refuses a scaling step or a
+lag step on the KPI or on the spend (<code>CAPABILITY_UNSUPPORTED</code>). Thus, the platform does not
+scale a value two times.</p>
+<p>The table gives the canonical names. Bind the names of your dataset to them in <code>data.bind</code>:</p>
 <table>
 <thead>
 <tr>
@@ -5086,17 +5147,17 @@ refused when the spec is validated (<code>CAPABILITY_UNSUPPORTED</code>), so not
 <tr>
 <td><code>time</code></td>
 <td>-</td>
-<td>the period dim (<code>extend</code>: forecasts run past the data)</td>
+<td>the period dim (<code>extend</code>: forecasts continue after the data)</td>
 </tr>
 <tr>
 <td><code>channel</code></td>
 <td>-</td>
-<td>one label per media channel (<code>fixed</code>)</td>
+<td>one label for each media channel (<code>fixed</code>)</td>
 </tr>
 <tr>
 <td><code>geo</code>, <code>product</code></td>
 <td>-</td>
-<td>the panel dims listed in <code>hierarchy.pool_over</code> (none for one national series)</td>
+<td>the panel dims in the list <code>hierarchy.pool_over</code> (none for one national series)</td>
 </tr>
 <tr>
 <td><code>y</code></td>
@@ -5106,12 +5167,12 @@ refused when the spec is validated (<code>CAPABILITY_UNSUPPORTED</code>), so not
 <tr>
 <td><code>spend</code></td>
 <td><code>(*panel, channel, time)</code></td>
-<td>spend per channel (<code>future_required</code>: a forecast needs it)</td>
+<td>the spend for each channel (<code>future_required</code>: a forecast needs it)</td>
 </tr>
 <tr>
 <td>any other numeric variable over time</td>
 <td><code>(*panel?, time, ...)</code></td>
-<td>a control (or list them in <code>controls</code>); extra dims such as Fourier modes become one feature per label</td>
+<td>a control (or put them in the list <code>controls</code>). Each label of an extra dim, for example a Fourier mode, becomes one feature.</td>
 </tr>
 </tbody>
 </table>
@@ -5148,26 +5209,32 @@ refused when the spec is validated (<code>CAPABILITY_UNSUPPORTED</code>), so not
 </span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">  </span><span class="nt">plots</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">core.ppc_fan</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">core.convergence</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">mmm.decomposition</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">mmm.response_curves</span><span class="p p-Indicator">]</span>
 </span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="nt">evaluate</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">elpd_loo</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">coverage_90</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">mape</span><span class="p p-Indicator">]}</span>
 </span></code></pre></div>
-<p>A runnable, scaled-down version of this spec ships as
-<code>mapi_plugin_mmm.examples.E33_SPEC_YAML</code>, with a simulator (<code>e33_dataset</code>) whose true
-contributions are known; <code>NATIONAL_SPEC_YAML</code> with <code>national_dataset()</code> is the smallest
+<p>The plugin includes a smaller version of this spec that you can run:
+<code>mapi_plugin_mmm.examples.E33_SPEC_YAML</code>. It has a simulator (<code>e33_dataset</code>) that gives
+known true contributions. <code>NATIONAL_SPEC_YAML</code> with <code>national_dataset()</code> is the smallest
 national example.</p>
 <h3 id="mff-data">MFF data<a class="headerlink" href="#mff-data" title="Permanent link">&para;</a></h3>
-<p>mmm-framework's native format is the <strong>Master Flat File</strong> (MFF): one row per <code>Period</code>,
-<code>Geography</code>, <code>Product</code>, <code>Campaign</code>, <code>Outlet</code>, <code>Creative</code> and <code>VariableName</code>, the value in
-<code>VariableValue</code>. Upload it with the <code>mff</code> ingest preset (or as a Guided upload): every
-variable becomes its own data variable, and the key columns follow mmm-framework's MFF
-semantics. <code>Geography</code> and <code>Product</code> become dims when they have more than one level; a
-variable given only in total (a blank, <code>National</code> or <code>Total</code> label - national TV next to
-regional sales) is spread across the levels like <code>MFFLoader</code> disaggregates it (geographies
-equally, products by the KPI's share; <code>MffOptions.allocation</code> changes it), and a variable
-may not mix per-level and total rows. <code>Campaign</code>, <code>Outlet</code> and <code>Creative</code> are summed up to
-the modelled dims unless <code>MffOptions.split</code> keeps them. The Guided geo template stacks the
-media variables you pick into <code>spend(channel)</code>. The plugin hands the panel to mmm-framework
-in exactly the layout its own <code>MFFLoader</code> builds - observations period-major, then
-geography, then product - and tests check that an MFF file ingested by the platform and the
-same file loaded with <code>mmm_framework.load_mff</code> give the same panel, national media and
-campaign rows included.</p>
+<p>The native format of mmm-framework is the <strong>Master Flat File</strong> (MFF). It has one row for
+each <code>Period</code>, <code>Geography</code>, <code>Product</code>, <code>Campaign</code>, <code>Outlet</code>, <code>Creative</code> and <code>VariableName</code>.
+The value is in <code>VariableValue</code>.</p>
+<p>Upload the file with the <code>mff</code> ingest preset, or as a Guided upload. Each variable becomes
+its own data variable. The key columns have the same meaning as in the MFF of mmm-framework:</p>
+<ul>
+<li><code>Geography</code> and <code>Product</code> become dims when they have more than one level.</li>
+<li>Some variables have only a total: a blank, <code>National</code> or <code>Total</code> label. An example is
+  national TV next to regional sales. The platform divides such a variable across the levels
+  in the same way as <code>MFFLoader</code>. Each geography gets an equal part. Each product gets a part
+  that agrees with its share of the KPI. <code>MffOptions.allocation</code> changes this.</li>
+<li>A variable cannot have both rows for each level and total rows.</li>
+<li>The platform adds <code>Campaign</code>, <code>Outlet</code> and <code>Creative</code> up to the dims of the model, unless
+  <code>MffOptions.split</code> keeps them.</li>
+<li>The Guided geo template puts the media variables that you select into <code>spend(channel)</code>.</li>
+</ul>
+<p>The plugin gives the panel to mmm-framework in the same layout that its own <code>MFFLoader</code> makes.
+The observations are in period order first, then geography, then product. Tests compare an
+MFF file that the platform ingests with the same file that <code>mmm_framework.load_mff</code> loads.
+They make sure that the two give the same panel, with the national media rows and the
+campaign rows.</p>
 <h2 id="how-the-spec-maps-onto-mmm-framework">How the spec maps onto mmm-framework<a class="headerlink" href="#how-the-spec-maps-onto-mmm-framework" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5179,19 +5246,19 @@ campaign rows included.</p>
 <tbody>
 <tr>
 <td><code>y</code>, <code>spend</code>, controls</td>
-<td><code>PanelDataset</code> (<code>y</code>, <code>X_media</code>, <code>X_controls</code>) with <code>MFFConfig</code> (<code>KPIConfig</code>, <code>MediaChannelConfig</code> per channel, <code>ControlVariableConfig</code> per control feature)</td>
+<td><code>PanelDataset</code> (<code>y</code>, <code>X_media</code>, <code>X_controls</code>) with <code>MFFConfig</code> (<code>KPIConfig</code>, <code>MediaChannelConfig</code> for each channel, <code>ControlVariableConfig</code> for each control feature)</td>
 </tr>
 <tr>
 <td><code>hierarchy.pool_over: [geo, product]</code></td>
-<td>the KPI's <code>Geography</code>/<code>Product</code> dimensions; <code>HierarchicalConfig.pool_across_geo/product</code> (a baseline per level, partially pooled)</td>
+<td>the <code>Geography</code>/<code>Product</code> dimensions of the KPI; <code>HierarchicalConfig.pool_across_geo/product</code> (a baseline for each level, partially pooled)</td>
 </tr>
 <tr>
 <td><code>hierarchy.media_by_geo</code></td>
-<td><code>HierarchicalConfig.vary_media_by_geo</code> (channel effects per geo, partially pooled)</td>
+<td><code>HierarchicalConfig.vary_media_by_geo</code> (channel effects for each geo, partially pooled)</td>
 </tr>
 <tr>
 <td><code>adstock.kind</code>, <code>l_max</code>, <code>normalize</code></td>
-<td><code>AdstockConfig</code> (<code>geometric</code>, <code>delayed</code>, <code>weibull</code>, <code>none</code>) on every channel</td>
+<td><code>AdstockConfig</code> (<code>geometric</code>, <code>delayed</code>, <code>weibull</code>, <code>none</code>) on all channels</td>
 </tr>
 <tr>
 <td><code>saturation.kind</code></td>
@@ -5199,7 +5266,7 @@ campaign rows included.</p>
 </tr>
 <tr>
 <td><code>channels.&lt;c&gt;.adstock/saturation</code></td>
-<td>that channel's configs</td>
+<td>the configs of that channel</td>
 </tr>
 <tr>
 <td><code>trend.kind</code></td>
@@ -5211,7 +5278,7 @@ campaign rows included.</p>
 </tr>
 <tr>
 <td><code>media_prior: roi</code></td>
-<td><code>ModelConfig.media_prior_mode="roi"</code>: channel effects parameterised by their return on spend</td>
+<td><code>ModelConfig.media_prior_mode="roi"</code>: the return on spend sets the parameters of the channel effects</td>
 </tr>
 <tr>
 <td><code>priors.roi.&lt;c&gt;: {mu, sigma}</code></td>
@@ -5227,7 +5294,7 @@ campaign rows included.</p>
 </tr>
 <tr>
 <td><code>fit.engine</code></td>
-<td><code>nutpie</code>/<code>pymc</code>/<code>numpyro</code>: NUTS with that backend; <code>map</code>, <code>advi</code>, <code>fullrank_advi</code>, <code>pathfinder</code>, <code>laplace</code>, <code>smc</code>: <code>BayesianMMM.fit(method=...)</code></td>
+<td><code>nutpie</code>/<code>pymc</code>/<code>numpyro</code>: NUTS with that backend. <code>map</code>, <code>advi</code>, <code>fullrank_advi</code>, <code>pathfinder</code>, <code>laplace</code>, <code>smc</code>: <code>BayesianMMM.fit(method=...)</code></td>
 </tr>
 <tr>
 <td><code>fit.tune</code>, <code>draws</code>, <code>chains</code>, <code>target_accept</code>, <code>seed</code></td>
@@ -5235,37 +5302,51 @@ campaign rows included.</p>
 </tr>
 </tbody>
 </table>
-<p><code>frequency</code> (<code>W</code>, <code>D</code> or <code>M</code>) is read from the time labels; integer labels need it set.
-New panel levels at score time follow <code>new_levels</code>: <code>pooled</code> (the overall level and the
-average channel effects), <code>hyperprior</code> (a level drawn from the fitted spread for every
-draw, so its range is honestly wider), <code>zero</code> (no channel effects) or <code>error</code>.</p>
-<h2 id="what-is-stored-and-how-scoring-works">What is stored, and how scoring works<a class="headerlink" href="#what-is-stored-and-how-scoring-works" title="Permanent link">&para;</a></h2>
-<p>A fit stores, never as a pickle: mmm-framework's parameters (<code>posterior</code>), the sampler
-statistics, a thinned prior of the free parameters (the scorecard's prior/posterior
-overlap), the observed KPI and a <code>fit_data</code> group with the model-stage KPI, spend and
-control features. Scoring rebuilds the <code>BayesianMMM</code> from <code>fit_data</code> - the same data give
-the same scaling, Fourier features and trend basis - and replays the fitted model per
-posterior draw in NumPy: intercept, trend, seasonality, panel levels, every channel's
-adstock and saturation, every control, and the observation noise. The replay is the same
-forward pass as mmm-framework's own <code>PosteriorForecaster</code>; tests check it against both the
-forecaster and the graph's deterministics to floating-point precision.</p>
+<p>The plugin reads <code>frequency</code> (<code>W</code>, <code>D</code> or <code>M</code>) from the time labels. If the labels are
+integers, set <code>frequency</code>. When you score, <code>new_levels</code> sets what occurs for new panel
+levels:</p>
 <ul>
-<li><strong>Carry-over.</strong> The scored periods are written over the fitted history, so last month's
-  TV burst reaches next month's sales and a four-week window scores exactly like the same
-  weeks of the full series. Periods after the fit window must follow it without a gap.</li>
-<li><strong>Trends past the data.</strong> A linear trend is extrapolated; piecewise, spline and GP trends
-  are held at their last fitted level (mmm-framework's forecasting policy), and the
-  forecast says so - their intervals do not widen with the horizon.</li>
-<li><strong>Outputs.</strong> <code>y_hat(*panel, time)</code> and <code>contributions(component, *panel, time)</code>: one
-  component per channel, <code>baseline</code> (intercept and panel levels), <code>trend</code>, <code>seasonality</code>
-  and one per control. They add up to <code>y_hat</code>. A <code>predictive</code> request adds noise from a
-  seeded generator, so a counterfactual's scenario and baseline share it.</li>
+<li><code>pooled</code>: the overall level and the average channel effects.</li>
+<li><code>hyperprior</code>: for each draw, a level from the fitted spread. Thus, its range is correctly
+  wider.</li>
+<li><code>zero</code>: no channel effects.</li>
+<li><code>error</code>.</li>
+</ul>
+<h2 id="what-is-stored-and-how-scoring-works">What is stored, and how scoring works<a class="headerlink" href="#what-is-stored-and-how-scoring-works" title="Permanent link">&para;</a></h2>
+<p>A fit keeps these items. It never keeps them as a pickle:</p>
+<ul>
+<li>The parameters of mmm-framework (<code>posterior</code>).</li>
+<li>The sampler statistics.</li>
+<li>A thinned prior of the free parameters (for the prior/posterior overlap on the scorecard).</li>
+<li>The observed KPI.</li>
+<li>A <code>fit_data</code> group with the KPI, the spend and the control features at the model stage.</li>
+</ul>
+<p>When you score, the plugin makes the <code>BayesianMMM</code> again from <code>fit_data</code>. The same data give
+the same scaling, Fourier features and trend basis. Then the plugin calculates the fitted
+model again in NumPy for each posterior draw. This calculation includes the intercept, trend,
+seasonality, panel levels, the adstock and saturation of each channel, each control and the
+observation noise. It is the same forward pass as the <code>PosteriorForecaster</code> of mmm-framework.
+Tests compare it with the forecaster and with the deterministics of the graph, to
+floating-point precision.</p>
+<ul>
+<li><strong>Carry-over.</strong> The plugin writes the scored periods over the fitted history. Thus, a TV
+  burst of last month has an effect on the sales of next month. A four-week window gives the
+  same scores as the same weeks of the full series. Periods after the fit window must follow
+  it with no gap.</li>
+<li><strong>Trends after the data.</strong> The plugin extends a linear trend. Piecewise, spline and GP
+  trends stay at their last fitted level (the forecast policy of mmm-framework). The forecast
+  tells you this. Their intervals do not become wider with the horizon.</li>
+<li><strong>Outputs.</strong> <code>y_hat(*panel, time)</code> and <code>contributions(component, *panel, time)</code>. There is
+  one component for each channel, <code>baseline</code> (intercept and panel levels), <code>trend</code>,
+  <code>seasonality</code> and one for each control. They add up to <code>y_hat</code>. A <code>predictive</code> request
+  adds noise from a seeded generator. Thus, the scenario and the baseline of a counterfactual
+  use the same noise.</li>
 </ul>
 <h2 id="priors-in-business-terms">Priors in business terms<a class="headerlink" href="#priors-in-business-terms" title="Permanent link">&para;</a></h2>
-<p>Channel effects are parameterised by their <strong>return on spend</strong>: under <code>media_prior: roi</code>
-(the default) each channel samples <code>roi ~ LogNormal(mu, sigma)</code> - the KPI it returns per
-unit of spend over the fit window - and mmm-framework derives the coefficient from it. So a
-prior is stated in the units a business owner uses:</p>
+<p>The <strong>return on spend</strong> sets the parameters of the channel effects. With <code>media_prior: roi</code>
+(the default), each channel samples <code>roi ~ LogNormal(mu, sigma)</code>. This is the KPI that the
+channel returns for each unit of spend over the fit window. mmm-framework calculates the
+coefficient from it. Thus, you give a prior in the units that a business owner uses:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">settings</span><span class="p">:</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">priors</span><span class="p">:</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nt">roi</span><span class="p">:</span>
@@ -5274,26 +5355,28 @@ prior is stated in the units a business owner uses:</p>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">roi_default</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">mu</span><span class="p">:</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="nt"> sigma</span><span class="p">:</span><span class="w"> </span><span class="nv">1.0</span><span class="p p-Indicator">}</span><span class="w">  </span><span class="c1"># channels not listed: median break-even</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="nt">intercept</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">mu</span><span class="p">:</span><span class="w"> </span><span class="nv">0.2</span><span class="p p-Indicator">,</span><span class="nt"> sigma</span><span class="p">:</span><span class="w"> </span><span class="nv">0.3</span><span class="p p-Indicator">}</span><span class="w">    </span><span class="c1"># the baseline, in KPI standard deviations</span>
 </span></code></pre></div>
-<p><strong>Business priors</strong> (Guided task 3; <code>calibration.business_priors</code>, or a
-<code>translate_priors</code> run) translate into these in closed form:</p>
+<p>The platform changes <strong>business priors</strong> into these priors in closed form. Business priors
+come from Guided task 3, from <code>calibration.business_priors</code> or from a <code>translate_priors</code> run:</p>
 <ul>
-<li>an ROI range <code>[low, high]</code> held with credibility <code>p</code> is the log-normal whose central <code>p</code>
-  interval it is;</li>
-<li>a contribution-share range is an ROI range scaled by the KPI total over the channel's
-  spend (<code>share = roi x spend / KPI</code>);</li>
-<li>a range starting at 0 is read as <code>[high / 20, high]</code> (with an <code>info</code> issue);</li>
-<li>the <strong>baseline share</strong> (what happens without media) sets the intercept prior, solved by
-  bisection against mmm-framework's own prior of the trend, seasonality, levels and
-  controls.</li>
+<li>An ROI range <code>[low, high]</code> with credibility <code>p</code> becomes the log-normal that has this range
+  as its central <code>p</code> interval.</li>
+<li>A range for the contribution share is an ROI range, multiplied by the KPI total divided by
+  the spend of the channel (<code>share = roi x spend / KPI</code>).</li>
+<li>The platform reads a range that starts at 0 as <code>[high / 20, high]</code>, and gives an <code>info</code>
+  issue.</li>
+<li>The <strong>baseline share</strong> (the result with no media) sets the intercept prior. The platform
+  calculates it by bisection against the prior of mmm-framework for the trend, seasonality,
+  levels and controls.</li>
 </ul>
-<p>The preview samples the translated model's prior predictive (mmm-framework's graph) and
-reports ROI, share, baseline share and a KPI fan in business units, plus the prior mass
-inside every stated range (<code>coverage</code>, close to the stated credibility).</p>
+<p>The preview samples the prior predictive of the translated model (the graph of
+mmm-framework). It shows the ROI, the share, the baseline share and a KPI fan in business
+units. It also shows the prior mass in each range that you gave (<code>coverage</code>). This value is
+near the credibility that you gave.</p>
 <h2 id="lift-tests">Lift tests<a class="headerlink" href="#lift-tests" title="Permanent link">&para;</a></h2>
-<p><code>calibration.lift_tests</code> become mmm-framework <strong>experiment likelihoods</strong>
-(<code>BayesianMMM.add_experiment_calibration</code>): a likelihood term on the model-implied
-estimand that updates the channel's effect, its saturation curve and its carry-over
-jointly.</p>
+<p><code>calibration.lift_tests</code> become <strong>experiment likelihoods</strong> in mmm-framework
+(<code>BayesianMMM.add_experiment_calibration</code>). Each is a likelihood term on the estimand that
+the model gives. It updates the effect of the channel, its saturation curve and its
+carry-over together.</p>
 <table>
 <thead>
 <tr>
@@ -5307,36 +5390,43 @@ jointly.</p>
 <td><code>MROAS</code>, <code>spend_lift_pct = 100 x spend_delta / window spend</code>, value <code>kpi_delta / spend_delta</code></td>
 </tr>
 <tr>
-<td>a holdout removing (nearly) all the channel's spend (<code>-spend_delta &gt;= 95%</code> of it)</td>
+<td>a holdout that removes all (or almost all) of the spend of the channel (<code>-spend_delta &gt;= 95%</code> of it)</td>
 <td><code>CONTRIBUTION</code> of <code>-kpi_delta</code></td>
 </tr>
 <tr>
 <td>a partial cut (less than 95% of the spend)</td>
-<td>skipped, with the reason in <code>learned.calibration.lift_tests.skipped</code>: it measures the slope below today's spend, <code>(f(S) - f((1-c)S)) / cS</code>, while <code>MROAS</code> is the slope above it (<code>spend_lift_pct &gt; 0</code> only); under diminishing returns they differ (by <code>e^(c lam)</code> for <code>1 - exp(-lam x)</code>), so the mapping would bias the curve</td>
+<td>skipped. The reason is in <code>learned.calibration.lift_tests.skipped</code>. This test measures the slope below the current spend, <code>(f(S) - f((1-c)S)) / cS</code>. <code>MROAS</code> is the slope above it (<code>spend_lift_pct &gt; 0</code> only). When returns decrease, the two slopes are different (by <code>e^(c lam)</code> for <code>1 - exp(-lam x)</code>). Thus, the mapping would bias the curve.</td>
 </tr>
 </tbody>
 </table>
-<p><code>geo</code> restricts the measurement to that geo. A test after the data, or cut by the fit
-window (a holdout fit that ends inside the test), is skipped and listed.</p>
+<p><code>geo</code> limits the measurement to that geo. The plugin skips a test after the data. It also
+skips a test that the fit window cuts (a holdout fit that ends in the test). It puts the
+skipped tests in a list.</p>
 <h2 id="derived-quantities">Derived quantities<a class="headerlink" href="#derived-quantities" title="Permanent link">&para;</a></h2>
-<p>Ask for them in <code>outputs.derived</code>; they are computed at fit over the first
-<code>outputs.ui_draws</code> draws and stored in the bundle:</p>
+<p>Ask for them in <code>outputs.derived</code>. The plugin calculates them at fit time over the first
+<code>outputs.ui_draws</code> draws. It keeps them in the bundle:</p>
 <ul>
 <li><code>contributions</code>: <code>channel_contribution(sample, channel, *panel, time)</code>, <code>baseline</code>,
-  <code>trend</code>, <code>seasonality</code> and one variable per control;</li>
-<li><code>response_curves</code>: <code>contribution(sample, channel, multiplier[, geo])</code>, the total
-  contribution over the fit window with the channel's spend scaled by the multiplier
-  (0 to 2.5 x by default), the spend on each grid point, the current spend, the largest
-  single-period spend and the baseline - what Guided-mode <strong>what-if sliders</strong> interpolate
-  per draw and the scorecard's plausibility checks read;</li>
-<li><code>marginal_cost</code>: the extra spend per extra unit of KPI at current spend, and its inverse.</li>
+  <code>trend</code>, <code>seasonality</code> and one variable for each control.</li>
+<li><code>response_curves</code>: <code>contribution(sample, channel, multiplier[, geo])</code>. This is the total
+  contribution over the fit window, with the spend of the channel multiplied by the
+  multiplier (0 to 2.5 x by default). It also gives the spend on each grid point, the
+  current spend, the largest spend in one period and the baseline. The <strong>what-if sliders</strong>
+  of Guided mode interpolate these values for each draw. The plausibility checks of the
+  scorecard read them.</li>
+<li><code>marginal_cost</code>: the extra spend for each extra unit of KPI at the current spend, and its
+  inverse.</li>
 </ul>
 <h2 id="budget-optimisation">Budget optimisation<a class="headerlink" href="#budget-optimisation" title="Permanent link">&para;</a></h2>
-<p><code>POST /v1/models/{model_id}/versions/{version}:optimize</code> asks how to split a budget across
-channels (and optionally geos). A sandboxed <code>optimize</code> run builds the fitted model's
-response curves per posterior draw and hands them to mmm-framework's <code>planning</code> module:
-<code>optimize_budget</code> (greedy marginal allocation, or a constrained multi-start solver for
-risk objectives, groups and money bounds) and <code>budget_frontier</code>.</p>
+<p><code>POST /v1/models/{model_id}/versions/{version}:optimize</code> asks how to divide a budget across
+channels (and, optionally, geos). An <code>optimize</code> run in the sandbox makes the response curves
+of the fitted model for each posterior draw. It gives them to the <code>planning</code> module of
+mmm-framework:</p>
+<ul>
+<li><code>optimize_budget</code>: greedy marginal allocation, or a constrained multi-start solver for
+  risk objectives, groups and money bounds.</li>
+<li><code>budget_frontier</code>.</li>
+</ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models/</span><span class="nv">$MODEL</span><span class="s2">/versions/3:optimize"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-Mapi-Project: growth"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Prefer: wait=60"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{</span>
@@ -5358,15 +5448,15 @@ risk objectives, groups and money bounds) and <code>budget_frontier</code>.</p>
 <tbody>
 <tr>
 <td><code>total_budget</code> / <code>budget_change_pct</code></td>
-<td>the budget (default: today's total)</td>
+<td>the budget (default: the current total)</td>
 </tr>
 <tr>
 <td><code>mode: fixed</code> / <code>free</code></td>
-<td>spend the budget / fund each channel to break-even (<code>value_per_kpi</code> converts KPI to money)</td>
+<td>spend the budget / give each channel money up to break-even (<code>value_per_kpi</code> converts KPI to money)</td>
 </tr>
 <tr>
 <td><code>channels.&lt;c&gt;.min_multiplier/max_multiplier</code></td>
-<td><code>bounds</code> (multiples of current spend)</td>
+<td><code>bounds</code> (multiples of the current spend)</td>
 </tr>
 <tr>
 <td><code>channels.&lt;c&gt;.min_spend/max_spend</code></td>
@@ -5374,7 +5464,7 @@ risk objectives, groups and money bounds) and <code>budget_frontier</code>.</p>
 </tr>
 <tr>
 <td><code>channels.&lt;c&gt;.locked</code></td>
-<td>the multiplier pinned at 1</td>
+<td>the multiplier stays at 1</td>
 </tr>
 <tr>
 <td><code>groups</code></td>
@@ -5382,15 +5472,15 @@ risk objectives, groups and money bounds) and <code>budget_frontier</code>.</p>
 </tr>
 <tr>
 <td><code>objective</code></td>
-<td><code>mean</code>, <code>p&lt;q&gt;</code> (a cautious percentile) or <code>cvar&lt;a&gt;</code> (mean of the worst draws)</td>
+<td><code>mean</code>, <code>p&lt;q&gt;</code> (a cautious percentile) or <code>cvar&lt;a&gt;</code> (the mean of the worst draws)</td>
 </tr>
 <tr>
 <td><code>by_geo</code></td>
-<td>allocate per (geo, channel) arm jointly</td>
+<td>allocate for each (geo, channel) arm together</td>
 </tr>
 <tr>
 <td><code>horizon</code></td>
-<td>the plan's periods (curves rescaled from the fit window at its average spend)</td>
+<td>the periods of the plan (the curves are scaled again from the fit window at its average spend)</td>
 </tr>
 <tr>
 <td><code>max_draws</code>, <code>n_steps</code>, <code>seed</code></td>
@@ -5398,21 +5488,30 @@ risk objectives, groups and money bounds) and <code>budget_frontier</code>.</p>
 </tr>
 </tbody>
 </table>
-<p>The answer (<code>200</code> when the run finished within <code>Prefer: wait</code>, else <code>202</code>; poll
-<code>GET /v1/optimizations/{run_id}</code>) carries the allocation per channel with its expected
-contribution, marginal return and how stable the recommendation is across draws, the
-expected KPI of the plan and of today's plan, the uplift and the chance it is positive,
-the expected regret of committing to one plan, the shadow price of the next unit of money,
-the efficient frontier, and notes - for example when a recommendation goes beyond the
-spend the model has seen. The run also renders the <code>mmm.budget_plans</code> plot. Bounds the data
-cannot meet fail the run with <code>OPTIMIZE_INFEASIBLE</code>.</p>
+<p>The answer is <code>200</code> if the run finished in the <code>Prefer: wait</code> time. If not, the answer is
+<code>202</code>. Then poll <code>GET /v1/optimizations/{run_id}</code>. The answer contains these items:</p>
+<ul>
+<li>The allocation for each channel, with its expected contribution and marginal return. It
+  also tells how stable the recommendation is across draws.</li>
+<li>The expected KPI of the plan and of the current plan.</li>
+<li>The uplift and the probability that it is positive.</li>
+<li>The expected regret if you use one plan.</li>
+<li>The shadow price of the next unit of money.</li>
+<li>The efficient frontier.</li>
+<li>Notes. For example, a note tells you when a recommendation is more than the spend that the
+  model has seen.</li>
+</ul>
+<p>The run also makes the <code>mmm.budget_plans</code> plot. If the data cannot meet the bounds, the run
+fails with <code>OPTIMIZE_INFEASIBLE</code>.</p>
 <h3 id="end-to-end-with-the-client">End to end with the client<a class="headerlink" href="#end-to-end-with-the-client" title="Permanent link">&para;</a></h3>
-<p>From a fitted version to a plan you can defend, in Python (the CLI equivalent follows):</p>
+<p>These steps go from a fitted version to a plan that you can defend, in Python. The
+equivalent CLI commands follow.</p>
 <ol>
 <li>
-<p><strong>Check the model first.</strong> A plan is only as good as the response curves under it. Run the
-   governance policy for marketing-mix models - null tests against shuffled sales and fake
-   noise channels, effect signs, holdout accuracy - and read why each check passed:</p>
+<p><strong>Do a check of the model first.</strong> A plan is only as good as its response curves. Run the
+   governance policy for marketing-mix models. It does null tests against shuffled sales and
+   false noise channels. It also does a check of the effect signs and the holdout accuracy.
+   Read why each check passed:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">validation</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">model_id</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">note</span><span class="o">=</span><span class="s2">"Q4 refresh"</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># validated, awaiting_approval or checks_failed</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">validation</span><span class="o">.</span><span class="n">results</span><span class="p">:</span>
@@ -5422,17 +5521,18 @@ cannot meet fail the run with <code>OPTIMIZE_INFEASIBLE</code>.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p><strong>Look at the curves.</strong> The Model Explorer's <code>response_curves</code> section shows each
-   channel's contribution as its spend is scaled, per posterior draw, with the current spend
-   marked; <code>decomposition</code> shows what the model attributes to each channel over time:</p>
+<p><strong>Look at the curves.</strong> The <code>response_curves</code> section of the Model Explorer shows the
+   contribution of each channel when its spend changes, for each posterior draw. A mark shows
+   the current spend. <code>decomposition</code> shows the part that the model gives to each channel
+   over time:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">explored</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">explore</span><span class="p">(</span><span class="n">model_id</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">sections</span><span class="o">=</span><span class="p">[</span><span class="s2">"response_curves"</span><span class="p">,</span> <span class="s2">"decomposition"</span><span class="p">])</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">curves</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">explorations</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">explored</span><span class="p">,</span> <span class="s2">"response_curves"</span><span class="p">)</span>
 </span></code></pre></div>
 </li>
 <li>
-<p><strong>Ask for the plan.</strong> <code>api.models.optimize</code> sends <code>Prefer: wait</code> and repeats the request
-   with the same <code>Idempotency-Key</code> until the sandboxed run is done, so a slow plan never
-   starts twice:</p>
+<p><strong>Ask for the plan.</strong> <code>api.models.optimize</code> sends <code>Prefer: wait</code>. It sends the request
+   again with the same <code>Idempotency-Key</code> until the run in the sandbox is done. Thus, a slow
+   plan never starts two times:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">plan</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span>  <span class="c1"># mmm-framework's planner on the posterior; waits for the plan</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">model_id</span><span class="p">,</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">version</span><span class="p">,</span>
@@ -5449,20 +5549,21 @@ cannot meet fail the run with <code>OPTIMIZE_INFEASIBLE</code>.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p><strong>Test the biggest move.</strong> Score the plan's weekly spend as a forecast, then design a lift
-   test for the channel the plan moves most; its result goes into the model's <code>calibration</code>
-   block (see <a href="#lift-tests">Lift tests</a>) and the next plan knows it.</p>
+<p><strong>Test the largest change.</strong> Score the weekly spend of the plan as a forecast. Then design
+   a lift test for the channel that the plan changes most. Put its result into the
+   <code>calibration</code> block of the model (see <a href="#lift-tests">Lift tests</a>). The next plan uses it.</p>
 </li>
 </ol>
-<p>The same from a terminal:</p>
+<p>You can do the same steps from a terminal:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mapi<span class="w"> </span>validate<span class="w"> </span>model<span class="w"> </span>model://growth/geo-mmm@v7
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>mapi<span class="w"> </span>explore<span class="w"> </span>model<span class="w"> </span>model://growth/geo-mmm@v7<span class="w"> </span>-s<span class="w"> </span>response_curves<span class="w"> </span>-s<span class="w"> </span>decomposition<span class="w"> </span>--out<span class="w"> </span>views/
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>mapi<span class="w"> </span>optimize<span class="w"> </span>model://growth/geo-mmm@v7<span class="w"> </span>--change-pct<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span>--channel<span class="w"> </span><span class="s1">'tv={"min_multiplier": 0.5, "max_multiplier": 1.5}'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span>--objective<span class="w"> </span>p10<span class="w"> </span>--frontier<span class="w"> </span><span class="m">8</span>
 </span></code></pre></div>
-<p>What the plan looked like for the demo's two-channel model (<code>eu-geo-mmm</code>, the Python client
-guide's fit: tiny sampler settings, half a year of data), captured on a laptop:</p>
+<p>This output shows the plan for the two-channel model of the demo (<code>eu-geo-mmm</code>). The model
+is the fit from the Python client guide, with very small sampler settings and half a year of
+data. The output is from a laptop:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a> optimisation                      run_01m53hqpb8690ja1nkrc7b8j12
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a> objective                         downside P10 (a low quantile — risk-averse)
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a> budget                            639,176 EUR (now 639,176)
@@ -5489,24 +5590,27 @@ guide's fit: tiny sampler settings, half a year of data), captured on a laptop:<
 </span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>precondition fails, so this run used the multi-start constrained solver instead. Treat the
 </span><span id="__span-7-25"><a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>optimum as the best point found, not a proven global one.
 </span></code></pre></div>
-<p>Read it the way the planning module intends. The plan protects the cautious outcome (the
-10th percentile), so its <em>expected</em> revenue is a little below today's and it beats today's
-plan in only 48% of the draws: on this model, moving money from search to TV buys
-insurance, not growth, and the next euro returns about the same (2.9) in both channels -
-today's split is already close to efficient. The frontier is the more useful answer: up to
-roughly 1 million EUR each extra euro still returns 2.8 or more; beyond 1.13 million it
-falls to 1.2 and then 0.4. The notes (printed on standard error) say which solver ran and why. With <code>--objective mean</code> the same request maximises expected
-revenue instead.</p>
-<p>A workflow can do all of it on a schedule: the <code>mmm_governed</code> gallery template fits
-<code>mmm.bayesian</code> on a geo panel, runs the policy with <code>submit: true</code> and keeps the evidence pack
-(<code>mapi workflows init mmm_governed</code>).</p>
+<p>Read the output as the planning module intends. The plan protects the cautious result (the
+10th percentile). Thus, its <em>expected</em> revenue is a little less than the current revenue.
+The plan is better than the current plan in only 48% of the draws. On this model, money that
+moves from search to TV gives insurance, not growth. The next euro returns about the same
+(2.9) in the two channels. Thus, the current split is already almost efficient.</p>
+<p>The frontier is the more useful answer. Up to about 1 million EUR, each extra euro returns
+2.8 or more. Above 1.13 million, the return decreases to 1.2 and then to 0.4. The notes (on
+standard error) tell which solver ran and why. With <code>--objective mean</code>, the same request
+maximises the expected revenue.</p>
+<p>A workflow can do all these steps on a schedule. The <code>mmm_governed</code> gallery template fits
+<code>mmm.bayesian</code> on a geo panel. It runs the policy with <code>submit: true</code> and keeps the evidence
+pack (<code>mapi workflows init mmm_governed</code>).</p>
 <h2 id="the-frequentist-model">The frequentist model<a class="headerlink" href="#the-frequentist-model" title="Permanent link">&para;</a></h2>
-<p><code>mmm.frequentist</code> takes the same data and settings (no priors, likelihood or GP trend).
-mmm-framework searches adstock and saturation by an out-of-sample (rolling-origin)
-criterion, fixes them, solves the now-linear model by ridge regression with non-negative
-channel effects and repeats the solve on block-bootstrap resamples. The replicates are the
-"draws" of every output, so ranges are <em>confidence</em> intervals; there are no convergence
-diagnostics, business priors or lift tests. It is seed-deterministic and fits in seconds.</p>
+<p><code>mmm.frequentist</code> uses the same data and settings (but no priors, likelihood or GP trend).
+mmm-framework finds the adstock and saturation with an out-of-sample (rolling-origin)
+criterion, and then fixes them. It solves the model, which is now linear, by ridge
+regression with channel effects that are not negative. Then it solves the model again on
+block-bootstrap samples. These replicates are the "draws" of all outputs. Thus, the ranges
+are <em>confidence</em> intervals.</p>
+<p>This model has no convergence diagnostics, business priors or lift tests. The seed sets its
+results, and it fits in seconds.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">model</span><span class="p">:</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mmm.frequentist@^1</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">settings</span><span class="p">:</span>
@@ -5517,26 +5621,36 @@ diagnostics, business priors or lift tests. It is seed-deterministic and fits in
 </span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">    </span><span class="nt">search_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200</span>
 </span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">  </span><span class="nt">fit</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="nv">evaluate_then_refit</span><span class="p p-Indicator">,</span><span class="nt"> seed</span><span class="p">:</span><span class="w"> </span><span class="nv">7</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p><code>estimator: constrained</code> (a convex program) needs mmm-framework's optional <code>cvxpy</code>
-dependency, which the platform's images do not install; the fit then fails with
+<p><code>estimator: constrained</code> (a convex program) needs the optional <code>cvxpy</code> dependency of
+mmm-framework. The images of the platform do not install it. Thus, the fit fails with
 <code>CAPABILITY_UNSUPPORTED</code>.</p>
 <h2 id="current-limits">Current limits<a class="headerlink" href="#current-limits" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The multiplicative (log-log) specification, time-varying effects, price and promotion
-  levers, events and cross-channel interactions of mmm-framework are not exposed: the
-  platform's forward pass covers the additive model.</li>
-<li>mmm-framework's <code>mmm_extensions</code> (nested/mediated and multivariate-outcome models) are
-  not shipped yet: <code>mmm.nested</code> and <code>mmm.multivariate</code> have About cards but no plugin.</li>
-<li>Fits run on CPU (JAX is used by the NumPyro backend only).</li>
+<li>The platform does not give these mmm-framework features: the multiplicative (log-log)
+  specification, effects that change with time, price and promotion levers, events and
+  interactions between channels. The forward pass of the platform is for the additive model
+  only.</li>
+<li>The <code>mmm_extensions</code> of mmm-framework (nested/mediated models and models with many
+  outcomes) are not available yet. <code>mmm.nested</code> and <code>mmm.multivariate</code> have About cards but
+  no plugin.</li>
+<li>Fits run on the CPU. Only the NumPyro backend uses JAX.</li>
 </ul>
 <h2 id="trust-but-verify">Trust, but verify<a class="headerlink" href="#trust-but-verify" title="Permanent link">&para;</a></h2>
-<p>Both models pass the SDK contract kit (<code>mapi_sdk.testing.check_model</code>): bundle round
-trips, shuffled and subset markets, new levels, typed errors for gaps and periods before
-the data, the holdout scored through the same path as a forecast, additive contributions
-and the plots. The conformance corpus fits <code>e33</code> (a geo panel with a GBP market, side
-tables and a weekly plan), <code>guided_mmm</code> (business priors and a lift test) and
-<code>mmm_frequentist</code> end to end, and a recovery test fits simulated data with known
-contributions and checks their split across channels.</p>
+<p>The two models pass the SDK contract kit (<code>mapi_sdk.testing.check_model</code>). The kit tests
+these items:</p>
+<ul>
+<li>Bundle round trips.</li>
+<li>Shuffled markets and subsets of markets.</li>
+<li>New levels.</li>
+<li>Typed errors for gaps and for periods before the data.</li>
+<li>A holdout that the plugin scores through the same path as a forecast.</li>
+<li>Additive contributions.</li>
+<li>The plots.</li>
+</ul>
+<p>The conformance corpus fits these specs from start to end: <code>e33</code> (a geo panel with a GBP
+market, side tables and a weekly plan), <code>guided_mmm</code> (business priors and a lift test) and
+<code>mmm_frequentist</code>. A recovery test fits simulated data with known contributions. It makes
+sure that the split of the contributions across channels is correct.</p>
 
 
 

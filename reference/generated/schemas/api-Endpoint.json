@@ -269,7 +269,7 @@
       "type": "object"
     },
     "EndpointSchemaSnapshot": {
-      "description": "The input contract of the promoted version, frozen at promotion: what callers send.\n\n``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names\n(``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames\nthem to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of\nthe dim a forecast extends.",
+      "description": "The input contract of the promoted version, frozen at promotion: what callers send.\n\n``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names\n(``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames\nthem to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of\nthe dim a forecast extends. ``conditions_on_actuals``: forecasts can carry actuals\n(target values for periods after the fit) that the model updates its state with\n(:mod:`mapi_spec.actuals`); the server sets it from the capabilities of the plugin\nbuild that serves the endpoint now, not only from those at fit.",
       "examples": [
         {
           "fit_coords": {
@@ -350,6 +350,11 @@
         }
       ],
       "properties": {
+        "conditions_on_actuals": {
+          "default": false,
+          "title": "Conditions On Actuals",
+          "type": "boolean"
+        },
         "fit_coords": {
           "additionalProperties": {
             "$ref": "#/$defs/CoordSummary"
@@ -527,7 +532,7 @@
             {
               "check": "holdout.mape",
               "code": "SCORECARD_WARN",
-              "message_plain": "Holdout error: forecasts were off by 14%.",
+              "message_plain": "Holdout error: the forecast error was 14%.",
               "outcome": "needs_override"
             }
           ],

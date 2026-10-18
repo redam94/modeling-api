@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4671,6 +4701,8 @@
       
         
       
+        
+      
     
     
     
@@ -4759,6 +4791,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4956,22 +5016,22 @@
 
 
 <h1 id="m35-verification-v05">M3.5 verification <span class="mapi-badge">v0.5</span><a class="headerlink" href="#m35-verification-v05" title="Permanent link">&para;</a></h1>
-<p>M3.5 adds workflows, governance policies and validations, the Data and Model Explorers,
-mmm-framework as the marketing-mix engine, the statsmodels time-series models, About cards
-and <em>Help me choose</em>. Every part has unit, integration and mocked-browser tests. This page
-records the step after those: the five journeys below run <strong>through the running stack</strong>,
-from outside its processes, with real fits in the runner, the real orchestrator driving
-workflow runs, and the web app talking to the real API.</p>
-<p>Verified on 2026-10-16 on branch <code>fix/m35-e2e</code> (v0.5 development), on an Apple-silicon
-laptop (8 cores, 16 GB, macOS), against a live <code>make dev</code> stack:</p>
+<p>M3.5 adds these items: workflows, governance policies and validations, the Data and Model
+Explorers, mmm-framework as the marketing-mix engine, the statsmodels time-series models,
+About cards and <em>Help me choose</em>. Each part has unit, integration and mocked-browser tests.
+This page records the next step. The five journeys below run <strong>through the running stack</strong>,
+from outside its processes. Real fits run in the runner, the real orchestrator operates the
+workflow runs, and the web app sends requests to the real API.</p>
+<p>We did the verification on 2026-10-16 on branch <code>fix/m35-e2e</code> (v0.5 development), on an
+Apple-silicon laptop (8 cores, 16 GB, macOS), against a live <code>make dev</code> stack:</p>
 <ul>
-<li>the API, worker, web app (Vite dev server) and plot sandbox on non-default ports (API
-  <code>18000</code>, GCS shim <code>14443</code>, web <code>15173</code>, plot sandbox <code>15174</code>) with their own
-  <code>MAPI_DATA_DIR</code>;</li>
-<li>the <code>dev</code> profile: the development identity provider (<code>admin@dev.local</code> submits,
-  <code>analyst@dev.local</code> reviews) and the outbox mailer;</li>
-<li>the GCS shim instead of Cloud Storage and the embedded <code>pgserver</code> Postgres;</li>
-<li>every run on the <code>local-process</code> executor (no Docker daemon, no cloud project).</li>
+<li>The API, worker, web app (Vite dev server) and plot sandbox on ports that are not the
+  defaults (API <code>18000</code>, GCS shim <code>14443</code>, web <code>15173</code>, plot sandbox <code>15174</code>), with their
+  own <code>MAPI_DATA_DIR</code>.</li>
+<li>The <code>dev</code> profile: the development identity provider (<code>admin@dev.local</code> submits,
+  <code>analyst@dev.local</code> reviews) and the outbox mailer.</li>
+<li>The GCS shim in place of Cloud Storage, and the embedded <code>pgserver</code> Postgres.</li>
+<li>All runs on the <code>local-process</code> executor (no Docker daemon, no cloud project).</li>
 </ul>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
@@ -4985,40 +5045,44 @@ laptop (8 cores, 16 GB, macOS), against a live <code>make dev</code> stack:</p>
 <tbody>
 <tr>
 <td>1. The canonical time-series workflow</td>
-<td>A weekly KPI with a unit root (a random walk plus a price driver with a true effect of -3) through the <code>ts_readiness_arimax</code> template, followed over server-sent events (API), in the run monitor (browser, Expert) and as a Guided recipe started from the Data Explorer</td>
-<td>ADF (p = 0.62), KPSS, Phillips-Perron and Zivot-Andrews all say the series wanders; the branch differences it (and skips the seasonal difference) and records the four values it read; the AIC search picks ARIMA(1, 1, 1), and the fitted ARIMAX and the backtest use exactly <code>[1, 1, 1]</code> with <code>price</code>; six expanding-window folds score ARIMAX and the naive benchmarks per horizon; ARIMAX wins (MAE 1.45 against naive 1.68) and is selected; the governance node passes the default forecasting policy. <strong>Pass, after two fixes</strong> (the dev server's workflow graph, a recipe's first run)</td>
+<td>A weekly KPI with a unit root (a random walk and a price driver with a true effect of -3). It went through the <code>ts_readiness_arimax</code> template. We followed it over server-sent events (API), in the run monitor (browser, Expert) and as a Guided recipe that we started from the Data Explorer</td>
+<td>ADF (p = 0.62), KPSS, Phillips-Perron and Zivot-Andrews all show that the series wanders. The branch differences it (and skips the seasonal difference), and records the four values that it read. The AIC search selects ARIMA(1, 1, 1). The fitted ARIMAX and the backtest use exactly <code>[1, 1, 1]</code> with <code>price</code>. Six expanding-window folds score ARIMAX and the naive benchmarks for each horizon. ARIMAX is better (MAE 1.45 against naive 1.68), and the workflow selects it. The governance node passes the default forecasting policy. <strong>Pass, after two fixes</strong> (the workflow graph of the dev server, the first run of a recipe)</td>
 </tr>
 <tr>
 <td>2. Governance</td>
-<td>A project policy requiring <code>null.permutation_target</code> and <code>null.noise_regressors</code> with a reviewer's approval; ARIMAX fitted on real signal and on pure noise</td>
-<td>Noise: the shuffled-target test fails (13 to 18 of 19 shuffled fits did as well across runs, p = 0.7-0.95), the validation is <code>checks_failed</code>, promotion answers <code>409 NOT_VALIDATED</code>. Signal: p = 0.05 (better than every shuffled fit), fake drivers get 0.1 % of the result, <code>awaiting_approval</code>; promotion refused until approved; the submitter's approval is <code>SELF_APPROVAL_FORBIDDEN</code>; the reviewer (an editor with the <code>reviewer</code> capability) approves; <code>validated</code>; promotion succeeds; the evidence pack exports as HTML (no script) and JSON (with its digest). <strong>Pass, after three fixes</strong> (the policy's families, the reviewer capability in the client, uploading the same data again)</td>
+<td>A project policy that needs <code>null.permutation_target</code> and <code>null.noise_regressors</code> with the approval of a reviewer. ARIMAX fitted on real signal and on pure noise</td>
+<td>Noise: the shuffled-target test fails (across runs, 13 to 18 of 19 shuffled fits were equally good, p = 0.7-0.95). The validation is <code>checks_failed</code>, and promotion answers <code>409 NOT_VALIDATED</code>. Signal: p = 0.05 (better than all shuffled fits), and fake drivers get 0.1 % of the result, <code>awaiting_approval</code>. The server refuses promotion until approval. The approval of the submitter gets <code>SELF_APPROVAL_FORBIDDEN</code>. The reviewer (an editor with the <code>reviewer</code> capability) approves, and the result is <code>validated</code>. Promotion succeeds. The evidence pack exports as HTML (no script) and JSON (with its digest). <strong>Pass, after three fixes</strong> (the families of the policy, the reviewer capability in the client, an upload of the same data again)</td>
 </tr>
 <tr>
 <td>3. mmm-framework</td>
-<td><code>mmm.bayesian</code> (150 tuning steps and draws, 2 chains) pooled over 3 regions, 2 channels, 40 weeks</td>
-<td>Fitted in about 30 s; the Model Explorer's contributions and response curves (non-decreasing in spend, both channels); a budget plan that keeps the total, respects tv's 0.5-1.5x bounds, reports the chance of beating today's plan and a 5-point efficient frontier, in about 10 s. <strong>Pass, after one fix</strong></td>
+<td><code>mmm.bayesian</code> (150 tuning steps and draws, 2 chains), pooled over 3 regions, 2 channels, 40 weeks</td>
+<td>Fitted in about 30 s. The Model Explorer shows the contributions and response curves (they do not decrease when spend increases, for the two channels). A budget plan keeps the total and obeys the 0.5-1.5x bounds of tv. It reports the chance to be better than the plan of today, and a 5-point efficient frontier, in about 10 s. <strong>Pass, after one fix</strong></td>
 </tr>
 <tr>
 <td>4. Explorers and the chooser</td>
-<td>The Data Explorer of the unit-root series; a statsmodels VAR(2) on three weekly series; <em>Help me choose</em> for "forecast weekly sales with drivers"</td>
-<td>Stationarity per series; impulse responses with bands and a variance decomposition whose shares sum to 1; the browser renders both in the plot sandbox. The chooser now ranks <code>ts.sarimax</code> first with four reasons and no caution, and its About card opens. <strong>Pass, after two fixes</strong></td>
+<td>The Data Explorer of the unit-root series. A statsmodels VAR(2) on three weekly series. <em>Help me choose</em> for "forecast weekly sales with drivers"</td>
+<td>Stationarity for each series. Impulse responses with bands, and a variance decomposition whose shares add up to 1. The browser shows the two in the plot sandbox. The chooser now puts <code>ts.sarimax</code> first with four reasons and no caution, and its About card opens. <strong>Pass, after two fixes</strong></td>
 </tr>
 <tr>
 <td>5. The CLI</td>
-<td><code>mapi workflows validate</code>, <code>apply</code> and <code>run --watch</code> on the cookbook's canonical document, exactly as <code>docs/snippets/cli_v05.sh</code> runs them (project renamed)</td>
-<td>23 nodes valid; the live board prints every node and decision; the rolling-origin backtest (window 104) and the Diebold-Mariano node run; exit status 0 with the fitted model's reference. <strong>Pass</strong></td>
+<td><code>mapi workflows validate</code>, <code>apply</code> and <code>run --watch</code> on the canonical document of the cookbook, exactly as <code>docs/snippets/cli_v05.sh</code> runs them (with a different project name)</td>
+<td>23 nodes are valid. The live board prints each node and decision. The rolling-origin backtest (window 104) and the Diebold-Mariano node run. The exit status is 0, with the reference of the fitted model. <strong>Pass</strong></td>
 </tr>
 </tbody>
 </table>
-<p><code>tests/e2e/test_m35_stack.py</code> (5 tests, the API and the CLI, about 5 minutes) and
-<code>apps/web/e2e/m35-live.e2e.spec.ts</code> (7 tests, the browser in Expert and Guided mode, about
-3 minutes including a 90-second seed) both pass. The cookbook run from the CLI reuses the
-canonical run's unchanged unit-root tests from the cache (<code>cached_from</code> names that run).
-The earlier end-to-end suites (M1 to M3) were run against the same stack too; see
+<p>Two suites pass:</p>
+<ul>
+<li><code>tests/e2e/test_m35_stack.py</code> (5 tests, the API and the CLI, about 5 minutes).</li>
+<li><code>apps/web/e2e/m35-live.e2e.spec.ts</code> (7 tests, the browser in Expert and Guided mode, about
+  3 minutes with a 90-second seed).</li>
+</ul>
+<p>The unit-root tests of the canonical run did not change. Thus the cookbook run from the CLI
+gets them from the cache (<code>cached_from</code> names that run). We also ran the earlier
+end-to-end suites (M1 to M3) against the same stack. Refer to
 <a href="#full-verification-set">Full verification set</a>.</p>
 <h2 id="what-the-runs-found-and-fixed">What the runs found and fixed<a class="headerlink" href="#what-the-runs-found-and-fixed" title="Permanent link">&para;</a></h2>
-<p>Eight defects, none of which the unit, integration or mocked-browser tests could see. Each
-fix has a regression test.</p>
+<p>The runs found eight defects. The unit, integration and mocked-browser tests could not find
+them. Each fix has a regression test.</p>
 <table>
 <thead>
 <tr>
@@ -5030,84 +5094,93 @@ fix has a regression test.</p>
 <tbody>
 <tr>
 <td>Governance</td>
-<td>A policy with <code>applies_to: {families: [ts]}</code> - the example on every governance page and in <code>forecast-policy.yaml</code> - covered <strong>no</strong> statsmodels model, whose manifests declare the family <code>forecast</code> (or <code>ts_multivariate</code>, <code>regime</code>). Its checks, approval and promotion gate silently never applied: the model fitted on noise was judged by the default policy only, came out <code>validated</code> and was promoted.</td>
-<td>A family matches a model's declared family or the namespace of its id (<code>mapi_spec.governance.PolicyMatch</code>).</td>
+<td>A policy with <code>applies_to: {families: [ts]}</code> applied to <strong>no</strong> statsmodels model. This policy is the example on all governance pages and in <code>forecast-policy.yaml</code>. The manifests of the statsmodels models declare the family <code>forecast</code> (or <code>ts_multivariate</code>, <code>regime</code>). Thus the checks, approval and promotion gate of the policy never applied, and there was no message. The model fitted on noise got only the default policy. It became <code>validated</code>, and it was promoted.</td>
+<td>A family agrees with the declared family of a model, or with the namespace of its id (<code>mapi_spec.governance.PolicyMatch</code>).</td>
 </tr>
 <tr>
 <td>Governance</td>
-<td>The client could not give a member the <code>reviewer</code> capability (<code>add_member</code> and <code>set_role</code> dropped it), so the second person could not be set up without raw HTTP.</td>
+<td>The client could not give a member the <code>reviewer</code> capability (<code>add_member</code> and <code>set_role</code> removed it). Thus you could not set up the second person without raw HTTP.</td>
 <td><code>tenants.add_member(..., capabilities=[...])</code> and <code>tenants.set_capabilities(...)</code>, sync and async.</td>
 </tr>
 <tr>
-<td>Every upload</td>
-<td>Uploading data that had been uploaded before - the same file as the next version, or into another dataset or project - failed its ingest with <code>INTEGRITY_FAILURE</code> ("ui/explore/index.json already holds different content"). Ingest outputs are stored under the data's content hash, and the Data Explorer views an ingest writes since v0.5 name the dataset version and carry plot timestamps.</td>
-<td>Each ingest's explorer views are stored under its run (<code>t/&lt;tenant&gt;/datasets/&lt;sha&gt;/runs/&lt;run&gt;/ui/explore/</code>); the data and its sidecars keep the strict same-content check.</td>
+<td>Each upload</td>
+<td>An upload of data that was uploaded before failed its ingest with <code>INTEGRITY_FAILURE</code> ("ui/explore/index.json already holds different content"). This occurred for the same file as the next version, or in a different dataset or project. Ingest outputs are stored under the content hash of the data. Since v0.5, the Data Explorer views that an ingest writes name the dataset version and contain plot timestamps.</td>
+<td>The explorer views of each ingest are stored under its run (<code>t/&lt;tenant&gt;/datasets/&lt;sha&gt;/runs/&lt;run&gt;/ui/explore/</code>). The data and its sidecars keep the strict same-content check.</td>
 </tr>
 <tr>
 <td>mmm-framework</td>
-<td><code>api.explorations.view(..., "response_curves")</code> (and <code>mapi explore --show</code>) returned the section's list of plots instead of its view, for every section whose name sorts after <code>plots</code> (<code>residuals</code>, <code>response_curves</code>, <code>stationarity</code>, <code>stl</code>...).</td>
-<td>The exact view is looked up first; plot files never match.</td>
+<td><code>api.explorations.view(..., "response_curves")</code> (and <code>mapi explore --show</code>) returned the list of plots of the section, not its view. This occurred for each section whose name comes after <code>plots</code> in alphabetical sequence (<code>residuals</code>, <code>response_curves</code>, <code>stationarity</code>, <code>stl</code>...).</td>
+<td>The code looks for the exact view first. Plot files never agree.</td>
 </tr>
 <tr>
 <td>Chooser</td>
-<td><em>Help me choose</em> ranked <code>ts.sarimax</code> sixth for "forecast weekly sales with drivers" although it is the only model that fits all four answers: items silent on a question also scored 1.0 and ties broke on difficulty.</td>
-<td>Ties break on the number of answers an item fits explicitly.</td>
+<td><em>Help me choose</em> put <code>ts.sarimax</code> in position six for "forecast weekly sales with drivers". But it is the only model that agrees with all four answers. Items that did not answer a question also got a score of 1.0, and the difficulty decided ties.</td>
+<td>The number of answers that an item agrees with explicitly decides ties.</td>
 </tr>
 <tr>
 <td>Browser</td>
-<td>On the dev server, the first page to open a workflow graph crashed with "Invalid hook call" in <code>ReactFlowProvider</code>, and a route loading while the spec editor's YAML worker first started failed with "Failed to fetch dynamically imported module": Vite found React Flow and the worker's dependency late, optimised them in a second pass and reloaded.</td>
-<td>Both are pre-bundled when the dev server starts (<code>apps/web/dev-prebundle.ts</code>; a test requires every package a web worker imports to be listed). Production builds were not affected.</td>
+<td>On the dev server, the first page that opened a workflow graph crashed with "Invalid hook call" in <code>ReactFlowProvider</code>. A route that loaded while the YAML worker of the spec editor started for the first time failed with "Failed to fetch dynamically imported module". Vite found React Flow and the dependency of the worker late. It optimised them in a second pass and loaded the page again.</td>
+<td>The dev server pre-bundles the two when it starts (<code>apps/web/dev-prebundle.ts</code>). A test makes sure that the list includes each package that a web worker imports. Production builds were not affected.</td>
 </tr>
 <tr>
 <td>Data Explorer</td>
-<td>The overview of the most common upload, a time dimension called <code>time</code>, read "2 variables over 156 time".</td>
-<td>The time dimension is named by its frequency ("156 weeks").</td>
+<td>The overview of the most usual upload, a time dimension with the name <code>time</code>, showed "2 variables over 156 time".</td>
+<td>The name of the time dimension is now its frequency ("156 weeks").</td>
 </tr>
 <tr>
 <td>Guided recipes</td>
-<td>A Guided user's first run of a recipe in a project failed with "The recipe did not start: Not Found": the click created the workflow from the template, then posted the run to <code>/v1/workflows//runs</code> with the id the page was rendered with. The mock project always had the workflow.</td>
-<td>A run can name its workflow; the recipe runs the one it just created.</td>
+<td>The first run of a recipe in a project by a Guided user failed with "The recipe did not start: Not Found". The click made the workflow from the template. Then it sent the run to <code>/v1/workflows//runs</code> with the id from when the page was shown. The mock project always had the workflow.</td>
+<td>A run can name its workflow. The recipe runs the workflow that it made.</td>
 </tr>
 </tbody>
 </table>
 <h3 id="the-earlier-journeys-brought-up-to-date">The earlier journeys, brought up to date<a class="headerlink" href="#the-earlier-journeys-brought-up-to-date" title="Permanent link">&para;</a></h3>
-<p>Run against the same stack, four assertions of the M1 and M3 journeys had gone stale with
-M3.5 (the product was right): the E33 spec on mmm-framework no longer has scaling or lag
-steps (M1 now checks its currency, weekly and holiday steps), and its scores carry six
-components, not five (the M1 browser flow counts the rows); a Guided draft records no
-units, so the budget plan is checked by its KPI's name; and the M3 webhook receiver verified
-deliveries minutes after they arrived, against the 5-minute signature tolerance (it now
-verifies each delivery at its arrival, as a real receiver does).</p>
+<p>We ran the M1 and M3 journeys against the same stack. Four of their assertions were not
+correct after M3.5, but the product was correct:</p>
+<ul>
+<li>The E33 spec on mmm-framework does not have scaling or lag steps now. M1 now does a check
+  of its currency, weekly and holiday steps.</li>
+<li>Its scores have six components, not five. The M1 browser flow counts the rows.</li>
+<li>A Guided draft records no units. Thus the test finds the budget plan by the name of its
+  KPI.</li>
+<li>The M3 webhook receiver verified deliveries some minutes after they came. This was later
+  than the 5-minute signature tolerance. Now it verifies each delivery when it comes, as a
+  real receiver does.</li>
+</ul>
 <h3 id="an-observation-since-fixed">An observation, since fixed<a class="headerlink" href="#an-observation-since-fixed" title="Permanent link">&para;</a></h3>
-<p>Under a project policy that made the shuffled-target test blocking, the cookbook's ARIMA(1,
-1, 1) on the random walk failed it: 4 of 19 shuffled refits did as well (p = 0.25), although
-the model beat the naive forecast by 25 % on the held-out weeks. The null shuffled the
-target in blocks, which kept most of the persistence a differenced model exploits. The M3.5
-review replaced it before the release: a model with drivers now has its drivers shuffled in
-blocks with the result untouched, a model without drivers has its differences shuffled and
-re-integrated, and every fit is scored by its holdout skill against the null forecast (see
-<a href="../../guides/null-tests/">null tests explained</a>). On the same data the cookbook's model now
-beats all 20 shuffled fits (p = 0.048).</p>
+<p>We had a project policy that made the shuffled-target test blocking. Under this policy, the
+ARIMA(1, 1, 1) of the cookbook on the random walk failed the test. 4 of 19 shuffled refits
+were equally good (p = 0.25). But the model was 25 % better than the naive forecast on the
+held-out weeks. The null shuffled the target in blocks. This kept most of the persistence
+that a differenced model uses.</p>
+<p>The M3.5 review replaced this null before the release. Now, for a model with drivers, the
+null shuffles the drivers in blocks and does not change the result. For a model without
+drivers, the null shuffles the differences and integrates them again. The null test scores
+each fit by its holdout skill against the null forecast (refer to
+<a href="../../guides/null-tests/">null tests explained</a>). On the same data, the model of the
+cookbook is now better than all 20 shuffled fits (p = 0.048).</p>
 <h2 id="how-to-rerun">How to rerun<a class="headerlink" href="#how-to-rerun" title="Permanent link">&para;</a></h2>
-<p>Start a stack on free ports with its own data directory (the variables are those of
-<a href="../local-development/">local development</a>):</p>
+<p>Start a stack on free ports with its own data directory. The variables are those of
+<a href="../local-development/">local development</a>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:18000<span class="w"> </span><span class="nv">MAPI_GCS_ENDPOINT</span><span class="o">=</span>http://127.0.0.1:14443
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_WEB_ORIGIN</span><span class="o">=</span>http://127.0.0.1:15173<span class="w"> </span><span class="nv">MAPI_PLOTS_ORIGIN</span><span class="o">=</span>http://127.0.0.1:15174
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">VITE_API_BASE</span><span class="o">=</span><span class="nv">$MAPI_API_URL</span><span class="w"> </span><span class="nv">MAPI_DATA_DIR</span><span class="o">=</span><span class="nv">$PWD</span>/.local/m35e2e
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>make<span class="w"> </span>dev<span class="w">                    </span><span class="c1"># in one shell; `make stop` with the same variables stops it</span>
 </span></code></pre></div>
-<p>Then, in another shell with the same variables:</p>
+<p>Then, in a different shell with the same variables:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>e2e<span class="w"> </span>tests/e2e/test_m35_stack.py<span class="w"> </span>-s<span class="w">          </span><span class="c1"># the API and CLI journeys</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pnpm<span class="w"> </span>--filter<span class="w"> </span>@mapi/web<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>env<span class="w"> </span><span class="nv">MAPI_E2E</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>playwright<span class="w"> </span><span class="nb">test</span><span class="w"> </span>e2e/m35-live.e2e.spec.ts<span class="w">                    </span><span class="c1"># the browser journeys</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>make<span class="w"> </span>e2e<span class="w">                                                      </span><span class="c1"># or every end-to-end suite</span>
 </span></code></pre></div>
-<p>Each suite creates its own project in the <code>default</code> tenant (<code>m35e2e-&lt;id&gt;</code>, <code>m35ui-&lt;id&gt;</code>) and
-deletes it afterwards; <code>MAPI_E2E_KEEP=1</code> keeps it to look at in the app. Timings are written
-to <code>$MAPI_DATA_DIR/e2e/m35-timings.json</code> and <code>apps/web/e2e/screenshots/m35-timings.json</code>, and
-the browser suite saves its screens as <code>apps/web/e2e/screenshots/m35-*.png</code> (git-ignored).</p>
+<p>Each suite makes its own project in the <code>default</code> tenant (<code>m35e2e-&lt;id&gt;</code>, <code>m35ui-&lt;id&gt;</code>). It
+deletes the project at the end. To keep the project and look at it in the app, set
+<code>MAPI_E2E_KEEP=1</code>. The suites write the times to <code>$MAPI_DATA_DIR/e2e/m35-timings.json</code> and
+<code>apps/web/e2e/screenshots/m35-timings.json</code>. The browser suite saves its screens as
+<code>apps/web/e2e/screenshots/m35-*.png</code> (git ignores them).</p>
 <h2 id="timings">Timings<a class="headerlink" href="#timings" title="Permanent link">&para;</a></h2>
-<p>Wall-clock seconds of the last run, on the laptop above (no Docker, no cold starts):</p>
+<p>These are the wall-clock seconds of the last run, on the laptop above (no Docker, no cold
+starts):</p>
 <table>
 <thead>
 <tr>
@@ -5129,7 +5202,7 @@ the browser suite saves its screens as <code>apps/web/e2e/screenshots/m35-*.png<
 <td>45</td>
 </tr>
 <tr>
-<td>A validation with the null tests (19 shuffled refits plus 3 fake drivers)</td>
+<td>A validation with the null tests (19 shuffled refits and 3 fake drivers)</td>
 <td>26</td>
 </tr>
 <tr>
@@ -5141,7 +5214,7 @@ the browser suite saves its screens as <code>apps/web/e2e/screenshots/m35-*.png<
 <td>13</td>
 </tr>
 <tr>
-<td>A Model Explorer request served from the fit's views</td>
+<td>A Model Explorer request served from the views of the fit</td>
 <td>8</td>
 </tr>
 <tr>
@@ -5174,7 +5247,7 @@ the browser suite saves its screens as <code>apps/web/e2e/screenshots/m35-*.png<
 </tr>
 <tr>
 <td><code>pnpm -r lint</code>, <code>pnpm -r typecheck</code>, <code>pnpm -r build</code></td>
-<td>clean; the entry chunk is 598 kB of its 640 KiB budget</td>
+<td>clean. The entry chunk is 598 kB of its 640 KiB budget</td>
 </tr>
 <tr>
 <td>Vitest</td>
@@ -5186,47 +5259,49 @@ the browser suite saves its screens as <code>apps/web/e2e/screenshots/m35-*.png<
 </tr>
 <tr>
 <td>The generated fixtures and types (<code>gen_*_fixtures.py --check</code>, <code>openapi:check</code>)</td>
-<td>up to date</td>
+<td>current</td>
 </tr>
 <tr>
 <td><code>uv run --group docs mkdocs build --strict</code></td>
 <td>passes</td>
 </tr>
 <tr>
-<td>Every end-to-end suite against the live stack: <code>uv run pytest -m e2e tests/e2e</code> (M1, M2, M3, M3.5 and the corpus) and the browser <code>@e2e</code> specs (M1, M2, M3, M3.5 and the stack spec)</td>
-<td>Python: 48 passed, 1 skipped (the opt-in fit burst); the M1, M3 and M3.5 modules were re-run after their fixes. Browser: 23 passed; the M1 and <code>stack</code> specs were re-run after <code>make seed</code> (the <code>stack</code> spec needs its demo data) and the dev-server fix.</td>
+<td>All end-to-end suites against the live stack: <code>uv run pytest -m e2e tests/e2e</code> (M1, M2, M3, M3.5 and the corpus) and the browser <code>@e2e</code> specs (M1, M2, M3, M3.5 and the stack spec)</td>
+<td>Python: 48 passed, 1 skipped (the opt-in fit burst). We ran the M1, M3 and M3.5 modules again after their fixes. Browser: 23 passed. We ran the M1 and <code>stack</code> specs again after <code>make seed</code> (the <code>stack</code> spec needs its demo data) and the dev-server fix.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="what-remains-unverified">What remains unverified<a class="headerlink" href="#what-remains-unverified" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Real Google Cloud.</strong> Cloud Storage (the GCS shim stood in), Cloud Run Jobs (every
+<li><strong>Real Google Cloud.</strong> Cloud Storage (the GCS shim was in its place), Cloud Run Jobs (each
   workflow node, fit, governance, explore and optimise run used the <code>local-process</code>
-  executor), Pub/Sub, Cloud SQL and Identity Platform. Cold starts of the runner images add
-  to every workflow node, which runs as its own sandboxed run: a 19-node workflow starts about
-  15 of them.</li>
-<li><strong>Docker.</strong> No daemon here, so the images were not built: in particular <code>base-bayes</code>
-  with mmm-framework, JAX and nutpie, and <code>base-forecast</code> with statsmodels and the workflow
-  runtime. The <code>docker</code> and <code>docker-gvisor</code> executors, and so public (shared-tier)
-  workspaces, never ran a workflow, a validation or an optimisation.</li>
+  executor), Pub/Sub, Cloud SQL and Identity Platform. Each workflow node runs as its own
+  sandboxed run, and the cold starts of the runner images add time to each node. A 19-node
+  workflow starts about 15 of these runs.</li>
+<li><strong>Docker.</strong> There is no daemon here, so we did not build the images. In particular, we did
+  not build <code>base-bayes</code> with mmm-framework, JAX and nutpie, and <code>base-forecast</code> with
+  statsmodels and the workflow runtime. The <code>docker</code> and <code>docker-gvisor</code> executors never ran
+  a workflow, a validation or an optimisation. Thus public (shared-tier) workspaces also
+  never ran them.</li>
 <li><strong>People.</strong> No non-technical user tried the Guided recipes, Help me choose or the About
-  cards, and no reviewer used the approval screens on real models; nothing was tried with a
-  screen reader. The protocol of the <a href="../m3-verification/#protocol-for-the-five-non-technical-testers">M3 testers</a>
-  applies, with "run the readiness recipe on your weekly sales and say whether you would
-  trust the forecast" as an extra task.</li>
-<li><strong>Scale and real fits.</strong> Only tiny MCMC settings and small panels ran here; full-size
-  mmm-framework fits (4 chains, thousands of draws, dozens of geos), governance refit budgets
-  on them, and workflows with hundreds of nodes were not timed.</li>
-<li><strong>Not driven live by these journeys</strong> (covered by the server's integration tests with
-  embedded Postgres): schedules and dataset triggers firing, workflow cancellation,
-  sub-workflows, the <code>workflow.run.*</code> and validation webhooks, tenant-wide policies,
-  deprecation and resubmission, the visual workflow editor and the policy editor (their
-  mocked Playwright specs only).</li>
+  cards. No reviewer used the approval screens on real models. Nobody tried the app with a
+  screen reader. The protocol of the
+  <a href="../m3-verification/#protocol-for-the-five-non-technical-testers">M3 testers</a> applies. Add
+  this task: "run the readiness recipe on your weekly sales and say whether you would trust
+  the forecast".</li>
+<li><strong>Scale and real fits.</strong> Only tiny MCMC settings and small panels ran here. We did not
+  measure the time of full-size mmm-framework fits (4 chains, thousands of draws, dozens of
+  geos), of governance refit budgets on them, or of workflows with hundreds of nodes.</li>
+<li><strong>Not operated live by these journeys</strong> (the integration tests of the server with
+  embedded Postgres include them): schedules and dataset triggers that fire, workflow
+  cancellation, sub-workflows, the <code>workflow.run.*</code> and validation webhooks, tenant-wide
+  policies, deprecation and resubmission. Also the visual workflow editor and the policy
+  editor (only their mocked Playwright specs).</li>
 </ul>
 <h2 id="final-integration-v050">Final integration (v0.5.0)<a class="headerlink" href="#final-integration-v050" title="Permanent link">&para;</a></h2>
-<p>After the M3.5 review fixes were merged (modeling and statistics, platform server, web,
-client/CLI/docs, and the v0.5 documentation site), the whole set above was run again on the
-integrated <code>develop</code>, on the same laptop and ports, with a fresh <code>MAPI_DATA_DIR</code>:</p>
+<p>We merged the M3.5 review fixes: modeling and statistics, platform server, web,
+client/CLI/docs, and the v0.5 documentation site. Then we ran the whole set above again on
+the integrated <code>develop</code>. We used the same laptop and ports, with a new <code>MAPI_DATA_DIR</code>:</p>
 <table>
 <thead>
 <tr>
@@ -5236,8 +5311,8 @@ integrated <code>develop</code>, on the same laptop and ports, with a fresh <cod
 </thead>
 <tbody>
 <tr>
-<td><code>uv run pytest -q -n 6</code>, twice</td>
-<td>7116 passed, 12 skipped; the first run also had one order-dependent failure (two runner tests left their test models in the shared plugin registry), fixed</td>
+<td><code>uv run pytest -q -n 6</code>, two times</td>
+<td>7116 passed, 12 skipped. The first run also had one failure that depended on the test sequence (two runner tests left their test models in the shared plugin registry). We repaired it</td>
 </tr>
 <tr>
 <td><code>make conformance</code></td>
@@ -5249,7 +5324,7 @@ integrated <code>develop</code>, on the same laptop and ports, with a fresh <cod
 </tr>
 <tr>
 <td><code>pnpm -r lint</code>, <code>typecheck</code>, <code>build</code>; Vitest</td>
-<td>clean; web 384, plot sandbox 97</td>
+<td>clean. web 384, plot sandbox 97</td>
 </tr>
 <tr>
 <td>Playwright smoke (mock mode, ports 15173/15174)</td>
@@ -5257,17 +5332,17 @@ integrated <code>develop</code>, on the same laptop and ports, with a fresh <cod
 </tr>
 <tr>
 <td><code>uv run pytest -m e2e tests/e2e</code> (M1, M2, M3, M3.5)</td>
-<td>46 passed, 3 skipped (opt-in burst, two purge checks that need a zero grace period) after two stale M3.5 assertions were updated (the readiness branch now also reads the over-differencing guard)</td>
+<td>46 passed, 3 skipped (opt-in burst, two purge checks that need a zero grace period). This was after we updated two M3.5 assertions that were not correct (the readiness branch now also reads the over-differencing guard)</td>
 </tr>
 <tr>
 <td>Browser <code>@e2e</code> specs (M1, M2, M3, M3.5, stack)</td>
-<td>23 passed after the M3.5 spec followed the seasonal-first readiness order</td>
+<td>23 passed, after the M3.5 spec used the seasonal-first readiness sequence</td>
 </tr>
 </tbody>
 </table>
-<p>The outputs of the governance walkthrough in <a href="../../whats-new-0.5/">What's new</a>, the
-<a href="../../guides/workflow-cookbook/">cookbook</a> and <a href="../../guides/null-tests/">null tests explained</a>
-were captured again from this stack.</p>
+<p>We captured the outputs of the governance walkthrough in <a href="../../whats-new-0.5/">What's new</a>,
+the <a href="../../guides/workflow-cookbook/">cookbook</a> and
+<a href="../../guides/null-tests/">null tests explained</a> again from this stack.</p>
 
 
 

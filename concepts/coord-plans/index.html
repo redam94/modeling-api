@@ -16,7 +16,7 @@
         <link rel="prev" href="../bundles/">
       
       
-        <link rel="next" href="../capabilities/">
+        <link rel="next" href="../forecasting-with-actuals/">
       
       
         
@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1390,6 +1392,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4610,6 +4640,8 @@
       
         
       
+        
+      
     
     
     
@@ -4698,6 +4730,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4834,10 +4894,10 @@
 
 
 <h1 id="coord-plans-and-typed-errors">Coord plans and typed errors<a class="headerlink" href="#coord-plans-and-typed-errors" title="Permanent link">&para;</a></h1>
-<p>Before a score request touches a model, its coordinates are checked against what the model was
-fitted on. The checks are called the <strong>CoordPlan</strong>, and almost all of them need only metadata:
-the fitted coordinates of every stage (stored in the bundle) and the request itself. That is
-why the API can reject a bad request in milliseconds, without starting a sandbox.</p>
+<p>Before a score request goes to a model, the platform compares its coordinates with the fit
+coordinates of the model. These checks are the <strong>CoordPlan</strong>. Almost all of them need only
+metadata: the fitted coordinates of each stage (in the bundle) and the request. Thus, the API
+can reject a bad request in milliseconds, and it does not start a sandbox.</p>
 <h2 id="the-checks">The checks<a class="headerlink" href="#the-checks" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4852,14 +4912,14 @@ why the API can reject a bad request in milliseconds, without starting a sandbox
 <tr>
 <td><code>UNSEEN_LEVELS</code></td>
 <td>422</td>
-<td>A label of a <code>fixed</code> dim (or a <code>new_levels</code> dim with strategy <code>error</code>) was not in the fit</td>
-<td>Drop it, or declare the dim <code>new_levels</code> with a strategy and refit</td>
+<td>A label of a <code>fixed</code> dim (or of a <code>new_levels</code> dim with strategy <code>error</code>) was not in the fit</td>
+<td>Remove the label. Or declare the dim <code>new_levels</code> with a strategy, and fit again</td>
 </tr>
 <tr>
 <td><code>COORD_NOT_ALLOWED</code></td>
 <td>422</td>
 <td>An <code>extend</code> dim starts before the fitted range, or a label cannot exist</td>
-<td>Send labels inside or right after the fit</td>
+<td>Send labels in the fitted range or immediately after it</td>
 </tr>
 <tr>
 <td><code>NON_CONTIGUOUS_EXTENSION</code></td>
@@ -4870,43 +4930,55 @@ why the API can reject a bad request in milliseconds, without starting a sandbox
 <tr>
 <td><code>HORIZON_EXCEEDS_FIT</code></td>
 <td><strong>409</strong></td>
-<td>The forecast reaches past <code>max_extension</code></td>
-<td>Refit with a larger <code>max_extension</code></td>
+<td>The forecast goes past <code>max_extension</code></td>
+<td>Fit again with a larger <code>max_extension</code></td>
 </tr>
 <tr>
 <td><code>MISSING_FUTURE_COVARIATE</code></td>
 <td>422</td>
-<td>A <code>future_required</code> variable is missing over the horizon</td>
-<td>Supply it in the payload</td>
+<td>A <code>future_required</code> variable is missing in the horizon</td>
+<td>Put it in the payload</td>
 </tr>
 <tr>
 <td><code>CAPABILITY_UNSUPPORTED</code></td>
 <td>422</td>
-<td>The output asks for something the representation cannot give (summing quantiles, draws from a point model, an HDI from quantiles)</td>
+<td>The output asks for a thing that the representation cannot give (the sum of quantiles, draws from a point model, an HDI from quantiles)</td>
 <td>Ask for a valid summary, or use a model with joint draws</td>
 </tr>
 <tr>
 <td><code>RECURSIVE_UNSUPPORTED</code></td>
 <td>422</td>
-<td>A target lag shorter than the horizon</td>
-<td>Use longer lags or a model that owns recursion</td>
+<td>A target lag is shorter than the horizon</td>
+<td>Use longer lags, or use a model that owns recursion</td>
 </tr>
 <tr>
 <td><code>MODE_NOT_SUPPORTED</code></td>
 <td>422</td>
 <td>The model does not declare the requested mode</td>
-<td>See the model's capabilities</td>
+<td>Look at the capabilities of the model</td>
 </tr>
 <tr>
 <td><code>SIDE_TABLE_COVERAGE</code></td>
 <td>422</td>
-<td>A side table does not cover the periods a step needs</td>
+<td>A side table does not cover the periods that a step needs</td>
 <td>Supply a table that covers them</td>
+</tr>
+<tr>
+<td><code>ACTUALS_NOT_SUPPORTED</code></td>
+<td>422</td>
+<td>A forecast payload has target values (actuals) and the model cannot condition on them</td>
+<td>Fit again with the new data, or leave the target empty. See <a href="../forecasting-with-actuals/">Forecasts with actuals</a></td>
+</tr>
+<tr>
+<td><code>ACTUALS_INVALID</code></td>
+<td>422</td>
+<td>Actuals leave a gap after the fit, or actuals after the fit do not have their drivers</td>
+<td>Fill the gap, or send the drivers</td>
 </tr>
 </tbody>
 </table>
-<p><code>HORIZON_EXCEEDS_FIT</code> is a 409, not a 422: the request is fine, the <em>model</em> is not ready for it.
-The fix is a refit, not a different request.</p>
+<p><code>HORIZON_EXCEEDS_FIT</code> is a 409, not a 422. The request is correct, but the <em>model</em> is not ready
+for it. To correct the problem, fit the model again. Do not change the request.</p>
 <h2 id="metadata-only-what-the-api-checks">Metadata only: what the API checks<a class="headerlink" href="#metadata-only-what-the-api-checks" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">CoordPlan</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_score_request</span><span class="p">,</span> <span class="n">validate_score_request</span>
@@ -4924,12 +4996,13 @@ The fix is a refit, not a different request.</p>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># CAPABILITY_UNSUPPORTED /output/summary/0 - summary 'hdi_90' cannot be computed from</span>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="c1">#                                            'quantiles' output</span>
 </span></code></pre></div>
-<p>Every problem is reported at once, each with a JSON pointer into the request. The metadata is a
-few kilobytes of JSON per model version; no arrays are decoded and no plugin code is imported.</p>
+<p>The API reports all problems at the same time. Each problem has a JSON pointer into the
+request. The metadata is a few kilobytes of JSON for each model version. The API does not
+decode arrays and does not import plugin code.</p>
 <h2 id="in-the-runtime-the-same-checks-then-canonicalisation">In the runtime: the same checks, then canonicalisation<a class="headerlink" href="#in-the-runtime-the-same-checks-then-canonicalisation" title="Permanent link">&para;</a></h2>
-<p><code>score_bundle</code> runs the same checks against the real payload (so it can also see which values
-are present), raises the most specific error, and keeps the remaining notices (for example "1
-new level of <code>store</code> will use strategy <code>pooled</code>") in the output's <code>issues</code> attribute.</p>
+<p><code>score_bundle</code> does the same checks on the real payload, so it can also see which values are
+present. It raises the most specific error. It keeps the other notices in the <code>issues</code>
+attribute of the output (for example "1 new level of <code>store</code> will use strategy <code>pooled</code>").</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">ErrorCode</span><span class="p">,</span> <span class="n">MapiError</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
@@ -4959,36 +5032,40 @@ new level of <code>store</code> will use strategy <code>pooled</code>") in the o
 </span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="c1"># 3. a product outside the fitted range: sku is a fixed dim</span>
 </span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="n">code_3</span> <span class="o">=</span> <span class="n">try_score</span><span class="p">(</span><span class="n">FORECAST</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">assign_coords</span><span class="p">(</span><span class="n">sku</span><span class="o">=</span><span class="p">[</span><span class="s2">"apples"</span><span class="p">,</span> <span class="s2">"kiwis"</span><span class="p">]))</span>
 </span></code></pre></div>
-<p>Then it <strong>canonicalises</strong> the model-stage data, so a plugin never has to reason about request
-order or new labels:</p>
+<p>Then it <strong>canonicalises</strong> the data at the model stage. Thus, a plugin does not have to
+know about the request order or new labels:</p>
 <ol>
-<li><strong>Reorder</strong> every <code>fixed</code> and <code>new_levels</code> dim to the fit order. Posterior arrays are indexed
-   by position, so <code>county_03</code> must sit where it sat at fit time.</li>
-<li><strong>Pad</strong> requested subsets out to the full fitted set (masked), so shapes match the fit.</li>
-<li><strong>Append new levels</strong> after the fitted ones, flagged by a boolean coordinate
-   <code>&lt;dim&gt;__is_new</code>; <code>&lt;dim&gt;__requested</code> marks real (non-padding) labels.</li>
+<li><strong>Reorder</strong> each <code>fixed</code> and <code>new_levels</code> dim to the fit order. Posterior arrays use
+   position as the index, so <code>county_03</code> must have the same position as at fit time.</li>
+<li><strong>Pad</strong> requested subsets to the full fitted set (masked), so that the shapes are the
+   same as in the fit.</li>
+<li><strong>Append new levels</strong> after the fitted levels. A boolean coordinate <code>&lt;dim&gt;__is_new</code> flags
+   them. <code>&lt;dim&gt;__requested</code> marks the real labels (not the padding).</li>
 <li>Call <code>plugin.score(...)</code>.</li>
-<li><strong>Select</strong> the requested labels back, in request order, and drop the helper coordinates.</li>
+<li><strong>Select</strong> the requested labels again, in the request order, and remove the helper
+   coordinates.</li>
 </ol>
 <pre class="mermaid"><code>flowchart LR
     R["request: county_07, county_02, county_new"] --&gt; O["fit order&lt;br/&gt;county_00 … county_07"]
     O --&gt; P["+ county_new&lt;br/&gt;county__is_new = True"]
     P --&gt; S["plugin.score"]
     S --&gt; B["select back:&lt;br/&gt;county_07, county_02, county_new"]</code></pre>
-<p>Inside a plugin, <code>mapi_sdk.new_level_mask(ds, "county")</code> returns the <code>__is_new</code> flags and
-<code>ScoreContext.strategy("county")</code> the effective new-level strategy. PyMC models get all of this
-for free through <code>ctx.hier_effect(...)</code>; see <a href="../../guides/pymc/">Bring a PyMC model</a>.</p>
+<p>In a plugin, <code>mapi_sdk.new_level_mask(ds, "county")</code> gives the <code>__is_new</code> flags.
+<code>ScoreContext.strategy("county")</code> gives the new-level strategy that applies. PyMC models get
+all of this automatically through <code>ctx.hier_effect(...)</code>. See
+<a href="../../guides/pymc/">Bring a PyMC model</a>.</p>
 <h2 id="errors-are-values-not-strings">Errors are values, not strings<a class="headerlink" href="#errors-are-values-not-strings" title="Permanent link">&para;</a></h2>
-<p>Every error is a <code>MapiError</code> with:</p>
+<p>Each error is a <code>MapiError</code> with:</p>
 <ul>
-<li>a stable <code>code</code> (an <code>ErrorCode</code>) and an HTTP status;</li>
-<li>a platform-written <code>detail</code>, and the list of <code>issues</code> behind it, each of which can carry a
-  <code>suggested_action</code>;</li>
-<li>a JSON <code>pointer</code> to the offending field;</li>
-<li><code>untrusted_text</code>: anything a dataset or plugin said, kept apart from the message so a UI can
-  render it as plain text and an agent can treat it as data, never as instructions.</li>
+<li>A stable <code>code</code> (an <code>ErrorCode</code>) and an HTTP status.</li>
+<li>A <code>detail</code> that the platform writes, and the list of <code>issues</code> that cause it. Each issue
+  can have a <code>suggested_action</code>.</li>
+<li>A JSON <code>pointer</code> to the field that has the problem.</li>
+<li><code>untrusted_text</code>: all text from a dataset or a plugin. The platform keeps it separate from
+  the message. Thus, a UI can show it as plain text, and an agent can use it as data, never
+  as instructions.</li>
 </ul>
-<p>Over HTTP an error is an RFC 7807 problem document. The full list is in
+<p>On HTTP, an error is an RFC 7807 problem document. For the full list, see
 <a href="../../reference/generated/error-codes/">Error codes</a>.</p>
 <p>Next: <a href="../capabilities/">Capabilities and manifests</a>.</p>
 
@@ -5045,13 +5122,13 @@ for free through <code>ctx.hier_effect(...)</code>; see <a href="../../guides/py
         
         
           
-          <a href="../capabilities/" class="md-footer__link md-footer__link--next" aria-label="Next: Capabilities and manifests">
+          <a href="../forecasting-with-actuals/" class="md-footer__link md-footer__link--next" aria-label="Next: Forecasts with actuals">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Capabilities and manifests
+                Forecasts with actuals
               </div>
             </div>
             <div class="md-footer__button md-icon">

@@ -120,7 +120,9 @@
         "SELF_APPROVAL_FORBIDDEN",
         "NOT_VALIDATED",
         "EXPLORE_INVALID",
-        "OPTIMIZE_INFEASIBLE"
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID"
       ],
       "title": "ErrorCode",
       "type": "string"

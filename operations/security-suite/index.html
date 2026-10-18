@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4610,6 +4640,8 @@
       
         
       
+        
+      
     
     
     
@@ -4698,6 +4730,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4834,29 +4894,30 @@
 
 
 <h1 id="security-suite-v03">Security suite <span class="mapi-badge">v0.3</span><a class="headerlink" href="#security-suite-v03" title="Permanent link">&para;</a></h1>
-<p>The security suite is a set of deliberately hostile probes. For each executor, it reports which
-attacks were <strong>BLOCKED</strong> and which were <strong>ALLOWED</strong>, and compares the result with what that
-executor's isolation level must guarantee. It runs nightly in the cloud. It has to stay green
+<p>The security suite is a set of hostile probes. For each executor, it reports which attacks
+the executor <strong>BLOCKED</strong> and which it <strong>ALLOWED</strong>. It compares the result with the guarantees
+of the isolation level of that executor. It runs each night in the cloud. It must stay green
 for two weeks before public code upload (cut line B) can open.</p>
-<p>The suite lives in <code>security/</code> at the root of the repository and is <strong>never installed</strong>:
-<code>security/</code> is not a uv workspace member, so <code>uv sync --all-packages</code> leaves it out. Its
-malicious plugin is not registered as a <code>mapi.models</code> entry point either, so the platform can
-never discover it. The suite runs on the installed environment with <code>security/src</code> on
-<code>PYTHONPATH</code>, which is what the Make targets do.</p>
+<p>The suite is in <code>security/</code> at the root of the repository, and it is <strong>never installed</strong>.
+<code>security/</code> is not a uv workspace member, so <code>uv sync --all-packages</code> does not include it.
+Its malicious plugin is also not registered as a <code>mapi.models</code> entry point. Thus the
+platform can never find it. The suite runs on the installed environment with <code>security/src</code>
+on <code>PYTHONPATH</code>. The Make targets do this.</p>
 <h2 id="run-it">Run it<a class="headerlink" href="#run-it" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>security-list<span class="w">                              </span><span class="c1"># the probe corpus</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>security-suite<span class="w">                             </span><span class="c1"># EXECUTOR=local-process (always runnable)</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>make<span class="w"> </span>security-suite<span class="w"> </span><span class="nv">EXECUTOR</span><span class="o">=</span>docker-gvisor<span class="w">      </span><span class="c1"># sandbox probes inside a gVisor container</span>
 </span></code></pre></div>
-<p><code>make security-suite</code> exits non-zero when any outcome is unacceptable for the executor's
-isolation level. It also writes <code>.local/security-&lt;executor&gt;.prom</code>, which exports
-<code>mapi_security_probe_unexpected{executor}</code> for a textfile collector or a Pushgateway. The
-<code>MapiSecurityProbeFailure</code> alert in <code>ops/alerts/</code> watches that series. The nightly workflow
-pushes the file to the Pushgateway named by the <code>MAPI_PUSHGATEWAY_URL</code> repository secret;
-without that secret the alert has no data and the failing nightly job is the signal.</p>
+<p>If an outcome is not acceptable for the isolation level of the executor,
+<code>make security-suite</code> stops with a status that is not zero. It also writes
+<code>.local/security-&lt;executor&gt;.prom</code>. This file exports <code>mapi_security_probe_unexpected{executor}</code>
+for a textfile collector or a Pushgateway. The <code>MapiSecurityProbeFailure</code> alert in <code>ops/alerts/</code>
+monitors that series. The nightly workflow pushes the file to the Pushgateway that the
+<code>MAPI_PUSHGATEWAY_URL</code> repository secret names. Without that secret, the alert has no data.
+Then the failed nightly job is the signal.</p>
 <h2 id="the-probes">The probes<a class="headerlink" href="#the-probes" title="Permanent link">&para;</a></h2>
-<p><strong>Isolation probes</strong> test operating-system and sandbox controls. Each one tries a hostile
-action, safely and with bounds, and reports ALLOWED or BLOCKED:</p>
+<p><strong>Isolation probes</strong> test the controls of the operating system and the sandbox. Each probe
+tries a hostile action, safely and with limits. It reports ALLOWED or BLOCKED:</p>
 <table>
 <thead>
 <tr>
@@ -4867,40 +4928,40 @@ action, safely and with bounds, and reports ALLOWED or BLOCKED:</p>
 <tbody>
 <tr>
 <td><code>metadata_token</code></td>
-<td>Fetch an instance token from the metadata server</td>
+<td>Get an instance token from the metadata server</td>
 </tr>
 <tr>
 <td><code>http_egress</code>, <code>dns_egress</code></td>
-<td>Open an outbound connection; resolve a unique subdomain (DNS exfiltration)</td>
+<td>Open an outbound connection. Resolve a unique subdomain (DNS exfiltration)</td>
 </tr>
 <tr>
 <td><code>write_outside_scratch</code></td>
-<td>Write outside the run's output area</td>
+<td>Write outside the output area of the run</td>
 </tr>
 <tr>
 <td><code>reuse_foreign_url</code></td>
-<td>Reach an object-store endpoint, the first step to reusing another run's signed URL</td>
+<td>Connect to an object-store endpoint. This is the first step to use the signed URL of a different run</td>
 </tr>
 <tr>
 <td><code>read_proc1_environ</code>, <code>read_supervisor_mem</code></td>
-<td>Read the supervisor's environment or memory</td>
+<td>Read the environment or memory of the supervisor</td>
 </tr>
 <tr>
 <td><code>pth_injection</code></td>
-<td>Drop a <code>.pth</code> or <code>sitecustomize</code> file into site-packages</td>
+<td>Put a <code>.pth</code> or <code>sitecustomize</code> file into site-packages</td>
 </tr>
 <tr>
 <td><code>fork_bomb</code>, <code>memory_bomb</code>, <code>disk_bomb</code></td>
-<td>Exceed the process, memory or scratch limits (all capped)</td>
+<td>Go above the process, memory or scratch limits (all capped)</td>
 </tr>
 <tr>
 <td><code>log_flood</code></td>
-<td>Write past the per-run log cap</td>
+<td>Write more than the log cap of the run</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Platform probes</strong> call the real control-plane defences in <code>mapi_spec</code> and <code>mapi_plots</code>. They
-must be BLOCKED on every executor:</p>
+<p><strong>Platform probes</strong> call the real defences of the control plane in <code>mapi_spec</code> and
+<code>mapi_plots</code>. All executors must stop them (BLOCKED):</p>
 <table>
 <thead>
 <tr>
@@ -4915,7 +4976,7 @@ must be BLOCKED on every executor:</p>
 </tr>
 <tr>
 <td><code>tampered_manifest</code></td>
-<td>An output object the signed manifest never listed</td>
+<td>An output object that the signed manifest did not list</td>
 </tr>
 <tr>
 <td><code>redos_schema</code></td>
@@ -4927,7 +4988,7 @@ must be BLOCKED on every executor:</p>
 </tr>
 <tr>
 <td><code>reuse_foreign_manifest</code></td>
-<td>One run's signed manifest presented under another run's key</td>
+<td>The signed manifest of one run, sent under the key of a different run</td>
 </tr>
 </tbody>
 </table>
@@ -4945,7 +5006,7 @@ must be BLOCKED on every executor:</p>
 <tr>
 <td><code>PROCESS</code></td>
 <td><code>local-process</code>, <code>docker</code> (runc)</td>
-<td>Either outcome is accepted: these are not security boundaries</td>
+<td>The suite accepts the two outcomes, because these are not security boundaries</td>
 <td>BLOCKED</td>
 </tr>
 <tr>
@@ -4963,32 +5024,36 @@ must be BLOCKED on every executor:</p>
 </tbody>
 </table>
 <p>SKIPPED is always acceptable, for example when there is no procfs or no Docker daemon. ERROR
-never is. A passing run of this matrix, recorded for the executor's current caps, is one half
-of what lets an executor take <code>verified</code> and <code>public</code> tenants; a passing run of the 12-case
-executor conformance suite (<code>packages/server/tests/test_executor_conformance.py</code>) is the other.
-Record both with <code>PUT /v1/admin/executors/{name}/evidence</code>: see
+is never acceptable. An executor needs two items before it can take <code>verified</code> and <code>public</code>
+tenants:</p>
+<ul>
+<li>A passing run of this matrix, recorded for the current caps of the executor.</li>
+<li>A passing run of the 12-case executor conformance suite
+  (<code>packages/server/tests/test_executor_conformance.py</code>).</li>
+</ul>
+<p>Record the two with <code>PUT /v1/admin/executors/{name}/evidence</code>. Refer to
 <a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>. For that gate, the network probes
-(<code>http_egress</code>, <code>dns_egress</code>, <code>metadata_token</code>) must have run and been blocked.</p>
+(<code>http_egress</code>, <code>dns_egress</code>, <code>metadata_token</code>) must run, and the executor must stop them.</p>
 <h2 id="where-the-probes-run">Where the probes run<a class="headerlink" href="#where-the-probes-run" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>local-process:</strong> the suite process is the execution environment, so the probes run in
-  process. On a developer machine most isolation probes are ALLOWED. That is expected and
-  documented.</li>
+<li><strong>local-process:</strong> the suite process is the execution environment. Thus the probes run in
+  the process. On a developer machine, most isolation probes are ALLOWED. This is expected
+  and documented.</li>
 <li><strong>docker, docker-gvisor:</strong> the isolation probes run in a locked-down container
   (<code>--network none</code>, read-only root, non-root user, no capabilities, <code>no-new-privileges</code>, and
-  <code>--runtime runsc</code> for gVisor). Without a Docker daemon they report SKIPPED, and the platform
+  <code>--runtime runsc</code> for gVisor). Without a Docker daemon, they report SKIPPED. The platform
   probes still run.</li>
-<li><strong>cloud:</strong> the probes must run <em>inside</em> a Cloud Run Jobs execution of a base image, judged
-  against the <code>MICROVM</code> row. <code>--executor cloud</code> therefore refuses to run (exit status 2)
-  anywhere <code>CLOUD_RUN_JOB</code> and <code>CLOUD_RUN_EXECUTION</code> are not set, because a report made on a
-  laptop or a CI runner would describe the wrong sandbox. The base images do not ship the
-  suite yet and Terraform defines no probe Job, so the nightly cloud run is still to be wired
-  up: see <a href="../m2-verification/#what-remains-for-real-gcp">M2 verification</a>. The authoritative
-  DNS-exfiltration check reads the query logs of a zone we control
+<li><strong>cloud:</strong> the probes must run <em>inside</em> a Cloud Run Jobs execution of a base image. The
+  suite compares them with the <code>MICROVM</code> row. Thus <code>--executor cloud</code> does not run (exit
+  status 2) where <code>CLOUD_RUN_JOB</code> and <code>CLOUD_RUN_EXECUTION</code> are not set. A report from a
+  laptop or a CI runner would describe the wrong sandbox. The base images do not contain the
+  suite yet, and Terraform defines no probe Job. Thus we must still connect the nightly cloud
+  run. Refer to <a href="../m2-verification/#what-remains-for-real-gcp">M2 verification</a>. The
+  authoritative DNS-exfiltration check reads the query logs of a zone that we control
   (<a href="../security-hardening/">security hardening</a>).</li>
 </ul>
-<p><code>security/THREAT-MODEL.md</code> maps each probe to its threat and to the control expected to stop
-it.</p>
+<p><code>security/THREAT-MODEL.md</code> connects each probe to its threat, and to the control that must
+stop it.</p>
 
 
 

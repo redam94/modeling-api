@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -3305,10 +3335,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#starting-a-run" class="md-nav__link">
+  <a href="#start-a-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Starting a run
+        Start a run
       
     </span>
   </a>
@@ -4652,6 +4682,8 @@
       
         
       
+        
+      
     
     
     
@@ -4760,6 +4792,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../project/changelog/" class="md-nav__link">
         
   
@@ -4815,10 +4875,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#starting-a-run" class="md-nav__link">
+  <a href="#start-a-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Starting a run
+        Start a run
       
     </span>
   </a>
@@ -4915,13 +4975,13 @@
 
 
 <h1 id="runner-v02">Runner <span class="mapi-badge">v0.2</span><a class="headerlink" href="#runner-v02" title="Permanent link">&para;</a></h1>
-<p><code>mapi-runner</code> executes one run inside a sandbox. It implements the
-<a href="../run-protocol/">run protocol</a> from the execution's side. Two processes take part:</p>
+<p><code>mapi-runner</code> executes one run in a sandbox. It implements the side of the execution in the
+<a href="../run-protocol/">run protocol</a>. Two processes are part of a run:</p>
 <ul>
-<li>the <strong>supervisor</strong> is trusted. It holds the run's HMAC key and the signed URLs, and it is
-  the only process that writes to the execution's stdout;</li>
-<li>the <strong>worker</strong> is untrusted. It runs the platform harness (<code>mapi_sdk</code>) together with plugin
-  code, and receives neither the key nor any write URL.</li>
+<li>The <strong>supervisor</strong> is trusted. It has the HMAC key of the run and the signed URLs. It is
+  the only process that writes to the stdout of the execution.</li>
+<li>The <strong>worker</strong> is not trusted. It runs the platform harness (<code>mapi_sdk</code>) together with
+  plugin code. It does not get the key or a URL that can write.</li>
 </ul>
 <pre class="mermaid"><code>sequenceDiagram
     participant X as Executor
@@ -4937,14 +4997,14 @@
     S--&gt;&gt;X: stdout: {"mapi_event": …} (HMAC + seq per line)
     S-&gt;&gt;G: POST outputs (policy), PUT manifest.json
     S--&gt;&gt;X: "complete" event, exit 0</code></pre>
-<h2 id="starting-a-run">Starting a run<a class="headerlink" href="#starting-a-run" title="Permanent link">&para;</a></h2>
+<h2 id="start-a-run">Start a run<a class="headerlink" href="#start-a-run" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">MAPI_RUN_ID</span><span class="o">=</span>run_01…<span class="w"> </span><span class="nv">MAPI_NONCE</span><span class="o">=</span>&lt;<span class="m">64</span><span class="w"> </span>hex&gt;<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">MAPI_BOOTSTRAP_URL</span><span class="o">=</span><span class="s1">'http://127.0.0.1:4443/storage/v1/b/mapi-local-bootstrap/o/{nonce}'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nv">MAPI_EXEC_TOKEN</span><span class="o">=</span>&lt;<span class="nb">local</span><span class="w"> </span>shim<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>token&gt;<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>mapi-runner
 </span></code></pre></div>
-<p>All run configuration comes from the environment. The command-line options describe the
-image only and never carry secrets:</p>
+<p>All the configuration of the run comes from the environment. The command-line options tell
+only about the image. They never contain secrets:</p>
 <table>
 <thead>
 <tr>
@@ -4957,32 +5017,32 @@ image only and never carry secrets:</p>
 <tr>
 <td><code>--worker-python PATH</code></td>
 <td>this interpreter, or <code>MAPI_WORKER_PYTHON</code></td>
-<td>Interpreter of the worker environment (the base image's site-packages plus any overlay)</td>
+<td>The interpreter of the worker environment (the site-packages of the base image and all overlays)</td>
 </tr>
 <tr>
 <td><code>--worker-registry MODULE:CALLABLE</code></td>
 <td>entry points</td>
-<td>Plugin registry factory for the worker</td>
+<td>The factory of the plugin registry for the worker</td>
 </tr>
 <tr>
 <td><code>--scratch-dir DIR</code></td>
 <td><code>$TMPDIR</code></td>
-<td>Parent directory of the run's scratch space</td>
+<td>The parent directory of the scratch space of the run</td>
 </tr>
 <tr>
 <td><code>--keep-scratch</code></td>
 <td>off</td>
-<td>Keep the scratch directory after the run, for debugging</td>
+<td>Keep the scratch directory after the run, for debug</td>
 </tr>
 <tr>
 <td><code>--term-grace SECONDS</code></td>
 <td>5</td>
-<td>How long the worker gets to stop after SIGTERM before it is killed</td>
+<td>The time that the worker gets to stop after SIGTERM. After this time, the supervisor kills the worker.</td>
 </tr>
 <tr>
 <td><code>--deadline-reserve SECONDS</code></td>
 <td>15</td>
-<td>Time kept before the deadline for the checkpoint flush and a partial manifest</td>
+<td>The time before the deadline for the checkpoint flush and a partial manifest</td>
 </tr>
 <tr>
 <td><code>--base-image NAME</code></td>
@@ -4993,63 +5053,74 @@ image only and never carry secrets:</p>
 </table>
 <h2 id="what-the-supervisor-guarantees">What the supervisor guarantees<a class="headerlink" href="#what-the-supervisor-guarantees" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>The bootstrap object is deleted before any untrusted code runs.</strong> The supervisor reads the
-  object, then deletes exactly the generation it read. If the delete fails, the run stops
-  with exit code <code>2</code>.</li>
-<li><strong>Only signed events reach stdout.</strong> The supervisor keeps a private copy of the stdout
-  descriptor for its event writer and points fd 1 at stderr. Anything the worker prints,
-  including text that looks like an event, ends up in the <code>line</code> of a <code>log</code> event. Every line
-  carries <code>seq</code> and an HMAC under the run key.</li>
-<li><strong>The worker gets a scrubbed environment.</strong> Only <code>WORKER_ENV_ALLOWLIST</code> passes through, so
-  no <code>MAPI_*</code> variable reaches it. It starts with <code>python -I -u</code> in a new session, with
-  <code>TMPDIR</code> set to its scratch directory. When the supervisor runs as root (Cloud Run, docker)
-  the worker also runs as uid/gid <code>10001</code> with no supplementary groups, <code>no_new_privs</code> and
-  no core dumps, and the supervisor marks itself non-dumpable. Anywhere else (macOS, a
-  non-root shell) the run continues in <strong>dev mode</strong>: the supervisor reports a
-  <code>DEV_MODE_ISOLATION</code> warning event. Dev mode is not a security boundary. An executor that
-  promises the split sets <code>MAPI_REQUIRE_ISOLATION=1</code> (the docker executor does); the
-  supervisor then fails the run with <code>SANDBOX_VIOLATION</code> instead of entering dev mode.</li>
-<li><strong>Worker messages are validated.</strong> Each message is a length-prefixed JSON frame of at most
-  256 KiB and must match its Pydantic model. A malformed frame, an unknown type or anything
-  sent after the final result is a <code>SANDBOX_VIOLATION</code>.</li>
-<li><strong>Logs are capped.</strong> ANSI escapes, control characters and bidi overrides are stripped.
-  Lines are cut at <code>limits.log_line_bytes</code> (4 KB) and flagged <code>truncated</code>. More than
-  <code>limits.log_total_bytes</code> (20 MB) of worker output is <code>SANDBOX_VIOLATION (log_flood)</code>.</li>
-<li><strong>Worker text is cleaned.</strong> The same stripping applies to every other string the worker
-  sends: state and progress messages, warnings, diagnostics, metric labels, and error and
-  issue messages. Line breaks become spaces, except in <code>untrusted_text</code>.</li>
-<li><strong>Progress is coalesced.</strong> At most one <code>progress</code> event is sent per
-  <code>limits.progress_interval_s</code> (2 s), and the newest value wins.</li>
-<li><strong>Outputs are uploaded only from regular files.</strong> The supervisor opens each file with
-  <code>O_NOFOLLOW</code>, relative to directories it has already opened. A symlink, FIFO or device in
-  the outputs tree is a violation, and so are the reserved names <code>manifest.json</code> and
-  <code>checkpoints/</code>. The object and byte caps from <code>limits</code> apply, and the supervisor picks each
-  object's content type from its extension.</li>
-<li><strong>The manifest describes exactly the bytes that were sent.</strong> CRC32C and MD5 are computed
-  while each file streams through the POST policy. The <code>OutputManifest</code> is signed with the
-  run key and PUT last, and the <code>complete</code> event follows it.</li>
-<li><strong>The scratch budget is enforced.</strong> The supervisor measures the scratch directory every 2 s,
-  and the worker refuses any input larger than the space left. Exceeding
-  <code>limits.scratch_bytes</code> is <code>RESOURCE_EXHAUSTED</code>.</li>
+<li><strong>The supervisor deletes the bootstrap object before code that is not trusted runs.</strong> The
+  supervisor reads the object. Then it deletes exactly the generation that it read. If the
+  delete fails, the run stops with exit code <code>2</code>.</li>
+<li><strong>Only signed events go to stdout.</strong> The supervisor keeps a private copy of the stdout
+  descriptor for its event writer. It points fd 1 at stderr. All text that the worker prints
+  goes into the <code>line</code> of a <code>log</code> event. This is also true for text that looks like an event.
+  Each line has <code>seq</code> and an HMAC with the key of the run.</li>
+<li>
+<p><strong>The worker gets a scrubbed environment.</strong> Only <code>WORKER_ENV_ALLOWLIST</code> goes through. Thus
+  no <code>MAPI_*</code> variable gets to the worker. The worker starts with <code>python -I -u</code> in a new
+  session, with <code>TMPDIR</code> set to its scratch directory. If the supervisor runs as root (Cloud
+  Run, docker), these rules also apply:</p>
+<ul>
+<li>The worker runs as uid/gid <code>10001</code> with no supplementary groups.</li>
+<li>The worker has <code>no_new_privs</code> and no core dumps.</li>
+<li>The supervisor marks itself non-dumpable.</li>
+</ul>
+<p>In all other conditions (macOS, a non-root shell), the run continues in <strong>dev mode</strong>. The
+supervisor reports a <code>DEV_MODE_ISOLATION</code> warning event. Dev mode is not a security
+boundary. An executor that promises the split sets <code>MAPI_REQUIRE_ISOLATION=1</code> (the docker
+executor does this). Then the supervisor does not go into dev mode. It fails the run with
+<code>SANDBOX_VIOLATION</code>.
+- <strong>The supervisor validates worker messages.</strong> Each message is a JSON frame with a length
+  prefix and a maximum size of 256 KiB. It must agree with its Pydantic model. These are a
+  <code>SANDBOX_VIOLATION</code>: a malformed frame, an unknown type, or a message after the final
+  result.
+- <strong>Logs have caps.</strong> The supervisor removes ANSI escapes, control characters and bidi
+  overrides. It cuts lines at <code>limits.log_line_bytes</code> (4 KB) and flags them <code>truncated</code>. More
+  than <code>limits.log_total_bytes</code> (20 MB) of worker output is <code>SANDBOX_VIOLATION (log_flood)</code>.
+- <strong>The supervisor cleans worker text.</strong> It removes the same characters from all other
+  strings that the worker sends. These strings are state and progress messages, warnings,
+  diagnostics, metric labels, and error and issue messages. Line breaks become spaces, except
+  in <code>untrusted_text</code>.
+- <strong>The supervisor coalesces progress.</strong> It sends a maximum of one <code>progress</code> event in each
+  <code>limits.progress_interval_s</code> (2 s). The newest value wins.
+- <strong>The supervisor uploads outputs only from regular files.</strong> It opens each file with
+  <code>O_NOFOLLOW</code>, relative to directories that it opened before. A symlink, FIFO or device in
+  the outputs tree is a violation. The reserved names <code>manifest.json</code> and <code>checkpoints/</code> are
+  also violations. The object caps and byte caps from <code>limits</code> apply. The supervisor selects
+  the content type of each object from its extension.
+- <strong>The manifest tells exactly which bytes the supervisor sent.</strong> The supervisor calculates
+  CRC32C and MD5 while it streams each file through the POST policy. It signs the
+  <code>OutputManifest</code> with the key of the run and PUTs it last. The <code>complete</code> event comes after
+  the manifest.
+- <strong>The supervisor enforces the scratch budget.</strong> It measures the scratch directory each 2 s.
+  The worker refuses all inputs that are larger than the remaining space. If the run uses
+  more than <code>limits.scratch_bytes</code>, the result is <code>RESOURCE_EXHAUSTED</code>.</p>
+</li>
 </ul>
 <h2 id="sigterm-the-deadline-and-checkpoints">SIGTERM, the deadline and checkpoints<a class="headerlink" href="#sigterm-the-deadline-and-checkpoints" title="Permanent link">&para;</a></h2>
-<p>On SIGTERM, or when the deadline minus the reserve is reached, the supervisor:</p>
+<p>The supervisor does these steps on SIGTERM, or when the time gets to the deadline minus the
+reserve:</p>
 <ol>
-<li>sends a <code>RUN_TERMINATING</code> warning event and forwards SIGTERM to the worker's session;</li>
-<li>waits for the worker to stop. The worker cancels cooperatively: samplers check for
-   cancellation every few draws, and PyMC's segmented sampler writes a final checkpoint
-   before it stops. After <code>--term-grace</code> the worker is killed;</li>
-<li>waits for checkpoint uploads that are still running;</li>
-<li>if checkpoints exist, uploads a manifest with <code>status: partial</code> that lists the checkpoint
-   objects, and exits with <code>16 PARTIAL</code>. Otherwise it exits with <code>143</code> (SIGTERM) or <code>14</code>
-   (deadline).</li>
+<li>It sends a <code>RUN_TERMINATING</code> warning event and sends SIGTERM to the session of the worker.</li>
+<li>It waits for the worker to stop. The worker cooperates when it cancels. Samplers do a
+   check for cancellation after some draws. The segmented sampler of PyMC writes a final
+   checkpoint before it stops. After <code>--term-grace</code>, the supervisor kills the worker.</li>
+<li>It waits for the checkpoint uploads that did not finish.</li>
+<li>If checkpoints exist, it uploads a manifest with <code>status: partial</code> that lists the
+   checkpoint objects. Then it exits with <code>16 PARTIAL</code>. If no checkpoints exist, it exits
+   with <code>143</code> (SIGTERM) or <code>14</code> (deadline).</li>
 </ol>
-<p>Checkpoints are written to <code>{scratch}/checkpoints/</code> as two flat files per fit key:
-<code>ckpt-&lt;key&gt;.draws.zarr.zip</code> and <code>ckpt-&lt;key&gt;.meta.json</code>. The supervisor uploads both with the
-<code>checkpoints</code> POST policy and emits a <code>checkpoint</code> event for each. A resumed attempt receives
-the same names in <code>RunSpec.resume</code>: <strong>resume names equal object names relative to the
-checkpoint prefix</strong>. They are downloaded before the fit starts, and the engine continues
-from them.</p>
+<p>The worker writes checkpoints to <code>{scratch}/checkpoints/</code> as two flat files for each fit
+key: <code>ckpt-&lt;key&gt;.draws.zarr.zip</code> and <code>ckpt-&lt;key&gt;.meta.json</code>. The supervisor uploads the two
+files with the <code>checkpoints</code> POST policy. It sends a <code>checkpoint</code> event for each file. A
+resumed attempt gets the same names in <code>RunSpec.resume</code>: <strong>the resume names are equal to the
+object names relative to the checkpoint prefix</strong>. The runner downloads them before the fit
+starts, and the engine continues from them.</p>
 <h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5061,11 +5132,11 @@ from them.</p>
 <tbody>
 <tr>
 <td><code>0</code></td>
-<td>Outputs and the manifest were uploaded and the <code>complete</code> event was emitted</td>
+<td>The supervisor uploaded the outputs and the manifest, and sent the <code>complete</code> event</td>
 </tr>
 <tr>
 <td><code>2</code></td>
-<td>Bad environment, missing or invalid bootstrap, or unusable <code>outputs</code> (no events when the RunSpec could not be read)</td>
+<td>The environment is bad, the bootstrap is missing or not valid, or the supervisor cannot use <code>outputs</code>. (There are no events if the supervisor could not read the RunSpec.)</td>
 </tr>
 <tr>
 <td><code>10</code></td>
@@ -5073,19 +5144,19 @@ from them.</p>
 </tr>
 <tr>
 <td><code>11</code></td>
-<td>Out of memory (<code>MemoryError</code>, or the worker was killed by SIGKILL) or the scratch budget was exceeded</td>
+<td>Out of memory (<code>MemoryError</code>, or SIGKILL killed the worker), or the run used more than the scratch budget</td>
 </tr>
 <tr>
 <td><code>12</code></td>
-<td>The supervisor's own uploads or downloads failed after retries</td>
+<td>The uploads or downloads of the supervisor failed after retries</td>
 </tr>
 <tr>
 <td><code>13</code></td>
-<td>An input did not match its size, CRC32C or MD5, or a bundle did not match its manifest</td>
+<td>The size, CRC32C or MD5 of an input was not correct, or a bundle did not agree with its manifest</td>
 </tr>
 <tr>
 <td><code>14</code></td>
-<td>The deadline was reached without a checkpoint</td>
+<td>The run got to the deadline without a checkpoint</td>
 </tr>
 <tr>
 <td><code>15</code></td>
@@ -5093,7 +5164,7 @@ from them.</p>
 </tr>
 <tr>
 <td><code>16</code></td>
-<td>Partial: a checkpoint was flushed after SIGTERM or at the deadline</td>
+<td>Partial: the worker flushed a checkpoint after SIGTERM or at the deadline</td>
 </tr>
 <tr>
 <td><code>143</code></td>
@@ -5101,21 +5172,27 @@ from them.</p>
 </tr>
 </tbody>
 </table>
-<p>A failure is always reported in an <code>error</code> event whose <code>message</code> is written by the
-supervisor. Text that comes from the worker or a plugin goes in <code>untrusted_text</code>. Typed
-issues reported by the worker, such as <code>MISSING_FUTURE_COVARIATE</code>, are also emitted as
-<code>diagnostic</code> events. The supervisor accepts only three failure classes from the worker:
-<code>resource_exhausted</code>, <code>integrity</code> and <code>sandbox</code>. A worker that reports <code>INFRA_ERROR</code> (for
-example a failed input download) fails the run as <code>user</code>: the <code>infra</code> exit makes the
-platform retry the whole run automatically, so only failures the supervisor observes itself
-may use it. Any other failure the worker reports becomes <code>user</code>.</p>
+<p>The supervisor always reports a failure in an <code>error</code> event. The supervisor writes the
+<code>message</code> of this event. Text from the worker or from a plugin goes in <code>untrusted_text</code>. The
+supervisor also sends typed issues from the worker as <code>diagnostic</code> events, for example
+<code>MISSING_FUTURE_COVARIATE</code>.</p>
+<p>The supervisor accepts only three failure classes from the worker: <code>resource_exhausted</code>,
+<code>integrity</code> and <code>sandbox</code>. If the worker reports <code>INFRA_ERROR</code>, the run fails as <code>user</code>. An
+example is a failed input download. The reason is that the <code>infra</code> exit makes the platform
+retry the full run automatically. Thus only failures that the supervisor sees itself can use
+<code>infra</code>. All other failures that the worker reports become <code>user</code>.</p>
 <h2 id="what-runspecspec-holds-per-kind">What <code>RunSpec.spec</code> holds, per kind<a class="headerlink" href="#what-runspecspec-holds-per-kind" title="Permanent link">&para;</a></h2>
-<p>The dispatcher writes these documents and the runner reads them; both import the models and
-the input/output names from <code>mapi_spec.jobs</code> (see the <a href="../run-protocol/#job-payloads-and-object-names">run protocol</a>).
-Inputs are read with HTTP range requests. Every dataset is a single-object <code>*.zarr.zip</code>. A
-dataset's raw schema comes from the <code>schema</code> input if there is one, otherwise from the zarr
-root attribute <code>mapi_schema</code> (<code>mapi_spec.jobs.DATASET_SCHEMA_ATTR</code>, which ingest writes and
-uploads may carry), and otherwise it is inferred.</p>
+<p>The dispatcher writes these documents, and the runner reads them. The two sides import the
+models and the names of the inputs and outputs from <code>mapi_spec.jobs</code>. Refer to the
+<a href="../run-protocol/#job-payloads-and-object-names">run protocol</a>. The runner reads inputs with
+HTTP range requests. Each dataset is one object <code>*.zarr.zip</code>. The raw schema of a dataset
+comes from one of these sources, in this sequence:</p>
+<ol>
+<li>the <code>schema</code> input, if there is one</li>
+<li>the zarr root attribute <code>mapi_schema</code> (<code>mapi_spec.jobs.DATASET_SCHEMA_ATTR</code>). Ingest writes
+   this attribute, and uploads can contain it.</li>
+<li>a schema that the runner infers.</li>
+</ol>
 <table>
 <thead>
 <tr>
@@ -5128,9 +5205,9 @@ uploads may carry), and otherwise it is inferred.</p>
 <tbody>
 <tr>
 <td><code>ingest</code></td>
-<td><code>IngestMapping</code>, or <code>IngestJob</code> (<code>{"mapping": …}</code> or <code>{"preset": "mff", "mff": {…}}</code>, plus the informational <code>dataset</code> and <code>source</code>)</td>
+<td><code>IngestMapping</code>, or <code>IngestJob</code> (<code>{"mapping": …}</code> or <code>{"preset": "mff", "mff": {…}}</code>, and also <code>dataset</code> and <code>source</code>, which are only for information)</td>
 <td><code>upload</code></td>
-<td><code>data.zarr.zip</code>, <code>schema.json</code>, <code>summary.json</code> (<code>DataSummary</code>), <code>profile.json</code> (<code>mapi.profile/v1</code>, plus <code>sha256</code> and <code>size_bytes</code> of the data), <code>preview.json</code> (<code>mapi.preview/v1</code>)</td>
+<td><code>data.zarr.zip</code>, <code>schema.json</code>, <code>summary.json</code> (<code>DataSummary</code>), <code>profile.json</code> (<code>mapi.profile/v1</code>, with the <code>sha256</code> and <code>size_bytes</code> of the data), <code>preview.json</code> (<code>mapi.preview/v1</code>)</td>
 </tr>
 <tr>
 <td><code>describe</code></td>
@@ -5142,7 +5219,7 @@ uploads may carry), and otherwise it is inferred.</p>
 <td><code>validate</code></td>
 <td>a <code>ModelSpec</code></td>
 <td><code>dataset</code>, optional <code>schema</code>, <code>side.&lt;name&gt;</code></td>
-<td><code>validation.json</code> (<code>ValidateResponse</code> with the stages resolved by a dry run)</td>
+<td><code>validation.json</code> (<code>ValidateResponse</code> with the stages that a dry run resolved)</td>
 </tr>
 <tr>
 <td><code>fit</code></td>
@@ -5154,13 +5231,13 @@ uploads may carry), and otherwise it is inferred.</p>
 <td><code>score</code></td>
 <td>a <code>ScoreRequest</code>, or <code>{"request": …, "plots": […], "max_draws": n}</code></td>
 <td><code>bundle</code>, optional <code>bundle.manifest</code>, <code>dataset</code> (payload), <code>scenario</code>, <code>side.&lt;name&gt;</code>, <code>history</code> (v0.4)</td>
-<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>ui/summary.arrow</code>, <code>plots.json</code>; forecasts add <code>ui/guided/forecast.json</code> (<code>mapi.forecast/v1</code>), counterfactuals <code>ui/guided/counterfactual.json</code> (<code>mapi.counterfactual/v1</code>) (v0.4)</td>
+<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>ui/summary.arrow</code>, <code>plots.json</code>. Forecasts add <code>ui/guided/forecast.json</code> (<code>mapi.forecast/v1</code>). Counterfactuals add <code>ui/guided/counterfactual.json</code> (<code>mapi.counterfactual/v1</code>) (v0.4).</td>
 </tr>
 <tr>
 <td><code>evaluate</code></td>
 <td><code>{"request": …?, "metrics": […]?}</code></td>
 <td><code>bundle</code>, <code>dataset</code>, <code>side.&lt;name&gt;</code></td>
-<td>the score outputs plus <code>metrics.json</code></td>
+<td>the score outputs and also <code>metrics.json</code></td>
 </tr>
 <tr>
 <td><code>derive</code></td>
@@ -5182,25 +5259,27 @@ uploads may carry), and otherwise it is inferred.</p>
 </tr>
 </tbody>
 </table>
-<p>At the top level of the attempt prefix, <code>manifest.json</code> is the runner's <code>OutputManifest</code>.
-For that reason the SDK bundle's own manifest is uploaded as <code>bundle.manifest.json</code>. The
+<p>At the top level of the attempt prefix, <code>manifest.json</code> is the <code>OutputManifest</code> of the
+runner. Thus the runner uploads the manifest of the SDK bundle as <code>bundle.manifest.json</code>. The
 evaluation sub-bundle keeps the SDK layout (<code>evaluation/manifest.json</code>).</p>
-<p>In <code>plots.json</code>, inline Arrow datasets larger than 64 KiB are moved to
-<code>ui/plotdata/&lt;plot&gt;.&lt;dataset&gt;.arrow</code> and referenced as <code>data_ref</code>, with their size and
-CRC32C.</p>
+<p>In <code>plots.json</code>, the runner moves inline Arrow datasets that are larger than 64 KiB to
+<code>ui/plotdata/&lt;plot&gt;.&lt;dataset&gt;.arrow</code>. The plot refers to them as <code>data_ref</code>, with their size
+and CRC32C.</p>
 <h3 id="mff-preset">MFF preset<a class="headerlink" href="#mff-preset" title="Permanent link">&para;</a></h3>
-<p>The preset reads a long table with <code>Period</code>, <code>VariableName</code> and <code>VariableValue</code> columns.
-<code>Period</code> becomes the time dim (<code>date</code>, policy <code>extend</code>, frequency inferred). Each key column
+<p>The preset reads a long table with the columns <code>Period</code>, <code>VariableName</code> and <code>VariableValue</code>.
+<code>Period</code> becomes the time dim (<code>date</code>, policy <code>extend</code>, inferred frequency). Each key column
 (<code>Geography</code>, <code>Product</code>, <code>Campaign</code>, <code>Outlet</code>, <code>Creative</code>) becomes a categorical dim only if
-it holds more than one distinct value. Each <code>VariableName</code> becomes a variable. Roles, units
-and column names can be overridden in <code>mff</code>.</p>
+it has more than one distinct value. Each <code>VariableName</code> becomes a variable. You can override
+roles, units and column names in <code>mff</code>.</p>
 <h2 id="not-implemented-yet">Not implemented yet<a class="headerlink" href="#not-implemented-yet" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>optimize</code> runs. They fail with <code>CAPABILITY_UNSUPPORTED</code>, which is reported as exit <code>10</code>.</li>
-<li><code>render</code> needs <code>vl-convert-python</code> (Vega-Lite) or <code>kaleido</code> (Plotly) in the image.
-  Without them the run fails with a clear message. Plots whose datasets are <code>data_ref</code> are
-  not rendered.</li>
-<li>netCDF-4 (HDF5) uploads need <code>h5netcdf</code> in the image. netCDF-3 files are read with SciPy.</li>
+<li><code>optimize</code> runs. They fail with <code>CAPABILITY_UNSUPPORTED</code>. The runner reports this as exit
+  <code>10</code>.</li>
+<li><code>render</code> needs <code>vl-convert-python</code> (Vega-Lite) or <code>kaleido</code> (Plotly) in the image. If the
+  image does not have them, the run fails with a clear message. The runner does not render
+  plots with <code>data_ref</code> datasets.</li>
+<li>netCDF-4 (HDF5) uploads need <code>h5netcdf</code> in the image. The runner reads netCDF-3 files with
+  SciPy.</li>
 </ul>
 
 

@@ -7,7 +7,7 @@
           "arm": "then",
           "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
           "decided_at": "2026-10-15T09:30:00Z",
-          "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+          "explain_plain": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference.",
           "inputs": {
             "nodes.adf.p_value": 0.57,
             "nodes.kpss.reject": true,
@@ -144,7 +144,9 @@
         "SELF_APPROVAL_FORBIDDEN",
         "NOT_VALIDATED",
         "EXPLORE_INVALID",
-        "OPTIMIZE_INFEASIBLE"
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -663,7 +665,7 @@
           "arm": "then",
           "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
           "decided_at": "2026-10-15T09:30:00Z",
-          "explain_plain": "The tests found that the series wanders rather than returning to a steady level, so it was differenced.",
+          "explain_plain": "The tests found that the series wanders and does not return to a steady level. The workflow applied a difference.",
           "inputs": {
             "nodes.adf.p_value": 0.57,
             "nodes.kpss.reject": true,

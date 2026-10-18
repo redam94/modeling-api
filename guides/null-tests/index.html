@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4767,6 +4797,8 @@
       
         
       
+        
+      
     
     
     
@@ -4855,6 +4887,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5135,30 +5195,36 @@
 
 
 <h1 id="can-you-trust-this-model-v05">Can you trust this model? <span class="mapi-badge">v0.5</span><a class="headerlink" href="#can-you-trust-this-model-v05" title="Permanent link">&para;</a></h1>
-<p>Any flexible model will find <em>something</em> in any data. Give a marketing-mix model ten channels
-and two years of weekly sales and it will happily tell you what each channel returned - even if
-the sales were random. The fit statistics will look fine. The charts will look convincing. The
-only way to know whether the model learned something real is to <strong>show it data where there is
-nothing to learn, and check that it notices</strong>.</p>
-<p>That is what the platform's null tests do, and why a governance policy can require them before
-anyone uses a model. The first half of this page explains them without formulas; the second
-half gives the statistics. The how-to (policies, validations, approvals, evidence packs) is in
-<a href="../governance/">Validate models with governance policies</a>.</p>
+<p>A flexible model will find <em>something</em> in all data. Give a marketing-mix model ten channels
+and two years of weekly sales. It will tell you what each channel returned, also if the sales
+were random. The fit statistics will look good. The charts will look convincing. There is only
+one way to know if the model learned something real. <strong>Show it data that has nothing to learn,
+and make sure that the model sees this.</strong></p>
+<p>The null tests of the platform do this. Thus a governance policy can make them necessary before
+a person uses a model. The first half of this page tells about the tests without formulas. The
+second half gives the statistics.
+<a href="../governance/">Validate models with governance policies</a> tells how to use policies,
+validations, approvals and evidence packs.</p>
 <h2 id="in-plain-words">In plain words<a class="headerlink" href="#in-plain-words" title="Permanent link">&para;</a></h2>
 <h3 id="shuffled-results-does-the-model-beat-luck">Shuffled results: does the model beat luck?<a class="headerlink" href="#shuffled-results-does-the-model-beat-luck" title="Permanent link">&para;</a></h3>
-<p>Take the drivers the model uses - weekly spend, prices - and shuffle them in time, so that each
-week's spend lands on some other week while sales stay exactly as they were. Now the
-relationship between spend and sales is destroyed, by construction, but the sales' own trend
-and season are untouched. Fit the same model to the shuffled data and measure how well it
-predicts weeks it was not fitted on. Do that twenty or forty times. (A model without drivers -
-a forecast from the series' own past - is tested on the series itself: its week-to-week
-changes are shuffled and added up again, which keeps how much it wanders but removes anything
-predictable.)</p>
-<p>If the model really learned how sales depend on the drivers, it predicts the real held-out weeks
-<strong>much better</strong> than any of the shuffled versions predict theirs. If one shuffled fit in twenty
-does as well as the real one, the model's apparent skill is the kind of skill you get from
-noise. The check reports this as a <em>p-value</em>: the share of shuffled fits that did at least as
-well (with a small correction so it is never exactly zero).</p>
+<p>The test does these steps:</p>
+<ol>
+<li>Take the drivers that the model uses, for example weekly spend and prices.</li>
+<li>Shuffle the drivers in time. The spend of each week goes to a different week, but the sales
+   stay exactly the same.</li>
+<li>Fit the same model to the shuffled data.</li>
+<li>Measure how well the shuffled fit predicts weeks that it was not fitted on.</li>
+<li>Do steps 2 to 4 twenty or forty times.</li>
+</ol>
+<p>The shuffle removes the relation between spend and sales, by design. But it does not change
+the trend and the season of the sales.</p>
+<p>A model without drivers is a forecast from the past of the series. For this model, the test
+uses the series itself. It shuffles the changes from week to week and adds them up again. This
+keeps the quantity of wander, but removes all that is predictable.</p>
+<p>Possibly the model really learned how sales depend on the drivers. Then it predicts the real
+held-out weeks <strong>much better</strong> than the shuffled versions predict their weeks. If one shuffled
+fit in twenty does as well as the real fit, the skill of the model is like the skill of noise. The check gives this as a <em>p-value</em>. This is the share of shuffled fits that did as
+well or better. A small correction makes sure that it is never exactly zero.</p>
 <table>
 <thead>
 <tr>
@@ -5169,179 +5235,234 @@ well (with a small correction so it is never exactly zero).</p>
 <tbody>
 <tr>
 <td>"lower than all 39 fits on shuffled results (p = 0.025)"</td>
-<td>The model's skill is very unlikely to be luck.</td>
+<td>It is very improbable that the skill of the model is luck.</td>
 </tr>
 <tr>
 <td>"1 of 20 fits on shuffled results did as well (p = 0.095)"</td>
-<td>Borderline: real signal, but weak, or too few shuffles to tell.</td>
+<td>Borderline: a real signal, but weak, or too few shuffles to know.</td>
 </tr>
 <tr>
 <td>"9 of 20 did as well (p = 0.48)"</td>
-<td>The model is fitting noise. Do not use it to make decisions.</td>
+<td>The model fits noise. Do not use it to make decisions.</td>
 </tr>
 </tbody>
 </table>
-<p>Drivers are shuffled <strong>in blocks</strong> (a run of consecutive weeks moves together), so their own
-flighting patterns survive; only the link between drivers and result is broken. Because the
-sales are not shuffled, a model that wins only because of a trend or a season does exactly as
-well on the shuffled copies, and fails the check.</p>
+<p>The test shuffles the drivers <strong>in blocks</strong>. A block is a sequence of weeks that moves
+together. Thus the flighting patterns of the drivers stay. The test breaks only the link
+between the drivers and the result. The test does not shuffle the sales. Thus, if a model wins
+only because of a trend or a season, it does equally well on the shuffled copies. Then it fails
+the check.</p>
 <p><img alt="The evidence a reviewer sees: the real model's error (left, marked) against the errors of 19 fits on shuffled results" class="mapi-shot" src="../../assets/screenshots/governance-evidence.png" /></p>
-<p>Persistence does not fool this test. On a series that wanders (a random walk), a model that
-differences it gets much of its skill from "next week is like this week", but the shuffled
-fits keep that persistence too (the result is not shuffled), and skill is measured against the
-null forecast, so only what the drivers add counts. The cookbook's ARIMAX on such a series,
-with a price driver that really matters, forecasts better than all 20 shuffled fits (p = 0.048,
+<p>Persistence does not trick this test. Some series wander (a random walk). On such a series, a
+model that differences the series gets much of its skill from "next week is like this week".
+But the shuffled fits also keep that persistence, because the test does not shuffle the
+result. Also, the test measures skill against the null forecast. Thus only the contribution of
+the drivers counts. The ARIMAX of the cookbook on such a series has a price driver that is
+really important. It forecasts better than all 20 shuffled fits (p = 0.048,
 <a href="../workflow-cookbook/#run-it-with-the-python-client">the output</a>).</p>
 <h3 id="fake-drivers-does-the-model-credit-anything-it-is-given">Fake drivers: does the model credit anything it is given?<a class="headerlink" href="#fake-drivers-does-the-model-credit-anything-it-is-given" title="Permanent link">&para;</a></h3>
-<p>Add three drivers that are pure noise - copies of a real spend column scrambled in time, or
-random numbers with the same average and spread - and fit the model again. A trustworthy model
-gives them almost <strong>nothing</strong>: a few hundredths of a percent of sales, with a range that
-comfortably includes zero.</p>
-<p>If a channel made of random numbers gets 8% of sales, the model hands out credit too easily, and
-the credit it gave your real channels is suspect too. The usual causes are too many drivers for
-the amount of history, priors that are too loose, or drivers that move together.</p>
+<p>The test adds three drivers that are pure noise, and fits the model again. The fake drivers
+are copies of a real spend column that are mixed in time. Or they are random numbers with the
+same average and spread. A trustworthy model gives them almost <strong>nothing</strong>. This is a few
+hundredths of a percent of sales, with a range that easily includes zero.</p>
+<p>If a channel of random numbers gets 8% of sales, the model gives credit too easily. Thus the
+credit that it gave your real channels is also suspect. The usual causes are these:</p>
+<ul>
+<li>Too many drivers for the quantity of history.</li>
+<li>Priors that are too wide.</li>
+<li>Drivers that move together.</li>
+</ul>
 <h3 id="shifted-drivers-is-it-the-timing-or-just-the-season">Shifted drivers: is it the timing, or just the season?<a class="headerlink" href="#shifted-drivers-is-it-the-timing-or-just-the-season" title="Permanent link">&para;</a></h3>
-<p>Move every driver six months away from when it actually happened and refit. Real advertising
-effects should <strong>vanish</strong> - spend in March cannot drive sales in September. If the model still
-finds most of the effect, it is picking up the season or the trend, and calling it advertising.</p>
+<p>The test moves each driver six months away from its real time, and fits the model again. Real
+advertising effects must <strong>go away</strong>, because spend in March cannot cause sales in September.
+If the model still finds most of the effect, it finds the season or the trend. Then it calls
+this effect advertising.</p>
 <h3 id="the-other-checks-briefly">The other checks, briefly<a class="headerlink" href="#the-other-checks-briefly" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Beats naive</strong>: on weeks it never saw, the model must be better than "same as last week" and
-  "same as this week last year". A forecast that cannot beat that is not worth its complexity.</li>
-<li><strong>Nothing left in the errors</strong>: what the model gets wrong should look like noise; a pattern in
-  the mistakes means the model missed something predictable.</li>
-<li><strong>Stable over time</strong>: refitted on different stretches of history, the key numbers should not
-  swing wildly.</li>
-<li><strong>Signs make sense</strong>: spend should not <em>reduce</em> sales; prices should not <em>raise</em> demand
-  (unless you say so).</li>
-<li><strong>Assumptions do not decide the answer</strong> (Bayesian models): widen and narrow the priors; the
-  answer should barely move.</li>
-<li><strong>Finds known answers</strong>: simulate data from the fitted model, refit, and check that the ranges
-  contain the truth about 90% of the time.</li>
-<li><strong>The fit finished properly</strong>, <strong>the error on unseen data is below your limit</strong>, and <strong>the
-  data is good enough</strong> (no long gaps, no constant drivers, no negative spend).</li>
+<li><strong>Beats naive</strong>: On weeks that it did not see, the model must be better than two
+  benchmarks: "same as last week" and "same as this week last year". If a forecast cannot do this, it is not worth its
+  complexity.</li>
+<li><strong>Nothing left in the errors</strong>: The errors of the model must look like noise. A pattern in
+  the errors shows that the model did not find something predictable.</li>
+<li><strong>Stable over time</strong>: If you fit the model again on different parts of the history, the key
+  numbers must not change very much.</li>
+<li><strong>Signs make sense</strong>: Spend must not <em>decrease</em> sales. Prices must not <em>increase</em> demand,
+  unless you tell this.</li>
+<li><strong>Assumptions do not decide the answer</strong> (Bayesian models): If you make the priors wider and
+  narrower, the answer must almost not move.</li>
+<li><strong>Finds known values</strong>: The check simulates data from the fitted model and fits it again.
+  It makes sure that the ranges contain the truth about 90% of the time.</li>
+<li><strong>The fit is complete and stable</strong>, <strong>the error on unseen data is below your limit</strong>, and <strong>the
+  data is good enough</strong>. The last check means no long gaps, no constant drivers and no
+  negative spend.</li>
 </ul>
 <h3 id="what-the-platform-does-with-the-results">What the platform does with the results<a class="headerlink" href="#what-the-platform-does-with-the-results" title="Permanent link">&para;</a></h3>
-<p>A <strong>policy</strong> lists the checks a kind of model must pass, how strict each one is
-(<code>blocking</code> stops validation, <code>warning</code> is shown to the reviewer, <code>info</code> is evidence only),
-and whether a second person must approve. When you validate a model version, the checks run in
-the sandbox, every result is stored with its evidence, and the version becomes <code>validated</code>,
-<code>awaiting_approval</code> or <code>checks_failed</code>. Endpoints can be told to serve only validated
-versions. Everything is in the evidence pack an auditor can read without access to the platform.</p>
+<p>A <strong>policy</strong> lists these items:</p>
+<ul>
+<li>The checks that a type of model must pass.</li>
+<li>How strict each check is. <code>blocking</code> stops validation. <code>warning</code> shows to the reviewer.
+  <code>info</code> is only evidence.</li>
+<li>If a second person must approve.</li>
+</ul>
+<p>When you validate a model version, the checks run in the sandbox. The platform stores each
+result with its evidence. The version becomes <code>validated</code>, <code>awaiting_approval</code> or
+<code>checks_failed</code>. You can set endpoints to serve only validated versions. All the results are
+in the evidence pack. An auditor can read the evidence pack without access to the platform.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mapi<span class="w"> </span>validate<span class="w"> </span>model<span class="w"> </span>model://growth/geo-mmm@v7<span class="w">     </span><span class="c1"># runs the checks, shows every result</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mapi<span class="w"> </span>approve<span class="w"> </span><span class="s2">"</span><span class="nv">$VALIDATION</span><span class="s2">"</span><span class="w"> </span>--comment<span class="w"> </span><span class="s2">"Null tests convincing"</span><span class="w">   </span><span class="c1"># a second person</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mapi<span class="w"> </span>validations<span class="w"> </span>pack<span class="w"> </span><span class="s2">"</span><span class="nv">$VALIDATION</span><span class="s2">"</span><span class="w"> </span>--out<span class="w"> </span>evidence.html
 </span></code></pre></div>
 <h2 id="for-statisticians">For statisticians<a class="headerlink" href="#for-statisticians" title="Permanent link">&para;</a></h2>
-<p>Notation: <code>y</code> the target over <code>n</code> periods, <code>ŷ</code> the model's predictions, <code>H</code> the held-out periods
-of the model's data split, <code>L</code> the check's loss (RMSE by default). Every refit uses the model's
-own spec and pipeline through the SDK harness (the same code path as a fit), under a refit
-budget (<code>RefitBudget</code>: at most <code>max_refits</code> refits; Bayesian refits are capped at 200 draws and
-200 tuning steps on 2 chains).</p>
-<h3 id="nullpermutation_target-a-permutation-test-with-a-matching-null"><code>null.permutation_target</code> - a permutation test with a matching null<a class="headerlink" href="#nullpermutation_target-a-permutation-test-with-a-matching-null" title="Permanent link">&para;</a></h3>
-<p>The statistic is scale-free: the held-out <strong>skill</strong> of a refit against the null forecast on
-the same dataset, <code>T = 1 − L(model) / L(null forecast)</code>, where the null forecast is the last
-training value of an integrated series (a random walk) and the training mean otherwise. Raw
-held-out errors are not comparable across shuffles of the result: their spread comes from
-which levels a shuffle lands in the test periods, not from the model (in simulation, a
-level-shuffling test with raw RMSE rejected 35% of random walks and 33% of real AR
-alternatives - no size and no power).</p>
-<p>The null depends on what the model is meant to have learned:</p>
+<p>Notation:</p>
 <ul>
-<li><strong>Models with drivers</strong> (ARIMAX, marketing mix, regressions on time): <code>y</code> is left alone and
-  the drivers are block-permuted jointly (<code>ℓ = max(1, n // 20)</code> periods per block; the <code>block</code>
-  parameter changes it). H0: the drivers carry no information about <code>y</code> beyond the model's
-  trend, season, controls and dynamics. A model whose refit ignores the drivers (the first
-  shuffled fit scores exactly the same) is tested as a model without drivers.</li>
-<li><strong>Models without drivers</strong> (ARIMA, ETS, Theta, UC): the <code>d</code>-th differences of <code>y</code> are
-  permuted i.i.d. and re-integrated from the original first values (<code>d</code> from the model's
-  ARIMA order, else 1 when ADF keeps a unit root or KPSS rejects stationarity). This keeps
-  the integration order and the distribution of the increments but destroys predictable
-  dynamics; in simulation (ARIMA(1,1,0), 12 held-out periods, <code>B = 19</code>) it keeps its size on
-  random walks and rejects AR dynamics far more often.</li>
-<li><strong>Data without a time order</strong>: the classic row permutation of <code>y</code>, on the held-out loss.</li>
+<li><code>y</code> is the target over <code>n</code> periods.</li>
+<li><code>ŷ</code> is the predictions of the model.</li>
+<li><code>H</code> is the held-out periods of the data split of the model.</li>
+<li><code>L</code> is the loss of the check (RMSE by default).</li>
 </ul>
-<p>With <code>T_b</code> the statistic of the <code>b</code>-th shuffled refit, <code>b = 1..B</code>, the Monte-Carlo p-value is</p>
+<p>Each refit uses the spec and pipeline of the model through the SDK harness. This is the same
+code path as a fit. Each refit has a refit budget (<code>RefitBudget</code>): a maximum of <code>max_refits</code>
+refits. Bayesian refits have a maximum of 200 draws and 200 tuning steps on 2 chains.</p>
+<h3 id="nullpermutation_target-a-permutation-test-with-a-matching-null"><code>null.permutation_target</code> - a permutation test with a matching null<a class="headerlink" href="#nullpermutation_target-a-permutation-test-with-a-matching-null" title="Permanent link">&para;</a></h3>
+<p>The statistic has no scale. It is the held-out <strong>skill</strong> of a refit against the null forecast
+on the same dataset, <code>T = 1 − L(model) / L(null forecast)</code>. For an integrated series (a random
+walk), the null forecast is the last training value. For other series, it is the training mean.
+You cannot compare raw held-out errors across shuffles of the result. Their spread comes from
+the levels that a shuffle puts in the test periods, not from the model. In simulation, a
+level-shuffling test with raw RMSE rejected 35% of random walks and 33% of real AR
+alternatives. Thus it had no size and no power.</p>
+<p>The null depends on what the model must learn:</p>
+<ul>
+<li><strong>Models with drivers</strong> (ARIMAX, marketing mix, regressions on time): The test does not
+  change <code>y</code>. It block-permutes the drivers together. Each block has
+  <code>ℓ = max(1, n // 20)</code> periods. The <code>block</code> parameter changes this. H0: the drivers have no
+  information about <code>y</code> in addition to the trend, season, controls and dynamics of the model.
+  If the refit of a model ignores the drivers, the test uses the method for a model without
+  drivers. A refit ignores the drivers when the first shuffled fit gets exactly the same score.</li>
+<li><strong>Models without drivers</strong> (ARIMA, ETS, Theta, UC): The test permutes the <code>d</code>-th differences
+  of <code>y</code> i.i.d. It integrates them again from the original first values. <code>d</code> comes from the
+  ARIMA order of the model. If there is no ARIMA order, <code>d</code> is 1 when ADF keeps a unit root or
+  KPSS rejects stationarity. This method keeps the integration order and the distribution of
+  the increments. But it removes predictable dynamics. In simulation (ARIMA(1,1,0), 12 held-out
+  periods, <code>B = 19</code>), it keeps its size on random walks. It rejects AR dynamics much more
+  frequently.</li>
+<li><strong>Data without a time order</strong>: The classic row permutation of <code>y</code>, on the held-out loss.</li>
+</ul>
+<p><code>T_b</code> is the statistic of the <code>b</code>-th shuffled refit, <code>b = 1..B</code>. The Monte-Carlo p-value is:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>p = (1 + #{b : T_b &gt;= T0}) / (B + 1)
 </span></code></pre></div>
-<p>which is exact - valid at every <code>B</code> - under exchangeability. The smallest attainable p is
-<code>1 / (B + 1)</code>: with the default <code>B = 20</code> it is 0.048, so a 5% test is barely possible. Use
-<code>B &gt;= 39</code> for a 2.5% resolution (the policy parameter is <code>n_permutations</code>).</p>
-<p>Thresholds are on p: pass ≤ 0.05, warn ≤ 0.10, fail above.</p>
+<p>Under exchangeability, this p-value is exact. It is valid at each <code>B</code>. The smallest possible p
+is <code>1 / (B + 1)</code>. With the default <code>B = 20</code>, it is 0.048. Thus a 5% test is possible, but
+only at the limit. For a 2.5% resolution, use <code>B &gt;= 39</code>. The policy parameter is <code>n_permutations</code>.</p>
+<p>The thresholds are on p: pass ≤ 0.05, warn ≤ 0.10, fail above.</p>
 <h3 id="nullnoise_regressors-placebo-regressors-measured-by-ablation"><code>null.noise_regressors</code> - placebo regressors measured by ablation<a class="headerlink" href="#nullnoise_regressors-placebo-regressors-measured-by-ablation" title="Permanent link">&para;</a></h3>
-<p><code>K</code> placebo drivers (<code>n_noise</code>, default 3) are added - a real driver block-permuted in time
-(<code>kind: shuffled_driver</code>, which keeps its distribution and short-run autocorrelation) or
-Gaussian noise with its mean and variance - as new channels of a marketing-mix model, or new
-variables of other models. Placebos get the model's default prior: a real channel's
-per-channel prior or calibration (a business-prior or lift-test ROI) is never copied to them,
-or a well-calibrated model would fail because of its prior; carry-over and saturation shapes
-are copied. After the refit each placebo's <strong>effect share</strong> is measured through the score
-path, not read from a coefficient, as a share of the real drivers' total effect:</p>
+<p>The test adds <code>K</code> placebo drivers (<code>n_noise</code>, default 3). Each placebo is one of these:</p>
+<ul>
+<li>A real driver, block-permuted in time (<code>kind: shuffled_driver</code>). This keeps its
+  distribution and its short-run autocorrelation.</li>
+<li>Gaussian noise with the mean and variance of the real driver.</li>
+</ul>
+<p>The placebos are new channels of a marketing-mix model, or new variables of other models.
+Placebos get the default prior of the model. The test never copies the prior or the
+calibration of a real channel to them. This calibration can be a business-prior or lift-test
+ROI. If the test copied it, a well-calibrated model would fail because of its prior. The test
+copies the carry-over and saturation shapes.</p>
+<p>After the refit, the test measures the <strong>effect share</strong> of each placebo through the score
+path. It does not read the share from a coefficient. The share is a share of the total effect
+of the real drivers:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>s_k = Σ_t |ŷ_t(full) - ŷ_t(placebo k off)|  /  Σ_t |ŷ_t(full) - ŷ_t(real drivers off)|
 </span></code></pre></div>
-<p>(of <code>Σ_t |ŷ_t(full)|</code> when the drivers' effect cannot be measured), so it works for non-linear
-models (saturation, adstock, trees) alike and does not depend on the size of the baseline.
-The check reports <code>max_k s_k</code> (pass ≤ 2%, warn ≤ 5%). For Bayesian models a placebo is flagged
-when its share is above the warn limit with at least 90% posterior probability,
-<code>P(s_k &gt; 2%) ≥ 0.9</code> per draw: a "90% interval excludes zero" rule cannot work for a marketing
-mix model, whose channel effects are positive in every draw. For frequentist models placebo
-p-values are judged with Holm's correction for the <code>K</code> placebos (uncorrected, a good model is
-flagged about once in seven runs with <code>K = 3</code>). A flag turns a nominal pass into a warning
-(a failure when the share is above the fail limit). Models whose in-sample predictions follow
-the stored history (the statsmodels plugins) use <code>|β_k| · Σ_t |z_k,t − z_k,t(off)|</code> instead.</p>
+<p>If the test cannot measure the effect of the drivers, it uses <code>Σ_t |ŷ_t(full)|</code> as the
+denominator. Thus the method works equally for non-linear models (saturation, adstock, trees).
+It does not depend on the size of the baseline. The check gives <code>max_k s_k</code> (pass ≤ 2%,
+warn ≤ 5%).</p>
+<p>For Bayesian models, the check flags a placebo when its share is above the warn limit with a
+minimum of 90% posterior probability. This is <code>P(s_k &gt; 2%) ≥ 0.9</code> for each draw. A rule of
+"90% interval excludes zero" cannot work for a marketing mix model, because its channel effects
+are positive in all draws. For frequentist models, the check uses Holm's correction for the
+<code>K</code> placebos on the placebo p-values. Without the correction, the check flags a good model
+about one time in seven runs with <code>K = 3</code>.</p>
+<p>A flag changes a nominal pass into a warning. If the share is above the fail limit, the flag
+changes it into a failure. Some models have in-sample predictions that follow the stored
+history (the statsmodels plugins). These models use <code>|β_k| · Σ_t |z_k,t − z_k,t(off)|</code>.</p>
 <h3 id="nullplacebo_time_shift"><code>null.placebo_time_shift</code><a class="headerlink" href="#nullplacebo_time_shift" title="Permanent link">&para;</a></h3>
-<p>Each driver is circularly shifted by every <code>δ</code> in <code>shifts</code> (default ±26 periods) and the model
-refitted; the statistic is the placebo effect as a share of the real effect,
-<code>max_δ Σ|Δ_δ ŷ| / Σ|Δ ŷ|</code> (pass ≤ 0.25, warn ≤ 0.5). It targets confounding by seasonality and
-trend: a half-year shift deliberately misaligns annual seasons, so an effect that survives it is
-not the driver's.</p>
+<p>The test shifts each driver circularly by each <code>δ</code> in <code>shifts</code> (default ±26 periods). Then it
+fits the model again. The statistic is the placebo effect as a share of the real effect,
+<code>max_δ Σ|Δ_δ ŷ| / Σ|Δ ŷ|</code> (pass ≤ 0.25, warn ≤ 0.5). The test looks for confounding by
+seasonality and trend. A shift of half a year puts annual seasons out of alignment on purpose.
+Thus, if an effect stays after the shift, the driver did not cause it.</p>
 <h3 id="baselinebeats_naive-out-of-sample-skill"><code>baseline.beats_naive</code> - out-of-sample skill<a class="headerlink" href="#baselinebeats_naive-out-of-sample-skill" title="Permanent link">&para;</a></h3>
-<p>On <code>H</code>, with the training-only fit, <code>skill = 1 − MAE(model) / min_j MAE(benchmark_j)</code> over naive
-(last value), seasonal naive (same period last season), mean and drift forecasts made from the
-training history; MASE is reported as evidence. Pass ≥ 0.05, warn ≥ 0. For a formal test of
-the difference on backtest folds, use the <code>compare.diebold_mariano</code> workflow node:</p>
+<p>On <code>H</code>, with the training-only fit, the check calculates
+<code>skill = 1 − MAE(model) / min_j MAE(benchmark_j)</code>. The benchmarks are forecasts from the
+training history:</p>
+<ul>
+<li>Naive (last value).</li>
+<li>Seasonal naive (same period last season).</li>
+<li>Mean.</li>
+<li>Drift.</li>
+</ul>
+<p>The check also gives MASE as evidence. Pass ≥ 0.05, warn ≥ 0. For a formal test of the
+difference on backtest folds, use the <code>compare.diebold_mariano</code> workflow node:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>d_t  = L(e1_t) - L(e2_t)                       (squared or absolute loss)
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>DM   = mean(d) / sqrt(lrv(d) / n)              lrv: autocovariances up to lag h - 1
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>HLN  = DM * sqrt((n + 1 - 2h + h(h - 1)/n) / n)
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>p    = 2 * P(T_{n-1} &gt; |HLN|)
 </span></code></pre></div>
-<p>With one <code>h</code>-step error per backtest fold and folds <code>step</code> periods apart, only
-<code>ceil(h / step) − 1</code> neighbouring folds share test periods, so that many autocovariances enter
-<code>lrv</code> (and <code>h</code> in the correction is replaced by that number plus one); the node reads the
-spacing from the folds. It needs more paired errors than that; with too few folds it says so
-instead of returning a number.</p>
+<p>There is one <code>h</code>-step error for each backtest fold, and the folds are <code>step</code> periods apart.
+Thus only <code>ceil(h / step) − 1</code> neighbouring folds share test periods. The node uses that number
+of autocovariances in <code>lrv</code>. In the correction, it replaces <code>h</code> with that number plus one. The
+node reads the spacing from the folds. It needs more paired errors than that number. If there
+are too few folds, the node tells this. It does not give a number.</p>
 <h3 id="residualswhiteness"><code>residuals.whiteness</code><a class="headerlink" href="#residualswhiteness" title="Permanent link">&para;</a></h3>
-<p>Ljung-Box <code>Q = n(n + 2) Σ_{k=1..m} ρ̂_k² / (n − k)</code> on the in-sample residuals of every series,
-with the start-up residuals of a diffuse-initialised fit removed (differencing, unobserved
-components: the fit's own burn-in) and the degrees of freedom reduced by the ARMA terms only
-(<code>m − p − q − P − Q</code>, never the constant, drivers or variance); the smallest p-value across
-series counts (pass ≥ 0.05, warn ≥ 0.01).
-Mind the multiplicity: with many series some rejections are expected, so a panel-wide policy may
-prefer <code>severity: warning</code>.</p>
+<p>The check calculates Ljung-Box <code>Q = n(n + 2) Σ_{k=1..m} ρ̂_k² / (n − k)</code> on the in-sample
+residuals of each series. It removes the start-up residuals of a diffuse-initialised fit. These
+are the burn-in of the fit itself, for example for differencing or unobserved components. Only
+the ARMA terms decrease the degrees of freedom (<code>m − p − q − P − Q</code>). The constant, the drivers
+and the variance never decrease them. The smallest p-value across the series counts (pass ≥
+0.05, warn ≥ 0.01).</p>
+<p>Think about multiplicity. With many series, some rejections are expected. Thus a policy for a
+full panel can use <code>severity: warning</code>.</p>
 <h3 id="stabilityrolling_params"><code>stability.rolling_params</code><a class="headerlink" href="#stabilityrolling_params" title="Permanent link">&para;</a></h3>
-<p>The model is refitted on rolling windows of history (<code>window</code>, default about half the sample);
-for each key estimate the coefficient of variation across windows is reported, scaled by the
-estimate's own standard error when the estimate is near zero (otherwise a coefficient that
-wobbles around zero would look unstable by construction). Pass ≤ 25%, warn ≤ 50%.</p>
+<p>The check fits the model again on rolling windows of history (<code>window</code>, by default about half
+the sample). For each key estimate, it gives the coefficient of variation across the windows.
+If the estimate is near zero, the check scales this value by the standard error of the
+estimate. If it did not, a coefficient that moves a small quantity around zero would look
+unstable by design. Pass ≤ 25%, warn ≤ 50%.</p>
 <h3 id="sensitivityprior-and-recoverysimulated"><code>sensitivity.prior</code> and <code>recovery.simulated</code><a class="headerlink" href="#sensitivityprior-and-recoverysimulated" title="Permanent link">&para;</a></h3>
-<p>Prior sensitivity writes out every prior the model uses - its settings with the plugin's
-defaults (for <code>mmm.bayesian</code> the default ROI prior <code>LogNormal(0, 1)</code>, <code>seasonality.prior_sigma</code>,
-<code>trend.growth_prior_sigma</code>) and business priors translated at fit time - multiplies every prior
-width (<code>sigma</code>, <code>scale</code>, <code>sd</code>, <code>tau</code> under a <code>prior…</code> key, and keys named <code>…prior_sigma</code> or
-<code>…_sigma</code>; never Beta or Gamma <code>beta</code>/<code>b</code> parameters) by each of <code>scales</code>, and reports the
-largest relative move of a key posterior mean (pass ≤ 20%). Recovery is
-a parametric-bootstrap version of simulation-based calibration: <code>y* = E[y] + ε*</code> with
-block-bootstrapped residuals, <code>S</code> refits, and the coverage of the 90% intervals for the fitted
-values (target 90%, pass within 10 points). It is skipped for autoregressive models, where
-resampled residuals do not reproduce the model's own dynamics.</p>
+<p>Prior sensitivity does these steps:</p>
+<ol>
+<li>It writes out each prior that the model uses. These are its settings with the defaults of
+   the plugin, and the business priors that the platform translates at fit time. For
+   <code>mmm.bayesian</code>, the defaults are the default ROI prior <code>LogNormal(0, 1)</code>,
+   <code>seasonality.prior_sigma</code> and <code>trend.growth_prior_sigma</code>.</li>
+<li>It multiplies each prior width by each value of <code>scales</code>. Widths are <code>sigma</code>, <code>scale</code>, <code>sd</code>
+   and <code>tau</code> under a <code>prior…</code> key, and keys named <code>…prior_sigma</code> or <code>…_sigma</code>. It never
+   changes Beta or Gamma <code>beta</code>/<code>b</code> parameters.</li>
+<li>It gives the largest relative change of a key posterior mean (pass ≤ 20%).</li>
+</ol>
+<p>Recovery is a parametric-bootstrap version of simulation-based calibration. It uses
+<code>y* = E[y] + ε*</code> with block-bootstrapped residuals and <code>S</code> refits. It gives the coverage of the
+90% intervals for the fitted values (target 90%, pass within 10 points). The platform skips
+this check for autoregressive models. For these models, resampled residuals do not make the
+same dynamics as the model.</p>
 <h3 id="interpreting-a-set-of-results">Interpreting a set of results<a class="headerlink" href="#interpreting-a-set-of-results" title="Permanent link">&para;</a></h3>
-<p>A policy is a multiple-testing procedure: with a dozen checks at their own thresholds, a sound
-model will warn on something now and then. That is why severities exist. Make the checks that
-protect the decision <code>blocking</code> (for a marketing-mix model the null tests and the signs, for a
-forecast the naive benchmark and holdout accuracy) and leave diagnostics as <code>warning</code> or <code>info</code>
-for the reviewer. Each <code>CheckResult</code> carries <code>value</code>, <code>threshold</code>, <code>message_plain</code>, an expert
-message, a <code>suggested_action</code> and the evidence (the real score next to every shuffled score,
-each placebo's share and interval), so the reviewer can see <em>how</em> close a call was.</p>
+<p>A policy is a multiple-testing procedure. With twelve checks at their own thresholds, a good
+model will sometimes warn on something. Severities exist for this reason. Make the checks that
+protect the decision <code>blocking</code>:</p>
+<ul>
+<li>For a marketing-mix model, these are the null tests and the signs.</li>
+<li>For a forecast, these are the naive benchmark and the holdout accuracy.</li>
+</ul>
+<p>Set the diagnostics to <code>warning</code> or <code>info</code> for the reviewer. Each <code>CheckResult</code> has these
+items:</p>
+<ul>
+<li><code>value</code> and <code>threshold</code>.</li>
+<li><code>message_plain</code> and an expert message.</li>
+<li>A <code>suggested_action</code>.</li>
+<li>The evidence: the real score next to each shuffled score, and the share and interval of each
+  placebo.</li>
+</ul>
+<p>Thus the reviewer can see <em>how</em> close a decision was.</p>
 <h2 id="try-it">Try it<a class="headerlink" href="#try-it" title="Permanent link">&para;</a></h2>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Python</label><label for="__tabbed_1_3">Policy file</label></div>
 <div class="tabbed-content">
@@ -5404,8 +5525,8 @@ each placebo's share and interval), so the reviewer can see <em>how</em> close a
 </div>
 </div>
 </div>
-<p>A workflow can run the same checks as a node (<code>governance.policy</code> with <code>submit: true</code>) and
-record the validation itself - see the <a href="../workflow-cookbook/#readiness-to-arimax">cookbook</a>.</p>
+<p>A workflow can run the same checks as a node (<code>governance.policy</code> with <code>submit: true</code>). It can
+also record the validation itself. See the <a href="../workflow-cookbook/#readiness-to-arimax">cookbook</a>.</p>
 
 
 

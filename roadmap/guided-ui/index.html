@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4610,6 +4640,8 @@
       
         
       
+        
+      
     
     
     
@@ -4698,6 +4730,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4836,17 +4896,18 @@
 <h1 id="guided-mode-and-integrations-v04">Guided mode and integrations <span class="mapi-badge">v0.4</span><a class="headerlink" href="#guided-mode-and-integrations-v04" title="Permanent link">&para;</a></h1>
 <div class="admonition success">
 <p class="admonition-title">Status: available in v0.4 (milestone M3), the first public launch</p>
-<p>With the multi-tenant core in place (<a href="../cloud/">v0.3</a>), v0.4 lets analysts go from a
-spreadsheet to a trustworthy report and a what-if scenario without writing YAML, and lets
-other applications call fitted models through stable endpoints. It is the first public
-launch, <strong>cut line A</strong>: anyone may sign up and run declarative specs and the built-in
-models on their own data; uploaded code stays with trusted tiers.
-To use it: <a href="../../guides/guided-tutorial/">the Guided tutorial</a>,
-<a href="../../guides/integrations-hub/">the Integrations hub</a>, <a href="../../tutorials/">Tutorials</a>.</p>
+<p>v0.4 builds on the multi-tenant core of <a href="../cloud/">v0.3</a>. With v0.4, analysts go from a
+spreadsheet to a trustworthy report and a what-if scenario. They do not write YAML. Other
+applications can call fitted models through stable endpoints. v0.4 is the first public
+launch, <strong>cut line A</strong>. All persons can sign up and run declarative specs and the
+built-in models on their own data. Only trusted tiers can upload code.
+For instructions, read <a href="../../guides/guided-tutorial/">the Guided tutorial</a>,
+<a href="../../guides/integrations-hub/">the Integrations hub</a> and <a href="../../tutorials/">Tutorials</a>.</p>
 </div>
 <h2 id="guided-mode-organised-around-tasks">Guided mode: organised around tasks<a class="headerlink" href="#guided-mode-organised-around-tasks" title="Permanent link">&para;</a></h2>
-<p>One app, two modes over the <strong>same</strong> <code>ModelSpec</code>. A header toggle switches between Guided and
-Expert; every Guided screen has "View as YAML", and Expert edits round-trip back.</p>
+<p>The app has two modes over the <strong>same</strong> <code>ModelSpec</code>. A toggle in the header changes between
+Guided and Expert. Each Guided screen has "View as YAML". Edits in Expert mode go back to
+Guided mode.</p>
 <pre class="mermaid"><code>journey
     title An analyst's first marketing-mix model
     section Set up
@@ -4961,21 +5022,21 @@ Expert; every Guided screen has "View as YAML", and Expert edits round-trip back
 </thead>
 <tbody>
 <tr>
-<td>Five non-technical testers go from upload to report to scenario unaided in under 30 minutes</td>
-<td>Prepared: an automated run takes 135 s of system time, six usability defects it found are fixed, and the <a href="../../operations/m3-verification/#protocol-for-the-five-non-technical-testers">protocol for the testers</a> is written. The sessions themselves are still to run</td>
+<td>Five non-technical testers go from upload to report to scenario without help in less than 30 minutes</td>
+<td>Prepared. An automated run takes 135 s of system time. We repaired the six usability defects that it found. We wrote the <a href="../../operations/m3-verification/#protocol-for-the-five-non-technical-testers">protocol for the testers</a>. The sessions are not done yet.</td>
 </tr>
 <tr>
 <td>An external optimiser works against an endpoint</td>
-<td>Met on a laptop: +0.22 % revenue at the same budget against the live endpoint (<a href="../../operations/m3-verification/#an-external-optimiser-against-the-live-endpoint">details</a>). Since v0.5 budgets are optimised next to the model instead, in a sandboxed <code>optimize</code> run on mmm-framework planning (<a href="../../tutorials/optimise-a-budget/">Optimise a budget</a>); the external-optimiser adapter was removed</td>
+<td>Met on a laptop: +0.22 % revenue at the same budget against the live endpoint (<a href="../../operations/m3-verification/#an-external-optimiser-against-the-live-endpoint">details</a>). From v0.5, the platform optimises budgets next to the model, in a sandboxed <code>optimize</code> run on mmm-framework planning (<a href="../../tutorials/optimise-a-budget/">Optimise a budget</a>). We removed the external-optimiser adapter.</td>
 </tr>
 <tr>
 <td>Cut line A: public launch of declarative specs and built-ins</td>
-<td>Met for admission: sign-up workspaces are <code>public</code>, uploaded code is refused; public runs need an executor that enforces egress and DNS (<code>docker-gvisor</code> or Cloud Run Jobs), which this laptop could not run</td>
+<td>Met for admission. Sign-up workspaces are <code>public</code>, and the platform refuses uploaded code. Public runs need an executor that enforces egress and DNS (<code>docker-gvisor</code> or Cloud Run Jobs). This laptop could not run these executors.</td>
 </tr>
 </tbody>
 </table>
-<p>Everything was verified locally; see <a href="../../operations/m3-verification/">M3 verification</a> for
-the numbers and for what still needs real people, Docker or Google Cloud.</p>
+<p>We verified all items locally. <a href="../../operations/m3-verification/">M3 verification</a> gives the
+numbers. It also tells which items still need real persons, Docker or Google Cloud.</p>
 
 
 

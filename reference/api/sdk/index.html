@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -3985,6 +4015,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#mapi_sdk.models.CustomModel.forecast_with_actuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;forecast_with_actuals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#mapi_sdk.models.CustomModel.optimize" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6014,6 +6055,8 @@
       
         
       
+        
+      
     
     
     
@@ -6102,6 +6145,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -6538,6 +6609,17 @@
     <span class="md-ellipsis">
       
         <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;family
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mapi_sdk.models.CustomModel.forecast_with_actuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;forecast_with_actuals
       
     </span>
   </a>
@@ -7637,7 +7719,8 @@
 
 
 <h1 id="mapi_sdk"><code>mapi_sdk</code><a class="headerlink" href="#mapi_sdk" title="Permanent link">&para;</a></h1>
-<p>The xarray runtime. Runs in notebooks and runner images, never in the control plane.</p>
+<p>This package is the xarray runtime. It runs in notebooks and in runner images. It never runs in
+the control plane.</p>
 <h2 id="fit-and-score">Fit and score<a class="headerlink" href="#fit-and-score" title="Permanent link">&para;</a></h2>
 
 
@@ -8531,7 +8614,8 @@ on the same protocol.</p>
 
         <p>Base class for hand-written plugins: declare metadata, implement <code>fit</code>/<code>score</code>.</p>
 <p>Optional hooks: :meth:<code>diagnostics</code>, :meth:<code>postprocess</code>, :meth:<code>derive</code>,
-:meth:<code>objective</code>, :meth:<code>recommend</code>, :meth:<code>translate_priors</code>, :meth:<code>optimize</code>. Set
+:meth:<code>objective</code>, :meth:<code>recommend</code>, :meth:<code>translate_priors</code>, :meth:<code>optimize</code>,
+:meth:<code>forecast_with_actuals</code> (with <code>capabilities.conditions_on_actuals</code>). Set
 <code>pad_extend = False</code> if the model does not index time positionally (scoring then skips
 padding <code>extend</code> dims to the fit range).</p>
 
@@ -8596,6 +8680,42 @@ padding <code>extend</code> dims to the fit range).</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="mapi_sdk.models.CustomModel.forecast_with_actuals" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">forecast_with_actuals</span>
+
+
+<a href="#mapi_sdk.models.CustomModel.forecast_with_actuals" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forecast_with_actuals</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">fitted</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            Fitted (mapi_sdk.models.Fitted)" href="#mapi_sdk.models.Fitted">Fitted</a></span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">ds</span><span class="p">:</span> <span class="n"><span title="xarray.Dataset">Dataset</span></span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">actuals</span><span class="p">:</span> <span class="n"><span title="mapi_sdk.actuals.ForecastActuals">ForecastActuals</span></span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">req</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ScoreRequest (mapi_spec.spec.ScoreRequest)" href="../spec/#mapi_spec.spec.ScoreRequest">ScoreRequest</a></span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">ctx</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ScoreContext (mapi_sdk.models.ScoreContext)" href="#mapi_sdk.models.ScoreContext">ScoreContext</a></span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="xarray.DataTree">DataTree</span></span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A forecast conditioned on actuals (:mod:<code>mapi_spec.actuals</code>): plugins that declare
+<code>capabilities.conditions_on_actuals</code> override it; the harness calls it instead of
+:meth:<code>score</code> whenever a <code>forecast</code> payload carries actuals.</p>
+<p><code>ds</code> is the canonicalised model-stage payload (actuals, periods to forecast and
+their drivers); <code>actuals</code> says which periods are which per series
+(:class:<code>~mapi_sdk.actuals.ForecastActuals</code>). Update the model's state with the
+actuals using the <em>fitted</em> parameters - never re-estimate - and return the
+<code>predictions</code> group over every period of <code>ds</code>, as :meth:<code>score</code> does: the
+conditioned multi-step forecast on <code>actuals.future</code>, one-step-ahead predictions
+elsewhere. Supplied actuals inside the fitted range replace the fitted values.</p>
+<p>The default refuses (<code>ACTUALS_NOT_SUPPORTED</code>), so a model never ignores actuals.</p>
+
+
+    </div>
+
+</div>
 
 <div class="doc doc-object doc-function">
 
@@ -9868,7 +9988,9 @@ base64 form, SHA-256), <code>diagnostics.json</code>, <code>plots.json</code> an
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">fit_coords</span><span class="p">:</span> <span class="n"><span title="collections.abc.Mapping">Mapping</span></span><span class="p">[</span><span class="n"><span title="str">str</span></span><span class="p">,</span> <span class="n"><span title="xarray.Dataset">Dataset</span></span><span class="p">],</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="o">*</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">max_draws</span><span class="p">:</span> <span class="n"><span title="int">int</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">live_capabilities</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            Capabilities (mapi_spec.capabilities.Capabilities)" href="../spec/#mapi_spec.capabilities.Capabilities">Capabilities</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">data_space</span><span class="p">:</span> <span class="n"><span title="mapi_spec.actuals.DataSpace">DataSpace</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -10451,6 +10573,9 @@ scoring). <code>check_values</code> controls missingness, sentinel and bounds ch
     <div class="doc doc-contents ">
 
         <p>:class:<code>~mapi_spec.coords.DataSummary</code> of <code>ds</code> (variables plus coord summaries).</p>
+<p>With a <code>schema</code>, <code>observed</code> says where each target - and each driver a forecast needs
+(<code>future_required</code>) - holds values along every ordered dim (time, <code>extend</code> or
+<code>ordered</code>): the actuals of a forecast payload and the drivers on its rows.</p>
 
 
     </div>
@@ -11583,7 +11708,9 @@ context-window check.</p>
         <p>Run the model contract checks: fit, bundle round trip, coordinate handling, typed
 errors for every dim policy (unseen levels; gaps and out-of-range coords on datetime and
 integer extend dims; horizons past <code>max_extension</code>; forecasts missing a future-required
-covariate; horizons longer than a target lag), unsupported modes, context-window
+covariate; horizons longer than a target lag), forecasts with actuals (refused without
+<code>conditions_on_actuals</code>; with it, the fitted values as actuals reproduce the plain
+forecast and a new actual moves it), unsupported modes, context-window
 equivalence, evaluate path == score path, output space, aggregation legality, additive
 contributions, no pickle, seed determinism, fast scoring == exact scoring within MCSE
 (via the plugin's <code>check_fast_score</code> hook) and that the manifest's plots sanitize.</p>

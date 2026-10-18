@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4660,6 +4690,8 @@
       
         
       
+        
+      
     
     
     
@@ -4748,6 +4780,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4934,10 +4994,14 @@
 
 
 <h1 id="container-images-v02">Container images <span class="mapi-badge">v0.2</span><a class="headerlink" href="#container-images-v02" title="Permanent link">&para;</a></h1>
-<p>The platform ships as six images (plus a <code>worker</code> target), built from
-<code>images/&lt;name&gt;/Dockerfile</code> with the repository root as the build context. They exist to run
-the exact production artifacts locally (<a href="../docker/">Docker Compose</a>), to back the
-docker executor, and to become the Cloud Run Jobs in <a href="../../roadmap/cloud/">v0.3</a>.</p>
+<p>The platform has six images (and a <code>worker</code> target). The build makes them from
+<code>images/&lt;name&gt;/Dockerfile</code>, with the repository root as the build context. The images have
+three purposes:</p>
+<ul>
+<li>To run the exact production artifacts locally (<a href="../docker/">Docker Compose</a>).</li>
+<li>To support the docker executor.</li>
+<li>To become the Cloud Run Jobs in <a href="../../roadmap/cloud/">v0.3</a>.</li>
+</ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>docker-build<span class="w">                      </span><span class="c1"># every image, tagged mapi/&lt;name&gt;:&lt;version&gt;</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>docker-build<span class="w"> </span><span class="nv">IMAGES</span><span class="o">=</span><span class="s2">"server web"</span><span class="w">  </span><span class="c1"># a subset</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>make<span class="w"> </span>docker-pin-check<span class="w">                  </span><span class="c1"># every base image pinned by digest?</span>
@@ -4973,7 +5037,7 @@ docker executor, and to become the Cloud Run Jobs in <a href="../../roadmap/clou
 </tr>
 <tr>
 <td><code>mapi/worker</code></td>
-<td><code>base-bayes</code> plus the <code>ts.*</code> plugins and <code>mapi-server</code> (target <code>worker</code> of the base-bayes Dockerfile); for compose only</td>
+<td><code>base-bayes</code> with the <code>ts.*</code> plugins and <code>mapi-server</code> (target <code>worker</code> of the base-bayes Dockerfile). Only for compose</td>
 <td><code>10001</code></td>
 <td><code>mapi-server worker</code></td>
 </tr>
@@ -4991,73 +5055,85 @@ docker executor, and to become the Cloud Run Jobs in <a href="../../roadmap/clou
 </tr>
 <tr>
 <td><code>mapi/web</code></td>
-<td>nginx serving <code>apps/web</code> (port 8080) and <code>apps/plot-sandbox</code> (port 8081)</td>
+<td>nginx that serves <code>apps/web</code> (port 8080) and <code>apps/plot-sandbox</code> (port 8081)</td>
 <td><code>101</code></td>
 <td>nginx</td>
 </tr>
 </tbody>
 </table>
-<p><code>make docker-build IMAGES="server web"</code> builds a subset. <code>make docker-build</code> builds them all,
-plus <code>mapi/worker</code> whenever <code>base-bayes</code> is in the set. Every image is labelled with the OCI
-<code>title</code>, <code>version</code>, <code>revision</code> (git commit) and <code>created</code> keys.</p>
+<p><code>make docker-build IMAGES="server web"</code> builds a subset. <code>make docker-build</code> builds all
+images. It also builds <code>mapi/worker</code> when <code>base-bayes</code> is in the set. Each image has the OCI
+labels <code>title</code>, <code>version</code>, <code>revision</code> (git commit) and <code>created</code>.</p>
 <h3 id="how-the-python-images-are-built">How the Python images are built<a class="headerlink" href="#how-the-python-images-are-built" title="Permanent link">&para;</a></h3>
-<p>Every Python image uses the same multi-stage pattern:</p>
+<p>Each Python image uses the same multi-stage pattern:</p>
 <ol>
-<li><strong><code>manifests</code></strong> copies the build context and deletes everything except <code>pyproject.toml</code> and
-   <code>uv.lock</code> files. Its output changes only when dependencies change.</li>
-<li><strong><code>builder</code></strong> installs the third-party dependencies of the image's package set from those
-   manifests alone (<code>uv sync --frozen --no-install-workspace</code>, once per package, into
-   <code>/opt/mapi/venv</code>). BuildKit caches this layer, so editing source code does not reinstall
-   PyMC. The builder then copies the sources and installs the workspace packages themselves,
-   non-editable. Every version comes from <code>uv.lock</code>.</li>
-<li><strong><code>runtime</code></strong> starts again from the same <code>python:3.12-slim</code> base, adds <code>tini</code> (and <code>g++</code> for
-   the PyMC images), creates user <code>10001</code>, and copies in only the virtual environment.
-   The images that run <code>mapi-server</code> (<code>mapi/server</code> and <code>mapi/worker</code>) also copy <code>uv.lock</code> to
-   <code>/opt/mapi/uv.lock</code> and set <code>MAPI_UV_LOCK_PATH</code> to it. Its SHA-256 is the <em>image digest</em>
-   that the API and the orchestrator cache the step and model catalog under, the same value
-   <code>make dev</code> computes. Both images are built from one lock, so <code>api</code> and <code>worker</code> agree.</li>
+<li><strong><code>manifests</code></strong> copies the build context. It deletes all files except the
+   <code>pyproject.toml</code> and <code>uv.lock</code> files. Thus its output changes only when dependencies
+   change.</li>
+<li><strong><code>builder</code></strong> installs the third-party dependencies of the package set of the image. It
+   uses only those manifests (<code>uv sync --frozen --no-install-workspace</code>, one time for each
+   package, into <code>/opt/mapi/venv</code>). BuildKit keeps this layer in a cache. Thus, when you edit
+   source code, the build does not install PyMC again. The builder then copies the sources
+   and installs the workspace packages, non-editable. Each version comes from <code>uv.lock</code>.</li>
+<li>
+<p><strong><code>runtime</code></strong> starts again from the same <code>python:3.12-slim</code> base. It adds <code>tini</code> (and
+   <code>g++</code> for the PyMC images) and makes user <code>10001</code>. Then it copies in only the virtual
+   environment.</p>
+<p>The images that run <code>mapi-server</code> (<code>mapi/server</code> and <code>mapi/worker</code>) also copy <code>uv.lock</code>
+to <code>/opt/mapi/uv.lock</code> and set <code>MAPI_UV_LOCK_PATH</code> to it. Its SHA-256 is the <em>image
+digest</em>. The API and the orchestrator use this digest as the cache key of the step and
+model catalog. <code>make dev</code> calculates the same value. The build makes the two images from
+one lock, so <code>api</code> and <code>worker</code> agree.</p>
+</li>
 </ol>
-<p>The package set is the <code>MAPI_PACKAGES</code> build argument. <code>images/common/install_packages.py</code> turns
-it into <code>uv sync</code> calls. The xgboost dependency <code>nvidia-nccl-cu13</code>, a 300 MB wheel used only for
-multi-GPU training, is never installed (<code>MAPI_NO_INSTALL</code>).</p>
+<p>The package set is the <code>MAPI_PACKAGES</code> build argument. <code>images/common/install_packages.py</code>
+changes it into <code>uv sync</code> calls. The build never installs the xgboost dependency
+<code>nvidia-nccl-cu13</code> (<code>MAPI_NO_INSTALL</code>). This is a 300 MB wheel that only multi-GPU training
+uses.</p>
 <h3 id="build-time-guards">Build-time guards<a class="headerlink" href="#build-time-guards" title="Permanent link">&para;</a></h3>
-<p>An image that is not what it claims to be fails to build:</p>
+<p>If an image is not what it claims to be, the build fails:</p>
 <ul>
-<li><strong>Package assertions.</strong> <code>images/common/assert_dists.py</code> checks <code>MAPI_ASSERT_PRESENT</code> and
-  <code>MAPI_ASSERT_ABSENT</code> against the real environment. For example, <code>base-ml</code> must not contain
-  <code>pymc</code>, <code>pytensor</code> or <code>numba</code>, and <code>server</code> must not contain <code>numpy</code>, <code>xarray</code>, <code>pandas</code>,
-  <code>scipy</code>, <code>pyarrow</code>, PyMC, <code>mapi_sdk</code>, <code>mapi_runner</code> or any plugin.</li>
+<li><strong>Package assertions.</strong> <code>images/common/assert_dists.py</code> does a check of
+  <code>MAPI_ASSERT_PRESENT</code> and <code>MAPI_ASSERT_ABSENT</code> against the real environment. For example,
+  <code>base-ml</code> must not contain <code>pymc</code>, <code>pytensor</code> or <code>numba</code>. <code>server</code> must not contain
+  <code>numpy</code>, <code>xarray</code>, <code>pandas</code>, <code>scipy</code>, <code>pyarrow</code>, PyMC, <code>mapi_sdk</code>, <code>mapi_runner</code> or a
+  plugin.</li>
 <li><strong>Import contracts in the control-plane image.</strong> The <code>contracts</code> stage of
   <code>images/server/Dockerfile</code> installs import-linter (hash-pinned from <code>uv.lock</code>) into a
-  throwaway copy of the environment, and runs the repository's contracts against the packages
-  exactly as installed. The runtime stage depends on that stage, so BuildKit cannot skip it.</li>
-<li><strong>Catalog export.</strong> The runner images load every installed step, model and plot plugin and
+  temporary copy of the environment. It runs the contracts of the repository against the
+  packages exactly as they are installed. The runtime stage depends on that stage, so
+  BuildKit cannot skip it.</li>
+<li><strong>Catalog export.</strong> The runner images load each installed step, model and plot plugin. They
   write <code>/opt/mapi/catalog.json</code> with its digest (<code>/opt/mapi/catalog.digest</code>). If no steps or
   models are registered, the build fails.</li>
 </ul>
-<p>The same claims are also proven without Docker: <code>tests/devops/test_container_invariants.py</code>
-computes each image's dependency closure from <code>uv.lock</code> (<code>scripts/lock_closure.py</code>) and checks it
-against the assertions.</p>
+<p>We also prove the same claims without Docker. <code>tests/devops/test_container_invariants.py</code>
+calculates the dependency closure of each image from <code>uv.lock</code> (<code>scripts/lock_closure.py</code>).
+Then it does a check of the closure against the assertions.</p>
 <h3 id="compile-caches-and-the-read-only-root-filesystem">Compile caches and the read-only root filesystem<a class="headerlink" href="#compile-caches-and-the-read-only-root-filesystem" title="Permanent link">&para;</a></h3>
-<p>PyTensor compiles C at run time, and Numba caches machine code. Both caches are warmed during the
-build by compiling a small hierarchical model, then baked read-only into <code>/opt/mapi/cache</code>.
-PyTensor needs a <em>writable</em> compile directory, because it takes a lock and adds new modules. So
-at start-up the entry point (<code>images/common/runner-entrypoint.sh</code>) builds a symlink farm of the
-baked cache under <code>/tmp/mapi-cache</code>: real directories, with files that are symlinks to the
-baked objects. This costs a few KiB of RAM, which matters on Cloud Run's in-memory filesystem,
-and PyTensor accepts the relocated entries without recompiling.</p>
-<p><code>HOME</code>, <code>PYTENSOR_FLAGS</code>, <code>NUMBA_CACHE_DIR</code> and <code>MPLCONFIGDIR</code> all point under <code>/tmp</code>. The first
-three are on the runner's worker-environment allow-list (<code>mapi_spec.run.WORKER_ENV_ALLOWLIST</code>),
-so plugin code sees them after the supervisor scrubs the environment. The result is that every
-image runs with <code>--read-only</code> and a tmpfs on <code>/tmp</code>.</p>
-<p><code>docker run mapi/base-bayes</code> runs the runner. Arguments starting with <code>-</code> are passed to the
-runner, and any other command replaces it (<code>docker run mapi/base-bayes python -c ...</code>).</p>
+<p>PyTensor compiles C at run time, and Numba keeps machine code in a cache. During the build, a
+small hierarchical model compiles and fills the two caches. The build then puts the caches
+read-only into <code>/opt/mapi/cache</code>. PyTensor needs a <em>writable</em> compile directory, because it
+takes a lock and adds new modules.</p>
+<p>Thus, at start-up, the entry point (<code>images/common/runner-entrypoint.sh</code>) builds a symlink
+farm of the cache under <code>/tmp/mapi-cache</code>. The farm has real directories, with files that are
+symlinks to the objects in the cache. This uses some KiB of RAM. This is important on the
+in-memory filesystem of Cloud Run. PyTensor accepts the moved entries and does not compile
+them again.</p>
+<p><code>HOME</code>, <code>PYTENSOR_FLAGS</code>, <code>NUMBA_CACHE_DIR</code> and <code>MPLCONFIGDIR</code> all point under <code>/tmp</code>. The
+first three are on the worker-environment allow-list of the runner
+(<code>mapi_spec.run.WORKER_ENV_ALLOWLIST</code>). Thus plugin code sees them after the supervisor
+removes the other variables from the environment. As a result, each image runs with
+<code>--read-only</code> and a tmpfs on <code>/tmp</code>.</p>
+<p><code>docker run mapi/base-bayes</code> runs the runner. The image gives arguments that start with <code>-</code>
+to the runner. All other commands replace the runner
+(<code>docker run mapi/base-bayes python -c ...</code>).</p>
 <h2 id="the-web-image-and-the-plot-sandbox">The web image and the plot sandbox<a class="headerlink" href="#the-web-image-and-the-plot-sandbox" title="Permanent link">&para;</a></h2>
-<p><code>mapi/web</code> builds both Vite apps with pnpm, using <code>--frozen-lockfile</code> and <code>--ignore-scripts</code>, so no
-package lifecycle scripts run. It serves them from one unprivileged nginx with two server
-blocks. <code>NGINX_ENVSUBST_TEMPLATE_DIR</code> selects which blocks are rendered:
-<code>/etc/nginx/templates/all</code> (the default), <code>web</code> or <code>plots</code>. Origins are runtime settings rendered
-into the headers at start-up.</p>
+<p><code>mapi/web</code> builds the two Vite apps with pnpm. It uses <code>--frozen-lockfile</code> and
+<code>--ignore-scripts</code>, so no package lifecycle scripts run. One unprivileged nginx with two
+server blocks serves the apps. <code>NGINX_ENVSUBST_TEMPLATE_DIR</code> selects which blocks nginx
+uses: <code>/etc/nginx/templates/all</code> (the default), <code>web</code> or <code>plots</code>. Origins are runtime
+settings. At start-up, nginx puts them into the headers.</p>
 <table>
 <thead>
 <tr>
@@ -5070,7 +5146,7 @@ into the headers at start-up.</p>
 <tr>
 <td>CSP</td>
 <td><code>default-src 'self'</code>; <code>script-src 'self'</code> (no <code>unsafe-eval</code>, no inline scripts); <code>frame-src</code> = the plots origin; <code>connect-src</code> = self, <code>MAPI_API_URL</code>, <code>MAPI_GCS_ENDPOINT</code>; <code>frame-ancestors 'none'</code></td>
-<td><code>default-src 'none'</code>; scripts, styles and images from its own origin only; <code>connect-src</code> = its own <code>/topojson/</code> only; <code>frame-ancestors</code> = the app origin</td>
+<td><code>default-src 'none'</code>; scripts, styles and images only from its own origin; <code>connect-src</code> = only its own <code>/topojson/</code>; <code>frame-ancestors</code> = the app origin</td>
 </tr>
 <tr>
 <td>Other headers</td>
@@ -5079,43 +5155,46 @@ into the headers at start-up.</p>
 </tr>
 <tr>
 <td>API access</td>
-<td><code>/v1/</code> is proxied to <code>MAPI_API_UPSTREAM</code>, unbuffered with a one-hour read timeout for SSE</td>
+<td>nginx sends <code>/v1/</code> to <code>MAPI_API_UPSTREAM</code>, unbuffered, with a read timeout of one hour for SSE</td>
 <td>None: no proxy, and the CSP blocks it</td>
 </tr>
 </tbody>
 </table>
-<p>The sandbox documents are framed with <code>sandbox="allow-scripts"</code> and no same-origin access, so
-they have an <strong>opaque origin</strong>. Their module scripts, styles and topojson are therefore fetched in
-CORS mode. That is why the sandbox answers with <code>Access-Control-Allow-Origin: *</code>; the assets are
-static and public, and no cookies are involved. It is also why its CSP lists the plots origin
-explicitly next to <code>'self'</code>.</p>
-<p><code>MAPI_WEB_SCRIPT_SRC_EXTRA</code> (empty by default) adds sources to the app's <code>script-src</code>. Use it
-only after a review, for example if a library needs <code>'wasm-unsafe-eval'</code>. Trusted Types are in
-report-only mode until the SPA ships its policy.</p>
+<p>The app frames the sandbox documents with <code>sandbox="allow-scripts"</code> and no same-origin
+access. Thus they have an <strong>opaque origin</strong>, and the browser gets their module scripts,
+styles and topojson in CORS mode. For this reason, the sandbox answers with
+<code>Access-Control-Allow-Origin: *</code>. The assets are static and public, and there are no cookies.
+For the same reason, its CSP lists the plots origin explicitly next to <code>'self'</code>.</p>
+<p><code>MAPI_WEB_SCRIPT_SRC_EXTRA</code> (empty by default) adds sources to the <code>script-src</code> of the app.
+Use it only after a review, for example if a library needs <code>'wasm-unsafe-eval'</code>. Trusted
+Types stay in report-only mode until the SPA has its policy.</p>
 <h2 id="base-images-and-pinning">Base images and pinning<a class="headerlink" href="#base-images-and-pinning" title="Permanent link">&para;</a></h2>
-<p>Every base image is a build argument with a readable tag <em>and</em> a digest:</p>
+<p>Each base image is a build argument with a readable tag <em>and</em> a digest:</p>
 <div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">ARG</span><span class="w"> </span><span class="nv">PYTHON_IMAGE</span><span class="o">=</span>python:3.12-slim-trixie@sha256:a6e3…11b1
 </span></code></pre></div>
-<p>The Dockerfile frontend (<code># syntax=</code>) and the compose <code>postgres</code> image are pinned the same way.
-<code>make docker-pin</code> re-resolves every tag through the registry API. It needs no Docker daemon, and
-you should review the resulting diff like any dependency bump. <code>make docker-pin-check</code> (also run
-in CI and by <code>make release-check</code>) fails if anything is unpinned.</p>
+<p>The Dockerfile frontend (<code># syntax=</code>) and the compose <code>postgres</code> image are pinned in the same
+way. <code>make docker-pin</code> resolves each tag again through the registry API. It needs no Docker
+daemon. Examine the diff that it makes as you examine each dependency update.
+<code>make docker-pin-check</code> fails if an image is not pinned. CI and <code>make release-check</code> also run
+it.</p>
 <h2 id="licences-in-the-images">Licences in the images<a class="headerlink" href="#licences-in-the-images" title="Permanent link">&para;</a></h2>
-<p>Every image carries the project's licence files and <code>THIRD-PARTY-NOTICES.md</code> in
-<code>/usr/share/doc/mapi/</code>. The notices list every third-party Python and JavaScript package
-the image set ships, with its version and licence, and reproduce the NOTICE files and the
-licence texts of the JavaScript packages compiled into the web app. Regenerate the file with
-<code>make notices</code> whenever <code>uv.lock</code> or <code>pnpm-lock.yaml</code> changes; the test suite and
-<code>make release-check</code> fail while it is stale. See <a href="../../project/licensing/">Licensing</a>.</p>
+<p>Each image has the licence files of the project and <code>THIRD-PARTY-NOTICES.md</code> in
+<code>/usr/share/doc/mapi/</code>. The notices list each third-party Python and JavaScript package in
+the image set, with its version and licence. They also contain the NOTICE files, and the
+licence texts of the JavaScript packages that the build compiles into the web app. When
+<code>uv.lock</code> or <code>pnpm-lock.yaml</code> changes, run <code>make notices</code> to make the file again. While the
+file is not current, the test suite and <code>make release-check</code> fail. Refer to
+<a href="../../project/licensing/">Licensing</a>.</p>
 <h2 id="ci">CI<a class="headerlink" href="#ci" title="Permanent link">&para;</a></h2>
-<p><code>.github/workflows/ci.yml</code> builds every image, plus the <code>worker</code> target, on each push and pull
-request, using the GitHub Actions layer cache. Images are never pushed. A separate job checks the
-digest pins and validates both compose files with <code>docker compose config</code>.</p>
-<p>With the images built and a Docker daemon running,
-<code>uv run pytest tests/devops/test_compose_smoke.py -m docker</code> boots <code>postgres</code>, <code>gcs-shim</code>,
-<code>migrate</code>, <code>api</code> and <code>worker</code> under a throw-away project name. It publishes no host ports. It
-then checks that <code>api</code> and <code>worker</code> started and that they agree on the values bundle
-verification depends on: the image digest and the bundle-signing key.</p>
+<p><code>.github/workflows/ci.yml</code> builds each image, and the <code>worker</code> target, on each push and pull
+request. It uses the GitHub Actions layer cache. CI never pushes the images. A separate job
+does a check of the digest pins. It also validates the two compose files with
+<code>docker compose config</code>.</p>
+<p>You can do a smoke test when you have built the images and a Docker daemon runs. Then
+<code>uv run pytest tests/devops/test_compose_smoke.py -m docker</code> starts <code>postgres</code>, <code>gcs-shim</code>,
+<code>migrate</code>, <code>api</code> and <code>worker</code> under a temporary project name. It publishes no host ports.
+Then it makes sure that <code>api</code> and <code>worker</code> started. It also makes sure that they agree on the
+values that bundle verification needs: the image digest and the bundle-signing key.</p>
 
 
 

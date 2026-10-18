@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4656,6 +4686,8 @@
       
         
       
+        
+      
     
     
     
@@ -4744,6 +4776,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4913,43 +4973,59 @@
 
 
 <h1 id="explore-a-dataset-v05">Explore a dataset <span class="mapi-badge">v0.5</span><a class="headerlink" href="#explore-a-dataset-v05" title="Permanent link">&para;</a></h1>
-<p>The <strong>Data Explorer</strong> answers the questions to ask before fitting anything: what is in the
-data, how it moves over time, where values are missing or unusual, which drivers move with
-the result and with how much delay, whether series wander or return to a level, how strong
-the season is, which drivers overlap, and what to fix first. Every view is computed in the
-sandbox (the control plane never reads your data) and comes with Vega-Lite plots and
-plain-language captions. The <a href="#in-the-web-app">web app</a> shows every view; the rest of this
-guide uses the HTTP API, which the web app calls.</p>
-<h2 id="in-the-web-app">In the web app<a class="headerlink" href="#in-the-web-app" title="Permanent link">&para;</a></h2>
-<p>Open a dataset, then <strong>Explore this version</strong> (or go to
-<code>/datasets/&lt;dataset&gt;/versions/&lt;n&gt;/explore</code>). The page starts with the dataset's
-<a href="#dataset-about">About</a> and lists the thirteen sections in three groups: <em>The basics</em>
-(overview, data quality, distributions, over time, missing values, unusual values),
-<em>Relationships</em> (correlations, leads and lags, overlapping drivers, group comparison) and
-<em>Time patterns</em> (memory - ACF/PACF, stable or wandering, trend and season). A tick marks a
-section that is ready, an empty circle one that is computed on demand, a dash one that does
-not apply to this data (with the reason).</p>
-<p><img alt="The Data Explorer in Guided mode: the dataset's About, then the plain reading of each section" class="mapi-shot" src="../../assets/screenshots/explorer-data-overview-guided.png" /></p>
+<p>The <strong>Data Explorer</strong> answers the questions to ask before you fit a model. It answers these
+questions:</p>
 <ul>
-<li><strong>Guided mode</strong> shows each section's plain reading first ("4 series return to a stable
-  level, 3 series wander (model their changes)…") and keeps the numbers one click away
-  under <em>Show the statistics</em>. <strong>Run the deeper checks</strong> computes everything the ingest did
-  not, with sensible defaults (the dataset's target as the KPI).</li>
-<li><strong>Expert mode</strong> shows every statistic: test statistics and p-values, quantiles, VIFs and
-  the condition number, the significant lags, and <em>All series</em>: the platform's export-ready
-  plots (<code>ui/explore/plots/&lt;section&gt;.json</code>). <strong>Explore with options</strong> sets the run's request
-  (sections, KPI, the dimensions to split series by, lags, season length, α, correlation
-  and outlier methods, prewhitening).</li>
-<li>Pickers choose the variable or series a plot shows (one line per market, a series' STL
-  decomposition, a driver's cross-correlation with the KPI); the plots render in the
-  isolated plot sandbox like every plot.</li>
-<li>A <strong>Compute it now</strong> button on a section that is not computed yet starts an explore run
-  for it and the other missing sections. The run's id goes in the address (<code>?run=</code>), so the
-  page can be shared or reloaded; asking again with the same options answers at once from
-  the cached run.</li>
+<li>What is in the data, and how does it move over time?</li>
+<li>Where are values missing or unusual?</li>
+<li>Which drivers move with the result, and with how much delay?</li>
+<li>Do series wander, or do they return to a level?</li>
+<li>How strong is the season?</li>
+<li>Which drivers overlap?</li>
+<li>What must you correct first?</li>
 </ul>
-<p><img alt="Stable or wandering: ADF and KPSS per series with a plain verdict (Expert mode)" class="mapi-shot" src="../../assets/screenshots/explorer-data-stationarity.png" /></p>
-<p><img alt="Trend and season: the STL decomposition of the series picked, and every series' strengths" class="mapi-shot" src="../../assets/screenshots/explorer-data-stl.png" /></p>
+<p>The sandbox calculates each view. The control plane never reads your data. Each view comes
+with Vega-Lite plots and captions in plain language. The <a href="#in-the-web-app">web app</a> shows
+all views. The other parts of this guide use the HTTP API, which the web app calls.</p>
+<h2 id="in-the-web-app">In the web app<a class="headerlink" href="#in-the-web-app" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Open a dataset.</li>
+<li>Click <strong>Explore this version</strong>. Alternatively, go to
+   <code>/datasets/&lt;dataset&gt;/versions/&lt;n&gt;/explore</code>.</li>
+</ol>
+<p>The page starts with the <a href="#dataset-about">About</a> of the dataset. It lists the thirteen
+sections in three groups:</p>
+<ul>
+<li><em>The basics</em>: overview, data quality, distributions, over time, missing values and unusual
+  values.</li>
+<li><em>Relationships</em>: correlations, leads and lags, overlapping drivers and group comparison.</li>
+<li><em>Time patterns</em>: memory (ACF/PACF), stable or wandering, and trend and season.</li>
+</ul>
+<p>A tick marks a section that is ready. An empty circle marks a section that the platform
+calculates when you ask for it. A dash marks a section that does not apply to this data. The
+dash shows the reason.</p>
+<p><img alt="The Data Explorer in Guided mode: the About of the dataset, then the plain summary of each section" class="mapi-shot" src="../../assets/screenshots/explorer-data-overview-guided.png" /></p>
+<ul>
+<li><strong>Guided mode</strong> shows the plain summary of each section first ("4 series return to a stable
+  level, 3 series wander (model their changes)…"). To see the numbers, click
+  <em>Show the statistics</em>. <strong>Run the deeper checks</strong> calculates all the sections that the
+  ingest did not calculate. It uses sensible defaults (the target of the dataset as the KPI).</li>
+<li><strong>Expert mode</strong> shows all statistics: test statistics and p-values, quantiles, VIFs and
+  the condition number, and the significant lags. It also shows <em>All series</em>: the plots of
+  the platform that are ready for export (<code>ui/explore/plots/&lt;section&gt;.json</code>).
+  <strong>Explore with options</strong> sets the request of the run. The request contains the sections,
+  the KPI and the dimensions that split the series. It also contains the lags, the season
+  length, α, the correlation and outlier methods, and prewhitening.</li>
+<li>Pickers select the variable or series that a plot shows. Examples are one line for each
+  market, the STL decomposition of a series, or the cross-correlation of a driver with the
+  KPI. The plots render in the isolated plot sandbox, as all plots do.</li>
+<li>A section that is not calculated yet has a <strong>Compute it now</strong> button. This button starts
+  an explore run for this section and for the other missing sections. The id of the run goes
+  in the address (<code>?run=</code>). Thus you can share or reload the page. If you ask again with the
+  same options, the platform answers immediately from the cached run.</li>
+</ul>
+<p><img alt="Stable or wandering: ADF and KPSS for each series with a plain verdict (Expert mode)" class="mapi-shot" src="../../assets/screenshots/explorer-data-stationarity.png" /></p>
+<p><img alt="Trend and season: the STL decomposition of the selected series, and the strengths of each series" class="mapi-shot" src="../../assets/screenshots/explorer-data-stl.png" /></p>
 <h2 id="from-python-and-the-command-line">From Python and the command line<a class="headerlink" href="#from-python-and-the-command-line" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">"weekly_sales"</span><span class="p">)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">assert</span> <span class="n">ds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ds</span><span class="o">.</span><span class="n">latest_version</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -4972,19 +5048,26 @@ not apply to this data (with the reason).</p>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>mapi<span class="w"> </span>explore<span class="w"> </span>dataset<span class="w"> </span>weekly_sales<span class="w"> </span>--show<span class="w"> </span>quality<span class="w">      </span><span class="c1"># one view as JSON</span>
 </span></code></pre></div>
 <h2 id="views-written-at-ingest">Views written at ingest<a class="headerlink" href="#views-written-at-ingest" title="Permanent link">&para;</a></h2>
-<p>Every ingest writes the quick sections next to the dataset: <code>overview</code>, <code>distributions</code>,
-<code>timeseries</code>, <code>missingness</code>, <code>outliers</code>, <code>correlation</code> and <code>quality</code>. Fetch the index, then
+<p>Each ingest writes the quick sections next to the dataset: <code>overview</code>, <code>distributions</code>,
+<code>timeseries</code>, <code>missingness</code>, <code>outliers</code>, <code>correlation</code> and <code>quality</code>. Get the index, and then
 any view, through the artifact route:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/datasets/</span><span class="nv">$DATASET_ID</span><span class="s2">/versions/1/artifacts/ui/explore/index.json"</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/datasets/</span><span class="nv">$DATASET_ID</span><span class="s2">/versions/1/artifacts/ui/explore/quality.json"</span>
 </span></code></pre></div>
-<p>Each answer is a signed link (<code>ArtifactLink</code>) to the JSON view. The index lists every section
-with its <code>status</code>: <code>ok</code>, <code>skipped</code> (with the reason in plain words, for example "the data has
-no time dimension") or <code>error</code>. Plots for a section are at
-<code>ui/explore/plots/&lt;section&gt;.json</code> (a list of PlotSpecs to render in the plot sandbox).</p>
+<p>Each answer is a signed link (<code>ArtifactLink</code>) to the JSON view. The index lists each section
+with its <code>status</code>:</p>
+<ul>
+<li><code>ok</code>.</li>
+<li><code>skipped</code>, with the reason in plain words. An example is "the data has no time
+  dimension".</li>
+<li><code>error</code>.</li>
+</ul>
+<p>The plots for a section are at <code>ui/explore/plots/&lt;section&gt;.json</code>. This file is a list of
+PlotSpecs to render in the plot sandbox.</p>
 <h2 id="everything-else-on-demand">Everything else, on demand<a class="headerlink" href="#everything-else-on-demand" title="Permanent link">&para;</a></h2>
-<p>The heavier sections - <code>stl</code>, <code>stationarity</code>, <code>ccf</code>, <code>acf_pacf</code>, <code>vif</code>, <code>groups</code> - and any
-section with other options run as an <strong>explore run</strong>:</p>
+<p>The heavier sections run as an <strong>explore run</strong>. These sections are <code>stl</code>, <code>stationarity</code>,
+<code>ccf</code>, <code>acf_pacf</code>, <code>vif</code> and <code>groups</code>. All sections with other options also run as an
+explore run:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/datasets/</span><span class="nv">$DATASET_ID</span><span class="s2">/versions/1/explore"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="s1">  "sections": ["stationarity", "stl", "ccf", "vif"],</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="s1">  "kpi": "revenue",</span>
@@ -4993,9 +5076,10 @@ section with other options run as an <strong>explore run</strong>:</p>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="s1">  "prewhiten": true</span>
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="s1">}'</span>
 </span></code></pre></div>
-<p>The answer (<code>202</code>) is an <code>Exploration</code> with the run. Poll <code>GET /v1/explorations/{run_id}</code>:
-once <code>done</code> it holds the <code>index</code> and a signed link for every view. Asking again with the same
-request answers <code>200</code> from the last run, so explorers are instant once computed.</p>
+<p>The answer (<code>202</code>) is an <code>Exploration</code> with the run. Poll <code>GET /v1/explorations/{run_id}</code>.
+When the state is <code>done</code>, it holds the <code>index</code> and a signed link for each view. If you ask
+again with the same request, the platform answers <code>200</code> from the last run. Thus, after the
+platform calculates the explorers one time, they are instant.</p>
 <table>
 <thead>
 <tr>
@@ -5008,47 +5092,47 @@ request answers <code>200</code> from the last run, so explorers are instant onc
 <tr>
 <td><code>sections</code></td>
 <td>all 13</td>
-<td>Which sections to compute</td>
+<td>The sections to calculate</td>
 </tr>
 <tr>
 <td><code>vars</code></td>
-<td>every numeric variable</td>
-<td>Variables to include</td>
+<td>each numeric variable</td>
+<td>The variables to include</td>
 </tr>
 <tr>
 <td><code>kpi</code></td>
 <td>the target variable</td>
-<td>The result cross-correlations are computed against</td>
+<td>The result that the cross-correlations use</td>
 </tr>
 <tr>
 <td><code>time_dim</code></td>
-<td>the schema's time dim</td>
-<td>The dimension "over time" means</td>
+<td>the time dim of the schema</td>
+<td>The dimension that "over time" means</td>
 </tr>
 <tr>
 <td><code>facet_by</code></td>
-<td>none (every series)</td>
-<td>Up to two dims to split series by (other dims are summed for spend, media and the target, averaged otherwise)</td>
+<td>none (each series)</td>
+<td>A maximum of two dims that split the series. For spend, media and the target, the platform adds the other dims. For all other variables, it calculates the average.</td>
 </tr>
 <tr>
 <td><code>group_by</code></td>
 <td>the first categorical dim</td>
-<td>The dim compared in <code>groups</code></td>
+<td>The dim that <code>groups</code> compares</td>
 </tr>
 <tr>
 <td><code>max_lag</code></td>
 <td>26</td>
-<td>Lags for ACF/PACF and cross-correlations</td>
+<td>The lags for ACF/PACF and cross-correlations</td>
 </tr>
 <tr>
 <td><code>period</code></td>
 <td>from the frequency (52 weekly, 12 monthly, 7 daily)</td>
-<td>Season length for STL</td>
+<td>The season length for STL</td>
 </tr>
 <tr>
 <td><code>alpha</code></td>
 <td>0.05</td>
-<td>Significance level of the tests</td>
+<td>The significance level of the tests</td>
 </tr>
 <tr>
 <td><code>correlation</code></td>
@@ -5058,17 +5142,17 @@ request answers <code>200</code> from the last run, so explorers are instant onc
 <tr>
 <td><code>outliers</code>, <code>outlier_threshold</code></td>
 <td><code>mad</code>, 3.5</td>
-<td>Robust score (<code>mad</code>, <code>iqr</code> or <code>zscore</code>, all on a standard-normal scale) and its threshold</td>
+<td>The robust score (<code>mad</code>, <code>iqr</code> or <code>zscore</code>, all on a standard-normal scale) and its threshold</td>
 </tr>
 <tr>
 <td><code>prewhiten</code></td>
 <td>true</td>
-<td>Filter both series with the driver's own AR model before cross-correlating (turn it off to see the raw correlations)</td>
+<td>Filter the two series with the own AR model of the driver before the cross-correlation. To see the raw correlations, turn it off.</td>
 </tr>
 <tr>
 <td><code>max_series</code></td>
 <td>50</td>
-<td>Series per view (the rest are counted as omitted)</td>
+<td>The number of series in each view. The platform counts the other series as omitted.</td>
 </tr>
 </tbody>
 </table>
@@ -5084,89 +5168,91 @@ request answers <code>200</code> from the last run, so explorers are instant onc
 <tbody>
 <tr>
 <td><code>overview</code></td>
-<td>Dims, variables, roles, missing share, a summary and a quality score</td>
+<td>Dims, variables, roles, the fraction of missing values, a summary and a quality score</td>
 <td>"104 weeks for 3 markets; 2 data problems to look at."</td>
 </tr>
 <tr>
 <td><code>distributions</code></td>
-<td>Histogram, mean, spread, skew, quantiles and share of zeros per variable</td>
-<td>Heavy tails or many zeros may need a transform or another likelihood.</td>
+<td>For each variable: histogram, mean, spread, skew, quantiles and fraction of zeros</td>
+<td>Heavy tails or many zeros can need a transform or a different likelihood.</td>
 </tr>
 <tr>
 <td><code>timeseries</code></td>
-<td>Every variable over time, faceted</td>
-<td>Breaks, level shifts and gaps are easier to see than to test.</td>
+<td>Each variable over time, in facets</td>
+<td>It is easier to see breaks, level shifts and gaps than to test for them.</td>
 </tr>
 <tr>
 <td><code>missingness</code></td>
-<td>A heatmap of the missing share by variable and period, the longest gap</td>
-<td>Long gaps cannot be imputed reliably.</td>
+<td>A heatmap of the fraction of missing values by variable and period, and the longest gap</td>
+<td>You cannot impute long gaps reliably.</td>
 </tr>
 <tr>
 <td><code>outliers</code></td>
-<td>Values far from the typical value, with their coordinates</td>
-<td>Errors or real events? Real events deserve a control variable.</td>
+<td>Values that are far from the typical value, with their coordinates</td>
+<td>Are they errors or real events? For real events, add a control variable.</td>
 </tr>
 <tr>
 <td><code>correlation</code></td>
 <td>The correlation matrix with p-values</td>
-<td>Drivers that move almost together are hard to separate.</td>
+<td>It is difficult to separate drivers that move almost together.</td>
 </tr>
 <tr>
 <td><code>ccf</code></td>
-<td>Correlation of each driver with the KPI at each lag (positive lag: the driver leads)</td>
-<td>A peak at lag 2 means the effect shows up two periods later. Prewhitened by default; the significance band follows Bartlett's formula for two autocorrelated series, so two smooth but unrelated series are not flagged at half of their lags.</td>
+<td>The correlation of each driver with the KPI at each lag. A positive lag means that the driver leads.</td>
+<td>A peak at lag 2 means that the effect shows two periods later. Prewhitening is on by default. The significance band uses the formula of Bartlett for two autocorrelated series. Thus the platform does not flag two smooth but unrelated series at half of their lags.</td>
 </tr>
 <tr>
 <td><code>acf_pacf</code></td>
 <td>Autocorrelation and partial autocorrelation with the significance band, and suggested AR/MA orders</td>
-<td>Bars beyond the dashed band are more than chance.</td>
+<td>Bars outside the dashed band are more than chance.</td>
 </tr>
 <tr>
 <td><code>stationarity</code></td>
-<td>ADF and KPSS per series with one verdict</td>
-<td><code>stable</code>, <code>difference</code> (it wanders: model changes), <code>trend_stable</code> or <code>unclear</code> (the tests disagree: look at the plot).</td>
+<td>ADF and KPSS for each series, with one verdict</td>
+<td><code>stable</code>, <code>difference</code> (it wanders: model the changes), <code>trend_stable</code> or <code>unclear</code> (the tests do not agree: look at the plot).</td>
 </tr>
 <tr>
 <td><code>stl</code></td>
-<td>Trend, season and remainder with their strengths (0 to 1)</td>
-<td>Seasonal strength above about 0.6: model the season explicitly.</td>
+<td>Trend, season and remainder, with their strengths (0 to 1)</td>
+<td>If the seasonal strength is more than about 0.6, model the season explicitly.</td>
 </tr>
 <tr>
 <td><code>vif</code></td>
-<td>Variance inflation per driver and the condition number</td>
-<td>Above 10: the driver's separate effect is poorly identified.</td>
+<td>The variance inflation for each driver, and the condition number</td>
+<td>Above 10, the model cannot identify the separate effect of the driver well.</td>
 </tr>
 <tr>
 <td><code>groups</code></td>
 <td>Each variable across markets or stores, with an ANOVA or Kruskal-Wallis test</td>
-<td>Very different groups may need a hierarchical model.</td>
+<td>Very different groups can need a hierarchical model.</td>
 </tr>
 <tr>
 <td><code>quality</code></td>
-<td>Plain-language warnings, most serious first, each with a suggested action</td>
-<td>Fix errors before modelling; warnings deserve a look.</td>
+<td>Warnings in plain language, the most serious first. Each warning has a suggested action.</td>
+<td>Correct errors before you model. Look at the warnings.</td>
 </tr>
 </tbody>
 </table>
-<p>The quality warnings are also what the <code>data.quality</code> governance check counts (see
+<p>The <code>data.quality</code> governance check also counts the quality warnings (see
 <a href="../governance/">Validate models with governance policies</a>).</p>
 <h2 id="dataset-about">Dataset About<a class="headerlink" href="#dataset-about" title="Permanent link">&para;</a></h2>
-<p><code>GET /v1/datasets/{dataset_id}/about</code> describes the latest version in plain words from its
-schema and coordinates ("Weekly data from 2023-01-01 to 2024-12-29 (104 weeks) for 10 markets
-…") next to the owner's own description, which <code>PATCH</code> changes:</p>
+<p><code>GET /v1/datasets/{dataset_id}/about</code> describes the latest version in plain words. It uses
+the schema and the coordinates of the version ("Weekly data from 2023-01-01 to 2024-12-29 (104
+weeks) for 10 markets …"). The response also shows the own description of the owner. <code>PATCH</code>
+changes that description:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>api<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/datasets/</span><span class="nv">$DATASET_ID</span><span class="s2">/about"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"description_user": "Weekly media spend and revenue from the finance warehouse."}'</span>
 </span></code></pre></div>
-<p>In the web app the dataset page and the Data Explorer show both side by side (<em>About this
-dataset</em>); editors change the description in place with <strong>Edit</strong>.</p>
+<p>In the web app, the dataset page and the Data Explorer show the two descriptions next to each
+other (<em>About this dataset</em>). Editors change the description on the page with <strong>Edit</strong>.</p>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Views are capped: at most 200 series per view, 5,000 points per series (longer series are
-  thinned evenly and flagged <code>downsampled</code>), 256 variables, 200 lags.</li>
-<li>Statistical tests come from statsmodels and scipy and are validated against their reference
-  outputs in the test suite.</li>
-<li>Strings in views come from your data: render them as text only.</li>
+<li>Views have limits. The maximums are 200 series in each view, 5,000 points in each series,
+  256 variables and 200 lags. The platform thins longer series evenly and flags them
+  <code>downsampled</code>.</li>
+<li>The statistical tests come from statsmodels and scipy. The test suite validates them
+  against their reference outputs.</li>
+<li>Strings in views come from your data. Render them only as text.</li>
 </ul>
 
 

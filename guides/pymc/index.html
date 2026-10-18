@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4679,6 +4709,8 @@
       
         
       
+        
+      
     
     
     
@@ -4767,6 +4799,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4959,14 +5019,19 @@
 
 
 <h1 id="bring-a-pymc-model">Bring a PyMC model<a class="headerlink" href="#bring-a-pymc-model" title="Permanent link">&para;</a></h1>
-<p>With <code>mapi_pymc.PyMCModel</code> you write one method, <code>build()</code>, that returns a <code>pm.Model</code>. The
-platform fits it with the engine named in the spec, keeps the ArviZ groups you ask for,
-turns convergence checks into scorecard items, and predicts by rebuilding your model on new
-data: new geos, forecast horizons, counterfactual scenarios. You never handle coordinates,
-<code>pm.set_data</code> or posterior bookkeeping yourself.</p>
+<p>With <code>mapi_pymc.PyMCModel</code>, you write one method, <code>build()</code>. It returns a <code>pm.Model</code>. The
+platform does the rest of the work:</p>
+<ul>
+<li>It fits the model with the engine that the spec names.</li>
+<li>It keeps the ArviZ groups that you ask for.</li>
+<li>It changes the convergence checks into scorecard items.</li>
+<li>It predicts on new data, because it builds your model again: new geos, forecast horizons and
+  counterfactual scenarios.</li>
+</ul>
+<p>You never work with coordinates, <code>pm.set_data</code> or the records of the posterior.</p>
 <h2 id="a-hierarchical-model-in-30-lines">A hierarchical model in 30 lines<a class="headerlink" href="#a-hierarchical-model-in-30-lines" title="Permanent link">&para;</a></h2>
-<p>This is the classic radon model (varying intercepts by county) in long layout. <code>obs</code> rows
-carry a <code>county_idx</code> that points into the <code>county</code> coordinate.</p>
+<p>This example is the classic radon model (intercepts that change by county) in the long layout.
+Each <code>obs</code> row has a <code>county_idx</code> that points into the <code>county</code> coordinate.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pm</span>
@@ -5009,7 +5074,7 @@ carry a <code>county_idx</code> that points into the <code>county</code> coordin
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>            <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">"y"</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">observed</span><span class="p">(</span><span class="s2">"y"</span><span class="p">),</span> <span class="n">dims</span><span class="o">=</span><span class="s2">"obs"</span><span class="p">)</span>
 </span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>        <span class="k">return</span> <span class="n">model</span>
 </span></code></pre></div>
-<p>A runnable version, with synthetic data, ships as <code>mapi_pymc.examples.RadonModel</code>.</p>
+<p><code>mapi_pymc.examples.RadonModel</code> is a version that you can run, with synthetic data.</p>
 <h3 id="what-the-ctx-helpers-do">What the <code>ctx</code> helpers do<a class="headerlink" href="#what-the-ctx-helpers-do" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5022,47 +5087,48 @@ carry a <code>county_idx</code> that points into the <code>county</code> coordin
 <tbody>
 <tr>
 <td><code>ctx.coords()</code></td>
-<td>the data's labels</td>
-<td>adds <code>&lt;dim&gt;__fit</code> and <code>&lt;dim&gt;__new</code> when unseen levels arrive</td>
+<td>The labels of the data</td>
+<td>Adds <code>&lt;dim&gt;__fit</code> and <code>&lt;dim&gt;__new</code> when unseen levels come in</td>
 </tr>
 <tr>
 <td><code>ctx.data(name)</code></td>
 <td><code>pm.Data</code> over the training values</td>
-<td><code>pm.Data</code> over the score values (the model is rebuilt)</td>
+<td><code>pm.Data</code> over the score values (the platform builds the model again)</td>
 </tr>
 <tr>
 <td><code>ctx.observed(name)</code></td>
-<td>the target</td>
-<td>a zero placeholder of the right shape (never imputed)</td>
+<td>The target</td>
+<td>A zero placeholder of the correct shape (never imputed)</td>
 </tr>
 <tr>
 <td><code>ctx.hier_effect(name, dim)</code></td>
 <td><code>name ~ Normal(mu, sigma)</code> over <code>dim</code> (non-centred by default)</td>
-<td>fit levels from the posterior, then <code>name__new</code> for unseen levels</td>
+<td>The fit levels from the posterior, then <code>name__new</code> for unseen levels</td>
 </tr>
 <tr>
 <td><code>ctx.position(dim)</code></td>
 <td>0, 1, 2, … along an <code>extend</code> dim</td>
-<td>the same positions continued into the horizon</td>
+<td>The same positions, continued into the horizon</td>
 </tr>
 <tr>
 <td><code>ctx.anticipated_coords</code></td>
-<td>fit labels plus <code>max_extension</code> future labels</td>
-<td>the same</td>
+<td>The fit labels and <code>max_extension</code> future labels</td>
+<td>The same</td>
 </tr>
 </tbody>
 </table>
-<p>New levels follow the dim's <code>new_level_strategy</code>:</p>
+<p>The <code>new_level_strategy</code> of the dim controls new levels:</p>
 <ul>
-<li><code>hyperprior</code>: every posterior draw gets a fresh level <code>mu + sigma * z</code> from the fitted
-  hyperprior. The noise <code>z</code> is frozen per seed, so scoring twice returns the same answer.</li>
+<li><code>hyperprior</code>: each posterior draw gets a new level <code>mu + sigma * z</code> from the fitted
+  hyperprior. The noise <code>z</code> stays the same for each seed. Thus, if you score two times, you get
+  the same answer.</li>
 <li><code>pooled</code>: the population mean <code>mu</code>.</li>
 <li><code>zero</code>: <code>0</code>.</li>
-<li><code>error</code>: the request is rejected with <code>UNSEEN_LEVELS</code>.</li>
+<li><code>error</code>: the platform rejects the request with <code>UNSEEN_LEVELS</code>.</li>
 </ul>
-<p>If your model indexes a plain parameter by a <code>new_levels</code> dim (<code>pm.Normal("a", dims="county")</code>),
-scoring a new county fails with a clear <code>UNSEEN_LEVELS</code> error that points you at
-<code>ctx.hier_effect</code>.</p>
+<p>Your model can use a <code>new_levels</code> dim as the index of a plain parameter
+(<code>pm.Normal("a", dims="county")</code>). If you then score a new county, the score fails with a clear
+<code>UNSEEN_LEVELS</code> error. The error tells you to use <code>ctx.hier_effect</code>.</p>
 <h2 id="choosing-an-engine">Choosing an engine<a class="headerlink" href="#choosing-an-engine" title="Permanent link">&para;</a></h2>
 <p>Set <code>model.fit.engine</code> in the spec:</p>
 <table>
@@ -5075,11 +5141,11 @@ scoring a new county fails with a clear <code>UNSEEN_LEVELS</code> error that po
 <tbody>
 <tr>
 <td><code>nutpie</code> (default)</td>
-<td>Fast NUTS with parallel chains. It is not bit-for-bit reproducible from a seed.</td>
+<td>Fast NUTS with parallel chains. A seed does not make the result the same bit for bit.</td>
 </tr>
 <tr>
 <td><code>pymc</code></td>
-<td>PyMC's NUTS, reproducible from a seed, with <strong>segmented sampling</strong>.</td>
+<td>The NUTS of PyMC. A seed makes the result the same. It has <strong>segmented sampling</strong>.</td>
 </tr>
 <tr>
 <td><code>map</code></td>
@@ -5087,15 +5153,15 @@ scoring a new county fails with a clear <code>UNSEEN_LEVELS</code> error that po
 </tr>
 <tr>
 <td><code>advi</code></td>
-<td>Mean-field ADVI. <code>tune</code> is the number of optimisation steps (default 10,000).</td>
+<td>Mean-field ADVI. <code>tune</code> is the number of optimization steps (default 10,000).</td>
 </tr>
 <tr>
 <td><code>pathfinder</code></td>
-<td>Pathfinder from pymc-extras, when installed in the image.</td>
+<td>Pathfinder from pymc-extras, if the image has it.</td>
 </tr>
 <tr>
 <td><code>numpyro</code>, <code>blackjax</code></td>
-<td>PyMC's JAX bridges, when installed in the image.</td>
+<td>The JAX bridges of PyMC, if the image has them.</td>
 </tr>
 </tbody>
 </table>
@@ -5111,48 +5177,51 @@ scoring a new county fails with a clear <code>UNSEEN_LEVELS</code> error that po
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="nt">keep</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">log_likelihood</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="p p-Indicator">,</span><span class="nt"> posterior_predictive</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">thin</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">}}</span>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="nt">prior_predictive</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">draws</span><span class="p">:</span><span class="w"> </span><span class="nv">500</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p>The opt-in groups are:</p>
+<p>You can add these optional groups:</p>
 <ul>
-<li><code>prior</code> and <code>prior_predictive</code> (<code>prior_predictive: {draws: N}</code>);</li>
-<li><code>log_likelihood</code>, which LOO and WAIC need;</li>
-<li>a thinned <code>posterior_predictive</code>.</li>
+<li><code>prior</code> and <code>prior_predictive</code> (<code>prior_predictive: {draws: N}</code>)</li>
+<li><code>log_likelihood</code>, which LOO and WAIC need</li>
+<li>A thinned <code>posterior_predictive</code></li>
 </ul>
-<p>The bundle always holds <code>posterior</code>, <code>sample_stats</code>, <code>observed_data</code> and <code>constant_data</code>.</p>
+<p>The bundle always contains <code>posterior</code>, <code>sample_stats</code>, <code>observed_data</code> and <code>constant_data</code>.</p>
 <h3 id="segmented-sampling-and-checkpoints">Segmented sampling and checkpoints<a class="headerlink" href="#segmented-sampling-and-checkpoints" title="Permanent link">&para;</a></h3>
-<p>With <code>engine: pymc</code> and <code>checkpoint.every_draws</code>, the sampler tunes once and then draws in
-chunks. After each chunk it writes a checkpoint with three things:</p>
+<p>With <code>engine: pymc</code> and <code>checkpoint.every_draws</code>, the sampler tunes one time. Then it makes the
+draws in chunks. After each chunk, it writes a checkpoint with three items:</p>
 <ul>
-<li>the draws so far;</li>
-<li>every chain's position;</li>
-<li>the full sampler state (step size, mass matrix and random state), encoded as JSON, never pickled.</li>
+<li>The draws until that time</li>
+<li>The position of each chain</li>
+<li>The full state of the sampler (step size, mass matrix and random state), encoded as JSON.
+  The sampler never uses pickle.</li>
 </ul>
-<p>If a run is interrupted and retried, it resumes where the last chunk ended. The result is
-identical to an uninterrupted run.</p>
-<p>nutpie cannot export its adaptation state, so its checkpoints are <em>snapshots</em>. They hold the
-draws so far, which is enough for a partial result, but a retry starts sampling again.</p>
-<p>Every engine reports progress for each chain ("chain 2/4: sampling 150/500, 0 divergences").</p>
+<p>If a run stops and starts again, it continues from the end of the last chunk. The result is the
+same as the result of a run that did not stop.</p>
+<p>nutpie cannot export its adaptation state. Thus its checkpoints are <em>snapshots</em>. A snapshot
+contains the draws until that time. This is sufficient for a partial result. But when the run
+starts again, the sampler starts from the beginning.</p>
+<p>Each engine reports the progress of each chain ("chain 2/4: sampling 150/500, 0 divergences").</p>
 <h3 id="diagnostics">Diagnostics<a class="headerlink" href="#diagnostics" title="Permanent link">&para;</a></h3>
-<p>Each MCMC fit adds these items to the sanity scorecard, each with an expert message, a
-plain-language message and a suggested action:</p>
+<p>Each MCMC fit adds these items to the sanity scorecard. Each item has a message for experts, a
+message in plain language and a suggested action:</p>
 <ul>
-<li><code>RHAT</code>: rank-normalised split r̂ below 1.01;</li>
-<li><code>ESS_BULK</code> and <code>ESS_TAIL</code>: at least 100 effective draws per chain;</li>
-<li><code>DIVERGENCES</code>;</li>
-<li><code>TREE_DEPTH</code>.</li>
+<li><code>RHAT</code>: the rank-normalised split r̂ is less than 1.01.</li>
+<li><code>ESS_BULK</code> and <code>ESS_TAIL</code>: each chain has 100 effective draws or more.</li>
+<li><code>DIVERGENCES</code></li>
+<li><code>TREE_DEPTH</code></li>
 </ul>
 <h2 id="expected-vs-predictive-and-counterfactuals">Expected vs predictive, and counterfactuals<a class="headerlink" href="#expected-vs-predictive-and-counterfactuals" title="Permanent link">&para;</a></h2>
-<p><code>output.kind: expected</code> returns the Deterministic you named in <code>expected</code> (no observation
-noise). <code>output.kind: predictive</code> returns draws of the observed variable.</p>
-<p>Predictive draws use <strong>common random numbers</strong>: <code>y = F⁻¹(U)</code> with uniforms <code>U</code> frozen by the
-seed and the cell. In a counterfactual (<code>mode: counterfactual</code> with <code>interventions</code>), the
-scenario and the baseline therefore share their noise. The delta then reflects only the
-intervention, not two independent noise draws. Distributions without an inverse CDF (Poisson,
-negative binomial) fall back to the seeded sampler stream, and the output's <code>noise</code> attribute
-records which method was used.</p>
+<p><code>output.kind: expected</code> returns the Deterministic that you named in <code>expected</code> (without
+observation noise). <code>output.kind: predictive</code> returns draws of the observed variable.</p>
+<p>Predictive draws use <strong>common random numbers</strong>: <code>y = F⁻¹(U)</code>. The seed and the cell set the
+uniforms <code>U</code>, and they do not change. A counterfactual uses <code>mode: counterfactual</code> with
+<code>interventions</code>. In a counterfactual, the scenario and the baseline thus use the same noise. The
+delta then shows only the intervention, not two independent noise draws. Some distributions do
+not have an inverse CDF (Poisson, negative binomial). For these distributions, the platform uses
+the seeded stream of the sampler. The <code>noise</code> attribute of the output records the method that
+the platform used.</p>
 <h2 id="fast-scoring-with-a-frozenpredictor">Fast scoring with a FrozenPredictor<a class="headerlink" href="#fast-scoring-with-a-frozenpredictor" title="Permanent link">&para;</a></h2>
-<p>Declare a <code>FrozenPredictorSpec</code> and the platform can compile one PyTensor function that
-evaluates your responses for many inputs and scenarios at once. Use it for response curves
-and what-if grids:</p>
+<p>If you declare a <code>FrozenPredictorSpec</code>, the platform can compile one PyTensor function. This
+function calculates your responses for many inputs and scenarios at the same time. Use it for
+response curves and what-if grids:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_pymc.examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">RADON_SCHEMA</span><span class="p">,</span> <span class="n">RADON_SPEC_YAML</span><span class="p">,</span> <span class="n">RadonModel</span><span class="p">,</span> <span class="n">radon_dataset</span>
@@ -5178,10 +5247,10 @@ and what-if grids:</p>
 </span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="n">report</span> <span class="o">=</span> <span class="n">check_fast_score</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">bundle</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>  <span class="c1"># fast path == exact path within MCSE</span>
 </span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">ok</span><span class="p">)</span>  <span class="c1"># True</span>
 </span></code></pre></div>
-<p>The contract check <code>mapi_pymc.testing.check_fast_score(plugin, fitted, ds)</code> confirms that the
-fast path agrees with exact scoring within Monte Carlo error.</p>
+<p>The contract check <code>mapi_pymc.testing.check_fast_score(plugin, fitted, ds)</code> makes sure that the
+fast path agrees with the exact scores within the Monte Carlo error.</p>
 <h2 id="test-it">Test it<a class="headerlink" href="#test-it" title="Permanent link">&para;</a></h2>
-<p>Use the SDK contract kit:</p>
+<p>Use the contract kit of the SDK:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_pymc.examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">radon_dataset</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelFixture</span><span class="p">,</span> <span class="n">check_model</span>
@@ -5200,8 +5269,8 @@ fast path agrees with exact scoring within Monte Carlo error.</p>
 </span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="p">)</span>
 </span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
 </span></code></pre></div>
-<p>Keep test fits tiny (<code>tune: 100, draws: 100, chains: 2</code>, <code>engine: pymc</code>) so they are fast and
-reproducible.</p>
+<p>Keep the test fits very small (<code>tune: 100, draws: 100, chains: 2</code>, <code>engine: pymc</code>). Then the
+tests are fast and give the same result each time.</p>
 
 
 

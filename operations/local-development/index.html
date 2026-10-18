@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4699,6 +4729,8 @@
       
         
       
+        
+      
     
     
     
@@ -4787,6 +4819,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5012,21 +5072,21 @@
 
 
 <h1 id="local-without-docker-v02">Local, without Docker <span class="mapi-badge">v0.2</span><a class="headerlink" href="#local-without-docker-v02" title="Permanent link">&para;</a></h1>
-<p><code>make dev</code> runs the whole platform on your machine <strong>without Docker</strong>. PostgreSQL comes from the
-<code>pgserver</code> wheel and object storage from the GCS shim, so the only requirements are the uv
+<p><code>make dev</code> runs the whole platform on your machine <strong>without Docker</strong>. PostgreSQL comes from
+the <code>pgserver</code> wheel, and object storage comes from the GCS shim. Thus you need only the uv
 workspace and, for the web app, Node.js with pnpm.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>install<span class="w">          </span><span class="c1"># uv sync --all-packages (+ pnpm install once apps/ exist)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>dev<span class="w">              </span><span class="c1"># start everything; Ctrl-C stops everything</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>make<span class="w"> </span>seed<span class="w">             </span><span class="c1"># in another shell: load the E33 demo data and spec</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>open<span class="w"> </span>http://127.0.0.1:5173
 </span></code></pre></div>
-<p>The <a href="../../getting-started/quickstart/">quickstart</a> walks through fitting, inspecting and
-scoring the demo model from the browser. This page explains what <code>make dev</code> runs, how to
-work on one component, and where local state lives.</p>
+<p>The <a href="../../getting-started/quickstart/">quickstart</a> tells how to fit, examine and score the
+demo model from the browser. This page tells what <code>make dev</code> runs, how to work on one
+component, and where the local state is.</p>
 <h2 id="signing-in">Signing in <span class="mapi-badge">v0.3</span><a class="headerlink" href="#signing-in" title="Permanent link">&para;</a></h2>
-<p><code>make dev</code> runs the servers in the <code>dev</code> profile: multi-tenant, with a development identity
-provider built into the API. The browser shows a sign-in screen. Choose one of the seeded
-accounts on the provider's page:</p>
+<p><code>make dev</code> runs the servers in the <code>dev</code> profile. This profile is multi-tenant, with a
+development identity provider in the API. The browser shows a sign-in screen. Select one of
+the seeded accounts on the page of the provider:</p>
 <table>
 <thead>
 <tr>
@@ -5049,27 +5109,29 @@ accounts on the provider's page:</p>
 </tr>
 </tbody>
 </table>
-<p><code>make seed</code> and <code>make e2e</code> sign in by themselves as <code>admin@dev.local</code> (change it with
-<code>MAPI_DEV_ACCOUNT</code>). The CLI signs in with
+<p><code>make seed</code> and <code>make e2e</code> sign in automatically as <code>admin@dev.local</code>. To change the
+account, set <code>MAPI_DEV_ACCOUNT</code>. The CLI signs in with
 <code>mapi login --issuer https://dev-idp.mapi.localhost --discovery-url http://127.0.0.1:8000/dev/idp</code>.
-Anyone who can reach the API can sign in as any of these accounts, which is why the profile
-exists only for local development. <code>MAPI_STACK_PROFILE=single-tenant make dev</code> gives back the
-credential-less v0.2 API. See <a href="../authentication/">Authentication and isolation</a> for the
-details.</p>
+Each person who can get access to the API can sign in as each of these accounts. For this
+reason, the profile is only for local development. <code>MAPI_STACK_PROFILE=single-tenant make dev</code>
+gives the v0.2 API without credentials. For more data, refer to
+<a href="../authentication/">Authentication and isolation</a>.</p>
 <h3 id="signing-up">Signing up <span class="mapi-badge">v0.4</span><a class="headerlink" href="#signing-up" title="Permanent link">&para;</a></h3>
-<p>Self-service sign-up (<code>POST /auth/signup</code>) is on in the <code>dev</code> profile. Its e-mails are not
-sent: the dev mailer writes each one to an outbox under <code>MAPI_DATA_DIR/outbox</code>, and
-<code>make outbox</code> prints the newest ones with their verification links (<code>TO=&lt;address&gt;</code> keeps one
-recipient's). The API serves the same at <code>GET /dev/outbox?to=&lt;address&gt;</code>. A verified sign-up
-creates a <code>public</code>-tier workspace; to sign in to it, sign up with one of the seeded addresses
-above, because the development identity provider only knows those. A <code>public</code> workspace runs
-built-in models and declarative specs only, and only on an executor with enforced egress and
-DNS, so the <code>local-process</code> executor of <code>make dev</code> refuses its runs (cut line A; see
-<a href="../signup-and-abuse/">Sign-up and abuse controls</a>).</p>
+<p>Self-service sign-up (<code>POST /auth/signup</code>) is on in the <code>dev</code> profile. The server does not
+send its e-mails. The dev mailer writes each e-mail to an outbox under
+<code>MAPI_DATA_DIR/outbox</code>. <code>make outbox</code> prints the newest e-mails with their verification
+links. <code>TO=&lt;address&gt;</code> shows only the e-mails of one recipient. The API serves the same data
+at <code>GET /dev/outbox?to=&lt;address&gt;</code>.</p>
+<p>A verified sign-up makes a <code>public</code>-tier workspace. To sign in to it, sign up with one of
+the seeded addresses above, because the development identity provider knows only those
+addresses. A <code>public</code> workspace runs only built-in models and declarative specs. It runs only
+on an executor with enforced egress and DNS. Thus the <code>local-process</code> executor of <code>make dev</code>
+refuses its runs (cut line A, refer to <a href="../signup-and-abuse/">Sign-up and abuse controls</a>).</p>
 <h2 id="what-make-dev-starts">What <code>make dev</code> starts<a class="headerlink" href="#what-make-dev-starts" title="Permanent link">&para;</a></h2>
-<p><code>scripts/dev.py</code> is a small process supervisor. It starts each service in dependency order and
-waits until the service is ready before starting the ones that need it. All output goes to one
-terminal, with each line prefixed by its service name (coloured when the output is a terminal).</p>
+<p><code>scripts/dev.py</code> is a small process supervisor. It starts each service in the sequence of
+its dependencies. It waits until a service is ready before it starts the services that need
+it. All output goes to one terminal. Each line starts with the name of its service (in
+colour when the output is a terminal).</p>
 <pre class="mermaid"><code>flowchart LR
     pg[(postgres&lt;br/&gt;.local/pg)] --&gt; migrate
     shim[gcs-shim&lt;br/&gt;:4443] --&gt; api
@@ -5090,7 +5152,7 @@ terminal, with each line prefixed by its service name (coloured when the output 
 <tr>
 <td><code>postgres</code></td>
 <td>Embedded PostgreSQL 16 (<code>pgserver</code>), data in <code>.local/pg</code>, unix socket only. Skipped when <code>DATABASE_URL</code> is set.</td>
-<td><code>pg_ctl</code> reports it running and the <code>mapi</code> database exists</td>
+<td><code>pg_ctl</code> reports that it runs, and the <code>mapi</code> database is there</td>
 </tr>
 <tr>
 <td><code>gcs-shim</code></td>
@@ -5099,8 +5161,8 @@ terminal, with each line prefixed by its service name (coloured when the output 
 </tr>
 <tr>
 <td><code>migrate</code></td>
-<td><code>mapi-server migrate</code> (runs once)</td>
-<td>It exits with status 0</td>
+<td><code>mapi-server migrate</code> (runs one time)</td>
+<td>It stops with status 0</td>
 </tr>
 <tr>
 <td><code>api</code></td>
@@ -5109,7 +5171,7 @@ terminal, with each line prefixed by its service name (coloured when the output 
 </tr>
 <tr>
 <td><code>worker</code></td>
-<td><code>mapi-server worker</code> with <code>MAPI_EXECUTOR=local-process</code>: dispatcher, reconciler, event ingestion and the finalizer queue. Every run is a <code>mapi-runner</code> supervisor process that starts its own worker process.</td>
+<td><code>mapi-server worker</code> with <code>MAPI_EXECUTOR=local-process</code>: dispatcher, reconciler, event ingestion and the finalizer queue. Each run is a <code>mapi-runner</code> supervisor process that starts its own worker process.</td>
 <td>Started</td>
 </tr>
 <tr>
@@ -5124,46 +5186,48 @@ terminal, with each line prefixed by its service name (coloured when the output 
 </tr>
 </tbody>
 </table>
-<p>Every service receives the same resolved environment: <code>MAPI_ENV</code>, <code>DATABASE_URL</code>,
-<code>MAPI_GCS_ENDPOINT</code>, <code>MAPI_API_URL</code>, <code>MAPI_WEB_ORIGIN</code>, <code>MAPI_PLOTS_ORIGIN</code> and <code>MAPI_DATA_DIR</code>.
-The values come from <code>mapi_spec.localdev.LocalDev</code>, the same contract the services themselves
-read, so they cannot disagree about ports. The
-<a href="../configuration/">configuration reference</a> lists every variable.</p>
+<p>Each service gets the same resolved environment: <code>MAPI_ENV</code>, <code>DATABASE_URL</code>,
+<code>MAPI_GCS_ENDPOINT</code>, <code>MAPI_API_URL</code>, <code>MAPI_WEB_ORIGIN</code>, <code>MAPI_PLOTS_ORIGIN</code> and
+<code>MAPI_DATA_DIR</code>. The values come from <code>mapi_spec.localdev.LocalDev</code>. The services read the
+same contract, so they always agree about ports. The
+<a href="../configuration/">configuration reference</a> lists all the variables.</p>
 <div class="admonition note">
 <p class="admonition-title">The plot sandbox is a separate origin</p>
-<p>Plots render in an <code>&lt;iframe sandbox="allow-scripts"&gt;</code> served from <code>MAPI_PLOTS_ORIGIN</code>
-(port 5174), never from the app origin (port 5173). <code>LocalDev</code> refuses a configuration that
-puts both on the same origin.</p>
+<p>Plots show in an <code>&lt;iframe sandbox="allow-scripts"&gt;</code> that comes from <code>MAPI_PLOTS_ORIGIN</code>
+(port 5174), never from the app origin (port 5173). <code>LocalDev</code> refuses a configuration
+that puts the two on the same origin.</p>
 </div>
 <h3 id="shutting-down">Shutting down<a class="headerlink" href="#shutting-down" title="Permanent link">&para;</a></h3>
-<p><span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-c">C</kbd></span> (or <code>make stop</code> from another shell) stops the services in reverse start order. Each
-service runs in its own process group. The supervisor sends that group <code>SIGTERM</code>, and sends
-<code>SIGKILL</code> if it is still running after the grace period (10 s, <code>--grace</code> to change). Child
-processes such as Vite's esbuild are stopped with their parent. A second <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-c">C</kbd></span> kills
-everything at once. The embedded PostgreSQL is stopped last, unless you ran
+<p><span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-c">C</kbd></span> (or <code>make stop</code> from a different shell) stops the services in the opposite
+sequence of the start. Each service runs in its own process group. The supervisor sends
+<code>SIGTERM</code> to that group. If the group still runs after the grace period, the supervisor
+sends <code>SIGKILL</code>. The grace period is 10 s (change it with <code>--grace</code>). Child processes, for
+example the esbuild of Vite, stop with their parent. A second <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-c">C</kbd></span> stops all processes
+immediately. The embedded PostgreSQL stops last, but not if you ran
 <code>scripts/dev.py up --keep-db</code>.</p>
-<p>If any long-running service exits on its own, the supervisor stops the whole stack and exits
-with a non-zero status. It never restarts anything silently: the log above the shutdown shows
-the reason.</p>
+<p>If a long-running service stops without a command, the supervisor stops the whole stack. The
+supervisor then stops with a status that is not zero. It never starts a service again
+without a message. The log above the shutdown shows the reason.</p>
 <h3 id="the-first-start">The first start<a class="headerlink" href="#the-first-start" title="Permanent link">&para;</a></h3>
-<p>On its first start against a new environment the worker logs <code>no catalog for sha256:…:
-queued describe run</code>. The catalog (the steps, models and plot recipes installed in the
-runner, with their settings schemas and schema effects) is produced by a sandboxed
-<code>describe</code> run of the real runner and cached per <code>uv.lock</code> digest, so it is rebuilt only when
-the locked dependencies change. Until it is ready, spec validation reports the catalog as
-unavailable; it takes a few seconds.</p>
-<p>Runs use the same isolation as in production, minus what a laptop cannot do: the run event
-<code>DEV_MODE_ISOLATION</code> notes that the worker process runs as your user, without a uid split or
-<code>no_new_privs</code>.</p>
+<p>At its first start against a new environment, the worker logs <code>no catalog for sha256:…:
+queued describe run</code>. The catalog contains the steps, models and plot recipes in the runner,
+with their settings schemas and schema effects. A sandboxed <code>describe</code> run of the real runner
+makes the catalog. The server keeps it in a cache for each <code>uv.lock</code> digest. Thus the server
+builds it again only when the locked dependencies change. Until the catalog is ready, spec
+validation reports that the catalog is not available. This takes some seconds.</p>
+<p>Runs use the same isolation as in production, but not the parts that a laptop cannot do. The
+run event <code>DEV_MODE_ISOLATION</code> tells that the worker process runs as your user, without a uid
+split or <code>no_new_privs</code>.</p>
 <div class="admonition warning">
 <p class="admonition-title">Plugin code runs as you, next to the platform's keys</p>
-<p>Without a uid split, run code (plugins and the steps they load) can read every file your
-user can. That includes the shim's control key (<code>.local/gcs/_shim/keys/control.json</code>,
-full access to every bucket), the bundle-signing key (<code>.local/keys/</code>) and the
-executions directory. So a hostile plugin could forge a signed bundle or rewrite outputs
-after the finalizer checked them. The orchestrator makes itself non-dumpable on Linux,
-so run code cannot read its environment (<code>DATABASE_URL</code>) or its memory. The worker logs
-the same warning when it starts. Only run plugin code you trust in <code>make dev</code>.</p>
+<p>Run only plugin code that you trust in <code>make dev</code>. Without a uid split, run code
+(plugins and the steps that they load) can read all the files that your user can read.
+These include the control key of the shim (<code>.local/gcs/_shim/keys/control.json</code>, full
+access to all buckets), the bundle-signing key (<code>.local/keys/</code>) and the executions
+directory. Thus a hostile plugin could forge a signed bundle, or change outputs after the
+finalizer did a check of them. On Linux, the orchestrator makes itself non-dumpable.
+Thus run code cannot read its environment (<code>DATABASE_URL</code>) or its memory. The worker logs
+the same warning when it starts.</p>
 </div>
 <h2 id="everyday-commands">Everyday commands<a class="headerlink" href="#everyday-commands" title="Permanent link">&para;</a></h2>
 <table>
@@ -5176,27 +5240,27 @@ the same warning when it starts. Only run plugin code you trust in <code>make de
 <tbody>
 <tr>
 <td><code>make dev</code> (or <code>make run</code>)</td>
-<td>Start the stack in the foreground</td>
+<td>Starts the stack in the foreground</td>
 </tr>
 <tr>
 <td><code>make dev ONLY=api</code></td>
-<td>Start <code>api</code> and what it depends on (<code>gcs-shim</code>, <code>migrate</code>)</td>
+<td>Starts <code>api</code> and its dependencies (<code>gcs-shim</code>, <code>migrate</code>)</td>
 </tr>
 <tr>
 <td><code>make dev WITHOUT=web,plots</code></td>
-<td>Everything except the two Vite servers (for example while the web app is not built yet)</td>
+<td>Starts all services, but not the two Vite servers (for example, while the web app is not built yet)</td>
 </tr>
 <tr>
 <td><code>make stop</code></td>
-<td>Stop a stack running in another shell, then its embedded PostgreSQL</td>
+<td>Stops a stack that runs in a different shell, then its embedded PostgreSQL</td>
 </tr>
 <tr>
 <td><code>make status</code></td>
-<td>Which services are up, and whether PostgreSQL is running</td>
+<td>Shows which services operate, and if PostgreSQL runs</td>
 </tr>
 <tr>
 <td><code>make migrate</code></td>
-<td>Apply database migrations once. It starts the embedded PostgreSQL if needed and stops it again afterwards.</td>
+<td>Applies database migrations one time. If necessary, it starts the embedded PostgreSQL, and then it stops it again.</td>
 </tr>
 <tr>
 <td><code>make db-shell</code></td>
@@ -5204,88 +5268,102 @@ the same warning when it starts. Only run plugin code you trust in <code>make de
 </tr>
 <tr>
 <td><code>make seed</code></td>
-<td>Load the E33 demo datasets and the <code>eu-geo-mmm</code> spec through the HTTP API (<code>make seed SIZE=full</code> for the large variant)</td>
+<td>Loads the E33 demo datasets and the <code>eu-geo-mmm</code> spec through the HTTP API (<code>make seed SIZE=full</code> for the large variant)</td>
 </tr>
 <tr>
 <td><code>make e2e</code></td>
-<td>The end-to-end suites against the running stack: <code>pytest -m e2e</code> (<code>tests/e2e</code>, through the Python client), then the Playwright <code>@e2e</code> suite (<code>apps/web/e2e</code>, through the browser)</td>
+<td>Runs the end-to-end suites against the stack: <code>pytest -m e2e</code> (<code>tests/e2e</code>, through the Python client), then the Playwright <code>@e2e</code> suite (<code>apps/web/e2e</code>, through the browser)</td>
 </tr>
 <tr>
 <td><code>make outbox</code></td>
-<td>The dev mailer's newest e-mails and their links (sign-up verification); <code>TO=&lt;address&gt;</code> filters</td>
+<td>Shows the newest e-mails of the dev mailer and their links (sign-up verification). <code>TO=&lt;address&gt;</code> filters</td>
 </tr>
 <tr>
 <td><code>make clean-local</code></td>
-<td>Delete <code>MAPI_DATA_DIR</code> (database, objects, supervisor state). It refuses while anything is running; <code>YES=1</code> skips the prompt.</td>
+<td>Deletes <code>MAPI_DATA_DIR</code> (database, objects, supervisor state). It refuses while a service runs. <code>YES=1</code> skips the prompt.</td>
 </tr>
 <tr>
 <td><code>uv run python scripts/dev.py env</code></td>
-<td>Print the resolved environment as <code>export</code> lines, for running a component by hand</td>
+<td>Prints the resolved environment as <code>export</code> lines, so that you can run a component manually</td>
 </tr>
 </tbody>
 </table>
-<p><code>make seed</code> uses only the public API. It creates the datasets <code>eu_media_daily</code>, <code>fx_daily</code> and
-<code>holidays_eu</code>, uploads each table to the signed URL the API returns, waits for the sandboxed
-ingest runs, then creates the spec pointing at the new dataset versions. Running it again adds
-new dataset versions and a new spec revision. The datasets themselves are reused. <code>SIZE</code> is
-only read from the make command line: some toolchains (conda's compilers) export a <code>SIZE</code>
-variable of their own.</p>
+<p><code>make seed</code> uses only the public API. It does these steps:</p>
+<ol>
+<li>It makes the datasets <code>eu_media_daily</code>, <code>fx_daily</code> and <code>holidays_eu</code>.</li>
+<li>It uploads each table to the signed URL that the API returns.</li>
+<li>It waits for the sandboxed ingest runs.</li>
+<li>It makes the spec that points at the new dataset versions.</li>
+</ol>
+<p>If you run it again, it adds new dataset versions and a new spec revision. It uses the same
+datasets again. <code>make</code> reads <code>SIZE</code> only from the make command line, because some toolchains
+(the compilers of conda) export their own <code>SIZE</code> variable.</p>
 <p><code>uv run python scripts/seed.py --export demo/</code> writes the same tables, the E33 score payloads
-and the spec as files instead, for uploading through the web app.</p>
+and the spec as files. You can then upload these files through the web app.</p>
 <h2 id="end-to-end-tests">End-to-end tests<a class="headerlink" href="#end-to-end-tests" title="Permanent link">&para;</a></h2>
-<p><code>make e2e</code> drives the M1 flow through the running stack: upload the E33 data, validate and
-fit the spec, follow the run over SSE, check the signed manifest and the bundle, score an
-8-week forecast, a new market, a weekly EUR plan and counterfactuals, and probe the security
-boundaries that are visible from outside (the bootstrap object is gone, forged events are
-refused, the plot iframe is an opaque origin). Start <code>make dev</code> first; both suites read the
-same <code>MAPI_*</code> variables, so export them in the shell that runs <code>make e2e</code> when you moved a
-port. The browser suite writes screenshots to <code>apps/web/e2e/screenshots/</code> (git-ignored).</p>
+<p><code>make e2e</code> does the M1 flow through the stack:</p>
+<ul>
+<li>It uploads the E33 data, validates and fits the spec, and follows the run over SSE.</li>
+<li>It does a check of the signed manifest and the bundle.</li>
+<li>It scores an 8-week forecast, a new market, a weekly EUR plan and counterfactuals.</li>
+<li>It probes the security boundaries that are visible from outside. The bootstrap object is
+  gone, the server refuses forged events, and the plot iframe is an opaque origin.</li>
+</ul>
+<p>Start <code>make dev</code> first. The two suites read the same <code>MAPI_*</code> variables. Thus, if you moved a
+port, export the variables in the shell that runs <code>make e2e</code>. The browser suite writes
+screenshots to <code>apps/web/e2e/screenshots/</code> (git ignores them).</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:8010<span class="w">   </span><span class="c1"># only if you moved the API</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>make<span class="w"> </span>dev<span class="w">                                     </span><span class="c1"># shell 1</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>make<span class="w"> </span>e2e<span class="w">                                     </span><span class="c1"># shell 2: about 25 minutes</span>
 </span></code></pre></div>
-<p><code>make e2e</code> also runs the M2 tenancy suite and the M3 suites: the trust lifecycle and the
-whole Guided journey to an endpoint, webhooks, embeds, budget optimisation, export and
-deletion (see
-<a href="../m3-verification/">M3 verification</a>). Two settings make the deletion checks complete: start
-the stack with <code>MAPI_TENANT_DELETION_GRACE_S=0</code> (no grace period) and, on a fresh
-<code>MAPI_DATA_DIR</code>, <code>MAPI_BUNDLE_RETENTION_DAYS=0</code> (no retention lock on model bundles).
-Otherwise those checks stop where the platform waits and are skipped. Each run signs up two
-workspaces; the default sign-up limits (5 per address and hour, 25 per <code>dev.local</code> and day)
-allow two runs an hour, so raise <code>MAPI_SIGNUP_PER_IP_PER_HOUR</code> and
-<code>MAPI_SIGNUP_PER_DOMAIN_PER_DAY</code> on a stack you test repeatedly.</p>
-<p>Webhooks reach receivers on your machine: in the <code>dev</code> profile <code>make dev</code> writes a throwaway
-CA and a certificate for <code>127.0.0.1</code> and <code>localhost</code> to <code>$MAPI_DATA_DIR/dev/webhook-tls/</code>
-and the servers trust it and allow both hosts. Serve HTTPS with <code>cert.pem</code> and <code>key.pem</code> from
-there and register <code>https://127.0.0.1:&lt;port&gt;/...</code>.</p>
+<p><code>make e2e</code> also runs the M2 tenancy suite and the M3 suites. The M3 suites are the trust
+lifecycle and the whole Guided journey to an endpoint, webhooks, embeds, budget
+optimisation, export and deletion (refer to <a href="../m3-verification/">M3 verification</a>). Two
+settings make the deletion checks complete:</p>
+<ul>
+<li>Start the stack with <code>MAPI_TENANT_DELETION_GRACE_S=0</code> (no grace period).</li>
+<li>On a new <code>MAPI_DATA_DIR</code>, set <code>MAPI_BUNDLE_RETENTION_DAYS=0</code> (no retention lock on model
+  bundles).</li>
+</ul>
+<p>If not, those checks stop where the platform waits, and the suite skips them. Each run signs
+up two workspaces. The default sign-up limits are 5 for each address in each hour, and 25 for
+each <code>dev.local</code> in each day. These limits permit two runs in each hour. Thus, on a stack that
+you test many times, increase <code>MAPI_SIGNUP_PER_IP_PER_HOUR</code> and
+<code>MAPI_SIGNUP_PER_DOMAIN_PER_DAY</code>.</p>
+<p>Webhooks can get to receivers on your machine. In the <code>dev</code> profile, <code>make dev</code> writes a
+temporary CA and a certificate for <code>127.0.0.1</code> and <code>localhost</code> to
+<code>$MAPI_DATA_DIR/dev/webhook-tls/</code>. The servers trust the CA and permit the two hosts. Serve
+HTTPS with <code>cert.pem</code> and <code>key.pem</code> from there. Then register
+<code>https://127.0.0.1:&lt;port&gt;/...</code>.</p>
 <p>The mocked Playwright smoke suite (<code>pnpm --filter @mapi/web test</code>) serves its own build on
-port 5173, so run it while <code>make dev</code> is stopped.</p>
+port 5173. Thus run it only while <code>make dev</code> is stopped.</p>
 <h2 id="working-on-one-component">Working on one component<a class="headerlink" href="#working-on-one-component" title="Permanent link">&para;</a></h2>
-<p>To run a component yourself, for example with a debugger or auto-reload, either exclude it and
-start it by hand with the same environment:</p>
+<p>You can run a component yourself, for example with a debugger or auto-reload. There are two
+procedures. In the first procedure, exclude the component and start it manually with the
+same environment:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>make<span class="w"> </span>dev<span class="w"> </span><span class="nv">WITHOUT</span><span class="o">=</span>api,web<span class="w">           </span><span class="c1"># web depends on api, so exclude it too</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/dev.py<span class="w"> </span>env<span class="k">)</span><span class="s2">"</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>mapi-server<span class="w"> </span>api<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
 </span></code></pre></div>
-<p>or replace its command with <code>MAPI_DEV_&lt;NAME&gt;_CMD</code>. The command is shell-quoted; <code>&lt;NAME&gt;</code> is
-<code>GCS_SHIM</code>, <code>MIGRATE</code>, <code>API</code>, <code>WORKER</code>, <code>WEB</code> or <code>PLOTS</code>:</p>
+<p>In the second procedure, replace its command with <code>MAPI_DEV_&lt;NAME&gt;_CMD</code>. The command is
+shell-quoted. <code>&lt;NAME&gt;</code> is <code>GCS_SHIM</code>, <code>MIGRATE</code>, <code>API</code>, <code>WORKER</code>, <code>WEB</code> or <code>PLOTS</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">MAPI_DEV_API_CMD</span><span class="o">=</span><span class="s2">"uvicorn mapi_server.app:app --reload --host 127.0.0.1 --port 8000"</span><span class="w"> </span>make<span class="w"> </span>dev
 </span></code></pre></div>
-<p>The readiness probe still applies, so a replacement <code>api</code> must answer <code>GET /healthz</code>.</p>
+<p>The readiness probe still applies. Thus a replacement <code>api</code> must answer <code>GET /healthz</code>.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<p><code>make dev</code> reads <strong>your shell environment</strong>. It does not read <code>.env</code>, which is only for docker
-compose. With nothing set, everything uses the defaults above. To change something, export the
-variable first:</p>
+<p><code>make dev</code> reads <strong>your shell environment</strong>. It does not read <code>.env</code>, which is only for
+docker compose. If you set nothing, all services use the defaults above. To change a value,
+export the variable first:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:9000<span class="w">          </span><span class="c1"># move the API (and its probe) to port 9000</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">DATABASE_URL</span><span class="o">=</span>postgresql://me@localhost/mapi<span class="w">  </span><span class="c1"># use your own PostgreSQL instead of pgserver</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>make<span class="w"> </span>dev
 </span></code></pre></div>
-<p>Export the same <code>MAPI_*</code> URLs in every shell that talks to the stack (<code>make seed</code>, <code>make e2e</code>,
-the CLI, the Python client). The <a href="../configuration/">configuration reference</a> lists every
-variable, including those that only compose or the images use.</p>
+<p>Export the same <code>MAPI_*</code> URLs in each shell that connects to the stack (<code>make seed</code>,
+<code>make e2e</code>, the CLI, the Python client). The <a href="../configuration/">configuration reference</a>
+lists all the variables. This includes the variables that only compose or the images use.</p>
 <h2 id="where-state-lives">Where state lives<a class="headerlink" href="#where-state-lives" title="Permanent link">&para;</a></h2>
-<p>All local state lives under <code>MAPI_DATA_DIR</code>, which defaults to <code>.local/</code> in the repository root
-and is ignored by git.</p>
+<p>All local state is under <code>MAPI_DATA_DIR</code>. The default is <code>.local/</code> in the repository root,
+and git ignores it.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>.local/
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>├─ pg/                    PostgreSQL data directory (pgserver); log in pg/log
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>├─ gcs/                   GCS shim objects (buckets mapi-local-*)
@@ -5295,12 +5373,16 @@ and is ignored by git.</p>
 </span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>├─ executions/            per-run scratch of the local executor (removed when a run ends)
 </span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>└─ dev/supervisor.json    pid of the running supervisor and its services (make stop/status)
 </span></code></pre></div>
-<p>Deleting <code>keys/</code> makes every registered model version unusable: their manifests no longer
-verify, so the API refuses to mint download links for them (<code>INTEGRITY_FAILURE</code>).</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Do not delete <code>keys/</code>. If you delete it, you cannot use the registered model versions.
+Their manifests do not verify, and the API does not mint download links for them
+(<code>INTEGRITY_FAILURE</code>).</p>
+</div>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<p>Port conflicts, a stale supervisor, PostgreSQL that will not start, failed migrations, an API
-that never becomes ready and blank plots are covered in
-<a href="../troubleshooting/">Troubleshooting</a>.</p>
+<p><a href="../troubleshooting/">Troubleshooting</a> tells about these problems: port conflicts, an old
+supervisor, PostgreSQL that does not start, failed migrations, an API that never becomes
+ready, and blank plots.</p>
 
 
 

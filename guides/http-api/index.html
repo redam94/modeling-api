@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4667,6 +4697,8 @@
       
         
       
+        
+      
     
     
     
@@ -4755,6 +4787,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4935,10 +4995,10 @@
 
 
 <h1 id="the-http-api-v02">The HTTP API <span class="mapi-badge">v0.2</span><a class="headerlink" href="#the-http-api-v02" title="Permanent link">&para;</a></h1>
-<p>Everything the web app, the CLI and the Python client do is a call to the versioned <code>/v1</code>
-HTTP API. This guide does the main flow with <code>curl</code> and <code>jq</code>, so you can see every request.
-The script is <code>docs/snippets/http_tour.sh</code>; <code>make e2e</code> runs it against a live stack. The
-outputs below are from one of those runs, shortened.</p>
+<p>All the actions of the web app, the CLI and the Python client are calls to the versioned
+<code>/v1</code> HTTP API. This guide does the main flow with <code>curl</code> and <code>jq</code>. Thus you can see each
+request. The script is <code>docs/snippets/http_tour.sh</code>. <code>make e2e</code> runs it against a live stack.
+The outputs below come from one of those runs, and are shorter.</p>
 <table>
 <thead>
 <tr>
@@ -4949,31 +5009,36 @@ outputs below are from one of those runs, shortened.</p>
 <tbody>
 <tr>
 <td><a href="../../reference/http-api/">HTTP API reference</a></td>
-<td>Conventions, errors, pagination, idempotency, SSE and every endpoint with its DTOs</td>
+<td>Conventions, errors, pagination, idempotency, SSE and all the endpoints with their DTOs</td>
 </tr>
 <tr>
 <td><a href="../../reference/openapi/">OpenAPI explorer</a></td>
-<td>The OpenAPI 3.1 document, browsable, with every schema and example</td>
+<td>The OpenAPI 3.1 document, which you can browse, with all the schemas and examples</td>
 </tr>
 <tr>
 <td><code>GET /openapi.json</code> on a running API</td>
-<td>The same document, served by the API itself</td>
+<td>The same document, from the API</td>
 </tr>
 <tr>
 <td><a href="../../reference/generated/error-codes/">Error codes</a></td>
-<td>Every stable error code and its HTTP status</td>
+<td>All the stable error codes and their HTTP status</td>
 </tr>
 </tbody>
 </table>
-<p>Start the stack and load the demo first: <code>make dev</code>, <code>make seed</code>,
-<code>uv run python scripts/seed.py --export demo/</code> and
-<code>uv run mapi datasets upload demo/eu_media_future.zarr.zip --name eu_media_future</code>
-(see the <a href="../../getting-started/quickstart/">quickstart</a>).</p>
-<p>From v0.3, <code>make dev</code> requires sign-in. Set <code>MAPI_TOKEN</code> to an API token (the web app's
-Tokens page, or <code>mapi tokens create</code>) and <code>MAPI_PROJECT</code> to the <code>&lt;tenant&gt;/&lt;project&gt;</code> it acts
-in. The script's <code>api</code> function then adds <code>Authorization: Bearer …</code> and <code>X-Mapi-Project</code> to
-every API call. It never sends them to signed storage URLs, which carry their own
-authorization. See <a href="../../operations/authentication/">authentication</a>.</p>
+<p>First, start the stack and load the demo
+(see the <a href="../../getting-started/quickstart/">quickstart</a>):</p>
+<ol>
+<li>Run <code>make dev</code>.</li>
+<li>Run <code>make seed</code>.</li>
+<li>Run <code>uv run python scripts/seed.py --export demo/</code>.</li>
+<li>Run <code>uv run mapi datasets upload demo/eu_media_future.zarr.zip --name eu_media_future</code>.</li>
+</ol>
+<p>From v0.3, <code>make dev</code> needs sign-in. Set <code>MAPI_TOKEN</code> to an API token. You get the token from
+the Tokens page of the web app, or from <code>mapi tokens create</code>. Set <code>MAPI_PROJECT</code> to the
+<code>&lt;tenant&gt;/&lt;project&gt;</code> for the token. The <code>api</code> function of the script then adds
+<code>Authorization: Bearer …</code> and <code>X-Mapi-Project</code> to each API call. It never sends them to signed
+storage URLs, because these URLs have their own authorization. See
+<a href="../../operations/authentication/">authentication</a>.</p>
 <h2 id="health-and-the-catalog">Health and the catalog<a class="headerlink" href="#health-and-the-catalog" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">API</span><span class="o">=</span><span class="si">${</span><span class="nv">MAPI_API_URL</span><span class="k">:-</span><span class="nv">http</span><span class="p">://127.0.0.1:</span><span class="nv">8000</span><span class="si">}</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>api<span class="o">()</span><span class="w"> </span><span class="o">{</span><span class="w">  </span><span class="c1"># curl the API; signed in when MAPI_TOKEN is set (every multi-tenant stack, v0.3)</span>
@@ -4988,19 +5053,24 @@ authorization. See <a href="../../operations/authentication/">authentication</a>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/catalog/models"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].manifest | "\(.id)@\(.version)  \(.capabilities.representation)"'</span>
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{"status":"ok","version":"0.5.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{"status":"ok","version":"0.6.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mmm.bayesian@1.0.0  draws
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>mmm.frequentist@1.0.0  draws
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>sklearn.tabular_bootstrap@1.0.0  draws
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>…
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>ts.hsgp_trend@1.0.0  draws
 </span></code></pre></div>
-<p><code>/healthz</code> says the process is alive; <code>/readyz</code> checks PostgreSQL, the object store and the
-catalog, and answers 503 with the same body when one is not ready. The catalog is what the
-runner image provides, exported by a sandboxed <em>describe</em> run; specs are validated against it.</p>
+<p><code>/healthz</code> tells if the process is alive. <code>/readyz</code> checks PostgreSQL, the object store and the
+catalog. If one of them is not ready, it answers 503 with the same body. The catalog is what the
+runner image supplies. A sandboxed <em>describe</em> run exports it. The server validates specs
+against the catalog.</p>
 <h2 id="upload-a-csv">Upload a CSV<a class="headerlink" href="#upload-a-csv" title="Permanent link">&para;</a></h2>
-<p>Data never passes through the API. You create a dataset, ask for an upload session, and PUT
-the bytes to the signed URL it returns:</p>
+<p>Data never goes through the API. Do these steps:</p>
+<ol>
+<li>Make a dataset.</li>
+<li>Ask for an upload session.</li>
+<li>PUT the bytes to the signed URL that the session gives.</li>
+</ol>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">DS</span><span class="o">=</span><span class="k">$(</span>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/datasets?limit=200"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | select(.name == "weekly_sales") | .id'</span><span class="k">)</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="nv">$DS</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nv">DS</span><span class="o">=</span><span class="k">$(</span>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/datasets"</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
@@ -5020,13 +5090,16 @@ the bytes to the signed URL it returns:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>dataset ds_01m4zy65cdbxtaa4vgsvpeb4rt
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>PUT 200
 </span></code></pre></div>
-<p>The URL is a V4-style signed URL for one object in the quarantine bucket, valid for an hour.
-Send the headers from <code>upload.headers</code> exactly, because they are part of the signature:
-<code>content-type</code> must be the one you declared, <code>x-goog-content-length-range</code> caps the size at
-<code>size_bytes</code>, and <code>x-goog-if-generation-match: 0</code> makes the object write-once, so a second PUT
-to the same URL is rejected.</p>
-<p>Then turn the upload into a dataset version. For CSV and Parquet the mapping names the
-column of every dim and variable, with its kind, score-time policy and role:</p>
+<p>The URL is a V4-style signed URL for one object in the quarantine bucket. It is valid for one
+hour. Send the headers from <code>upload.headers</code> exactly, because they are part of the signature:</p>
+<ul>
+<li><code>content-type</code> must be the type that you declared.</li>
+<li><code>x-goog-content-length-range</code> limits the size to <code>size_bytes</code>.</li>
+<li><code>x-goog-if-generation-match: 0</code> makes the object write-once. Thus the storage refuses a
+  second PUT to the same URL.</li>
+</ul>
+<p>Then change the upload into a dataset version. For CSV and Parquet, the mapping gives the
+column of each dim and variable. It also gives its kind, its score-time policy and its role:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nv">MAPPING</span><span class="o">=</span><span class="s1">'{</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="s1">  "format": "csv",</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="s1">  "dims": {"week": {"column": "week", "spec": {"kind": "time", "policy": "extend", "freq": "W-SUN"}}},</span>
@@ -5049,9 +5122,10 @@ column of every dim and variable, with its kind, score-time policy and role:</p>
 </span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">"dims"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"week"</span><span class="p">]</span>
 </span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="p">}</span>
 </span></code></pre></div>
-<p><code>POST …/versions</code> answers <code>202</code> with the version in status <code>ingesting</code> and the id of the
-sandboxed ingest run that parses the file. It accepts an <code>Idempotency-Key</code>: a retried request
-with the same key and body returns the same version instead of ingesting twice.</p>
+<p><code>POST …/versions</code> answers <code>202</code> with the version in status <code>ingesting</code>. The answer also has the
+id of the sandboxed ingest run that parses the file. The call accepts an <code>Idempotency-Key</code>. If
+you send the request again with the same key and body, you get the same version. The platform
+does not ingest the file two times.</p>
 <h2 id="validate-and-fit-a-spec">Validate and fit a spec<a class="headerlink" href="#validate-and-fit-a-spec" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>jq<span class="w"> </span>-Rs<span class="w"> </span><span class="s1">'{yaml: .}'</span><span class="w"> </span>demo/eu-geo-mmm.yaml<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/specs:validate"</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span>-d<span class="w"> </span>@-<span class="w"> </span><span class="se">\</span>
@@ -5063,9 +5137,10 @@ with the same key and body returns the same version instead of ingesting twice.<
 </span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">"stages"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"raw"</span><span class="p">,</span><span class="w"> </span><span class="s2">"to_eur"</span><span class="p">,</span><span class="w"> </span><span class="s2">"weekly"</span><span class="p">,</span><span class="w"> </span><span class="s2">"scale_spend"</span><span class="p">,</span><span class="w"> </span><span class="s2">"scale_y"</span><span class="p">,</span><span class="w"> </span><span class="s2">"lags"</span><span class="p">,</span><span class="w"> </span><span class="s2">"season"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hols"</span><span class="p">]</span>
 </span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">}</span>
 </span></code></pre></div>
-<p><code>POST /v1/specs:validate</code> answers 200 even for an invalid spec: the verdict is in <code>valid</code> and
-every problem is in <code>issues</code> with its code and JSON pointer. Non-2xx statuses are kept for
-requests that cannot be validated at all (unparseable YAML, too large).</p>
+<p><code>POST /v1/specs:validate</code> answers 200, also for a spec that is not valid. The result is in
+<code>valid</code>. Each problem is in <code>issues</code> with its code and JSON pointer. The server uses non-2xx
+statuses only for requests that it cannot validate. Examples are YAML that it cannot parse, or
+a request that is too large.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nv">SPEC</span><span class="o">=</span><span class="k">$(</span>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/specs?limit=200"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">'.items[] | select(.name == "eu-geo-mmm")'</span><span class="k">)</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nv">RUN</span><span class="o">=</span><span class="k">$(</span>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/runs"</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Idempotency-Key: </span><span class="k">$(</span>uuidgen<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
@@ -5073,9 +5148,10 @@ requests that cannot be validated at all (unparseable YAML, too large).</p>
 </span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>.id<span class="k">)</span>
 </span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">"run </span><span class="nv">$RUN</span><span class="s2">"</span>
 </span></code></pre></div>
-<p><code>POST /v1/runs</code> answers <code>201</code> with the run in state <code>created</code> or <code>queued</code>. The same
-<code>Idempotency-Key</code> with the same body answers <code>200</code> with the same run; with a different body,
-<code>409 IDEMPOTENCY_CONFLICT</code>. Generate one key per user intent and reuse it on retries.</p>
+<p><code>POST /v1/runs</code> answers <code>201</code> with the run in state <code>created</code> or <code>queued</code>. If you send the same
+<code>Idempotency-Key</code> with the same body, the answer is <code>200</code> with the same run. If you send it
+with a different body, the answer is <code>409 IDEMPOTENCY_CONFLICT</code>. Make one key for each user
+intent. Use the same key again when you try again.</p>
 <h2 id="follow-the-run">Follow the run<a class="headerlink" href="#follow-the-run" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># server-sent events: a snapshot, the persisted events, live progress, then `end`</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>api<span class="w"> </span>-N<span class="w"> </span>-H<span class="w"> </span><span class="s1">'Accept: text/event-stream'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/runs/</span><span class="nv">$RUN</span><span class="s2">/events"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">'^event:'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>uniq<span class="w"> </span>-c
@@ -5099,12 +5175,17 @@ requests that cannot be validated at all (unparseable YAML, too large).</p>
 </span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>  "output_model_version_id": "mv_01m4zy6yc82qy97jzjmv9phv1j"
 </span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>}
 </span></code></pre></div>
-<p>With <code>Accept: text/event-stream</code> the events endpoint is a live stream: a <code>snapshot</code> of the
-run first, then the persisted events (each with an <code>id:</code>), live <code>progress</code> and <code>log</code> frames
-(no id, never replayed), a fresh <code>snapshot</code> on every state change, and <code>end</code> when the run is
-terminal, after which the server closes the stream. Reconnect with <code>Last-Event-ID: &lt;id&gt;</code> to
-resume exactly after the last persisted event. Without that <code>Accept</code> header the same URL
-returns the persisted events as a JSON page. See <a href="../../reference/http-api/#run-events-server-sent-events">Run events</a>.</p>
+<p>With <code>Accept: text/event-stream</code>, the events endpoint is a live stream. It sends these items:</p>
+<ol>
+<li>A <code>snapshot</code> of the run.</li>
+<li>The persisted events. Each event has an <code>id:</code>.</li>
+<li>Live <code>progress</code> and <code>log</code> frames. These have no id, and the server never sends them again.</li>
+<li>A new <code>snapshot</code> at each change of state.</li>
+<li><code>end</code> when the run is terminal. Then the server closes the stream.</li>
+</ol>
+<p>To continue exactly after the last persisted event, connect again with
+<code>Last-Event-ID: &lt;id&gt;</code>. Without that <code>Accept</code> header, the same URL gives the persisted events
+as a JSON page. See <a href="../../reference/http-api/#run-events-server-sent-events">Run events</a>.</p>
 <h2 id="read-the-model-version">Read the model version<a class="headerlink" href="#read-the-model-version" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nv">MODEL</span><span class="o">=</span><span class="k">$(</span>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models?limit=200"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">'.items[] | select(.name == "eu-geo-mmm")'</span><span class="k">)</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nv">M</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span>.id<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">"</span><span class="nv">$MODEL</span><span class="s2">"</span><span class="k">)</span>
@@ -5119,9 +5200,9 @@ returns the persisted events as a JSON page. See <a href="../../reference/http-a
 </span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">  </span><span class="nt">"signed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"KMS-EC-P256-SHA256"</span>
 </span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="p">}</span>
 </span></code></pre></div>
-<p><code>GET …/artifacts/{name}</code> returns a signed GET URL for any bundle object or <code>ui/</code> view. It is
-minted only after the server has verified the version's signed manifest; each link is pinned
-to an object generation, supports HTTP <code>Range</code> requests and expires after 15 minutes.</p>
+<p><code>GET …/artifacts/{name}</code> gives a signed GET URL for a bundle object or a <code>ui/</code> view. The server
+makes the link only after it verifies the signed manifest of the version. Each link is pinned
+to an object generation. It supports HTTP <code>Range</code> requests and expires after 15 minutes.</p>
 <h2 id="score">Score<a class="headerlink" href="#score" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nv">RES</span><span class="o">=</span><span class="k">$(</span>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models/</span><span class="nv">$M</span><span class="s2">/versions/</span><span class="nv">$MV</span><span class="s2">:score"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Prefer: wait=60'</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"Idempotency-Key: </span><span class="k">$(</span>uuidgen<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
@@ -5152,12 +5233,15 @@ to an object generation, supports HTTP <code>Range</code> requests and expires a
 </span><span id="__span-14-14"><a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="w">  </span><span class="nt">"output_space"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"contributions"</span><span class="p">:</span><span class="w"> </span><span class="s2">"weekly"</span><span class="p">,</span><span class="w"> </span><span class="nt">"y_hat"</span><span class="p">:</span><span class="w"> </span><span class="s2">"weekly"</span><span class="p">}</span>
 </span><span id="__span-14-15"><a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a><span class="p">}</span>
 </span></code></pre></div>
-<p><code>Prefer: wait=60</code> holds the request until the score run finishes (at most 60 seconds) and
-answers <code>200</code> with <code>done: true</code> and signed links to the outputs. If it takes longer the
-answer is <code>202</code> with <code>done: false</code>: repeat the request with the same <code>Idempotency-Key</code> to get
-the same run's result, or follow the run. The response header <code>Preference-Applied</code> says
-which wait the server used. Over HTTP the <code>ScoreRequest</code> needs its <code>apiVersion</code> and <code>kind</code>
-(the Python client fills them in).</p>
+<p><code>Prefer: wait=60</code> keeps the request open until the score run finishes, for a maximum of 60
+seconds. Then it answers <code>200</code> with <code>done: true</code> and signed links to the outputs. If the run
+takes more time, the answer is <code>202</code> with <code>done: false</code>. In this case, do one of these steps:</p>
+<ul>
+<li>To get the result of the same run, send the request again with the same <code>Idempotency-Key</code>.</li>
+<li>Follow the run.</li>
+</ul>
+<p>The response header <code>Preference-Applied</code> tells which wait the server used. Over HTTP, the
+<code>ScoreRequest</code> needs its <code>apiVersion</code> and <code>kind</code>. The Python client fills them in.</p>
 <h2 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models/</span><span class="nv">$M</span><span class="s2">/versions/</span><span class="nv">$MV</span><span class="s2">:score"</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"request": {"apiVersion": "mapi/v1", "kind": "ScoreRequest",</span>
@@ -5170,15 +5254,15 @@ which wait the server used. Over HTTP the <code>ScoreRequest</code> needs its <c
 </span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span><span class="nt">"detail"</span><span class="p">:</span><span class="w"> </span><span class="s2">"validation failed with 2 errors; first at /mode: model 'mmm.bayesian@1.0.0' does not support mode 'filter'"</span>
 </span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>Every error is an RFC 7807 problem document (<code>application/problem+json</code>) with a stable
-<code>code</code>, an HTTP <code>status</code>, and every individual problem in <code>errors[]</code> with a JSON pointer.
-Tracebacks and plugin messages only ever appear in an <code>untrusted_text</code> field; render them as
-text. The score request above was rejected statically: no run was created.</p>
+<p>Each error is an RFC 7807 problem document (<code>application/problem+json</code>). It has a stable
+<code>code</code>, an HTTP <code>status</code>, and each individual problem in <code>errors[]</code> with a JSON pointer.
+Tracebacks and plugin messages show only in an <code>untrusted_text</code> field. Render them as text.
+The server refused the score request above statically. It did not make a run.</p>
 <h2 id="other-clients">Other clients<a class="headerlink" href="#other-clients" title="Permanent link">&para;</a></h2>
-<p>The OpenAPI document is generated from the server itself (<code>apps/web/scripts/gen_openapi.py</code>
-writes <code>apps/web/openapi.json</code>, and CI fails if it drifts), so any OpenAPI generator produces
-a typed client. The web app's TypeScript client is generated that way (<code>openapi-typescript</code>
-and <code>openapi-fetch</code>). For Python, use <a href="../python-client/"><code>mapi_client</code></a>.</p>
+<p>The server makes the OpenAPI document itself. <code>apps/web/scripts/gen_openapi.py</code> writes
+<code>apps/web/openapi.json</code>, and CI fails if the file and the server do not agree. Thus all OpenAPI generators can
+make a typed client. The TypeScript client of the web app comes from this method
+(<code>openapi-typescript</code> and <code>openapi-fetch</code>). For Python, use <a href="../python-client/"><code>mapi_client</code></a>.</p>
 
 
 

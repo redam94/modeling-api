@@ -158,6 +158,7 @@
       "title": "Intervention",
       "type": "object"
     },
+    "JsonValue": {},
     "OutputSelector": {
       "additionalProperties": false,
       "description": "What a score request returns.",
@@ -253,6 +254,75 @@
       ],
       "title": "ResourceClass",
       "type": "string"
+    },
+    "ScoreInline": {
+      "additionalProperties": false,
+      "description": "Values typed in rather than uploaded: small XrJSON datasets (up to 5 MB each) under\nthe spec's canonical names, checked against the version's input contract\n(``GET \u2026/inputs``) and stored as run inputs, as an endpoint's inline payloads are.",
+      "examples": [
+        {
+          "data": {
+            "coords": {
+              "market": {
+                "data": [
+                  "de"
+                ],
+                "dims": [
+                  "market"
+                ]
+              },
+              "time": {
+                "data": [
+                  "2026-01-04",
+                  "2026-01-11"
+                ],
+                "dims": [
+                  "time"
+                ]
+              }
+            },
+            "data_vars": {
+              "spend": {
+                "data": [
+                  [
+                    1200.0,
+                    1350.0
+                  ]
+                ],
+                "dims": [
+                  "market",
+                  "time"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/XrJsonDataset"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "scenario": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/XrJsonDataset"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ScoreInline",
+      "type": "object"
     },
     "ScoreRequest": {
       "additionalProperties": false,
@@ -424,12 +494,167 @@
       ],
       "title": "ScoreRequest",
       "type": "object"
+    },
+    "XrJsonDataset": {
+      "additionalProperties": false,
+      "description": "An inline dataset (``xr.Dataset.to_dict()`` shape). Dim lengths must agree across\nvariables; every dim of a data variable should have a coord (checked in the sandbox\nagainst the model's schema).",
+      "examples": [
+        {
+          "coords": {
+            "channel": {
+              "data": [
+                "tv",
+                "search"
+              ],
+              "dims": [
+                "channel"
+              ]
+            },
+            "time": {
+              "data": [
+                "2026-11-01",
+                "2026-11-08"
+              ],
+              "dims": [
+                "time"
+              ]
+            }
+          },
+          "data_vars": {
+            "spend": {
+              "data": [
+                [
+                  1000.0,
+                  1200.0
+                ],
+                [
+                  400.0,
+                  380.0
+                ]
+              ],
+              "dims": [
+                "channel",
+                "time"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "attrs": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxProperties": 64,
+          "title": "Attrs",
+          "type": "object"
+        },
+        "coords": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/XrJsonVariable"
+            }
+          },
+          "title": "Coords",
+          "type": "object"
+        },
+        "data_vars": {
+          "maxProperties": 256,
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/XrJsonVariable"
+            }
+          },
+          "title": "Data Vars",
+          "type": "object"
+        },
+        "dims": {
+          "maxProperties": 16,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "type": "integer"
+            }
+          },
+          "title": "Dims",
+          "type": "object"
+        }
+      },
+      "required": [
+        "data_vars"
+      ],
+      "title": "XrJsonDataset",
+      "type": "object"
+    },
+    "XrJsonVariable": {
+      "additionalProperties": false,
+      "description": "A coord or data variable: ``data`` nested ``len(dims)`` deep (a scalar for no dims).",
+      "properties": {
+        "attrs": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxProperties": 64,
+          "title": "Attrs",
+          "type": "object"
+        },
+        "data": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Dims",
+          "type": "array"
+        }
+      },
+      "required": [
+        "data"
+      ],
+      "title": "XrJsonVariable",
+      "type": "object"
     }
   },
   "$id": "https://schemas.mapi.dev/v1/api-ScoreCall.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Body of ``POST /v1/models/{model_id}/versions/{version}:score``.\n\nSend ``Prefer: wait=N`` (N \u2264 60) to wait for the result: the response is 200 with\noutputs if the run finished in time, else 202 with the run (poll it or follow its SSE).",
+  "description": "Body of ``POST /v1/models/{model_id}/versions/{version}:score``.\n\nSend ``Prefer: wait=N`` (N \u2264 60) to wait for the result: the response is 200 with\noutputs if the run finished in time, else 202 with the run (poll it or follow its SSE).\n``inline`` carries ``data``/``scenario`` typed in instead of named as datasets; the\nrequest then names neither.",
   "examples": [
     {
       "request": {
@@ -452,6 +677,17 @@
     }
   ],
   "properties": {
+    "inline": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScoreInline"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "labels": {
       "maxProperties": 64,
       "patternProperties": {

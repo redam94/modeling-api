@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1291,6 +1293,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4677,6 +4707,8 @@
       
         
       
+        
+      
     
     
     
@@ -4765,6 +4797,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4968,86 +5028,98 @@
 
 
 <h1 id="integrations-v04">Integrations <span class="mapi-badge">v0.4</span><a class="headerlink" href="#integrations-v04" title="Permanent link">&para;</a></h1>
-<p>A fitted model is only useful once other applications can use it: a planning tool scores
-budgets, a spreadsheet pulls a forecast, a dashboard embeds a chart, a pipeline hears when a
-fit finishes. This page explains the integration concepts of v0.4 and the contracts in
-<code>mapi_spec</code> behind them; the endpoints are in the
-<a href="../../reference/http-api/#guided-and-integrations">HTTP API reference</a>, and
-<a href="../../guides/endpoints-and-webhooks/">Endpoints and webhooks</a> walks through them with <code>curl</code>.</p>
+<p>A fitted model is useful only when other applications can use it. For example, a planning
+tool scores budgets and a spreadsheet gets a forecast. A dashboard shows a chart, and a
+pipeline gets a message when a fit is complete. This page tells about the integration concepts
+of v0.4 and the contracts in <code>mapi_spec</code> that they use. The
+<a href="../../reference/http-api/#guided-and-integrations">HTTP API reference</a> gives the endpoints.
+<a href="../../guides/endpoints-and-webhooks/">Endpoints and webhooks</a> shows how to use them with
+<code>curl</code>.</p>
 <h2 id="endpoints-and-aliases">Endpoints and aliases<a class="headerlink" href="#endpoints-and-aliases" title="Permanent link">&para;</a></h2>
 <p>An <strong>endpoint</strong> is a stable alias for one model version: <code>endpoint://growth/geo-mmm-prod</code>.
-Integrations call the alias, so a better model can be promoted - or a bad one rolled back -
-without touching them. Every promotion and rollback is a numbered revision in the endpoint's
-history, with who did it and why.</p>
+Integrations call the alias. Thus you can promote a better model, or roll back a bad model,
+and the integrations do not change. Each promotion and rollback is a numbered revision in the
+history of the endpoint. The revision records who did it and why.</p>
 <div class="language-http highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="err">PUT /v1/endpoints/geo-mmm-prod</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="err">X-Mapi-Project: acme/growth</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="err">{"model": "model://growth/eu-geo-mmm@v3", "expected_revision": 3}</span>
 </span></code></pre></div>
 <h3 id="promotion-gate">The promotion gate<a class="headerlink" href="#promotion-gate" title="Permanent link">&para;</a></h3>
-<p>Promotion is gated on the <a href="../guided-mode/#scorecard">sanity scorecard</a> and the endpoint's
-<code>EvaluationPolicy</code> (<code>mapi_spec.scorecard.promotion_gate</code>):</p>
+<p>The <a href="../guided-mode/#scorecard">sanity scorecard</a> and the <code>EvaluationPolicy</code> of the endpoint
+control promotion (<code>mapi_spec.scorecard.promotion_gate</code>):</p>
 <table>
 <thead>
 <tr>
 <th>The version</th>
 <th>Gate</th>
-<th>What happens</th>
+<th>Result</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Scorecard passes</td>
+<td>The scorecard passes</td>
 <td><code>allowed</code></td>
-<td>Promoted</td>
+<td>The platform promotes the version</td>
 </tr>
 <tr>
-<td>Scorecard warns, or has no scorecard; an <code>evaluate_then_refit</code> fit whose scorecard measured no holdout check (no <code>data.split</code>, or no <code>evaluate.metrics</code>: it was never evaluated); a guided version whose template's checks did not all run (<code>NOT_EVALUATED</code>)</td>
+<td>The scorecard warns, or there is no scorecard. Or an <code>evaluate_then_refit</code> fit has a scorecard with no holdout check (no <code>data.split</code>, or no <code>evaluate.metrics</code>: the platform did not evaluate it). Or the checks of the template of a guided version did not all run (<code>NOT_EVALUATED</code>).</td>
 <td><code>needs_override</code></td>
-<td><code>409 OVERRIDE_REQUIRED</code> unless a signed-in project admin sends <code>override: true</code> with a <code>reason</code>; the override is audited (<code>endpoint.promote_override</code>)</td>
+<td><code>409 OVERRIDE_REQUIRED</code>, unless a signed-in project admin sends <code>override: true</code> with a <code>reason</code>. The audit log records the override (<code>endpoint.promote_override</code>).</td>
 </tr>
 <tr>
-<td>Scorecard fails, the fit was interrupted (<code>partial</code>)</td>
+<td>The scorecard fails, or the fit stopped before it was complete (<code>partial</code>)</td>
 <td><code>blocked</code></td>
-<td><code>409 PROMOTION_BLOCKED</code>; no override</td>
+<td><code>409 PROMOTION_BLOCKED</code>. No override is possible.</td>
 </tr>
 <tr>
-<td>Fitted <code>train_only</code></td>
+<td>The fit mode was <code>train_only</code></td>
 <td><code>blocked</code></td>
-<td>Endpoints need <code>evaluate_then_refit</code> (Q13): context and terminal state come from all the data. A policy with <code>fit_mode: train_only</code> accepts exploration fits</td>
+<td>Endpoints need <code>evaluate_then_refit</code> (Q13), because the context and terminal state must come from all the data. A policy with <code>fit_mode: train_only</code> accepts exploration fits.</td>
 </tr>
 <tr>
-<td>Expects input the callers do not send</td>
+<td>The version needs input that the callers do not send</td>
 <td><code>blocked</code> (policy <code>schema_change: block</code>), <code>needs_override</code> (<code>warn</code>) or ignored (<code>allow</code>)</td>
-<td>A dim removed or changed, a tightened dim policy, a new required input, an input whose dims or type changed (<code>schema_breaks</code>)</td>
+<td>A dim that is removed or changed, a stricter dim policy, a new necessary input, or an input with changed dims or type (<code>schema_breaks</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>Overriding is a human decision: the <code>manage</code> permission on endpoints belongs to project admins
-and <strong>no token scope grants it</strong>, not even <code>admin</code>. An <code>endpoints:promote</code> token (for CI) can
-promote passing versions and roll back, never override.</p>
+<p>An override is a human decision. Only project admins have the <code>manage</code> permission on
+endpoints, and <strong>no token scope gives it</strong>, not even <code>admin</code>. A token with
+<code>endpoints:promote</code> (for CI) can promote versions that pass and can roll back. It can never
+override.</p>
 <h3 id="scoring-an-endpoint">Scoring an endpoint<a class="headerlink" href="#scoring-an-endpoint" title="Permanent link">&para;</a></h3>
-<p><code>POST /v1/endpoints/{alias}/score</code> takes an <code>EndpointScoreCall</code>: a score request without
-<code>model</code>. <code>data</code> and <code>scenario</code> may be <code>dataset://</code> references or small <strong>inline XrJSON</strong>
-datasets (<code>xr.Dataset.to_dict()</code> shape, up to 5 MB), so spreadsheets and scripts need no
-upload. The control plane only checks the envelope of inline data (names, nesting, sizes); the
-values are decoded in the sandbox. Send <code>Prefer: wait=60</code> to get the result in the response
-when the run finishes in time (<code>200</code>), otherwise <code>202</code> with the run to follow.
-<code>GET …/schema</code> describes what to send (<code>EndpointSchema</code>: the input schema frozen at promotion,
-score modes, dims and an example payload) and <code>POST …/validate</code> checks a call without
-running it.</p>
-<p>A <code>score:&lt;alias&gt;</code> token can read the endpoint, its schema and snippets, and score it - and
-nothing else.</p>
+<p><code>POST /v1/endpoints/{alias}/score</code> takes an <code>EndpointScoreCall</code>. This is a score request
+without <code>model</code>. <code>data</code> and <code>scenario</code> can be <code>dataset://</code> references. They can also be small
+<strong>inline XrJSON</strong> datasets (the <code>xr.Dataset.to_dict()</code> shape, a maximum of 5 MB). Thus
+spreadsheets and scripts do not need an upload. The control plane does a check of only the
+envelope of inline data (names, nesting, sizes). The sandbox decodes the values.</p>
+<p>Send <code>Prefer: wait=60</code> to get the result in the response if the run is complete in time
+(<code>200</code>). If the run is not complete in time, the response is <code>202</code> with the run to follow.
+<code>GET …/schema</code> tells what to send (<code>EndpointSchema</code>). It gives the input schema that the
+platform froze at promotion, the score modes, the dims and an example payload.
+<code>POST …/validate</code> does a check of a call and does not run it. A forecast call can also contain
+the actuals that arrived after the fit and the dates to forecast. Refer to
+<a href="../forecasting-with-actuals/">Forecasts with actuals</a> and the <code>actuals_example</code> of the schema.</p>
+<p>A <code>score:&lt;alias&gt;</code> token can read the endpoint, its schema and its snippets, and can score it.
+It can do nothing else.</p>
 <h2 id="snippets">Snippets<a class="headerlink" href="#snippets" title="Permanent link">&para;</a></h2>
-<p><code>GET /v1/endpoints/{alias}/snippets</code> returns ready-to-run code that scores the endpoint with
-its example payload, in Python (<code>mapi-client</code>), TypeScript (<code>fetch</code>), curl, R (<code>httr2</code>),
-Google Sheets (Apps Script) and a notebook cell
-(<code>Client().endpoint(alias).score(...)</code>, which returns an <code>xarray.Dataset</code>). The generators are
-pure functions (<code>mapi_spec.snippets.render_snippets</code>), so the server, the CLI, the web app and
-these docs produce the same code: the Integrations hub shows and copies the server's snippets
-verbatim. Snippets never contain a secret: they read the token from <code>MAPI_TOKEN</code> (a script property
-in Apps Script). Every value is embedded with the language's own literal syntax, and tests
-parse the generated code back to prove a hostile payload cannot escape its string.</p>
+<p><code>GET /v1/endpoints/{alias}/snippets</code> returns code that is ready to run. The code scores the
+endpoint with its example payload. These languages are available:</p>
+<ul>
+<li>Python (<code>mapi-client</code>)</li>
+<li>TypeScript (<code>fetch</code>)</li>
+<li>curl</li>
+<li>R (<code>httr2</code>)</li>
+<li>Google Sheets (Apps Script)</li>
+<li>a notebook cell (<code>Client().endpoint(alias).score(...)</code>, which returns an <code>xarray.Dataset</code>).</li>
+</ul>
+<p>The generators are pure functions (<code>mapi_spec.snippets.render_snippets</code>). Thus the server, the
+CLI, the web app and these docs make the same code. The Integrations hub shows and copies the
+snippets of the server with no changes. Snippets never contain a secret. They read the token
+from <code>MAPI_TOKEN</code> (a script property in Apps Script). The generators write each value with the
+literal syntax of the language. Tests parse the generated code to prove that a dangerous
+payload cannot go out of its string.</p>
 <div class="language-sh highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-sS<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s1">'https://api.mapi.example/v1/endpoints/geo-mmm-prod/score'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'X-Mapi-Project: acme/growth'</span><span class="w"> </span><span class="se">\</span>
@@ -5056,7 +5128,7 @@ parse the generated code back to prove a hostile payload cannot escape its strin
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="s1">           "future_covariates": "carry_last"}'</span>
 </span></code></pre></div>
 <h2 id="webhooks">Webhooks<a class="headerlink" href="#webhooks" title="Permanent link">&para;</a></h2>
-<p>A webhook calls your URL when something happens in a project:</p>
+<p>A webhook calls your URL when an event occurs in a project:</p>
 <table>
 <thead>
 <tr>
@@ -5067,97 +5139,106 @@ parse the generated code back to prove a hostile payload cannot escape its strin
 <tbody>
 <tr>
 <td><code>run.succeeded</code>, <code>run.failed</code></td>
-<td>A run finished</td>
+<td>A run is complete</td>
 </tr>
 <tr>
 <td><code>model.version.ready</code></td>
-<td>A fit produced a model version (with its scorecard verdict)</td>
+<td>A fit made a model version (with the result of its scorecard)</td>
 </tr>
 <tr>
 <td><code>endpoint.promoted</code></td>
-<td>An alias points at a new version (promotion or rollback)</td>
+<td>An alias points to a new version (promotion or rollback)</td>
 </tr>
 <tr>
 <td><code>score.completed</code></td>
-<td>A score run finished</td>
+<td>A score run is complete</td>
 </tr>
 <tr>
 <td><code>tenant.deletion.completed</code></td>
-<td>The tenant was purged (the last event it sends)</td>
+<td>The platform purged the tenant (this is the last event that the tenant sends)</td>
 </tr>
 </tbody>
 </table>
 <p>Each delivery is a JSON envelope <code>{id, type, created, tenant, project, api_version, data}</code>.
-Envelopes carry ids and states, never data values, signed URLs or secrets - fetch results
-with the API.</p>
+Envelopes contain ids and states. They never contain data values, signed URLs or secrets. Use
+the API to get the results.</p>
 <h3 id="verifying-a-delivery">Verifying a delivery<a class="headerlink" href="#verifying-a-delivery" title="Permanent link">&para;</a></h3>
-<p>Deliveries are signed with the webhook's secret (shown once, when the webhook is created or
-its secret rotated):</p>
+<p>The platform signs each delivery with the secret of the webhook. The platform shows the secret
+one time, when you make the webhook or rotate its secret:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Mapi-Signature: t=1792000000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
 </span></code></pre></div>
-<p><code>v1</code> is the hex HMAC-SHA256 of <code>"&lt;t&gt;.&lt;raw body&gt;"</code>. Recompute it over the <strong>raw</strong> body, compare
-in constant time, and refuse timestamps more than 300 seconds from your clock - that bounds
-replays. During a rotation the header carries one <code>v1</code> per active secret.</p>
+<p><code>v1</code> is the hex HMAC-SHA256 of <code>"&lt;t&gt;.&lt;raw body&gt;"</code>. To verify a delivery, do these steps:</p>
+<ol>
+<li>Calculate the HMAC again over the <strong>raw</strong> body.</li>
+<li>Compare the two values in constant time.</li>
+<li>Refuse timestamps that are more than 300 seconds from your clock. This limits replays.</li>
+</ol>
+<p>During a rotation, the header contains one <code>v1</code> for each active secret.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.webhooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">verify_signature</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">if</span> <span class="ow">not</span> <span class="n">verify_signature</span><span class="p">(</span><span class="n">raw_body</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"Mapi-Signature"</span><span class="p">],</span> <span class="n">secret</span><span class="p">):</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="k">return</span> <span class="mi">401</span>
 </span></code></pre></div>
-<p>Failed deliveries are retried after 1 min, 5 min, 30 min, 2 h, 6 h, 12 h and 24 h. A receiver
-that answers <code>410 Gone</code> is disabled at once, and a webhook is disabled after 20 consecutive
-failed events. The delivery log shows every attempt (status, response code, duration) and any
-delivery can be replayed.</p>
+<p>The platform tries failed deliveries again after 1 min, 5 min, 30 min, 2 h, 6 h, 12 h and
+24 h. If a receiver answers <code>410 Gone</code>, the platform disables it immediately. The platform
+disables a webhook after 20 failed events in sequence. The delivery log shows each attempt
+(status, response code, duration). You can replay each delivery.</p>
 <h3 id="ssrf-protection">SSRF protection<a class="headerlink" href="#ssrf-protection" title="Permanent link">&para;</a></h3>
-<p>A webhook URL is a request the platform makes on a tenant's behalf, so the server only
-delivers under a strict policy (<code>mapi_spec.webhooks.SSRF_POLICY</code>):</p>
+<p>A webhook URL is a request that the platform makes for a tenant. Thus the server delivers only
+under a strict policy (<code>mapi_spec.webhooks.SSRF_POLICY</code>):</p>
 <ul>
-<li><code>https</code> only, on port 443 or 8443, with no credentials or fragment in the URL, and a host
-  name - never an IP literal, <code>localhost</code> or an internal suffix (<code>.internal</code>, <code>.local</code>, ...);</li>
-<li>the server <strong>resolves the host itself and refuses if any address</strong> is private, loopback,
-  link-local, cloud metadata (<code>169.254.169.254</code>), CGNAT, unique-local, multicast or otherwise
-  not globally routable - including IPv4 addresses embedded in IPv6;</li>
-<li>it then <strong>connects to the address it checked</strong> (no second lookup, so DNS rebinding cannot
-  swap it), follows no redirects, gives up after 5 seconds and reads at most 256 KiB of the
-  answer.</li>
+<li>The URL must use <code>https</code> only, on port 443 or 8443. It must have no credentials or fragment.
+  It must have a host name. An IP literal, <code>localhost</code> or an internal suffix (<code>.internal</code>,
+  <code>.local</code>, ...) is not permitted.</li>
+<li>The server <strong>resolves the host itself. It refuses the URL if one address</strong> is private,
+  loopback, link-local, cloud metadata (<code>169.254.169.254</code>), CGNAT, unique-local or multicast.
+  It also refuses addresses that are not globally routable for other reasons. This includes
+  IPv4 addresses in IPv6 addresses.</li>
+<li>The server then <strong>connects to the address that it checked</strong>. It does no second lookup, thus
+  DNS rebinding cannot change the address. The server follows no redirects. It stops after 5
+  seconds and reads a maximum of 256 KiB of the answer.</li>
 </ul>
-<p>A URL that breaks the policy is refused with <code>422 WEBHOOK_URL_BLOCKED</code>; one that starts
-resolving to a blocked address later fails its deliveries as <code>blocked</code> and is audited as a
-security signal (<code>webhook.url_blocked</code>).</p>
+<p>If a URL does not obey the policy, the server refuses it with <code>422 WEBHOOK_URL_BLOCKED</code>. A URL
+can start to resolve to a blocked address later. Then its deliveries fail as <code>blocked</code>. The
+audit log records this as a security signal (<code>webhook.url_blocked</code>).</p>
 <h2 id="plots-rendering-sharing-and-embeds">Plots: rendering, sharing and embeds<a class="headerlink" href="#plots-rendering-sharing-and-embeds" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Saved plots</strong> keep a model version's plot, or a plot you wrote, under a name.</li>
-<li><strong>Static rendering</strong> (<code>POST /v1/plots:render</code>) produces PNG, SVG or PDF in the sandbox
-  for reports: vl-convert for Vega-Lite, with network access off; Plotly needs kaleido and a
-  Chrome in the runner image and is refused with <code>MODE_NOT_SUPPORTED</code> until an operator
-  enables it.</li>
-<li><strong>Embed links</strong> are tokenised, read-only and expiring, for BI tools, Slack and Notion. The
-  token is shown once, links can be revoked, and <code>allowed_origins</code> limits which sites may
-  frame them. Only <strong>platform recipes</strong> can be embedded - plots the platform's own recipes
-  rendered from a model version - never plots written by a plugin or a user: a sandboxed
-  iframe can still navigate itself, so shared views only ever run code the platform wrote.
-  Requests for anything else get <code>422 EMBED_NOT_ALLOWED</code>; expired or revoked links answer
-  <code>410 LINK_EXPIRED</code>. The link opens the plot sandbox's embed page, which may fetch nothing
-  but the API's public embed view. See <a href="../../guides/sharing-plots/">Sharing plots</a>.</li>
+<li><strong>Saved plots</strong> keep a plot of a model version, or a plot that you wrote, under a name.</li>
+<li><strong>Static rendering</strong> (<code>POST /v1/plots:render</code>) makes PNG, SVG or PDF files in the sandbox
+  for reports. It uses vl-convert for Vega-Lite, with no network access. Plotly needs kaleido
+  and a Chrome in the runner image. Until an operator turns on Plotly, the platform refuses it
+  with <code>MODE_NOT_SUPPORTED</code>.</li>
+<li><strong>Embed links</strong> are read-only links with a token and an expiry date, for BI tools, Slack and
+  Notion. The platform shows the token one time. You can revoke links. <code>allowed_origins</code>
+  limits the sites that can show them in a frame. You can embed only <strong>platform recipes</strong>.
+  These are plots that the recipes of the platform made from a model version. You cannot embed
+  plots that a plugin or a user wrote. A sandboxed iframe can still navigate itself. Thus
+  shared views run only code that the platform wrote. Requests for other plots get
+  <code>422 EMBED_NOT_ALLOWED</code>. Links that expired or that you revoked answer <code>410 LINK_EXPIRED</code>.
+  The link opens the embed page of the plot sandbox. This page can get only the public embed
+  view of the API. Refer to <a href="../../guides/sharing-plots/">Sharing plots</a>.</li>
 </ul>
 <h2 id="the-trust-lifecycle">The trust lifecycle<a class="headerlink" href="#the-trust-lifecycle" title="Permanent link">&para;</a></h2>
-<p>Public sign-up opens with <strong>cut line A</strong>: public tenants run declarative specs and built-in
-plugins only - untrusted data, trusted code.</p>
+<p>Public sign-up starts with <strong>cut line A</strong>. Public tenants run only declarative specs and
+built-in plugins. The data is not trusted, but the code is trusted.</p>
 <ol>
-<li><strong>Sign-up</strong> takes an e-mail, a name and accepted terms. The answer is the same for new and
-   known addresses, so it cannot be used to find accounts; disposable e-mail domains are
-   refused through a pluggable policy hook.</li>
-<li><strong>E-mail verification</strong> with a single-use link (valid 24 hours) creates a <code>public</code>-tier
-   tenant with a <code>default</code> project, the new user as its admin.</li>
-<li><strong>Identity verification</strong> is required before any uploaded code: tenants on the <code>verified</code>
-   tier (allow-listed, M4) once verified, public tenants only after <strong>cut line B</strong> (M5). Until
-   then <code>VerificationStatus.uploaded_code_allowed</code> is false for every public tenant.</li>
-<li><strong>Deleting a tenant</strong> is scheduled with a 7-day grace period in which the tenant is
-   suspended (read-only) and the deletion can be cancelled. Then every store is purged -
-   database rows, objects, queued work, logs and webhooks - with progress shown per store.
-   The audit log (pseudonymised) and the cost ledger (amounts only, for tax law) are kept for
-   their legal retention.</li>
-<li>A <strong>GDPR export</strong> packages everything the tenant stored into one archive with a
-   short-lived download link. A suspended tenant can still ask for it.</li>
+<li><strong>Sign-up</strong> needs an e-mail address, a name and accepted terms. The answer is the same for
+   new and known addresses. Thus nobody can use it to find accounts. A policy hook that you
+   can replace refuses disposable e-mail domains.</li>
+<li><strong>E-mail verification</strong> uses a link that you can use one time (valid for 24 hours). It makes
+   a tenant on the <code>public</code> tier with a <code>default</code> project. The new user is the admin of the
+   project.</li>
+<li><strong>Identity verification</strong> is necessary before any uploaded code. Tenants on the <code>verified</code>
+   tier (allow-listed, M4) can upload code after verification. Public tenants can upload code
+   only after <strong>cut line B</strong> (M5). Until then, <code>VerificationStatus.uploaded_code_allowed</code> is
+   false for all public tenants.</li>
+<li><strong>Deleting a tenant</strong> starts a grace period of 7 days. During this period, the tenant is
+   suspended (read-only) and you can cancel the deletion. Then the platform purges each store:
+   database rows, objects, queued work, logs and webhooks. It shows the progress for each
+   store. The platform keeps the audit log (pseudonymised) and the cost ledger (amounts only,
+   for tax law) for their legal retention period.</li>
+<li>A <strong>GDPR export</strong> puts all the data that the tenant stored into one archive. It gives a
+   download link that expires after a short time. A suspended tenant can also ask for it.</li>
 </ol>
 
 

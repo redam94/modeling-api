@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1291,6 +1293,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4677,6 +4707,8 @@
       
         
       
+        
+      
     
     
     
@@ -4765,6 +4797,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4968,20 +5028,26 @@
 
 
 <h1 id="tenancy-and-authentication-v03">Tenancy and authentication <span class="mapi-badge">v0.3</span><a class="headerlink" href="#tenancy-and-authentication-v03" title="Permanent link">&para;</a></h1>
-<p>From v0.3 one deployment serves many organisations. Each is a <strong>tenant</strong>; inside it, work is
-organised in <strong>projects</strong>; people and programs get <strong>roles</strong> in projects. Every request is
-authenticated (who is calling), scoped (in which project) and authorized (may they do this),
-by one pure function that the API, the web app and the tests share. The contracts live in
-<code>mapi_spec.tenancy</code> and <code>mapi_spec.tokens</code>; the endpoints are listed in
+<p>From v0.3, one deployment serves many organisations. Each organisation is a <strong>tenant</strong>. In a
+tenant, the work is in <strong>projects</strong>. Persons and programs get <strong>roles</strong> in projects. For each
+request, the platform does three checks:</p>
+<ul>
+<li>It authenticates the caller (who calls).</li>
+<li>It finds the scope (in which project).</li>
+<li>It authorizes the request (can the caller do this).</li>
+</ul>
+<p>One pure function does these checks. The API, the web app and the tests share this function.
+The contracts are in <code>mapi_spec.tenancy</code> and <code>mapi_spec.tokens</code>. The endpoints are in
 <a href="../../reference/http-api/#multi-tenant-api">HTTP API: Multi-tenant API</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Coming from v0.2</p>
-<p>A v0.2 install had one tenant and one project, both called <code>default</code>, and no sign-in.
-Every row and storage key already carried the tenant and project, so v0.3 needs no data
-migration: your work is in <code>default/default</code>. <code>MAPI_PROFILE=single-tenant</code> keeps the old
-credential-less behaviour. The practical side of this page (who does what, with
-screenshots and a tested walkthrough) is the <a href="../../guides/administration/">Administration guide</a>;
-signing in is <a href="../../guides/authentication/">Authentication</a>.</p>
+<p>A v0.2 install had one tenant and one project, both with the name <code>default</code>, and no
+sign-in. Each row and storage key already contained the tenant and the project. Thus,
+v0.3 needs no data migration, and your work is in <code>default/default</code>.
+<code>MAPI_PROFILE=single-tenant</code> keeps the old behaviour without credentials. The
+<a href="../../guides/administration/">Administration guide</a> gives the practical side of this page:
+who does what, with screenshots and a tested walkthrough.
+<a href="../../guides/authentication/">Authentication</a> tells how to sign in.</p>
 </div>
 <h2 id="tenants-and-projects">Tenants and projects<a class="headerlink" href="#tenants-and-projects" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart TB
@@ -4991,9 +5057,9 @@ signing in is <a href="../../guides/authentication/">Authentication</a>.</p>
     U1(["Ana: runner in growth"]) -.-&gt; P1
     U2(["IT: admin of acme (tenant-wide)"]) -.-&gt; T
     K(["token mapi_7k2m…: bound to growth"]) -.-&gt; P1</code></pre>
-<p>A <strong>tenant</strong> is the unit of billing, isolation and quotas. Postgres enforces it with row-level
-security on <code>tenant_id</code> in every table, and every storage key starts with <code>t/{tenant}/</code>. A
-tenant has:</p>
+<p>A <strong>tenant</strong> is the unit of billing, isolation and quotas. Postgres enforces the tenant with
+row-level security on <code>tenant_id</code> in all tables. Each storage key starts with <code>t/{tenant}/</code>.
+A tenant has these fields:</p>
 <table>
 <thead>
 <tr>
@@ -5006,28 +5072,28 @@ tenant has:</p>
 <tr>
 <td>Trust tier</td>
 <td><code>internal</code>, <code>verified</code>, <code>public</code>, <code>self-hosted-trusted</code></td>
-<td>Where its runs may execute, and its default quotas</td>
+<td>The location where its runs can execute, and its default quotas</td>
 </tr>
 <tr>
 <td>Status</td>
 <td><code>active</code>, <code>suspended</code>, <code>deleting</code></td>
-<td><code>suspended</code> tenants can read but not change or run anything; <code>deleting</code> tenants are inaccessible</td>
+<td><code>suspended</code> tenants can read, but they cannot change or run items. You cannot get access to <code>deleting</code> tenants.</td>
 </tr>
 <tr>
 <td>Data residency</td>
 <td>A multi-region (<code>eu</code>, <code>us</code>, <code>asia</code>) or one region (<code>europe-west1</code>)</td>
-<td>Runs go only to executors that declare a matching region (Cloud Run Jobs declare theirs). The self-hosted executors (<code>local-process</code>, <code>docker</code>, <code>docker-gvisor</code>) declare no region and are not checked: there the install's location is the residency</td>
+<td>Runs go only to executors that declare a matching region. Cloud Run Jobs declare their region. The self-hosted executors (<code>local-process</code>, <code>docker</code>, <code>docker-gvisor</code>) declare no region, and the platform does not check them. For these executors, the location of the install is the residency.</td>
 </tr>
 </tbody>
 </table>
-<p>The trust tier decides placement. This is enforced by the dispatcher, never by tenant
-configuration:</p>
+<p>The trust tier decides the placement. The dispatcher enforces the placement. Tenant
+configuration never controls it.</p>
 <table>
 <thead>
 <tr>
 <th>Tier</th>
 <th>Who</th>
-<th>Executor must provide</th>
+<th>The executor must give</th>
 </tr>
 </thead>
 <tbody>
@@ -5038,7 +5104,7 @@ configuration:</p>
 </tr>
 <tr>
 <td><code>self-hosted-trusted</code></td>
-<td>A single organisation running its own install</td>
+<td>One organisation that runs its own install</td>
 <td>Process isolation or better</td>
 </tr>
 <tr>
@@ -5048,22 +5114,22 @@ configuration:</p>
 </tr>
 <tr>
 <td><code>public</code></td>
-<td>Anyone who signed up</td>
+<td>All persons who signed up</td>
 <td>gVisor or a microVM, with egress and DNS enforced</td>
 </tr>
 </tbody>
 </table>
-<p>So a <code>verified</code> or <code>public</code> tenant's runs never land on the <code>local-process</code> or plain <code>docker</code>
-executor. The executor must also have passed the executor conformance suite and the security
-suite for its current configuration, recorded by an operator
+<p>Thus, the runs of a <code>verified</code> or <code>public</code> tenant never go to the <code>local-process</code> or plain
+<code>docker</code> executor. The executor must also pass the executor conformance suite and the security
+suite for its current configuration. An operator records these results
 (<a href="../../operations/cloud-run/#the-shared-tier-gate">the shared-tier gate</a>). Until an executor
-qualifies, those tenants' runs are refused at submission. New tenants are <code>verified</code> by
-default.</p>
-<p>A <strong>project</strong> is a workspace inside a tenant and the unit of access control. Its id is a short
-slug, unique in the tenant, because it appears in references such as
+qualifies, the platform refuses the runs of those tenants at submission. By default, new
+tenants are <code>verified</code>.</p>
+<p>A <strong>project</strong> is a workspace in a tenant and the unit of access control. Its id is a short
+slug that is unique in the tenant. The id is short because it shows in references such as
 <code>dataset://growth/eu_media_daily</code>.</p>
 <h2 id="roles">Roles<a class="headerlink" href="#roles" title="Permanent link">&para;</a></h2>
-<p>There are four project roles. Each includes everything the one before it can do:</p>
+<p>There are four project roles. Each role can do all the actions of the role before it:</p>
 <table>
 <thead>
 <tr>
@@ -5074,33 +5140,36 @@ slug, unique in the tenant, because it appears in references such as
 <tbody>
 <tr>
 <td><code>viewer</code></td>
-<td>Read everything in the project: datasets, specs, runs, logs, models, plots, usage. Validate specs. Mint tokens for themselves.</td>
+<td>Read all items in the project: datasets, specs, runs, logs, models, plots and usage. Validate specs. Mint tokens for themselves.</td>
 </tr>
 <tr>
 <td><code>editor</code></td>
-<td>Also create and change datasets, specs, workflows and saved plots.</td>
+<td>Also make and change datasets, specs, workflows and saved plots.</td>
 </tr>
 <tr>
 <td><code>runner</code></td>
-<td>Also <strong>spend compute</strong>: submit, cancel, resume and retry runs; run and cancel workflows; score models and endpoints; render plots; submit models for governance validation.</td>
+<td>Also <strong>spend compute</strong>. Submit, cancel, resume and retry runs. Run and cancel workflows. Score models and endpoints. Render plots. Submit models for governance validation.</td>
 </tr>
 <tr>
 <td><code>admin</code></td>
-<td>Also manage members, endpoints and their promotion, plugins, webhooks, governance policies, other people's tokens; deprecate validated versions; delete things.</td>
+<td>Also manage members, endpoints and their promotion, plugins, webhooks, governance policies and the tokens of other persons. Deprecate validated versions. Delete items.</td>
 </tr>
 </tbody>
 </table>
-<p>Running sits above editing on purpose: compute costs money, so a teammate can be trusted to
-edit a spec without being able to start a 200-task sweep.</p>
-<p>A <strong>membership</strong> grants one role, either on one project or tenant-wide, and optionally
-<strong>capabilities</strong> on top of it (v0.5): <code>reviewer</code> lets an editor or runner approve or reject
-model validations that wait for a second person - never their own submissions, never through
-a token. Project admins hold every capability implicitly. A tenant-wide grant
-applies to the tenant itself (renaming it, its member list, its audit log and bill) and to
-every project in it. In a project, a member's effective role is the higher of their tenant-wide
-and project grants.</p>
-<p>The complete permission matrix is <code>mapi_spec.tenancy.PERMISSIONS</code>. A test checks every role,
-action and resource combination against an independently written table. In summary:</p>
+<p>The runner role is above the editor role intentionally. Compute costs money. Thus, you can let
+a team member edit a spec, but not start a 200-task sweep.</p>
+<p>A <strong>membership</strong> gives one role, on one project or tenant-wide. It can also give
+<strong>capabilities</strong> in addition to the role (v0.5). With <code>reviewer</code>, an editor or a runner can
+approve or reject model validations that wait for a second person. They can never approve
+their own submissions, and they can never approve through a token. Project admins have all
+capabilities implicitly.</p>
+<p>A tenant-wide grant applies to the tenant itself and to all projects in it. For the tenant,
+this includes its name, its member list, its audit log and its bill. In a project, the
+effective role of a member is the higher role of their tenant-wide grant and their project
+grant.</p>
+<p>The full permission matrix is <code>mapi_spec.tenancy.PERMISSIONS</code>. A test checks each
+combination of role, action and resource against a table that a different person wrote. In
+summary:</p>
 <table>
 <thead>
 <tr>
@@ -5151,7 +5220,7 @@ action and resource combination against an independently written table. In summa
 <td>viewer</td>
 <td>—</td>
 <td>viewer (own)</td>
-<td><code>manage</code> (others' tokens): admin</td>
+<td><code>manage</code> (tokens of other persons): admin</td>
 </tr>
 <tr>
 <td>catalog</td>
@@ -5191,7 +5260,7 @@ action and resource combination against an independently written table. In summa
 <td>admin</td>
 <td>admin</td>
 <td>admin</td>
-<td><code>run</code>: runner; <code>promote</code>: admin</td>
+<td><code>run</code>: runner. <code>promote</code>: admin.</td>
 </tr>
 <tr>
 <td>plot</td>
@@ -5247,7 +5316,7 @@ action and resource combination against an independently written table. In summa
 <td>—</td>
 <td>admin (deprecate)</td>
 <td>—</td>
-<td><code>validate</code>: runner; <code>approve</code>: editor or runner with <code>reviewer</code>, or admin</td>
+<td><code>validate</code>: runner. <code>approve</code>: editor or runner with <code>reviewer</code>, or admin.</td>
 </tr>
 <tr>
 <td>usage (project)</td>
@@ -5275,9 +5344,9 @@ action and resource combination against an independently written table. In summa
 </tr>
 </tbody>
 </table>
-<p><strong>Operators</strong> run the platform. They manage tenants, quotas, kill switches and executors, and
+<p><strong>Operators</strong> run the platform. They manage tenants, quotas, kill switches and executors. They
 can read tenant metadata, usage and audit logs. They cannot read tenant content (datasets,
-specs, models, plots) through the API: no role or flag grants that.</p>
+specs, models and plots) through the API. No role or flag gives this access.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.tenancy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Action</span><span class="p">,</span> <span class="n">ProjectRole</span><span class="p">,</span> <span class="n">ResourceKind</span><span class="p">,</span> <span class="n">can</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">can</span><span class="p">(</span><span class="n">ProjectRole</span><span class="o">.</span><span class="n">EDITOR</span><span class="p">,</span> <span class="n">Action</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">,</span> <span class="n">ResourceKind</span><span class="o">.</span><span class="n">SPEC</span><span class="p">))</span>  <span class="c1"># True</span>
@@ -5298,35 +5367,36 @@ specs, models, plots) through the API: no role or flag grants that.</p>
 <tr>
 <td><strong>User</strong></td>
 <td>Signs in with OpenID Connect in the browser</td>
-<td><code>(issuer, subject)</code> from the identity provider, mapped to a platform id <code>usr_…</code> at first sign-in</td>
+<td><code>(issuer, subject)</code> from the identity provider. At the first sign-in, the platform maps it to a platform id <code>usr_…</code>.</td>
 </tr>
 <tr>
 <td><strong>Token</strong></td>
 <td><code>Authorization: Bearer mapi_…</code></td>
-<td>The token id <code>tok_…</code>; it acts as its owner, a user or a service account <code>sa_…</code> (a <em>service token</em>)</td>
+<td>The token id <code>tok_…</code>. The token acts as its owner: a user or a service account <code>sa_…</code> (a <em>service token</em>).</td>
 </tr>
 <tr>
 <td><strong>Internal service</strong></td>
-<td>Platform identity (for example, Pub/Sub's signed OIDC token on <code>/internal/events</code>)</td>
-<td><code>svc_…</code>; only internal routes accept it</td>
+<td>Platform identity (for example, the signed OIDC token of Pub/Sub on <code>/internal/events</code>)</td>
+<td><code>svc_…</code>. Only internal routes accept it.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="how-a-request-is-authorized">How a request is authorized<a class="headerlink" href="#how-a-request-is-authorized" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Authenticate.</strong> A session cookie, a bearer token or a service identity. Missing or invalid:
-   <code>401 UNAUTHENTICATED</code>.</li>
-<li><strong>Select the project.</strong> From the path, the <code>X-Mapi-Project: &lt;tenant&gt;/&lt;project&gt;</code> header, or
-   the token's binding (see below).</li>
-<li><strong>Resolve roles.</strong> The caller's tenant-wide and project roles, from memberships <em>now</em>. For
-   a token, its owner's memberships: removing a person from a project immediately disarms
-   their tokens there.</li>
-<li><strong>Check the permission.</strong> <code>AuthContext.allows(action, resource)</code> applies, in order: internal
-   rules, operator rules, the tenant's status, the role at the rule's level and, for tokens,
-   the scopes. A resource the caller cannot see answers <code>404</code>; a visible one they may not
-   change answers <code>403 FORBIDDEN</code>.</li>
-<li><strong>Check quotas</strong> before anything that consumes compute or storage
-   (see <a href="../quotas-and-cost/">Quotas and cost</a>).</li>
+<li><strong>Authenticate.</strong> The caller uses a session cookie, a bearer token or a service identity.
+   If the credential is missing or not valid, the answer is <code>401 UNAUTHENTICATED</code>.</li>
+<li><strong>Select the project.</strong> The project comes from the path, the
+   <code>X-Mapi-Project: &lt;tenant&gt;/&lt;project&gt;</code> header, or the binding of the token (see below).</li>
+<li><strong>Resolve roles.</strong> The platform gets the tenant-wide and project roles of the caller from
+   the memberships <em>now</em>. For a token, it uses the memberships of the owner. Thus, if you
+   remove a person from a project, their tokens stop working there immediately.</li>
+<li><strong>Check the permission.</strong> <code>AuthContext.allows(action, resource)</code> applies these rules in
+   this sequence: internal rules, operator rules, the status of the tenant, and the role at
+   the level of the rule. For tokens, it then applies the scopes. If the caller cannot see a
+   resource, the answer is <code>404</code>. If the caller can see a resource but cannot change it, the
+   answer is <code>403 FORBIDDEN</code>.</li>
+<li><strong>Check quotas.</strong> The platform checks quotas before each action that uses compute or
+   storage (see <a href="../quotas-and-cost/">Quotas and cost</a>).</li>
 </ol>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.tenancy</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuthContext</span><span class="p">,</span> <span class="n">TenantStatus</span><span class="p">,</span> <span class="n">TokenPrincipal</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
@@ -5354,14 +5424,16 @@ specs, models, plots) through the API: no role or flag grants that.</p>
 </span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="nb">print</span><span class="p">(</span><span class="n">frozen</span><span class="o">.</span><span class="n">allows</span><span class="p">(</span><span class="s2">"run"</span><span class="p">,</span> <span class="s2">"endpoint"</span><span class="p">,</span> <span class="n">resource_name</span><span class="o">=</span><span class="s2">"geo-mmm-prod"</span><span class="p">))</span>  <span class="c1"># False</span>
 </span></code></pre></div>
 <h3 id="selecting-the-project">Selecting the project<a class="headerlink" href="#selecting-the-project" title="Permanent link">&para;</a></h3>
-<p>Every resource of v0.2 (datasets, specs, runs, models, plots) now lives in a project. Send
-<code>X-Mapi-Project: acme/growth</code>, or a bare <code>X-Mapi-Project: growth</code> when the tenant is
-unambiguous. Tokens are bound to one project and may omit the header; naming another project
-with a token is <code>403 FORBIDDEN</code>. A local single-tenant install falls back to <code>default/default</code>.</p>
-<p>Because a token is bound to one project, it cannot administer its tenant: tenant members,
-creating or deleting projects, the tenant audit log and tenant usage need a signed-in session
-(<code>403 FORBIDDEN</code> for any token, whatever its scopes and its owner's role). A token may still
-read its own tenant (<code>GET /v1/tenants/{tenant}</code>) and list its own project.</p>
+<p>All resources of v0.2 (datasets, specs, runs, models and plots) are now in a project. Send
+<code>X-Mapi-Project: acme/growth</code>. If there is only one possible tenant, you can send only
+<code>X-Mapi-Project: growth</code>. Tokens have a binding to one project and do not need the header. If
+a token names a different project, the answer is <code>403 FORBIDDEN</code>. A local single-tenant
+install uses <code>default/default</code>.</p>
+<p>A token has a binding to one project. Thus, it cannot administer its tenant. These actions
+need a signed-in session: tenant members, the creation or deletion of projects, the tenant
+audit log and tenant usage. For a token, the answer is <code>403 FORBIDDEN</code>. This is true for all
+scopes and all roles of the owner. A token can read its own tenant (<code>GET /v1/tenants/{tenant}</code>)
+and list its own project.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.tenancy</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_project_scope</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">resolve_project_scope</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s2">"acme/growth"</span><span class="p">))</span>  <span class="c1"># acme/growth</span>
@@ -5369,20 +5441,21 @@ read its own tenant (<code>GET /v1/tenants/{tenant}</code>) and list its own pro
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">resolve_project_scope</span><span class="p">(</span><span class="n">token_binding</span><span class="o">=</span><span class="p">(</span><span class="s2">"acme"</span><span class="p">,</span> <span class="s2">"growth"</span><span class="p">)))</span>  <span class="c1"># acme/growth</span>
 </span></code></pre></div>
 <h2 id="api-tokens">API tokens<a class="headerlink" href="#api-tokens" title="Permanent link">&para;</a></h2>
-<p>Programs (the Python client, the CLI, BI exports) use API tokens:</p>
+<p>Programs (the Python client, the CLI and BI exports) use API tokens:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>mapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz072gj7d
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>     prefix   secret (160 random bits)        checksum
 </span></code></pre></div>
 <ul>
-<li>Lowercase Crockford base32 (no <code>i</code>, <code>l</code>, <code>o</code>, <code>u</code>), so tokens survive being read aloud or
-  retyped.</li>
-<li>The <strong>prefix</strong> is public. Listings show the token as <code>mapi_7k2m9q4x_…</code>.</li>
-<li>The <strong>secret</strong> is shown once, in the response to <code>POST /v1/tokens</code>. The server stores only
-  an HMAC-SHA256 of the whole token under a server-side pepper, and compares in constant
-  time.</li>
-<li>The <strong>checksum</strong> (CRC-32 of the rest) lets clients and secret scanners reject typos and
-  random strings without asking the server. Every single-character typo and every swap of two
-  neighbouring characters is caught.</li>
+<li>Tokens use lowercase Crockford base32 (no <code>i</code>, <code>l</code>, <code>o</code>, <code>u</code>). Thus, you can read a token
+  aloud or type it again without errors.</li>
+<li>The <strong>prefix</strong> is public. Lists show the token as <code>mapi_7k2m9q4x_…</code>.</li>
+<li>The platform shows the <strong>secret</strong> one time, in the response to <code>POST /v1/tokens</code>. The server
+  keeps only an HMAC-SHA256 of the full token under a server-side pepper. It compares tokens
+  in constant time.</li>
+<li>The <strong>checksum</strong> is a CRC-32 of the remaining characters. Clients and secret scanners use it
+  to refuse typing errors and random strings, without a request to the server. The checksum
+  finds all single-character typing errors. It also finds each swap of two adjacent
+  characters.</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapiError</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.tokens</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_token</span><span class="p">,</span> <span class="n">hash_token</span><span class="p">,</span> <span class="n">parse_token</span><span class="p">,</span> <span class="n">verify_token_hash</span>
@@ -5402,8 +5475,8 @@ read its own tenant (<code>GET /v1/tenants/{tenant}</code>) and list its own pro
 </span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># UNAUTHENTICATED: the checksum catches it without a lookup</span>
 </span></code></pre></div>
 <h3 id="scopes">Scopes<a class="headerlink" href="#scopes" title="Permanent link">&para;</a></h3>
-<p>A token's <strong>scopes</strong> narrow what it may do; they never add to its owner's role. An admin's
-token with <code>models:read</code> can only read.</p>
+<p>The <strong>scopes</strong> of a token limit what the token can do. They never add to the role of its
+owner. The token of an admin with <code>models:read</code> can only read.</p>
 <table>
 <thead>
 <tr>
@@ -5418,59 +5491,59 @@ token with <code>models:read</code> can only read.</p>
 </tr>
 <tr>
 <td><code>runs:create</code></td>
-<td><code>models:read</code>, plus submit and cancel runs, score models and endpoints, render plots</td>
+<td><code>models:read</code>, plus submit and cancel runs, score models and endpoints, and render plots</td>
 </tr>
 <tr>
 <td><code>score:{target}</code></td>
-<td>Score one model by its id, for example <code>score:mdl_01jaf3r1s2t3v4w5x6y7z8a9b0</code> (<code>POST /v1/models/{id}/versions/{v}:score</code>); <code>score:*</code> covers every model in the project. Once endpoints exist, an endpoint alias works the same way, for example <code>score:geo-mmm-prod</code></td>
+<td>Score one model by its id, for example <code>score:mdl_01jaf3r1s2t3v4w5x6y7z8a9b0</code> (<code>POST /v1/models/{id}/versions/{v}:score</code>). <code>score:*</code> covers all models in the project. When endpoints exist, an endpoint alias works in the same way, for example <code>score:geo-mmm-prod</code>.</td>
 </tr>
 <tr>
 <td><code>datasets:write</code></td>
-<td>Create datasets and add versions</td>
+<td>Make datasets and add versions</td>
 </tr>
 <tr>
 <td><code>plugins:publish</code></td>
-<td>Publish and yank plugins (plugin upload arrives in v0.6)</td>
+<td>Publish and yank plugins (plugin upload comes in v0.6)</td>
 </tr>
 <tr>
 <td><code>endpoints:promote</code></td>
-<td>Create, promote, roll back and delete endpoints, read models (CI pipelines); never overrides a gate</td>
+<td>Make, promote, roll back and delete endpoints, and read models (CI pipelines). It never overrides a gate.</td>
 </tr>
 <tr>
 <td><code>webhooks:manage</code></td>
-<td>Manage the project's webhooks and replay deliveries</td>
+<td>Manage the webhooks of the project and replay deliveries</td>
 </tr>
 <tr>
 <td><code>workflows:write</code> (v0.5)</td>
-<td>Create workflows and save revisions (workflow-as-code from CI)</td>
+<td>Make workflows and save revisions (workflow-as-code from CI)</td>
 </tr>
 <tr>
 <td><code>workflows:run</code> (v0.5)</td>
-<td>Run and cancel workflows, manage their schedules and triggers</td>
+<td>Run and cancel workflows, and manage their schedules and triggers</td>
 </tr>
 <tr>
 <td><code>models:validate</code> (v0.5)</td>
-<td>Submit model versions for governance validation, read policies; never approves</td>
+<td>Submit model versions for governance validation, and read policies. It never approves.</td>
 </tr>
 <tr>
 <td><code>policies:manage</code> (v0.5)</td>
-<td>Create, edit and retire the project's governance policies (policy-as-code)</td>
+<td>Make, edit and retire the governance policies of the project (policy-as-code)</td>
 </tr>
 <tr>
 <td><code>admin</code></td>
-<td>Everything the owner's role allows, except minting tokens, overriding a promotion gate and approving a validation</td>
+<td>All actions that the role of the owner allows, except three: mint tokens, override a promotion gate and approve a validation</td>
 </tr>
 </tbody>
 </table>
-<p>No scope lets a token mint tokens: a child token would escape its parent's expiry, budget,
-rate limit and revocation. Mint tokens from a signed-in session (<code>mapi login</code> or the browser).
-Overriding a promotion gate and approving a model validation also need a signed-in person:
-they are human decisions, and the audit log names who made them. The generated
-<a href="../../reference/generated/permissions/">permissions reference</a> has every scope against every
-action.</p>
-<p>Each token also has an expiry (default 90 days, at most 365), and may have its own
-requests-per-minute limit and a vCPU-second budget per day or month. These apply in addition
-to the tenant's quotas.</p>
+<p>No scope lets a token mint tokens. A child token would escape the expiry, budget, rate limit
+and revocation of its parent. Mint tokens from a signed-in session (<code>mapi login</code> or the
+browser). To override a promotion gate or approve a model validation, a signed-in person is
+also necessary. These are human decisions, and the audit log names the person who made them.
+The generated <a href="../../reference/generated/permissions/">permissions reference</a> shows all scopes
+against all actions.</p>
+<p>Each token also has an expiry. The default is 90 days, and the maximum is 365 days. A token
+can also have its own limit of requests per minute and a vCPU-second budget for each day or
+month. These limits apply in addition to the quotas of the tenant.</p>
 <h2 id="signing-in-from-the-browser">Signing in from the browser<a class="headerlink" href="#signing-in-from-the-browser" title="Permanent link">&para;</a></h2>
 <p>The web app never holds an OAuth token. The API acts as a backend-for-frontend:</p>
 <pre class="mermaid"><code>sequenceDiagram
@@ -5490,26 +5563,36 @@ to the tenant's quotas.</p>
     A--&gt;&gt;B: 302 /runs + __Host-mapi_session (HttpOnly, Secure, SameSite=Strict)
     B-&gt;&gt;A: fetch /v1/... (cookie sent same-site only)</code></pre>
 <ul>
-<li>The session cookie is <code>HttpOnly</code> (scripts cannot read it), <code>Secure</code>, <code>SameSite=Strict</code>
-  (cross-site requests never carry it) and host-only (<code>__Host-</code> prefix: no <code>Domain</code>,
-  <code>Path=/</code>).</li>
-<li>Sessions end after 2 hours idle or 12 hours in total. <code>POST /auth/logout</code> ends one at once.</li>
-<li>State-changing requests made with the session cookie also carry the session's CSRF token
-  in <code>X-CSRF-Token</code> (from the readable <code>__Host-mapi_csrf</code> cookie or <code>GET /auth/session</code>);
-  without it, or from another origin, they are refused.</li>
-<li><code>return_to</code> only accepts a path on the same origin, so the login flow cannot be used as an
-  open redirect.</li>
-<li><code>GET /auth/session</code> tells the web app whether it is signed in (<code>authenticated: false</code> is a
-  normal 200 answer).</li>
+<li>The session cookie is <code>HttpOnly</code>, thus scripts cannot read it. It is <code>Secure</code>. It is
+  <code>SameSite=Strict</code>, thus cross-site requests never send it. It is host-only (the <code>__Host-</code>
+  prefix: no <code>Domain</code>, <code>Path=/</code>).</li>
+<li>A session ends after 2 hours with no activity, or after 12 hours in total.
+  <code>POST /auth/logout</code> ends a session immediately.</li>
+<li>Requests that change state with the session cookie must also send the CSRF token of the
+  session in <code>X-CSRF-Token</code>. The token comes from the readable <code>__Host-mapi_csrf</code> cookie or
+  from <code>GET /auth/session</code>. If the token is missing, or if the request comes from a different
+  origin, the platform refuses the request.</li>
+<li><code>return_to</code> accepts only a path on the same origin. Thus, an attacker cannot use the login
+  flow as an open redirect.</li>
+<li><code>GET /auth/session</code> tells the web app if it is signed in. <code>authenticated: false</code> is a
+  usual 200 answer.</li>
 </ul>
 <h2 id="audit">Audit<a class="headerlink" href="#audit" title="Permanent link">&para;</a></h2>
-<p>Security-relevant actions are written to an append-only audit log: sign-ins, token creation
-and revocation, membership and project changes, quota and kill-switch changes, artifact link
-minting, quota denials and rejected run events. Each entry records the actor's platform id,
-the action, the resource, the outcome and a problem code. Client IP addresses and user agents
-are stored only as keyed HMACs, so entries can be correlated without being reversible. Tenant
-admins read their tenant's log at <code>GET /v1/tenants/{tenant_id}/audit</code>; operators read
-everything at <code>GET /v1/admin/audit</code>.</p>
+<p>The platform writes actions that are important for security to an append-only audit log.
+These actions are:</p>
+<ul>
+<li>Sign-ins</li>
+<li>Token creation and revocation</li>
+<li>Changes to memberships and projects</li>
+<li>Changes to quotas and kill switches</li>
+<li>Artifact links that the platform mints</li>
+<li>Quota denials and refused run events</li>
+</ul>
+<p>Each entry records the platform id of the actor, the action, the resource, the result and a
+problem code. The platform keeps client IP addresses and user agents only as keyed HMACs.
+Thus, you can correlate entries, but you cannot get the original values back. Tenant admins
+read the log of their tenant at <code>GET /v1/tenants/{tenant_id}/audit</code>. Operators read all
+entries at <code>GET /v1/admin/audit</code>.</p>
 
 
 

@@ -16,7 +16,7 @@
         <link rel="prev" href="../licensing/">
       
       
-        <link rel="next" href="../changelog/">
+        <link rel="next" href="../writing-style/">
       
       
         
@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4516,6 +4546,8 @@
       
         
       
+        
+      
     
     
     
@@ -4681,6 +4713,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#writing-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing style
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#commit-messages" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4717,6 +4760,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4806,6 +4877,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#writing-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing style
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#commit-messages" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4856,7 +4938,7 @@
 
 
 <h1 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">&para;</a></h1>
-<p>Thank you for helping. All contributions are made under the Contributor Licence Agreement
+<p>Thank you for your help. All contributions are under the Contributor Licence Agreement
 (<code>CONTRIBUTOR-LICENSE.md</code> in the repository root).</p>
 <h2 id="set-up">Set up<a class="headerlink" href="#set-up" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>install<span class="w">          </span><span class="c1"># uv sync --all-packages (+ pnpm install once apps/ exist)</span>
@@ -4872,56 +4954,56 @@
 <tbody>
 <tr>
 <td><code>make test</code></td>
-<td>The default test suite (everything except Docker, cloud and end-to-end tests)</td>
+<td>Runs the default test suite (all tests, but not the Docker, cloud and end-to-end tests)</td>
 </tr>
 <tr>
 <td><code>make test-fast</code></td>
-<td>Unit tests only, skipping slow MCMC tests</td>
+<td>Runs only the unit tests. It does not run the slow MCMC tests</td>
 </tr>
 <tr>
 <td><code>make lint</code></td>
-<td>ruff, ruff format check and the import-linter contracts</td>
+<td>Runs ruff, the ruff format check and the import-linter contracts</td>
 </tr>
 <tr>
 <td><code>make typecheck</code></td>
-<td>mypy over every type-checked package</td>
+<td>Runs mypy on each package that has type checks</td>
 </tr>
 <tr>
 <td><code>make conformance</code></td>
-<td>The conformance corpus at size <code>tiny</code> (<code>FIXTURE=e33</code> for one)</td>
+<td>Runs the conformance corpus at size <code>tiny</code> (<code>FIXTURE=e33</code> for one fixture)</td>
 </tr>
 <tr>
 <td><code>make docs-serve</code></td>
-<td>This site with live reload</td>
+<td>Shows this site and loads it again when a page changes</td>
 </tr>
 <tr>
 <td><code>make docs-build</code></td>
-<td>Regenerate the generated reference pages and build the site strictly</td>
+<td>Makes the generated reference pages again and builds the site in strict mode</td>
 </tr>
 <tr>
 <td><code>make docs-test</code></td>
-<td>Run every documentation snippet and the docs checks</td>
+<td>Runs all the documentation snippets and the checks of the docs</td>
 </tr>
 <tr>
 <td><code>make dev</code></td>
-<td>The whole stack locally without Docker (<a href="../../operations/local-development/">Local, without Docker</a>)</td>
+<td>Runs the whole stack locally without Docker (<a href="../../operations/local-development/">Local, without Docker</a>)</td>
 </tr>
 <tr>
 <td><code>make docker-build</code> / <code>make compose-up</code></td>
-<td>Build the images / run the compose stack (<a href="../../operations/docker/">Docker Compose</a>)</td>
+<td>Builds the images / runs the compose stack (<a href="../../operations/docker/">Docker Compose</a>)</td>
 </tr>
 <tr>
 <td><code>make release-check</code></td>
-<td>Version consistency, changelog entry, no plan files, pinned images, current third-party notices</td>
+<td>Does a check of version consistency, the changelog entry, plan files (there must be none), pinned images and current third-party notices</td>
 </tr>
 <tr>
 <td><code>make notices</code></td>
-<td>Regenerate <code>THIRD-PARTY-NOTICES.md</code> after a change to <code>uv.lock</code> or <code>pnpm-lock.yaml</code> (<a href="../licensing/#third-party-libraries">Licensing</a>)</td>
+<td>Makes <code>THIRD-PARTY-NOTICES.md</code> again after a change to <code>uv.lock</code> or <code>pnpm-lock.yaml</code> (<a href="../licensing/#third-party-libraries">Licensing</a>)</td>
 </tr>
 </tbody>
 </table>
 <h2 id="branching-model">Branching model<a class="headerlink" href="#branching-model" title="Permanent link">&para;</a></h2>
-<p>We use git flow with two long-lived branches, <code>main</code> and <code>develop</code>.</p>
+<p>We use git flow with two permanent branches, <code>main</code> and <code>develop</code>.</p>
 <pre class="mermaid"><code>gitGraph
     commit id: "v0.1.0" tag: "v0.1.0"
     branch develop
@@ -4950,15 +5032,15 @@
 <tbody>
 <tr>
 <td><code>main</code></td>
-<td>Releases only. Each milestone is merged from <code>develop</code> and tagged <code>vX.Y.Z</code>. Nobody commits to <code>main</code> directly.</td>
+<td>Releases only. We merge each milestone from <code>develop</code> and tag it <code>vX.Y.Z</code>. Nobody commits to <code>main</code> directly.</td>
 </tr>
 <tr>
 <td><code>develop</code></td>
-<td>Integration. Feature branches are merged here with <code>--no-ff</code>.</td>
+<td>Integration. We merge feature branches here with <code>--no-ff</code>.</td>
 </tr>
 <tr>
 <td><code>feat/&lt;milestone&gt;-&lt;topic&gt;</code></td>
-<td>One unit of work, branched from the latest <code>develop</code>.</td>
+<td>One unit of work. Make the branch from the latest <code>develop</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -4966,11 +5048,16 @@
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># ... small, logical commits ...</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>make<span class="w"> </span>fmt<span class="w"> </span>lint<span class="w"> </span>typecheck<span class="w"> </span><span class="nb">test</span>
 </span></code></pre></div>
-<p>Never rebase or rewrite <code>develop</code> or <code>main</code>. Keep changes to shared files (the root
-<code>pyproject.toml</code>, the <code>Makefile</code>, <code>uv.lock</code>, CI) minimal and additive, and mention them in
-your pull request.</p>
+<p>Do not rebase or rewrite <code>develop</code> or <code>main</code>. Keep changes to shared files small, and only add
+to them. The shared files are the root <code>pyproject.toml</code>, the <code>Makefile</code>, <code>uv.lock</code> and CI.
+Tell about these changes in your pull request.</p>
+<h2 id="writing-style">Writing style<a class="headerlink" href="#writing-style" title="Permanent link">&para;</a></h2>
+<p>Write all text for users in ASD-STE100 Simplified Technical English. This includes the
+documentation, the text in the web app, and the messages that the server sends for the app
+to show. The rules are in <a href="../writing-style/">Writing style</a>.</p>
 <h2 id="commit-messages">Commit messages<a class="headerlink" href="#commit-messages" title="Permanent link">&para;</a></h2>
-<p><a href="https://www.conventionalcommits.org/">Conventional commits</a>, scoped by package:</p>
+<p>Use <a href="https://www.conventionalcommits.org/">Conventional commits</a>, with the package as the
+scope:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>feat(sdk): replay context tails at each step's input stage
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>fix(server): reject score requests whose horizon exceeds the fit
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>docs: add the porting guide
@@ -4979,35 +5066,38 @@ your pull request.</p>
 </span></code></pre></div>
 <h2 id="code-style">Code style<a class="headerlink" href="#code-style" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Python 3.12, ruff (line length 100), type hints everywhere; mypy strict for the core
-  packages.</li>
-<li>Tests live next to each package in <code>tests/</code>. PyMC fits in tests use tiny settings
-  (<code>tune: 50–150</code>, <code>draws: 50–150</code>, <code>chains: 2</code>) and are marked <code>slow</code> when they take more than
-  about ten seconds.</li>
-<li>Docstrings are concise (Google style). The contract tests are the executable documentation.</li>
-<li><code>mapi_spec</code> must not import numpy, xarray or pandas; the server must not import plugin or
-  array code. <code>make lint</code> enforces both.</li>
+<li>Use Python 3.12 and ruff (line length 100). Use type hints in all code. Use mypy strict for
+  the core packages.</li>
+<li>Tests are in <code>tests/</code> in each package. PyMC fits in tests use very small settings
+  (<code>tune: 50–150</code>, <code>draws: 50–150</code>, <code>chains: 2</code>). If a test takes more than about ten
+  seconds, mark it <code>slow</code>.</li>
+<li>Write short docstrings (Google style). The contract tests are the executable documentation.</li>
+<li><code>mapi_spec</code> must not import numpy, xarray or pandas. The server must not import plugin code
+  or array code. <code>make lint</code> makes sure of the two rules.</li>
 </ul>
 <h2 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h2>
-<p>The site is MkDocs Material (<code>mkdocs.yml</code> at the repository root, pages in <code>docs/</code>).</p>
+<p>The site uses MkDocs Material. <code>mkdocs.yml</code> is at the repository root, and the pages are in
+<code>docs/</code>.</p>
 <ul>
-<li><strong>Every Python example is executed.</strong> Examples live in <code>docs/snippets/*.py</code>, are included in
-  pages with <code>--8&lt;-- "file.py:section"</code>, and <code>conformance/tests/test_docs_snippets.py</code> runs each</li>
-<li><strong>Platform examples run against a live stack.</strong> The client, HTTP and remote-CLI walkthroughs
-  (<code>docs/snippets/client_tour.py</code>, <code>http_tour.sh</code>, <code>cli_remote.sh</code>) run under <code>make e2e</code>; the
-  local CLI walkthrough (<code>cli_local.sh</code>) runs in the default suite
-  (<code>conformance/tests/test_docs_platform.py</code>). Shell snippets use the same section markers.</li>
-<li><strong>Reference pages are generated.</strong> <code>scripts/gen_docs_catalog.py</code> writes the steps, models,
-  plot recipes, spec schema and error-code pages, and <code>scripts/gen_docs_reference.py</code> the CLI
-  reference, the server settings and a copy of <code>apps/web/openapi.json</code>, into
-  <code>docs/reference/generated/</code> (git-ignored); an MkDocs hook runs both before every build.</li>
+<li><strong>The tests run all Python examples.</strong> The examples are in <code>docs/snippets/*.py</code>. Pages
+  include them with <code>--8&lt;-- "file.py:section"</code>. <code>conformance/tests/test_docs_snippets.py</code></li>
+<li><strong>Platform examples run against a live stack.</strong> <code>make e2e</code> runs the client, HTTP and
+  remote-CLI walkthroughs (<code>docs/snippets/client_tour.py</code>, <code>http_tour.sh</code>, <code>cli_remote.sh</code>).
+  The default suite runs the local CLI walkthrough (<code>cli_local.sh</code>) in
+  <code>conformance/tests/test_docs_platform.py</code>. Shell snippets use the same section markers.</li>
+<li><strong>Scripts make the reference pages.</strong> <code>scripts/gen_docs_catalog.py</code> writes the pages for the
+  steps, models, plot recipes, spec schema and error codes. <code>scripts/gen_docs_reference.py</code>
+  writes the CLI reference, the server settings and a copy of <code>apps/web/openapi.json</code>. The
+  two scripts write into <code>docs/reference/generated/</code>, which git ignores. An MkDocs hook runs
+  the two scripts before each build.</li>
 <li><strong>New <code>MAPI_*</code> variables go into the configuration reference</strong>
-  (<code>docs/operations/configuration.md</code>); a test scans the source tree for them.</li>
-<li><strong>Screenshots</strong> live in <code>docs/assets/screenshots/</code> (at most 300 KB each, each used by a page).
-  <code>make docs-screenshots</code> recaptures them from a running, seeded stack.</li>
+  (<code>docs/operations/configuration.md</code>). A test looks for these variables in the source tree.</li>
+<li><strong>Screenshots</strong> are in <code>docs/assets/screenshots/</code>. Each screenshot must be 300 KB or less,
+  and a page must use it. <code>make docs-screenshots</code> captures them again from a stack that runs and has
+  seed data.</li>
 <li><code>make docs-build</code> must pass (<code>mkdocs build --strict</code>, with anchor validation).</li>
-<li>Write for two readers: an analyst who wants to know what a feature does for them, and a data
-  scientist who wants to know exactly how it works.</li>
+<li>Write for two types of readers. An analyst wants to know what a feature does for them. A
+  data scientist wants to know exactly how it works.</li>
 </ul>
 
 
@@ -5063,13 +5153,13 @@ your pull request.</p>
         
         
           
-          <a href="../changelog/" class="md-footer__link md-footer__link--next" aria-label="Next: Changelog">
+          <a href="../writing-style/" class="md-footer__link md-footer__link--next" aria-label="Next: Writing style">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Changelog
+                Writing style
               </div>
             </div>
             <div class="md-footer__button md-icon">

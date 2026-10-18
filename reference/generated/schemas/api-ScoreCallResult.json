@@ -184,7 +184,9 @@
         "SELF_APPROVAL_FORBIDDEN",
         "NOT_VALIDATED",
         "EXPLORE_INVALID",
-        "OPTIMIZE_INFEASIBLE"
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -201,6 +203,185 @@
       ],
       "title": "FailureClass",
       "type": "string"
+    },
+    "ForecastConditioning": {
+      "description": "What a forecast was conditioned on: the fitted history, the supplied actuals and where\nthe forecast periods came from. ``parameters`` is always ``fitted``: conditioning never\nre-estimates the model. ``message`` says the same in plain language.",
+      "examples": [
+        {
+          "actuals_through": "1961-03-01",
+          "conditioned": true,
+          "dim": "t",
+          "fit_end": "1960-12-01",
+          "horizon_source": "horizon",
+          "message": "Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which ends 1960-12-01; the model's parameters were not re-estimated. 8 periods forecast from 1961-04-01 to 1961-11-01.",
+          "n_actuals": 3,
+          "n_series": 1,
+          "parameters": "fitted",
+          "periods": 8,
+          "revised": 0,
+          "series": [
+            {
+              "actuals_through": "1961-03-01",
+              "first_actual": "1961-01-01",
+              "forecast_from": "1961-04-01",
+              "forecast_to": "1961-11-01",
+              "missing": 0,
+              "n_actuals": 3,
+              "n_forecast": 8,
+              "origin": "1961-03-01",
+              "revised": 0,
+              "series": {}
+            }
+          ],
+          "series_conditioned": 1,
+          "truncated": false
+        },
+        {
+          "conditioned": false,
+          "dim": "t",
+          "fit_end": "1960-12-01",
+          "horizon_source": "horizon",
+          "message": "Forecast from the end of the fitted history (1960-12-01); no actuals were supplied. 8 periods forecast from 1961-01-01 to 1961-08-01.",
+          "n_actuals": 0,
+          "periods": 8,
+          "series": [
+            {
+              "forecast_from": "1961-01-01",
+              "forecast_to": "1961-08-01",
+              "n_actuals": 0,
+              "n_forecast": 8,
+              "origin": "1960-12-01"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "actuals_through": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The latest actual over every series",
+          "title": "Actuals Through"
+        },
+        "conditioned": {
+          "description": "Whether any supplied actual was used",
+          "title": "Conditioned",
+          "type": "boolean"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "fit_end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "description": "The last period of the fitted history",
+          "title": "Fit End"
+        },
+        "horizon_source": {
+          "enum": [
+            "rows",
+            "horizon"
+          ],
+          "title": "Horizon Source",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "n_actuals": {
+          "description": "Actuals used, over every series",
+          "minimum": 0,
+          "title": "N Actuals",
+          "type": "integer"
+        },
+        "n_series": {
+          "default": 1,
+          "minimum": 0,
+          "title": "N Series",
+          "type": "integer"
+        },
+        "parameters": {
+          "const": "fitted",
+          "default": "fitted",
+          "title": "Parameters",
+          "type": "string"
+        },
+        "periods": {
+          "description": "Forecast periods (the most over series)",
+          "minimum": 0,
+          "title": "Periods",
+          "type": "integer"
+        },
+        "revised": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Revised",
+          "type": "integer"
+        },
+        "series": {
+          "items": {
+            "$ref": "#/$defs/SeriesConditioning"
+          },
+          "maxItems": 1000,
+          "title": "Series",
+          "type": "array"
+        },
+        "series_conditioned": {
+          "default": 0,
+          "description": "Series with at least one actual",
+          "minimum": 0,
+          "title": "Series Conditioned",
+          "type": "integer"
+        },
+        "truncated": {
+          "default": false,
+          "description": "More series than MAX_CONDITIONING_SERIES",
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "dim",
+        "fit_end",
+        "conditioned",
+        "n_actuals",
+        "horizon_source",
+        "periods",
+        "message"
+      ],
+      "title": "ForecastConditioning",
+      "type": "object"
     },
     "Issue": {
       "additionalProperties": false,
@@ -1003,7 +1184,7 @@
       "type": "string"
     },
     "ScoreSummary": {
-      "description": "The requested summary of a score run as plain tables (``summary.json``), inlined in\n:class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without\nzarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the\n``score.zarr.zip`` output for everything).",
+      "description": "The requested summary of a score run as plain tables (``summary.json``), inlined in\n:class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without\nzarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the\n``score.zarr.zip`` output for everything). ``conditioning`` (forecasts): what the\nforecast was conditioned on - the end of the fitted history and the actuals the request\nsupplied (:mod:`mapi_spec.actuals`); ``actuals`` holds those values next to the\npredictions they compare with.",
       "examples": [
         {
           "tables": [
@@ -1028,9 +1209,86 @@
             }
           ],
           "truncated": false
+        },
+        {
+          "conditioning": {
+            "actuals_through": "1961-03-01",
+            "conditioned": true,
+            "dim": "t",
+            "fit_end": "1960-12-01",
+            "horizon_source": "horizon",
+            "message": "Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which ends 1960-12-01; the model's parameters were not re-estimated. 8 periods forecast from 1961-04-01 to 1961-11-01.",
+            "n_actuals": 3,
+            "n_series": 1,
+            "parameters": "fitted",
+            "periods": 8,
+            "revised": 0,
+            "series": [
+              {
+                "actuals_through": "1961-03-01",
+                "first_actual": "1961-01-01",
+                "forecast_from": "1961-04-01",
+                "forecast_to": "1961-11-01",
+                "missing": 0,
+                "n_actuals": 3,
+                "n_forecast": 8,
+                "origin": "1961-03-01",
+                "revised": 0,
+                "series": {}
+              }
+            ],
+            "series_conditioned": 1,
+            "truncated": false
+          },
+          "tables": [
+            {
+              "columns": [
+                "t",
+                "median",
+                "q5",
+                "q95"
+              ],
+              "rows": [
+                [
+                  "1961-01-01",
+                  447.2,
+                  424.9,
+                  469.5
+                ],
+                [
+                  "1961-04-01",
+                  461.8,
+                  431.0,
+                  492.6
+                ]
+              ],
+              "variable": "y_hat"
+            }
+          ],
+          "truncated": false
         }
       ],
       "properties": {
+        "actuals": {
+          "description": "Forecasts with actuals: the actuals the request supplied, as tables named after the prediction variable they compare with (its coordinate columns, then `actual`), in the output's names and original units. Predictions on those periods are one-step-ahead: what the model expected before seeing each actual",
+          "items": {
+            "$ref": "#/$defs/ScoreSummaryTable"
+          },
+          "maxItems": 16,
+          "title": "Actuals",
+          "type": "array"
+        },
+        "conditioning": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ForecastConditioning"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "tables": {
           "items": {
             "$ref": "#/$defs/ScoreSummaryTable"
@@ -1118,6 +1376,181 @@
         "rows"
       ],
       "title": "ScoreSummaryTable",
+      "type": "object"
+    },
+    "SeriesConditioning": {
+      "description": "What one series' forecast was conditioned on.\n\n``series`` holds the series' labels on the target's other dims (empty for a single\nseries). ``origin`` is the last period the forecast starts from: the last actual, or the\nend of the fitted history when the series has none.",
+      "examples": [
+        {
+          "actuals_through": "1961-03-01",
+          "first_actual": "1961-01-01",
+          "forecast_from": "1961-04-01",
+          "forecast_to": "1961-11-01",
+          "missing": 0,
+          "n_actuals": 3,
+          "n_forecast": 8,
+          "origin": "1961-03-01",
+          "revised": 0,
+          "series": {}
+        }
+      ],
+      "properties": {
+        "actuals_through": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The last supplied actual",
+          "title": "Actuals Through"
+        },
+        "first_actual": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Actual"
+        },
+        "forecast_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Forecast From"
+        },
+        "forecast_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Forecast To"
+        },
+        "missing": {
+          "default": 0,
+          "description": "Empty periods between the fitted history and the last actual, filtered as missing observations (only models that accept missing targets)",
+          "minimum": 0,
+          "title": "Missing",
+          "type": "integer"
+        },
+        "n_actuals": {
+          "description": "Periods with a supplied actual",
+          "minimum": 0,
+          "title": "N Actuals",
+          "type": "integer"
+        },
+        "n_forecast": {
+          "default": 0,
+          "minimum": 0,
+          "title": "N Forecast",
+          "type": "integer"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "title": "Origin"
+        },
+        "revised": {
+          "default": 0,
+          "description": "Actuals inside the fitted range: they replaced the fitted values",
+          "minimum": 0,
+          "title": "Revised",
+          "type": "integer"
+        },
+        "series": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          },
+          "title": "Series",
+          "type": "object"
+        }
+      },
+      "required": [
+        "n_actuals",
+        "origin"
+      ],
+      "title": "SeriesConditioning",
       "type": "object"
     },
     "Severity": {

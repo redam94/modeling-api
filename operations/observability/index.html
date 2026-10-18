@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4666,6 +4696,8 @@
       
         
       
+        
+      
     
     
     
@@ -4754,6 +4786,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4946,20 +5006,20 @@
 
 
 <h1 id="observability-v03">Observability <span class="mapi-badge">v0.3</span><a class="headerlink" href="#observability-v03" title="Permanent link">&para;</a></h1>
-<p>The API and the worker emit three signals:</p>
+<p>The API and the worker send three signals:</p>
 <ul>
-<li><strong>Metrics:</strong> Prometheus text at <code>GET /metrics</code> on every API process. The worker records
-  the orchestrator's series (dispatch, reconciliation, finalization, pipe event ingestion) and
-  serves them on <code>MAPI_WORKER_METRICS_PORT</code> when that is set.</li>
-<li><strong>Logs:</strong> one JSON object per line on stderr. Each line carries <code>trace_id</code> and <code>span_id</code>,
-  plus the request, run and tenant it belongs to.</li>
-<li><strong>Traces:</strong> OpenTelemetry spans for every request, every outgoing HTTP call and every run's
-  dispatch and finalization. Spans are exported over OTLP/HTTP only when a collector is
-  configured.</li>
+<li><strong>Metrics:</strong> Prometheus text at <code>GET /metrics</code> on each API process. The worker records the
+  series of the orchestrator (dispatch, reconciliation, finalization, pipe event ingestion).
+  When <code>MAPI_WORKER_METRICS_PORT</code> is set, the worker serves them on that port.</li>
+<li><strong>Logs:</strong> one JSON object on each line on stderr. Each line has <code>trace_id</code> and <code>span_id</code>,
+  and the request, run and tenant that it is related to.</li>
+<li><strong>Traces:</strong> OpenTelemetry spans for each request, each outgoing HTTP call, and the
+  dispatch and finalization of each run. The server exports spans over OTLP/HTTP only when
+  you configure a collector.</li>
 </ul>
-<p>Nothing is exported from inside a sandbox. Each execution gets the dispatching span's
-<code>traceparent</code> in <code>MAPI_TRACEPARENT</code>, so the supervisor's own stderr diagnostics can be joined
-to the run's trace without any telemetry leaving the exec project.</p>
+<p>Nothing goes out from inside a sandbox. Each execution gets the <code>traceparent</code> of the
+dispatching span in <code>MAPI_TRACEPARENT</code>. Thus you can join the stderr diagnostics of the
+supervisor to the trace of the run, and no telemetry goes out of the exec project.</p>
 <h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4973,7 +5033,7 @@ to the run's trace without any telemetry leaving the exec project.</p>
 <tr>
 <td><code>MAPI_LOG_JSON</code></td>
 <td><code>true</code></td>
-<td>JSON logs. <code>false</code> gives a readable console format for local work</td>
+<td>JSON logs. <code>false</code> gives a console format that is easy to read for local work</td>
 </tr>
 <tr>
 <td><code>MAPI_METRICS_ENABLED</code></td>
@@ -4983,17 +5043,17 @@ to the run's trace without any telemetry leaving the exec project.</p>
 <tr>
 <td><code>MAPI_METRICS_TOKEN</code></td>
 <td>unset</td>
-<td>Bearer a scraper must present. Required in the <code>multi-tenant</code> profile</td>
+<td>The bearer that a scraper must send. Necessary in the <code>multi-tenant</code> profile</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKER_METRICS_PORT</code>, <code>MAPI_WORKER_METRICS_HOST</code></td>
 <td>unset, <code>127.0.0.1</code></td>
-<td>Where the worker serves its own <code>/metrics</code> (same bearer rule)</td>
+<td>The address where the worker serves its own <code>/metrics</code> (the same bearer rule)</td>
 </tr>
 <tr>
 <td><code>MAPI_TRACING_ENABLED</code></td>
 <td><code>true</code></td>
-<td>Create spans (their ids reach the logs even without a collector)</td>
+<td>Make spans (their ids go into the logs also without a collector)</td>
 </tr>
 <tr>
 <td><code>MAPI_OTLP_ENDPOINT</code></td>
@@ -5003,8 +5063,8 @@ to the run's trace without any telemetry leaving the exec project.</p>
 </tbody>
 </table>
 <h3 id="scraping-metrics">Scraping <code>/metrics</code><a class="headerlink" href="#scraping-metrics" title="Permanent link">&para;</a></h3>
-<p>The series carry tenant ids and spend, so <code>/metrics</code> is not a public route. It authenticates
-its own bearer, like the Pub/Sub push endpoint does:</p>
+<p>The series contain tenant ids and spend. Thus <code>/metrics</code> is not a public route. It
+authenticates its own bearer, as the Pub/Sub push endpoint does:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># prometheus.yml</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">scrape_configs</span><span class="p">:</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi-api</span>
@@ -5014,14 +5074,15 @@ its own bearer, like the Pub/Sub push endpoint does:</p>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"api.internal:8000"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"worker.internal:9464"</span><span class="p p-Indicator">]</span>
 </span></code></pre></div>
-<p>In the <code>multi-tenant</code> profile a server without <code>MAPI_METRICS_TOKEN</code> refuses every scrape
-(401). The <code>single-tenant</code> and <code>dev</code> profiles serve <code>/metrics</code> openly on their loopback API
-unless a token is set.</p>
+<p>In the <code>multi-tenant</code> profile, a server without <code>MAPI_METRICS_TOKEN</code> refuses all scrapes
+(401). The <code>single-tenant</code> and <code>dev</code> profiles serve <code>/metrics</code> without authentication on
+their loopback API, if no token is set.</p>
 <h2 id="the-metric-set">The metric set<a class="headerlink" href="#the-metric-set" title="Permanent link">&para;</a></h2>
-<p>Generated from <code>mapi_server.observability.metrics.Metrics</code>, the one registry every series is
-defined in, so this table cannot drift from what <code>/metrics</code> serves. Label cardinality is bounded
-on purpose: <code>tenant_id</code> is the only unbounded label, on the two counters that are meaningless
-without it, and HTTP series are labelled by route <em>template</em>, never the raw path.</p>
+<p>This table comes from <code>mapi_server.observability.metrics.Metrics</code>. This is the one registry
+that defines all series. Thus the table always agrees with what <code>/metrics</code> serves. The
+number of label values is limited on purpose. <code>tenant_id</code> is the only unlimited label, on the
+two counters that have no meaning without it. HTTP series have the route <em>template</em> as
+label, never the raw path.</p>
 <table>
 <thead>
 <tr>
@@ -5190,26 +5251,27 @@ without it, and HTTP series are labelled by route <em>template</em>, never the r
 </tr>
 </tbody>
 </table>
-<p>What to watch first:</p>
+<p>Monitor these series first:</p>
 <ul>
-<li><strong><code>mapi_time_to_running_seconds</code></strong>: the M2 target is p95 under 90 s.</li>
-<li><strong><code>mapi_integrity_failures_total</code></strong> and <strong><code>mapi_sandbox_violations_total</code></strong>: any increase is a
-  security signal, not a reliability one.</li>
-<li><strong><code>mapi_global_spend_micros</code></strong> against <strong><code>mapi_global_spend_cap_micros</code></strong>: the kill switch's
-  window.</li>
-<li><strong><code>mapi_runs_active{state="stalled"}</code></strong>: runs whose events went quiet (the executor's status,
-  not the silence, decides what happens to them).</li>
+<li><strong><code>mapi_time_to_running_seconds</code></strong>: the M2 target is a p95 below 90 s.</li>
+<li><strong><code>mapi_integrity_failures_total</code></strong> and <strong><code>mapi_sandbox_violations_total</code></strong>: each increase
+  is a security signal, not a reliability signal.</li>
+<li><strong><code>mapi_global_spend_micros</code></strong> against <strong><code>mapi_global_spend_cap_micros</code></strong>: the window of the
+  kill switch.</li>
+<li><strong><code>mapi_runs_active{state="stalled"}</code></strong>: runs that sent no events for some time. The status
+  of the executor decides what occurs to them, not the absence of events.</li>
 </ul>
 <p>The security suite adds one more series from outside the server,
 <code>mapi_security_probe_unexpected{executor}</code>, through a textfile collector or a Pushgateway
 (<a href="../security-suite/#run-it">Security suite</a>).</p>
-<p>Every response carries <code>X-Request-Id</code>: the caller's own header when it sent one, otherwise the
-trace id. Quote it when you report a problem; it finds the log lines and the trace.</p>
+<p>Each response has <code>X-Request-Id</code>. This is the header of the caller if the caller sent one.
+If not, it is the trace id. When you report a problem, give this id. It finds the log lines
+and the trace.</p>
 <h2 id="dashboards-alerts-and-runbooks">Dashboards, alerts and runbooks<a class="headerlink" href="#dashboards-alerts-and-runbooks" title="Permanent link">&para;</a></h2>
-<p>Everything operators need is in <code>ops/</code> at the root of the repository; <code>ops/README.md</code> explains
-how to import each one. The tables below are generated from those files.</p>
+<p>All the files that operators need are in <code>ops/</code> at the root of the repository.
+<code>ops/README.md</code> tells how to import each one. The tables below come from those files.</p>
 <h3 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h3>
-<p>A Grafana dashboard and a Cloud Monitoring dashboard over the same series:</p>
+<p>A Grafana dashboard and a Cloud Monitoring dashboard show the same series:</p>
 <table>
 <thead>
 <tr>
@@ -5232,10 +5294,10 @@ how to import each one. The tables below are generated from those files.</p>
 </tbody>
 </table>
 <h3 id="alerts">Alerts<a class="headerlink" href="#alerts" title="Permanent link">&para;</a></h3>
-<p><code>ops/alerts/prometheus-rules.yml</code> (Prometheus rules, with recording rules such as
-<code>mapi:global_spend_ratio</code>) and <code>ops/alerts/cloud-monitoring-alerts.yaml</code> (the same policies for
-Cloud Monitoring). <em>page</em> wakes someone; <em>ticket</em> is for the next working hour. The thresholds
-are starting points for the private beta.</p>
+<p><code>ops/alerts/prometheus-rules.yml</code> has the Prometheus rules, with recording rules such as
+<code>mapi:global_spend_ratio</code>. <code>ops/alerts/cloud-monitoring-alerts.yaml</code> has the same policies
+for Cloud Monitoring. A <em>page</em> alert wakes a person. A <em>ticket</em> alert is for the next working
+hour. The thresholds are initial values for the private beta.</p>
 <table>
 <thead>
 <tr>
@@ -5327,7 +5389,7 @@ are starting points for the private beta.</p>
 </tbody>
 </table>
 <h3 id="runbooks">Runbooks<a class="headerlink" href="#runbooks" title="Permanent link">&para;</a></h3>
-<p>Each alert names the runbook that resolves it:</p>
+<p>Each alert names the runbook that solves it:</p>
 <table>
 <thead>
 <tr>
@@ -5364,10 +5426,14 @@ are starting points for the private beta.</p>
 </tr>
 </tbody>
 </table>
-<p>The sandbox-escape runbook is the plan's incident response for a confirmed escape: turn off
-uploaded code with the <a href="../../guides/administration/#kill-switches">kill switch</a>, rotate the
-signing and HMAC keys (which invalidates every outstanding signed URL), quarantine the affected
-bundles and notify the tenants.</p>
+<p>The sandbox-escape runbook is the incident response of the plan for a confirmed escape. It
+has these steps:</p>
+<ol>
+<li>Turn off uploaded code with the <a href="../../guides/administration/#kill-switches">kill switch</a>.</li>
+<li>Rotate the signing and HMAC keys. This makes all signed URLs that are open now invalid.</li>
+<li>Put the affected bundles in quarantine.</li>
+<li>Tell the tenants.</li>
+</ol>
 <h2 id="tests-that-guard-the-signals">Tests that guard the signals<a class="headerlink" href="#tests-that-guard-the-signals" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5379,19 +5445,20 @@ bundles and notify the tenants.</p>
 <tbody>
 <tr>
 <td><code>make chaos</code></td>
-<td>A worker killed during <code>PROVISIONING</code> and <code>RUNNING</code>, Pub/Sub redelivery and reordering, bad-HMAC redelivery, and a PostgreSQL restart mid-run. Every run converges to one outcome, with one attempt and no duplicate execution</td>
+<td>A worker that stops during <code>PROVISIONING</code> and <code>RUNNING</code>, Pub/Sub redelivery and a changed sequence, redelivery with a bad HMAC, and a PostgreSQL restart during a run. Each run comes to one outcome, with one attempt and no duplicate execution</td>
 </tr>
 <tr>
 <td><code>make load-test</code></td>
-<td>100 concurrent fits through the real dispatcher, reconciler and finalizer on the fake Cloud Run backend, with injected 429s, lost responses and duplicate pushes. No run is lost, and p95 time-to-<code>RUNNING</code> stays under 90 s</td>
+<td>100 concurrent fits through the real dispatcher, reconciler and finalizer on the fake Cloud Run backend, with injected 429s, lost responses and duplicate pushes. No run is lost, and the p95 time-to-<code>RUNNING</code> stays below 90 s</td>
 </tr>
 <tr>
 <td><code>make security-suite</code></td>
-<td>The sandbox-escape probes (see <a href="../security-suite/">Security suite</a>)</td>
+<td>The sandbox-escape probes (refer to <a href="../security-suite/">Security suite</a>)</td>
 </tr>
 </tbody>
 </table>
-<p>All three run offline, against the embedded PostgreSQL and the in-memory or shim object store.</p>
+<p>All three run offline, against the embedded PostgreSQL and the in-memory or shim object
+store.</p>
 
 
 

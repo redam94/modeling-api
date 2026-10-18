@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4673,6 +4703,8 @@
       
         
       
+        
+      
     
     
     
@@ -4761,6 +4793,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4947,11 +5007,12 @@
 
 
 <h1 id="deleting-data-and-exporting-it-v04">Deleting data and exporting it <span class="mapi-badge">v0.4</span><a class="headerlink" href="#deleting-data-and-exporting-it-v04" title="Permanent link">&para;</a></h1>
-<p>A tenant admin can export everything the workspace stored (GDPR access) and delete the whole
-workspace (GDPR erasure). Both need a signed-in session of a <strong>tenant admin</strong>: API tokens never
-administer a tenant. The HTTP operations are in the
-<a href="../../reference/http-api/#sign-up-verification-deletion-and-export">HTTP API reference</a>; the
-settings are in the <a href="../../operations/configuration/">configuration reference</a>.</p>
+<p>A tenant admin can export all the data that the workspace stored (GDPR access). The tenant
+admin can also delete the full workspace (GDPR erasure). Both actions need a signed-in
+session of a <strong>tenant admin</strong>. API tokens never administer a tenant. The
+<a href="../../reference/http-api/#sign-up-verification-deletion-and-export">HTTP API reference</a> gives
+the HTTP operations. The <a href="../../operations/configuration/">configuration reference</a> gives the
+settings.</p>
 <h2 id="export-first">Export first<a class="headerlink" href="#export-first" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># queue the export (everything by default: metadata, datasets, models, audit, usage)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-b<span class="w"> </span>cookies<span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-CSRF-Token: </span><span class="nv">$CSRF</span><span class="s2">"</span><span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/tenants/acme/exports"</span><span class="w"> </span><span class="se">\</span>
@@ -4961,10 +5022,11 @@ settings are in the <a href="../../operations/configuration/">configuration refe
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># every export of the workspace, newest first (any admin, any browser)</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>curl<span class="w"> </span>-s<span class="w"> </span>-b<span class="w"> </span>cookies<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/tenants/acme/exports"</span>
 </span></code></pre></div>
-<p>Settings &gt; Data shows the newest export from that list, so another admin (or another
-browser) sees an export that is still being built and can download a finished one; the
-Python client has <code>client.tenants.exports("acme")</code>.</p>
-<p>The orchestrator builds the archive in the background (usually within a minute). It is a zip:</p>
+<p>Settings &gt; Data shows the newest export from that list. Thus a different admin (or a
+different browser) sees an export that the platform still makes. That admin can also
+download a finished export. The Python client has <code>client.tenants.exports("acme")</code>.</p>
+<p>The orchestrator makes the archive in the background, usually in less than a minute. The
+archive is a zip:</p>
 <table>
 <thead>
 <tr>
@@ -4975,70 +5037,77 @@ Python client has <code>client.tenants.exports("acme")</code>.</p>
 <tbody>
 <tr>
 <td><code>README.txt</code>, <code>manifest.json</code></td>
-<td>What is inside, with the size and SHA-256 of every file</td>
+<td>What is in the archive, with the size and SHA-256 of each file</td>
 </tr>
 <tr>
 <td><code>metadata/&lt;table&gt;.jsonl</code></td>
-<td>Every record of the workspace, one JSON object per line: projects, members, API tokens, datasets and versions (schemas, profiles), specs and revisions (YAML), runs, models and versions, plots, endpoints, webhooks…, up to <code>MAPI_EXPORT_MAX_METADATA_BYTES</code> (256 MiB) in total; a table cut short is listed under <code>skipped</code> with the rows written</td>
+<td>Each record of the workspace, with one JSON object on each line. Examples are projects, members, API tokens, datasets and versions (schemas, profiles), specs and revisions (YAML), runs, models and versions, plots, endpoints and webhooks. The maximum total is <code>MAPI_EXPORT_MAX_METADATA_BYTES</code> (256 MiB). If the export stops a table early, <code>skipped</code> lists the table with the rows that it wrote.</td>
 </tr>
 <tr>
 <td><code>datasets/&lt;dataset&gt;/v&lt;n&gt;/...</code></td>
-<td>The stored dataset objects, byte for byte, up to <code>MAPI_EXPORT_MAX_INLINE_BYTES</code> (256 MiB) in total; the rest is listed in <code>manifest.json</code> under <code>skipped</code> with sizes and checksums</td>
+<td>The stored dataset objects, byte for byte. The maximum total is <code>MAPI_EXPORT_MAX_INLINE_BYTES</code> (256 MiB). <code>manifest.json</code> lists the remaining objects under <code>skipped</code>, with sizes and checksums.</td>
 </tr>
 <tr>
 <td><code>models/&lt;model&gt;/v&lt;n&gt;/manifest.json</code>, <code>model_version.json</code></td>
-<td>The signed bundle manifest, lineage, diagnostics, scorecard and metrics of every model version</td>
+<td>The signed bundle manifest, lineage, diagnostics, scorecard and metrics of each model version</td>
 </tr>
 <tr>
 <td><code>audit/audit_events.jsonl</code>, <code>usage/cost_ledger.jsonl</code></td>
-<td>The workspace's audit log and metered usage</td>
+<td>The audit log and the metered usage of the workspace</td>
 </tr>
 </tbody>
 </table>
-<p>Credentials are never exported: token hashes, signing keys, nonces and webhook secrets are
-<code>[redacted]</code>. Records are read through the workspace's own row-level-security session, so an
-archive can only contain its own workspace's rows. One export runs at a time, at most
-<code>MAPI_EXPORTS_PER_DAY</code> (3) a day (<code>429 QUOTA_EXCEEDED</code> otherwise); an archive is deleted after
-<code>MAPI_EXPORT_RETENTION_S</code> (7 days). A suspended workspace, including one whose deletion is
-scheduled, can still export.</p>
+<p>The platform never exports credentials. Token hashes, signing keys, nonces and webhook
+secrets show as <code>[redacted]</code>. The platform reads the records through the own
+row-level-security session of the workspace. Thus an archive can contain only the rows of
+its own workspace.</p>
+<p>One export runs at a time. The maximum is <code>MAPI_EXPORTS_PER_DAY</code> (3) each day. More exports
+get <code>429 QUOTA_EXCEEDED</code>. The platform deletes an archive after <code>MAPI_EXPORT_RETENTION_S</code>
+(7 days). A suspended workspace can still export. This includes a workspace with a scheduled
+deletion.</p>
 <h2 id="request-the-deletion">Request the deletion<a class="headerlink" href="#request-the-deletion" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-b<span class="w"> </span>cookies<span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-CSRF-Token: </span><span class="nv">$CSRF</span><span class="s2">"</span><span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/tenants/acme/deletion"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{"confirm": "acme", "reason": "closing the account"}'</span>
 </span></code></pre></div>
-<p><code>confirm</code> must repeat the tenant id. A deployment can also demand a recent sign-in
-(<code>MAPI_DELETION_REAUTH_MAX_AGE_S</code>: older sessions get <code>401</code> and sign in again). The platform's
-own tenant cannot be deleted.</p>
-<p>The deletion is <strong>scheduled</strong> for the end of a grace period (<code>MAPI_TENANT_DELETION_GRACE_S</code>,
-7 days). At once:</p>
+<p><code>confirm</code> must contain the tenant id again. A deployment can also make a recent sign-in necessary
+(<code>MAPI_DELETION_REAUTH_MAX_AGE_S</code>). Older sessions get <code>401</code> and must sign in again. You
+cannot delete the own tenant of the platform.</p>
+<p>The platform <strong>schedules</strong> the deletion for the end of a grace period
+(<code>MAPI_TENANT_DELETION_GRACE_S</code>, 7 days). These things occur immediately:</p>
 <ul>
-<li>the workspace is <strong>suspended</strong>: everything stays readable, nothing new can be created or
-  run, and nothing spends compute;</li>
-<li>its unfinished runs are cancelled.</li>
+<li>The platform <strong>suspends</strong> the workspace. You can still read all its data. You cannot
+  create or run new items, and nothing spends compute.</li>
+<li>The platform cancels the unfinished runs of the workspace.</li>
 </ul>
-<p>Until the grace period ends the admin can still export, and can cancel:</p>
+<p>Until the grace period ends, the admin can still export. The admin can also cancel the
+deletion:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-b<span class="w"> </span>cookies<span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-CSRF-Token: </span><span class="nv">$CSRF</span><span class="s2">"</span><span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/tenants/acme/deletion"</span>
 </span></code></pre></div>
-<p>Cancelling gives the workspace back the status it had (unless an operator changed it in the
-meantime). The audit log records <code>tenant.deletion_request</code> and <code>tenant.deletion_cancel</code>.</p>
+<p>When you cancel, the workspace gets back the status that it had before. This is not the
+case if an operator changed the status after the request. The audit log records
+<code>tenant.deletion_request</code> and <code>tenant.deletion_cancel</code>.</p>
 <h2 id="what-happens-when-the-grace-period-ends">What happens when the grace period ends<a class="headerlink" href="#what-happens-when-the-grace-period-ends" title="Permanent link">&para;</a></h2>
-<p>The deletion becomes <code>deleting</code>. This cannot be undone:</p>
+<p>The deletion becomes <code>deleting</code>. You cannot undo this. The platform does these steps:</p>
 <ol>
-<li>The tenant's status becomes <code>deleting</code>: every request for it is refused, for its members
-   and its tokens alike (operators can still read the deletion's progress).</li>
-<li>Its API tokens are revoked, and the browser sessions of people who belong to no other
-   workspace are ended. Components that hand out links (webhooks, embed links) revoke theirs.</li>
-<li>Unfinished runs are cancelled again, and the purge waits for them to stop (at most
-   <code>MAPI_DELETION_RUN_STOP_TIMEOUT_S</code>, one hour). A run that still has not stopped after
-   that could keep uploading results under the workspace's prefix while its signed upload
-   links are valid (its timeout plus 30 minutes), so the purge then waits for those links to
-   expire before it deletes anything; the <code>queue</code> store's detail says until when.</li>
-<li>Exports that are queued or still being built are cancelled (state <code>failed</code>). The purge
-   waits for a build in progress to end (at most its <code>MAPI_EXPORT_BUILD_TIMEOUT_S</code> lease); a
-   cancelled build never uploads its archive, and deletes one that landed after the purge
-   listed the objects.</li>
+<li>The status of the tenant becomes <code>deleting</code>. The platform refuses each request for the
+   tenant, from its members and from its tokens. Operators can still read the progress of
+   the deletion.</li>
+<li>The platform revokes the API tokens of the tenant. It ends the browser sessions of
+   persons who belong to no other workspace. Components that give links (webhooks, embed
+   links) revoke their links.</li>
+<li>The platform cancels the unfinished runs again. The purge waits for them to stop, for a
+   maximum of <code>MAPI_DELETION_RUN_STOP_TIMEOUT_S</code> (one hour). After that time, a run that has
+   not stopped can possibly continue to upload results under the prefix of the workspace.
+   It can do this while its signed upload links are valid (its timeout plus 30 minutes).
+   Thus the purge then waits for those links to expire before it deletes anything. The
+   detail of the <code>queue</code> store shows the time until which it waits.</li>
+<li>The platform cancels exports that are in the queue or that it still makes (state
+   <code>failed</code>). The purge waits for a build in progress to end. The maximum wait is the
+   <code>MAPI_EXPORT_BUILD_TIMEOUT_S</code> lease of the build. A cancelled build never uploads its
+   archive. If an archive arrived after the purge listed the objects, the build deletes it.</li>
 </ol>
-<p>Then the purge goes store by store, and <code>GET /v1/tenants/{id}/deletion</code> shows each one's
-progress:</p>
+<p>Then the purge goes from store to store. <code>GET /v1/tenants/{id}/deletion</code> shows the progress
+of each store:</p>
 <table>
 <thead>
 <tr>
@@ -5049,15 +5118,15 @@ progress:</p>
 <tbody>
 <tr>
 <td><code>queue</code></td>
-<td>Background jobs of the tenant's runs and their bootstrap objects</td>
+<td>Background jobs of the runs of the tenant, and their bootstrap objects</td>
 </tr>
 <tr>
 <td><code>database</code></td>
-<td>Every record of the workspace in every table, children before parents. People who belonged only to this workspace are deleted too</td>
+<td>Each record of the workspace in each table, children before parents. The platform also deletes persons who belonged only to this workspace.</td>
 </tr>
 <tr>
 <td><code>object_store</code></td>
-<td>Every object under <code>t/&lt;tenant&gt;/</code> in the quarantine, runs, bundles and data buckets: uploads, run scratch, model bundles, dataset versions, export archives</td>
+<td>Each object under <code>t/&lt;tenant&gt;/</code> in the quarantine, runs, bundles and data buckets: uploads, run scratch, model bundles, dataset versions and export archives</td>
 </tr>
 <tr>
 <td><code>logs</code></td>
@@ -5065,12 +5134,12 @@ progress:</p>
 </tr>
 <tr>
 <td><code>webhooks</code></td>
-<td>The <code>tenant.deletion.completed</code> webhook is sent to the endpoints registered before the purge</td>
+<td>The platform sends the <code>tenant.deletion.completed</code> webhook to the endpoints that were registered before the purge.</td>
 </tr>
 </tbody>
 </table>
-<p>When every store is done the deletion is <code>purged</code>, and the audit log gets the tombstone event
-<code>tenant.purged</code> (by tenant id, without content).</p>
+<p>When all stores are complete, the deletion is <code>purged</code>. The audit log gets the tombstone
+event <code>tenant.purged</code>. This event contains the tenant id, but no content.</p>
 <h3 id="what-is-kept-and-why">What is kept, and why<a class="headerlink" href="#what-is-kept-and-why" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5089,16 +5158,16 @@ progress:</p>
 <td>7 years for tax law: amounts and run ids, no content</td>
 </tr>
 <tr>
-<td>The deletion's own record</td>
-<td>Its ids, dates and counts per store</td>
+<td>The own record of the deletion</td>
+<td>Its ids, dates and counts for each store</td>
 </tr>
 <tr>
 <td>The tenant id</td>
-<td>A tombstone row (status <code>deleting</code>, no name) so the id is never reused</td>
+<td>A tombstone row (status <code>deleting</code>, no name), so that nobody can use the id again</td>
 </tr>
 <tr>
 <td>Sign-up records</td>
-<td>Only the keyed digests used against repeated abuse; the e-mail, name and organisation are erased</td>
+<td>Only the keyed digests that the platform uses against repeated abuse. The platform erases the e-mail, name and organisation.</td>
 </tr>
 <tr>
 <td>Platform logs</td>
@@ -5107,43 +5176,48 @@ progress:</p>
 </tbody>
 </table>
 <h3 id="retention-locks">Retention locks<a class="headerlink" href="#retention-locks" title="Permanent link">&para;</a></h3>
-<p>Model bundles live in a bucket with a retention policy (Terraform <code>bundle_retention_days</code>, 30
-days; locked in production). An object younger than that cannot be deleted by anyone. The
-purge records each such object with the time it may be deleted (<code>time_created</code> plus
-<code>MAPI_BUNDLE_RETENTION_DAYS</code>), shows <code>object_store</code> as <code>running</code> with a plain explanation, and
-resumes on its own when the retention expires. Everything else is gone already, and the
-workspace stays inaccessible.</p>
+<p>Model bundles are in a bucket with a retention policy (Terraform <code>bundle_retention_days</code>, 30
+days, locked in production). Nobody can delete an object that is younger than that. The
+purge records each such object with the time when it can be deleted (<code>time_created</code> plus
+<code>MAPI_BUNDLE_RETENTION_DAYS</code>). It shows <code>object_store</code> as <code>running</code>, with a plain
+explanation. When the retention expires, the purge continues automatically. All the other
+data is already gone, and nobody can get access to the workspace.</p>
 <h3 id="logs">Logs<a class="headerlink" href="#logs" title="Permanent link">&para;</a></h3>
-<p>Cloud Logging entries cannot be deleted one by one, so a deletion does not purge logs. The
-platform keeps tenant content out of them: structured log lines carry tenant, project, run and
-request ids and keyed digests of client addresses, never request bodies, data or tracebacks of
-tenant code. They expire with their bucket's retention: Terraform sets the control project's
-<code>_Default</code> log bucket to <code>log_retention_days</code> (30 days by default,
-<code>infra/terraform/modules/control/logging.tf</code>). The run-event sink only forwards events to
-Pub/Sub and stores nothing. So <strong>30 days after a deletion, its logs are gone too</strong>.</p>
+<p>You cannot delete Cloud Logging entries one at a time. Thus a deletion does not purge logs.
+The platform keeps tenant content out of the logs. Structured log lines contain tenant,
+project, run and request ids, and keyed digests of client addresses. They never contain
+request bodies, data or tracebacks of tenant code.</p>
+<p>The logs expire with the retention of their bucket. Terraform sets the <code>_Default</code> log bucket
+of the control project to <code>log_retention_days</code> (30 days by default,
+<code>infra/terraform/modules/control/logging.tf</code>). The run-event sink only sends events to
+Pub/Sub and stores nothing. Thus <strong>30 days after a deletion, its logs are also gone</strong>.</p>
 <h3 id="when-a-store-fails">When a store fails<a class="headerlink" href="#when-a-store-fails" title="Permanent link">&para;</a></h3>
-<p>A failing store makes the deletion <code>failed</code>. The orchestrator retries it with back-off (5
-minutes doubling up to 6 hours) up to <code>MAPI_DELETION_MAX_ATTEMPTS</code> (8) times; after that an
-operator looks at <code>last_error</code> in the logs and restarts it:</p>
+<p>If a store fails, the deletion becomes <code>failed</code>. The orchestrator tries it again with
+back-off. The back-off starts at 5 minutes and doubles each time, up to 6 hours. The maximum
+is <code>MAPI_DELETION_MAX_ATTEMPTS</code> (8) attempts. After that, an operator examines <code>last_error</code>
+in the logs and starts the deletion again:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-b<span class="w"> </span>cookies<span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-CSRF-Token: </span><span class="nv">$CSRF</span><span class="s2">"</span><span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/admin/tenants/acme/deletion/retry"</span>
 </span></code></pre></div>
-<p>The purge is idempotent: a retry starts where the last pass stopped.</p>
+<p>The purge is idempotent. A new attempt starts where the last pass stopped.</p>
 <h2 id="for-operators">For operators<a class="headerlink" href="#for-operators" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The scheduler runs in the orchestrator (<code>mapi-server worker</code>) every
-  <code>MAPI_LIFECYCLE_INTERVAL_S</code>; purges and exports run as procrastinate jobs on the
-  <code>lifecycle</code> queue, one at a time per deletion or export, and are re-queued if a worker dies.</li>
-<li>An export build may take <code>MAPI_EXPORT_BUILD_TIMEOUT_S</code> (one hour) and then fails. An
-  export still <code>running</code> five minutes after that belongs to a process that died (an OOM
-  kill, a lost orchestrator): the scheduler builds it once more, and fails it if that build
-  dies too, so a workspace can always ask for a new export. The archive is built in memory,
-  so size the orchestrator for <code>MAPI_EXPORT_MAX_INLINE_BYTES</code> plus
-  <code>MAPI_EXPORT_MAX_METADATA_BYTES</code>.</li>
-<li>Database rows are deleted through the tenant's own row-level-security session wherever the
-  request-path role may delete them, so a purge cannot touch another tenant's rows.</li>
+<li>The scheduler runs in the orchestrator (<code>mapi-server worker</code>) each
+  <code>MAPI_LIFECYCLE_INTERVAL_S</code>. Purges and exports run as procrastinate jobs on the
+  <code>lifecycle</code> queue, one at a time for each deletion or export. If a worker stops
+  unexpectedly, the platform puts the job in the queue again.</li>
+<li>An export build can take <code>MAPI_EXPORT_BUILD_TIMEOUT_S</code> (one hour). After that, it fails.
+  Possibly, an export is still <code>running</code> five minutes after that time. Then it belongs to a
+  process that stopped unexpectedly (an OOM kill, a lost orchestrator). The scheduler makes
+  the export one more time. If that build also stops, the scheduler fails the export. Thus a
+  workspace can always ask for a new export.</li>
+<li>The orchestrator makes the archive in memory. Give the orchestrator memory for
+  <code>MAPI_EXPORT_MAX_INLINE_BYTES</code> plus <code>MAPI_EXPORT_MAX_METADATA_BYTES</code>.</li>
+<li>Where the request-path role can delete database rows, the platform deletes them through
+  the own row-level-security session of the tenant. Thus a purge cannot touch the rows of a
+  different tenant.</li>
 <li>Components that own credentials or links of a tenant register a
-  <code>mapi_server.services.trust.TenantRevoker</code>; the webhooks component provides the
+  <code>mapi_server.services.trust.TenantRevoker</code>. The webhooks component gives the
   <code>DeletionNotifier</code> that sends <code>tenant.deletion.completed</code>.</li>
 </ul>
 

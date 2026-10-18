@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -2896,10 +2926,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-fitting-works" class="md-nav__link">
+  <a href="#how-the-fit-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How fitting works
+        How the fit works
       
     </span>
   </a>
@@ -2907,10 +2937,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-scoring-works" class="md-nav__link">
+  <a href="#how-the-score-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How scoring works
+        How the score works
       
     </span>
   </a>
@@ -2962,10 +2992,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-work-through-an-executor" class="md-nav__link">
+  <a href="#run-work-with-an-executor" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running work through an executor
+        Run work with an executor
       
     </span>
   </a>
@@ -2973,10 +3003,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#error-codes-you-may-see" class="md-nav__link">
+  <a href="#error-codes-that-you-can-see" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error codes you may see
+        Error codes that you can see
       
     </span>
   </a>
@@ -4668,6 +4698,8 @@
       
         
       
+        
+      
     
     
     
@@ -4776,6 +4808,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../project/changelog/" class="md-nav__link">
         
   
@@ -4842,10 +4902,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-fitting-works" class="md-nav__link">
+  <a href="#how-the-fit-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How fitting works
+        How the fit works
       
     </span>
   </a>
@@ -4853,10 +4913,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-scoring-works" class="md-nav__link">
+  <a href="#how-the-score-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How scoring works
+        How the score works
       
     </span>
   </a>
@@ -4908,10 +4968,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-work-through-an-executor" class="md-nav__link">
+  <a href="#run-work-with-an-executor" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running work through an executor
+        Run work with an executor
       
     </span>
   </a>
@@ -4919,10 +4979,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#error-codes-you-may-see" class="md-nav__link">
+  <a href="#error-codes-that-you-can-see" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error codes you may see
+        Error codes that you can see
       
     </span>
   </a>
@@ -4947,15 +5007,23 @@
 
 
 <h1 id="python-sdk-mapi-sdk">Python SDK (<code>mapi-sdk</code>)<a class="headerlink" href="#python-sdk-mapi-sdk" title="Permanent link">&para;</a></h1>
-<p><code>mapi-sdk</code> is the runtime that actually touches your arrays. It runs inside runner images and
-in your notebook — never in the API server — and does everything between a spec and a fitted,
-scoreable model: binding, preprocessing with fitted state, the train/holdout split, the model
-plugin, coordinate handling at score time, inverse transforms, summaries and bundles.</p>
+<p><code>mapi-sdk</code> is the runtime that operates on your arrays. It runs in runner images and in your
+notebook. It never runs in the API server. It does all the work between a spec and a fitted
+model that you can score:</p>
+<ul>
+<li>binding</li>
+<li>preprocessing with fitted state</li>
+<li>the train and holdout split</li>
+<li>the model plugin</li>
+<li>the coordinates at score time</li>
+<li>inverse transforms</li>
+<li>summaries and bundles</li>
+</ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>add<span class="w"> </span>mapi-sdk<span class="w">          </span><span class="c1"># or: pip install mapi-sdk</span>
 </span></code></pre></div>
 <h2 id="fit-and-score-in-a-notebook">Fit and score in a notebook<a class="headerlink" href="#fit-and-score-in-a-notebook" title="Permanent link">&para;</a></h2>
-<p>The <a href="../../getting-started/first-model/">first-model walkthrough</a> builds this step by step. In
-short, with <code>spec</code>, <code>data</code> and <code>schema</code> from there:</p>
+<p>The <a href="../../getting-started/first-model/">first-model walkthrough</a> shows these steps one by one.
+The short version is below. It uses <code>spec</code>, <code>data</code> and <code>schema</code> from that page:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_spec</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span>
@@ -5008,57 +5076,63 @@ short, with <code>spec</code>, <code>data</code> and <code>schema</code> from th
 </span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="n">again</span> <span class="o">=</span> <span class="n">Bundle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">registry</span><span class="p">)</span>  <span class="c1"># every file's size and hashes are verified here</span>
 </span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="k">assert</span> <span class="n">again</span><span class="o">.</span><span class="n">bundle_id</span> <span class="o">==</span> <span class="n">bundle</span><span class="o">.</span><span class="n">bundle_id</span>
 </span></code></pre></div>
-<p>For a model whose representation is <code>draws</code>, add <code>draws: 50</code> to <code>output</code> and the tree also has
-a <code>draws</code> group: 50 joint draws taken from the bundle-wide thinning index.</p>
-<p><code>score_bundle</code> returns an <code>xr.DataTree</code>. Its root attributes record the representation, the
-output kind (<code>expected</code> or <code>predictive</code>), the <strong>output space</strong> of every variable (for example
-<code>weekly</code> — inverse transforms stop at the last reshape step), retransformation labels for point
-models, and any warnings. Counterfactual requests add <code>baseline/</code> and <code>delta/</code> groups.</p>
-<h2 id="how-fitting-works">How fitting works<a class="headerlink" href="#how-fitting-works" title="Permanent link">&para;</a></h2>
-<p><code>fit.mode: evaluate_then_refit</code> (the default) does this:</p>
+<p>For a model with the <code>draws</code> representation, add <code>draws: 50</code> to <code>output</code>. Then the tree also
+has a <code>draws</code> group. This group has 50 joint draws from the thinning index of the bundle.</p>
+<p><code>score_bundle</code> returns an <code>xr.DataTree</code>. Its root attributes record these items:</p>
+<ul>
+<li>The representation.</li>
+<li>The output kind (<code>expected</code> or <code>predictive</code>).</li>
+<li>The <strong>output space</strong> of each variable, for example <code>weekly</code>. Inverse transforms stop at the
+  last reshape step.</li>
+<li>The retransformation labels for point models.</li>
+<li>All warnings.</li>
+</ul>
+<p>Counterfactual requests add <code>baseline/</code> and <code>delta/</code> groups.</p>
+<h2 id="how-the-fit-works">How the fit works<a class="headerlink" href="#how-the-fit-works" title="Permanent link">&para;</a></h2>
+<p><code>fit.mode: evaluate_then_refit</code> (the default) does these steps:</p>
 <ol>
-<li>Bind dataset names to canonical names and check the data against its schema.</li>
-<li>Run the stateless prefix of the pipeline on all data, up to the split stage.</li>
-<li>Split, fit the remaining steps and the model on <strong>train</strong>.</li>
-<li>Score the holdout <strong>through the normal score path</strong> (with context rows from train) and
-   compute <code>evaluate.metrics</code>.</li>
-<li>Refit every step and the model on <strong>all</strong> data, so the context tails and terminal state
-   that forecasts start from are the latest ones. The production bundle links the evaluation
-   bundle in its lineage.</li>
+<li>Bind the dataset names to canonical names. Do a check of the data against its schema.</li>
+<li>Run the stateless prefix of the pipeline on all the data, up to the split stage.</li>
+<li>Split the data. Fit the remaining steps and the model on <strong>train</strong>.</li>
+<li>Score the holdout <strong>through the usual score path</strong> (with context rows from train). Calculate
+   <code>evaluate.metrics</code>.</li>
+<li>Fit each step and the model again on <strong>all</strong> the data. Thus, forecasts start from the latest
+   context tails and the latest terminal state. The lineage of the production bundle has a link
+   to the evaluation bundle.</li>
 </ol>
-<p><code>train_only</code> stops after step 4 and keeps the train fit.</p>
-<h2 id="how-scoring-works">How scoring works<a class="headerlink" href="#how-scoring-works" title="Permanent link">&para;</a></h2>
+<p><code>train_only</code> stops after step 4 and keeps the fit on train.</p>
+<h2 id="how-the-score-works">How the score works<a class="headerlink" href="#how-the-score-works" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Phase</th>
-<th>What happens</th>
+<th>What occurs</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>CoordPlan</td>
-<td>Typed early errors from metadata: <code>UNSEEN_LEVELS</code>, <code>COORD_NOT_ALLOWED</code>, <code>HORIZON_EXCEEDS_FIT</code> (409), <code>MISSING_FUTURE_COVARIATE</code>, <code>NON_CONTIGUOUS_EXTENSION</code>, <code>MODE_NOT_SUPPORTED</code>, ...</td>
+<td>The SDK finds typed errors early from the metadata: <code>UNSEEN_LEVELS</code>, <code>COORD_NOT_ALLOWED</code>, <code>HORIZON_EXCEEDS_FIT</code> (409), <code>MISSING_FUTURE_COVARIATE</code>, <code>NON_CONTIGUOUS_EXTENSION</code>, <code>MODE_NOT_SUPPORTED</code>, ...</td>
 </tr>
 <tr>
 <td>Entry</td>
-<td>Data enters at <code>inputs_stage</code> (default <code>raw</code>). Steps before it — and their side tables — are skipped.</td>
+<td>The data goes in at <code>inputs_stage</code> (default <code>raw</code>). The SDK skips the steps before this stage and their side tables.</td>
 </tr>
 <tr>
 <td>Replay</td>
-<td>Each step's stored state is applied; steps with a look-back (lags) get their stored per-group context rows prepended first, after a contiguity check.</td>
+<td>The SDK applies the stored state of each step. Some steps look back (lags). For these steps, the SDK first does a contiguity check. Then it puts the stored context rows of each group before the data.</td>
 </tr>
 <tr>
 <td>Canonical coords</td>
-<td>Model-stage data is reordered to the fit order, padded to the full fit set, and new levels are appended with a <code>&lt;dim&gt;__is_new</code> flag.</td>
+<td>The SDK puts the model-stage data in the fit order and pads it to the full fit set. It adds new levels at the end with a <code>&lt;dim&gt;__is_new</code> flag.</td>
 </tr>
 <tr>
 <td>Model</td>
-<td><code>plugin.score(...)</code> returns the <code>predictions</code> group in the plugin's representation.</td>
+<td><code>plugin.score(...)</code> returns the <code>predictions</code> group in the representation of the plugin.</td>
 </tr>
 <tr>
 <td>Back to you</td>
-<td>Context rows are dropped, requested coords selected, outputs inverted to the output space, aggregated (only if statistically valid), summarised and reverse-bound to your dataset names.</td>
+<td>The SDK removes the context rows and selects the requested coords. It inverts the outputs to the output space. It aggregates them (only if this is statistically valid) and makes summaries. Then it binds the names back to your dataset names.</td>
 </tr>
 </tbody>
 </table>
@@ -5077,19 +5151,19 @@ models, and any warnings. Counterfactual requests add <code>baseline/</code> and
 <td><code>draws</code></td>
 <td><code>(chain, draw, …)</code></td>
 <td><code>mean</code>, <code>sd</code>, <code>median</code>, <code>hdi_&lt;p&gt;</code>, <code>eti_&lt;p&gt;</code>, <code>q&lt;p&gt;</code></td>
-<td>any (per draw)</td>
+<td>All (for each draw)</td>
 </tr>
 <tr>
 <td><code>quantiles</code></td>
 <td><code>(quantile, …)</code></td>
 <td><code>median</code>, <code>q&lt;p&gt;</code>, <code>eti_&lt;p&gt;</code> (interpolated, never extrapolated)</td>
-<td>none</td>
+<td>None</td>
 </tr>
 <tr>
 <td><code>interval</code></td>
 <td><code>(bound, …)</code></td>
 <td><code>interval</code>, <code>point</code></td>
-<td>none</td>
+<td>None</td>
 </tr>
 <tr>
 <td><code>point</code></td>
@@ -5101,27 +5175,34 @@ models, and any warnings. Counterfactual requests add <code>baseline/</code> and
 <td><code>moments</code></td>
 <td><code>(moment, …)</code></td>
 <td><code>mean</code>, <code>sd</code>, <code>eti_&lt;p&gt;</code></td>
-<td>none</td>
+<td>None</td>
 </tr>
 </tbody>
 </table>
-<p>Asking for something invalid — summing quantiles, draws from a point model — fails with
-<code>CAPABILITY_UNSUPPORTED</code> instead of returning a misleading number.</p>
+<p>If you ask for something that is not valid, the request fails with <code>CAPABILITY_UNSUPPORTED</code>.
+For example, you cannot add quantiles together, or get draws from a point model. The SDK does
+not return a number that can cause an incorrect decision.</p>
 <h2 id="data-on-the-wire">Data on the wire<a class="headerlink" href="#data-on-the-wire" title="Permanent link">&para;</a></h2>
-<p><code>mapi_sdk.wire</code> reads and writes the platform's formats. Readers treat every payload as hostile.</p>
+<p><code>mapi_sdk.wire</code> reads and writes the formats of the platform. The readers think that each
+payload can be hostile.</p>
 <ul>
-<li><strong>XrJSON</strong> (<code>to_xrjson</code> / <code>from_xrjson</code>): the <code>xr.Dataset.to_dict()</code> shape with explicit
-  dtypes, <code>null</code> for missing values and caps on elements, dims and string length. Good for
-  small payloads and curl.</li>
+<li><strong>XrJSON</strong> (<code>to_xrjson</code> / <code>from_xrjson</code>): The <code>xr.Dataset.to_dict()</code> shape with explicit
+  dtypes and <code>null</code> for missing values. It has limits on elements, dims and string length. Use
+  it for small payloads and for curl.</li>
 <li><strong>zarr zip</strong> (<code>write_zarr_zip</code> / <code>read_zarr_zip</code>, <code>write_datatree_zip</code> / <code>read_datatree_zip</code>):
-  single-object zarr v3 archives. Strings are <code>vlen-utf8</code>, datetimes are int64 nanoseconds
-  with explicit units, only <code>zstd</code>/<code>blosc</code> compression is accepted, MultiIndexes are reset and
-  restored. The bytes are deterministic.</li>
-<li><strong>Rows</strong> (<code>stack_rows</code> / <code>unstack_rows</code>): stack dims into rows, drop empty rows, and restore
-  them later from the recorded row mask.</li>
-<li><strong>Arrow IPC</strong> (<code>to_arrow_table</code>, <code>write_arrow_ipc</code>): tidy tables for UI views.</li>
+  zarr v3 archives in one object. These rules apply:<ul>
+<li>Strings are <code>vlen-utf8</code>.</li>
+<li>Datetimes are int64 nanoseconds with explicit units.</li>
+<li>The reader accepts only <code>zstd</code>/<code>blosc</code> compression.</li>
+<li>The writer resets MultiIndexes, and the reader restores them.</li>
+<li>The bytes are deterministic.</li>
 </ul>
-<p>Pickle is never used, anywhere.</p>
+</li>
+<li><strong>Rows</strong> (<code>stack_rows</code> / <code>unstack_rows</code>): These functions stack dims into rows and remove
+  empty rows. Later, they restore the rows from the recorded row mask.</li>
+<li><strong>Arrow IPC</strong> (<code>to_arrow_table</code>, <code>write_arrow_ipc</code>): Tidy tables for UI views.</li>
+</ul>
+<p>The SDK never uses pickle.</p>
 <h2 id="data-checks-in-plain-language">Data checks in plain language<a class="headerlink" href="#data-checks-in-plain-language" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -5159,14 +5240,22 @@ models, and any warnings. Counterfactual requests add <code>baseline/</code> and
 </span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># error SCHEMA_INVALID - 2 markets are missing 2 days of revenue in March 2026</span>
 </span></code></pre></div>
 <h2 id="bundles">Bundles<a class="headerlink" href="#bundles" title="Permanent link">&para;</a></h2>
-<p>A bundle directory holds <code>bundle.zarr.zip</code> (spec, schemas, binding, every step's state and
-context, the model's ArviZ-named groups, native artifacts, fit coordinates per stage, pinned
-side tables and the thinning index) plus <code>manifest.json</code>, <code>diagnostics.json</code>, <code>plots.json</code> and
-<code>metrics.json</code>. The manifest records CRC32C and MD5 (in the form GCS reports) and SHA-256 for
-every file; <code>Bundle.read</code> verifies them.</p>
-<h2 id="running-work-through-an-executor">Running work through an executor<a class="headerlink" href="#running-work-through-an-executor" title="Permanent link">&para;</a></h2>
-<p><code>InprocExecutor</code> implements the platform's <code>Executor</code> protocol in your own process — handy for
-notebooks and tests, never for untrusted code:</p>
+<p>A bundle directory contains <code>bundle.zarr.zip</code> and the files <code>manifest.json</code>,
+<code>diagnostics.json</code>, <code>plots.json</code> and <code>metrics.json</code>. <code>bundle.zarr.zip</code> contains these items:</p>
+<ul>
+<li>the spec, the schemas and the binding</li>
+<li>the state and the context of each step</li>
+<li>the groups of the model, with ArviZ names</li>
+<li>native artifacts</li>
+<li>the fit coordinates of each stage</li>
+<li>pinned side tables</li>
+<li>the thinning index</li>
+</ul>
+<p>The manifest records CRC32C and MD5 (in the form that GCS reports) and SHA-256 for each file.
+<code>Bundle.read</code> verifies them.</p>
+<h2 id="run-work-with-an-executor">Run work with an executor<a class="headerlink" href="#run-work-with-an-executor" title="Permanent link">&para;</a></h2>
+<p><code>InprocExecutor</code> implements the <code>Executor</code> protocol of the platform in your own process. Use it
+for notebooks and tests. Never use it for untrusted code:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_tabular.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -5234,12 +5323,16 @@ notebooks and tests, never for untrusted code:</p>
 </span><span id="__span-7-43"><a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>  <span class="c1"># in Jupyter: `await main()`</span>
 </span></code></pre></div>
 <p>See <a href="../../getting-started/executor/">Runs and executors</a>.</p>
-<h2 id="error-codes-you-may-see">Error codes you may see<a class="headerlink" href="#error-codes-you-may-see" title="Permanent link">&para;</a></h2>
-<p>Every error is a <code>MapiError</code> with a stable <code>code</code> and, where useful, a JSON pointer.
-Anything your data or a plugin said is kept in <code>untrusted_text</code>, separate from the message.
-<code>StepError</code> (<code>USER_CODE_ERROR</code>) wraps failures inside steps, <code>SchemaValidationError</code>
-(<code>SCHEMA_INVALID</code>) reports data problems, <code>BundleError</code> (<code>INTEGRITY_FAILURE</code>) reports damaged
-or tampered bundles and <code>RunCancelled</code> (<code>CANCELLED</code>) reports cooperative cancellation.</p>
+<h2 id="error-codes-that-you-can-see">Error codes that you can see<a class="headerlink" href="#error-codes-that-you-can-see" title="Permanent link">&para;</a></h2>
+<p>Each error is a <code>MapiError</code> with a stable <code>code</code>. Where it is useful, the error also has a JSON
+pointer. Text from your data or from a plugin goes in <code>untrusted_text</code>, separate from the
+message. These are the error types:</p>
+<ul>
+<li><code>StepError</code> (<code>USER_CODE_ERROR</code>) contains failures in steps.</li>
+<li><code>SchemaValidationError</code> (<code>SCHEMA_INVALID</code>) reports problems in the data.</li>
+<li><code>BundleError</code> (<code>INTEGRITY_FAILURE</code>) reports bundles that are damaged or that someone changed.</li>
+<li><code>RunCancelled</code> (<code>CANCELLED</code>) reports a cooperative cancellation.</li>
+</ul>
 
 
 

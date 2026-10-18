@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1437,6 +1439,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4665,6 +4695,8 @@
       
         
       
+        
+      
     
     
     
@@ -4753,6 +4785,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4944,17 +5004,18 @@
 
 
 <h1 id="pipelines-stages-and-replay">Pipelines, stages and replay<a class="headerlink" href="#pipelines-stages-and-replay" title="Permanent link">&para;</a></h1>
-<p>A pipeline is an ordered list of <strong>steps</strong>. Each step is a small, versioned transform with
-typed settings and, if it learns something, a fitted <strong>state</strong>. The promise of the platform is
-simple to state and fiddly to keep:</p>
+<p>A pipeline is a list of <strong>steps</strong> in sequence. Each step is a small transform with a version
+and typed settings. If a step learns something, it also has a fitted <strong>state</strong>. The promise of
+the platform is easy to say but difficult to keep:</p>
 <blockquote>
-<p><strong>Scoring replays exactly the preprocessing that was learned at fit time. It never refits.</strong></p>
+<p><strong>When you score a model, the platform uses exactly the preprocessing that it learned at fit time. It never fits again.</strong></p>
 </blockquote>
-<p>This page explains the pieces that keep that promise: stages, the split stage, context tails,
-inverse transforms and scenario entry points.</p>
+<p>This page tells about the parts that keep that promise. These parts are stages, the split
+stage, context tails, inverse transforms and the entry points for scenarios.</p>
 <h2 id="steps">Steps<a class="headerlink" href="#steps" title="Permanent link">&para;</a></h2>
-<p>A step implements <code>fit</code> (learn, on train only), <code>transform</code> (apply; never learns) and, when it
-can, <code>inverse</code>. A complete one, from the <a href="../../guides/port-a-model/">porting guide</a>:</p>
+<p>A step has a <code>fit</code> function (it learns, on the training data only) and a <code>transform</code> function
+(it applies the step and never learns). When possible, a step also has an <code>inverse</code> function.
+This is a full step from the <a href="../../guides/port-a-model/">porting guide</a>:</p>
 <details class="example">
 <summary>A scaling step, in full</summary>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span>
@@ -5004,7 +5065,7 @@ can, <code>inverse</code>. A complete one, from the <a href="../../guides/port-a
 </span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>        <span class="k">return</span> <span class="n">ds</span><span class="o">.</span><span class="n">assign</span><span class="p">({</span><span class="n">v</span><span class="p">:</span> <span class="n">ds</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">st</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">vars</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">})</span>
 </span></code></pre></div>
 </details>
-<p>Every step has a <strong>kind</strong>:</p>
+<p>Each step has a <strong>kind</strong>:</p>
 <table>
 <thead>
 <tr>
@@ -5023,24 +5084,25 @@ can, <code>inverse</code>. A complete one, from the <a href="../../guides/port-a
 </tr>
 <tr>
 <td><code>value</code></td>
-<td>Values of existing variables</td>
+<td>Values of variables that exist</td>
 <td>Yes, if <code>invertible</code></td>
 <td><code>fx_convert</code>, <code>mean_scale</code>, <code>standardize</code>, <code>log1p</code></td>
 </tr>
 <tr>
 <td><code>feature</code></td>
 <td>Adds new variables</td>
-<td>Not needed</td>
+<td>Not necessary</td>
 <td><code>lag</code>, <code>fourier</code>, <code>calendar</code>, <code>one_hot</code>, <code>formula</code></td>
 </tr>
 </tbody>
 </table>
-<p>And a <strong>static schema effect</strong>: a JSON template that says how the step changes the schema
-(adds <code>lag</code> dim, sets units to <code>1</code>, turns daily <code>date</code> into weekly <code>time</code>). The control plane
-uses it to propagate the schema through the whole pipeline without running anything.</p>
+<p>Each step also has a <strong>static schema effect</strong>. This is a JSON template that tells how the step
+changes the schema. For example, it adds a <code>lag</code> dim, sets units to <code>1</code>, or changes daily
+<code>date</code> into weekly <code>time</code>. The control plane uses the template to calculate the schema through
+the full pipeline. It does not run a step to do this.</p>
 <h2 id="stages">Stages<a class="headerlink" href="#stages" title="Permanent link">&para;</a></h2>
-<p>A <strong>stage</strong> is the dataset after a named step; <code>raw</code> is the bound input. Static validation
-computes the schema at every stage, so problems surface before any data is read:</p>
+<p>A <strong>stage</strong> is the dataset after a named step. <code>raw</code> is the bound input. Static validation
+calculates the schema at each stage. Thus you see problems before the platform reads data:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_mmm.examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">E33_SPEC_YAML</span><span class="p">,</span> <span class="n">e33_dataset</span><span class="p">,</span> <span class="n">e33_raw_schema</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">default_registry</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_model_spec</span><span class="p">,</span> <span class="n">validate_spec</span>
@@ -5061,11 +5123,11 @@ computes the schema at every stage, so problems surface before any data is read:
 </span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="nb">print</span><span class="p">(</span><span class="n">rs</span><span class="o">.</span><span class="n">split_stage</span><span class="p">)</span>  <span class="c1"># weekly: the holdout is cut in whole weeks</span>
 </span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="nb">print</span><span class="p">(</span><span class="n">rs</span><span class="o">.</span><span class="n">last_reshape_stage</span><span class="p">)</span>  <span class="c1"># weekly: outputs are reported in weekly EUR, not days</span>
 </span></code></pre></div>
-<p>Stages are how specs refer to points in the pipeline:</p>
+<p>Specs use stages to refer to points in the pipeline:</p>
 <ul>
-<li><code>data.split.after_step</code>: where the train/holdout split happens;</li>
-<li><code>ScoreRequest.inputs_stage</code>: where a scenario enters the pipeline;</li>
-<li>the <strong>output space</strong>: the stage outputs are inverted back to.</li>
+<li><code>data.split.after_step</code>: the point of the train/holdout split</li>
+<li><code>ScoreRequest.inputs_stage</code>: the point where a scenario goes into the pipeline</li>
+<li>the <strong>output space</strong>: the stage to which the platform inverts the outputs.</li>
 </ul>
 <h2 id="where-the-split-happens">Where the split happens<a class="headerlink" href="#where-the-split-happens" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
@@ -5077,12 +5139,12 @@ computes the schema at every stage, so problems surface before any data is read:
     SC --&gt; L["lags&lt;br/&gt;&lt;i&gt;context tail&lt;/i&gt;"]
     L --&gt; M["model"]
     style SPLIT fill:#5eead4,stroke:#0f766e,color:#1e1b4b</code></pre>
-<p>Some dims only exist after preprocessing: a holdout of "the last 8 weeks" cannot be cut from
-daily data before it is resampled. So the split happens at a <strong>stage</strong>. If <code>after_step</code> is not
-given, it defaults to the end of the <strong>stateless prefix</strong>, the leading steps that learn nothing
-(unit conversion, resampling).</p>
-<p>If a step that <strong>learns</strong> runs before the split, its state would be learned partly from the
-holdout and the evaluation would be optimistic. Validation reports it:</p>
+<p>Some dims exist only after preprocessing. For example, you cannot cut a holdout of "the last 8
+weeks" from daily data before the data is resampled. Thus the split occurs at a <strong>stage</strong>. If
+you do not give <code>after_step</code>, the default is the end of the <strong>stateless prefix</strong>. The
+stateless prefix is the first steps that learn nothing (unit conversion, resampling).</p>
+<p>If a step that <strong>learns</strong> runs before the split, it learns its state partly from the holdout.
+Then the evaluation is too optimistic. Validation reports this:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># standardise the holiday control, then cut the holdout only after that step</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">leaky</span> <span class="o">=</span> <span class="n">E33_SPEC_YAML</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"after_step: weekly"</span><span class="p">,</span> <span class="s2">"after_step: std_hol"</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="s2">"</span><span class="se">\n</span><span class="s2">model:</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span>
@@ -5097,9 +5159,9 @@ holdout and the evaluation would be optimistic. Validation reports it:</p>
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">#    stateful step 'std_hol' (pipeline[3]) runs before the split at stage 'std_hol';</span>
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">#    its state would be learned from holdout data</span>
 </span></code></pre></div>
-<p>Set <code>allow_leakage: true</code> on the split to downgrade the error to an acknowledged warning.</p>
+<p>To change the error to a warning that you accept, set <code>allow_leakage: true</code> on the split.</p>
 <h2 id="evaluate-the-way-you-will-forecast">Evaluate the way you will forecast<a class="headerlink" href="#evaluate-the-way-you-will-forecast" title="Permanent link">&para;</a></h2>
-<p><code>fit.mode: evaluate_then_refit</code> (the default) does this:</p>
+<p><code>fit.mode: evaluate_then_refit</code> (the default) does these steps:</p>
 <pre class="mermaid"><code>sequenceDiagram
     participant D as Data
     participant P as Pipeline + model
@@ -5110,15 +5172,19 @@ holdout and the evaluation would be optimistic. Validation reports it:</p>
     P-&gt;&gt;B: evaluation bundle + metrics
     P-&gt;&gt;P: refit states + model on ALL data
     P-&gt;&gt;B: production bundle (links evaluation + metrics)</code></pre>
-<p>The holdout is never scored by a separate code path: it goes through <code>score_bundle</code>, with the
-context it would have in production. Then everything is refitted on all data, so the context
-tails and terminal states that forecasts start from are the latest ones. <code>train_only</code> stops
-after evaluation and keeps the train fit.</p>
+<p>The platform never uses a separate code path to score the holdout. The holdout goes through
+<code>score_bundle</code>, with the context that it would have in production. Then the platform fits all
+parts again on all the data. Thus forecasts start from the latest context tails and terminal
+states. <code>train_only</code> stops after the evaluation and keeps the fit on the training data.</p>
 <h2 id="context-tails-looking-back-across-the-fit-boundary">Context tails: looking back across the fit boundary<a class="headerlink" href="#context-tails-looking-back-across-the-fit-boundary" title="Permanent link">&para;</a></h2>
 <p>Steps that look back in time (lags, carry-over) declare a <strong>context need</strong>, for example
-<code>{along: time, n: 6, within: [geo]}</code>. At fit time the step stores the last <code>n</code> rows of its
-<strong>own input stage</strong>, per group. At score time the platform prepends them before transforming,
-checks that the new data continues the fitted range, and drops them from the output.</p>
+<code>{along: time, n: 6, within: [geo]}</code>. At fit time, the step stores the last <code>n</code> rows of its
+<strong>own input stage</strong>, for each group. At score time, the platform does these steps:</p>
+<ol>
+<li>It adds the stored rows before the new data, and then transforms the data.</li>
+<li>It makes sure that the new data continues the fitted range.</li>
+<li>It removes the stored rows from the output.</li>
+</ol>
 <pre class="mermaid"><code>flowchart LR
     subgraph Fit
         T1["… w49 w50 w51 w52"] --&gt; TAIL["stored tail per geo:&lt;br/&gt;w47–w52 (weekly, scaled)"]
@@ -5128,16 +5194,17 @@ checks that the new data continues the fitted range, and drops them from the out
         NEW["forecast payload&lt;br/&gt;w53–w56"] --&gt; CAT
         CAT --&gt; LAG["lag_tensor"] --&gt; DROP["drop context rows"] --&gt; OUT["w53–w56 with&lt;br/&gt;real carry-over"]
     end</code></pre>
-<p>The result is identical to transforming the whole series at once; the contract kit checks this
-"context-window equivalence" for every step and model. A new market has no tail, so its lags
-are padded according to the step's settings (<code>pad: first</code>).</p>
-<p>Sequential models (HMMs, Kalman filters) keep a model-side <strong>terminal state</strong> instead; see
-<a href="../../guides/time-series/">Forecasting</a>.</p>
+<p>The result is the same as when you transform the full series at one time. The contract kit
+does a check of this "context-window equivalence" for each step and model. A new market has no
+tail. Thus the step pads its lags as its settings tell (<code>pad: first</code>).</p>
+<p>Sequential models (HMMs, Kalman filters) keep a <strong>terminal state</strong> in the model instead. Refer
+to <a href="../../guides/time-series/">Forecasting</a>.</p>
 <h2 id="inverse-transforms-and-the-output-space">Inverse transforms and the output space<a class="headerlink" href="#inverse-transforms-and-the-output-space" title="Permanent link">&para;</a></h2>
-<p>On the way out, the platform undoes invertible <strong>value</strong> steps in reverse order and stops at the
-<strong>last reshape step</strong>. A model fitted on weekly, scaled EUR returns weekly EUR: scaling can be
-undone, the weekly resample cannot (daily values are not recoverable from weekly sums).</p>
-<p>Every output records where it ended up:</p>
+<p>On the way out, the platform reverses the invertible <strong>value</strong> steps in the opposite sequence.
+It stops at the <strong>last reshape step</strong>. A model that is fitted on weekly, scaled EUR returns
+weekly EUR. The platform can reverse the scaling, but it cannot reverse the weekly resample.
+Daily values are not available from weekly sums.</p>
+<p>Each output records where it stopped:</p>
 <table>
 <thead>
 <tr>
@@ -5150,41 +5217,43 @@ undone, the weekly resample cannot (daily values are not recoverable from weekly
 <tr>
 <td><code>output_space</code></td>
 <td><code>{"y_hat": "weekly"}</code></td>
-<td>The stage the values live at</td>
+<td>The stage of the values</td>
 </tr>
 <tr>
 <td><code>units</code></td>
 <td><code>EUR</code></td>
-<td>Units after inversion</td>
+<td>The units after inversion</td>
 </tr>
 <tr>
 <td><code>retransform</code></td>
 <td><code>{"y_hat": "median"}</code></td>
-<td>For point models through a non-linear inverse: the inverse of a mean is not a mean, so the value is labelled (or Duan smearing is used)</td>
+<td>For point models through a non-linear inverse. The inverse of a mean is not a mean. Thus the platform labels the value (or uses Duan smearing)</td>
 </tr>
 </tbody>
 </table>
-<p>Ask for <code>output: {units: model}</code> to skip inversion, for example to get contributions that add up
-exactly through a <code>log1p</code>.</p>
+<p>To skip inversion, ask for <code>output: {units: model}</code>. For example, use this to get
+contributions that add up exactly through a <code>log1p</code>.</p>
 <h2 id="scenarios-enter-at-a-stage">Scenarios enter at a stage<a class="headerlink" href="#scenarios-enter-at-a-stage" title="Permanent link">&para;</a></h2>
-<p>A planner should not have to invent daily local-currency spend to ask about a weekly EUR
-budget. <code>ScoreRequest.inputs_stage</code> lets data enter the pipeline after a named step; the steps
-before it, and the side tables they need, are skipped:</p>
+<p>A planner must not have to make up daily spend in local currency to ask about a weekly EUR
+budget. With <code>ScoreRequest.inputs_stage</code>, data can go into the pipeline after a named step.
+The platform skips the steps before it, and the side tables that these steps need:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">forecast</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">horizon</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">dim</span><span class="p">:</span><span class="w"> </span><span class="nv">time</span><span class="p p-Indicator">,</span><span class="nt"> periods</span><span class="p">:</span><span class="w"> </span><span class="nv">8</span><span class="p p-Indicator">}</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">inputs_stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">weekly</span><span class="w">        </span><span class="c1"># send weekly EUR spend; to_eur and the FX table are skipped</span>
 </span></code></pre></div>
-<p>The E33 conformance fixture checks that this gives exactly the same forecast as the raw daily
-path for the same spend.</p>
+<p>The E33 conformance fixture makes sure that this gives exactly the same forecast as the raw
+daily path for the same spend.</p>
 <h2 id="models-that-own-their-preprocessing">Models that own their preprocessing<a class="headerlink" href="#models-that-own-their-preprocessing" title="Permanent link">&para;</a></h2>
-<p>Some models do their own scaling or carry-over (the mmm-framework MMMs do both). They declare
-<code>owns: [scaling, carryover, inverse_units]</code> in their capabilities, the platform steps aside,
-and outputs are labelled as already in original units. See
+<p>Some models do their own scaling or carry-over (the mmm-framework MMMs do both). These models
+declare <code>owns: [scaling, carryover, inverse_units]</code> in their capabilities. Then the platform
+does not apply these steps. The outputs have a label that tells that they are already in the
+original units. Refer to
 <a href="../../models/mmm-framework/#what-the-data-looks-like">the mmm-framework models</a>.</p>
 <h2 id="recursion">Recursion<a class="headerlink" href="#recursion" title="Permanent link">&para;</a></h2>
-<p>A lag of the <strong>target</strong> is a recursive feature: forecasting more periods than the smallest lag
-would need predictions as inputs. v1 forecasts are direct, so such specs are rejected with
-<code>RECURSIVE_UNSUPPORTED</code> unless the model declares <code>owns: [recursion]</code>.</p>
+<p>A lag of the <strong>target</strong> is a recursive feature. If a forecast has more periods than the
+smallest lag, it needs predictions as inputs. v1 forecasts are direct. Thus the platform
+refuses such specs with <code>RECURSIVE_UNSUPPORTED</code>, unless the model declares
+<code>owns: [recursion]</code>.</p>
 <p>Next: <a href="../representations/">Representations and summaries</a>.</p>
 
 

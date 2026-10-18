@@ -1167,6 +1167,8 @@
       
         
       
+        
+      
     
     
     
@@ -1404,6 +1406,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4632,6 +4662,8 @@
       
         
       
+        
+      
     
     
     
@@ -4720,6 +4752,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4878,20 +4938,27 @@
 
 
 <h1 id="receive-webhooks-v04">Receive webhooks <span class="mapi-badge">v0.4</span><a class="headerlink" href="#receive-webhooks-v04" title="Permanent link">&para;</a></h1>
-<p>A <a href="../endpoints-and-webhooks/">webhook</a> <code>POST</code>s a small JSON envelope to your URL when a run
-finishes, a model version is ready, an endpoint is promoted or a score completes. In this
-tutorial you create one, write a receiver that checks every delivery really came from the
-platform, and watch it react to a new model, first on your laptop. Anyone can send your URL
-a request, so the check is not optional: <code>mapi_client.webhooks.verify</code> does it in one call.</p>
+<p>A <a href="../endpoints-and-webhooks/">webhook</a> sends a small JSON envelope to your URL with <code>POST</code>. It
+does this when a run finishes, a model version is ready, an endpoint is promoted or a score is
+complete. In this tutorial, you create a webhook. You write a receiver that makes sure that each
+delivery came from the platform. Then you see how it reacts to a new model, first on your
+laptop. All persons can send a request to your URL. Thus the check is necessary.
+<code>mapi_client.webhooks.verify</code> does the check in one call.</p>
 <h2 id="1-create-the-webhook">1. Create the webhook<a class="headerlink" href="#1-create-the-webhook" title="Permanent link">&para;</a></h2>
-<p>You need the project <strong>admin</strong> role (or a token with the <code>webhooks:manage</code> scope).</p>
+<p>You must have the project <strong>admin</strong> role (or a token with the <code>webhooks:manage</code> scope).</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Web app</label><label for="__tabbed_1_2">CLI</label><label for="__tabbed_1_3">Python</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p><strong>Integrations → Overview → Webhook → Set up a webhook</strong> (or the <strong>Webhooks</strong> tab → <strong>New
-webhook</strong>): an <code>https</code> URL, a description and the events. The <strong>signing secret is shown
-once</strong>; <strong>Done</strong> stays disabled until you copy it or tick that you stored it.</p>
-<p><img alt="The signing secret, shown once, with the lines that verify a delivery" class="mapi-shot" src="../../assets/screenshots/webhook-secret.png" style="max-width: 640px" /></p>
+<ol>
+<li>Go to <strong>Integrations → Overview → Webhook → Set up a webhook</strong> (or the <strong>Webhooks</strong> tab
+   → <strong>New webhook</strong>).</li>
+<li>Type an <code>https</code> URL and a description.</li>
+<li>Select the events.</li>
+<li>Copy the signing secret. The app shows the <strong>signing secret only one time</strong>.</li>
+</ol>
+<p><strong>Done</strong> stays disabled until you copy the secret or select the box that tells that you
+stored it.</p>
+<p><img alt="The signing secret, which the app shows one time, with the lines that verify a delivery" class="mapi-shot" src="../../assets/screenshots/webhook-secret.png" style="max-width: 640px" /></p>
 </div>
 <div class="tabbed-block">
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mapi<span class="w"> </span>webhooks<span class="w"> </span>create<span class="w"> </span>https://hooks.acme.example/mapi<span class="w"> </span><span class="se">\</span>
@@ -4908,10 +4975,11 @@ once</strong>; <strong>Done</strong> stays disabled until you copy it or tick th
 </div>
 </div>
 </div>
-<p>Store the secret where your receiver reads it, for example <code>MAPI_WEBHOOK_SECRET</code> in your
-secret manager. The platform refuses URLs on private, loopback or link-local addresses and
-ports other than 443 and 8443 (<code>WEBHOOK_URL_BLOCKED</code>); <a href="#4-try-it-on-your-laptop">step 4</a>
-shows how a development stack reaches a receiver on your machine.</p>
+<p>Keep the secret in a place where your receiver can read it. For example, keep it as
+<code>MAPI_WEBHOOK_SECRET</code> in your secret manager. The platform refuses URLs on private, loopback or
+link-local addresses (<code>WEBHOOK_URL_BLOCKED</code>). It also refuses ports other than 443 and 8443.
+<a href="#4-try-it-on-your-laptop">Step 4</a> shows how a development stack can send to a receiver on your
+computer.</p>
 <h2 id="2-what-a-delivery-looks-like">2. What a delivery looks like<a class="headerlink" href="#2-what-a-delivery-looks-like" title="Permanent link">&para;</a></h2>
 <div class="language-http highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nf">POST</span> <span class="nn">/mapi/webhook</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
@@ -4925,9 +4993,10 @@ shows how a development stack reaches a receiver on your machine.</p>
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w"> </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"evt_01jaf3k1m2n3p4q5r6s7t8v9w0"</span><span class="p">,</span><span class="w"> </span><span class="nt">"project"</span><span class="p">:</span><span class="w"> </span><span class="s2">"growth"</span><span class="p">,</span><span class="w"> </span><span class="nt">"tenant"</span><span class="p">:</span><span class="w"> </span><span class="s2">"acme"</span><span class="p">,</span>
 </span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"endpoint.promoted"</span><span class="p">}</span>
 </span></code></pre></div>
-<p><code>v1</code> is the hex HMAC-SHA256, under the webhook's signing secret, of the timestamp <code>t</code>, a dot
-and the <strong>raw body</strong>. While a secret is being rotated the header carries one <code>v1</code> per active
-secret, so receivers that know either secret keep working for the 24 hours of the rotation.</p>
+<p><code>v1</code> is the hex HMAC-SHA256 of the timestamp <code>t</code>, a dot and the <strong>raw body</strong>. The signing secret
+of the webhook is the key. During the rotation of a secret, the header contains one <code>v1</code> for
+each active secret. Thus receivers that know one of the two secrets continue to work during the
+24 hours of the rotation.</p>
 <table>
 <thead>
 <tr>
@@ -4938,7 +5007,7 @@ secret, so receivers that know either secret keep working for the 24 hours of th
 <tbody>
 <tr>
 <td><code>run.succeeded</code>, <code>run.failed</code></td>
-<td><code>run_id</code>, <code>kind</code>, <code>state</code>, and on failure <code>failure_class</code> and <code>code</code>; <code>model_version_id</code> for a fit</td>
+<td><code>run_id</code>, <code>kind</code>, <code>state</code>. If the run failed, also <code>failure_class</code> and <code>code</code>. <code>model_version_id</code> for a fit.</td>
 </tr>
 <tr>
 <td><code>model.version.ready</code></td>
@@ -4950,7 +5019,7 @@ secret, so receivers that know either secret keep working for the 24 hours of th
 </tr>
 <tr>
 <td><code>score.completed</code></td>
-<td><code>run_id</code>, <code>endpoint</code> (when it was an endpoint call), <code>model_version_id</code>, the names of the <code>outputs</code></td>
+<td><code>run_id</code>, <code>endpoint</code> (if it was an endpoint call), <code>model_version_id</code>, the names of the <code>outputs</code></td>
 </tr>
 <tr>
 <td><code>tenant.deletion.completed</code></td>
@@ -4958,27 +5027,28 @@ secret, so receivers that know either secret keep working for the 24 hours of th
 </tr>
 </tbody>
 </table>
-<p>The envelope carries ids and states only, never data values, signed URLs or secrets: fetch
-anything else with the API.</p>
+<p>The envelope contains only ids and states. It never contains data values, signed URLs or
+secrets. To get other information, use the API.</p>
 <h2 id="3-write-the-receiver">3. Write the receiver<a class="headerlink" href="#3-write-the-receiver" title="Permanent link">&para;</a></h2>
-<p><code>verify(headers, body, secret)</code>:</p>
+<p><code>verify(headers, body, secret)</code> does these steps:</p>
 <ol>
-<li>finds <code>Mapi-Signature</code> in any headers object (names are case-insensitive);</li>
-<li>recomputes the HMAC over the raw body and compares it with every <code>v1</code> in <strong>constant
-   time</strong> (<code>secret</code> may be a list: the old and new secret during a rotation);</li>
-<li>refuses a timestamp more than <strong>300 seconds</strong> from your clock, which bounds replays of a
-   captured delivery (<code>tolerance=</code> changes it);</li>
-<li>parses the body as a <code>WebhookEnvelope</code> and checks that <code>Mapi-Event-Id</code> names the same
-   event.</li>
+<li>It finds <code>Mapi-Signature</code> in all types of headers object. The names are not case-sensitive.</li>
+<li>It calculates the HMAC over the raw body again. It compares the HMAC with each <code>v1</code> in
+   <strong>constant time</strong>. <code>secret</code> can be a list: the old secret and the new secret during a
+   rotation.</li>
+<li>It refuses a timestamp that is more than <strong>300 seconds</strong> from your clock. This limits replays
+   of a captured delivery. To change the limit, use <code>tolerance=</code>.</li>
+<li>It parses the body as a <code>WebhookEnvelope</code>. It does a check that <code>Mapi-Event-Id</code> names the
+   same event.</li>
 </ol>
-<p>Any failure raises <code>MapiError</code> with code <code>WEBHOOK_SIGNATURE_INVALID</code>; answer it with <code>401</code>.
-<code>is_valid(...)</code> is the same check as a boolean. Bodies over 256 KiB are refused before
-anything is parsed.</p>
+<p>If a step fails, <code>verify</code> raises <code>MapiError</code> with the code <code>WEBHOOK_SIGNATURE_INVALID</code>. Answer
+it with <code>401</code>. <code>is_valid(...)</code> does the same check and returns a boolean. The function refuses
+bodies that are larger than 256 KiB before it parses them.</p>
 <div class="admonition warning">
 <p class="admonition-title">Use the raw body</p>
-<p>Verify the bytes exactly as they arrived. A body your framework parsed and serialised
-again (<code>json.dumps(await request.json())</code>) differs in spacing or key order and never
-matches its signature.</p>
+<p>Verify the bytes exactly as they came in. Your framework can parse a body and serialise it
+again (<code>json.dumps(await request.json())</code>). The spaces or the sequence of keys then
+change, and the body never agrees with its signature.</p>
 </div>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">FastAPI</label><label for="__tabbed_2_2">Flask</label></div>
 <div class="tabbed-content">
@@ -5035,55 +5105,62 @@ matches its signature.</p>
 </div>
 </div>
 </div>
-<p>Both receivers are run by the test suite (<code>docs/snippets/webhook_receiver.py</code> and
-<code>webhook_receiver_flask.py</code>), which posts deliveries signed exactly as the platform signs
-them, then a replay, a tampered body and a stale timestamp.</p>
+<p>The test suite runs the two receivers (<code>docs/snippets/webhook_receiver.py</code> and
+<code>webhook_receiver_flask.py</code>). It sends deliveries with exactly the same signature as the
+platform. Then it sends a replay, a body that was changed and an old timestamp.</p>
 <h2 id="4-try-it-on-your-laptop">4. Try it on your laptop<a class="headerlink" href="#4-try-it-on-your-laptop" title="Permanent link">&para;</a></h2>
-<p>A <code>make dev</code> stack already trusts a receiver on your own machine: the <code>dev</code> profile writes a
-throwaway CA and a certificate for <code>127.0.0.1</code> and <code>localhost</code> to
-<code>.local/dev/webhook-tls/</code>, trusts that CA and allow-lists both hosts
-(<a href="../../operations/configuration/">configuration</a>). Save the FastAPI receiver as
-<code>receiver.py</code>, create a webhook for it and serve it with that certificate, from the
-repository (the workspace already has FastAPI and uvicorn):</p>
+<p>A <code>make dev</code> stack trusts a receiver on your own computer. The <code>dev</code> profile writes a temporary
+CA and a certificate for <code>127.0.0.1</code> and <code>localhost</code> to <code>.local/dev/webhook-tls/</code>. It trusts
+that CA and puts the two hosts on the allow-list
+(<a href="../../operations/configuration/">configuration</a>). The workspace of the repository has FastAPI
+and uvicorn.</p>
+<ol>
+<li>Save the FastAPI receiver as <code>receiver.py</code>.</li>
+<li>Create a webhook for it from the repository.</li>
+<li>Export the secret that the command shows.</li>
+<li>Serve the receiver with that certificate:</li>
+</ol>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>uv<span class="w"> </span>run<span class="w"> </span>mapi<span class="w"> </span>webhooks<span class="w"> </span>create<span class="w"> </span>https://localhost:8443/mapi/webhook<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>-e<span class="w"> </span>endpoint.promoted<span class="w"> </span>-e<span class="w"> </span>run.failed<span class="w">               </span><span class="c1"># prints the secret once</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_WEBHOOK_SECRET</span><span class="o">=</span>whsec_…<span class="w">                 </span><span class="c1"># that secret</span>
 </span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>uv<span class="w"> </span>run<span class="w"> </span>uvicorn<span class="w"> </span>receiver:app<span class="w"> </span>--port<span class="w"> </span><span class="m">8443</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span>--ssl-certfile<span class="w"> </span>.local/dev/webhook-tls/cert.pem<span class="w"> </span>--ssl-keyfile<span class="w"> </span>.local/dev/webhook-tls/key.pem
 </span></code></pre></div>
-<p>Promote a fitted model to an endpoint (the <a href="../../getting-started/quickstart/">Quickstart</a>
-fits one; promote it in the <a href="../integrations-hub/#promoting-through-the-gate">Integrations hub</a>):
-the receiver prints <code>now serving endpoint://&lt;project&gt;/&lt;alias&gt; revision 1</code>. In the web app, the webhook's
-<strong>Delivery log</strong> shows the try with your receiver's response code and time; <strong>Send test</strong>
-replays the newest delivery, so you can check a receiver you just changed
-(<code>mapi webhooks replay &lt;webhook_id&gt; &lt;delivery_id&gt;</code> does the same). The M3 end-to-end suite
-receives every event type this way.</p>
-<p>You can also post a correctly signed delivery to your receiver yourself, without a stack:
-<code>mapi_spec.webhooks.signature_header(body, [secret])</code> builds the header exactly as the
+<p>Promote a fitted model to an endpoint. The <a href="../../getting-started/quickstart/">Quickstart</a> fits
+a model. Promote it in the <a href="../integrations-hub/#promoting-through-the-gate">Integrations hub</a>.
+The receiver then prints <code>now serving endpoint://&lt;project&gt;/&lt;alias&gt; revision 1</code>.</p>
+<p>In the web app, the <strong>Delivery log</strong> of the webhook shows the try, with the response code and
+the time of your receiver. <strong>Send test</strong> sends the newest delivery again. Thus you can do a
+check of a receiver that you changed. <code>mapi webhooks replay &lt;webhook_id&gt; &lt;delivery_id&gt;</code> does
+the same. The M3 end-to-end suite gets each event type in this way.</p>
+<p>You can also send a delivery with a correct signature to your receiver yourself, without a
+stack. <code>mapi_spec.webhooks.signature_header(body, [secret])</code> makes the header exactly as the
 platform does.</p>
 <h2 id="good-receivers">Good receivers<a class="headerlink" href="#good-receivers" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Answer fast</strong> with a <code>2xx</code>, then do the work in the background: the platform gives up on
-  a delivery after 5 seconds and retries it (after 1 min, 5 min, 30 min, 2 h, 6 h, 12 h and
-  24 h).</li>
-<li><strong>Expect duplicates.</strong> Retries and replays send the same event again; keep the <code>event.id</code>s
-  you handled.</li>
-<li><strong>Answer <code>410 Gone</code></strong> to stop deliveries for good: the webhook is disabled at once. After
-  20 consecutive failed events it is disabled anyway (<code>mapi webhooks ls</code> shows why;
-  re-enable it with <code>api.webhooks.update(id, active=True)</code>).</li>
-<li><strong>Keep the secret secret.</strong> It is shown once; store it in your secret manager. Rotate it
-  with <code>mapi webhooks rotate &lt;id&gt;</code> and give the receiver both secrets until the old one
-  expires.</li>
-<li><strong>Serve HTTPS on port 443 or 8443</strong> under a public host name in production: the platform
-  refuses to deliver to private, loopback or link-local addresses (see
+<li><strong>Answer fast</strong> with a <code>2xx</code>. Then do the work in the background. After 5 seconds, the
+  platform stops the delivery and tries it again (after 1 min, 5 min, 30 min, 2 h, 6 h, 12 h
+  and 24 h).</li>
+<li><strong>Expect duplicates.</strong> Retries and replays send the same event again. Keep the <code>event.id</code>s
+  that you processed.</li>
+<li><strong>Answer <code>410 Gone</code></strong> to stop deliveries permanently. The platform disables the webhook
+  immediately. After 20 failed events in a sequence, the platform also disables it.
+  <code>mapi webhooks ls</code> shows the reason. To enable it again, use
+  <code>api.webhooks.update(id, active=True)</code>.</li>
+<li><strong>Keep the secret secret.</strong> The app shows it one time. Keep it in your secret manager. To
+  rotate it, use <code>mapi webhooks rotate &lt;id&gt;</code>. Give the two secrets to the receiver until the old
+  secret expires.</li>
+<li><strong>Serve HTTPS on port 443 or 8443</strong> under a public host name in production. The platform does
+  not send deliveries to private, loopback or link-local addresses (see
   <a href="../../concepts/integrations/#ssrf-protection">SSRF protection</a>).</li>
 </ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <ul>
-<li>React to <code>endpoint.promoted</code> by refreshing a <a href="../../tutorials/google-sheets/">Google Sheet</a>
-  or a cache.</li>
-<li>Chain a pipeline: on <code>model.version.ready</code> with <code>scorecard_overall: pass</code>, promote it with
-  a token scoped <code>endpoints:promote</code> (<a href="../endpoints-and-webhooks/">Endpoints and webhooks</a>).</li>
+<li>When you get <code>endpoint.promoted</code>, refresh a <a href="../../tutorials/google-sheets/">Google Sheet</a> or
+  a cache.</li>
+<li>Connect a pipeline. When you get <code>model.version.ready</code> with <code>scorecard_overall: pass</code>,
+  promote the model version with a token that has the scope <code>endpoints:promote</code>
+  (<a href="../endpoints-and-webhooks/">Endpoints and webhooks</a>).</li>
 </ul>
 
 

@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -5148,6 +5178,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#mapi_client._m3.Endpoints.forecast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;forecast
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#mapi_client._m3.Endpoints.snippets" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5213,6 +5254,17 @@
     <span class="md-ellipsis">
       
         <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;score_result
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mapi_client._m3.RemoteEndpoint.forecast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;forecast
       
     </span>
   </a>
@@ -6027,6 +6079,8 @@
       
         
       
+        
+      
     
     
     
@@ -6115,6 +6169,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -7553,6 +7635,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#mapi_client._m3.Endpoints.forecast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;forecast
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#mapi_client._m3.Endpoints.snippets" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7625,6 +7718,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#mapi_client._m3.RemoteEndpoint.forecast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;forecast
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#mapi_client._m3.RemoteEndpoint.score" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7663,9 +7767,10 @@
 
 
 <h1 id="mapi_client"><code>mapi_client</code><a class="headerlink" href="#mapi_client" title="Permanent link">&para;</a></h1>
-<p>The Python client for the <code>/v1</code> HTTP API (see the <a href="../../../guides/python-client/">Python client guide</a>
-for tested walkthroughs and <a href="../../cli/">CLI and Python client</a> for a summary of every
-resource). Generated from the docstrings; <code>AsyncClient</code> has the same resources, awaited.</p>
+<p>This page shows the Python client for the <code>/v1</code> HTTP API. For tested procedures, read the
+<a href="../../../guides/python-client/">Python client guide</a>. For a summary of each resource, read
+<a href="../../cli/">CLI and Python client</a>. The text on this page comes from the docstrings.
+<code>AsyncClient</code> has the same resources, but you use <code>await</code> with them.</p>
 <h2 id="clients">Clients<a class="headerlink" href="#clients" title="Permanent link">&para;</a></h2>
 
 
@@ -11061,6 +11166,47 @@ DataTree is fetched (CRC32C-verified) into :attr:<code>ScoreResult.tree</code>.<
 <div class="doc doc-object doc-function">
 
 
+<h4 id="mapi_client._m3.Endpoints.forecast" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">forecast</span>
+
+
+<a href="#mapi_client._m3.Endpoints.forecast" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forecast</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">alias</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">rows</span><span class="p">:</span> <span class="n"><span title="mapi_client._m3_common.Table">Table</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">actuals</span><span class="p">:</span> <span class="n"><span title="mapi_client._m3_common.Table">Table</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">future</span><span class="p">:</span> <span class="n"><span title="mapi_client._m3_common.Table">Table</span></span> <span class="o">|</span> <span class="n"><span title="collections.abc.Sequence">Sequence</span></span><span class="p">[</span><span class="n"><span title="typing.Any">Any</span></span><span class="p">]</span> <span class="o">|</span> <span class="n"><span title="int">int</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">periods</span><span class="p">:</span> <span class="n"><span title="int">int</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">future_covariates</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">=</span> <span class="s2">"carry_last"</span><span class="p">,</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">output</span><span class="p">:</span> <span class="n"><span title="collections.abc.Mapping">Mapping</span></span><span class="p">[</span><span class="n"><span title="str">str</span></span><span class="p">,</span> <span class="n"><span title="typing.Any">Any</span></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">schema</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            EndpointSchema (mapi_spec.api.EndpointSchema)" href="../spec/#mapi_spec.endpoints.EndpointSchema">EndpointSchema</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n"><span title="typing.Any">Any</span></span><span class="p">,</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="mapi_client._common.ScoreResult">ScoreResult</span></span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Forecast with your latest actuals and the dates to forecast (the model is not
+refitted: it updates its state with the actuals and forecasts from the last one).</p>
+<p><code>rows</code> is a long table in the endpoint's input layout (<code>schema.input_table</code>: the
+time column, the target, the drivers) - a DataFrame or a list of row mappings: rows
+whose target holds a value are actuals, rows after them with it empty are forecast.
+Or split it: <code>actuals=</code> (rows with the target) and <code>future=</code> (the dates, rows
+with driver values, or a number of periods to append). Empty driver values on the
+future rows follow <code>future_covariates</code> (carried forward by default). Models that
+cannot use actuals refuse them (<code>ActualsNotSupported</code>) rather than ignore them.</p>
+<p>The result's :attr:<code>ScoreResult.conditioning</code> says what the forecast was conditioned
+on. <code>options</code> are those of :meth:<code>score</code> (<code>wait</code>, <code>timeout</code>, <code>download</code>...).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h4 id="mapi_client._m3.Endpoints.snippets" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">snippets</span>
 
@@ -11215,6 +11361,30 @@ and returns the scored <code>xr.Dataset</code> of one result group (<code>summar
     <div class="doc doc-contents ">
 
         <p>:meth:<code>Endpoints.score</code> for this endpoint (the run, links and tree).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="mapi_client._m3.RemoteEndpoint.forecast" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">forecast</span>
+
+
+<a href="#mapi_client._m3.RemoteEndpoint.forecast" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forecast</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">rows</span><span class="p">:</span> <span class="n"><span title="mapi_client._m3_common.Table">Table</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n"><span title="typing.Any">Any</span></span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="mapi_client._common.ScoreResult">ScoreResult</span></span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>:meth:<code>Endpoints.forecast</code> for this endpoint: actuals and the dates to forecast
+as a long table (<code>actuals=</code>, <code>future=</code>, <code>periods=</code>...); the schema is fetched
+once. <code>result.conditioning.message</code> says what the forecast used.</p>
 
 
     </div>

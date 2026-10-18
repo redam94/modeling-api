@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4610,6 +4640,8 @@
       
         
       
+        
+      
     
     
     
@@ -4698,6 +4730,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4836,13 +4896,18 @@
 <h1 id="workflows-governance-and-explorers-v05">Workflows, governance and explorers <span class="mapi-badge">v0.5</span><a class="headerlink" href="#workflows-governance-and-explorers-v05" title="Permanent link">&para;</a></h1>
 <div class="admonition success">
 <p class="admonition-title">Status: available in v0.5 (milestone M3.5)</p>
-<p>v0.4 made one model easy to fit, read and share. v0.5 makes the analysis around it
-repeatable and defensible: workflows that run the statistics a careful analyst would,
-governance policies that hold every model to null tests before anyone uses it, Data and
-Model Explorers, mmm-framework as the marketing-mix engine with budget optimisation,
-twelve statsmodels time-series models, and an About card on everything a user can pick.
-To use it: <a href="../../whats-new-0.5/">What's new in 0.5</a>, <a href="../../guides/workflow-cookbook/">the workflow cookbook</a>,
-<a href="../../guides/null-tests/">Can you trust this model?</a>.</p>
+<p>v0.4 made one model easy to fit, read and share. v0.5 makes the analysis around the
+model repeatable and defensible. v0.5 has these parts:</p>
+<ul>
+<li>workflows that run the statistics that a careful analyst runs</li>
+<li>governance policies that make each model pass null tests before a person uses it</li>
+<li>Data and Model Explorers</li>
+<li>mmm-framework as the marketing-mix engine, with budget optimisation</li>
+<li>twelve statsmodels time-series models</li>
+<li>an About card on each item that a user can select.</li>
+</ul>
+<p>For instructions, read <a href="../../whats-new-0.5/">What's new in 0.5</a>, <a href="../../guides/workflow-cookbook/">the workflow cookbook</a>
+and <a href="../../guides/null-tests/">Can you trust this model?</a>.</p>
 </div>
 <h2 id="workflows">Workflows<a class="headerlink" href="#workflows" title="Permanent link">&para;</a></h2>
 <table>
@@ -4942,12 +5007,19 @@ To use it: <a href="../../whats-new-0.5/">What's new in 0.5</a>, <a href="../../
 </tbody>
 </table>
 <h2 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h2>
-<p>The five v0.5 journeys - the canonical workflow, governance with a second person, an
-mmm-framework fit with a budget plan, the explorers and the chooser, and the CLI - pass
-through a live local stack, with real fits in the runner and the real orchestrator; the runs
-found eight defects that no unit or mocked test could see, each fixed with a regression test
-(<a href="../../operations/m35-verification/">M3.5 verification</a>). As for v0.4, nothing in v0.5 has
-run on real Google Cloud or in Docker yet.</p>
+<p>The five journeys of v0.5 pass on a live local stack, with real fits in the runner and the
+real orchestrator. The journeys are:</p>
+<ul>
+<li>the canonical workflow</li>
+<li>governance with a second person</li>
+<li>an mmm-framework fit with a budget plan</li>
+<li>the explorers and the chooser</li>
+<li>the CLI.</li>
+</ul>
+<p>The runs found eight defects that unit tests and mocked tests could not find. We repaired
+each defect and added a regression test
+(<a href="../../operations/m35-verification/">M3.5 verification</a>). The same as for v0.4, no part of
+v0.5 ran on real Google Cloud or in Docker yet.</p>
 
 
 

@@ -1078,13 +1078,14 @@
           "response_curves",
           "irf",
           "fevd",
+          "fields",
           "forecast",
           "backtest",
           "comparison"
         ],
         "type": "string"
       },
-      "maxItems": 11,
+      "maxItems": 12,
       "minItems": 1,
       "title": "Sections",
       "type": "array"

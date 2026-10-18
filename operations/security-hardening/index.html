@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4715,6 +4745,8 @@
       
         
       
+        
+      
     
     
     
@@ -4803,6 +4835,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5044,14 +5104,15 @@
 
 
 <h1 id="security-hardening-on-google-cloud-v03">Security hardening on Google Cloud <span class="mapi-badge">v0.3</span><a class="headerlink" href="#security-hardening-on-google-cloud-v03" title="Permanent link">&para;</a></h1>
-<p>Tenants can submit specs (and, from M4, code) that run on the platform's infrastructure, so the
-cloud deployment assumes <strong>every execution is hostile</strong>. This page lists each control of the
-<a href="../gcp-deployment/">Google Cloud deployment</a>, the threat it answers (plan §9), where it lives
-in <code>infra/terraform</code>, and how to check it on a live environment. The application-level model
-(supervisor and worker, signed events, verified outputs) is on
-<a href="../../concepts/security/">Security model</a>.</p>
-<p>The last section is the <strong>M0 verification checklist</strong>: the cloud behaviours the design depends
-on that have not yet been confirmed against a real project. Work through it before production.</p>
+<p>Tenants can submit specs (and, from M4, code) that run on the infrastructure of the
+platform. Thus the cloud deployment assumes that <strong>each execution is hostile</strong>. This page
+lists each control of the <a href="../gcp-deployment/">Google Cloud deployment</a>. For each control, it
+gives the threat that it stops (plan §9) and its location in <code>infra/terraform</code>. It also tells
+how to do a check of the control on a live environment. The model at application level (supervisor and worker,
+signed events, verified outputs) is in <a href="../../concepts/security/">Security model</a>.</p>
+<p>The last section is the <strong>M0 verification checklist</strong>. It lists the cloud behaviours that
+the design depends on, which nobody has confirmed against a real project yet. Do this
+checklist before production.</p>
 <h2 id="executions-cannot-reach-the-network">Executions cannot reach the network<a class="headerlink" href="#executions-cannot-reach-the-network" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5064,53 +5125,54 @@ on that have not yet been confirmed against a real project. Work through it befo
 </thead>
 <tbody>
 <tr>
-<td>Direct VPC egress with <code>egress = ALL_TRAFFIC</code> on every Job</td>
-<td>Bypassing the VPC's controls</td>
+<td>Direct VPC egress with <code>egress = ALL_TRAFFIC</code> on each Job</td>
+<td>A path around the controls of the VPC</td>
 <td><code>modules/exec/jobs.tf</code></td>
 <td><code>gcloud run jobs describe</code> shows the network interface and <code>ALL_TRAFFIC</code></td>
 </tr>
 <tr>
-<td>No default route; one route to <code>199.36.153.4/30</code></td>
-<td>Any path to the internet</td>
+<td>No default route. One route to <code>199.36.153.4/30</code></td>
+<td>A path to the internet</td>
 <td><code>modules/exec/network.tf</code></td>
 <td><code>gcloud compute routes list --filter=network:mapi-&lt;env&gt;-exec-&lt;pool&gt;</code> lists only <code>restricted-vip</code> (and the subnet routes)</td>
 </tr>
 <tr>
-<td>Firewall: deny all egress (IPv4 and IPv6) at priority 65534, logged</td>
+<td>Firewall: deny all egress (IPv4 and IPv6) at priority 65534, with logs</td>
 <td>Data exfiltration over IP</td>
 <td><code>modules/exec/network.tf</code></td>
-<td>Red-team probe: <code>curl https://example.com</code> from a Job fails; the denial appears in the firewall logs</td>
+<td>Red-team probe: <code>curl https://example.com</code> from a Job fails. The denial shows in the firewall logs</td>
 </tr>
 <tr>
 <td>Firewall: allow only TCP 443 to the restricted VIP and port 53 to <code>35.199.192.0/19</code></td>
-<td>The two exceptions executions need</td>
+<td>The two exceptions that executions need</td>
 <td><code>modules/exec/network.tf</code></td>
 <td><code>gcloud compute firewall-rules list</code> shows exactly these two allow rules</td>
 </tr>
 <tr>
-<td>DNS response policy: <code>*.</code> answered locally (sinkhole), bypassed only for <code>googleapis.com</code>, <code>*.googleapis.com</code> and <code>metadata.google.internal</code></td>
+<td>DNS response policy: <code>*.</code> answered locally (sinkhole). The bypass applies only to <code>googleapis.com</code>, <code>*.googleapis.com</code> and <code>metadata.google.internal</code></td>
 <td><strong>DNS exfiltration</strong> (queries for <code>&lt;secret&gt;.attacker.example</code>)</td>
 <td><code>modules/exec/dns.tf</code></td>
-<td>Red-team gate below: a unique subdomain of a zone you control is never seen by its authoritative servers</td>
+<td>Red-team gate below: the authoritative servers of a zone that you control never see a unique subdomain of that zone</td>
 </tr>
 <tr>
 <td>Private zone <code>googleapis.com</code> → <code>restricted.googleapis.com</code> (199.36.153.4–7)</td>
-<td>Reaching Google APIs through non-VPC-SC endpoints</td>
+<td>Access to Google APIs through endpoints without VPC-SC</td>
 <td><code>modules/exec/dns.tf</code></td>
 <td>From a Job, <code>storage.googleapis.com</code> resolves to 199.36.153.4–7</td>
 </tr>
 <tr>
-<td>VPC-SC perimeter around exec and data projects; every data-moving API restricted; VPC-accessible services = Cloud Storage only</td>
-<td>Exfiltration through the VIP to an attacker-owned bucket, topic or dataset (with any credential)</td>
+<td>VPC-SC perimeter around the exec and data projects. All APIs that move data are restricted. The only VPC-accessible service is Cloud Storage</td>
+<td>Exfiltration through the VIP to a bucket, topic or dataset of an attacker (with all credentials)</td>
 <td><code>modules/perimeter</code></td>
-<td>Red-team probe: a signed PUT URL for a bucket <em>outside</em> the perimeter fails from a Job with a VPC-SC violation in the audit logs</td>
+<td>Red-team probe: from a Job, a signed PUT URL for a bucket <em>outside</em> the perimeter fails, and a VPC-SC violation shows in the audit logs</td>
 </tr>
 </tbody>
 </table>
-<p>Cloud DNS response policies can answer with local data or bypass the policy; they cannot
-return NXDOMAIN. The plan's "<code>*.</code> → NXDOMAIN" is therefore a local sinkhole answer
-(192.0.2.1 / 100::1, both non-routable and denied by the firewall). What matters for
-exfiltration is that the query is answered locally and never forwarded.</p>
+<p>Cloud DNS response policies can answer with local data or bypass the policy. They cannot
+return NXDOMAIN. Thus the "<code>*.</code> → NXDOMAIN" of the plan is a local sinkhole answer
+(192.0.2.1 / 100::1). The two addresses are non-routable, and the firewall denies them. For
+exfiltration, the important point is that the resolver answers the query locally and never
+sends it on.</p>
 <h2 id="identities-hold-only-what-they-use">Identities hold only what they use<a class="headerlink" href="#identities-hold-only-what-they-use" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5122,44 +5184,44 @@ exfiltration is that the query is answered locally and never forwarded.</p>
 </thead>
 <tbody>
 <tr>
-<td>Execution SA (one per exec project)</td>
+<td>Execution SA (one for each exec project)</td>
 <td><code>storage.objects.get</code> + <code>delete</code> on the bootstrap bucket (custom role, no list)</td>
-<td>Anything else: no project roles, no secrets, no access to bundles or data</td>
+<td>All other actions: no project roles, no secrets, no access to bundles or data</td>
 </tr>
 <tr>
 <td>Orchestrator</td>
-<td>Run, list, inspect and cancel executions of existing Jobs (custom role); write bootstrap objects; verify, copy and sign outputs (KMS signer)</td>
-<td>Create or change a Job (image, class, identity); delete bundles</td>
+<td>Run, list, examine and cancel executions of Jobs that are there (custom role). Write bootstrap objects. Verify, copy and sign outputs (KMS signer)</td>
+<td>Make or change a Job (image, class, identity). Delete bundles</td>
 </tr>
 <tr>
 <td>API</td>
-<td>Read bucket metadata; mint signed URLs (<code>signBlob</code> on the URL signer only); read the signing key's public key</td>
-<td>Sign manifests; run Jobs; read secrets other than its own</td>
+<td>Read bucket metadata. Mint signed URLs (<code>signBlob</code> only on the URL signer). Read the public key of the signing key</td>
+<td>Sign manifests. Run Jobs. Read secrets other than its own</td>
 </tr>
 <tr>
 <td>Events</td>
 <td>Database (through <code>db-url-app</code>)</td>
-<td>Everything else</td>
+<td>All other actions</td>
 </tr>
 <tr>
 <td>URL signer</td>
-<td>The bucket permissions signed URLs carry (custom reader/writer roles)</td>
-<td>Nothing else; no key file exists, and nobody can impersonate it (only <code>signBlob</code>)</td>
+<td>The bucket permissions that signed URLs carry (custom reader/writer roles)</td>
+<td>No other actions. There is no key file, and nobody can impersonate it (only <code>signBlob</code>)</td>
 </tr>
 <tr>
 <td>Pub/Sub push SA</td>
 <td>Invoke the events service</td>
-<td>Anything else</td>
+<td>All other actions</td>
 </tr>
 <tr>
 <td>CI: ci-push / planner / deployer</td>
-<td>Push images / read-only plan / apply; each bound to one GitHub environment of one repository</td>
-<td>Use a long-lived key (none exist)</td>
+<td>Push images / read-only plan / apply. Each is bound to one GitHub environment of one repository</td>
+<td>Use a long-lived key (there are none)</td>
 </tr>
 </tbody>
 </table>
 <p>Where: <code>modules/control/iam.tf</code>, <code>modules/exec/iam.tf</code>, <code>modules/data/iam.tf</code>,
-<code>modules/build/wif.tf</code>. Check with
+<code>modules/build/wif.tf</code>. To do a check, use
 <code>gcloud projects get-iam-policy &lt;project&gt; --flatten=bindings --format='table(bindings.role,bindings.members)'</code>
 and <code>gcloud storage buckets get-iam-policy gs://mapi-&lt;env&gt;-&lt;bucket&gt;</code>.</p>
 <h2 id="storage">Storage<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h2>
@@ -5173,23 +5235,23 @@ and <code>gcloud storage buckets get-iam-policy gs://mapi-&lt;env&gt;-&lt;bucket
 </thead>
 <tbody>
 <tr>
-<td>Public access prevention enforced and uniform bucket-level access on every bucket; no ACL resources anywhere</td>
-<td>Public or ACL-granted objects</td>
+<td>Public access prevention enforced and uniform bucket-level access on each bucket. No ACL resources</td>
+<td>Public objects, or objects that an ACL makes available</td>
 <td><code>modules/data/buckets.tf</code></td>
 </tr>
 <tr>
 <td>Bootstrap: 1-day lifecycle, <strong>soft delete off</strong></td>
-<td>The RunSpec (signed URLs, per-run HMAC key) surviving its read-then-delete</td>
+<td>The RunSpec (signed URLs, HMAC key of the run) stays after its read-then-delete</td>
 <td><code>modules/data/buckets.tf</code></td>
 </tr>
 <tr>
-<td>Bundles: retention policy (locked in prod), no delete role for anyone, never <code>force_destroy</code></td>
+<td>Bundles: retention policy (locked in prod), no delete role for anybody, never <code>force_destroy</code></td>
 <td>Artifact swap or replay after verification</td>
 <td><code>modules/data/</code></td>
 </tr>
 <tr>
 <td>Quarantine and runs expire (7 and 30 days), soft delete off</td>
-<td>Tenant data outliving its purpose</td>
+<td>Tenant data that stays after its purpose</td>
 <td><code>modules/data/buckets.tf</code></td>
 </tr>
 <tr>
@@ -5198,7 +5260,7 @@ and <code>gcloud storage buckets get-iam-policy gs://mapi-&lt;env&gt;-&lt;bucket
 <td><code>modules/data/buckets.tf</code></td>
 </tr>
 <tr>
-<td>CORS only for the app origin and only the methods each bucket needs</td>
+<td>CORS only for the app origin, and only the methods that each bucket needs</td>
 <td>Cross-origin abuse of signed URLs</td>
 <td><code>modules/data/buckets.tf</code></td>
 </tr>
@@ -5206,45 +5268,55 @@ and <code>gcloud storage buckets get-iam-policy gs://mapi-&lt;env&gt;-&lt;bucket
 </table>
 <h2 id="secrets-and-signing">Secrets and signing<a class="headerlink" href="#secrets-and-signing" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>No secret in Terraform state or plans.</strong> Database passwords, the server's root secret (the
-  API-token pepper and audit key derive from it) and the metrics scrape token come from
-  ephemeral resources; the OAuth client secret is an ephemeral variable;
-  all are written with write-only arguments (<code>password_wo</code>, <code>secret_data_wo</code>). Cloud Run
-  revisions reference secrets by name, never by value.</li>
-<li><strong>Secrets replicated in one region</strong> (the control region), for data residency.</li>
-<li><strong>Bundle manifests are signed by KMS</strong> (EC P-256 / SHA-256, HSM in prod); only the
-  orchestrator may sign, and the API verifies with the public key before minting any URL for a
-  bundle (plan §8.6). Key versions are destroyed only after a 30-day schedule.</li>
-<li><strong>Database</strong>: private IP only, TLS required, password policy enforced. Four roles: the
-  migrations own the schema; <code>mapi_app</code> and <code>mapi_gateway</code> (API, events) are not the table
-  owner, so <code>FORCE ROW LEVEL SECURITY</code> binds them (the gateway sees identity tables and a few
-  metadata columns only); <code>mapi_orchestrator</code> alone gets <code>BYPASSRLS</code> from the migrations,
-  and only the orchestrator can read its URL. The
-  managed pooler runs in transaction mode, which is safe because the tenant is set with
-  <code>SET LOCAL</code> per transaction.</li>
+<li><strong>No secret in Terraform state or plans.</strong> Ephemeral resources make the database
+  passwords, the root secret of the server and the metrics scrape token. The API-token pepper
+  and the audit key come from the root secret. The OAuth client secret is an ephemeral
+  variable. Terraform writes all of them with write-only arguments (<code>password_wo</code>,
+  <code>secret_data_wo</code>). Cloud Run revisions refer to secrets by name, never by value.</li>
+<li><strong>Secrets are replicated in one region</strong> (the control region), for data residency.</li>
+<li><strong>KMS signs the bundle manifests</strong> (EC P-256 / SHA-256, HSM in prod). Only the orchestrator
+  can sign. The API verifies with the public key before it mints a URL for a bundle (plan
+  §8.6). Key versions are destroyed only after a 30-day schedule.</li>
+<li>
+<p><strong>Database</strong>: only private IP, TLS necessary, password policy enforced. There are four
+  roles:</p>
+<ul>
+<li>The migrations own the schema.</li>
+<li><code>mapi_app</code> and <code>mapi_gateway</code> (API, events) are not the table owner. Thus
+  <code>FORCE ROW LEVEL SECURITY</code> applies to them. The gateway sees only identity tables and
+  some metadata columns.</li>
+<li>Only <code>mapi_orchestrator</code> gets <code>BYPASSRLS</code> from the migrations, and only the
+  orchestrator can read its URL.</li>
+</ul>
+<p>The managed pooler runs in transaction mode. This is safe, because the tenant is set with
+<code>SET LOCAL</code> for each transaction.</p>
+</li>
 </ul>
 <h2 id="event-path-and-control-plane-ingress">Event path and control-plane ingress<a class="headerlink" href="#event-path-and-control-plane-ingress" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The Logging sink of each exec project routes only <code>jsonPayload.mapi_event:*</code> lines of this
-  environment's Jobs, and writes as its own identity, which may only publish to the events
-  topic.</li>
-<li>User output is excluded at the exec project's <code>_Default</code> sink (plan §8.7,
-  <code>modules/exec/logging.tf</code>): <code>log</code> and <code>progress</code> events of the runner Jobs still reach the
-  events service through the routing sink, but are not ingested (and billed) in the exec
-  project. State changes, warnings, errors, completions and Cloud Run's system logs stay.</li>
-<li>The events service is <strong>internal-only</strong> and IAM-protected: only the push identity may invoke
-  it, and Cloud Run checks the push token's signature and audience before the request reaches
-  the container. The server additionally checks the claims (<code>mapi_spec.auth.check_push_claims</code>)
-  and the per-line HMAC.</li>
-<li>Undeliverable events are dead-lettered after 10 attempts instead of being dropped.</li>
-<li>Behind the load balancer the API accepts traffic only from it; TLS 1.2+ (MODERN profile);
-  the plot sandbox has its own host (use a different registrable domain in prod), as plan
-  §10.3 requires. Every backend carries the Cloud Armor policy below.</li>
+<li>The Logging sink of each exec project routes only the <code>jsonPayload.mapi_event:*</code> lines of
+  the Jobs of this environment. It writes as its own identity, which can only publish to the
+  events topic.</li>
+<li>The <code>_Default</code> sink of the exec project excludes user output (plan §8.7,
+  <code>modules/exec/logging.tf</code>). The <code>log</code> and <code>progress</code> events of the runner Jobs still go to
+  the events service through the routing sink. But the exec project does not ingest them (or
+  bill them). State changes, warnings, errors, completions and the system logs of Cloud Run
+  stay.</li>
+<li>The events service is <strong>internal-only</strong> and protected by IAM. Only the push identity can
+  invoke it. Cloud Run does a check of the signature and audience of the push token before
+  the request goes to the container. The server also does a check of the claims
+  (<code>mapi_spec.auth.check_push_claims</code>) and of the HMAC of each line.</li>
+<li>After 10 attempts, events that cannot be delivered go to a dead-letter topic. They are not
+  dropped.</li>
+<li>Behind the load balancer, the API accepts traffic only from the load balancer. TLS 1.2+
+  (MODERN profile). The plot sandbox has its own host, as plan §10.3 needs. In prod, use a
+  different registrable domain. Each backend has the Cloud Armor policy below.</li>
 </ul>
 <h2 id="cloud-armor">Cloud Armor<a class="headerlink" href="#cloud-armor" title="Permanent link">&para;</a></h2>
-<p><code>modules/control/armor.tf</code> creates a Cloud Armor policy with the load balancer
-(<code>var.domains</code>) and attaches it to the <code>api</code>, <code>web</code> and <code>plots</code> backends (<code>lb.tf</code>). Supply your
-own with <code>security_policy</code> instead, or turn it off with <code>cloud_armor.enabled = false</code>.</p>
+<p><code>modules/control/armor.tf</code> makes a Cloud Armor policy with the load balancer
+(<code>var.domains</code>). It attaches the policy to the <code>api</code>, <code>web</code> and <code>plots</code> backends (<code>lb.tf</code>).
+You can give your own policy with <code>security_policy</code>, or turn it off with
+<code>cloud_armor.enabled = false</code>.</p>
 <table>
 <thead>
 <tr>
@@ -5258,8 +5330,8 @@ own with <code>security_policy</code> instead, or turn it off with <code>cloud_a
 <tr>
 <td>Trusted ranges (CI, office)</td>
 <td>100</td>
-<td>Being banned by your own load tests</td>
-<td><code>cloud_armor.trusted_ip_ranges</code> (at most 10 CIDRs, never <code>*</code>)</td>
+<td>Your own load tests cause a ban</td>
+<td><code>cloud_armor.trusted_ip_ranges</code> (a maximum of 10 CIDRs, never <code>*</code>)</td>
 </tr>
 <tr>
 <td>OWASP CRS: <code>sqli</code>, <code>xss</code>, <code>lfi</code>, <code>rce</code>, <code>scannerdetection</code> (v3.3 stable)</td>
@@ -5268,27 +5340,27 @@ own with <code>security_policy</code> instead, or turn it off with <code>cloud_a
 <td><code>cloud_armor.waf_mode</code> (<code>preview</code> by default), <code>cloud_armor.waf_sensitivity</code> (paranoia level 1–4, default 1)</td>
 </tr>
 <tr>
-<td>Per-IP rate ban on <code>/auth/signup</code> (and <code>/v1/signup</code>)</td>
+<td>Rate ban for each IP on <code>/auth/signup</code> (and <code>/v1/signup</code>)</td>
 <td>2000</td>
 <td>Sign-up floods, Sybil farms</td>
 <td><code>rate_limits.signup_per_minute</code> (10)</td>
 </tr>
 <tr>
-<td>Per-IP rate ban on <code>/auth/*</code></td>
+<td>Rate ban for each IP on <code>/auth/*</code></td>
 <td>2001</td>
 <td>Credential stuffing on sign-in, callback and e-mail verification</td>
 <td><code>rate_limits.auth_per_minute</code> (120)</td>
 </tr>
 <tr>
-<td>Per-IP rate ban on <code>/v1/embeds/*</code></td>
+<td>Rate ban for each IP on <code>/v1/embeds/*</code></td>
 <td>2002</td>
 <td>Scraping of public embed links</td>
 <td><code>rate_limits.embed_per_minute</code> (600)</td>
 </tr>
 <tr>
-<td>Per-IP rate ban on <code>/v1/endpoints/&lt;alias&gt;/score</code></td>
+<td>Rate ban for each IP on <code>/v1/endpoints/&lt;alias&gt;/score</code></td>
 <td>2003</td>
-<td>Denial of wallet through scoring</td>
+<td>Denial of wallet through scores</td>
 <td><code>rate_limits.score_per_minute</code> (600)</td>
 </tr>
 <tr>
@@ -5300,114 +5372,143 @@ own with <code>security_policy</code> instead, or turn it off with <code>cloud_a
 </tbody>
 </table>
 <ul>
-<li><strong>Preview, then enforce.</strong> The OWASP rules start in <code>preview</code>: matches are logged
-  (<code>jsonPayload.previewSecurityPolicy</code> on the load balancer's request logs), nothing is
-  blocked. Watch a week of real traffic, add exclusions or lower the sensitivity where a rule
-  matches legitimate requests (spec YAML and plot JSON are the likely ones), then set
-  <code>waf_mode = "enforce"</code> (in prod: <code>cloud_armor_waf_mode</code>). Enforced matches answer <code>403</code>.</li>
-<li><strong>Rate bans</strong> are enforced from the start (<code>rate_limit_mode = "enforce"</code>): over the
-  per-minute threshold a client gets <code>429</code>; three times the threshold within five minutes bans
-  the address for <code>ban_duration_sec</code> (600 s). The API's own limits (sign-up per address,
-  domain and platform; token and tenant request rates) apply behind them.</li>
-<li><strong>Adaptive Protection</strong> (Layer 7 DDoS defense) is on: it learns each backend's normal
-  traffic and alerts with a suggested rule; it never blocks by itself.</li>
-<li><strong>Request bodies.</strong> JSON bodies are parsed (<code>json_parsing = STANDARD</code>), so the rules see
-  field values instead of raw text. Cloud Armor inspects only the first
-  <code>request_body_inspection_size</code> bytes of a body (8 KB by default, at most 64 KB): larger
-  bodies (spec documents, inline XrJSON score payloads up to 5 MB) are inspected partially,
-  not blocked. The API enforces its own body limits; signed-URL uploads go to Cloud Storage
-  directly and never pass the load balancer.</li>
+<li><strong>Preview, then enforce.</strong> The OWASP rules start in <code>preview</code>. Cloud Armor logs the matches
+  (<code>jsonPayload.previewSecurityPolicy</code> on the request logs of the load balancer), but it
+  blocks nothing. Do these steps:<ol>
+<li>Monitor one week of real traffic.</li>
+<li>Where a rule matches legitimate requests, add exclusions or decrease the sensitivity.
+   Spec YAML and plot JSON are the most probable matches.</li>
+<li>Set <code>waf_mode = "enforce"</code> (in prod: <code>cloud_armor_waf_mode</code>). Enforced matches answer
+   <code>403</code>.</li>
+</ol>
+</li>
+<li><strong>Rate bans</strong> are enforced from the start (<code>rate_limit_mode = "enforce"</code>). Above the
+  threshold for each minute, a client gets <code>429</code>. At three times the threshold in five
+  minutes, Cloud Armor bans the address for <code>ban_duration_sec</code> (600 s). The limits of the API
+  apply behind these bans (sign-up for each address, domain and platform, and token and
+  tenant request rates).</li>
+<li><strong>Adaptive Protection</strong> (Layer 7 DDoS defense) is on. It learns the normal traffic of each
+  backend and sends alerts with a suggested rule. It never blocks automatically.</li>
+<li><strong>Request bodies.</strong> Cloud Armor parses JSON bodies (<code>json_parsing = STANDARD</code>). Thus the
+  rules see field values, not raw text. Cloud Armor examines only the first
+  <code>request_body_inspection_size</code> bytes of a body (8 KB by default, a maximum of 64 KB). It
+  examines larger bodies only partially, and does not block them. Examples are spec
+  documents and inline XrJSON score payloads of up to 5 MB. The API enforces its own body
+  limits. Signed-URL uploads go directly to Cloud Storage and never go through the load
+  balancer.</li>
 </ul>
-<p>Check on a live environment:</p>
+<p>Do a check on a live environment:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>backend-services<span class="w"> </span>describe<span class="w"> </span>mapi-prod-api<span class="w"> </span>--global<span class="w"> </span>--format<span class="o">=</span><span class="s1">'value(securityPolicy)'</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>security-policies<span class="w"> </span>describe<span class="w"> </span>mapi-prod-edge<span class="w"> </span>--format<span class="o">=</span><span class="s1">'yaml(rules,adaptiveProtectionConfig)'</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># a burst against sign-up is banned (expect 429s after the threshold)</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>seq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">40</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>/dev/null<span class="w"> </span>-w<span class="w"> </span><span class="s1">'%{http_code}\n'</span><span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>https://app.example.com/auth/signup<span class="p">;</span><span class="w"> </span><span class="k">done</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>uniq<span class="w"> </span>-c
 </span></code></pre></div>
-<p><strong>Logs and tenant deletion.</strong> The load balancer logs every request (<code>log_config.sample_rate =
-1</code>) into the control project's <code>_Default</code> bucket, whose retention Terraform sets explicitly
-(<code>log_retention_days</code>, 30 days, <code>modules/control/logging.tf</code>). Tenant deletion does not purge
-logs; they hold ids, not content, and expire with that retention
-(<a href="../../guides/data-deletion/#logs">Deleting data</a>).</p>
+<p><strong>Logs and tenant deletion.</strong> The load balancer logs each request (<code>log_config.sample_rate =
+1</code>) into the <code>_Default</code> bucket of the control project. Terraform sets the retention of this
+bucket explicitly (<code>log_retention_days</code>, 30 days, <code>modules/control/logging.tf</code>). Tenant
+deletion does not purge logs. The logs hold ids, not content, and they expire with that
+retention (<a href="../../guides/data-deletion/#logs">Deleting data</a>).</p>
 <h2 id="supply-chain">Supply chain<a class="headerlink" href="#supply-chain" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Images are deployed by <strong>digest only</strong>; Terraform rejects tags. The registry's tags are
-  immutable and nothing is garbage-collected automatically (digests referenced by live model
-  versions must survive, plan §12).</li>
-<li>Builds attach SBOM and provenance attestations (<code>build-push.sh</code>, <code>--no-attestations</code> to skip).</li>
-<li>A Binary Authorization attestor, note and signing key exist (<code>modules/build/binauthz.tf</code>);
-  enforcement on the Jobs (<code>binary_authorization = true</code>) is switched on in M5, once CI
-  attests every base digest.</li>
-<li>CI authenticates with Workload Identity Federation; no service-account key is ever created.</li>
+<li>You deploy images <strong>only by digest</strong>. Terraform refuses tags. The tags of the registry are
+  immutable, and nothing is deleted automatically. The digests that live model versions use
+  must stay (plan §12).</li>
+<li>Builds attach SBOM and provenance attestations (<code>build-push.sh</code>, <code>--no-attestations</code> to
+  skip).</li>
+<li>A Binary Authorization attestor, note and signing key are available
+  (<code>modules/build/binauthz.tf</code>). Enforcement on the Jobs (<code>binary_authorization = true</code>)
+  starts in M5, when CI attests each base digest.</li>
+<li>CI authenticates with Workload Identity Federation. Nobody ever makes a service-account
+  key.</li>
 </ul>
 <h2 id="m0-verification-checklist">M0 verification checklist<a class="headerlink" href="#m0-verification-checklist" title="Permanent link">&para;</a></h2>
-<p>Plan items marked <strong>[verify M0]</strong> and the assumptions this Terraform adds. Each needs a
-throw-away environment (<code>dev</code>, perimeter enforced) and a probe Job built from a base image.
-Record the date, the result and the evidence (log query, screenshot) for each.</p>
+<p>This checklist has the plan items with the mark <strong>[verify M0]</strong>, and the assumptions that
+this Terraform adds. Each item needs a temporary environment (<code>dev</code>, perimeter enforced) and
+a probe Job built from a base image. For each item, record the date, the result and the
+evidence (log query, screenshot).</p>
 <h3 id="network-and-dns">Network and DNS<a class="headerlink" href="#network-and-dns" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>The Direct VPC egress resolver honours response policies.</strong> From a Job, resolve
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>The Direct VPC egress resolver obeys response policies.</strong> From a Job, resolve
   <code>&lt;random&gt;.probe.&lt;zone you control&gt;</code> (A, AAAA and TXT). Pass: the answer is the sinkhole (or
-  NODATA) and the zone's authoritative query logs never see the name. Plan §9's red-team gate;
-  if it fails, Cloud Run Jobs cannot host untrusted code (fallback: GKE Sandbox).
-  <strong>Until this passes, <code>verified</code> and <code>public</code> tenants stay off:</strong> only then set
-  <code>MAPI_CLOUDRUN_DNS_ENFORCED=true</code> on the orchestrator and record the security-suite and
-  conformance evidence (<a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>). New tenants
-  default to <code>verified</code>, so the private beta needs this item.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>A wildcard rule for the root (<code>*.</code>) is accepted</strong> by Cloud DNS, and local data for
-  A/AAAA does not leak TXT or other record types upstream (same probe, other types).</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>The bypass rules work</strong>: <code>storage.googleapis.com</code> resolves to 199.36.153.4–7 and
-  <code>metadata.google.internal</code> still serves the execution's token.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Egress is really denied</strong>: <code>curl</code> to a public IP and to a public name, a raw TCP connect
-  to 8.8.8.8:53 and an ICMP ping all fail; the firewall logs show the denials.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>VPC-SC applies to Cloud Run Jobs</strong>: a signed PUT URL for a bucket outside the
-  perimeter fails from a Job, and a VPC-SC violation appears in the audit logs.</li>
+  NODATA), and the authoritative query logs of the zone never see the name. This is the
+  red-team gate of plan §9. If it fails, Cloud Run Jobs cannot host untrusted code (fallback:
+  GKE Sandbox).
+  <strong>Until this item passes, <code>verified</code> and <code>public</code> tenants stay off.</strong> After it passes, set
+  <code>MAPI_CLOUDRUN_DNS_ENFORCED=true</code> on the orchestrator. Then record the security-suite and
+  conformance evidence (<a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>). New
+  tenants are <code>verified</code> by default, so the private beta needs this item.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Cloud DNS accepts a wildcard rule for the root (<code>*.</code>).</strong> Local data for A/AAAA does
+  not send TXT or other record types upstream (the same probe, other types).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>The bypass rules work</strong>: <code>storage.googleapis.com</code> resolves to 199.36.153.4–7, and
+  <code>metadata.google.internal</code> still serves the token of the execution.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Egress is really denied</strong>: <code>curl</code> to a public IP and to a public name, a raw TCP
+  connect to 8.8.8.8:53 and an ICMP ping all fail. The firewall logs show the denials.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>VPC-SC applies to Cloud Run Jobs</strong>: from a Job, a signed PUT URL for a bucket outside
+  the perimeter fails, and a VPC-SC violation shows in the audit logs.</li>
 </ul>
 <h3 id="sandbox">Sandbox<a class="headerlink" href="#sandbox" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>The supervisor/worker uid split works on gen2</strong>: the supervisor can start the worker
-  under uid 10001 with <code>no_new_privs</code> and a seccomp filter; the worker cannot <code>ptrace</code> the
-  supervisor or read <code>/proc/1/environ</code>. Note that Cloud Run runs the image's <code>USER</code>; the runner
-  images must start the supervisor as root (or with the capabilities to switch users) for this
-  to work.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Execution overrides are env-only</strong>: <code>jobs.run</code> with overrides cannot change the image,
-  resources, service account or network (try each; all must be refused or impossible).</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Ephemeral disk</strong>: whether Jobs offer any disk beyond the in-memory filesystem, and what
-  happens at the memory limit (exit 137 → <code>RESOURCE_EXHAUSTED</code>, class+1 offered).</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>In-memory filesystem limits</strong>: writing the class's scratch budget (3/6/12 GiB for
-  S/M/L) succeeds; going beyond it gets the execution killed rather than the host degraded.</li>
+  under uid 10001 with <code>no_new_privs</code> and a seccomp filter. The worker cannot <code>ptrace</code> the
+  supervisor or read <code>/proc/1/environ</code>. Cloud Run runs the <code>USER</code> of the image. Thus the
+  runner images must start the supervisor as root (or with the capabilities to change users)
+  for this item.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Execution overrides are env-only</strong>: <code>jobs.run</code> with overrides cannot change the
+  image, resources, service account or network. Try each one. All must be refused or
+  impossible.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Ephemeral disk</strong>: find out if Jobs have a disk in addition to the in-memory
+  filesystem. Find out what occurs at the memory limit (exit 137 → <code>RESOURCE_EXHAUSTED</code>,
+  class+1 offered).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>In-memory filesystem limits</strong>: a write of the scratch budget of the class (3/6/12 GiB
+  for S/M/L) succeeds. A larger write stops the execution, and the host continues to operate
+  correctly.</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Bootstrap read-then-delete</strong>: after the supervisor deletes the RunSpec, the object is
-  gone (no soft-deleted copy can be restored) and the nonce in the audit log points at nothing.</li>
+  gone (you cannot restore a soft-deleted copy). The nonce in the audit log points at
+  nothing.</li>
 </ul>
 <h3 id="quotas-and-rates-plan-88">Quotas and rates (plan §8.8)<a class="headerlink" href="#quotas-and-rates-plan-88" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Jobs per region</strong>: 1,000 (the inventory uses 9 per exec project).</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Running executions</strong>: 1,000 per project and region; an alert fires at 70 %.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong><code>jobs.run</code> rate</strong>: 180 per minute per region; the dispatcher's token bucket stays below
-  it, and a 429 raises an alarm and backs off (<code>mapi_spec.quotas.backoff_seconds</code>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Jobs for each region</strong>: 1,000 (the inventory uses 9 for each exec project).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Running executions</strong>: 1,000 for each project and region. An alert fires at 70 %.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong><code>jobs.run</code> rate</strong>: 180 each minute for each region. The token bucket of the
+  dispatcher stays below it. A 429 causes an alarm and a back-off
+  (<code>mapi_spec.quotas.backoff_seconds</code>).</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Regional CPU and memory</strong> for the expected fan-out (sweeps, SBC).</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Cold start</strong> of a ~2.5 GB base image: p50 measured; time-to-RUNNING p95 under 90 s.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Cold start</strong> of a base image of about 2.5 GB: measure the p50. The p95 of
+  time-to-RUNNING must be below 90 s.</li>
 </ul>
 <h3 id="control-plane">Control plane<a class="headerlink" href="#control-plane" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Logging → Pub/Sub path</strong>: an event line reaches the events service with the
-  execution's labels (job, execution) in the push payload, within seconds.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Pub/Sub push to an internal-only service</strong> works (same-project subscription).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Logging → Pub/Sub path</strong>: an event line goes to the events service with the labels
+  of the execution (job, execution) in the push payload, in some seconds.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Pub/Sub push to an internal-only service</strong> works (a subscription in the same
+  project).</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Managed connection pooling</strong>: the pooler port (6432 by default here) and transaction
-  mode work with the server's driver; LISTEN goes over the direct URL.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong><code>BYPASSRLS</code></strong> can be granted to <code>mapi_orchestrator</code> by the migrate role on Cloud SQL.</li>
+  mode work with the driver of the server. LISTEN uses the direct URL.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong><code>BYPASSRLS</code></strong>: the migrate role can grant it to <code>mapi_orchestrator</code> on Cloud SQL.</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong><code>run.jobs.runWithOverrides</code> without <code>iam.serviceAccounts.actAs</code></strong> on the execution
-  service account is enough for the orchestrator (otherwise grant <code>actAs</code> on that account only).</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Image indexes</strong>: Cloud Run runs the images <code>build-push.sh</code> pushes with attestations
-  (an OCI index); otherwise build with <code>--no-attestations</code>.</li>
+  service account is sufficient for the orchestrator. If not, grant <code>actAs</code> only on that
+  account.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Image indexes</strong>: Cloud Run runs the images that <code>build-push.sh</code> pushes with
+  attestations (an OCI index). If not, build with <code>--no-attestations</code>.</li>
 </ul>
 <h3 id="red-team-probes-security-suite-plan-13">Red-team probes (security suite, plan §13)<a class="headerlink" href="#red-team-probes-security-suite-plan-13" title="Permanent link">&para;</a></h3>
-<p>Run nightly once the platform is up, and keep them green for two weeks before cut line B:
-metadata-token use beyond the bootstrap object, HTTP and DNS egress, writes outside signed
-objects, reuse of another tenant's URL, reading <code>/proc/1</code>, overlay <code>.pth</code> injection, fork, memory
-and disk bombs, log flood (<code>SANDBOX_VIOLATION</code>), forged events (bad HMAC, replayed sequence
-numbers), a tampered manifest (<code>INTEGRITY_FAILURE</code>), ReDoS schemas, plot XSS and postMessage
-abuse.</p>
+<p>When the platform operates, run these probes each night. Keep them green for two weeks
+before cut line B:</p>
+<ul>
+<li>Use of the metadata token for more than the bootstrap object.</li>
+<li>HTTP and DNS egress.</li>
+<li>Writes outside signed objects.</li>
+<li>Use of the URL of a different tenant.</li>
+<li>Reads of <code>/proc/1</code>.</li>
+<li>Overlay <code>.pth</code> injection.</li>
+<li>Fork, memory and disk bombs.</li>
+<li>Log flood (<code>SANDBOX_VIOLATION</code>).</li>
+<li>Forged events (bad HMAC, replayed sequence numbers).</li>
+<li>A tampered manifest (<code>INTEGRITY_FAILURE</code>).</li>
+<li>ReDoS schemas.</li>
+<li>Plot XSS and postMessage abuse.</li>
+</ul>
 
 
 

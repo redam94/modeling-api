@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4662,6 +4692,8 @@
       
         
       
+        
+      
     
     
     
@@ -4750,6 +4782,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4925,11 +4985,13 @@
 
 
 <h1 id="workflow-cookbook-v05">Workflow cookbook <span class="mapi-badge">v0.5</span><a class="headerlink" href="#workflow-cookbook-v05" title="Permanent link">&para;</a></h1>
-<p>Three complete analyses, each a single YAML document you can save, run, schedule and hand to
-a colleague. Every document on this page is validated against the node catalog and run end to
-end by the documentation's tests, so what you copy works. For the format itself see
-<a href="../../concepts/workflows/">Workflows</a>; for every node, the <a href="../../reference/workflow-nodes/">node reference</a>;
-for short fragments (one pattern each), the <a href="../workflows/#cookbook">workflows guide</a>.</p>
+<p>This page gives three complete analyses. Each analysis is one YAML document. You can save,
+run and schedule it, and give it to a colleague. The tests of the documentation validate each
+document on this page against the node catalog and run it from start to end. Thus the
+documents that you copy operate correctly. For the format, see
+<a href="../../concepts/workflows/">Workflows</a>. For all nodes, see the
+<a href="../../reference/workflow-nodes/">node reference</a>. For short parts with one pattern each, see
+the <a href="../workflows/#cookbook">workflows guide</a>.</p>
 <table>
 <thead>
 <tr>
@@ -4940,35 +5002,40 @@ for short fragments (one pattern each), the <a href="../workflows/#cookbook">wor
 <tbody>
 <tr>
 <td><a href="#readiness-to-arimax">Is my weekly KPI ready to forecast?</a></td>
-<td>Does the series need differencing, which ARIMA orders, does ARIMAX beat a naive forecast on honest backtests, and may we use it?</td>
+<td>Does the series need differencing? Which ARIMA orders are correct? Is ARIMAX better than a naive forecast on honest backtests? Can we use it?</td>
 </tr>
 <tr>
 <td><a href="#varvecm-cointegration">Do these series move together?</a></td>
-<td>Are several series tied in the long run (VECM) or only in their changes (VAR), and does one help predict another?</td>
+<td>Do some series have a long-run relation (VECM), or a relation only in their changes (VAR)? Does one series help to predict a different series?</td>
 </tr>
 <tr>
 <td><a href="#forecast-bake-off">Which forecasting model?</a></td>
-<td>Which of SARIMAX, ARIMA, ETS and Theta forecasts best on the same folds - and is the winner's edge more than luck?</td>
+<td>Which of SARIMAX, ARIMA, ETS and Theta forecasts best on the same folds? Is the advantage of the winner more than chance?</td>
 </tr>
 </tbody>
 </table>
 <h2 id="readiness-to-arimax">Readiness to ARIMAX<a class="headerlink" href="#readiness-to-arimax" title="Permanent link">&para;</a></h2>
-<p><strong>In plain words.</strong> Before trusting a forecast you want to know four things: whether the
-series "wanders" (and must be modelled in changes rather than levels), how much of the past
-matters, whether the model forecasts better than the obvious "next week is like this week",
-and whether it learned something real rather than noise. This workflow answers each with the
-standard statistical tool, writes down every decision with the numbers behind it, keeps the
-model only if it beats the benchmarks, and records the governance evidence.</p>
+<p><strong>In plain words.</strong> Before you trust a forecast, you must know four things:</p>
+<ul>
+<li>If the series "wanders". If it does, you must model its changes, not its levels.</li>
+<li>How much of the past is important.</li>
+<li>If the model forecasts better than the obvious rule "next week is like this week".</li>
+<li>If the model found a real effect, not noise.</li>
+</ul>
+<p>This workflow answers each question with the standard statistical tool. It records each
+decision with the numbers that caused it. It keeps the model only if the model is better than
+the benchmarks. It also records the governance evidence.</p>
 <p><strong>For the statistician.</strong> ADF, KPSS, Phillips-Perron and Zivot-Andrews (one endogenous break)
-decide <code>d</code> by a conservative rule - difference unless the evidence for stationarity is
-clear on both sides; seasonal strength (STL) decides <code>D</code>. The ARMA orders come from an
-information-criterion grid over <code>p ≤ max_p</code>, <code>q ≤ max_q</code> fitted as ARIMA(p, d, q) on the
-levels (so <code>d</code> is estimated, not imposed on already-differenced data); ACF/PACF are reported
-for the reader. The backtest is a rolling origin with a fixed training window, a gap and
-several horizons; ARIMAX and the naive and seasonal-naive benchmarks are scored on the same
-folds; a Diebold-Mariano test with the Harvey-Leybourne-Newbold correction says whether the
-difference in squared errors at horizon 1 is significant. <code>select.best</code> keeps the model only if
-its MAE beats every benchmark in <code>must_beat</code>.</p>
+decide <code>d</code> with a conservative rule: difference the series unless the evidence for
+stationarity is clear on the two sides. Seasonal strength (STL) decides <code>D</code>. The ARMA orders
+come from a grid of information criteria over <code>p ≤ max_p</code>, <code>q ≤ max_q</code>. The workflow fits
+each point as ARIMA(p, d, q) on the levels. Thus the model estimates <code>d</code>, and does not apply
+it to data that is already differenced. The report shows ACF/PACF for the reader.</p>
+<p>The backtest is a rolling origin with a fixed training window, a gap and some horizons. The
+workflow scores ARIMAX and the naive and seasonal-naive benchmarks on the same folds. A
+Diebold-Mariano test with the Harvey-Leybourne-Newbold correction tells if the difference in
+squared errors at horizon 1 is significant. <code>select.best</code> keeps the model only if its MAE is
+better than each benchmark in <code>must_beat</code>.</p>
 <pre class="mermaid"><code>flowchart LR
   T["adf · kpss · pp · za&lt;br/&gt;seasonal strength"] --&gt; B{"wanders?&lt;br/&gt;seasonal?"}
   B -- then --&gt; D["difference /&lt;br/&gt;seasonal difference"]
@@ -5105,19 +5172,21 @@ its MAE beats every benchmark in <code>must_beat</code>.</p>
 </span><span id="__span-0-118"><a id="__codelineno-0-118" name="__codelineno-0-118" href="#__codelineno-0-118"></a><span class="w">  </span><span class="nt">with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="nv">Weekly readiness and ARIMAX</span><span class="p p-Indicator">}</span>
 </span><span id="__span-0-119"><a id="__codelineno-0-119" name="__codelineno-0-119" href="#__codelineno-0-119"></a><span class="nt">outputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="nv">select.model</span><span class="p p-Indicator">,</span><span class="nt"> report</span><span class="p">:</span><span class="w"> </span><span class="nv">report.report</span><span class="p p-Indicator">,</span><span class="nt"> evidence</span><span class="p">:</span><span class="w"> </span><span class="nv">governance.evidence</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p>Three details worth copying into your own workflows:</p>
+<p>Copy these three details into your own workflows:</p>
 <ul>
-<li><strong>Alternatives keep the graph honest.</strong> <code>diff</code> reads <code>[sdiff.data, inputs.data]</code>: the
-  seasonally differenced series if that node ran, else the raw one. <code>acf</code> looks at the most
-  processed series that exists. Nothing is computed twice and nothing breaks when a branch is
-  not taken - skipped nodes are <em>skipped</em>, not failed.</li>
-<li><strong>Decisions travel as values.</strong> <code>$expr: "[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]"</code>
-  turns the search result and the branch decision into the model's <code>order</code>. The expression
-  language is parsed, never <code>eval</code>-ed, and the run records every value it read.</li>
+<li><strong>Alternatives keep the graph honest.</strong> <code>diff</code> reads <code>[sdiff.data, inputs.data]</code>. This is
+  the seasonally differenced series if that node ran. If not, it is the raw series. <code>acf</code>
+  uses the series with the most processing that exists. The workflow calculates nothing two
+  times. If the workflow does not take a branch, nothing breaks: skipped nodes are
+  <em>skipped</em>, not failed.</li>
+<li><strong>Decisions move as values.</strong> <code>$expr: "[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]"</code>
+  changes the search result and the branch decision into the <code>order</code> of the model. The
+  server parses the expression language and never uses <code>eval</code> on it. The run records each
+  value that it read.</li>
 <li><strong>The fit has its own holdout.</strong> <code>split.holdout</code> keeps the last 13 weeks out of the first
-  fit (<code>mode: evaluate_then_refit</code>), so the governance checks that need unseen data - the
-  null tests, the naive benchmark, holdout accuracy - have it. The model is then refitted on
-  everything.</li>
+  fit (<code>mode: evaluate_then_refit</code>). Thus the governance checks that need unseen data have
+  it. These checks are the null tests, the naive benchmark and the holdout accuracy. Then the
+  workflow fits the model again on all the data.</li>
 </ul>
 <h3 id="run-it-with-the-cli">Run it with the CLI<a class="headerlink" href="#run-it-with-the-cli" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>templates<span class="w">                      </span><span class="c1"># the gallery, in plain words</span>
@@ -5129,13 +5198,16 @@ its MAE beats every benchmark in <code>must_beat</code>.</p>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span>--param<span class="w"> </span><span class="s1">'drivers=["price"]'</span><span class="w"> </span>--param<span class="w"> </span><span class="nv">window</span><span class="o">=</span><span class="m">104</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span>--watch<span class="w">                                     </span><span class="c1"># live node status; exit 1 if the run fails</span>
 </span></code></pre></div>
-<p><code>mapi workflows init</code> writes the gallery's <code>ts_readiness_arimax</code> template (the same analysis
-with an expanding-window backtest) under your name and project; save the document above as
-<code>weekly-readiness.yaml</code> instead to get the rolling origin and the evidence pack. <code>--watch</code>
-shows every node's status as the run goes (redrawn in place on a terminal, one line per change
-in a log) and the summary at the end. This is a real run on a local stack, the second on this
-data: the unit-root tests, the holdout split and the fit had not changed since the first run,
-so they were <strong>reused from its cache</strong> rather than recomputed (shortened):</p>
+<p><code>mapi workflows init</code> writes the <code>ts_readiness_arimax</code> template of the gallery with your
+name and project. This template is the same analysis with an expanding-window backtest. To
+get the rolling origin and the evidence pack, save the document above as
+<code>weekly-readiness.yaml</code> instead. <code>--watch</code> shows the status of each node during the run. On a
+terminal, it draws the status again in the same place. In a log, it writes one line for each
+change. At the end, it shows the summary.</p>
+<p>The output below is from a real run on a local stack. It is the second run on this data. The
+unit-root tests, the holdout split and the fit did not change after the first run. Thus the
+run <strong>used them again from its cache</strong> and did not calculate them again (the output is
+shortened):</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>started workflow run run_01m53hawnnyn7cyeptj70cxkk0 of workflow://growth/weekly-readiness
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>following workflow run run_01m53hawnnyn7cyeptj70cxkk0 (23 nodes)
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  run started
@@ -5170,7 +5242,7 @@ so they were <strong>reused from its cache</strong> rather than recomputed (shor
 </span><span id="__span-2-32"><a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a> order      │ search     │ ✓ succeeded │ 22.9s │ {"best_p": 1, "best_q": 1}
 </span><span id="__span-2-33"><a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a> sdiff      │ transform  │ – skipped   │ 0.0s  │ branch 'seasonal' took the else path
 </span><span id="__span-2-34"><a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a> dm         │ compare    │ ✓ succeeded │ 18.7s │ The difference between backtest and naive at
-</span><span id="__span-2-35"><a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>            │            │             │       │ horizon 1 may be luck.
+</span><span id="__span-2-35"><a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>            │            │             │       │ horizon 1 is possibly luck.
 </span><span id="__span-2-36"><a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a> acf        │ test       │ ✓ succeeded │ 13.4s │ No past period is related to the present beyond
 </span><span id="__span-2-37"><a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>            │            │             │       │ chance.
 </span><span id="__span-2-38"><a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a> select     │ select     │ ✓ succeeded │ 0.0s  │ backtest has the best average error (1.78) and beats
@@ -5193,10 +5265,10 @@ so they were <strong>reused from its cache</strong> rather than recomputed (shor
 </span><span id="__span-2-55"><a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a> model    │ model_version │ model://growth/wf-weekly-readiness-fit@v1
 </span><span id="__span-2-56"><a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a> …
 </span></code></pre></div>
-<p>The whole run took 1.6 minutes on a laptop; the live board goes to standard error and the
-summary to standard output, so <code>mapi workflows run … --watch &gt; summary.txt</code> keeps only the
-summary.</p>
-<p>Then inspect, download and automate:</p>
+<p>The full run took 1.6 minutes on a laptop. The live board goes to standard error, and the
+summary goes to standard output. Thus <code>mapi workflows run … --watch &gt; summary.txt</code> keeps only
+the summary.</p>
+<p>Then examine the results, download them and run the workflow automatically:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">RUN</span><span class="o">=</span><span class="k">$(</span>mapi<span class="w"> </span>--json<span class="w"> </span>workflows<span class="w"> </span>runs<span class="w"> </span>weekly-readiness<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[0].run_id'</span><span class="k">)</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>status<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w">                  </span><span class="c1"># nodes, what each found, decisions, outputs</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>node<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>order<span class="w">              </span><span class="c1"># one node: parameters, result, outputs</span>
@@ -5208,8 +5280,13 @@ summary.</p>
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>schedules<span class="w"> </span>ls<span class="w"> </span>weekly-readiness
 </span></code></pre></div>
 <h3 id="run-it-with-the-python-client">Run it with the Python client<a class="headerlink" href="#run-it-with-the-python-client" title="Permanent link">&para;</a></h3>
-<p>Validate the file on the server (nothing is saved), then create it or save a new revision,
-run it and follow the live events:</p>
+<p>Do these steps:</p>
+<ol>
+<li>Validate the file on the server. The server saves nothing.</li>
+<li>Make the workflow, or save a new revision.</li>
+<li>Run the workflow.</li>
+<li>Follow the live events.</li>
+</ol>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">check</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">"weekly-readiness.yaml"</span><span class="p">))</span>  <span class="c1"># on the server; saves nothing</span>
@@ -5237,8 +5314,9 @@ run it and follow the live events:</p>
 </span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>        <span class="k">case</span> <span class="n">WorkflowEnd</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">):</span>
 </span><span id="__span-6-19"><a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>            <span class="nb">print</span><span class="p">(</span><span class="s2">"run"</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="n">status</span> <span class="k">else</span> <span class="s2">"ended"</span><span class="p">)</span>
 </span></code></pre></div>
-<p>Read what it found - every test's verdict, every branch with the values it read, the chosen
-orders, the Diebold-Mariano verdict and why the model was (or was not) selected:</p>
+<p>Read the results. They include the verdict of each test, each branch with the values that it
+read, the selected orders and the Diebold-Mariano verdict. They also tell why the workflow
+selected the model or did not select it:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">run_id</span><span class="p">)</span>  <span class="c1"># raises the run's error if it failed</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">nodes</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="o">.</span><span class="n">node_id</span><span class="p">:</span> <span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">run</span><span class="o">.</span><span class="n">nodes</span><span class="p">}</span>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s2">"adf"</span><span class="p">]</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">"verdict_plain"</span><span class="p">])</span>  <span class="c1"># e.g. "The series wanders: consider differencing it."</span>
@@ -5251,8 +5329,8 @@ orders, the Diebold-Mariano verdict and why the model was (or was not) selected:
 </span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">model_ref</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s2">"model"</span><span class="p">]</span><span class="o">.</span><span class="n">ref</span>  <span class="c1"># model://growth/wf-weekly-readiness-fit@v1</span>
 </span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">report</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s2">"report"</span><span class="p">]</span><span class="o">.</span><span class="n">inline</span>  <span class="c1"># mapi.report/v1: every test, decision and table</span>
 </span></code></pre></div>
-<p>The governance node measured the selected model against the policy in force and, with
-<code>submit: true</code>, recorded a validation of that model version:</p>
+<p>The governance node measured the selected model against the policy that applies. Because
+<code>submit: true</code> is set, it recorded a validation of that model version:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">gov</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[</span><span class="s2">"governance"</span><span class="p">]</span><span class="o">.</span><span class="n">result</span>  <span class="c1"># the policy in force, measured on the selected model</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"passed"</span> <span class="k">if</span> <span class="n">gov</span><span class="p">[</span><span class="s2">"passed"</span><span class="p">]</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"failed: </span><span class="si">{</span><span class="n">gov</span><span class="p">[</span><span class="s1">'failed_checks'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">validation</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">validations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">gov</span><span class="p">[</span><span class="s2">"validation_id"</span><span class="p">])</span>  <span class="c1"># recorded because submit: true</span>
@@ -5261,7 +5339,7 @@ orders, the Diebold-Mariano verdict and why the model was (or was not) selected:
 </span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">check</span><span class="si">:</span><span class="s2">28</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="si">:</span><span class="s2">7</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">message_plain</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">api</span><span class="o">.</span><span class="n">validations</span><span class="o">.</span><span class="n">download_evidence_pack</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">"evidence.html"</span><span class="p">)</span>  <span class="c1"># for the auditor</span>
 </span></code></pre></div>
-<p>What it printed on a live local stack (the walkthrough's first run on this data):</p>
+<p>This is the output on a live local stack, from the first run of the walkthrough on this data:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>passed
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>validated
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>data.quality                 pass    No data problems found (156 periods of history).
@@ -5272,25 +5350,25 @@ orders, the Diebold-Mariano verdict and why the model was (or was not) selected:
 </span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>null.permutation_target      pass    The model did better on held-out data (skill 0.236) than all 20 fits with the drivers price shuffled in blocks of 7 (the result untouched) (p = 0.048).
 </span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>stability.rolling_params     fail    ar.L1 changes a lot across windows of history (variation 1205%): the relationship may not be stable over time.
 </span></code></pre></div>
-<p>Read it like a reviewer would: the model beats naive by 25% on unseen weeks, leaves no
-pattern in its errors, and forecasts better than every fit with the price driver shuffled in
-time, but the AR coefficient is not stable across windows. That check <em>failed</em> and the version
-is still <code>validated</code>, because a check's status and its severity are different things: the
-default forecasting policy holds stability at <em>information</em>, so it does not block; it is on
-the record for the reviewer and in the evidence pack. A stricter policy (see
-<a href="../governance/">governance</a>) makes it blocking, and this model would then need more history
-or a simpler specification. That is the point: the evidence is written down, and the decision
-is explicit.</p>
+<p>Read the output as a reviewer does. On unseen weeks, the model is 25% better than naive. Its
+errors have no pattern. It forecasts better than each fit with the price driver shuffled in
+time. But the AR coefficient is not stable across windows.</p>
+<p>That check <em>failed</em>, but the version is still <code>validated</code>. The status of a check and its
+severity are different things. The default forecast policy sets stability to <em>information</em>,
+so the check does not block. The reviewer can see it in the record and in the evidence pack.
+A stricter policy (see <a href="../governance/">governance</a>) makes the check block. Then this model
+needs more history or a simpler specification. This is the purpose: the evidence is written,
+and the decision is explicit.</p>
 <div class="admonition note">
 <p class="admonition-title">What the shuffle test measures on a random walk</p>
-<p>The model has a driver, so the test shuffles the driver in blocks and leaves the result
-untouched, and it scores each fit by its skill against the null forecast on the held-out
+<p>The model has a driver. Thus the test shuffles the driver in blocks and does not change
+the result. It scores each fit by its skill against the null forecast on the held-out
 weeks. Persistence ("next week is like this week") helps the shuffled fits exactly as much
-as the real one, so the test measures what the driver adds beyond it. A model without
-drivers is tested on shuffled changes of the series instead
+as it helps the real fit. Thus the test measures what the driver adds to persistence. For
+a model without drivers, the test uses shuffled changes of the series
 (<a href="../null-tests/">null tests explained</a>).</p>
 </div>
-<p>Finally, keep it current:</p>
+<p>Then keep the workflow up to date:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">weekly</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="s2">"0 6 * * 1"</span><span class="p">,</span>  <span class="c1"># Mondays at 06:00</span>
@@ -5304,16 +5382,18 @@ drivers is tested on shuffled changes of the series instead
 </span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">weekly</span><span class="o">.</span><span class="n">next_run_at</span><span class="p">,</span> <span class="n">on_upload</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span></code></pre></div>
 <h2 id="varvecm-cointegration">VAR/VECM cointegration<a class="headerlink" href="#varvecm-cointegration" title="Permanent link">&para;</a></h2>
-<p><strong>In plain words.</strong> Some series wander but stay tied together - prices of close substitutes,
-sales and distribution, income and consumption. If they are tied, a model that knows the tie
-(an error-correction model) forecasts better and tells you how fast a gap closes. If they are
-not, model their changes instead. Either way, ask whether one series helps predict another.</p>
+<p><strong>In plain words.</strong> Some series wander but stay together. Examples are the prices of close
+substitutes, sales and distribution, and income and consumption. If they have a relation, a
+model that knows the relation (an error-correction model) forecasts better. It also tells you
+how fast a gap closes. If they do not have a relation, model their changes. In the two cases,
+find out if one series helps to predict a different series.</p>
 <p><strong>For the statistician.</strong> The Johansen trace test (at 5%) on the levels decides the branch.
-Tied: <code>search.coint_rank</code> chooses the rank and a VECM with <code>k_ar_diff: 1</code> is fitted on the
-levels. Not tied: the series are differenced, the VAR lag order is chosen by AIC up to
-<code>maxlags</code>, and a VAR is fitted on the changes. Granger causality is tested on the changes when
-they were taken (the first alternative), else on the levels. The forecast node takes whichever
-model exists, with the matching data.</p>
+If the series have a relation, <code>search.coint_rank</code> selects the rank. Then the workflow fits a
+VECM with <code>k_ar_diff: 1</code> on the levels. If the series do not have a relation, the workflow
+differences them. Then AIC selects the VAR lag order up to <code>maxlags</code>, and the workflow fits a
+VAR on the changes. If the workflow took the changes (the first alternative), it tests Granger
+causality on them. If not, it tests on the levels. The forecast node uses the model that
+exists, with the related data.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Workflow cookbook: do these series move together for good? VECM if they are tied in the</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># long run, a VAR on the levels if they are already stable, else a VAR on the changes;</span>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="c1"># Granger tests either way; a forecast of the winner.</span>
@@ -5381,9 +5461,10 @@ model exists, with the matching data.</p>
 </span><span id="__span-11-65"><a id="__codelineno-11-65" name="__codelineno-11-65" href="#__codelineno-11-65"></a><span class="w">  </span><span class="nt">with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="nv">Series that move together</span><span class="p p-Indicator">}</span>
 </span><span id="__span-11-66"><a id="__codelineno-11-66" name="__codelineno-11-66" href="#__codelineno-11-66"></a><span class="nt">outputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">report</span><span class="p">:</span><span class="w"> </span><span class="nv">report.report</span><span class="p p-Indicator">,</span><span class="nt"> forecast</span><span class="p">:</span><span class="w"> </span><span class="nv">forecast.forecast</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p>The data holds the series along one dimension, one value per series and period
-(<code>value(series, quarter)</code>), the layout of <code>ts.var</code> and <code>ts.vecm</code>; ingest a wide sheet with
-the <code>wide</code> mapping. Run it like the first recipe, with the two parameters it requires:</p>
+<p>The data keeps the series along one dimension, with one value for each series and period
+(<code>value(series, quarter)</code>). This is the layout of <code>ts.var</code> and <code>ts.vecm</code>. To ingest a wide
+sheet, use the <code>wide</code> mapping. Run the workflow as the first recipe, with the two parameters
+that it needs:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>apply<span class="w"> </span>macro-system.yaml
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>run<span class="w"> </span>macro-system<span class="w"> </span>-i<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://growth/us_macro@latest<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>-p<span class="w"> </span><span class="nv">target</span><span class="o">=</span>realcons<span class="w"> </span>-p<span class="w"> </span><span class="nv">driver</span><span class="o">=</span>realgdp<span class="w"> </span>--watch
@@ -5399,22 +5480,26 @@ the <code>wide</code> mapping. Run it like the first recipe, with the two parame
 </span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s2">"granger"</span><span class="p">]</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">"verdict_plain"</span><span class="p">])</span>   <span class="c1"># "Past values of the driver help predict the result."</span>
 </span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="nb">print</span><span class="p">([</span><span class="n">n</span><span class="o">.</span><span class="n">node_id</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">run</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="n">n</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">"skipped"</span><span class="p">])</span>  <span class="c1"># the branch not taken</span>
 </span></code></pre></div>
-<p>Run on a laptop against three simulated weekly series, two of which share a stochastic trend
-(<code>target=a</code>, <code>driver=b</code>), it printed the two verdicts above and <code>['diff', 'lags', 'var']</code>:
-the Johansen trace statistic (69.1) put the rank at 1, the VECM branch ran, and Granger found
-that <code>b</code> helps predict <code>a</code> (p = 0.0015). See <a href="../../use-cases/#macro-and-var-analysis">Macro and VAR analysis</a>.</p>
-<p>The fitted model's impulse responses, variance decomposition, Granger table and Johansen
-table are in the <a href="../model-explorer/">Model Explorer</a> (<code>mapi explore model … -s irf -s fevd</code>).</p>
+<p>A run on a laptop used three simulated weekly series. Two of the series have the same
+stochastic trend (<code>target=a</code>, <code>driver=b</code>). The run printed the two verdicts above and
+<code>['diff', 'lags', 'var']</code>. The Johansen trace statistic (69.1) set the rank to 1, and the VECM
+branch ran. Granger found that <code>b</code> helps to predict <code>a</code> (p = 0.0015). See
+<a href="../../use-cases/#macro-and-var-analysis">Macro and VAR analysis</a>.</p>
+<p>The <a href="../model-explorer/">Model Explorer</a> shows the impulse responses, the variance
+decomposition, the Granger table and the Johansen table of the fitted model
+(<code>mapi explore model … -s irf -s fevd</code>).</p>
 <h2 id="forecast-bake-off">Forecast bake-off<a class="headerlink" href="#forecast-bake-off" title="Permanent link">&para;</a></h2>
-<p><strong>In plain words.</strong> When you do not know which forecasting method suits your data, let them
-compete fairly: same history, same cut-off points, same horizons, and the same naive
-benchmarks. Keep the winner only if it clearly beats doing nothing clever.</p>
-<p><strong>For the statistician.</strong> An expanding window with <code>n_folds</code> origins every 4 periods, scored at
-each horizon; SARIMAX(1,1,1)(0,1,0)₅₂, ARIMA(0,1,1), damped-trend ETS and Theta against
-naive, seasonal-naive and drift. MASE ranks them (scale-free, so series of different size
-compare); two Diebold-Mariano tests (absolute loss, horizon 1) check the leaders against the
-benchmark; <code>select.best</code> requires a 5% MASE improvement over every benchmark, and the branch
-refits the winner only then.</p>
+<p><strong>In plain words.</strong> If you do not know which forecast method is correct for your data, let
+the methods compete fairly. They use the same history, the same cut-off points, the same
+horizons and the same naive benchmarks. Keep the winner only if it is clearly better than a
+simple method.</p>
+<p><strong>For the statistician.</strong> The plan is an expanding window with <code>n_folds</code> origins, one each 4
+periods. The workflow scores each horizon. SARIMAX(1,1,1)(0,1,0)₅₂, ARIMA(0,1,1),
+damped-trend ETS and Theta compete against naive, seasonal-naive and drift. MASE puts them in
+sequence. MASE has no scale, so you can compare series of different sizes. Two
+Diebold-Mariano tests (absolute loss, horizon 1) compare the leaders with the benchmark.
+<code>select.best</code> needs a 5% MASE improvement over each benchmark. Only then does the branch fit
+the winner again.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Workflow cookbook: a forecast bake-off. Four models and the naive benchmarks compete on the</span>
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1"># same expanding-window folds; Diebold-Mariano tests say whether the winner's edge is more</span>
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1"># than luck; the winner is refitted on all the data only if it beats naive.</span>
@@ -5477,18 +5562,23 @@ refits the winner only then.</p>
 </span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>node<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>compare<span class="w">      </span><span class="c1"># the league table</span>
 </span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>node<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>best<span class="w">         </span><span class="c1"># who won, and whether they beat naive by 5%</span>
 </span></code></pre></div>
-<p>A typical outcome on a short, noisy series is the honest one: <em>"ets is the best model (0.0456)
-but does not beat naive.drift by the required 5%: no model is selected."</em> The <code>refit</code> node is
-skipped, the report says why, and nobody ships a model that only looks clever.</p>
+<p>On a short series with much noise, the usual result is the honest result: <em>"ets is the best
+model (0.0456) but does not beat naive.drift by the required 5%: no model is selected."</em> The
+workflow skips the <code>refit</code> node, and the report tells why. Thus nobody ships a model that only
+looks clever.</p>
 <h2 id="make-your-own">Make your own<a class="headerlink" href="#make-your-own" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Start from the closest recipe (<code>mapi workflows init &lt;template&gt;</code> or copy a document above).</li>
-<li>Find nodes with <code>mapi workflows nodes-catalog --kind test</code> (or <code>--about test.kpss</code> for one
-   node's About card, ports and parameters).</li>
-<li>Validate as you go: <code>mapi workflows validate my.yaml</code> points at every problem with a JSON
-   pointer before anything runs.</li>
-<li>Save it (<code>apply</code>), run it with <code>--watch</code>, and read the summary.</li>
-<li>Automate it with a schedule or a dataset trigger, and gate it on governance.</li>
+<li>Start from the recipe that is nearest to your analysis. Use
+   <code>mapi workflows init &lt;template&gt;</code>, or copy a document above.</li>
+<li>Find nodes with <code>mapi workflows nodes-catalog --kind test</code>. To see the About card, ports
+   and parameters of one node, use <code>--about test.kpss</code>.</li>
+<li>Validate the document after each change. Before anything runs,
+   <code>mapi workflows validate my.yaml</code> shows each problem with a JSON pointer.</li>
+<li>Save the workflow (<code>apply</code>).</li>
+<li>Run the workflow with <code>--watch</code>.</li>
+<li>Read the summary.</li>
+<li>Add a schedule or a dataset trigger to run the workflow automatically.</li>
+<li>Add a governance gate to the workflow.</li>
 </ol>
 
 

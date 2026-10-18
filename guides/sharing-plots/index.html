@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4679,6 +4709,8 @@
       
         
       
+        
+      
     
     
     
@@ -4767,6 +4799,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4959,23 +5019,29 @@
 
 
 <h1 id="sharing-plots-saved-plots-images-and-embed-links">Sharing plots: saved plots, images and embed links<a class="headerlink" href="#sharing-plots-saved-plots-images-and-embed-links" title="Permanent link">&para;</a></h1>
-<p>A model's plots live in the web app, rendered in the isolated plot sandbox. To use one
-somewhere else — a slide, a report, a BI dashboard, a Notion page or a Slack thread — you can:</p>
+<p>The plots of a model are in the web app. The isolated plot sandbox renders them. You can use a
+plot in a different place, for example a slide, a report, a BI dashboard, a Notion page or a
+Slack thread. To do this, you can:</p>
 <ol>
-<li><strong>save</strong> it under a title (<code>POST /v1/plots</code>),</li>
-<li><strong>render</strong> it to PNG, SVG or PDF in the sandbox (<code>POST /v1/plots:render</code>), or</li>
-<li><strong>embed</strong> it with a tokenised, read-only, expiring link (<code>POST /v1/plots/{plot_id}/embeds</code>).</li>
+<li><strong>save</strong> the plot with a title (<code>POST /v1/plots</code>),</li>
+<li><strong>render</strong> the plot to PNG, SVG or PDF in the sandbox (<code>POST /v1/plots:render</code>), or</li>
+<li><strong>embed</strong> the plot with a link that has a token, is read-only and expires
+   (<code>POST /v1/plots/{plot_id}/embeds</code>).</li>
 </ol>
-<p>All three need a signed-in caller or an API token of the project. The embed link itself is
-public: anyone who has it can see that one plot until it expires or is revoked.</p>
-<p>Where each one fits: BI tools and Notion frame an <strong>embed link</strong> and show the live chart.
-Chat tools such as Slack and Teams never frame a page; they unfurl a link into a card from its
-page tags, and the embed page's tags are the same for every link (a "Shared chart" card with no
-plot name and no image), so post a <strong>rendered PNG</strong> to a Slack thread and add the link if
-people should open the live view.</p>
+<p>The three actions need a signed-in caller or an API token of the project. The embed link is
+public. All persons who have the link can see that one plot. They can see it until the link
+expires or until you revoke it.</p>
+<p>Use the correct method for each tool:</p>
+<ul>
+<li>BI tools and Notion put an <strong>embed link</strong> in a frame and show the live chart.</li>
+<li>Chat tools, for example Slack and Teams, never put a page in a frame. They change a link
+  into a card from the tags of its page. The tags of the embed page are the same for all links:
+  a "Shared chart" card with no plot name and no image. Thus, post a <strong>rendered PNG</strong> to a Slack
+  thread. If people must open the live view, also add the link.</li>
+</ul>
 <h2 id="save-a-plot">Save a plot<a class="headerlink" href="#save-a-plot" title="Permanent link">&para;</a></h2>
-<p>Save a plot of a model version by naming its source. The API checks the model version's
-signed bundle manifest first, and passes the plot through the sanitizer again:</p>
+<p>To save a plot of a model version, name its source. The API first does a check of the signed
+bundle manifest of the model version. Then it sends the plot through the sanitizer again:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$MAPI_URL</span><span class="s2">/v1/plots"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
@@ -4984,17 +5050,21 @@ signed bundle manifest first, and passes the plot through the sanitizer again:</
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="s1">                   "plot_id": "mmm.response_curves"}</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s1">      }'</span>
 </span></code></pre></div>
-<p>The answer is a <code>SavedPlot</code>. Its <code>embeddable</code> field says whether it can be shared by link (see
-<a href="#what-can-be-embedded">what can be embedded</a>).</p>
-<p>You can also save a plot you wrote yourself (<code>"spec": {...}</code>, a <code>PlotSpec</code>). It must pass the
-same sanitizer (<code>422 PLOT_UNSAFE</code> otherwise) and carry its data inline: <code>data_ref</code> datasets
-belong to a model version, so save that plot with <code>source</code> instead. A hand-written plot is
-always recorded with <code>author</code> provenance, whatever its <code>provenance</code> field claims.</p>
-<p><code>GET /v1/plots</code> lists the project's saved plots (newest first), <code>GET /v1/plots/{plot_id}</code> returns
-one with its spec, and <code>DELETE /v1/plots/{plot_id}</code> deletes it together with its embed links.</p>
+<p>The answer is a <code>SavedPlot</code>. Its <code>embeddable</code> field tells if you can share the plot with a link
+(see <a href="#what-can-be-embedded">what can be embedded</a>).</p>
+<p>You can also save a plot that you wrote (<code>"spec": {...}</code>, a <code>PlotSpec</code>). The plot must pass the
+same sanitizer. If it does not pass, the answer is <code>422 PLOT_UNSAFE</code>. The plot must also contain
+its data inline. <code>data_ref</code> datasets belong to a model version. Thus, to save that type of plot,
+use <code>source</code>. The platform always records a hand-written plot with <code>author</code> provenance. The
+value in its <code>provenance</code> field has no effect.</p>
+<ul>
+<li><code>GET /v1/plots</code> lists the saved plots of the project (newest first).</li>
+<li><code>GET /v1/plots/{plot_id}</code> returns one plot with its spec.</li>
+<li><code>DELETE /v1/plots/{plot_id}</code> deletes the plot and its embed links.</li>
+</ul>
 <h2 id="render-an-image">Render an image<a class="headerlink" href="#render-an-image" title="Permanent link">&para;</a></h2>
-<p><code>POST /v1/plots:render</code> turns one plot into a file. Name it by <code>saved_plot_id</code>, by <code>source</code> (a
-model version's plot) or inline (<code>plot</code>):</p>
+<p><code>POST /v1/plots:render</code> changes one plot into a file. You can identify the plot by
+<code>saved_plot_id</code>, by <code>source</code> (a plot of a model version) or inline (<code>plot</code>):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$MAPI_URL</span><span class="s2">/v1/plots:render"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Prefer: wait=30"</span><span class="w"> </span><span class="se">\</span>
@@ -5017,57 +5087,60 @@ model version's plot) or inline (<code>plot</code>):</p>
 <tr>
 <td><code>scale</code></td>
 <td><code>2</code></td>
-<td>Pixel density of PNG and PDF (0 &lt; scale ≤ 8); SVG ignores it</td>
+<td>The pixel density of PNG and PDF (0 &lt; scale ≤ 8). SVG ignores it.</td>
 </tr>
 <tr>
 <td><code>width</code>, <code>height</code></td>
-<td>the plot's own</td>
-<td>Size in CSS pixels before <code>scale</code> (16–4096). For a composite plot (facets, concatenations) it is the size of each panel</td>
+<td>The size of the plot</td>
+<td>The size in CSS pixels before <code>scale</code> (16–4096). For a composite plot (facets, concatenations), it is the size of each panel.</td>
 </tr>
 </tbody>
 </table>
-<p>A PNG or PDF holds at most 50 megapixels (<code>width x height x scale²</code> of the laid-out plot, all
-panels included): a bigger request answers <code>413 PAYLOAD_TOO_LARGE</code> up front, or fails the
-render run with that code before anything is drawn when only the layout reveals the size.
-Lower the scale or the size.</p>
-<p>Rendering is a <code>render</code> run in the sandbox, so it counts against your quotas like any small
-run. With <code>Prefer: wait=N</code> (at most 60 seconds) the answer is <code>200</code> with signed links to
-<code>renders/&lt;plot&gt;.&lt;format&gt;</code> when the run finished in time, otherwise <code>202</code> with the run. Poll
-<code>GET /v1/plots/renders/{run_id}</code> until <code>done</code> is true. The links are short-lived: download the
-file, don't store the URL.</p>
+<p>A PNG or a PDF contains a maximum of 50 megapixels. This is the <code>width x height x scale²</code> of the
+plot after layout, with all panels. If a request is larger, the answer is
+<code>413 PAYLOAD_TOO_LARGE</code> at the start. Sometimes only the layout shows the size. Then the render
+run fails with that code before it draws the plot. If you get this error, make the scale or the
+size smaller.</p>
+<p>A render is a <code>render</code> run in the sandbox. Thus it counts against your quotas, as all small runs
+do. You can send <code>Prefer: wait=N</code> (a maximum of 60 seconds). If the run finishes in that time,
+the answer is <code>200</code> with signed links to <code>renders/&lt;plot&gt;.&lt;format&gt;</code>. If not, the answer is <code>202</code>
+with the run. Then poll <code>GET /v1/plots/renders/{run_id}</code> until <code>done</code> is true. The links expire
+after a short time. Download the file. Do not keep the URL.</p>
 <div class="admonition note">
 <p class="admonition-title">Vega-Lite only, for now</p>
-<p>Vega-Lite plots render with vl-convert. Plotly plots need kaleido and a Chrome or
-Chromium in the runner image, which the platform's images do not ship, so Plotly renders
-answer <code>422 MODE_NOT_SUPPORTED</code> unless the operator enables them
-(<code>MAPI_RENDER_PLOTLY_ENABLED</code>). Export a Plotly plot from the plot viewer instead.</p>
+<p>vl-convert renders Vega-Lite plots. Plotly plots need kaleido and a Chrome or Chromium in
+the runner image. The images of the platform do not include them. Thus Plotly renders answer
+<code>422 MODE_NOT_SUPPORTED</code>, unless the operator enables them (<code>MAPI_RENDER_PLOTLY_ENABLED</code>).
+You can export a Plotly plot from the plot viewer.</p>
 </div>
 <h3 id="rendering-never-fetches-anything">Rendering never fetches anything<a class="headerlink" href="#rendering-never-fetches-anything" title="Permanent link">&para;</a></h3>
 <p>The renderer gets the sanitized plot and its data as pinned inputs of the run:</p>
 <ul>
-<li>the API writes the plot as the run's <code>plots.json</code> and pins each of its bundle datasets
-  (<code>data_ref</code>) to the verified object generation, as run inputs named <code>plotdata.&lt;n&gt;</code>;</li>
-<li>the sanitizer has already refused URL data, <code>href</code> encodings, image marks and Plotly
-  layout images or tile maps, and the runner refuses them again before it draws;</li>
-<li>vl-convert runs with network access turned off (<code>allowed_base_urls=[]</code>), and the sandbox
-  has no egress anyway.</li>
+<li>The API writes the plot as the <code>plots.json</code> of the run. It pins each bundle dataset of the
+  plot (<code>data_ref</code>) to the verified object generation, as run inputs with the names
+  <code>plotdata.&lt;n&gt;</code>.</li>
+<li>The sanitizer refused URL data, <code>href</code> encodings, image marks, and Plotly layout images or tile
+  maps before. The runner refuses them again before it draws.</li>
+<li>vl-convert runs with no network access (<code>allowed_base_urls=[]</code>). Also, the sandbox has no
+  egress.</li>
 </ul>
-<p>An image is capped at 32 MiB and the run at <code>MAPI_RENDER_TIMEOUT_S</code> (5 minutes by default).</p>
+<p>An image has a limit of 32 MiB. The run has a time limit of <code>MAPI_RENDER_TIMEOUT_S</code> (5 minutes by
+default).</p>
 <h2 id="embed-links">Embed links<a class="headerlink" href="#embed-links" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$MAPI_URL</span><span class="s2">/v1/plots/plt_01jaf3n1p2q3r4s5t6v7w8x9y0/embeds"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"label": "Q4 board deck", "expires_in_days": 90,</span>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="s1">       "allowed_origins": ["https://acme.notion.site"]}'</span>
 </span></code></pre></div>
-<p>The answer (<code>PlotEmbedCreated</code>) is the <strong>only</strong> time you see the link:</p>
+<p>The answer (<code>PlotEmbedCreated</code>) is the <strong>only</strong> time that you see the link:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">"embed"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"emb_01jaf3p1q2r3s4t5v6w7x8y9z0"</span><span class="p">,</span><span class="w"> </span><span class="nt">"display"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mpe_7k2m9q…"</span><span class="p">,</span><span class="w"> </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"active"</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">},</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">"url"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://plots.mapi.example/embed/mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz"</span><span class="p">,</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz"</span>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>The platform stores only a keyed hash of the token, like API tokens. Paste the <code>url</code> into the
-tool that shows the plot, or frame it:</p>
+<p>The platform keeps only a keyed hash of the token, as it does for API tokens. Paste the <code>url</code>
+into the tool that shows the plot, or put it in a frame:</p>
 <div class="language-html highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">&lt;</span><span class="nt">iframe</span> <span class="na">src</span><span class="o">=</span><span class="s">"https://plots.mapi.example/embed/mpe_7k2m…"</span> <span class="na">width</span><span class="o">=</span><span class="s">"900"</span> <span class="na">height</span><span class="o">=</span><span class="s">"520"</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>        <span class="na">style</span><span class="o">=</span><span class="s">"border:0"</span> <span class="na">loading</span><span class="o">=</span><span class="s">"lazy"</span> <span class="na">title</span><span class="o">=</span><span class="s">"EU response curves"</span><span class="p">&gt;&lt;/</span><span class="nt">iframe</span><span class="p">&gt;</span>
 </span></code></pre></div>
@@ -5088,47 +5161,53 @@ tool that shows the plot, or frame it:</p>
 <tr>
 <td><code>label</code></td>
 <td>none</td>
-<td>Your note, shown in the list of links</td>
+<td>Your note. The list of links shows it.</td>
 </tr>
 <tr>
 <td><code>allowed_origins</code></td>
-<td>any site</td>
-<td>The https sites (<code>https://host[:port]</code>, at most 10) whose pages may show the plot in a frame. Opened directly, the link always works</td>
+<td>all sites</td>
+<td>The https sites (<code>https://host[:port]</code>, a maximum of 10) whose pages can show the plot in a frame. If you open the link directly, it always works.</td>
 </tr>
 </tbody>
 </table>
-<p><code>GET /v1/plots/{plot_id}/embeds</code> lists a plot's links with their status (<code>active</code>, <code>expired</code>
-or <code>revoked</code>), view count and last view, never their tokens. <code>DELETE
-/v1/plots/{plot_id}/embeds/{embed_id}</code> revokes one; revoking twice is harmless. Creating and
-revoking links are recorded in the audit log (<code>plot.embed_create</code>, <code>plot.embed_revoke</code>).</p>
-<h3 id="what-can-be-embedded">What can be embedded<a class="headerlink" href="#what-can-be-embedded" title="Permanent link">&para;</a></h3>
-<p>Only plots that a model version drew with one of the <strong>platform's own recipes</strong> (<code>core.*</code>,
-<code>mmm.*</code>, <code>ml.*</code>, <code>ts.*</code>, <code>choice.*</code>). Plots written by a model plugin, and plots written by
-hand, are refused with <code>422 EMBED_NOT_ALLOWED</code>. The rule exists because a shared link runs the
-plot's spec in a stranger's browser: even inside the sandbox a spec could navigate its own
-frame, so shared views only ever run specs the platform wrote. Share other plots inside the
-project, or render them to an image.</p>
-<p>A model version fitted with uploaded plugin code (a dev or vetted overlay) can embed none of
-its plots, whatever recipe they name: the same worker that writes the plot documents runs
-that code, so the server decides from the version's lineage, not from what a plot says about
-itself. Existing links to such plots stop serving them.</p>
-<p>An embed also carries its data inline, so a dataset larger than 1.5 MB cannot be embedded.</p>
-<h3 id="the-embed-page">The embed page<a class="headerlink" href="#the-embed-page" title="Permanent link">&para;</a></h3>
-<p>The link opens a page of the plot sandbox (<code>/embed/&lt;token&gt;</code>). It reads the plot from the API's
-public <code>GET /v1/embeds/{token}</code> and draws it with the same safeguards as the app's plot
-frames:</p>
 <ul>
-<li>the request sends no cookie or credential, and the API ignores any it is given;</li>
-<li>the page's Content-Security-Policy lets it fetch the API's <code>/v1/embeds/</code> path and nothing
-  else; the API answers cross-origin reads from the plot-sandbox origin only;</li>
-<li>the answer is validated again in the browser (inline data only, the same unsafe-construct
-  checks as the app's plot frames), and every text is written as text;</li>
-<li>framed by a site that is not in <code>allowed_origins</code>, the page shows a notice instead of the
-  plot.</li>
+<li><code>GET /v1/plots/{plot_id}/embeds</code> lists the links of a plot. It shows their status (<code>active</code>,
+  <code>expired</code> or <code>revoked</code>), the view count and the last view. It never shows their tokens.</li>
+<li><code>DELETE /v1/plots/{plot_id}/embeds/{embed_id}</code> revokes one link. If you revoke a link two
+  times, no problem occurs.</li>
 </ul>
-<p>When you can start render runs (the <code>runner</code> role), a PNG of the plot is rendered when you
-create the link. The page then offers an <strong>Open as PNG</strong> link, for tools that cannot show
-interactive content. Editors can create links too, without that image.</p>
+<p>The audit log records each new link and each revoked link (<code>plot.embed_create</code>,
+<code>plot.embed_revoke</code>).</p>
+<h3 id="what-can-be-embedded">What can be embedded<a class="headerlink" href="#what-can-be-embedded" title="Permanent link">&para;</a></h3>
+<p>You can embed only the plots that a model version drew with one of the <strong>platform's own
+recipes</strong> (<code>core.*</code>, <code>mmm.*</code>, <code>ml.*</code>, <code>ts.*</code>, <code>choice.*</code>). The platform refuses plots from a
+model plugin and plots that a person wrote. The answer is <code>422 EMBED_NOT_ALLOWED</code>. This rule
+exists because a shared link runs the spec of the plot in the browser of a stranger. Also in the
+sandbox, a spec can navigate its own frame. Thus shared views run only specs that the platform
+wrote. Share other plots in the project, or render them to an image.</p>
+<p>A model version that you fit with uploaded plugin code (a dev overlay or a vetted overlay) can
+embed none of its plots. The recipe that a plot names has no effect. The reason: the worker that
+writes the plot documents also runs that code. Thus the server decides from the lineage of the
+version, not from what a plot tells about itself. Existing links to these plots stop and do not
+show them.</p>
+<p>An embed also contains its data inline. Thus you cannot embed a dataset that is larger than
+1.5 MB.</p>
+<h3 id="the-embed-page">The embed page<a class="headerlink" href="#the-embed-page" title="Permanent link">&para;</a></h3>
+<p>The link opens a page of the plot sandbox (<code>/embed/&lt;token&gt;</code>). The page reads the plot from the
+public <code>GET /v1/embeds/{token}</code> of the API. It draws the plot with the same safeguards as the
+plot frames of the app:</p>
+<ul>
+<li>The request sends no cookie or credential. If the API gets one, the API ignores it.</li>
+<li>The Content-Security-Policy of the page lets it fetch only the <code>/v1/embeds/</code> path of the API.
+  The API answers cross-origin reads only from the origin of the plot sandbox.</li>
+<li>The browser validates the answer again (inline data only, and the same checks for unsafe
+  constructs as the plot frames of the app). The page writes all text as text.</li>
+<li>If a site that is not in <code>allowed_origins</code> puts the page in a frame, the page shows a notice
+  and not the plot.</li>
+</ul>
+<p>If you can start render runs (the <code>runner</code> role), the platform renders a PNG of the plot when
+you create the link. The page then shows an <strong>Open as PNG</strong> link, for tools that cannot show
+interactive content. Editors can also create links, but without that image.</p>
 <h3 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5142,31 +5221,32 @@ interactive content. Editors can create links too, without that image.</p>
 <tr>
 <td>404</td>
 <td><code>NOT_FOUND</code></td>
-<td>The token does not exist, or its plot was deleted</td>
+<td>The token does not exist, or a person deleted its plot.</td>
 </tr>
 <tr>
 <td>410</td>
 <td><code>LINK_EXPIRED</code></td>
-<td>The link expired, was revoked, or its tenant is suspended</td>
+<td>The link expired, or a person revoked it, or its tenant is suspended.</td>
 </tr>
 <tr>
 <td>429</td>
 <td><code>RATE_LIMITED</code></td>
-<td>Too many views of this link (<code>MAPI_EMBED_RATE_PER_MINUTE</code>), or too many requests from one address (<code>MAPI_EMBED_IP_RATE_PER_MINUTE</code>); wait for <code>Retry-After</code></td>
+<td>This link has too many views (<code>MAPI_EMBED_RATE_PER_MINUTE</code>), or one address sent too many requests (<code>MAPI_EMBED_IP_RATE_PER_MINUTE</code>). Wait for the time in <code>Retry-After</code>.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="hosting-the-embed-page">Hosting the embed page<a class="headerlink" href="#hosting-the-embed-page" title="Permanent link">&para;</a></h2>
-<p>The plot sandbox build has two pages: <code>index.html</code> (the app's plot frames) and <code>embed.html</code>,
-served for every <code>/embed/&lt;token&gt;</code> path. The embed page needs the API's origin:</p>
+<p>The build of the plot sandbox has two pages: <code>index.html</code> (the plot frames of the app) and
+<code>embed.html</code>. The server sends <code>embed.html</code> for each <code>/embed/&lt;token&gt;</code> path. The embed page needs
+the origin of the API:</p>
 <ul>
-<li>in development, <code>VITE_API_URL</code> (default <code>http://127.0.0.1:8000</code>) is built in;</li>
-<li>the <code>mapi/web</code> image builds it with a placeholder and nginx fills in <code>MAPI_API_URL</code> when
-  it serves the page, together with the page's own headers (CSP with
+<li>In development, the build includes <code>VITE_API_URL</code> (default <code>http://127.0.0.1:8000</code>).</li>
+<li>The <code>mapi/web</code> image builds the page with a placeholder. When nginx serves the page, it puts
+  <code>MAPI_API_URL</code> in the placeholder. It also adds the headers of the page (CSP with
   <code>connect-src … $MAPI_API_URL/v1/embeds/</code>, <code>frame-ancestors 'self' https:</code>).</li>
 </ul>
-<p>The API allows cross-origin reads of <code>/v1/embeds/</code> from <code>MAPI_PLOTS_ORIGIN</code> only, so that
-setting must be the origin the embed page is served from.</p>
+<p>The API allows cross-origin reads of <code>/v1/embeds/</code> only from <code>MAPI_PLOTS_ORIGIN</code>. Thus that
+setting must be the origin from which the server sends the embed page.</p>
 
 
 

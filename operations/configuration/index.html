@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4709,6 +4739,8 @@
       
         
       
+        
+      
     
     
     
@@ -4797,6 +4829,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5032,15 +5092,19 @@
 
 
 <h1 id="configuration-reference-v03">Configuration reference <span class="mapi-badge">v0.3</span><a class="headerlink" href="#configuration-reference-v03" title="Permanent link">&para;</a></h1>
-<p>Every component is configured through <strong>environment variables</strong>; no component reads a config
-file except the CLI and the Python client (<code>~/.config/mapi/config.toml</code>) and Docker Compose
-(<code>.env</code>). This page lists every <code>MAPI_*</code> variable in the code base, grouped by who reads it.
-A test (<code>conformance/tests/test_docs_platform.py</code>) scans the source tree and fails when a
-variable is missing here. Two tables are generated from the code at every docs build: the
-<a href="../../reference/generated/server-settings/">server settings</a> (every <code>mapi-server</code> field with
-its type and default) and the <a href="../../reference/generated/environment-variables/">index of environment variables</a>
-(every <code>MAPI_*</code> name in the code, the images, the Terraform and the deploy scripts, with who
-mentions it and the section below that explains it).</p>
+<p>You configure each component with <strong>environment variables</strong>. Only three components read a
+config file: the CLI and the Python client (<code>~/.config/mapi/config.toml</code>), and Docker Compose
+(<code>.env</code>). This page lists each <code>MAPI_*</code> variable in the code base, in groups for the
+component that reads it. A test (<code>conformance/tests/test_docs_platform.py</code>) looks for the
+variables in the source tree. If a variable is not on this page, the test fails.</p>
+<p>Each docs build makes two tables from the code:</p>
+<ul>
+<li>The <a href="../../reference/generated/server-settings/">server settings</a>: each <code>mapi-server</code> field
+  with its type and default.</li>
+<li>The <a href="../../reference/generated/environment-variables/">index of environment variables</a>: each
+  <code>MAPI_*</code> name in the code, the images, the Terraform and the deploy scripts. The index tells
+  which files use the name, and which section below explains it.</li>
+</ul>
 <div class="admonition info">
 <p class="admonition-title">New in v0.3</p>
 <p>Sign-in and tenancy (<code>MAPI_PROFILE</code>, <code>MAPI_OIDC_*</code>, <code>MAPI_OPERATOR_EMAILS</code>,
@@ -5052,15 +5116,17 @@ them (<a href="../gcp-deployment/#environment-of-the-cloud-run-workloads">the de
 </div>
 <div class="admonition tip">
 <p class="admonition-title">The short version</p>
-<p>For a local stack you only ever need the four addresses, and only when a port is taken:
-<code>MAPI_API_URL</code>, <code>MAPI_GCS_ENDPOINT</code>, <code>MAPI_WEB_ORIGIN</code> and <code>MAPI_PLOTS_ORIGIN</code>. Export the
-same values in every shell that runs <code>make dev</code>, <code>make seed</code>, <code>make e2e</code>, <code>mapi</code> or the
-Python client. <a href="../troubleshooting/#port-conflicts">Troubleshooting</a> has an example.</p>
+<p>For a local stack, you need only the four addresses, and only when a different process
+uses a port: <code>MAPI_API_URL</code>, <code>MAPI_GCS_ENDPOINT</code>, <code>MAPI_WEB_ORIGIN</code> and
+<code>MAPI_PLOTS_ORIGIN</code>. Export the same values in each shell that runs <code>make dev</code>,
+<code>make seed</code>, <code>make e2e</code>, <code>mapi</code> or the Python client.
+<a href="../troubleshooting/#port-conflicts">Troubleshooting</a> has an example.</p>
 </div>
 <h2 id="topology-every-component">Topology (every component)<a class="headerlink" href="#topology-every-component" title="Permanent link">&para;</a></h2>
-<p>These come from <code>mapi_spec.localdev.LocalDev</code>, the one contract the API, worker, runner,
-GCS shim, <code>make dev</code>, <code>make seed</code>, the end-to-end tests and (through <code>VITE_*</code>) the web app
-share, so they cannot disagree about where things are.</p>
+<p>These variables come from <code>mapi_spec.localdev.LocalDev</code>. This is the one contract that these
+components share: the API, worker, runner, GCS shim, <code>make dev</code>, <code>make seed</code>, the end-to-end
+tests and (through <code>VITE_*</code>) the web app. Thus all components agree about the location of
+each service.</p>
 <table>
 <thead>
 <tr>
@@ -5073,17 +5139,17 @@ share, so they cannot disagree about where things are.</p>
 <tr>
 <td><code>MAPI_ENV</code></td>
 <td><code>local</code></td>
-<td>Environment name; buckets are <code>mapi-{env}-quarantine</code>, <code>-bootstrap</code>, <code>-runs</code>, <code>-bundles</code>, <code>-data</code></td>
+<td>Environment name. The buckets are <code>mapi-{env}-quarantine</code>, <code>-bootstrap</code>, <code>-runs</code>, <code>-bundles</code>, <code>-data</code></td>
 </tr>
 <tr>
 <td><code>DATABASE_URL</code> (or <code>MAPI_DATABASE_URL</code>)</td>
 <td>unset</td>
-<td>A <code>postgresql://</code> URL. Unset: <code>make dev</code> and <code>mapi serve</code> start an embedded PostgreSQL 16 (<code>pgserver</code>) in <code>$MAPI_DATA_DIR/pg</code></td>
+<td>A <code>postgresql://</code> URL. If unset, <code>make dev</code> and <code>mapi serve</code> start an embedded PostgreSQL 16 (<code>pgserver</code>) in <code>$MAPI_DATA_DIR/pg</code></td>
 </tr>
 <tr>
 <td><code>MAPI_API_URL</code></td>
 <td><code>http://127.0.0.1:8000</code></td>
-<td>Where the API listens and is reached. <code>make dev</code> derives the API's host and port from it</td>
+<td>The address where the API listens and where clients connect. <code>make dev</code> gets the host and port of the API from it</td>
 </tr>
 <tr>
 <td><code>MAPI_GCS_ENDPOINT</code></td>
@@ -5093,23 +5159,24 @@ share, so they cannot disagree about where things are.</p>
 <tr>
 <td><code>MAPI_WEB_ORIGIN</code></td>
 <td><code>http://127.0.0.1:5173</code></td>
-<td>The web app's origin. The API and the shim allow it for CORS</td>
+<td>The origin of the web app. The API and the shim permit it for CORS</td>
 </tr>
 <tr>
 <td><code>MAPI_PLOTS_ORIGIN</code></td>
 <td><code>http://127.0.0.1:5174</code></td>
-<td>The plot sandbox's origin. <strong>Must differ from <code>MAPI_WEB_ORIGIN</code></strong>: every component refuses a configuration where they are equal</td>
+<td>The origin of the plot sandbox. <strong>Must be different from <code>MAPI_WEB_ORIGIN</code></strong>. All components refuse a configuration where they are equal</td>
 </tr>
 <tr>
 <td><code>MAPI_DATA_DIR</code></td>
 <td><code>.local</code></td>
-<td>Local state: <code>pg/</code>, <code>gcs/</code> (objects and the shim's keys), <code>keys/</code> (the bundle-signing key), <code>executions/</code>, <code>dev/</code></td>
+<td>Local state: <code>pg/</code>, <code>gcs/</code> (objects and the keys of the shim), <code>keys/</code> (the bundle-signing key), <code>executions/</code>, <code>dev/</code></td>
 </tr>
 </tbody>
 </table>
 <h2 id="mapi-server-api-and-worker"><code>mapi-server</code> (API and worker)<a class="headerlink" href="#mapi-server-api-and-worker" title="Permanent link">&para;</a></h2>
-<p><code>mapi-server api</code>, <code>worker</code>, <code>migrate</code> and <code>dev</code> read <code>mapi_server.settings.Settings</code>: each
-field is the variable <code>MAPI_&lt;FIELD&gt;</code>. Besides the topology above:</p>
+<p><code>mapi-server api</code>, <code>worker</code>, <code>migrate</code> and <code>dev</code> read <code>mapi_server.settings.Settings</code>. Each
+field is the variable <code>MAPI_&lt;FIELD&gt;</code>. These are the variables in addition to the topology
+above:</p>
 <p><strong>Identity and API</strong></p>
 <table>
 <thead>
@@ -5128,27 +5195,27 @@ field is the variable <code>MAPI_&lt;FIELD&gt;</code>. Besides the topology abov
 <tr>
 <td><code>MAPI_TENANT_ID</code>, <code>MAPI_PROJECT_ID</code></td>
 <td><code>default</code></td>
-<td>The platform's own tenant and project (the only ones of a single-tenant install; platform runs such as <code>describe</code> live there)</td>
+<td>The tenant and project of the platform. They are the only tenant and project of a single-tenant installation. Platform runs, for example <code>describe</code>, are in them</td>
 </tr>
 <tr>
 <td><code>MAPI_API_HOST</code>, <code>MAPI_API_PORT</code></td>
 <td><code>127.0.0.1</code>, <code>8000</code></td>
-<td>Bind address of <code>mapi-server api</code> when started without <code>--host</code>/<code>--port</code></td>
+<td>The bind address of <code>mapi-server api</code> when you start it without <code>--host</code>/<code>--port</code></td>
 </tr>
 <tr>
 <td><code>MAPI_ALLOWED_HOSTS</code></td>
 <td><code>127.0.0.1,localhost,api</code></td>
-<td><code>Host</code> header values the API answers (comma-separated; the host of <code>MAPI_API_URL</code> is always allowed; <code>*</code> turns the check off). The DNS-rebinding guard of the unauthenticated M1 API</td>
+<td>The <code>Host</code> header values that the API answers (comma-separated). The host of <code>MAPI_API_URL</code> is always permitted. <code>*</code> turns the check off. This is the DNS-rebinding guard of the unauthenticated M1 API</td>
 </tr>
 <tr>
 <td><code>MAPI_TRUSTED_PROXIES</code></td>
 <td>unset</td>
-<td>Addresses or CIDR ranges of the proxies in front of the API (load balancer, Cloud Run front end, the web container's <code>/v1/</code> proxy), comma-separated. A request from one of them takes the right-most <code>X-Forwarded-For</code> hop that is not a trusted proxy as the client address, which the per-address limits (sign-up, verification, embed views), the Sybil <code>same_ip</code> check and audit fingerprints use. <code>none</code>: clients connect directly and <code>X-Forwarded-For</code> is ignored. <strong>Required in the <code>multi-tenant</code> profile</strong>; <code>make dev</code> sets <code>none</code> for its multi-tenant stack</td>
+<td>The addresses or CIDR ranges of the proxies in front of the API, comma-separated. Examples are the load balancer, the Cloud Run front end and the <code>/v1/</code> proxy of the web container. For a request from one of these proxies, the client address is the right-most <code>X-Forwarded-For</code> hop that is not a trusted proxy. The limits for each address (sign-up, verification, embed views), the Sybil <code>same_ip</code> check and the audit fingerprints use this address. <code>none</code>: clients connect directly, and the server ignores <code>X-Forwarded-For</code>. <strong>Necessary in the <code>multi-tenant</code> profile</strong>. <code>make dev</code> sets <code>none</code> for its multi-tenant stack</td>
 </tr>
 <tr>
 <td><code>MAPI_DEBUG</code></td>
 <td><code>false</code></td>
-<td>Put tracebacks into problem documents' <code>untrusted_text</code>. Never in production</td>
+<td>Put tracebacks into the <code>untrusted_text</code> of problem documents. Never use this in production</td>
 </tr>
 <tr>
 <td><code>MAPI_LOG_LEVEL</code></td>
@@ -5158,71 +5225,71 @@ field is the variable <code>MAPI_&lt;FIELD&gt;</code>. Besides the topology abov
 <tr>
 <td><code>MAPI_LOG_JSON</code></td>
 <td><code>true</code></td>
-<td>One JSON object per log line (structlog, with <code>trace_id</code>/<code>span_id</code> and the request, run and tenant context); <code>false</code> gives a human console format</td>
+<td>One JSON object for each log line (structlog, with <code>trace_id</code>/<code>span_id</code> and the context of the request, run and tenant). <code>false</code> gives a console format for persons</td>
 </tr>
 <tr>
 <td><code>MAPI_METRICS_ENABLED</code></td>
 <td><code>true</code></td>
-<td>Serve Prometheus metrics at <code>GET /metrics</code> (see <a href="../observability/">Observability</a>)</td>
+<td>Serve Prometheus metrics at <code>GET /metrics</code> (refer to <a href="../observability/">Observability</a>)</td>
 </tr>
 <tr>
 <td><code>MAPI_METRICS_TOKEN</code></td>
 <td>unset</td>
-<td>Bearer a scraper must present on <code>GET /metrics</code>. Required in the <code>multi-tenant</code> profile, which refuses scrapes without it (the series carry tenant ids and spend)</td>
+<td>The bearer that a scraper must send on <code>GET /metrics</code>. Necessary in the <code>multi-tenant</code> profile, which refuses scrapes without it (the series contain tenant ids and spend)</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKER_METRICS_PORT</code>, <code>MAPI_WORKER_METRICS_HOST</code></td>
 <td>unset, <code>127.0.0.1</code></td>
-<td>Serve the worker's own <code>GET /metrics</code> (dispatcher, reconciler, finalizer series) on this address; same bearer rule as the API</td>
+<td>Serve the <code>GET /metrics</code> of the worker (dispatcher, reconciler, finalizer series) on this address. The same bearer rule as the API applies</td>
 </tr>
 <tr>
 <td><code>MAPI_TRACING_ENABLED</code></td>
 <td><code>true</code></td>
-<td>Create OpenTelemetry spans for requests, outgoing HTTP calls and runs</td>
+<td>Make OpenTelemetry spans for requests, outgoing HTTP calls and runs</td>
 </tr>
 <tr>
 <td><code>MAPI_OTLP_ENDPOINT</code></td>
 <td>unset</td>
-<td>OTLP/HTTP collector to export spans to (also read from <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>); unset creates spans without exporting them</td>
+<td>The OTLP/HTTP collector that gets the spans. The server also reads it from <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>. If unset, the server makes spans but does not export them</td>
 </tr>
 <tr>
 <td><code>MAPI_INTERNAL_TOKEN</code></td>
 <td>unset</td>
-<td>If set (and Pub/Sub push authentication is not), <code>POST /internal/events</code> requires this bearer token. A multi-tenant profile with neither refuses every push</td>
+<td>If set (and Pub/Sub push authentication is not set), <code>POST /internal/events</code> needs this bearer token. A multi-tenant profile with neither refuses all pushes</td>
 </tr>
 <tr>
 <td><code>MAPI_PUBSUB_PUSH_AUDIENCE</code>, <code>MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT</code></td>
 <td>unset</td>
-<td>Set both to require a Google-signed OIDC token from the push subscription's service account on <code>POST /internal/events</code> (see <a href="../authentication/#pubsub-push">Authentication</a> and the Cloud Run settings below)</td>
+<td>Set the two to make <code>POST /internal/events</code> need an OIDC token that Google signed for the service account of the push subscription. Refer to <a href="../authentication/#pubsub-push">Authentication</a> and the Cloud Run settings below</td>
 </tr>
 <tr>
 <td><code>MAPI_SSE_HEARTBEAT_S</code></td>
 <td><code>15</code></td>
-<td>Seconds between <code>: keepalive</code> comments on event streams</td>
+<td>The seconds between <code>: keepalive</code> comments on event streams</td>
 </tr>
 <tr>
 <td><code>MAPI_SSE_POLL_S</code></td>
 <td><code>5</code></td>
-<td>Fallback poll of an event stream when no PostgreSQL <code>NOTIFY</code> arrives</td>
+<td>The fallback poll of an event stream when no PostgreSQL <code>NOTIFY</code> comes</td>
 </tr>
 <tr>
 <td><code>MAPI_SSE_REAUTH_S</code></td>
 <td><code>60</code></td>
-<td>How often an open event stream re-checks its caller's credential (revoked tokens, ended sessions and lost access close it)</td>
+<td>How frequently an open event stream does a check of the credential of its caller again. Revoked tokens, ended sessions and lost access close the stream</td>
 </tr>
 <tr>
 <td><code>MAPI_MAX_SIDECAR_BYTES</code></td>
 <td>8 MiB</td>
-<td>Largest JSON sidecar (<code>plots.json</code>, <code>diagnostics.json</code>, …) the control plane will parse</td>
+<td>The largest JSON sidecar (<code>plots.json</code>, <code>diagnostics.json</code>, …) that the control plane parses</td>
 </tr>
 </tbody>
 </table>
 <div class="admonition warning">
 <p class="admonition-title"><code>MAPI_PROFILE</code> means two things</p>
-<p>The CLI and the Python client read <code>MAPI_PROFILE</code> as the name of a <em>config-file profile</em>;
-the server reads it as the <em>deployment profile</em>. Do not export a client profile name in a
-shell that starts <code>make dev</code> or <code>mapi-server</code>: the server refuses any value other than
-<code>single-tenant</code>, <code>multi-tenant</code> or <code>dev</code>.</p>
+<p>Do not export a client profile name in a shell that starts <code>make dev</code> or <code>mapi-server</code>.
+The server refuses all values other than <code>single-tenant</code>, <code>multi-tenant</code> or <code>dev</code>. The CLI
+and the Python client read <code>MAPI_PROFILE</code> as the name of a <em>config-file profile</em>. The
+server reads it as the <em>deployment profile</em>.</p>
 </div>
 <p><strong>Database</strong></p>
 <table>
@@ -5237,42 +5304,42 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_DB_POOL_SIZE</code></td>
 <td><code>10</code></td>
-<td>Request-path connections per process (plus as many overflow connections)</td>
+<td>Request-path connections for each process (and the same number of overflow connections)</td>
 </tr>
 <tr>
 <td><code>MAPI_DB_SYSTEM_POOL_SIZE</code></td>
 <td><code>5</code></td>
-<td>Platform-role connections per process (the orchestrator)</td>
+<td>Platform-role connections for each process (the orchestrator)</td>
 </tr>
 <tr>
 <td><code>MAPI_DB_GATEWAY_POOL_SIZE</code></td>
 <td><code>5</code></td>
-<td>Gateway-role connections per process (the API and events service)</td>
+<td>Gateway-role connections for each process (the API and events service)</td>
 </tr>
 <tr>
 <td><code>MAPI_DB_ECHO</code></td>
 <td><code>false</code></td>
-<td>Log every SQL statement</td>
+<td>Log each SQL statement</td>
 </tr>
 <tr>
 <td><code>MAPI_DATABASE_APP_URL</code></td>
 <td>unset</td>
-<td>Dedicated login of the request-path role (row-level security applies). Unset: <code>DATABASE_URL</code> with the start-up option <code>role=$MAPI_DB_APP_ROLE</code></td>
+<td>The dedicated login of the request-path role (row-level security applies). If unset: <code>DATABASE_URL</code> with the start-up option <code>role=$MAPI_DB_APP_ROLE</code></td>
 </tr>
 <tr>
 <td><code>MAPI_DATABASE_SYSTEM_URL</code></td>
 <td>unset</td>
-<td>Dedicated login of the platform role, the only one that bypasses row-level security: the orchestrator's dispatcher, reconciler, finalizer and housekeeper. The API never needs it. Unset: <code>DATABASE_URL</code> with <code>role=$MAPI_DB_SYSTEM_ROLE</code></td>
+<td>The dedicated login of the platform role. It is the only role that bypasses row-level security. The dispatcher, reconciler, finalizer and housekeeper of the orchestrator use it. The API never needs it. If unset: <code>DATABASE_URL</code> with <code>role=$MAPI_DB_SYSTEM_ROLE</code></td>
 </tr>
 <tr>
 <td><code>MAPI_DATABASE_GATEWAY_URL</code></td>
 <td>unset</td>
-<td>Dedicated login of the gateway role: what the API and events service look up before a tenant is known (sign-in, memberships, operator metadata, pushed events), with row-level security applying. Unset: <code>DATABASE_URL</code> with <code>role=$MAPI_DB_GATEWAY_ROLE</code></td>
+<td>The dedicated login of the gateway role. The API and events service use it for look-ups before they know the tenant (sign-in, memberships, operator metadata, pushed events). Row-level security applies. If unset: <code>DATABASE_URL</code> with <code>role=$MAPI_DB_GATEWAY_ROLE</code></td>
 </tr>
 <tr>
 <td><code>MAPI_DB_APP_ROLE</code>, <code>MAPI_DB_SYSTEM_ROLE</code>, <code>MAPI_DB_GATEWAY_ROLE</code></td>
 <td><code>mapi_app</code>, <code>mapi_system</code>, <code>mapi_gateway</code></td>
-<td>The three runtime roles <code>mapi-server migrate</code> creates and grants (see <a href="../authentication/#row-level-security">Authentication</a>)</td>
+<td>The three runtime roles that <code>mapi-server migrate</code> makes and grants (refer to <a href="../authentication/#row-level-security">Authentication</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -5288,38 +5355,38 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tbody>
 <tr>
 <td><code>MAPI_AUTH_REQUIRED</code></td>
-<td>on, except <code>single-tenant</code></td>
-<td>Require a session or API token on every non-public route. Cannot be turned off in a multi-tenant profile</td>
+<td>on, but not for <code>single-tenant</code></td>
+<td>Make all routes that are not public need a session or API token. You cannot turn it off in a multi-tenant profile</td>
 </tr>
 <tr>
 <td><code>MAPI_SERVER_SECRET</code></td>
 <td>from <code>MAPI_SERVER_SECRET_PATH</code></td>
-<td>Root secret of the API-token pepper, the audit fingerprints and the key that seals webhook secrets. Every API and worker instance must share it; changing it invalidates every token and webhook secret</td>
+<td>The root secret of the API-token pepper, the audit fingerprints and the key that seals webhook secrets. All API and worker instances must share it. If you change it, all tokens and webhook secrets become invalid</td>
 </tr>
 <tr>
 <td><code>MAPI_SERVER_SECRET_PATH</code></td>
 <td><code>server-secret</code> next to the bundle-signing key</td>
-<td>File holding the root secret (<code>0600</code>, created by <code>mapi-server migrate</code>; Compose keeps it on the <code>keys</code> volume)</td>
+<td>The file that holds the root secret (<code>0600</code>). <code>mapi-server migrate</code> makes it. Compose keeps it on the <code>keys</code> volume</td>
 </tr>
 <tr>
 <td><code>MAPI_COOKIE_SECURE</code></td>
 <td>on when <code>MAPI_API_URL</code> is <code>https</code></td>
-<td><code>__Host-</code> prefixed, <code>Secure</code> session cookies. Off: <code>mapi_session</code>/<code>mapi_csrf</code> for plain-HTTP development</td>
+<td>Session cookies with the <code>__Host-</code> prefix and <code>Secure</code>. Off: <code>mapi_session</code>/<code>mapi_csrf</code> for development with plain HTTP</td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_ISSUER</code></td>
 <td>unset</td>
-<td>The OpenID provider (for example <code>https://accounts.google.com</code>). Unset outside the <code>dev</code> profile: browser sign-in is off, tokens still work</td>
+<td>The OpenID provider (for example <code>https://accounts.google.com</code>). If unset outside the <code>dev</code> profile, browser sign-in is off, but tokens still work</td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_DISCOVERY_URL</code></td>
 <td><code>&lt;issuer&gt;/.well-known/openid-configuration</code></td>
-<td>Where the provider's metadata is</td>
+<td>The location of the metadata of the provider</td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_CLIENT_ID</code>, <code>MAPI_OIDC_CLIENT_SECRET</code></td>
 <td>unset</td>
-<td>The OAuth client registered for the BFF (the secret is optional for public clients; PKCE is always used)</td>
+<td>The OAuth client that you registered for the BFF. The secret is optional for public clients. The server always uses PKCE</td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_REDIRECT_URI</code></td>
@@ -5329,32 +5396,32 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_OIDC_ALGORITHMS</code></td>
 <td><code>RS256,ES256</code></td>
-<td>Accepted ID-token algorithms (asymmetric only)</td>
+<td>The ID-token algorithms that the server accepts (only asymmetric)</td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_CLI_CLIENT_IDS</code></td>
 <td><code>mapi-cli</code></td>
-<td>Public OIDC clients of the same issuer whose ID tokens the API accepts as <code>Authorization: Bearer</code> (what <code>mapi login</code> sends). Comma-separated; empty accepts API tokens only. In the <code>dev</code> profile these clients may also use the built-in IdP with a loopback redirect</td>
+<td>Public OIDC clients of the same issuer. The API accepts their ID tokens as <code>Authorization: Bearer</code> (what <code>mapi login</code> sends). Comma-separated. If empty, the API accepts only API tokens. In the <code>dev</code> profile, these clients can also use the built-in IdP with a loopback redirect</td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_EXTRA_PARAMS</code></td>
 <td><code>{}</code></td>
-<td>Extra authorization parameters as JSON, for example <code>{"hd": "acme.com"}</code></td>
+<td>More authorization parameters as JSON, for example <code>{"hd": "acme.com"}</code></td>
 </tr>
 <tr>
 <td><code>MAPI_OPERATOR_EMAILS</code></td>
 <td>unset</td>
-<td>Verified e-mails that sign in as platform operators (comma-separated)</td>
+<td>The verified e-mails that sign in as platform operators (comma-separated)</td>
 </tr>
 <tr>
 <td><code>MAPI_DEFAULT_TENANT_ADMINS</code></td>
 <td>unset</td>
-<td>E-mails invited as admins of the default tenant at start-up (claimed at first sign-in with that verified e-mail)</td>
+<td>The e-mails that the server invites as admins of the default tenant at start-up. The user gets the invitation at the first sign-in with that verified e-mail</td>
 </tr>
 <tr>
 <td><code>MAPI_DEVIDP_USERS</code></td>
 <td><code>admin@dev.local,analyst@dev.local,viewer@dev.local</code></td>
-<td>The <code>dev</code> profile's accounts: the first is an operator and tenant admin, the second a runner, the rest viewers</td>
+<td>The accounts of the <code>dev</code> profile. The first is an operator and tenant admin, the second is a runner, and the other accounts are viewers</td>
 </tr>
 </tbody>
 </table>
@@ -5371,12 +5438,12 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_PRICE_TABLE_PATH</code></td>
 <td>unset</td>
-<td>A JSON <code>PriceTable</code>; unset: Cloud Run-like list prices (<code>mapi_spec.cost.DEFAULT_PRICE_TABLE</code>)</td>
+<td>A JSON <code>PriceTable</code>. If unset: list prices like Cloud Run prices (<code>mapi_spec.cost.DEFAULT_PRICE_TABLE</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_ESTIMATE_WALL_S</code></td>
 <td>fit 300, score 30, ingest 60, …</td>
-<td>Per run kind, the wall time (seconds, capped at the run's timeout) a run is charged against vCPU-second quotas until it is metered (JSON)</td>
+<td>For each run kind, the wall time in seconds that the server charges against vCPU-second quotas until it meters the run (JSON). The maximum is the timeout of the run</td>
 </tr>
 <tr>
 <td><code>MAPI_RATE_LIMITS_ENABLED</code></td>
@@ -5386,17 +5453,17 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_LEASE_CANDIDATES</code></td>
 <td><code>500</code></td>
-<td>Queued runs the dispatcher's fair-share planner considers per pass (runs held by a suspended tenant, the kill switches or the spend cap are not among them)</td>
+<td>The queued runs that the fair-share planner of the dispatcher looks at in each pass. This does not include runs that are held by a suspended tenant, the kill switches or the spend cap</td>
 </tr>
 <tr>
 <td><code>MAPI_LEASE_CANDIDATES_PER_TENANT</code></td>
 <td><code>50</code></td>
-<td>At most this many of them per tenant, so one tenant's held runs cannot crowd out the others</td>
+<td>The maximum number of these runs for each tenant. Thus the held runs of one tenant cannot push out the runs of other tenants</td>
 </tr>
 <tr>
 <td><code>MAPI_EXECUTOR_REPORT_INTERVAL_S</code></td>
 <td><code>10</code></td>
-<td>How often each dispatcher reports executor health for <code>/v1/admin/executors</code></td>
+<td>How frequently each dispatcher reports executor health for <code>/v1/admin/executors</code></td>
 </tr>
 <tr>
 <td><code>MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S</code></td>
@@ -5406,7 +5473,7 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 </tbody>
 </table>
 <p><strong>Plot rendering and embed links (v0.4)</strong></p>
-<p>See <a href="../../guides/sharing-plots/">Sharing plots</a>.</p>
+<p>Refer to <a href="../../guides/sharing-plots/">Sharing plots</a>.</p>
 <table>
 <thead>
 <tr>
@@ -5419,32 +5486,32 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_RENDER_TIMEOUT_S</code></td>
 <td><code>300</code></td>
-<td>Wall-clock limit of a <code>POST /v1/plots:render</code> run; the sandbox stops it after this</td>
+<td>The wall-clock limit of a <code>POST /v1/plots:render</code> run. The sandbox stops the run after this time</td>
 </tr>
 <tr>
 <td><code>MAPI_RENDER_PLOTLY_ENABLED</code></td>
 <td><code>false</code></td>
-<td>Accept Plotly plots for static rendering. This needs kaleido and a Chrome or Chromium in the runner image, which the base images do not ship. While it is off, Plotly renders are refused with <code>MODE_NOT_SUPPORTED</code></td>
+<td>Accept Plotly plots for static rendering. This needs kaleido and a Chrome or Chromium in the runner image. The base images do not include them. While this setting is off, the server refuses Plotly renders with <code>MODE_NOT_SUPPORTED</code></td>
 </tr>
 <tr>
 <td><code>MAPI_EMBED_RATE_PER_MINUTE</code></td>
 <td><code>300</code></td>
-<td>Public views per minute of one embed link (<code>429 RATE_LIMITED</code> beyond)</td>
+<td>The public views in each minute for one embed link. More views get <code>429 RATE_LIMITED</code></td>
 </tr>
 <tr>
 <td><code>MAPI_EMBED_IP_RATE_PER_MINUTE</code></td>
 <td><code>120</code></td>
-<td>Public embed requests per minute from one client address, valid or not (slows down token guessing)</td>
+<td>The public embed requests in each minute from one client address, valid or not valid. This makes token guesses slower</td>
 </tr>
 <tr>
 <td><code>MAPI_EMBED_CACHE_S</code></td>
 <td><code>60</code></td>
-<td>How long an API instance reuses an embed's resolved plot. Expiry and revocation are still checked on every request, and responses are <code>Cache-Control: private, no-cache</code>, so a revoked link stops rendering on the next load</td>
+<td>How long an API instance uses the resolved plot of an embed again. The server still does a check of expiry and revocation on each request. Responses are <code>Cache-Control: private, no-cache</code>. Thus a revoked link stops on the next load</td>
 </tr>
 <tr>
 <td><code>MAPI_EMBED_IMAGE_URL_TTL_S</code></td>
 <td><code>900</code></td>
-<td>Lifetime of the signed URL of an embed's PNG fallback</td>
+<td>The life of the signed URL of the PNG fallback of an embed</td>
 </tr>
 </tbody>
 </table>
@@ -5461,42 +5528,42 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_OBJECT_STORE</code></td>
 <td><code>shim</code></td>
-<td><code>shim</code> (the GCS shim at <code>MAPI_GCS_ENDPOINT</code>), <code>gcs</code> (real Cloud Storage; needs the <code>gcp</code> extra, <code>MAPI_URL_SIGNER</code> and <code>MAPI_URL_UPLOADER</code>) or <code>memory</code> (tests only)</td>
+<td><code>shim</code> (the GCS shim at <code>MAPI_GCS_ENDPOINT</code>), <code>gcs</code> (real Cloud Storage. It needs the <code>gcp</code> extra, <code>MAPI_URL_SIGNER</code> and <code>MAPI_URL_UPLOADER</code>) or <code>memory</code> (only for tests)</td>
 </tr>
 <tr>
 <td><code>MAPI_GCP_PROJECT</code></td>
 <td>unset</td>
-<td>With <code>gcs</code>: the project of the Cloud Storage client (default: the environment's)</td>
+<td>With <code>gcs</code>: the project of the Cloud Storage client (default: the project of the environment)</td>
 </tr>
 <tr>
 <td><code>MAPI_URL_SIGNER</code></td>
 <td>unset</td>
-<td>With <code>gcs</code>: the service account that signs URLs through IAM <code>signBlob</code>, so no key file exists anywhere</td>
+<td>With <code>gcs</code>: the service account that signs URLs through IAM <code>signBlob</code>. Thus no key file is necessary</td>
 </tr>
 <tr>
 <td><code>MAPI_URL_UPLOADER</code></td>
 <td>unset</td>
-<td>With <code>gcs</code> (required): the account that signs create-only upload policies, which every run uses for its outputs. It must differ from <code>MAPI_URL_SIGNER</code> and may create objects but never delete them: a GCS POST form has no generation precondition, so only a signer without <code>storage.objects.delete</code> makes it create-only. The server refuses to start without it</td>
+<td>With <code>gcs</code> (necessary): the account that signs create-only upload policies. Each run uses these policies for its outputs. It must be different from <code>MAPI_URL_SIGNER</code>. It can make objects, but it must never delete them. A GCS POST form has no generation precondition. Thus only a signer without <code>storage.objects.delete</code> makes the form create-only. The server does not start without this account</td>
 </tr>
 <tr>
 <td><code>MAPI_GCS_PUBLIC_ENDPOINT</code></td>
 <td><code>MAPI_GCS_ENDPOINT</code></td>
-<td>The base URL put into signed URLs, when browsers or containers reach the shim under another host name</td>
+<td>The base URL in signed URLs, when browsers or containers connect to the shim with a different host name</td>
 </tr>
 <tr>
 <td><code>MAPI_GCS_ROOT</code></td>
 <td><code>$MAPI_DATA_DIR/gcs</code></td>
-<td>The shim's state directory; the server reads the principals' key files under <code>_shim/keys/</code></td>
+<td>The state directory of the shim. The server reads the key files of the principals under <code>_shim/keys/</code></td>
 </tr>
 <tr>
 <td><code>MAPI_GCS_KEY_FILE</code></td>
 <td><code>$MAPI_GCS_ROOT/_shim/keys/control.json</code></td>
-<td>Key file of the control plane's principal</td>
+<td>The key file of the principal of the control plane</td>
 </tr>
 <tr>
 <td><code>MAPI_EXEC_TOKEN</code></td>
 <td>from <code>exec.json</code></td>
-<td>Bearer token of the shim's <code>exec</code> principal, handed to local runs (local executors only, never in the cloud)</td>
+<td>The bearer token of the <code>exec</code> principal of the shim. The server gives it to local runs (only local executors, never in the cloud)</td>
 </tr>
 </tbody>
 </table>
@@ -5518,32 +5585,32 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_RUNNER_COMMAND</code></td>
 <td><code>mapi-runner</code> next to the interpreter</td>
-<td>The supervisor's command line (shell-quoted) for <code>local-process</code></td>
+<td>The command line of the supervisor (shell-quoted) for <code>local-process</code></td>
 </tr>
 <tr>
 <td><code>MAPI_EXECUTOR_WORKDIR</code></td>
 <td><code>$MAPI_DATA_DIR/executions</code></td>
-<td>Per-run scratch of the local executor</td>
+<td>The scratch directory of the local executor for each run</td>
 </tr>
 <tr>
 <td><code>MAPI_DOCKER_IMAGE</code></td>
 <td><code>mapi/base-bayes:&lt;version&gt;</code></td>
-<td>Runner image of the docker executors for runs without a mapped plugin (ingest, describe)</td>
+<td>The runner image of the docker executors for runs without a mapped plugin (ingest, describe)</td>
 </tr>
 <tr>
 <td><code>MAPI_DOCKER_IMAGES</code></td>
 <td><code>mmm</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>: <code>base-forecast</code></td>
-<td>Plugin namespace to runner image (JSON), tagged with the workspace version</td>
+<td>Plugin namespace to runner image (JSON), with the tag of the workspace version</td>
 </tr>
 <tr>
 <td><code>MAPI_DOCKER_NETWORK</code></td>
 <td><code>none</code></td>
-<td>The run containers' network: <code>container:&lt;gcs-shim container&gt;</code> or an internal network that contains only the shim. <code>none</code> is refused while the bootstrap URL is HTTP</td>
+<td>The network of the run containers: <code>container:&lt;gcs-shim container&gt;</code>, or an internal network that contains only the shim. The server refuses <code>none</code> while the bootstrap URL is HTTP</td>
 </tr>
 <tr>
 <td><code>MAPI_DOCKER_NETWORK_ISOLATED</code></td>
 <td><code>false</code></td>
-<td>Declare <code>MAPI_DOCKER_NETWORK</code> an internal network holding only the shim, so <code>docker-gvisor</code> reports enforced egress and DNS. <code>verified</code> and <code>public</code> tenants still need a recorded security-suite run with the network probes blocked (<a href="../docker/">docker</a>)</td>
+<td>Declare that <code>MAPI_DOCKER_NETWORK</code> is an internal network with only the shim. Then <code>docker-gvisor</code> reports enforced egress and DNS. <code>verified</code> and <code>public</code> tenants also need a recorded security-suite run in which the network probes were stopped (<a href="../docker/">docker</a>)</td>
 </tr>
 <tr>
 <td><code>MAPI_DOCKER_RUNTIME_GVISOR</code></td>
@@ -5553,7 +5620,7 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_CANCEL_GRACE_S</code></td>
 <td><code>10</code></td>
-<td>Seconds between SIGTERM and SIGKILL when a run is cancelled</td>
+<td>The seconds between SIGTERM and SIGKILL when you cancel a run</td>
 </tr>
 </tbody>
 </table>
@@ -5570,72 +5637,72 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_DISPATCH_RATE_PER_MINUTE</code>, <code>MAPI_DISPATCH_BURST</code></td>
 <td><code>180</code>, <code>10</code></td>
-<td>Token bucket in front of the executor (Cloud Run's <code>jobs.run</code> quota)</td>
+<td>The token bucket in front of the executor (the <code>jobs.run</code> quota of Cloud Run)</td>
 </tr>
 <tr>
 <td><code>MAPI_DISPATCH_BATCH</code>, <code>MAPI_DISPATCH_POLL_S</code></td>
 <td><code>10</code>, <code>1</code></td>
-<td>Queued runs leased per pass, and the pause between passes</td>
+<td>The queued runs that the dispatcher leases in each pass, and the pause between passes</td>
 </tr>
 <tr>
 <td><code>MAPI_DISPATCH_LEASE_S</code></td>
 <td><code>120</code></td>
-<td>How long a dispatcher's lease on a run lasts; a live dispatcher extends it every third of that while the run waits to be submitted (for at most ten lease lengths per submit)</td>
+<td>How long the lease of a dispatcher on a run lasts. While the run waits for submission, a live dispatcher extends the lease after each third of this time. The maximum is ten lease lengths for each submit</td>
 </tr>
 <tr>
 <td><code>MAPI_DISPATCH_TIERS</code></td>
 <td>all</td>
-<td>Trust tiers whose runs this orchestrator leases (comma-separated). Several orchestrators that serve different exec pools need disjoint lists, or any of them leases any tenant's runs</td>
+<td>The trust tiers whose runs this orchestrator leases (comma-separated). If many orchestrators serve different exec pools, they need lists with no common tiers. If not, each orchestrator leases the runs of all tenants</td>
 </tr>
 <tr>
 <td><code>MAPI_RECONCILE_INTERVAL_S</code></td>
 <td><code>10</code></td>
-<td>The reconciler's level-triggered loop</td>
+<td>The level-triggered loop of the reconciler</td>
 </tr>
 <tr>
 <td><code>MAPI_STALL_INTERVALS</code></td>
 <td><code>15</code></td>
-<td>A run is <code>stalled</code> (a warning) after this many progress intervals of silence</td>
+<td>A run is <code>stalled</code> (a warning) after this number of progress intervals without events</td>
 </tr>
 <tr>
 <td><code>MAPI_COMPLETE_EVENT_GRACE_S</code></td>
 <td><code>60</code></td>
-<td>How long to wait for a run's <code>complete</code> event after the executor reports an exit</td>
+<td>How long to wait for the <code>complete</code> event of a run after the executor reports an exit</td>
 </tr>
 <tr>
 <td><code>MAPI_LOST_EXECUTION_GRACE_S</code></td>
 <td><code>60</code></td>
-<td>How long an execution may be missing from the executor before the attempt is lost</td>
+<td>How long an execution can be missing from the executor before the attempt is lost</td>
 </tr>
 <tr>
 <td><code>MAPI_DEADLINE_GRACE_S</code></td>
 <td><code>60</code></td>
-<td>Slack after a run's timeout before the reconciler stops it</td>
+<td>The extra time after the timeout of a run before the reconciler stops it</td>
 </tr>
 <tr>
 <td><code>MAPI_MAX_INFRA_RETRIES</code></td>
 <td><code>2</code></td>
-<td>Automatic retries after infrastructure failures</td>
+<td>The automatic retries after infrastructure failures</td>
 </tr>
 <tr>
 <td><code>MAPI_HOUSEKEEPING_INTERVAL_S</code></td>
 <td><code>300</code></td>
-<td>Sweep of expired upload intents (their quarantine objects are deleted), expired browser sessions and abandoned sign-ins</td>
+<td>The sweep of expired upload intents (the server deletes their quarantine objects), expired browser sessions and abandoned sign-ins</td>
 </tr>
 <tr>
 <td><code>MAPI_AUTO_RETRY_WINDOW_S</code></td>
 <td><code>1800</code></td>
-<td>No automatic retry of a run that has been going for longer than this</td>
+<td>No automatic retry of a run that has continued for longer than this time</td>
 </tr>
 <tr>
 <td><code>MAPI_AUTO_RETRY_COST_FACTOR</code></td>
 <td><code>2</code></td>
-<td>No automatic retry once a run has cost this multiple of its estimate</td>
+<td>No automatic retry when the cost of a run is this multiple of its estimate</td>
 </tr>
 <tr>
 <td><code>MAPI_FINALIZE_MAX_ATTEMPTS</code></td>
 <td><code>5</code></td>
-<td>Attempts of the finalizer job before a run fails</td>
+<td>The attempts of the finalizer job before a run fails</td>
 </tr>
 </tbody>
 </table>
@@ -5652,12 +5719,12 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_CATALOG_PATH</code></td>
 <td>unset</td>
-<td>A catalog JSON exported at image build; unset: the worker queues a sandboxed <code>describe</code> run</td>
+<td>A catalog JSON that the image build exports. If unset, the worker puts a sandboxed <code>describe</code> run in the queue</td>
 </tr>
 <tr>
 <td><code>MAPI_IMAGE_DIGEST</code></td>
 <td><code>sha256</code> of <code>uv.lock</code></td>
-<td>The runner image digest the catalog is cached under</td>
+<td>The digest of the runner image. The catalog cache uses it as the key</td>
 </tr>
 <tr>
 <td><code>MAPI_UV_LOCK_PATH</code></td>
@@ -5667,17 +5734,17 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_SIGNING_KEY_PATH</code></td>
 <td><code>$MAPI_DATA_DIR/keys/bundle-signing-p256.pem</code></td>
-<td>The EC P-256 key that signs bundle manifests (standing in for Cloud KMS). The worker signs and the API verifies, so both must load the same file. <code>mapi-server migrate</code> creates it</td>
+<td>The EC P-256 key that signs bundle manifests (in place of Cloud KMS). The worker signs and the API verifies, thus the two must load the same file. <code>mapi-server migrate</code> makes it</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNING_TRUSTED_KEY_PATHS</code></td>
 <td>none</td>
-<td>Retired bundle-signing keys (PEM files, public or private; comma-separated) whose signatures still verify, so a key rotation does not break the models the old key signed (<code>ops/runbooks/rotating-keys.md</code>)</td>
+<td>Old bundle-signing keys (PEM files, public or private, comma-separated) whose signatures still verify. Thus a key rotation does not break the models that the old key signed (<code>ops/runbooks/rotating-keys.md</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNING_KEY_CREATE</code></td>
 <td><code>true</code></td>
-<td>Create the key on first use when it is missing. Compose turns it off for <code>api</code> and <code>worker</code>, so a missing key fails start-up instead of a new key being minted</td>
+<td>Make the key at the first use if it is missing. Compose turns it off for <code>api</code> and <code>worker</code>. Thus, if the key is missing, start-up fails, and the server does not mint a new key</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNER</code></td>
@@ -5692,11 +5759,11 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_KMS_TRUSTED_KEY_VERSIONS</code></td>
 <td>none</td>
-<td>Older key versions whose signatures still verify (comma-separated; rotation)</td>
+<td>Older key versions whose signatures still verify (comma-separated, for rotation)</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Cloud Run Jobs</strong> (<code>MAPI_EXECUTOR=cloudrun-jobs</code>; see <a href="../cloud-run/">Cloud Run Jobs executor</a>)</p>
+<p><strong>Cloud Run Jobs</strong> (<code>MAPI_EXECUTOR=cloudrun-jobs</code>; refer to <a href="../cloud-run/">Cloud Run Jobs executor</a>)</p>
 <table>
 <thead>
 <tr>
@@ -5708,23 +5775,23 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tbody>
 <tr>
 <td><code>MAPI_CLOUDRUN_PROJECT</code></td>
-<td>unset (required)</td>
-<td>The exec project holding the Job inventory</td>
+<td>unset (necessary)</td>
+<td>The exec project that holds the Job inventory</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_REGION</code></td>
 <td><code>europe-west1</code></td>
-<td>Region of the inventory</td>
+<td>The region of the inventory</td>
 </tr>
 <tr>
 <td><code>MAPI_DEFAULT_RESIDENCY</code></td>
 <td>derived</td>
-<td>Data residency of the platform tenant, of tenants the migrations adopt and of tenants created without one. Default: the multi-region of <code>MAPI_CLOUDRUN_REGION</code> with <code>cloudrun-jobs</code> (<code>eu</code> for <code>europe-west1</code>), else <code>us</code></td>
+<td>The data residency of the platform tenant, of tenants that the migrations adopt, and of tenants that you make without a residency. Default: with <code>cloudrun-jobs</code>, the multi-region of <code>MAPI_CLOUDRUN_REGION</code> (<code>eu</code> for <code>europe-west1</code>). If not, <code>us</code></td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_JOB_TEMPLATE</code></td>
 <td><code>mapi-{env}-{base}-{class}</code></td>
-<td>Job id convention; it must match the Jobs the infrastructure creates</td>
+<td>The rule for Job ids. It must agree with the Jobs that the infrastructure makes</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_PLUGIN_BASES</code></td>
@@ -5734,37 +5801,37 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_CLOUDRUN_DEFAULT_BASE</code></td>
 <td><code>base-bayes</code></td>
-<td>Base for runs without a mapped plugin (ingest, describe)</td>
+<td>The base for runs without a mapped plugin (ingest, describe)</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_SUBMITS_PER_MINUTE</code>, <code>MAPI_CLOUDRUN_SUBMIT_BURST</code></td>
 <td><code>150</code>, <code>10</code></td>
-<td>Token bucket in front of <code>jobs.run</code> per orchestrator (at most 180, the regional quota)</td>
+<td>The token bucket in front of <code>jobs.run</code> for each orchestrator (maximum 180, the regional quota)</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_MAX_429_RETRIES</code></td>
 <td><code>6</code></td>
-<td><code>429</code> answers in a row before a submit fails</td>
+<td>The number of <code>429</code> answers in sequence before a submit fails</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_BACKOFF_BASE_S</code>, <code>MAPI_CLOUDRUN_BACKOFF_CAP_S</code></td>
 <td><code>1</code>, <code>64</code></td>
-<td>Exponential back-off after a <code>429</code> (never shorter than <code>Retry-After</code>)</td>
+<td>The exponential back-off after a <code>429</code> (never shorter than <code>Retry-After</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_TIMEOUT_MARGIN_S</code></td>
 <td><code>120</code></td>
-<td>Task timeout = run timeout + this margin (the reconciler stops runs at their deadline; this is the backstop)</td>
+<td>Task timeout = run timeout + this margin. The reconciler stops runs at their deadline. This margin is the backstop</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_EGRESS_ENFORCED</code></td>
 <td><code>true</code></td>
-<td>The exec network denies all egress except the restricted Google APIs VIP</td>
+<td>The exec network denies all egress, but not the restricted Google APIs VIP</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_DNS_ENFORCED</code></td>
 <td><code>false</code></td>
-<td>The DNS response policy is verified to apply to Jobs (the M0 DNS red-team gate). <code>verified</code> and <code>public</code> tenants (<code>verified</code> is the default tier) are placed only when both are <code>true</code> <strong>and</strong> passing suite evidence is recorded (<a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>); until then their runs are refused at submission</td>
+<td>We verified that the DNS response policy applies to Jobs (the M0 DNS red-team gate). The dispatcher puts <code>verified</code> and <code>public</code> tenants on the executor only when the two settings are <code>true</code> <strong>and</strong> passing suite evidence is on record (<a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>). <code>verified</code> is the default tier. Until then, the server refuses their runs at submission</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_ADOPT_LOOKBACK_S</code></td>
@@ -5773,7 +5840,7 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 </tr>
 </tbody>
 </table>
-<p><strong>Webhooks (v0.4)</strong> (see <a href="../../guides/endpoints-and-webhooks/">Endpoints and webhooks</a>)</p>
+<p><strong>Webhooks (v0.4)</strong> (refer to <a href="../../guides/endpoints-and-webhooks/">Endpoints and webhooks</a>)</p>
 <table>
 <thead>
 <tr>
@@ -5786,48 +5853,48 @@ shell that starts <code>make dev</code> or <code>mapi-server</code>: the server 
 <tr>
 <td><code>MAPI_WEBHOOK_POLL_INTERVAL_S</code></td>
 <td><code>2</code></td>
-<td>How often the worker's relay looks for due deliveries and hands them to the <code>webhooks</code> procrastinate queue</td>
+<td>How frequently the relay of the worker looks for due deliveries. The relay gives them to the <code>webhooks</code> procrastinate queue</td>
 </tr>
 <tr>
 <td><code>MAPI_WEBHOOK_MAX_ATTEMPTS</code></td>
 <td><code>8</code></td>
-<td>Tries per delivery (1 to 8; retries wait 1 min, 5 min, 30 min, 2 h, 6 h, 12 h and 24 h, plus up to 10% jitter)</td>
+<td>The tries for each delivery (1 to 8). Retries wait 1 min, 5 min, 30 min, 2 h, 6 h, 12 h and 24 h, plus a jitter of up to 10%</td>
 </tr>
 <tr>
 <td><code>MAPI_WEBHOOK_AUTO_DISABLE_AFTER</code></td>
 <td><code>20</code></td>
-<td>Disable a webhook after this many consecutive events could not be delivered (a <code>410 Gone</code> disables at once); audited as <code>webhook.disabled</code></td>
+<td>Disable a webhook after this number of consecutive events that the server could not send. A <code>410 Gone</code> disables it immediately. The audit log records <code>webhook.disabled</code></td>
 </tr>
 <tr>
 <td><code>MAPI_WEBHOOK_MAX_PER_PROJECT</code></td>
 <td><code>25</code></td>
-<td>Webhooks one project may have (<code>409</code> beyond)</td>
+<td>The maximum number of webhooks for one project (more get <code>409</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_WEBHOOK_RETENTION_DAYS</code></td>
 <td><code>30</code></td>
-<td>Days events and their delivery logs are kept</td>
+<td>The days that the server keeps events and their delivery logs</td>
 </tr>
 <tr>
 <td><code>MAPI_WEBHOOK_CA_FILE</code></td>
 <td>unset</td>
-<td>An extra PEM CA bundle trusted for receivers (a private CA); the system trust store is always used</td>
+<td>An extra PEM CA bundle that the server trusts for receivers (a private CA). The server always uses the system trust store</td>
 </tr>
 <tr>
 <td><code>MAPI_WEBHOOK_ALLOW_HTTP</code></td>
 <td><code>false</code></td>
-<td>Development only: accept <code>http://</code> URLs for the hosts in <code>MAPI_WEBHOOK_DEV_ALLOWLIST</code>. Refused in the <code>multi-tenant</code> profile</td>
+<td>Only for development: accept <code>http://</code> URLs for the hosts in <code>MAPI_WEBHOOK_DEV_ALLOWLIST</code>. Refused in the <code>multi-tenant</code> profile</td>
 </tr>
 <tr>
 <td><code>MAPI_WEBHOOK_DEV_ALLOWLIST</code></td>
 <td>none</td>
-<td>Development only: host names (comma-separated, optionally <code>host:port</code>) exempt from the SSRF address and port checks, such as a receiver on <code>localhost</code>. Refused in the <code>multi-tenant</code> profile</td>
+<td>Only for development: host names (comma-separated, optionally <code>host:port</code>) that the SSRF address and port checks do not apply to, for example a receiver on <code>localhost</code>. Refused in the <code>multi-tenant</code> profile</td>
 </tr>
 </tbody>
 </table>
-<p>Webhook signing secrets are sealed with a key derived from <code>MAPI_SERVER_SECRET</code>: changing the
-server secret makes every webhook secret unusable (rotate them afterwards).</p>
-<p><strong>Workflows (v0.5)</strong> (see <a href="../../guides/workflows/">Workflows</a>)</p>
+<p>The server seals webhook signing secrets with a key from <code>MAPI_SERVER_SECRET</code>. If you change
+the server secret, you cannot use the webhook secrets. Rotate them after the change.</p>
+<p><strong>Workflows (v0.5)</strong> (refer to <a href="../../guides/workflows/">Workflows</a>)</p>
 <table>
 <thead>
 <tr>
@@ -5840,32 +5907,32 @@ server secret makes every webhook secret unusable (rotate them afterwards).</p>
 <tr>
 <td><code>MAPI_WORKFLOW_TICK_S</code></td>
 <td><code>1</code></td>
-<td>How often (seconds) the orchestrator's workflow loop advances active workflow runs, fires due schedules and debounced triggers</td>
+<td>How frequently (seconds) the workflow loop of the orchestrator moves active workflow runs forward, and fires due schedules and debounced triggers</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_MAX_ACTIVE_RUNS</code></td>
 <td><code>20</code></td>
-<td>Workflow runs one project may have going at once, sub-workflow runs included (<code>429</code> beyond; a <code>subworkflow.run</code> node over the limit fails with <code>QUOTA_EXCEEDED</code>)</td>
+<td>The workflow runs that one project can have at the same time, with sub-workflow runs. More runs get <code>429</code>. A <code>subworkflow.run</code> node over the limit fails with <code>QUOTA_EXCEEDED</code></td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_MAX_SCHEDULES</code></td>
 <td><code>20</code></td>
-<td>Active cron schedules per project</td>
+<td>The active cron schedules for each project</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_MAX_TRIGGERS</code></td>
 <td><code>20</code></td>
-<td>Active dataset-version triggers per project</td>
+<td>The active dataset-version triggers for each project</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_NODE_TIMEOUT_S</code></td>
 <td><code>1800</code></td>
-<td>Timeout of a node's child run when the node sets none</td>
+<td>The timeout of the child run of a node when the node sets no timeout</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES</code></td>
 <td><code>1048576</code></td>
-<td>Largest JSON output (tables, metrics, reports) a node may return</td>
+<td>The largest JSON output (tables, metrics, reports) that a node can return</td>
 </tr>
 </tbody>
 </table>
@@ -5882,26 +5949,26 @@ server secret makes every webhook secret unusable (rotate them afterwards).</p>
 <tr>
 <td><code>MAPI_PUBSUB_PUSH_AUDIENCE</code></td>
 <td>unset</td>
-<td>Expected audience of the push subscription's OIDC token. When set, every push needs a Google-signed token</td>
+<td>The expected audience of the OIDC token of the push subscription. When set, each push needs a token that Google signed</td>
 </tr>
 <tr>
 <td><code>MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT</code></td>
 <td>unset</td>
-<td>The service account the subscription signs as (set together with the audience)</td>
+<td>The service account that the subscription signs as (set it together with the audience)</td>
 </tr>
 <tr>
 <td><code>MAPI_PUBSUB_PUSH_SUBSCRIPTIONS</code></td>
 <td>any</td>
-<td>Accepted subscription names (comma-separated)</td>
+<td>The accepted subscription names (comma-separated)</td>
 </tr>
 <tr>
 <td><code>MAPI_GOOGLE_JWKS_URL</code></td>
 <td><code>https://www.googleapis.com/oauth2/v3/certs</code></td>
-<td>Google's OIDC signing keys</td>
+<td>The OIDC signing keys of Google</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Sign-up, e-mail and abuse controls (v0.4)</strong> (see <a href="../signup-and-abuse/">Sign-up and abuse controls</a>)</p>
+<p><strong>Sign-up, e-mail and abuse controls (v0.4)</strong> (refer to <a href="../signup-and-abuse/">Sign-up and abuse controls</a>)</p>
 <table>
 <thead>
 <tr>
@@ -5913,13 +5980,13 @@ server secret makes every webhook secret unusable (rotate them afterwards).</p>
 <tbody>
 <tr>
 <td><code>MAPI_SIGNUP_ENABLED</code></td>
-<td>on in <code>dev</code> and <code>multi-tenant</code> when a mailer works, off <code>single-tenant</code></td>
-<td>Self-service sign-up at <code>POST /auth/signup</code>. Setting it on without a usable mailer refuses to start</td>
+<td>on in <code>dev</code> and <code>multi-tenant</code> when a mailer works, off in <code>single-tenant</code></td>
+<td>Self-service sign-up at <code>POST /auth/signup</code>. If you set it on without a mailer that works, the server does not start</td>
 </tr>
 <tr>
 <td><code>MAPI_MAILER</code></td>
-<td><code>outbox</code> in <code>dev</code>, <code>smtp</code> in <code>multi-tenant</code>, <code>console</code> otherwise</td>
-<td><code>console</code> (log the message), <code>outbox</code> (JSON files, read at <code>GET /dev/outbox</code> in <code>dev</code>), <code>smtp</code> or <code>none</code>. <code>multi-tenant</code> refuses <code>console</code> and <code>outbox</code> while sign-up is on: whoever reads the logs or the disk could verify any address</td>
+<td><code>outbox</code> in <code>dev</code>, <code>smtp</code> in <code>multi-tenant</code>, <code>console</code> in other profiles</td>
+<td><code>console</code> (log the message), <code>outbox</code> (JSON files that you read at <code>GET /dev/outbox</code> in <code>dev</code>), <code>smtp</code> or <code>none</code>. <code>multi-tenant</code> refuses <code>console</code> and <code>outbox</code> while sign-up is on, because each person who reads the logs or the disk could verify all addresses</td>
 </tr>
 <tr>
 <td><code>MAPI_MAIL_FROM</code></td>
@@ -5929,17 +5996,17 @@ server secret makes every webhook secret unusable (rotate them afterwards).</p>
 <tr>
 <td><code>MAPI_OUTBOX_DIR</code></td>
 <td><code>$MAPI_DATA_DIR/outbox</code></td>
-<td>Where the outbox mailer writes (mode <code>0600</code>, newest 200 kept)</td>
+<td>The directory where the outbox mailer writes (mode <code>0600</code>, the newest 200 messages stay)</td>
 </tr>
 <tr>
 <td><code>MAPI_SMTP_HOST</code>, <code>MAPI_SMTP_PORT</code></td>
 <td>unset, <code>587</code></td>
-<td>The SMTP server. Without a host the <code>smtp</code> mailer is off (and so is sign-up)</td>
+<td>The SMTP server. Without a host, the <code>smtp</code> mailer is off, and sign-up is also off</td>
 </tr>
 <tr>
 <td><code>MAPI_SMTP_TLS</code></td>
 <td><code>starttls</code></td>
-<td><code>starttls</code> (required, not opportunistic: a server without it is refused) or <code>ssl</code> (implicit TLS, port 465). The certificate is verified against the system trust store</td>
+<td><code>starttls</code> (necessary, not opportunistic: the server refuses an SMTP server without it) or <code>ssl</code> (implicit TLS, port 465). The server verifies the certificate against the system trust store</td>
 </tr>
 <tr>
 <td><code>MAPI_SMTP_USERNAME</code>, <code>MAPI_SMTP_PASSWORD</code></td>
@@ -5949,76 +6016,76 @@ server secret makes every webhook secret unusable (rotate them afterwards).</p>
 <tr>
 <td><code>MAPI_SMTP_TIMEOUT_S</code></td>
 <td><code>10</code></td>
-<td>Connection and command timeout</td>
+<td>The connection and command timeout</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_VERIFY_URL</code></td>
 <td><code>$MAPI_WEB_ORIGIN/verify-email?token={token}</code></td>
-<td>The link e-mailed to a sign-up; <code>{token}</code> is replaced</td>
+<td>The link that the server sends in the e-mail for a sign-up. The server replaces <code>{token}</code></td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_BLOCKED_DOMAINS</code></td>
 <td>none</td>
-<td>E-mail domains refused besides the built-in disposable list (comma-separated; subdomains included)</td>
+<td>The e-mail domains that the server refuses, in addition to the built-in disposable list (comma-separated, subdomains included)</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_BLOCKLIST_PATH</code></td>
 <td>unset</td>
-<td>A file of disposable domains, one per line (<code>#</code> comments), for example a maintained public list</td>
+<td>A file of disposable domains, one on each line (<code>#</code> comments), for example a public list that a group keeps current</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_PER_IP_PER_HOUR</code></td>
 <td><code>5</code></td>
-<td>Sign-ups accepted per client address and hour</td>
+<td>The sign-ups that the server accepts for each client address in each hour</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_PER_DOMAIN_PER_DAY</code></td>
 <td><code>25</code></td>
-<td>Verified sign-ups per e-mail domain and day (unverified ones do not count; the shared free-mail domains are exempt)</td>
+<td>The verified sign-ups for each e-mail domain in each day. Unverified sign-ups do not count. The shared free-mail domains are exempt</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_GLOBAL_PER_HOUR</code></td>
 <td><code>500</code></td>
-<td>Verified sign-ups per hour on the whole platform (unverified ones do not count)</td>
+<td>The verified sign-ups in each hour on the whole platform (unverified sign-ups do not count)</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_SHARED_EMAIL_DOMAINS</code></td>
 <td>built-in list (<code>gmail.com</code>, <code>outlook.com</code>, ...)</td>
-<td>Free-mail domains shared by unrelated people (comma-separated; replaces the built-in list): no per-domain cap and no <code>domain_burst</code> flag</td>
+<td>Free-mail domains that persons with no relation share (comma-separated, replaces the built-in list). These domains have no cap for each domain and no <code>domain_burst</code> flag</td>
 </tr>
 <tr>
 <td><code>MAPI_VERIFY_PER_IP_PER_MINUTE</code></td>
 <td><code>20</code></td>
-<td>E-mail verification attempts per client address and minute</td>
+<td>The e-mail verification attempts for each client address in each minute</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_SYBIL_WINDOW_DAYS</code></td>
 <td><code>30</code></td>
-<td>Look-back of the Sybil heuristics</td>
+<td>The look-back of the Sybil heuristics</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_SYBIL_THRESHOLD</code></td>
 <td><code>3</code></td>
-<td>Workspaces from one client address, browser or e-mail within the window before the next one is flagged for review (a domain is flagged at twice as many within an hour)</td>
+<td>The workspaces from one client address, browser or e-mail in the window. After this number, the server flags the next workspace for review. The server flags a domain at two times this number in one hour</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_FLAGGED_SUSPEND</code></td>
 <td><code>false</code></td>
-<td>Suspend a flagged sign-up's workspace until an operator approves it (default: it works and waits in the review queue)</td>
+<td>Suspend the workspace of a flagged sign-up until an operator approves it. Default: the workspace works and waits in the review queue</td>
 </tr>
 <tr>
 <td><code>MAPI_SIGNUP_RETENTION_DAYS</code></td>
 <td><code>30</code></td>
-<td>Unverified sign-ups, with their e-mail, are deleted after this</td>
+<td>The server deletes unverified sign-ups, with their e-mail, after this number of days</td>
 </tr>
 <tr>
 <td><code>MAPI_PUBLIC_CODE_UPLOAD_ENABLED</code></td>
 <td><code>false</code></td>
-<td>Cut line B (M5): let identity-verified <code>public</code> tenants run uploaded code. Off: public tenants run built-in models and declarative specs only</td>
+<td>Cut line B (M5): let identity-verified <code>public</code> tenants run uploaded code. Off: public tenants run only built-in models and declarative specs</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Tenant deletion and GDPR export (v0.4)</strong> (see <a href="../../guides/data-deletion/">Deleting data</a>)</p>
+<p><strong>Tenant deletion and GDPR export (v0.4)</strong> (refer to <a href="../../guides/data-deletion/">Deleting data</a>)</p>
 <table>
 <thead>
 <tr>
@@ -6031,68 +6098,68 @@ server secret makes every webhook secret unusable (rotate them afterwards).</p>
 <tr>
 <td><code>MAPI_TENANT_DELETION_GRACE_S</code></td>
 <td><code>604800</code> (7 days)</td>
-<td>Grace period of a deletion: the tenant is suspended and may cancel</td>
+<td>The grace period of a deletion. During this period, the tenant is suspended and can cancel the deletion</td>
 </tr>
 <tr>
 <td><code>MAPI_DELETION_REAUTH_MAX_AGE_S</code></td>
 <td>unset</td>
-<td>Also require a sign-in at most this many seconds old to request a deletion; unset: the confirmation phrase alone</td>
+<td>To request a deletion, also need a sign-in that is not older than this number of seconds. If unset, only the confirmation phrase is necessary</td>
 </tr>
 <tr>
 <td><code>MAPI_DELETION_RUN_STOP_TIMEOUT_S</code></td>
 <td><code>3600</code></td>
-<td>How long a purge waits for the tenant's cancelled runs to stop before it goes ahead</td>
+<td>How long a purge waits for the cancelled runs of the tenant to stop before it continues</td>
 </tr>
 <tr>
 <td><code>MAPI_DELETION_MAX_ATTEMPTS</code></td>
 <td><code>8</code></td>
-<td>Automatic retries (with back-off from 5 minutes to 6 hours) of a failed purge; then an operator retries</td>
+<td>The automatic retries of a failed purge, with back-off from 5 minutes to 6 hours. After this, an operator retries</td>
 </tr>
 <tr>
 <td><code>MAPI_BUNDLE_RETENTION_DAYS</code></td>
 <td><code>30</code></td>
-<td>The bundles bucket's retention period (Terraform <code>bundle_retention_days</code>): when a purge retries the objects a retention lock kept</td>
+<td>The retention period of the bundles bucket (Terraform <code>bundle_retention_days</code>). It tells when a purge retries the objects that a retention lock kept</td>
 </tr>
 <tr>
 <td><code>MAPI_LIFECYCLE_INTERVAL_S</code></td>
 <td><code>15</code></td>
-<td>Cadence of the orchestrator's deletion and export scheduler</td>
+<td>The interval of the deletion and export scheduler of the orchestrator</td>
 </tr>
 <tr>
 <td><code>MAPI_EXPORT_MAX_INLINE_BYTES</code></td>
 <td>256 MiB</td>
-<td>Dataset bytes an export archive includes; the rest is listed in its manifest</td>
+<td>The dataset bytes in an export archive. The manifest lists the remaining bytes</td>
 </tr>
 <tr>
 <td><code>MAPI_EXPORT_RETENTION_S</code></td>
 <td><code>604800</code> (7 days)</td>
-<td>How long an export archive is kept</td>
+<td>How long the server keeps an export archive</td>
 </tr>
 <tr>
 <td><code>MAPI_EXPORT_LINK_TTL_S</code></td>
 <td><code>900</code></td>
-<td>Lifetime of an export's signed download link (a fresh one on every <code>GET</code>)</td>
+<td>The life of the signed download link of an export (a new link on each <code>GET</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_EXPORTS_PER_DAY</code></td>
 <td><code>3</code></td>
-<td>Exports a tenant may request per day (one at a time)</td>
+<td>The exports that a tenant can request in each day (one at a time)</td>
 </tr>
 <tr>
 <td><code>MAPI_EXPORT_MAX_METADATA_BYTES</code></td>
 <td>256 MiB</td>
-<td>Metadata rows an export archive includes; tables cut short are listed in its manifest</td>
+<td>The metadata rows in an export archive. The manifest lists the tables that are not complete</td>
 </tr>
 <tr>
 <td><code>MAPI_EXPORT_BUILD_TIMEOUT_S</code></td>
 <td><code>3600</code></td>
-<td>How long an export build may take; a build still <code>running</code> five minutes later (its process died) is built again once, then failed</td>
+<td>The maximum time of an export build. If a build is still <code>running</code> five minutes after this time (its process stopped), the server builds it again one time. Then the build fails</td>
 </tr>
 </tbody>
 </table>
 <h2 id="the-runner-per-run">The runner (per run)<a class="headerlink" href="#the-runner-per-run" title="Permanent link">&para;</a></h2>
-<p>Executors start <code>mapi-runner</code> with exactly these variables, and nothing secret in its
-arguments. Never set them by hand.</p>
+<p>Executors start <code>mapi-runner</code> with exactly these variables. Its arguments contain nothing
+secret. Never set these variables manually.</p>
 <table>
 <thead>
 <tr>
@@ -6107,47 +6174,49 @@ arguments. Never set them by hand.</p>
 </tr>
 <tr>
 <td><code>MAPI_BOOTSTRAP_URL</code></td>
-<td>A template with <code>{nonce}</code>: where the supervisor reads (and deletes) the bootstrap object</td>
+<td>A template with <code>{nonce}</code>: the location where the supervisor reads (and deletes) the bootstrap object</td>
 </tr>
 <tr>
 <td><code>MAPI_EXEC_TOKEN</code></td>
-<td>Local executors only: the shim's <code>exec</code> principal, which may only get and delete bootstrap objects</td>
+<td>Only local executors: the <code>exec</code> principal of the shim. It can only get and delete bootstrap objects</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKER_PYTHON</code></td>
-<td>The worker's interpreter (default: the supervisor's)</td>
+<td>The interpreter of the worker (default: the interpreter of the supervisor)</td>
 </tr>
 <tr>
 <td><code>MAPI_BASE_IMAGE</code></td>
-<td>The base image recorded in the run's lineage</td>
+<td>The base image in the lineage of the run</td>
 </tr>
 <tr>
 <td><code>MAPI_REQUIRE_ISOLATION</code></td>
-<td>Set to <code>1</code> by the docker executor: the supervisor fails the run with <code>SANDBOX_VIOLATION</code> instead of running the worker in dev mode</td>
+<td>The docker executor sets it to <code>1</code>. The supervisor then fails the run with <code>SANDBOX_VIOLATION</code>, and it does not run the worker in dev mode</td>
 </tr>
 <tr>
 <td><code>MAPI_TRACEPARENT</code></td>
-<td>The W3C <code>traceparent</code> of the dispatching span, so the supervisor's stderr diagnostics carry the run's trace id (nothing is exported from the sandbox)</td>
+<td>The W3C <code>traceparent</code> of the dispatching span. Thus the stderr diagnostics of the supervisor contain the trace id of the run. Nothing goes out of the sandbox</td>
 </tr>
 <tr>
 <td><code>MAPI_LOG_JSON</code></td>
-<td><code>1</code> (the default) makes the supervisor's stderr diagnostics JSON lines; <code>0</code> plain text</td>
+<td><code>1</code> (the default) makes the stderr diagnostics of the supervisor JSON lines. <code>0</code> makes plain text</td>
 </tr>
 </tbody>
 </table>
-<p>The supervisor passes the untrusted worker only an allow-list of variables
+<p>The supervisor gives the untrusted worker only an allow-list of variables
 (<code>mapi_spec.run.WORKER_ENV_ALLOWLIST</code>: <code>PATH</code>, <code>HOME</code>, <code>TMPDIR</code>, locale and thread-count
-variables, <code>NUMBA_CACHE_DIR</code>, <code>PYTENSOR_FLAGS</code>, <code>XLA_FLAGS</code>, …). Every <code>MAPI_*</code> is scrubbed.</p>
-<p>Inside the runner images, <code>MAPI_CACHE_SEED</code> (<code>/opt/mapi/cache</code>) is the baked, read-only
-PyTensor and Numba cache and <code>MAPI_CACHE_DIR</code> (<code>/tmp/mapi-cache</code>) the writable symlink farm
-the entry point builds over it (<a href="../images/#compile-caches-and-the-read-only-root-filesystem">Container images</a>).</p>
+variables, <code>NUMBA_CACHE_DIR</code>, <code>PYTENSOR_FLAGS</code>, <code>XLA_FLAGS</code>, …). The supervisor removes all
+<code>MAPI_*</code> variables.</p>
+<p>In the runner images, <code>MAPI_CACHE_SEED</code> (<code>/opt/mapi/cache</code>) is the read-only PyTensor and
+Numba cache that the image build makes. <code>MAPI_CACHE_DIR</code> (<code>/tmp/mapi-cache</code>) is the writable
+symlink farm that the entry point builds over it
+(<a href="../images/#compile-caches-and-the-read-only-root-filesystem">Container images</a>).</p>
 <h2 id="the-gcs-shim">The GCS shim<a class="headerlink" href="#the-gcs-shim" title="Permanent link">&para;</a></h2>
-<p><code>mapi-gcs-shim serve</code> takes its defaults from the topology: <code>MAPI_DATA_DIR</code> (state in
+<p><code>mapi-gcs-shim serve</code> gets its defaults from the topology: <code>MAPI_DATA_DIR</code> (state in
 <code>$MAPI_DATA_DIR/gcs</code>), <code>MAPI_ENV</code> (bucket names), <code>MAPI_GCS_ENDPOINT</code> (host and port) and
-<code>MAPI_WEB_ORIGIN</code> (the CORS origin). Each has a command-line flag; see the
-<a href="../../reference/gcs-shim/">GCS shim reference</a>. <code>MAPI_BUNDLE_RETENTION_DAYS</code>, when set, is
-also the bundles bucket's locked retention in days when the shim creates its state (<code>0</code>: none;
-unset: write-once, about 100 years).</p>
+<code>MAPI_WEB_ORIGIN</code> (the CORS origin). Each has a command-line flag. Refer to the
+<a href="../../reference/gcs-shim/">GCS shim reference</a>. If you set <code>MAPI_BUNDLE_RETENTION_DAYS</code>, it
+is also the locked retention of the bundles bucket in days when the shim makes its state.
+<code>0</code> means no retention. If unset, the bucket is write-once, for about 100 years.</p>
 <h2 id="the-cli-and-the-python-client">The CLI and the Python client<a class="headerlink" href="#the-cli-and-the-python-client" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6159,27 +6228,27 @@ unset: write-once, about 100 years).</p>
 <tbody>
 <tr>
 <td><code>MAPI_URL</code></td>
-<td>The API (falls back to <code>MAPI_API_URL</code>, then the profile, then <code>http://127.0.0.1:8000</code>)</td>
+<td>The API. If unset, the client uses <code>MAPI_API_URL</code>, then the profile, then <code>http://127.0.0.1:8000</code></td>
 </tr>
 <tr>
 <td><code>MAPI_TOKEN</code></td>
-<td>An API token (<code>mapi_…</code>), sent as <code>Authorization: Bearer</code>. It wins over a stored <code>mapi login</code> sign-in, and is never sent over plain HTTP to a non-loopback host</td>
+<td>An API token (<code>mapi_…</code>), sent as <code>Authorization: Bearer</code>. It has priority over a stored <code>mapi login</code> sign-in. The client never sends it over plain HTTP to a host that is not loopback</td>
 </tr>
 <tr>
 <td><code>MAPI_PROJECT</code></td>
-<td>The project to act in, <code>&lt;tenant&gt;/&lt;project&gt;</code> (v0.3), sent as <code>X-Mapi-Project</code> on project-scoped requests. Wins over <code>mapi use</code></td>
+<td>The project to act in, <code>&lt;tenant&gt;/&lt;project&gt;</code> (v0.3). The client sends it as <code>X-Mapi-Project</code> on project-scoped requests. It has priority over <code>mapi use</code></td>
 </tr>
 <tr>
 <td><code>MAPI_PROFILE</code></td>
-<td>The profile of the config file to use (see the warning above)</td>
+<td>The profile of the config file to use (refer to the warning above)</td>
 </tr>
 <tr>
 <td><code>MAPI_CONFIG</code></td>
-<td>The config file (default <code>$XDG_CONFIG_HOME/mapi/config.toml</code>, else <code>~/.config/mapi/config.toml</code>)</td>
+<td>The config file (default <code>$XDG_CONFIG_HOME/mapi/config.toml</code>, if not set <code>~/.config/mapi/config.toml</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_CREDENTIALS</code></td>
-<td>Where <code>mapi login</code> keeps sign-ins (default <code>credentials.json</code> next to the config file; mode <code>0600</code>)</td>
+<td>The file where <code>mapi login</code> keeps sign-ins (default <code>credentials.json</code> next to the config file, mode <code>0600</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_ISSUER</code></td>
@@ -6191,20 +6260,20 @@ unset: write-once, about 100 years).</p>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_DISCOVERY_URL</code></td>
-<td>Where the issuer's discovery document is, when not under the issuer. The <code>dev</code> profile's built-in IdP has the issuer <code>https://dev-idp.mapi.localhost</code> and serves its document at <code>&lt;api&gt;/dev/idp</code></td>
+<td>The location of the discovery document of the issuer, when it is not under the issuer. The built-in IdP of the <code>dev</code> profile has the issuer <code>https://dev-idp.mapi.localhost</code>. It serves its document at <code>&lt;api&gt;/dev/idp</code></td>
 </tr>
 <tr>
 <td><code>MAPI_OIDC_CLIENT_SECRET</code></td>
-<td>Only for identity providers that require one from installed apps (for example Google "desktop" clients); never printed</td>
+<td>Only for identity providers that need a secret from installed apps (for example Google "desktop" clients). The CLI never prints it</td>
 </tr>
 </tbody>
 </table>
 <p>Arguments (<code>--url</code>, <code>--token</code>, <code>--project</code>, <code>--profile</code>, or <code>Client(base_url=…, token=…,
-project=…)</code>) win over the environment, which wins over the file. <code>mapi config show</code> prints
-the result and where each value came from. <code>mapi login</code>, <code>mapi use</code> and <code>mapi config set</code>
-rewrite the config file atomically with mode <code>0600</code>.</p>
+project=…)</code>) have priority over the environment. The environment has priority over the file.
+<code>mapi config show</code> prints the result and the source of each value. <code>mapi login</code>, <code>mapi use</code>
+and <code>mapi config set</code> write the config file again atomically with mode <code>0600</code>.</p>
 <h2 id="make-dev"><code>make dev</code><a class="headerlink" href="#make-dev" title="Permanent link">&para;</a></h2>
-<p><code>scripts/dev.py</code> reads the topology variables and:</p>
+<p><code>scripts/dev.py</code> reads the topology variables and these variables:</p>
 <table>
 <thead>
 <tr>
@@ -6215,19 +6284,19 @@ rewrite the config file atomically with mode <code>0600</code>.</p>
 <tbody>
 <tr>
 <td><code>MAPI_STACK_PROFILE</code></td>
-<td>The servers' <code>MAPI_PROFILE</code>: <code>dev</code> (the default: sign-in through the built-in development IdP, the <code>default</code> tenant and project, the seeded accounts of <code>MAPI_DEVIDP_USERS</code> with <code>admin@dev.local</code> as tenant admin and platform operator), <code>single-tenant</code> (the credential-less M1 API) or <code>multi-tenant</code>. A separate name so that a CLI <code>MAPI_PROFILE</code> in your shell never reaches the servers</td>
+<td>The <code>MAPI_PROFILE</code> of the servers. <code>dev</code> is the default: sign-in through the built-in development IdP, the <code>default</code> tenant and project, and the seeded accounts of <code>MAPI_DEVIDP_USERS</code>, with <code>admin@dev.local</code> as tenant admin and platform operator. The other values are <code>single-tenant</code> (the M1 API without credentials) or <code>multi-tenant</code>. The name is different, so a CLI <code>MAPI_PROFILE</code> in your shell never goes to the servers</td>
 </tr>
 <tr>
 <td><code>MAPI_INTERNAL_TOKEN</code></td>
-<td>Outside the single-tenant profile, a random bearer for <code>POST /internal/events</code> is created in <code>$MAPI_DATA_DIR/dev/internal-token</code> and given to the servers (the end-to-end suite reads it there)</td>
+<td>Outside the single-tenant profile, the script makes a random bearer for <code>POST /internal/events</code> in <code>$MAPI_DATA_DIR/dev/internal-token</code>. It gives the bearer to the servers. The end-to-end suite reads it there</td>
 </tr>
 <tr>
 <td><code>MAPI_WEBHOOK_CA_FILE</code>, <code>MAPI_WEBHOOK_DEV_ALLOWLIST</code></td>
-<td>Unless you set them, the <code>dev</code> profile writes a throwaway CA and a certificate for <code>127.0.0.1</code> and <code>localhost</code> to <code>$MAPI_DATA_DIR/dev/webhook-tls/</code> (<code>ca.pem</code>, <code>cert.pem</code>, <code>key.pem</code>), trusts the CA and allow-lists both hosts, so webhooks reach an HTTPS receiver on your machine (the M3 end-to-end suite's)</td>
+<td>If you do not set them, the <code>dev</code> profile writes a temporary CA and a certificate for <code>127.0.0.1</code> and <code>localhost</code> to <code>$MAPI_DATA_DIR/dev/webhook-tls/</code> (<code>ca.pem</code>, <code>cert.pem</code>, <code>key.pem</code>). It trusts the CA and puts the two hosts on the allow-list. Thus webhooks can get to an HTTPS receiver on your machine (the receiver of the M3 end-to-end suite)</td>
 </tr>
 <tr>
 <td><code>MAPI_DEV_&lt;NAME&gt;_CMD</code></td>
-<td>Replace one service's command (shell-quoted). <code>&lt;NAME&gt;</code> is <code>GCS_SHIM</code>, <code>MIGRATE</code>, <code>API</code>, <code>WORKER</code>, <code>WEB</code> or <code>PLOTS</code>, e.g. <code>MAPI_DEV_API_CMD="uvicorn mapi_server.app:app --reload --port 8000"</code></td>
+<td>Replace the command of one service (shell-quoted). <code>&lt;NAME&gt;</code> is <code>GCS_SHIM</code>, <code>MIGRATE</code>, <code>API</code>, <code>WORKER</code>, <code>WEB</code> or <code>PLOTS</code>, for example <code>MAPI_DEV_API_CMD="uvicorn mapi_server.app:app --reload --port 8000"</code></td>
 </tr>
 <tr>
 <td><code>NO_COLOR</code>, <code>FORCE_COLOR</code></td>
@@ -6235,15 +6304,15 @@ rewrite the config file atomically with mode <code>0600</code>.</p>
 </tr>
 </tbody>
 </table>
-<p><code>make dev ONLY=api</code> and <code>make dev WITHOUT=web,plots</code> choose services; <code>make seed SIZE=full</code>
+<p><code>make dev ONLY=api</code> and <code>make dev WITHOUT=web,plots</code> select services. <code>make seed SIZE=full</code>
 loads the large demo. These are <code>make</code> arguments, not environment variables.</p>
 <p><code>make seed</code>, <code>make e2e</code> and <code>python -m mapi_conformance run --stack</code> sign in to a stack that
-requires it: with <code>MAPI_TOKEN</code> when set, otherwise through the development IdP as
-<code>MAPI_DEV_ACCOUNT</code> (default <code>admin@dev.local</code>), acting in <code>MAPI_PROJECT</code> (default
-<code>default/default</code>).</p>
+needs sign-in. If <code>MAPI_TOKEN</code> is set, they use it. If not, they sign in through the
+development IdP as <code>MAPI_DEV_ACCOUNT</code> (default <code>admin@dev.local</code>). They act in <code>MAPI_PROJECT</code>
+(default <code>default/default</code>).</p>
 <h2 id="the-web-app-and-the-plot-sandbox">The web app and the plot sandbox<a class="headerlink" href="#the-web-app-and-the-plot-sandbox" title="Permanent link">&para;</a></h2>
-<p>Vite build-time variables. <code>make dev</code> sets them from the topology; set them yourself for a
-production build.</p>
+<p>These are Vite build-time variables. <code>make dev</code> sets them from the topology. For a production
+build, set them yourself.</p>
 <table>
 <thead>
 <tr>
@@ -6256,45 +6325,46 @@ production build.</p>
 <tr>
 <td><code>VITE_API_BASE</code></td>
 <td><code>http://127.0.0.1:8000</code></td>
-<td>The API the app calls (it must allow the app's origin)</td>
+<td>The API that the app calls (it must permit the origin of the app)</td>
 </tr>
 <tr>
 <td><code>VITE_PLOTS_ORIGIN</code></td>
 <td><code>http://127.0.0.1:5174</code></td>
-<td>The plot sandbox; must differ from the app origin</td>
+<td>The plot sandbox. It must be different from the app origin</td>
 </tr>
 <tr>
 <td><code>VITE_STORAGE_ORIGINS</code></td>
 <td><code>http://127.0.0.1:4443</code></td>
-<td>Origins of signed storage URLs, allowed by the app's CSP <code>connect-src</code></td>
+<td>The origins of signed storage URLs. The CSP <code>connect-src</code> of the app permits them</td>
 </tr>
 <tr>
 <td><code>VITE_APP_ORIGINS</code> (sandbox)</td>
 <td><code>http://127.0.0.1:5173,http://localhost:5173</code></td>
-<td>Origins allowed to frame the sandbox and talk to it</td>
+<td>The origins that can frame the sandbox and send messages to it</td>
 </tr>
 <tr>
 <td><code>VITE_AUTH_BASE</code></td>
 <td><code>VITE_API_BASE</code></td>
-<td>Where the sign-in routes (<code>/auth/*</code>) live, when they are not on the API base</td>
+<td>The location of the sign-in routes (<code>/auth/*</code>), when they are not on the API base</td>
 </tr>
 <tr>
 <td><code>VITE_TERMS_URL</code></td>
 <td><code>/terms</code></td>
-<td>The terms of service sign-up links to (an <code>http(s)</code> URL or a path on the app's origin); the default is the plain-language summary the app ships</td>
+<td>The terms of service that sign-up links to (an <code>http(s)</code> URL or a path on the origin of the app). The default is the plain-language summary in the app</td>
 </tr>
 <tr>
 <td><code>VITE_ACCEPTABLE_USE_URL</code></td>
 <td><code>/acceptable-use</code></td>
-<td>The acceptable-use policy sign-up links to, likewise. A public installation should publish its own versions of both</td>
+<td>The acceptable-use policy that sign-up links to, in the same way. A public installation must publish its own versions of the two documents</td>
 </tr>
 </tbody>
 </table>
-<p>The web app's Playwright smoke suite serves the app on 5173 and the sandbox on 5174. When those
-ports are taken, set <code>MAPI_SMOKE_WEB_PORT</code> and <code>MAPI_SMOKE_PLOTS_PORT</code>; the suite then builds the
-app for that sandbox origin and exports it to the specs as <code>MAPI_SMOKE_PLOTS_ORIGIN</code>.</p>
-<p>The sandbox's <code>index.html</code> carries a <code>%MAPI_CSP%</code> placeholder that its Vite build replaces
-with the Content-Security-Policy; it is not a variable you set.</p>
+<p>The Playwright smoke suite of the web app serves the app on 5173 and the sandbox on 5174. If
+other processes use these ports, set <code>MAPI_SMOKE_WEB_PORT</code> and <code>MAPI_SMOKE_PLOTS_PORT</code>. The
+suite then builds the app for that sandbox origin. It exports the origin to the specs as
+<code>MAPI_SMOKE_PLOTS_ORIGIN</code>.</p>
+<p>The <code>index.html</code> of the sandbox has a <code>%MAPI_CSP%</code> placeholder. Its Vite build replaces the
+placeholder with the Content-Security-Policy. It is not a variable that you set.</p>
 <h2 id="docker-compose">Docker Compose<a class="headerlink" href="#docker-compose" title="Permanent link">&para;</a></h2>
 <p>Compose reads <code>.env</code> in the repository root (copy <code>.env.example</code>).</p>
 <table>
@@ -6308,8 +6378,8 @@ with the Content-Security-Policy; it is not a variable you set.</p>
 <tbody>
 <tr>
 <td><code>POSTGRES_PASSWORD</code></td>
-<td><strong>required</strong></td>
-<td>The database password; compose refuses to start without it</td>
+<td><strong>necessary</strong></td>
+<td>The database password. Compose does not start without it</td>
 </tr>
 <tr>
 <td><code>MAPI_VERSION</code></td>
@@ -6319,22 +6389,22 @@ with the Content-Security-Policy; it is not a variable you set.</p>
 <tr>
 <td><code>MAPI_ENV</code></td>
 <td><code>local</code></td>
-<td>As above</td>
+<td>The same as above</td>
 </tr>
 <tr>
 <td><code>MAPI_STACK_PROFILE</code></td>
 <td><code>dev</code></td>
-<td>The servers' <code>MAPI_PROFILE</code>, as for <code>make dev</code></td>
+<td>The <code>MAPI_PROFILE</code> of the servers, the same as for <code>make dev</code></td>
 </tr>
 <tr>
 <td><code>MAPI_EXECUTOR</code></td>
 <td><code>local-process</code></td>
-<td>The worker's executor</td>
+<td>The executor of the worker</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKER_TMPFS</code>, <code>MAPI_WORKER_MEMORY</code>, <code>MAPI_WORKER_CPUS</code></td>
 <td><code>4g</code>, <code>12g</code>, <code>4</code></td>
-<td>The worker's <code>/tmp</code> (the scratch of every local-process run), memory limit and CPUs</td>
+<td>The <code>/tmp</code> of the worker (the scratch of each local-process run), the memory limit and the CPUs</td>
 </tr>
 <tr>
 <td><code>DOCKER_GID</code></td>
@@ -6344,8 +6414,8 @@ with the Content-Security-Policy; it is not a variable you set.</p>
 </tbody>
 </table>
 <h2 id="the-mapiweb-image-nginx">The <code>mapi/web</code> image (nginx)<a class="headerlink" href="#the-mapiweb-image-nginx" title="Permanent link">&para;</a></h2>
-<p>Rendered into the nginx configuration when the container starts (only <code>MAPI_*</code> variables
-are substituted).</p>
+<p>The container puts these variables into the nginx configuration when it starts. It replaces
+only <code>MAPI_*</code> variables.</p>
 <table>
 <thead>
 <tr>
@@ -6358,22 +6428,22 @@ are substituted).</p>
 <tr>
 <td><code>MAPI_WEB_ORIGIN</code>, <code>MAPI_PLOTS_ORIGIN</code>, <code>MAPI_API_URL</code>, <code>MAPI_GCS_ENDPOINT</code></td>
 <td>the local defaults</td>
-<td>Origins written into the CSP and <code>frame-ancestors</code> headers</td>
+<td>The origins in the CSP and <code>frame-ancestors</code> headers</td>
 </tr>
 <tr>
 <td><code>MAPI_API_UPSTREAM</code></td>
 <td><code>http://api:8000</code></td>
-<td>Where <code>/v1/</code> is proxied (a URL without a path)</td>
+<td>The location where nginx sends <code>/v1/</code> (a URL without a path)</td>
 </tr>
 <tr>
 <td><code>MAPI_WEB_SERVER_NAMES</code></td>
 <td><code>127.0.0.1 localhost</code></td>
-<td>Host names the app server answers (space-separated); any other <code>Host</code> gets no response. Keep in step with <code>MAPI_ALLOWED_HOSTS</code></td>
+<td>The host names that the app server answers (space-separated). All other <code>Host</code> values get no response. Keep it in step with <code>MAPI_ALLOWED_HOSTS</code></td>
 </tr>
 <tr>
 <td><code>MAPI_WEB_SCRIPT_SRC_EXTRA</code></td>
 <td>empty</td>
-<td>Extra <code>script-src</code> sources for the app. Widening the CSP needs a review</td>
+<td>Extra <code>script-src</code> sources for the app. A wider CSP needs a review</td>
 </tr>
 <tr>
 <td><code>NGINX_ENVSUBST_TEMPLATE_DIR</code></td>
@@ -6383,8 +6453,8 @@ are substituted).</p>
 </tbody>
 </table>
 <h2 id="image-build-arguments">Image build arguments<a class="headerlink" href="#image-build-arguments" title="Permanent link">&para;</a></h2>
-<p><code>docker build --build-arg NAME=value</code> (the Makefile passes <code>VERSION</code>, <code>VCS_REF</code> and
-<code>BUILD_DATE</code>). The defaults define what each image is; change them only to build a variant.</p>
+<p>Use <code>docker build --build-arg NAME=value</code>. The Makefile gives <code>VERSION</code>, <code>VCS_REF</code> and
+<code>BUILD_DATE</code>. The defaults define each image. Change them only to build a variant.</p>
 <table>
 <thead>
 <tr>
@@ -6395,27 +6465,27 @@ are substituted).</p>
 <tbody>
 <tr>
 <td><code>MAPI_PACKAGES</code></td>
-<td>The workspace packages installed into the image (<code>mapi-runner mapi-steps mapi-pymc …</code>)</td>
+<td>The workspace packages that the build installs into the image (<code>mapi-runner mapi-steps mapi-pymc …</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKER_PACKAGES</code></td>
-<td>What the <code>worker</code> target adds to <code>base-bayes</code> (<code>mapi-plugin-ts mapi-server[docker]</code>)</td>
+<td>The packages that the <code>worker</code> target adds to <code>base-bayes</code> (<code>mapi-plugin-ts mapi-server[docker]</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_NO_INSTALL</code></td>
-<td>Distributions never installed (the 300 MB <code>nvidia-nccl-cu13</code>)</td>
+<td>The distributions that the build never installs (the 300 MB <code>nvidia-nccl-cu13</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_APT_PACKAGES</code></td>
-<td>System packages of the runtime stage (<code>tini</code>, and <code>g++</code> for PyTensor)</td>
+<td>The system packages of the runtime stage (<code>tini</code>, and <code>g++</code> for PyTensor)</td>
 </tr>
 <tr>
 <td><code>MAPI_ASSERT_PRESENT</code>, <code>MAPI_ASSERT_ABSENT</code></td>
-<td>Distributions that must, and must not, be installed; the build fails otherwise</td>
+<td>The distributions that must be installed, and that must not be installed. If not, the build fails</td>
 </tr>
 <tr>
 <td><code>MAPI_IMAGE_NAME</code>, <code>MAPI_DESCRIPTION</code></td>
-<td>OCI labels, and the name the catalog export records</td>
+<td>OCI labels, and the name that the catalog export records</td>
 </tr>
 <tr>
 <td><code>PYTHON_IMAGE</code> (and the other base images)</td>
@@ -6424,8 +6494,8 @@ are substituted).</p>
 </tbody>
 </table>
 <h2 id="deploying-to-google-cloud">Deploying to Google Cloud<a class="headerlink" href="#deploying-to-google-cloud" title="Permanent link">&para;</a></h2>
-<p>The deploy scripts under <code>deploy/gcp/</code> take their settings as flags (<code>--help</code> on each). One
-variable changes where they keep local files:</p>
+<p>The deploy scripts under <code>deploy/gcp/</code> get their settings as flags (<code>--help</code> on each). One
+variable changes the location of their local files:</p>
 <table>
 <thead>
 <tr>
@@ -6436,16 +6506,17 @@ variable changes where they keep local files:</p>
 <tbody>
 <tr>
 <td><code>MAPI_DEPLOY_OUT</code></td>
-<td>Local scratch of <code>deploy/gcp/*.sh</code>: images files, saved plans, Terraform outputs (default <code>deploy/gcp/.out</code>, one directory per environment; never committed)</td>
+<td>The local scratch directory of <code>deploy/gcp/*.sh</code>: images files, saved plans and Terraform outputs. The default is <code>deploy/gcp/.out</code>, with one directory for each environment. Never commit it</td>
 </tr>
 <tr>
 <td><code>MAPI_PUSHGATEWAY_URL</code></td>
-<td>Repository secret of the nightly workflow: the Pushgateway the security jobs push <code>mapi_security_probe_unexpected</code> to (unset: no push; <code>ops/README.md</code>)</td>
+<td>A repository secret of the nightly workflow: the Pushgateway that gets <code>mapi_security_probe_unexpected</code> from the security jobs. If unset, the jobs do not push (<code>ops/README.md</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>The variables Terraform sets on the Cloud Run services (the deployment contract with
-<code>mapi-server</code>) are listed in <a href="../gcp-deployment/#environment-of-the-cloud-run-workloads">Deploy to Google Cloud</a>.</p>
+<p><a href="../gcp-deployment/#environment-of-the-cloud-run-workloads">Deploy to Google Cloud</a> lists the
+variables that Terraform sets on the Cloud Run services (the deployment contract with
+<code>mapi-server</code>).</p>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6457,15 +6528,15 @@ variable changes where they keep local files:</p>
 <tbody>
 <tr>
 <td><code>MAPI_E2E</code></td>
-<td>Set by <code>pnpm --filter @mapi/web e2e</code>: run the Playwright <code>@e2e</code> suite against a running stack</td>
+<td><code>pnpm --filter @mapi/web e2e</code> sets it: run the Playwright <code>@e2e</code> suite against a stack that runs</td>
 </tr>
 <tr>
 <td><code>MAPI_DEV_ACCOUNT</code></td>
-<td>The development-IdP account <code>make seed</code> and the end-to-end suites sign in as (default <code>admin@dev.local</code>)</td>
+<td>The development-IdP account that <code>make seed</code> and the end-to-end suites sign in as (default <code>admin@dev.local</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_E2E_ACCOUNTS</code></td>
-<td>The two development-IdP accounts the M2 tenancy suite makes tenant admins (default <code>analyst@dev.local,viewer@dev.local</code>)</td>
+<td>The two development-IdP accounts that the M2 tenancy suite makes tenant admins (default <code>analyst@dev.local,viewer@dev.local</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_E2E_UI_ACCOUNT</code></td>
@@ -6473,31 +6544,31 @@ variable changes where they keep local files:</p>
 </tr>
 <tr>
 <td><code>MAPI_E2E_BURST_RUNS</code></td>
-<td>Opt-in: how many concurrent real fits <code>tests/e2e/test_m2_burst_stack.py</code> submits (<a href="../m2-verification/">M2 verification</a>)</td>
+<td>Opt-in: the number of concurrent real fits that <code>tests/e2e/test_m2_burst_stack.py</code> submits (<a href="../m2-verification/">M2 verification</a>)</td>
 </tr>
 <tr>
 <td><code>MAPI_E2E_SIGNUP_ACCOUNT</code></td>
-<td>The address the M3 trust-lifecycle suite (<code>tests/e2e/test_m3_trust_stack.py</code>) signs up with; it must be a development-IdP account so it can sign in (default <code>viewer@dev.local</code>)</td>
+<td>The address that the M3 trust-lifecycle suite (<code>tests/e2e/test_m3_trust_stack.py</code>) uses to sign up. It must be a development-IdP account, so that it can sign in (default <code>viewer@dev.local</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_E2E_GUIDED_ACCOUNT</code></td>
-<td>The address the M3 journey (<code>tests/e2e/test_m3_guided_stack.py</code>) signs up with; a development-IdP account (default <code>viewer@dev.local</code>)</td>
+<td>The address that the M3 journey (<code>tests/e2e/test_m3_guided_stack.py</code>) uses to sign up. It is a development-IdP account (default <code>viewer@dev.local</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_E2E_KEEP</code></td>
-<td><code>1</code> keeps the project the M3.5 journeys create (<code>tests/e2e/test_m35_stack.py</code>, <code>apps/web/e2e/m35-live.e2e.spec.ts</code>) instead of deleting it afterwards, to look at it in the app (<a href="../m35-verification/">M3.5 verification</a>)</td>
+<td><code>1</code> keeps the project that the M3.5 journeys make (<code>tests/e2e/test_m35_stack.py</code>, <code>apps/web/e2e/m35-live.e2e.spec.ts</code>). It also keeps the project of the forecasts-with-actuals journey (<code>tests/e2e/test_forecast_actuals_stack.py</code>). Thus you can look at the project in the app (<a href="../m35-verification/">M3.5 verification</a>)</td>
 </tr>
 <tr>
 <td><code>MAPI_E2E_WEBHOOK_TLS_DIR</code></td>
-<td>Where the M3 journey's webhook receiver finds <code>cert.pem</code> and <code>key.pem</code> (default <code>$MAPI_DATA_DIR/dev/webhook-tls</code>)</td>
+<td>The location where the webhook receiver of the M3 journey finds <code>cert.pem</code> and <code>key.pem</code> (default <code>$MAPI_DATA_DIR/dev/webhook-tls</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_UPDATE_SNAPSHOTS</code></td>
-<td><code>1</code> regenerates the contract snapshot of <code>mapi_spec</code> and the Guided catalog fixture of the server tests (<code>make snapshots</code>)</td>
+<td><code>1</code> makes the contract snapshot of <code>mapi_spec</code> and the Guided catalog fixture of the server tests again (<code>make snapshots</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_HYPOTHESIS_EXAMPLES</code></td>
-<td>Examples per property in the wire-format round-trip tests (default 60)</td>
+<td>The examples for each property in the wire-format round-trip tests (default 60)</td>
 </tr>
 </tbody>
 </table>
@@ -6512,35 +6583,35 @@ variable changes where they keep local files:</p>
 <tbody>
 <tr>
 <td><code>MAPI_DOCS_SPEC</code></td>
-<td>The spec <code>scripts/docs_screenshots.mjs</code> (<code>make docs-screenshots</code>) opens and fits, default <code>eu-geo-mmm</code>. The script also reads <code>MAPI_WEB_ORIGIN</code></td>
+<td>The spec that <code>scripts/docs_screenshots.mjs</code> (<code>make docs-screenshots</code>) opens and fits, default <code>eu-geo-mmm</code>. The script also reads <code>MAPI_WEB_ORIGIN</code></td>
 </tr>
 <tr>
 <td><code>MAPI_DOCS_PROJECT</code></td>
-<td>The project <code>scripts/docs_screenshots_admin.mjs</code> (<code>make docs-screenshots-admin</code>) selects after capturing the project switcher, default <code>Default project</code>. The script also reads <code>MAPI_WEB_ORIGIN</code>, <code>MAPI_API_URL</code> and <code>MAPI_DEV_ACCOUNT</code></td>
+<td>The project that <code>scripts/docs_screenshots_admin.mjs</code> (<code>make docs-screenshots-admin</code>) selects after it captures the project switcher, default <code>Default project</code>. The script also reads <code>MAPI_WEB_ORIGIN</code>, <code>MAPI_API_URL</code> and <code>MAPI_DEV_ACCOUNT</code></td>
 </tr>
 <tr>
 <td><code>MAPI_GUIDED_SCREENSHOTS</code></td>
-<td>Set to <code>1</code> to run <code>apps/web/e2e/guided-screenshots.spec.ts</code>, which captures the Guided tutorial's screenshots from the mock-mode app (<code>make docs-screenshots-guided</code> sets it, with <code>MAPI_SMOKE_WEB_PORT</code>/<code>MAPI_SMOKE_PLOTS_PORT</code> defaulting to 15173/15174); the smoke suite skips it otherwise</td>
+<td>Set to <code>1</code> to run <code>apps/web/e2e/guided-screenshots.spec.ts</code>. This spec captures the screenshots of the Guided tutorial from the app in mock mode. <code>make docs-screenshots-guided</code> sets it, with <code>MAPI_SMOKE_WEB_PORT</code>/<code>MAPI_SMOKE_PLOTS_PORT</code> at the defaults 15173/15174. If not set, the smoke suite skips it</td>
 </tr>
 <tr>
 <td><code>MAPI_EXPLORER_SCREENSHOTS</code></td>
-<td>Set to <code>1</code> to run <code>apps/web/e2e/explorer-screenshots.spec.ts</code>, which captures the explorer, About-card and budget-plan screenshots of the docs from the mock-mode app (<code>make docs-screenshots-explorers</code> sets it, with the same port defaults); the smoke suite skips it otherwise</td>
+<td>Set to <code>1</code> to run <code>apps/web/e2e/explorer-screenshots.spec.ts</code>. This spec captures the explorer, About-card and budget-plan screenshots of the docs from the app in mock mode. <code>make docs-screenshots-explorers</code> sets it, with the same port defaults. If not set, the smoke suite skips it</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_SCREENSHOTS</code></td>
-<td>Set to <code>1</code> to run <code>apps/web/e2e/workflow-screenshots.spec.ts</code>, which captures the workflow (gallery, editor, run monitor, schedules, Guided recipe) and governance (policies, policy editor, review queue, validation, evidence) screenshots of the docs from the mock-mode app (<code>make docs-screenshots-workflows</code> sets it, with <code>MAPI_SMOKE_WEB_PORT</code>/<code>MAPI_SMOKE_PLOTS_PORT</code> defaulting to 15183/15184); the smoke suite skips it otherwise</td>
+<td>Set to <code>1</code> to run <code>apps/web/e2e/workflow-screenshots.spec.ts</code>. This spec captures the screenshots of the docs for workflows (gallery, editor, run monitor, schedules, Guided recipe) and governance (policies, policy editor, review queue, validation, evidence), from the app in mock mode. <code>make docs-screenshots-workflows</code> sets it, with <code>MAPI_SMOKE_WEB_PORT</code>/<code>MAPI_SMOKE_PLOTS_PORT</code> at the defaults 15183/15184. If not set, the smoke suite skips it</td>
 </tr>
 <tr>
 <td><code>MAPI_SHOTS_DIR</code></td>
-<td>A directory; when set, the workflow and governance smoke specs (<code>apps/web/e2e/workflows.spec.ts</code>, <code>governance.spec.ts</code>) also save full-page screenshots of their screens there</td>
+<td>A directory. When set, the workflow and governance smoke specs (<code>apps/web/e2e/workflows.spec.ts</code>, <code>governance.spec.ts</code>) also save full-page screenshots of their screens there</td>
 </tr>
 <tr>
 <td><code>MAPI_EMBED_VIEW</code></td>
-<td>The <code>EmbedView</code> JSON that <code>scripts/docs_screenshots_tutorials.mjs</code> (<code>make docs-screenshots-tutorials</code>) serves to the plot sandbox's embed page, written by <code>scripts/docs_embed_view.py</code> (default <code>.local/embed-view.json</code>). The script also reads <code>MAPI_WEB_ORIGIN</code> and <code>MAPI_PLOTS_ORIGIN</code> (default ports 15173/15174)</td>
+<td>The <code>EmbedView</code> JSON that <code>scripts/docs_screenshots_tutorials.mjs</code> (<code>make docs-screenshots-tutorials</code>) serves to the embed page of the plot sandbox. <code>scripts/docs_embed_view.py</code> writes it (default <code>.local/embed-view.json</code>). The script also reads <code>MAPI_WEB_ORIGIN</code> and <code>MAPI_PLOTS_ORIGIN</code> (default ports 15173/15174)</td>
 </tr>
 <tr>
 <td><code>MAPI_EMBED_API</code></td>
-<td>The API origin the embed page asks for the view in that script, answered by Playwright (default <code>http://127.0.0.1:8000</code>, the sandbox dev server's <code>VITE_API_URL</code>; nothing needs to listen there)</td>
+<td>The API origin where the embed page asks for the view in that script. Playwright answers (default <code>http://127.0.0.1:8000</code>, the <code>VITE_API_URL</code> of the sandbox dev server). No process must listen there</td>
 </tr>
 </tbody>
 </table>

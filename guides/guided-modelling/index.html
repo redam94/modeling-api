@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4673,6 +4703,8 @@
       
         
       
+        
+      
     
     
     
@@ -4761,6 +4793,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4947,13 +5007,16 @@
 
 
 <h1 id="guided-modelling-priors-lift-tests-and-the-scorecard-v04">Guided modelling: priors, lift tests and the scorecard <span class="mapi-badge">v0.4</span><a class="headerlink" href="#guided-modelling-priors-lift-tests-and-the-scorecard-v04" title="Permanent link">&para;</a></h1>
-<p>This guide explains what happens behind the Guided-mode tasks of
+<p>This guide tells what occurs behind the Guided-mode tasks of
 <a href="../../concepts/guided-mode/">Guided mode</a> when the model is a marketing-mix model
-(<code>mmm.bayesian</code>, on <a href="../../models/mmm-framework/">mmm-framework</a>): how beliefs in
-business units become model-space priors, how
-experiment results calibrate a fit, how the sanity scorecard is measured, and which views
-the what-if sliders, forecasts and counterfactuals read. Everything that touches data runs
-in the sandbox; the control plane only validates JSON.</p>
+(<code>mmm.bayesian</code>, on <a href="../../models/mmm-framework/">mmm-framework</a>). It tells these things:</p>
+<ul>
+<li>How beliefs in business units become priors in model space.</li>
+<li>How experiment results calibrate a fit.</li>
+<li>How the platform measures the sanity scorecard.</li>
+<li>Which views the what-if sliders, forecasts and counterfactuals read.</li>
+</ul>
+<p>All the tasks that touch data run in the sandbox. The control plane only validates JSON.</p>
 <table>
 <thead>
 <tr>
@@ -4970,7 +5033,7 @@ in the sandbox; the control plane only validates JSON.</p>
 </tr>
 <tr>
 <td>Lift-test calibration</td>
-<td>inside the fit</td>
+<td>in the fit</td>
 <td>mmm-framework experiment likelihoods, <code>learned.calibration</code></td>
 </tr>
 <tr>
@@ -4996,7 +5059,7 @@ in the sandbox; the control plane only validates JSON.</p>
 </tbody>
 </table>
 <h2 id="business-priors">Business priors<a class="headerlink" href="#business-priors" title="Permanent link">&para;</a></h2>
-<p>A business prior states a belief about one channel in the units people think in:</p>
+<p>A business prior gives a belief about one channel, in the units that persons use:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">calibration</span><span class="p">:</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">business_priors</span><span class="p">:</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">channels</span><span class="p">:</span>
@@ -5005,80 +5068,96 @@ in the sandbox; the control plane only validates JSON.</p>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nt">baseline_share</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">share</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.8</span><span class="p p-Indicator">],</span><span class="nt"> credibility</span><span class="p">:</span><span class="w"> </span><span class="nv">0.8</span><span class="p p-Indicator">}</span><span class="w">   </span><span class="c1"># KPI without any media</span>
 </span></code></pre></div>
 <h3 id="from-beliefs-to-priors-the-math">From beliefs to priors: the math<a class="headerlink" href="#from-beliefs-to-priors-the-math" title="Permanent link">&para;</a></h3>
-<p><code>mmm.bayesian</code> states each channel's effect as its <strong>return on spend</strong>: a channel with an
-ROI prior samples</p>
+<p><code>mmm.bayesian</code> gives the effect of each channel as its <strong>return on spend</strong>. A channel with an
+ROI prior samples:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>roi[c]  ~ LogNormal(mu[c], sigma[c])
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>beta[c] = roi[c] * spend[c] / (y_std * sum over observations of S[c](x))
 </span></code></pre></div>
-<p>where <code>S[c]</code> is the channel's carried-over, saturated spend (mmm-framework's adstock and
-saturation, with the same parameters) and <code>y_std</code> the KPI's scale. On the observed data the
-channel's contribution over the fit window, divided by its spend, <em>is</em> <code>roi[c]</code> - exactly
-the quantity a business ROI belief is about. The translation is therefore closed form:</p>
+<p>In this equation, <code>S[c]</code> is the carried-over, saturated spend of the channel. This is the
+adstock and saturation of mmm-framework, with the same parameters. <code>y_std</code> is the scale of
+the KPI. On the observed data, the contribution of the channel over the fit window, divided by
+its spend, <em>is</em> <code>roi[c]</code>. This is the quantity that a business ROI belief is about. Thus the
+translation has a closed form:</p>
 <ul>
-<li>an ROI range <code>[L, H]</code> held with credibility <code>p</code> is the log-normal whose central <code>p</code>
-  interval it is: <code>mu = (log L + log H) / 2</code>, <code>sigma = (log H - log L) / (2 z)</code> with <code>z</code> the
-  standard normal's <code>(1 + p) / 2</code> quantile;</li>
-<li>a contribution-share range <code>[l, h]</code> is the ROI range <code>[l Y / spend[c], h Y / spend[c]]</code>,
-  because <code>share[c] = roi[c] * spend[c] / Y</code> (<code>Y</code> the observed KPI total over the window);</li>
-<li>business units convert to model units with the pipeline's fitted factors (the model owns
-  scaling, so these are usually 1).</li>
+<li>An ROI range <code>[L, H]</code> with credibility <code>p</code> is the log-normal that has this range as its
+  central <code>p</code> interval. Thus <code>mu = (log L + log H) / 2</code> and
+  <code>sigma = (log H - log L) / (2 z)</code>. Here, <code>z</code> is the <code>(1 + p) / 2</code> quantile of the standard
+  normal.</li>
+<li>A contribution-share range <code>[l, h]</code> is the ROI range <code>[l Y / spend[c], h Y / spend[c]]</code>.
+  The reason is that <code>share[c] = roi[c] * spend[c] / Y</code>. Here, <code>Y</code> is the observed KPI total over the
+  window.</li>
+<li>The fitted factors of the pipeline change business units to model units. The model does
+  its own scaling, thus these factors are usually 1.</li>
 </ul>
-<p>Edge cases are reported as issues, never hidden:</p>
+<p>The platform shows edge cases as issues. It never hides them:</p>
 <ul>
-<li>a range starting at 0 is read as <code>[H / 20, H]</code> (a log-normal has no mass at zero);</li>
-<li>a range narrower or wider than a prior can usefully state has its spread clamped to
-  <code>[0.02, 4]</code> on the log scale, with a warning;</li>
-<li>a channel the data does not have, or a share for a channel without spend, is an error.</li>
+<li>A range that starts at 0 becomes <code>[H / 20, H]</code>, because a log-normal has no mass at zero.</li>
+<li>A range can be narrower or wider than a prior can usefully give. Then the platform clamps
+  its spread to <code>[0.02, 4]</code> on the log scale. It gives a warning.</li>
+<li>A channel that the data does not have is an error. A share for a channel without spend is
+  also an error.</li>
 </ul>
-<p>Channels without a belief keep their prior (<code>priors.roi_default</code>, or mmm-framework's
-default). The result is written as <code>priors.roi.&lt;channel&gt; = {mu, sigma}</code>.</p>
-<p>The <strong>baseline share</strong> - the KPI that happens without media: intercept, trend,
-seasonality, panel levels and controls - is linear in the intercept <code>Normal(m, s)</code> (in KPI
-standard deviations): <code>B = a (m + s eps) + E</code> with <code>a = n y_std / Y</code> and <code>E</code> the rest of the
-baseline, drawn from mmm-framework's own prior of the model. <code>s</code> is solved by bisection so
-the central interval of <code>B</code> has the stated width, then <code>m</code> centres it; when the rest alone
-is already wider than the stated range, <code>s</code> stops at its floor and a warning says so. The
-result is <code>priors.intercept = {mu, sigma}</code>.</p>
-<p>The preview then samples the translated model's <strong>prior predictive</strong> - mmm-framework's
-own graph, with another seed - and reports ROI, contribution share, baseline share and a
-KPI fan in business units, plus the prior mass inside each stated range (<code>coverage</code>).</p>
-<p>Amounts only translate through <em>linear</em> preprocessing (currency conversion; the model owns
-scaling). A non-linear step on the KPI or spend refuses the translation with
-<code>CALIBRATION_UNSUPPORTED</code>.</p>
+<p>Channels without a belief keep their prior (<code>priors.roi_default</code>, or the default of
+mmm-framework). The platform writes the result as <code>priors.roi.&lt;channel&gt; = {mu, sigma}</code>.</p>
+<p>The <strong>baseline share</strong> is the KPI that occurs without media: intercept, trend, seasonality,
+panel levels and controls. It is linear in the intercept <code>Normal(m, s)</code>, in KPI standard
+deviations: <code>B = a (m + s eps) + E</code>. Here, <code>a = n y_std / Y</code>, and <code>E</code> is the rest of the
+baseline, drawn from the prior of the model in mmm-framework. The platform uses bisection to
+find <code>s</code>, so that the central interval of <code>B</code> has the given width. Then <code>m</code> puts the interval
+at the center. If the rest alone is already wider than the given range, <code>s</code> stops at its
+minimum and a warning tells this.</p>
+<p>The result is <code>priors.intercept = {mu, sigma}</code>.</p>
+<p>The preview then samples the <strong>prior predictive</strong> of the translated model. It uses the graph
+of mmm-framework, with a different seed. The preview gives ROI, contribution share, baseline
+share and a KPI fan in business units. It also gives the prior mass in each given range
+(<code>coverage</code>).</p>
+<p>Amounts translate only through <em>linear</em> preprocessing (currency conversion). The model does
+its own scaling. If a non-linear step applies to the KPI or the spend, the platform refuses the
+translation with <code>CALIBRATION_UNSUPPORTED</code>.</p>
 <h3 id="the-prior-translation-run">The prior-translation run<a class="headerlink" href="#the-prior-translation-run" title="Permanent link">&para;</a></h3>
-<p>Ask for a translation while drafting - from an unsaved document or a saved revision:</p>
+<p>You can ask for a translation while you write a draft. Use an unsaved document or a saved
+revision:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$MAPI</span><span class="s2">/v1/guided/prior-translations"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-Mapi-Project: acme/growth"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"spec_id": "spc_…", "revision": 2, "draws": 500,</span>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="s1">       "business_priors": {"channels": {"tv": {"roi": [1.5, 4.0], "credibility": 0.8}}}}'</span>
 </span></code></pre></div>
-<p>The API checks the beliefs statically first (channels against the dataset's levels, shares
-that cannot add up, <code>BUSINESS_PRIORS_INVALID</code>; a model without the <code>business_priors</code>
-capability, <code>CALIBRATION_UNSUPPORTED</code>) and answers <code>202</code> with the queued run. The run fits the
-pipeline's preprocessing on all of the data (the scales a production refit learns), solves,
-and samples the translated priors <strong>afresh</strong> for the preview:</p>
-<p><code>GET /v1/guided/prior-translations/{run_id}</code> returns, once done, the <code>PriorTranslationResult</code>:</p>
+<p>First, the API checks the beliefs statically:</p>
 <ul>
-<li><code>priors</code>: the model-space priors in the <code>settings.priors</code> form, to write at <code>apply_at</code>
-  (<code>/model/settings/priors</code>; <code>mapi_spec.calibration.apply_prior_translation</code> does it and
-  records the run in <code>calibration.prior_translation_run</code>);</li>
-<li><code>preview</code>: ROI and contribution-share distributions per channel, the baseline share and a
-  KPI fan in business units against the observed KPI;</li>
-<li><code>coverage</code>: the prior mass inside each stated range - close to the stated credibility when
-  the translation is faithful;</li>
-<li><code>issues</code>: everything above in plain words, plus lift tests whose implied ROI falls outside
-  the prior's 90% range.</li>
+<li>It checks the channels against the levels of the dataset, and finds shares that cannot add
+  up (<code>BUSINESS_PRIORS_INVALID</code>).</li>
+<li>It finds a model without the <code>business_priors</code> capability (<code>CALIBRATION_UNSUPPORTED</code>).</li>
 </ul>
-<p>The run's plots (<code>GET /v1/runs/{run_id}/plots</code>) are <code>mmm.prior_beliefs</code> (each channel's prior
-interval over the range you stated) and <code>core.prior_predictive</code> (the KPI the priors can
-generate, against your data).</p>
-<p>A spec that carries <code>business_priors</code> <strong>without</strong> a recorded translation run is translated at
-fit time instead, with the same solve over the training data's scales; the priors used are in
-the model's <code>learned.calibration.translated_priors</code>.</p>
+<p>Then it answers <code>202</code> with the queued run. The run fits the preprocessing of the pipeline on
+all the data. These are the scales that a production refit learns. The run solves the
+equations. Then it samples the translated priors <strong>again</strong> for the preview.</p>
+<p>When the run is done, <code>GET /v1/guided/prior-translations/{run_id}</code> gives the
+<code>PriorTranslationResult</code>:</p>
+<ul>
+<li><code>priors</code>: The model-space priors in the <code>settings.priors</code> form, to write at <code>apply_at</code>
+  (<code>/model/settings/priors</code>). <code>mapi_spec.calibration.apply_prior_translation</code> writes them. It
+  also records the run in <code>calibration.prior_translation_run</code>.</li>
+<li><code>preview</code>: The distributions of ROI and contribution share for each channel, and the
+  baseline share. It also has a KPI fan in business units against the observed KPI.</li>
+<li><code>coverage</code>: The prior mass in each given range. If the translation is correct, this value is
+  near the given credibility.</li>
+<li><code>issues</code>: All the items above in plain words. Also, the lift tests with an implied ROI that
+  is outside the 90% range of the prior.</li>
+</ul>
+<p>The plots of the run (<code>GET /v1/runs/{run_id}/plots</code>) are these:</p>
+<ul>
+<li><code>mmm.prior_beliefs</code>: The prior interval of each channel over the range that you gave.</li>
+<li><code>core.prior_predictive</code>: The KPI that the priors can make, against your data.</li>
+</ul>
+<p>A spec can have <code>business_priors</code> <strong>without</strong> a recorded translation run. In this case, the
+platform translates the priors at fit time. It uses the same solve over the scales of the
+training data. The priors that the fit used are in <code>learned.calibration.translated_priors</code> of
+the model.</p>
 <h2 id="lift-tests">Lift tests<a class="headerlink" href="#lift-tests" title="Permanent link">&para;</a></h2>
-<p>A lift test is calibration data: extra spend on one channel (optionally in one geo) during a
-window, and the incremental KPI it caused, with its uncertainty:</p>
+<p>A lift test is calibration data. It gives the extra spend on one channel during a window,
+optionally in one geo. It also gives the incremental KPI that the spend caused, with its
+uncertainty:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">calibration</span><span class="p">:</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">lift_tests</span><span class="p">:</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tv-holdout-2026q2</span>
@@ -5092,9 +5171,9 @@ window, and the incremental KPI it caused, with its uncertainty:</p>
 </span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">      </span><span class="nt">ci_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
 </span></code></pre></div>
 <p>The fit adds each test to mmm-framework as an <strong>experiment likelihood</strong>
-(<code>BayesianMMM.add_experiment_calibration</code>): a likelihood term on the model-implied
-estimand, which updates the channel's effect, its saturation curve and its adstock kernel
-jointly:</p>
+(<code>BayesianMMM.add_experiment_calibration</code>). This is a likelihood term on the estimand that the
+model implies. It updates the effect of the channel, its saturation curve and its adstock
+kernel together:</p>
 <table>
 <thead>
 <tr>
@@ -5105,41 +5184,44 @@ jointly:</p>
 <tbody>
 <tr>
 <td>extra spend (<code>spend_delta &gt; 0</code>)</td>
-<td>marginal ROAS: the lift from scaling the window's spend by <code>100 x spend_delta / window spend</code> percent, per extra unit of spend, against <code>kpi_delta / spend_delta</code></td>
+<td>Marginal ROAS: the lift when the spend of the window increases by <code>100 x spend_delta / window spend</code> percent, for each extra unit of spend, against <code>kpi_delta / spend_delta</code></td>
 </tr>
 <tr>
-<td>a holdout removing (nearly) all of the channel's spend in the window</td>
-<td>the channel's contribution over the window, against <code>-kpi_delta</code></td>
+<td>a holdout that removes all (or almost all) of the spend of the channel in the window</td>
+<td>The contribution of the channel over the window, against <code>-kpi_delta</code></td>
 </tr>
 <tr>
 <td>a partial cut (less than a full holdout)</td>
-<td>skipped, with the reason: it measures the return <em>below</em> today's spend, and mmm-framework can only be calibrated on the return above it (an increase) or on a full holdout; under diminishing returns the two differ, so mapping one onto the other would bias the curve</td>
+<td>Skipped, with the reason. A partial cut measures the return <em>below</em> the current spend. mmm-framework can calibrate only on the return above the current spend (an increase) or on a full holdout. With diminishing returns, the two are different. Thus, if the platform used one for the other, the curve would have a bias</td>
 </tr>
 </tbody>
 </table>
-<p><code>geo</code> restricts the measurement to that geo's observations; <code>se</code> (or the half-width of
-<code>ci</code> over the normal quantile) is the measurement's standard error. Carry-over after the
-window is not counted: tests report the lift measured during the test. The KPI likelihood
-alone stays in <code>log_likelihood</code>, so <code>elpd_loo</code> is unchanged in meaning; which tests were
-used or skipped, and why, is in <code>learned.calibration.lift_tests</code>.</p>
-<p>Tests are checked three times, each time where the information is:</p>
+<p><code>geo</code> limits the measurement to the observations of that geo. <code>se</code> is the standard error of
+the measurement. If you give <code>ci</code>, the standard error is the half-width of <code>ci</code> divided by the
+normal quantile. The fit does not count carry-over after the window, because tests give the
+lift measured during the test. Only the KPI likelihood stays in <code>log_likelihood</code>. Thus the
+meaning of <code>elpd_loo</code> does not change. <code>learned.calibration.lift_tests</code> tells which tests the
+fit used or skipped, and why.</p>
+<p>The platform checks tests three times. Each check occurs where the information is:</p>
 <ol>
-<li><strong>at submit</strong>, against the dataset version's summary: the channel and geo exist and the
-   window lies inside the data (<code>SCHEMA_INVALID</code> at <code>/calibration/lift_tests/&lt;i&gt;/…</code>);</li>
-<li><strong>in the sandbox, before fitting</strong>, against the raw data itself;</li>
-<li><strong>at the model stage</strong>: the window must cover at least one model period, a holdout
-   (negative <code>spend_delta</code>) may remove at most the spend the data shows, and the time
+<li><strong>At submit</strong>, against the summary of the dataset version. The channel and the geo must
+   exist, and the window must be in the data (<code>SCHEMA_INVALID</code> at
+   <code>/calibration/lift_tests/&lt;i&gt;/…</code>).</li>
+<li><strong>In the sandbox, before the fit</strong>, against the raw data.</li>
+<li><strong>At the model stage</strong>. The window must include a minimum of one model period. A holdout
+   (negative <code>spend_delta</code>) can remove a maximum of the spend that the data shows. The time
    labels must be dates.</li>
 </ol>
-<p>During <code>evaluate_then_refit</code>, a test whose window lies after the training periods, or that
-the end of the training periods cuts, is skipped
-by the evaluation fit (logged) and used by the production refit.</p>
+<p>During <code>evaluate_then_refit</code>, the evaluation fit skips some tests and logs them. These are
+tests with a window after the training periods, or a window that the end of the training
+periods cuts. The production refit uses these tests.</p>
 <h2 id="the-sanity-scorecard">The sanity scorecard<a class="headerlink" href="#the-sanity-scorecard" title="Permanent link">&para;</a></h2>
-<p>At the end of every fit the runner measures each check of the
-<a href="../../concepts/guided-mode/#scorecard">catalog</a> it can answer and writes <code>scorecard.json</code>; the
-finalizer stores it on the model version (<code>GET /v1/models/{id}/versions/{v}</code> → <code>scorecard</code>) and
-the promotion gate reads it. A guided spec (<code>metadata.labels.guided: &lt;template&gt;</code>) runs its
-template's checks with its thresholds; any other spec runs the whole catalog.</p>
+<p>At the end of each fit, the runner measures each check of the
+<a href="../../concepts/guided-mode/#scorecard">catalog</a> that it can answer. It writes
+<code>scorecard.json</code>. The finalizer stores the scorecard on the model version
+(<code>GET /v1/models/{id}/versions/{v}</code> → <code>scorecard</code>). The promotion gate reads it. A guided spec
+(<code>metadata.labels.guided: &lt;template&gt;</code>) runs the checks of its template with its thresholds.
+All other specs run the full catalog.</p>
 <table>
 <thead>
 <tr>
@@ -5150,7 +5232,7 @@ template's checks with its thresholds; any other spec runs the whole catalog.</p
 <tbody>
 <tr>
 <td><code>r_hat_max</code>, <code>ess_bulk_min</code></td>
-<td>the production posterior's free parameters (the plugin's convergence diagnostics)</td>
+<td>The free parameters of the production posterior (the convergence diagnostics of the plugin)</td>
 </tr>
 <tr>
 <td><code>divergence_rate</code></td>
@@ -5158,57 +5240,69 @@ template's checks with its thresholds; any other spec runs the whole catalog.</p
 </tr>
 <tr>
 <td><code>mape</code>, <code>coverage_90</code></td>
-<td>the holdout, through the score path (needs them in <code>evaluate.metrics</code>). <code>metrics.json</code> reports <code>mape</code> in percent (<code>1.4</code> is 1.4%); the check compares it as a fraction (<code>0.014</code> against <code>0.10</code>/<code>0.25</code>)</td>
+<td>The holdout, through the score path. They must be in <code>evaluate.metrics</code>. <code>metrics.json</code> gives <code>mape</code> in percent (<code>1.4</code> is 1.4%). The check compares it as a fraction (<code>0.014</code> against <code>0.10</code>/<code>0.25</code>)</td>
 </tr>
 <tr>
 <td><code>accuracy_lift</code></td>
-<td>choice models: the holdout hit rate (the most likely product is the one bought) minus that of always guessing the holdout's most common product (<code>accuracy</code>, <code>accuracy_naive</code>; the <code>customer_choice</code> template evaluates them)</td>
+<td>Choice models: the holdout hit rate minus the hit rate of a guess that is always the most common product of the holdout. A hit is when the most probable product is the product bought (<code>accuracy</code>, <code>accuracy_naive</code>). The <code>customer_choice</code> template evaluates them</td>
 </tr>
 <tr>
 <td><code>negative_roi_share</code>, <code>roi_max</code></td>
-<td>the <code>response_curves</code> grid at the actual spend: per channel the share of draws with a negative return, and the largest posterior-mean ROI</td>
+<td>The <code>response_curves</code> grid at the actual spend. For each channel: the share of draws with a negative return, and the largest posterior-mean ROI</td>
 </tr>
 <tr>
 <td><code>max_channel_share</code>, <code>baseline_share</code></td>
-<td>a channel's (or the baseline's) share of baseline + every channel, posterior mean</td>
+<td>The share of a channel (or of the baseline) in the baseline plus all channels, posterior mean</td>
 </tr>
 <tr>
 <td><code>prior_overlap_max</code></td>
-<td>the overlap of prior and posterior draws of the model's media parameters (<code>PyMCModel.prior_overlap_vars</code>, forward-sampled at fit time; cheap)</td>
+<td>The overlap of the prior and posterior draws of the media parameters of the model (<code>PyMCModel.prior_overlap_vars</code>, forward-sampled at fit time, at a low cost)</td>
 </tr>
 <tr>
 <td><code>missing_fraction</code></td>
-<td>the raw dataset's numeric variables</td>
+<td>The numeric variables of the raw dataset</td>
 </tr>
 <tr>
 <td><code>history_years</code></td>
-<td>the model stage's time dim, in years: its periods over the periods in a year at the dim's frequency (or the one its dates follow), so 105 days and 15 weeks both count as about 0.3 years</td>
+<td>The time dim of the model stage, in years. This is its periods divided by the periods in a year at the frequency of the dim (or the frequency of its dates). Thus 105 days and 15 weeks both count as about 0.3 years</td>
 </tr>
 <tr>
 <td><code>spend_cv_min</code></td>
-<td>the raw spend per channel over time</td>
+<td>The raw spend for each channel over time</td>
 </tr>
 </tbody>
 </table>
-<p>A check that cannot be measured - no holdout split, no response curves, a non-MCMC model - is
-listed in <code>skipped</code> with the reason. Every item carries <code>message_plain</code>, <code>message_expert</code>
-(what was measured, on which parameter or channel), a <code>suggested_action</code> when it is not a pass
-and a <code>docs_anchor</code> back to the catalog.</p>
+<p>If the runner cannot measure a check, the check is in <code>skipped</code> with the reason. Examples are
+no holdout split, no response curves, or a model that is not MCMC. Each item has these fields:</p>
+<ul>
+<li><code>message_plain</code>.</li>
+<li><code>message_expert</code>: What the runner measured, and on which parameter or channel.</li>
+<li><code>suggested_action</code>, if the item is not a pass.</li>
+<li><code>docs_anchor</code>: A link back to the catalog.</li>
+</ul>
 <h2 id="what-if-grids-and-run-exact">What-if grids and "Run exact"<a class="headerlink" href="#what-if-grids-and-run-exact" title="Permanent link">&para;</a></h2>
-<p>Fits with <code>response_curves</code> write <code>ui/grids/response_curves.json</code>: per thinned draw (up to
-<code>outputs.ui_draws</code>, at most 500), channel and spend multiplier, the channel's total
-contribution over the fit window in KPI units, plus the spend at every grid point, the actual
-spend, the baseline (intercepts and controls) and the per-geo grids when they fit the size
-cap. The sliders interpolate it per draw (<a href="../../concepts/guided-mode/#5-what-if-sliders">the contract</a>).</p>
-<p>"Run exact" compiles the scenario into a <code>counterfactual</code> score request with one <code>multiply</code>
-intervention per changed channel. At grid points the two agree <strong>per draw</strong> to float
-precision: the grid is computed from the same fitted curves, and linear preprocessing passes
-the multiplier through unchanged (<code>packages/runner/tests/test_guided.py</code> checks it).</p>
+<p>Fits with <code>response_curves</code> write <code>ui/grids/response_curves.json</code>. For each thinned draw,
+channel and spend multiplier, the file has the total contribution of the channel over the fit
+window, in KPI units. The number of draws is a maximum of <code>outputs.ui_draws</code>, and never more
+than 500. The file also has these items:</p>
+<ul>
+<li>The spend at each grid point.</li>
+<li>The actual spend.</li>
+<li>The baseline (intercepts and controls).</li>
+<li>The grids for each geo, if they are in the size cap.</li>
+</ul>
+<p>The sliders interpolate the grid for each draw (<a href="../../concepts/guided-mode/#5-what-if-sliders">the contract</a>).</p>
+<p>"Run exact" compiles the scenario into a <code>counterfactual</code> score request. The request has one
+<code>multiply</code> intervention for each changed channel. At grid points, the two results agree <strong>for
+each draw</strong> to float precision. The reason is that the grid comes from the same fitted curves.
+Also, linear preprocessing does not change the multiplier. <code>packages/runner/tests/test_guided.py</code>
+checks this.</p>
 <h2 id="future-covariates">Future covariates<a class="headerlink" href="#future-covariates" title="Permanent link">&para;</a></h2>
-<p>A forecast needs the future values of its covariates - spend, prices. Guided forecasts do not
-ask for an upload: <code>ScoreRequest.future_covariates</code> says how the runner extends the ones the
-payload lacks, per series, from the fitted history (the server passes the model's fit dataset
-to the score run as its <code>history</code> input):</p>
+<p>A forecast needs the future values of its covariates, for example spend and prices. Guided
+forecasts do not ask for an upload. <code>ScoreRequest.future_covariates</code> tells how the runner
+extends the covariates that the payload does not have. It does this for each series, from the
+fitted history. The server gives the fit dataset of the model to the score run as its
+<code>history</code> input:</p>
 <table>
 <thead>
 <tr>
@@ -5219,38 +5313,48 @@ to the score run as its <code>history</code> input):</p>
 <tbody>
 <tr>
 <td><code>supplied</code> (default for API callers)</td>
-<td>from the request's data or scenario; missing ones are <code>MISSING_FUTURE_COVARIATE</code></td>
+<td>From the data or the scenario of the request. Missing values get <code>MISSING_FUTURE_COVARIATE</code></td>
 </tr>
 <tr>
 <td><code>carry_last</code> (default in Guided mode)</td>
-<td>the last observed value of each series</td>
+<td>The last observed value of each series</td>
 </tr>
 <tr>
 <td><code>seasonal_naive</code></td>
-<td>the value one year earlier by date (52 weeks, 12 months, 365 days...), so the last observed year repeats even after a gap; a missing value steps back another year, and one missing in every year (or a history shorter than a year) falls back to <code>carry_last</code> with a warning</td>
+<td>The value one year before, by date (52 weeks, 12 months, 365 days, and so on). Thus the last observed year repeats, also after a gap. If a value is missing, the runner goes back one more year. If the value is missing in all years, or the history is shorter than one year, the runner uses <code>carry_last</code> with a warning</td>
 </tr>
 <tr>
 <td><code>zero</code></td>
-<td>zero - "no spend planned"</td>
+<td>Zero: "no spend planned"</td>
 </tr>
 </tbody>
 </table>
-<p>Values the payload does supply are never replaced, and interventions apply after the fill, so
-<strong>budget × k</strong> over a horizon scales the carried-forward spend. The score result's <code>issues</code>
-name what was filled.</p>
+<p>The runner never replaces values that the payload gives. Interventions apply after the fill.
+Thus <strong>budget × k</strong> over a horizon scales the carried-forward spend. The <code>issues</code> of the score
+result tell which values the runner filled.</p>
 <h2 id="forecast-and-counterfactual-views">Forecast and counterfactual views<a class="headerlink" href="#forecast-and-counterfactual-views" title="Permanent link">&para;</a></h2>
-<p>A <code>forecast</code> score run writes <code>ui/guided/forecast.json</code> (<code>mapi.forecast/v1</code>): the actual KPI
-over the fitted history (<code>fan.observed</code>), then the forecast quantiles after <code>split_at</code>
-(<code>fan.values</code>), summed over geos per draw before the quantiles are taken, and the KPI total
-over the horizon. Its <code>core.ppc_fan</code> plot shows the history and the dashed split line.</p>
-<p>A <code>counterfactual</code> score run - for example a preset from
-<code>mapi_spec.whatif.counterfactual_request</code> such as <strong>channel off</strong> or <strong>budget × k</strong> - writes
-<code>ui/guided/counterfactual.json</code> (<code>mapi.counterfactual/v1</code>): the scenario, baseline and change
-totals, the change as a share of the baseline and a per-period band of the change. Scenario
-and baseline share their noise (common random numbers), so the change is precise even when
-the totals are uncertain.</p>
-<p>Both views exist only for models whose outputs are posterior draws; other representations
-cannot be summed across geos.</p>
+<p>A <code>forecast</code> score run writes <code>ui/guided/forecast.json</code> (<code>mapi.forecast/v1</code>). The file has
+these items:</p>
+<ul>
+<li>The actual KPI over the fitted history (<code>fan.observed</code>).</li>
+<li>The forecast quantiles after <code>split_at</code> (<code>fan.values</code>). The run adds the geos together for
+  each draw before it calculates the quantiles.</li>
+<li>The KPI total over the horizon.</li>
+</ul>
+<p>Its <code>core.ppc_fan</code> plot shows the history and the dashed split line.</p>
+<p>A <code>counterfactual</code> score run writes <code>ui/guided/counterfactual.json</code>
+(<code>mapi.counterfactual/v1</code>). An example is a preset from
+<code>mapi_spec.whatif.counterfactual_request</code>, such as <strong>channel off</strong> or <strong>budget × k</strong>. The file
+has these items:</p>
+<ul>
+<li>The totals of the scenario, the baseline and the change.</li>
+<li>The change as a share of the baseline.</li>
+<li>A band of the change for each period.</li>
+</ul>
+<p>The scenario and the baseline share their noise (common random numbers). Thus the change is
+precise, also when the totals are uncertain.</p>
+<p>The two views exist only for models with outputs that are posterior draws. The platform cannot
+add other representations across geos.</p>
 
 
 

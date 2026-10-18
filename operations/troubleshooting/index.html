@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4621,6 +4651,8 @@
       
         
       
+        
+      
     
     
     
@@ -4709,6 +4741,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4856,22 +4916,23 @@
 
 
 <h1 id="troubleshooting-v02">Troubleshooting <span class="mapi-badge">v0.2</span><a class="headerlink" href="#troubleshooting-v02" title="Permanent link">&para;</a></h1>
-<p>Start with <code>make status</code>: it shows which services of a <code>make dev</code> stack are up and whether
-the embedded PostgreSQL is running. The web app's <strong>Settings</strong> page shows the API's
-readiness checks, and <code>curl -s $MAPI_API_URL/readyz</code> shows the same from a shell.</p>
+<p>Start with <code>make status</code>. It shows which services of a <code>make dev</code> stack operate, and if the
+embedded PostgreSQL runs. The <strong>Settings</strong> page of the web app shows the readiness checks of
+the API. <code>curl -s $MAPI_API_URL/readyz</code> shows the same data from a shell.</p>
 <h2 id="port-conflicts">Port conflicts<a class="headerlink" href="#port-conflicts" title="Permanent link">&para;</a></h2>
-<p><code>make dev</code> refuses to start when a port it needs is taken:</p>
+<p>If a different process uses a port that <code>make dev</code> needs, <code>make dev</code> does not start:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cannot start - fix these first
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  - 127.0.0.1:8000 is already in use
 </span></code></pre></div>
-<p>Another <code>make dev</code> (in another terminal or worktree), a compose stack, or an unrelated
-program owns the port. Find it, and either stop it or move the platform:</p>
+<p>The port can belong to a different <code>make dev</code> (in a different terminal or worktree), a
+compose stack, or a program that is not related. Find the process. Then stop it, or move
+the platform:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>lsof<span class="w"> </span>-iTCP:8000<span class="w"> </span>-sTCP:LISTEN<span class="w">          </span><span class="c1"># who has it?</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>make<span class="w"> </span>stop<span class="w">                              </span><span class="c1"># if it is another make dev of this checkout</span>
 </span></code></pre></div>
-<p>To move the platform, export the addresses <strong>in every shell</strong> that talks to it, then start
-again. Every component (<code>make dev</code>, <code>make seed</code>, <code>make e2e</code>, the CLI, the Python client, the
-web app's build) reads the same variables:</p>
+<p>To move the platform, export the addresses <strong>in each shell</strong> that connects to it. Then start
+again. All components (<code>make dev</code>, <code>make seed</code>, <code>make e2e</code>, the CLI, the Python client, the
+build of the web app) read the same variables:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:18000
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_GCS_ENDPOINT</span><span class="o">=</span>http://127.0.0.1:14443
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_WEB_ORIGIN</span><span class="o">=</span>http://127.0.0.1:15173
@@ -4909,131 +4970,149 @@ web app's build) reads the same variables:</p>
 </tr>
 </tbody>
 </table>
-<p>A state directory belongs to one stack at a time; to run two stacks side by side, also give
-each its own <code>MAPI_DATA_DIR</code>. The Playwright smoke suite (<code>pnpm --filter @mapi/web test</code>) serves
-its own build on 5173 and 5174, so run it while <code>make dev</code> is stopped. Docker Compose
-publishes the same four ports as <code>make dev</code>, on purpose: run one or the other.</p>
+<p>A state directory is for one stack at a time. To run two stacks at the same time, also give
+each stack its own <code>MAPI_DATA_DIR</code>. The Playwright smoke suite (<code>pnpm --filter @mapi/web test</code>)
+serves its own build on 5173 and 5174. Thus run it only while <code>make dev</code> is stopped. Docker
+Compose publishes the same four ports as <code>make dev</code>, on purpose. Run only one of the two.</p>
 <h2 id="the-local-stack">The local stack<a class="headerlink" href="#the-local-stack" title="Permanent link">&para;</a></h2>
 <dl>
 <dt><code>cannot start - fix these first</code></dt>
 <dd>
-<p>The supervisor checks every requirement before starting anything. Besides ports:</p>
+<p>The supervisor does a check of each necessary item before it starts a service. In addition
+to ports, it can show these errors:</p>
 <ul>
-<li><strong><code>module 'mapi_server.__main__' not found</code></strong>: your environment is stale. Run
+<li><strong><code>module 'mapi_server.__main__' not found</code></strong>: your environment is not current. Run
   <code>uv sync --all-packages</code> (or <code>make install</code>).</li>
 <li><strong><code>exe 'pnpm' not found</code></strong> or <strong><code>run pnpm install first</code></strong>: install pnpm
-  (<code>corepack enable</code>) and the JavaScript dependencies (<code>pnpm install</code>), or skip the front
-  end with <code>make dev WITHOUT=web,plots</code>.</li>
+  (<code>corepack enable</code>) and the JavaScript dependencies (<code>pnpm install</code>). You can also skip
+  the front end with <code>make dev WITHOUT=web,plots</code>.</li>
 </ul>
 </dd>
 <dt><code>already running (supervisor pid N)</code></dt>
-<dd>A previous <code>make dev</code> is still alive, perhaps in another terminal. Run <code>make stop</code>. If that
-process is gone but its state file stayed behind (after <code>kill -9</code>, for example), the next
-start detects the dead pid and ignores the file.</dd>
+<dd>A previous <code>make dev</code> still runs, possibly in a different terminal. Run <code>make stop</code>. The
+process can be gone while its state file stays (for example, after <code>kill -9</code>). Then the
+next start finds the dead pid and ignores the file.</dd>
 <dt><code>plots exited unexpectedly with status 143; stopping the stack</code></dt>
-<dd>Something outside the stack sent the service <code>SIGTERM</code> (a <code>pkill vite</code>, for example). The
-supervisor never restarts services silently: it stops everything and exits. Start it
-again; runs that were in flight are recovered by the reconciler as a new attempt.</dd>
+<dd>A process outside the stack sent <code>SIGTERM</code> to the service (for example a <code>pkill vite</code>).
+The supervisor never starts services again without a message. It stops all services and
+stops itself. Start it again. The reconciler recovers the runs that were in progress as a
+new attempt.</dd>
 <dt><code>postgres | failed to start</code></dt>
-<dd>Read <code>.local/pg/log</code>. If the data directory came from a different PostgreSQL major version,
-or is corrupt, run <code>make clean-local</code>; this deletes the local database. An orphaned server
-from an earlier crash is stopped by <code>make stop</code>.</dd>
+<dd>Read <code>.local/pg/log</code>. If the data directory came from a different PostgreSQL major
+version, or is corrupt, run <code>make clean-local</code>. This deletes the local database.
+<code>make stop</code> stops an orphaned server from an earlier crash.</dd>
 <dt><code>migrate exited with status 1</code></dt>
-<dd>The migration's own output is printed just above this line. Fix the migration, or reset the
-database with <code>make stop &amp;&amp; make clean-local</code>, then run <code>make dev</code> again.</dd>
+<dd>The output of the migration is immediately above this line. Repair the migration, or
+reset the database with <code>make stop &amp;&amp; make clean-local</code>. Then run <code>make dev</code> again.</dd>
 <dt><code>api not ready after 60s</code></dt>
-<dd>The API process is running but <code>GET /healthz</code> never succeeded. Look at the <code>api |</code> lines. A
-wrong <code>DATABASE_URL</code>, or a GCS shim that is not reachable, are the usual causes.</dd>
+<dd>The API process runs, but <code>GET /healthz</code> never succeeded. Look at the <code>api |</code> lines. The
+usual causes are a wrong <code>DATABASE_URL</code>, or a GCS shim that the API cannot connect to.</dd>
 <dt>Validation says the catalog is unavailable</dt>
-<dd>On the first start against a new environment (and after every change to <code>uv.lock</code>) the
-worker queues a sandboxed <em>describe</em> run to export the catalog: <code>no catalog for sha256:…:
-queued describe run</code>. It takes a few seconds. If it fails, its run page under <strong>Runs</strong>
-shows why.</dd>
+<dd>At the first start against a new environment (and after each change to <code>uv.lock</code>), the
+worker puts a sandboxed <em>describe</em> run in the queue to export the catalog:
+<code>no catalog for sha256:…: queued describe run</code>. This takes some seconds. If it fails, its
+run page under <strong>Runs</strong> shows the reason.</dd>
 <dt>The server refuses <code>MAPI_PROFILE</code></dt>
-<dd><code>MAPI_PROFILE</code> is also the CLI's config-profile variable. If you exported a client profile
-name, unset it in the shell that runs <code>make dev</code> (the server accepts only
-<code>single-tenant</code> or <code>multi-tenant</code>).</dd>
+<dd><code>MAPI_PROFILE</code> is also the config-profile variable of the CLI. If you exported a client
+profile name, unset it in the shell that runs <code>make dev</code>. The server accepts only
+<code>single-tenant</code>, <code>multi-tenant</code> or <code>dev</code>.</dd>
 <dt>Leftover processes after a crash</dt>
-<dd>Each service runs in its own process group, which you can find with
-<code>ps -o pid,pgid,command</code>. <code>make stop</code> also kills the process groups recorded in
-<code>.local/dev/supervisor.json</code> when the supervisor itself does not respond within 30 s.</dd>
+<dd>Each service runs in its own process group. You can find it with
+<code>ps -o pid,pgid,command</code>. If the supervisor does not respond in 30 s, <code>make stop</code> also
+stops the process groups in <code>.local/dev/supervisor.json</code>.</dd>
 </dl>
 <h2 id="the-web-app-and-plots">The web app and plots<a class="headerlink" href="#the-web-app-and-plots" title="Permanent link">&para;</a></h2>
 <dl>
-<dt><strong>API unreachable</strong> in the header, or the app cannot load anything</dt>
-<dd>The app calls the API at the <code>VITE_API_BASE</code> it was started with. <code>make dev</code> sets it from
-<code>MAPI_API_URL</code>; if you start Vite yourself, set it too. The API must also allow the app's
-origin: it allows <code>MAPI_WEB_ORIGIN</code>, so both must agree.</dd>
+<dt><strong>API unreachable</strong> in the header, or the app cannot load data</dt>
+<dd>The app calls the API at the <code>VITE_API_BASE</code> that it started with. <code>make dev</code> sets it
+from <code>MAPI_API_URL</code>. If you start Vite yourself, also set it. The API must also permit
+the origin of the app. It permits <code>MAPI_WEB_ORIGIN</code>, so the two must agree.</dd>
 <dt>Plots stay blank</dt>
-<dd><code>MAPI_WEB_ORIGIN</code> and <code>MAPI_PLOTS_ORIGIN</code> must be different origins, the plot sandbox must
-be running (<code>make status</code>), and the sandbox must allow the app's origin
-(<code>VITE_APP_ORIGINS</code>, set by <code>make dev</code>). The browser console names the blocked origin.</dd>
+<dd>
+<p>Make sure of these three conditions:</p>
+<ul>
+<li><code>MAPI_WEB_ORIGIN</code> and <code>MAPI_PLOTS_ORIGIN</code> are different origins.</li>
+<li>The plot sandbox runs (<code>make status</code>).</li>
+<li>The sandbox permits the origin of the app (<code>VITE_APP_ORIGINS</code>, set by <code>make dev</code>).</li>
+</ul>
+<p>The browser console names the blocked origin.</p>
+</dd>
 <dt>Uploads fail in the browser</dt>
-<dd>The browser PUTs files straight to <code>MAPI_GCS_ENDPOINT</code>. The shim must allow the app's
-origin (<code>--cors-origin</code>, set by <code>make dev</code> from <code>MAPI_WEB_ORIGIN</code>), and the app's CSP must
-allow the storage origin (<code>VITE_STORAGE_ORIGINS</code>).</dd>
+<dd>The browser sends files with PUT directly to <code>MAPI_GCS_ENDPOINT</code>. The shim must permit
+the origin of the app (<code>--cors-origin</code>, which <code>make dev</code> sets from <code>MAPI_WEB_ORIGIN</code>). The
+CSP of the app must permit the storage origin (<code>VITE_STORAGE_ORIGINS</code>).</dd>
 </dl>
 <h2 id="runs-and-scoring">Runs and scoring<a class="headerlink" href="#runs-and-scoring" title="Permanent link">&para;</a></h2>
 <dl>
 <dt>A run is <code>stalled</code></dt>
-<dd>No progress arrived for a while. It is a warning, not a failure: the executor's own status
-decides whether the run is alive. A long PyTensor compile on the first fit of a new
+<dd>No progress came for some time. This is a warning, not a failure. The status of the
+executor decides if the run is alive. A long PyTensor compile on the first fit of a new
 machine can cause it.</dd>
 <dt><code>DEV_MODE_ISOLATION</code> on every run</dt>
-<dd>Expected on a laptop: the local executor runs the model code as your own user, without a
-separate uid or <code>no_new_privs</code>. See the <a href="../../concepts/security/">security model</a>.</dd>
+<dd>This is expected on a laptop. The local executor runs the model code as your own user,
+without a separate uid or <code>no_new_privs</code>. Refer to the
+<a href="../../concepts/security/">security model</a>.</dd>
 <dt><code>SIDE_TABLE_COVERAGE</code> when scoring</dt>
-<dd>A side table with <code>score_policy: supplied</code> (in the demo, <code>fx</code>) must be given in the score
-request (<code>side_tables: {fx: dataset://default/fx_daily@latest}</code>) and cover the scored
-dates. Enter the pipeline after the step that uses it (<code>inputs_stage: weekly</code>) to skip it.</dd>
+<dd>You must give a side table with <code>score_policy: supplied</code> (in the demo, <code>fx</code>) in the score
+request (<code>side_tables: {fx: dataset://default/fx_daily@latest}</code>). It must include the
+scored dates. To skip it, enter the pipeline after the step that uses it
+(<code>inputs_stage: weekly</code>).</dd>
 <dt><code>MODE_NOT_SUPPORTED</code>, <code>UNSEEN_LEVELS</code>, <code>HORIZON_EXCEEDS_FIT</code>, …</dt>
-<dd>Typed errors from the static checks: the request asks for something the model cannot
-answer honestly. The problem's <code>detail</code> and JSON pointer say what; the codes are listed
-in <a href="../../reference/generated/error-codes/">Error codes</a>.</dd>
+<dd>These are typed errors from the static checks. The request asks for an answer that the
+model cannot give honestly. The <code>detail</code> and the JSON pointer of the problem tell what is
+wrong. <a href="../../reference/generated/error-codes/">Error codes</a> lists the codes.</dd>
 <dt><code>RESOURCE_EXHAUSTED</code></dt>
-<dd>The run ran out of memory or scratch space. <strong>Retry</strong> on the run page suggests the next
-resource class. Under compose, raise <code>MAPI_WORKER_MEMORY</code> and <code>MAPI_WORKER_TMPFS</code>.</dd>
+<dd>The run did not have sufficient memory or scratch space. <strong>Retry</strong> on the run page
+suggests the next resource class. Under compose, increase <code>MAPI_WORKER_MEMORY</code> and
+<code>MAPI_WORKER_TMPFS</code>.</dd>
 <dt><code>INTEGRITY_FAILURE</code> when downloading</dt>
-<dd>The bundle's signed manifest no longer verifies, so the API refuses to mint download links.
-Locally this happens when <code>.local/keys/</code> was deleted: the old model versions cannot be
-trusted any more. Fit again.</dd>
+<dd>The signed manifest of the bundle does not verify. Thus the API does not mint download
+links. Locally, this occurs when somebody deleted <code>.local/keys/</code>. You cannot trust the
+old model versions after this. Fit again.</dd>
 </dl>
 <h2 id="docker-and-compose">Docker and compose<a class="headerlink" href="#docker-and-compose" title="Permanent link">&para;</a></h2>
 <dl>
 <dt><code>error: the Docker daemon is not reachable</code></dt>
-<dd><code>make docker-build</code> and <code>make compose-up</code> check <code>docker info</code> first. Start Docker Desktop,
-Colima or <code>dockerd</code>, or use <code>make dev</code>, which needs no Docker.</dd>
+<dd><code>make docker-build</code> and <code>make compose-up</code> first do a check with <code>docker info</code>. Start
+Docker Desktop, Colima or <code>dockerd</code>. You can also use <code>make dev</code>, which needs no Docker.</dd>
 <dt><code>required variable POSTGRES_PASSWORD is missing a value</code></dt>
 <dd>Copy <code>.env.example</code> to <code>.env</code> and set <code>POSTGRES_PASSWORD</code>. Compose reads <code>.env</code> from the
 repository root.</dd>
 <dt><code>image check failed: forbidden distribution 'numpy' is installed</code> (server build)</dt>
-<dd>A control-plane dependency started pulling in a science package. Run
-<code>uv run python scripts/lock_closure.py "mapi-server[docker]" --lacks numpy</code> to see the
-closure, then find which dependency brings <code>numpy</code> in.</dd>
+<dd>A control-plane dependency now adds a science package. To see the closure, run
+<code>uv run python scripts/lock_closure.py "mapi-server[docker]" --lacks numpy</code>. Then find
+the dependency that adds <code>numpy</code>.</dd>
 <dt><code>Contracts: 1 broken</code> in the <code>contracts</code> stage</dt>
-<dd>Server code imports a forbidden module. <code>make lint</code> (<code>lint-imports</code>) shows the same failure
-locally, with the import chain.</dd>
+<dd>Server code imports a forbidden module. <code>make lint</code> (<code>lint-imports</code>) shows the same
+failure locally, with the import chain.</dd>
 <dt><code>PyTensor found no C++ compiler</code> (base-bayes / base-forecast build)</dt>
-<dd><code>g++</code> is missing from <code>MAPI_APT_PACKAGES</code>. The PyMC images need it at run time too.</dd>
+<dd><code>g++</code> is missing from <code>MAPI_APT_PACKAGES</code>. The PyMC images also need it at run time.</dd>
 <dt>The <code>api</code> container is unhealthy</dt>
-<dd><code>make compose-logs SERVICE=api</code>. Typical causes are that <code>migrate</code> failed (look at its
-logs), or that the <code>DATABASE_URL</code> password does not match the database volume, which happens
-after you change <code>POSTGRES_PASSWORD</code>. In that case reset with <code>make compose-down VOLUMES=1</code>;
-this deletes the data.</dd>
+<dd>
+<p>Run <code>make compose-logs SERVICE=api</code>. These are the usual causes:</p>
+<ul>
+<li><code>migrate</code> failed. Look at its logs.</li>
+<li>The <code>DATABASE_URL</code> password does not agree with the database volume. This occurs after
+  you change <code>POSTGRES_PASSWORD</code>. Then reset with <code>make compose-down VOLUMES=1</code>. This
+  deletes the data.</li>
+</ul>
+</dd>
 <dt><code>no bundle-signing key at /var/lib/mapi/keys/... and MAPI_SIGNING_KEY_CREATE is off</code></dt>
-<dd><code>api</code> or <code>worker</code> started before <code>migrate</code> created the key, or without the <code>keys</code> volume.
-Check <code>make compose-logs SERVICE=migrate</code>. Never point the two at different keys: the API
-would reject every bundle the worker signs with <code>INTEGRITY_FAILURE</code>.</dd>
+<dd><code>api</code> or <code>worker</code> started before <code>migrate</code> made the key, or without the <code>keys</code> volume.
+Do a check with <code>make compose-logs SERVICE=migrate</code>. Never point the two services at
+different keys. If you do, the API refuses each bundle that the worker signs, with
+<code>INTEGRITY_FAILURE</code>.</dd>
 <dt><code>400 Invalid host header</code> from the API, or nginx closes the connection</dt>
-<dd>The stack answers only known host names (a DNS-rebinding guard). If you reach it under a
-name other than <code>127.0.0.1</code>, <code>localhost</code> or <code>api</code>, add that name to <code>MAPI_ALLOWED_HOSTS</code>
-(the API) and <code>MAPI_WEB_SERVER_NAMES</code> (the web image's nginx).</dd>
+<dd>The stack answers only known host names (a DNS-rebinding guard). You can connect to it
+with a name other than <code>127.0.0.1</code>, <code>localhost</code> or <code>api</code>. Then add that name to
+<code>MAPI_ALLOWED_HOSTS</code> (the API) and <code>MAPI_WEB_SERVER_NAMES</code> (the nginx of the web image).</dd>
 <dt><code>mapi-entrypoint: /tmp/mapi-cache is not writable</code></dt>
-<dd>The container runs with a read-only root filesystem but without a writable <code>/tmp</code>. Add
-<code>--tmpfs /tmp</code> (compose already does).</dd>
+<dd>The container runs with a read-only root filesystem, but without a writable <code>/tmp</code>. Add
+<code>--tmpfs /tmp</code> (compose already does this).</dd>
 <dt>Port already allocated on <code>docker compose up</code></dt>
-<dd>A <code>make dev</code> stack, or another process, holds 4443, 8000, 5173 or 5174. Stop it with
-<code>make stop</code>. Both stacks use the same ports on purpose, so the same URLs work with either.</dd>
+<dd>A <code>make dev</code> stack, or a different process, uses 4443, 8000, 5173 or 5174. Stop it with
+<code>make stop</code>. The two stacks use the same ports on purpose, so that the same URLs work
+with the two stacks.</dd>
 <dt>nginx exits with <code>host not found</code> or <code>invalid number of arguments in "set"</code></dt>
 <dd><code>MAPI_API_UPSTREAM</code> is empty or malformed. It must be a URL without a path, for example
 <code>http://api:8000</code>.</dd>

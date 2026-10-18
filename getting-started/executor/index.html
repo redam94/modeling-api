@@ -1134,6 +1134,8 @@
       
         
       
+        
+      
     
     
     
@@ -1371,6 +1373,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4599,6 +4629,8 @@
       
         
       
+        
+      
     
     
     
@@ -4687,6 +4719,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4813,10 +4873,10 @@
 
 <h1 id="runs-and-executors">Runs and executors<a class="headerlink" href="#runs-and-executors" title="Permanent link">&para;</a></h1>
 <p><code>fit_spec</code> and <code>score_bundle</code> are plain functions. The platform does the same work as
-<strong>runs</strong>: JSON-only submissions handed to an <strong>executor</strong>, which reports progress as events and
-returns a status that is the source of truth. The in-process executor implements that protocol
-inside your Python process, so notebooks, tests and the platform's <code>local-process</code> and
-<code>docker</code> executors share one code path.</p>
+<strong>runs</strong>. A run is a JSON-only submission that goes to an <strong>executor</strong>. The executor sends
+progress as events. It also returns a status, and the status is the source of truth. The
+in-process executor uses that protocol inside your Python process. Thus notebooks, tests and
+the <code>local-process</code> and <code>docker</code> executors of the platform use one code path.</p>
 <pre class="mermaid"><code>sequenceDiagram
     participant You as Notebook / API
     participant Ex as Executor
@@ -4830,9 +4890,9 @@ inside your Python process, so notebooks, tests and the platform's <code>local-p
     Ex-&gt;&gt;H: score_bundle
     Ex--&gt;&gt;You: result: xr.DataTree</code></pre>
 <h2 id="set-up">Set up<a class="headerlink" href="#set-up" title="Permanent link">&para;</a></h2>
-<p>The executor resolves the <code>dataset://</code> references in specs and requests through a
-<strong>resolver</strong>. Here it is a mapping to in-memory datasets; the built-in tabular plugin ships the
-store-demand data and spec used below.</p>
+<p>The executor uses a <strong>resolver</strong> to find the datasets for the <code>dataset://</code> references in
+specs and requests. Here, the resolver is a mapping to in-memory datasets. The built-in
+tabular plugin contains the store-demand data and the spec that this page uses.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_tabular.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -4912,21 +4972,22 @@ store-demand data and spec used below.</p>
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>10 fit complete
 </span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>{'stat': 3, 'store_id': 4, 'sku': 2, 'week': 8}
 </span></code></pre></div>
-<p>What to notice:</p>
+<p>Look at these points:</p>
 <ul>
-<li><strong>Payloads are JSON.</strong> The spec travels as YAML text or a dict, the raw schema as a dict, and
-  data only as references. This is exactly what the API will store and what a sandboxed runner
-  will receive.</li>
-<li><strong>Submissions are idempotent.</strong> Re-submitting with the same <code>nonce</code> returns the same handle,
-  so a retried API call never starts a second fit. <code>adopt(nonce)</code> finds a run after a restart.</li>
-<li><strong>Status is the source of truth.</strong> Events are for progress bars; <code>status()</code> and <code>wait()</code>
-  decide whether a run succeeded. Failures come back as RFC 7807 problems with a stable code.</li>
-<li><strong>Cancellation is cooperative.</strong> <code>cancel(handle)</code> is checked between pipeline phases and
-  inside long fits.</li>
+<li><strong>Payloads are JSON.</strong> The spec goes as YAML text or as a dict. The raw schema goes as a
+  dict. Data goes only as references. This is exactly what the API will store and what a
+  sandboxed runner will receive.</li>
+<li><strong>Submissions are idempotent.</strong> If you submit again with the same <code>nonce</code>, you get the same
+  handle. Thus an API call that you try again never starts a second fit. <code>adopt(nonce)</code> finds
+  a run after a restart.</li>
+<li><strong>Status is the source of truth.</strong> Events are for progress bars. <code>status()</code> and <code>wait()</code>
+  tell you if a run succeeded. Failures come back as RFC 7807 problems with a stable code.</li>
+<li><strong>Cancellation is cooperative.</strong> The executor checks <code>cancel(handle)</code> between the phases
+  of the pipeline and inside long fits.</li>
 </ul>
 <h2 id="isolation-levels">Isolation levels<a class="headerlink" href="#isolation-levels" title="Permanent link">&para;</a></h2>
-<p>Every executor declares how strongly it isolates a run, and the platform refuses to send
-untrusted code to an executor that is not strong enough.</p>
+<p>Each executor declares how strongly it isolates a run. The platform does not send untrusted
+code to an executor that is not sufficiently strong.</p>
 <table>
 <thead>
 <tr>
@@ -4940,7 +5001,7 @@ untrusted code to an executor that is not strong enough.</p>
 <tr>
 <td><code>InprocExecutor</code></td>
 <td><code>NONE</code></td>
-<td>Notebooks, tests, your own trusted code</td>
+<td>Notebooks, tests and your own trusted code</td>
 <td><span class="mapi-badge">available</span></td>
 </tr>
 <tr>
@@ -4952,17 +5013,18 @@ untrusted code to an executor that is not strong enough.</p>
 <tr>
 <td>Cloud Run Jobs (gen2)</td>
 <td><code>MICROVM</code></td>
-<td>Hosted runs, one fresh sandbox per run</td>
+<td>Hosted runs, one new sandbox for each run</td>
 <td><span class="mapi-badge">v0.3</span></td>
 </tr>
 </tbody>
 </table>
 <div class="admonition warning">
 <p class="admonition-title">Never run untrusted code in-process</p>
-<p>The in-process executor runs plugins with your permissions in your interpreter. It is for
-code you wrote or trust. Public plugins only ever run in the sandboxed executors.</p>
+<p>The in-process executor runs plugins in your interpreter, with your permissions. Use it
+only for code that you wrote or that you trust. Public plugins run only in the sandboxed
+executors.</p>
 </div>
-<p>See the <a href="../../roadmap/cloud/">roadmap</a> for the sandbox design.</p>
+<p>For the sandbox design, see the <a href="../../roadmap/cloud/">roadmap</a>.</p>
 
 
 

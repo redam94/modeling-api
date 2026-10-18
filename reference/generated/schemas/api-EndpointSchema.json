@@ -269,7 +269,7 @@
       "type": "object"
     },
     "EndpointSchemaSnapshot": {
-      "description": "The input contract of the promoted version, frozen at promotion: what callers send.\n\n``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names\n(``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames\nthem to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of\nthe dim a forecast extends.",
+      "description": "The input contract of the promoted version, frozen at promotion: what callers send.\n\n``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names\n(``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames\nthem to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of\nthe dim a forecast extends. ``conditions_on_actuals``: forecasts can carry actuals\n(target values for periods after the fit) that the model updates its state with\n(:mod:`mapi_spec.actuals`); the server sets it from the capabilities of the plugin\nbuild that serves the endpoint now, not only from those at fit.",
       "examples": [
         {
           "fit_coords": {
@@ -350,6 +350,11 @@
         }
       ],
       "properties": {
+        "conditions_on_actuals": {
+          "default": false,
+          "title": "Conditions On Actuals",
+          "type": "boolean"
+        },
         "fit_coords": {
           "additionalProperties": {
             "$ref": "#/$defs/CoordSummary"
@@ -422,6 +427,162 @@
         "schema_hash"
       ],
       "title": "EndpointSchemaSnapshot",
+      "type": "object"
+    },
+    "InputTable": {
+      "description": "An endpoint's inline input as one long table: a header row (:attr:`columns`, the\ncoordinate columns first), then one row per coordinate - the layout of a spreadsheet's\nInput sheet and of :func:`mapi_spec.xrjson.xrjson_from_rows`.\n\nFor a forecasting endpoint :attr:`rows` lists the periods after the fitted history (the\nother dims' first levels), every value empty: fill the target where you have actuals and\nleave it empty for the periods to forecast (:mod:`mapi_spec.actuals`). Dates are ISO\n``yyyy-MM-dd``.",
+      "examples": [
+        {
+          "columns": [
+            {
+              "description": "The period (yyyy-MM-dd)",
+              "freq": "MS",
+              "name": "t",
+              "role": "coord"
+            },
+            {
+              "description": "The actual (leave empty for the periods to forecast)",
+              "dims": [
+                "t"
+              ],
+              "name": "y",
+              "role": "target"
+            },
+            {
+              "description": "Necessary on each period, also on the periods to forecast",
+              "dims": [
+                "t"
+              ],
+              "name": "price",
+              "role": "driver"
+            }
+          ],
+          "conditions_on_actuals": true,
+          "horizon_dim": "t",
+          "rows": [
+            [
+              "1961-01-01",
+              null,
+              null
+            ],
+            [
+              "1961-02-01",
+              null,
+              null
+            ]
+          ]
+        }
+      ],
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/InputTableColumn"
+          },
+          "maxItems": 300,
+          "title": "Columns",
+          "type": "array"
+        },
+        "conditions_on_actuals": {
+          "default": false,
+          "title": "Conditions On Actuals",
+          "type": "boolean"
+        },
+        "horizon_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Horizon Dim"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "maxItems": 200,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "title": "InputTable",
+      "type": "object"
+    },
+    "InputTableColumn": {
+      "description": "One column of an :class:`InputTable`.",
+      "properties": {
+        "description": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Description",
+          "type": "string"
+        },
+        "dims": {
+          "description": "The dims a value column varies along",
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The frequency of a time coordinate",
+          "title": "Freq"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "coord",
+            "target",
+            "driver",
+            "input"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "role"
+      ],
+      "title": "InputTableColumn",
       "type": "object"
     },
     "JsonValue": {},
@@ -745,6 +906,22 @@
     }
   ],
   "properties": {
+    "actuals_example": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "For endpoints whose model conditions forecasts on actuals: a forecast call with inline data over the periods after the fit, the target empty (null). Fill the target with the actuals you have and leave it empty for the periods to forecast (example_actuals_call)",
+      "title": "Actuals Example"
+    },
     "alias": {
       "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
       "title": "Alias",
@@ -757,6 +934,18 @@
       "description": "An EndpointScoreCall body that validates against this endpoint",
       "title": "Example",
       "type": "object"
+    },
+    "input_table": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InputTable"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The inline input as a long table (a spreadsheet's Input sheet): the columns and, for forecasts, the periods after the fit to fill in (input_table)"
     },
     "max_inline_bytes": {
       "default": 5242880,

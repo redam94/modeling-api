@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../coord-plans/">
+        <link rel="prev" href="../forecasting-with-actuals/">
       
       
         <link rel="next" href="../tenancy-and-auth/">
@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1291,6 +1293,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4610,6 +4640,8 @@
       
         
       
+        
+      
     
     
     
@@ -4698,6 +4730,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4834,10 +4894,10 @@
 
 
 <h1 id="capabilities-and-manifests">Capabilities and manifests<a class="headerlink" href="#capabilities-and-manifests" title="Permanent link">&para;</a></h1>
-<p>A model plugin describes itself with a <strong>manifest</strong>: static JSON that says what data it needs,
-what it can do, what it returns and which settings it takes. The control plane validates specs
-and score requests against manifests, and the Guided UI builds its forms from them, all without
-ever importing the plugin.</p>
+<p>A model plugin describes itself with a <strong>manifest</strong>. The manifest is static JSON. It tells
+which data the plugin needs, what it can do, what it returns and which settings it accepts.
+The control plane validates specs and score requests against manifests. The Guided UI makes
+its forms from manifests. Neither of them imports the plugin.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">default_registry</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">default_registry</span><span class="p">()</span>
@@ -4874,43 +4934,47 @@ ever importing the plugin.</p>
 </tr>
 <tr>
 <td><code>score_modes</code></td>
-<td>Which of <code>predict</code>, <code>forecast</code>, <code>counterfactual</code>, <code>simulate</code>, <code>filter</code>, <code>evaluate</code> the model supports. Anything else is <code>MODE_NOT_SUPPORTED</code></td>
+<td>The modes from <code>predict</code>, <code>forecast</code>, <code>counterfactual</code>, <code>simulate</code>, <code>filter</code>, <code>evaluate</code> that the model can do. All other modes give <code>MODE_NOT_SUPPORTED</code>.</td>
 </tr>
 <tr>
 <td><code>decision</code></td>
-<td>Has an <code>objective(fitted, decision)</code> returning a value per draw, for budget optimisation</td>
+<td>The model has an <code>objective(fitted, decision)</code> that returns a value for each draw, for budget optimisation.</td>
 </tr>
 <tr>
 <td><code>recommend</code></td>
-<td>Can recommend candidates (Bayesian optimisation)</td>
+<td>The model can recommend candidates (Bayesian optimisation).</td>
 </tr>
 <tr>
 <td><code>fast_score</code></td>
-<td>Provides a compiled fast-scoring path (PyMC <code>FrozenPredictor</code>)</td>
+<td>The model has a compiled path for fast scoring (PyMC <code>FrozenPredictor</code>).</td>
 </tr>
 <tr>
 <td><code>contribution_scale</code></td>
-<td><code>additive</code> (contributions sum to the prediction; the contract kit checks it), <code>multiplicative</code> or <code>none</code></td>
+<td><code>additive</code>, <code>multiplicative</code> or <code>none</code>. With <code>additive</code>, the sum of the contributions is the prediction. The contract kit checks this.</td>
 </tr>
 <tr>
 <td><code>loo_valid</code>, <code>loo_invalid_reason</code></td>
-<td>Whether pointwise LOO is meaningful. An HMM's steps are dependent, so <code>ts.gaussian_hmm</code> declares it invalid and <code>elpd_loo</code> is rejected at validation</td>
+<td>Tells if pointwise LOO has a meaning. The steps of an HMM are dependent. Thus <code>ts.gaussian_hmm</code> declares LOO invalid, and validation rejects <code>elpd_loo</code>.</td>
 </tr>
 <tr>
 <td><code>identified_quantities</code></td>
-<td>Which parameters are identified (for models with label switching or rotations)</td>
+<td>The parameters that are identified (for models with label switching or rotations).</td>
 </tr>
 <tr>
 <td><code>owns</code></td>
-<td>Preprocessing the model does itself: <code>scaling</code>, <code>carryover</code>, <code>inverse_units</code>, <code>recursion</code>. The platform steps aside and labels outputs accordingly</td>
+<td>The preprocessing that the model does itself: <code>scaling</code>, <code>carryover</code>, <code>inverse_units</code>, <code>recursion</code>. The platform does not do these steps, and it labels the outputs to agree.</td>
 </tr>
 <tr>
 <td><code>deterministic_given_seed</code></td>
-<td>Whether the same seed gives the same fit (nutpie: no). The contract kit checks it when claimed</td>
+<td>Tells if the same seed gives the same fit (nutpie: no). If a model claims this, the contract kit checks it.</td>
 </tr>
 <tr>
 <td><code>checkpointable</code></td>
-<td>Long fits can be checkpointed and resumed</td>
+<td>Long fits can write checkpoints and resume.</td>
+</tr>
+<tr>
+<td><code>conditions_on_actuals</code></td>
+<td>Forecasts can have actuals. The model updates its state with them through its fitted parameters. Then it forecasts from the last actual (<a href="../forecasting-with-actuals/">Forecasts with actuals</a>). Without this capability, a forecast payload with target values gives <code>ACTUALS_NOT_SUPPORTED</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -4925,27 +4989,27 @@ ever importing the plugin.</p>
 <tbody>
 <tr>
 <td><code>id</code>, <code>version</code></td>
-<td><code>mmm.bayesian</code>, <code>1.0.0</code>. Specs pick a version with a semver range: <code>use: mmm.bayesian@^1</code></td>
+<td><code>mmm.bayesian</code>, <code>1.0.0</code>. Specs select a version with a semver range: <code>use: mmm.bayesian@^1</code>.</td>
 </tr>
 <tr>
 <td><code>schema_template</code></td>
-<td>The input data contract, in canonical names. It can be a function of settings: a template with <code>params</code> such as <code>{group_dim}</code> that are filled from the model's settings</td>
+<td>The input data contract, in canonical names. It can change with the settings. Then it is a template with <code>params</code>, for example <code>{group_dim}</code>. The settings of the model give the values of these <code>params</code>.</td>
 </tr>
 <tr>
 <td><code>settings_schema</code>, <code>fit_schema</code></td>
-<td>JSON Schemas of <code>model.settings</code> and <code>model.fit</code>. Every field may carry <code>x-ui-level: basic</code> or <code>advanced</code>; Guided mode shows only <code>basic</code></td>
+<td>JSON Schemas of <code>model.settings</code> and <code>model.fit</code>. Each field can have <code>x-ui-level: basic</code> or <code>advanced</code>. Guided mode shows only <code>basic</code>.</td>
 </tr>
 <tr>
 <td><code>outputs</code></td>
-<td>Output variables with dims and units (<code>units_of: y</code> means "in the target's units")</td>
+<td>Output variables with dims and units (<code>units_of: y</code> means "in the units of the target")</td>
 </tr>
 <tr>
 <td><code>derived</code></td>
-<td>Derived quantities, and whether they are cached at fit (<code>cache: fit</code>) or computed on demand</td>
+<td>Derived quantities. It also tells if the fit caches them (<code>cache: fit</code>), or if the platform calculates them when necessary.</td>
 </tr>
 <tr>
 <td><code>plots</code></td>
-<td>The plot recipes this model's report shows by default</td>
+<td>The plot recipes that the report of this model shows by default</td>
 </tr>
 <tr>
 <td><code>resources</code></td>
@@ -4953,7 +5017,8 @@ ever importing the plugin.</p>
 </tr>
 </tbody>
 </table>
-<p>A schema template with parameters, from a model whose group dim is a setting:</p>
+<p>This example is a schema template with parameters. It is from a model that has the group dim
+as a setting:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">params</span><span class="p">:</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">group_dim</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">string</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">geo</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">time_dim</span><span class="p">:</span><span class="w">  </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">string</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">time</span><span class="p p-Indicator">}</span>
@@ -4965,18 +5030,24 @@ ever importing the plugin.</p>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">dims</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"{group_dim}"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"{time_dim}"</span><span class="p p-Indicator">],</span><span class="nt"> dtype</span><span class="p">:</span><span class="w"> </span><span class="nv">float64</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">target</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
 <h2 id="steps-have-manifests-too">Steps have manifests too<a class="headerlink" href="#steps-have-manifests-too" title="Permanent link">&para;</a></h2>
-<p>Each step exports a <strong>catalog entry</strong>: its settings JSON Schema, kind, whether it is stateful or
-invertible, which settings name variables, dims and side tables, its context need, and a
-<strong>schema effect template</strong>. The runner images export the catalog when they are built, and the
-API validates specs against it. Browse it in the <a href="../../reference/generated/steps-catalog/">steps catalog</a>.</p>
+<p>Each step exports a <strong>catalog entry</strong>. The entry contains these items:</p>
+<ul>
+<li>the settings JSON Schema and the kind of the step</li>
+<li>if the step is stateful or invertible</li>
+<li>the settings that name variables, dims and side tables</li>
+<li>the context that the step needs</li>
+<li>a <strong>schema effect template</strong>.</li>
+</ul>
+<p>The runner images export the catalog when they are built. The API validates specs against
+the catalog. To see the catalog, read the <a href="../../reference/generated/steps-catalog/">steps catalog</a>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_steps.catalog<span class="w"> </span>--splits<span class="w"> </span>&gt;<span class="w"> </span>catalog.json<span class="w">   </span><span class="c1"># what the control plane loads</span>
 </span></code></pre></div>
 <h2 id="browse-the-built-ins">Browse the built-ins<a class="headerlink" href="#browse-the-built-ins" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../reference/generated/models-catalog/">Models catalog</a>: every installed model's
-  capabilities, outputs, derived quantities and settings.</li>
+<li><a href="../../reference/generated/models-catalog/">Models catalog</a>: the capabilities, outputs,
+  derived quantities and settings of each installed model.</li>
 <li><a href="../../reference/generated/plots-catalog/">Plot recipes catalog</a>.</li>
-<li><a href="../../reference/generated/spec-schema/">Spec schema</a>: every field of <code>ModelSpec</code> and
+<li><a href="../../reference/generated/spec-schema/">Spec schema</a>: all fields of <code>ModelSpec</code> and
   <code>ScoreRequest</code>.</li>
 </ul>
 
@@ -5016,7 +5087,7 @@ API validates specs against it. Browse it in the <a href="../../reference/genera
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../coord-plans/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Coord plans and typed errors">
+          <a href="../forecasting-with-actuals/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Forecasts with actuals">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -5026,7 +5097,7 @@ API validates specs against it. Browse it in the <a href="../../reference/genera
                 Previous
               </span>
               <div class="md-ellipsis">
-                Coord plans and typed errors
+                Forecasts with actuals
               </div>
             </div>
           </a>

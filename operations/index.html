@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4519,6 +4549,8 @@
       
         
       
+        
+      
     
     
     
@@ -4627,6 +4659,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../project/changelog/" class="md-nav__link">
         
   
@@ -4710,11 +4770,11 @@
 
 
 <h1 id="deployment-v03">Deployment <span class="mapi-badge">v0.3</span><a class="headerlink" href="#deployment-v03" title="Permanent link">&para;</a></h1>
-<p>The whole platform runs on one machine in two ways that start the same services on the same
-ports, so URLs, the CLI, the Python client and the tests work with either. v0.3 adds Google
-Cloud: Terraform for every project and scripts that deploy, migrate and roll back. All three
-run the same multi-tenant code; only the executor, the store and the identity provider
-change.</p>
+<p>You can run the whole platform on one machine in two ways. The two ways start the same
+services on the same ports. Because of this, the URLs, the CLI, the Python client and the
+tests work with the two ways. v0.3 adds Google Cloud, with Terraform for each project and
+scripts that deploy, migrate and roll back. All three ways run the same multi-tenant code.
+Only the executor, the store and the identity provider change.</p>
 <table>
 <thead>
 <tr>
@@ -4746,8 +4806,8 @@ change.</p>
 <tr>
 <td>Runs execute as</td>
 <td><code>mapi-runner</code> subprocesses of the worker</td>
-<td>subprocesses of the worker container, or one container per run</td>
-<td>Cloud Run Jobs, one fresh sandbox per run</td>
+<td>subprocesses of the worker container, or one container for each run</td>
+<td>Cloud Run Jobs, one new sandbox for each run</td>
 </tr>
 <tr>
 <td>Code</td>
@@ -4764,7 +4824,7 @@ change.</p>
 <tr>
 <td>Use it for</td>
 <td>development, demos, the end-to-end tests</td>
-<td>checking the production images end to end</td>
+<td>a full check of the production images</td>
 <td>a multi-tenant private beta: start with the <a href="gcp-deployment/#before-you-start-the-verify-m0-checklist">[verify M0] checklist</a></td>
 </tr>
 </tbody>
@@ -4781,28 +4841,31 @@ change.</p>
     worker --&gt; shim
     worker --&gt;|"starts"| runner["mapi-runner&lt;br/&gt;supervisor + worker"]
     runner --&gt;|"signed URLs only"| shim</code></pre>
-<p>Whichever you choose:</p>
+<p>These items apply to the two local ways:</p>
 <ul>
-<li><strong>Sign-in is for development only.</strong> Both run the servers in the <code>dev</code> profile: anyone who
-  can reach the API can sign in as one of the seeded accounts through the built-in identity
-  provider (<code>MAPI_STACK_PROFILE=single-tenant</code> turns sign-in off). The API listens on
-  <code>127.0.0.1</code>, and compose publishes every port on <code>127.0.0.1</code> only. Do not expose a local stack to untrusted
-  networks; see the <a href="../concepts/security/#local-development-vs-production">security model</a>.</li>
-<li><strong>State is the database plus the object store.</strong> Back up both (<code>.local/pg</code> and
-  <code>.local/gcs</code> locally; the <code>pgdata</code> and <code>gcsdata</code> volumes under compose), and the bundle
-  signing key (<code>.local/keys/</code>) if you want existing model versions to stay downloadable.</li>
+<li><strong>Sign-in is for development only.</strong> The two local ways run the servers in the <code>dev</code>
+  profile. Each person who can get access to the API can sign in as one of the seeded
+  accounts, through the built-in identity provider. <code>MAPI_STACK_PROFILE=single-tenant</code> turns
+  sign-in off. The API listens on <code>127.0.0.1</code>, and compose publishes each port on <code>127.0.0.1</code>
+  only. Do not connect a local stack to networks that you do not trust. Refer to the
+  <a href="../concepts/security/#local-development-vs-production">security model</a>.</li>
+<li><strong>State is the database and the object store.</strong> Make a backup of the two. Locally, they are
+  in <code>.local/pg</code> and <code>.local/gcs</code>. Under compose, they are the <code>pgdata</code> and <code>gcsdata</code> volumes.
+  Also make a backup of the bundle signing key (<code>.local/keys/</code>) if you want to download the
+  model versions that you have now.</li>
 <li><strong>Migrations run first.</strong> <code>make dev</code> and compose both run <code>mapi-server migrate</code> before the
-  API and the worker start, and stop if it fails.</li>
+  API and the worker start. If the migration fails, they stop.</li>
 </ul>
 <h2 id="in-this-section">In this section<a class="headerlink" href="#in-this-section" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="local-development/">Local, without Docker</a>: what <code>make dev</code> starts, everyday commands,
-  working on one component, where state lives.</li>
-<li><a href="docker/">Docker Compose</a>: the compose stack, its network layout and the executor choice.</li>
-<li><a href="images/">Container images</a>: the six images, how they are built and the guards that keep
-  them honest.</li>
+<li><a href="local-development/">Local, without Docker</a>: what <code>make dev</code> starts, the usual commands,
+  how to work on one component, and the location of the state.</li>
+<li><a href="docker/">Docker Compose</a>: the compose stack, its network layout and how to select the
+  executor.</li>
+<li><a href="images/">Container images</a>: the six images, how the build makes them, and the checks
+  that keep them correct.</li>
 <li><a href="gcp-deployment/">Deploying to Google Cloud</a>: the [verify M0] checklist, then the Terraform and
-  deploy scripts, step by step, to the first tenant.</li>
+  deploy scripts, step by step, until you have the first tenant.</li>
 <li><a href="security-hardening/">Security hardening on Google Cloud</a>: what each control does, and the
   M0 verification checklist.</li>
 <li><a href="authentication/">Authentication and isolation</a>: sign-in, API tokens, operators,
@@ -4810,17 +4873,18 @@ change.</p>
 <li><a href="cloud-run/">Cloud Run Jobs executor</a>: the v0.3 execution backend.</li>
 <li><a href="observability/">Observability</a>: metrics, logs, traces, and the dashboards, alerts and
   runbooks in <code>ops/</code>.</li>
-<li><a href="security-suite/">Security suite</a>: the sandbox-escape probes and what each isolation level
-  must block.</li>
-<li><a href="m2-verification/">M2 verification</a>: what was verified of the M2 exit criteria without a
-  cloud project, the measured numbers, and the steps left for a real one.</li>
+<li><a href="security-suite/">Security suite</a>: the sandbox-escape probes and the actions that each
+  isolation level must stop.</li>
+<li><a href="m2-verification/">M2 verification</a>: the M2 exit criteria that we verified without a
+  cloud project, the measured numbers, and the steps that a real project still needs.</li>
 <li><a href="m3-verification/">M3 verification</a>: the Guided journey and the integrations through the
-  live stack, the unaided-tester timings and fixes, and the protocol for the five testers.</li>
+  live stack, the times and fixes from testers without help, and the protocol for the five
+  testers.</li>
 <li><a href="m35-verification/">M3.5 verification</a>: workflows, governance, the explorers,
-  mmm-framework and Help me choose through the live stack, the defects found and fixed, and
-  how to rerun the journeys.</li>
-<li><a href="configuration/">Configuration reference</a>: every environment variable.</li>
-<li><a href="troubleshooting/">Troubleshooting</a>: port conflicts and everything else.</li>
+  mmm-framework and Help me choose through the live stack, the defects that we found and
+  repaired, and how to run the journeys again.</li>
+<li><a href="configuration/">Configuration reference</a>: all the environment variables.</li>
+<li><a href="troubleshooting/">Troubleshooting</a>: port conflicts and all other problems.</li>
 </ul>
 
 

@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1291,6 +1293,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4621,6 +4651,8 @@
       
         
       
+        
+      
     
     
     
@@ -4709,6 +4741,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4856,15 +4916,21 @@
 
 
 <h1 id="quotas-and-cost-v03">Quotas and cost <span class="mapi-badge">v0.3</span><a class="headerlink" href="#quotas-and-cost-v03" title="Permanent link">&para;</a></h1>
-<p>A public modelling platform's real cost risk is compute: an accidental 500-task sweep, a
-leaked token, or someone mining on free fits. From v0.3 every run is estimated before it
-starts, checked against quotas at three levels, scheduled fairly against everyone else's
-work, and metered into a cost ledger when it ends. The contracts are in <code>mapi_spec.quotas</code>,
-<code>mapi_spec.cost</code> and <code>mapi_spec.admin</code>.</p>
+<p>Compute is the largest cost risk for a public modelling platform. Examples are an accidental
+500-task sweep, a leaked token, or a person who mines on free fits. From v0.3, the platform
+does these steps for each run:</p>
+<ol>
+<li>It estimates the cost of the run before the run starts.</li>
+<li>It compares the run with quotas at three levels.</li>
+<li>It schedules the run fairly with the work of all other users.</li>
+<li>It meters the run into a cost ledger when the run ends.</li>
+</ol>
+<p>The contracts are in <code>mapi_spec.quotas</code>, <code>mapi_spec.cost</code> and <code>mapi_spec.admin</code>.</p>
 <h2 id="quotas-are-vcpu-seconds">Quotas are vCPU-seconds<a class="headerlink" href="#quotas-are-vcpu-seconds" title="Permanent link">&para;</a></h2>
-<p>Compute is limited in <strong>vCPU-seconds</strong>, not runs: a two-minute fit on class S (2 vCPU) uses
-240 vCPU-seconds, a five-minute fit on class M (4 vCPU) 1,200. Each limit below is optional;
-an unset limit means "no limit at this level".</p>
+<p>The platform limits compute in <strong>vCPU-seconds</strong>, not in runs. A two-minute fit on class S
+(2 vCPU) uses 240 vCPU-seconds. A five-minute fit on class M (4 vCPU) uses 1,200
+vCPU-seconds. Each limit in the table is optional. If a limit is not set, there is no limit
+at this level.</p>
 <table>
 <thead>
 <tr>
@@ -4877,7 +4943,7 @@ an unset limit means "no limit at this level".</p>
 <tr>
 <td><code>vcpu_seconds_per_day</code>, <code>vcpu_seconds_per_month</code></td>
 <td>Cumulative, UTC day and month</td>
-<td>Checked against the run's estimate at submit</td>
+<td>The platform compares the limit with the estimate of the run at submit.</td>
 </tr>
 <tr>
 <td><code>concurrent_runs</code></td>
@@ -4887,22 +4953,22 @@ an unset limit means "no limit at this level".</p>
 <tr>
 <td><code>max_fanout_tasks</code></td>
 <td>Per submission</td>
-<td>Caps one sweep, backtest or SBC (<code>taskCount</code>)</td>
+<td>The maximum for one sweep, backtest or SBC (<code>taskCount</code>)</td>
 </tr>
 <tr>
 <td><code>max_resource_class</code></td>
 <td>Per submission</td>
-<td>For example, the free tier runs on class S only</td>
+<td>For example, the free tier runs on class S only.</td>
 </tr>
 <tr>
 <td><code>storage_bytes</code></td>
 <td>Cumulative</td>
-<td>Dataset versions, uploads in progress and model bundles (every model version's stored objects)</td>
+<td>Dataset versions, uploads in progress and model bundles (the stored objects of all model versions)</td>
 </tr>
 <tr>
 <td><code>egress_bytes_per_month</code></td>
 <td>Cumulative, UTC month</td>
-<td>Downloads: the size of every object the API hands out a signed link to (dataset and model artifacts, <code>ui/</code> views, score and render outputs), and of public embed views. Charged when the link is minted; GDPR exports are never charged</td>
+<td>Downloads. This is the size of each object that the API gives a signed link for: dataset and model artifacts, <code>ui/</code> views, and score and render outputs. It also includes public embed views. The platform charges the bytes when it mints the link. The platform never charges GDPR exports.</td>
 </tr>
 <tr>
 <td><code>requests_per_minute</code></td>
@@ -4912,14 +4978,16 @@ an unset limit means "no limit at this level".</p>
 </tbody>
 </table>
 <h2 id="three-levels">Three levels<a class="headerlink" href="#three-levels" title="Permanent link">&para;</a></h2>
-<p>Every request is checked against up to three policies, most specific first:</p>
+<p>The platform compares each request with a maximum of three policies. It starts with the
+most specific policy:</p>
 <ol>
-<li><strong>Token</strong>: the token's own rate limit and vCPU-second budget (set when it was minted).</li>
-<li><strong>Tenant</strong>: the tenant's policy, or the defaults of its trust tier.</li>
-<li><strong>Global</strong>: platform-wide limits that protect the cloud project itself (Cloud Run allows
-   1,000 running executions per region; the global default stops at 700).</li>
+<li><strong>Token</strong>: the rate limit and the vCPU-second budget of the token. The person who mints
+   the token sets these values.</li>
+<li><strong>Tenant</strong>: the policy of the tenant, or the defaults of its trust tier.</li>
+<li><strong>Global</strong>: platform-wide limits that protect the cloud project. Cloud Run permits 1,000
+   running executions for each region. The global default stops at 700.</li>
 </ol>
-<p>The first limit a request would exceed decides the answer:</p>
+<p>The first limit that a request goes above decides the answer:</p>
 <table>
 <thead>
 <tr>
@@ -4933,19 +5001,19 @@ an unset limit means "no limit at this level".</p>
 <tr>
 <td><code>RATE_LIMITED</code></td>
 <td>429</td>
-<td>Too many requests per minute at any level</td>
-<td>Wait <code>Retry-After</code> seconds and retry</td>
+<td>Too many requests per minute at one level</td>
+<td>Wait for <code>Retry-After</code> seconds. Then send the request again.</td>
 </tr>
 <tr>
 <td><code>QUOTA_EXCEEDED</code></td>
 <td>429</td>
-<td>Any other limit</td>
-<td>Read <code>detail</code> (which level, which limit); <code>Retry-After</code> is set when the limit resets with the UTC day or month</td>
+<td>All other limits</td>
+<td>Read <code>detail</code> to find the level and the limit. If the limit resets with the UTC day or month, the response sets <code>Retry-After</code>.</td>
 </tr>
 </tbody>
 </table>
-<p>Cumulative limits only block requests that ask for more: a tenant over its storage quota can
-still read, download and delete.</p>
+<p>Cumulative limits stop only the requests that ask for more. A tenant that is above its
+storage quota can continue to read, download and delete.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.quotas</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -4973,8 +5041,8 @@ still read, download and delete.</p>
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="nb">print</span><span class="p">(</span><span class="n">decision</span><span class="o">.</span><span class="n">retry_after_seconds</span><span class="p">)</span>  <span class="c1"># 7200: the UTC day resets in two hours</span>
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="nb">print</span><span class="p">(</span><span class="n">decision</span><span class="o">.</span><span class="n">to_problem</span><span class="p">()</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">decision</span><span class="o">.</span><span class="n">headers</span><span class="p">())</span>  <span class="c1"># 429 {'Retry-After': '7200'}</span>
 </span></code></pre></div>
-<p>Default tenant limits by trust tier (operators override them per tenant with
-<code>PUT /v1/admin/quotas</code>):</p>
+<p>The table shows the default tenant limits for each trust tier. Operators can change them for
+one tenant with <code>PUT /v1/admin/quotas</code>.</p>
 <table>
 <thead>
 <tr>
@@ -5026,24 +5094,25 @@ still read, download and delete.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Returned draws.</strong> A score request returns a summary by default (no draws). Draws on request
-(<code>output.draws</code>) are capped per tier: at most 300 on <code>public</code>, 500 on every other tier
-(<code>mapi_spec.quotas.MAX_SCORE_DRAWS</code>). More is refused with <code>QUOTA_EXCEEDED</code> at
-<code>/output/draws</code>, whether the call comes through <code>POST /v1/models/…:score</code>, an endpoint, or
-its <code>…/validate</code>; the score job carries the cap and the runner enforces it again.</p>
+<p><strong>Returned draws.</strong> By default, a score request returns a summary and no draws. You can ask
+for draws with <code>output.draws</code>. Each tier has a maximum (<code>mapi_spec.quotas.MAX_SCORE_DRAWS</code>).
+The maximum is 300 on <code>public</code> and 500 on all other tiers. If you ask for more, the platform
+refuses the request with <code>QUOTA_EXCEEDED</code> at <code>/output/draws</code>. This occurs for
+<code>POST /v1/models/…:score</code>, for an endpoint, and for its <code>…/validate</code>. The score job also
+contains the maximum, and the runner applies it again.</p>
 <h2 id="interactive-and-batch-work">Interactive and batch work<a class="headerlink" href="#interactive-and-batch-work" title="Permanent link">&para;</a></h2>
 <p>Each run has a priority class:</p>
 <ul>
-<li><strong><code>interactive</code></strong>: score, render, derive, validate and describe runs. Someone is usually
-  waiting for them.</li>
+<li><strong><code>interactive</code></strong>: score, render, derive, validate and describe runs. Usually, a person
+  waits for these runs.</li>
 <li><strong><code>batch</code></strong>: fits, ingest, evaluation, optimisation and fan-out parents.</li>
 </ul>
-<p>The dispatcher leases queued runs with <strong>weighted fair sharing</strong>. For each candidate it
-computes <code>(tenant's running tasks + the run's tasks) / (tenant weight × class weight)</code>, with
-weight 4 for interactive and 1 for batch, and leases the smallest first, until the free
-capacity (and the Cloud Run <code>jobs.run</code> rate, 180 calls a minute) is used up. A tenant with 40
-tasks running has to wait behind an idle tenant's score, and a 200-task SBC fills in
-the capacity left over instead of blocking everyone:</p>
+<p>The dispatcher leases queued runs with <strong>weighted fair sharing</strong>. For each candidate run, it
+calculates <code>(tenant's running tasks + the run's tasks) / (tenant weight × class weight)</code>. The
+class weight is 4 for interactive and 1 for batch. The dispatcher leases the smallest value
+first. It continues until it uses all the free capacity, or the Cloud Run <code>jobs.run</code> rate of
+180 calls a minute. A tenant with 40 running tasks must wait for the score of an idle tenant.
+A 200-task SBC uses the remaining capacity and does not stop the work of other tenants:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">timedelta</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.quotas</span><span class="w"> </span><span class="kn">import</span> <span class="n">LeaseCandidate</span><span class="p">,</span> <span class="n">PriorityClass</span><span class="p">,</span> <span class="n">plan_leases</span>
@@ -5057,20 +5126,23 @@ the capacity left over instead of blocking everyone:</p>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">picked</span> <span class="o">=</span> <span class="n">plan_leases</span><span class="p">(</span><span class="n">queue</span><span class="p">,</span> <span class="n">capacity</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">running_tasks</span><span class="o">=</span><span class="p">{</span><span class="s2">"acme"</span><span class="p">:</span> <span class="mi">40</span><span class="p">})</span>
 </span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="nb">print</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">run_id</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">picked</span><span class="p">])</span>  <span class="c1"># ['score_1', 'sbc_0', 'sbc_1']</span>
 </span></code></pre></div>
-<p>When the backend itself answers 429, the dispatcher backs off exponentially (1, 2, 4 … 64
-seconds, never less than a <code>Retry-After</code>) and submits exactly once when the limit clears.</p>
+<p>If the backend answers 429, the dispatcher waits for an exponentially longer time before
+each new attempt: 1, 2, 4 … 64 seconds. The time is never less than a <code>Retry-After</code>. The
+dispatcher submits the run one time only when the limit clears.</p>
 <h2 id="prices-and-the-cost-ledger">Prices and the cost ledger<a class="headerlink" href="#prices-and-the-cost-ledger" title="Permanent link">&para;</a></h2>
-<p>Every run's cost is computed from its resource class and wall time:</p>
+<p>The platform calculates the cost of each run from its resource class and its wall time:</p>
 <ul>
-<li>vCPU-seconds = vCPUs of the class × billed seconds × tasks;</li>
-<li>GiB-seconds = memory of the class × billed seconds × tasks;</li>
-<li>billed seconds = wall time rounded up to 100 ms.</li>
+<li>vCPU-seconds = vCPUs of the class × billed seconds × tasks</li>
+<li>GiB-seconds = memory of the class × billed seconds × tasks</li>
+<li>billed seconds = wall time, rounded up to 100 ms</li>
 </ul>
-<p>Prices come from a versioned <strong>price table</strong>. The default mirrors Cloud Run's list prices,
-0.000018 USD per vCPU-second and 0.000002 USD per GiB-second; a deployment sets its own.
-Unit prices are integer nanos and amounts are integer <strong>micros</strong> (1 USD = 1,000,000 micros),
-so every amount is exact and can be recomputed from its ledger row. Every amount names the
-price-table version used: new prices never rewrite old costs.</p>
+<p>The prices come from a versioned <strong>price table</strong>. The default uses the list prices of Cloud
+Run: 0.000018 USD for each vCPU-second and 0.000002 USD for each GiB-second. A deployment can
+set its own prices. Unit prices are integer nanos. Amounts are integer <strong>micros</strong>
+(1 USD = 1,000,000 micros). Thus, each amount is exact, and you can calculate it again from
+its ledger row.</p>
+<p>Each amount names the version of the price table that the platform used. New prices never
+change old costs.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.cost</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_PRICE_TABLE</span><span class="p">,</span> <span class="n">estimate_cost</span><span class="p">,</span> <span class="n">format_micros</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">est</span> <span class="o">=</span> <span class="n">estimate_cost</span><span class="p">(</span><span class="n">ResourceClass</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">wall_seconds</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>  <span class="c1"># an E33-style fit, five minutes on M</span>
@@ -5081,10 +5153,11 @@ price-table version used: new prices never rewrite old costs.</p>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">sweep</span> <span class="o">=</span> <span class="n">estimate_cost</span><span class="p">(</span><span class="n">ResourceClass</span><span class="o">.</span><span class="n">S</span><span class="p">,</span> <span class="n">wall_seconds</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">task_count</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">format_micros</span><span class="p">(</span><span class="n">sweep</span><span class="o">.</span><span class="n">amount_micros</span><span class="p">,</span> <span class="n">sweep</span><span class="o">.</span><span class="n">currency</span><span class="p">))</span>  <span class="c1"># 0.312000 USD</span>
 </span></code></pre></div>
-<p>The <strong>cost ledger</strong> is append-only. Each finished attempt adds one <code>actual</code> entry with its
-run, attempt, resource class, task count, wall time, vCPU- and GiB-seconds, price version and
-amount. Operators can add <code>adjustment</code> entries (for example, a refund after an infrastructure
-failure). A run's <code>cost</code> field folds its entries together:</p>
+<p>The <strong>cost ledger</strong> is append-only. Each finished attempt adds one <code>actual</code> entry. The entry
+contains the run, the attempt, the resource class, the task count and the wall time. It also
+contains the vCPU-seconds, the GiB-seconds, the price version and the amount. Operators can
+add <code>adjustment</code> entries, for example a refund after an infrastructure failure. The <code>cost</code>
+field of a run combines its entries:</p>
 <table>
 <thead>
 <tr>
@@ -5095,15 +5168,15 @@ failure). A run's <code>cost</code> field folds its entries together:</p>
 <tbody>
 <tr>
 <td><code>estimated</code></td>
-<td><code>true</code> until the first attempt has been metered</td>
+<td><code>true</code> until the platform meters the first attempt</td>
 </tr>
 <tr>
 <td><code>estimate_micros</code></td>
-<td>The estimate made at submit</td>
+<td>The estimate that the platform made at submit</td>
 </tr>
 <tr>
 <td><code>amount_micros</code>, <code>currency</code></td>
-<td>The total so far, over all attempts</td>
+<td>The total at this time, for all attempts</td>
 </tr>
 <tr>
 <td><code>vcpu_seconds</code>, <code>gib_seconds</code></td>
@@ -5111,31 +5184,35 @@ failure). A run's <code>cost</code> field folds its entries together:</p>
 </tr>
 <tr>
 <td><code>price_version</code></td>
-<td>The price table used</td>
+<td>The price table that the platform used</td>
 </tr>
 <tr>
 <td><code>attempts_billed</code></td>
-<td>How many attempts have been metered</td>
+<td>The number of metered attempts</td>
 </tr>
 <tr>
 <td><code>usd</code></td>
-<td>Kept from v0.2: the amount in dollars when the currency is USD</td>
+<td>Kept from v0.2. The amount in dollars when the currency is USD.</td>
 </tr>
 </tbody>
 </table>
-<p><code>GET /v1/usage</code> reports a project's ledger totals for a UTC day or month (grouped by resource
-class, day, token or run) and where it stands against each quota. Tenant admins see the
-whole tenant at <code>GET /v1/tenants/{tenant_id}/usage</code>. Operators see cost by tenant for the
-whole platform at <code>GET /v1/admin/usage</code> (the <strong>Cost</strong> tab of the admin console).</p>
-<p>Retries are capped by cost as well as by count: an infrastructure failure is retried
-automatically only while what the run has cost (its metered attempts plus the attempt that
-just failed) stays below <code>MAPI_AUTO_RETRY_COST_FACTOR</code> (default 2) times its estimate, at most
-<code>MAPI_MAX_INFRA_RETRIES</code> times. A retry resumes from the newest checkpoints any earlier
-attempt wrote, and a run that has already used more than 30 minutes is only retried with the
-user's consent.</p>
+<p><code>GET /v1/usage</code> gives the ledger totals of a project for a UTC day or month. It groups the
+totals by resource class, day, token or run. It also shows the usage of the project against
+each quota. Tenant admins see the full tenant at <code>GET /v1/tenants/{tenant_id}/usage</code>.
+Operators see the cost of each tenant for the full platform at <code>GET /v1/admin/usage</code>. This is
+the <strong>Cost</strong> tab of the admin console.</p>
+<p>The platform limits retries by cost and by count. After an infrastructure failure, the
+platform tries the run again automatically only if these two conditions are true:</p>
+<ul>
+<li>The cost of the run stays below <code>MAPI_AUTO_RETRY_COST_FACTOR</code> (default 2) times its
+  estimate. This cost includes the metered attempts and the attempt that failed.</li>
+<li>The number of retries is not more than <code>MAPI_MAX_INFRA_RETRIES</code>.</li>
+</ul>
+<p>A retry continues from the newest checkpoints that an earlier attempt wrote. If a run used
+more than 30 minutes, the platform tries it again only with the consent of the user.</p>
 <h2 id="kill-switches">Kill switches<a class="headerlink" href="#kill-switches" title="Permanent link">&para;</a></h2>
-<p>Operators have two platform-wide switches (<code>PUT /v1/admin/kill-switches</code>, audited, a reason
-is required):</p>
+<p>Operators have two platform-wide switches (<code>PUT /v1/admin/kill-switches</code>). The platform
+audits each change, and the operator must give a reason:</p>
 <table>
 <thead>
 <tr>
@@ -5146,18 +5223,19 @@ is required):</p>
 <tbody>
 <tr>
 <td><code>untrusted_execution_enabled</code></td>
-<td>When off, no run of tenant-uploaded plugin code is accepted or leased. Built-in models keep working.</td>
+<td>When this switch is off, the platform does not accept or lease runs of plugin code that tenants uploaded. Built-in models continue to work.</td>
 </tr>
 <tr>
 <td><code>global_spend_cap_micros</code></td>
-<td>Once the platform's spend in the current UTC day (or month) reaches the cap, no new compute starts except for <code>internal</code> tenants. Spend counts the cost ledger plus the estimates of work not metered yet: admitted runs at admission, started runs (one by one) at dispatch</td>
+<td>When the spend of the platform in the current UTC day (or month) gets to the cap, no new compute starts. Only <code>internal</code> tenants can start compute. The spend is the cost ledger plus the estimates of work that the platform did not meter yet. Admitted runs count at admission. Started runs count one by one at dispatch.</td>
 </tr>
 </tbody>
 </table>
-<p>Both answer <code>QUOTA_EXCEEDED</code> at the global level. <code>GET /v1/admin/usage</code> returns the spend
-in the cap's current window next to the cap (<code>spend_cap</code>), and the admin console shows it as a
-meter that warns at 70% and 90%. In a suspected sandbox escape, turning off
-untrusted execution is the first step of the incident runbook.</p>
+<p>Both switches answer <code>QUOTA_EXCEEDED</code> at the global level. <code>GET /v1/admin/usage</code> returns the
+spend in the current window of the cap, next to the cap (<code>spend_cap</code>). The admin console
+shows this spend as a meter that gives a warning at 70% and at 90%. If you think that code
+escaped the sandbox, turn off untrusted execution. This is the first step of the incident
+runbook.</p>
 
 
 

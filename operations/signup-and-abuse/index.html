@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4654,6 +4684,8 @@
       
         
       
+        
+      
     
     
     
@@ -4742,6 +4774,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4922,11 +4982,12 @@
 
 
 <h1 id="sign-up-and-abuse-controls-v04">Sign-up and abuse controls <span class="mapi-badge">v0.4</span><a class="headerlink" href="#sign-up-and-abuse-controls-v04" title="Permanent link">&para;</a></h1>
-<p>Self-service sign-up lets anyone with an e-mail address create a <strong>public</strong> workspace. Public
-workspaces run untrusted <em>data</em> through trusted <em>code</em>: built-in models and declarative specs
-only (cut line A). This page is for whoever runs the platform: how sign-up works, what stops
-abuse, and what operators review. Every variable named here is in the
-<a href="../configuration/#mapi-server-api-and-worker">configuration reference</a>; the HTTP operations
+<p>With self-service sign-up, each person with an e-mail address can make a <strong>public</strong>
+workspace. Public workspaces run untrusted <em>data</em> through trusted <em>code</em>: only built-in
+models and declarative specs (cut line A). This page is for the person who operates the
+platform. It tells how sign-up works, what stops abuse, and what operators examine. Each
+variable on this page is in the
+<a href="../configuration/#mapi-server-api-and-worker">configuration reference</a>. The HTTP operations
 are in the <a href="../../reference/http-api/#sign-up-verification-deletion-and-export">HTTP API reference</a>.</p>
 <h2 id="how-sign-up-works">How sign-up works<a class="headerlink" href="#how-sign-up-works" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>sequenceDiagram
@@ -4942,23 +5003,32 @@ are in the <a href="../../reference/http-api/#sign-up-verification-deletion-and-
     API--&gt;&gt;B: 200 {tenant_id, login_url}
     B-&gt;&gt;API: GET /auth/login (OpenID sign-in with that address)</code></pre>
 <ol>
-<li><code>POST /auth/signup</code> refuses early what can never sign up: terms not accepted
-   (<code>TERMS_NOT_ACCEPTED</code>), a malformed or disposable address (<code>EMAIL_NOT_ALLOWED</code>), a failed
-   bot check. Then it applies the rate limits below (<code>RATE_LIMITED</code> with <code>Retry-After</code>).</li>
-<li>It stores the sign-up with an HMAC of a fresh 200-bit token (never the token itself) and
-   e-mails the link <code>MAPI_SIGNUP_VERIFY_URL</code>. Only the newest link of an address works.</li>
-<li><strong>The answer is the same for every address</strong>, new or already registered, so sign-up
-   cannot be used to find out who has an account. An existing account that verifies a new
-   sign-up gets one more workspace.</li>
-<li><code>POST /auth/verify-email</code> consumes the token and, in one transaction, creates the tenant
-   (tier <code>public</code>, id from the organisation name), its <code>default</code> project, the person as
-   tenant admin (an invitation claimed at their first sign-in with that <strong>verified</strong> address)
-   and the tenant's verification record. An expired, superseded or used link answers
-   <code>410 LINK_EXPIRED</code>.</li>
+<li><code>POST /auth/signup</code> first refuses requests that can never sign up. These are: terms not
+   accepted (<code>TERMS_NOT_ACCEPTED</code>), an address that is malformed or disposable
+   (<code>EMAIL_NOT_ALLOWED</code>), and a failed bot check. Then it applies the rate limits below
+   (<code>RATE_LIMITED</code> with <code>Retry-After</code>).</li>
+<li>It keeps the sign-up with an HMAC of a new 200-bit token. It never keeps the token. It
+   sends the link <code>MAPI_SIGNUP_VERIFY_URL</code> by e-mail. Only the newest link of an address
+   works.</li>
+<li><strong>The answer is the same for all addresses</strong>, new or already registered. Thus nobody can
+   use sign-up to find out who has an account. If an account that is already there verifies
+   a new sign-up, it gets one more workspace.</li>
+<li>
+<p><code>POST /auth/verify-email</code> uses the token. In one transaction, it makes these items:</p>
+<ul>
+<li>The tenant (tier <code>public</code>, with an id from the organisation name).</li>
+<li>Its <code>default</code> project.</li>
+<li>The person as tenant admin. This is an invitation that the person gets at the first
+  sign-in with that <strong>verified</strong> address.</li>
+<li>The verification record of the tenant.</li>
+</ul>
+<p>A link that is expired, replaced or used answers <code>410 LINK_EXPIRED</code>.</p>
+</li>
 </ol>
-<p>Everything is audited: <code>auth.signup</code>, <code>auth.signup_rejected</code> (bounded per client and minute,
-since anyone can cause them), <code>auth.email_verified</code>, <code>tenant.create</code> and
-<code>auth.signup_flagged</code>.</p>
+<p>The audit log records all events: <code>auth.signup</code>, <code>auth.signup_rejected</code>, <code>auth.email_verified</code>,
+<code>tenant.create</code> and <code>auth.signup_flagged</code>. It records a limited number of
+<code>auth.signup_rejected</code> events for each client in each minute, because each person can cause
+them.</p>
 <h2 id="mailers">Mailers<a class="headerlink" href="#mailers" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4972,17 +5042,17 @@ since anyone can cause them), <code>auth.email_verified</code>, <code>tenant.cre
 <tr>
 <td><code>smtp</code></td>
 <td>Production</td>
-<td><code>smtplib</code> with STARTTLS (required, never opportunistic) or implicit TLS (<code>MAPI_SMTP_TLS=ssl</code>, port 465); certificates are verified. Needs <code>MAPI_SMTP_HOST</code>; credentials in <code>MAPI_SMTP_USERNAME</code>/<code>MAPI_SMTP_PASSWORD</code>. No third-party mail API</td>
+<td><code>smtplib</code> with STARTTLS (necessary, never opportunistic) or implicit TLS (<code>MAPI_SMTP_TLS=ssl</code>, port 465). The mailer verifies certificates. Needs <code>MAPI_SMTP_HOST</code>. Credentials in <code>MAPI_SMTP_USERNAME</code>/<code>MAPI_SMTP_PASSWORD</code>. No third-party mail API</td>
 </tr>
 <tr>
 <td><code>outbox</code></td>
 <td><code>dev</code> profile, end-to-end tests</td>
-<td>One JSON file per message (mode <code>0600</code>) under <code>MAPI_OUTBOX_DIR</code>. The <code>dev</code> profile serves the newest at <code>GET /dev/outbox?to=&lt;address&gt;</code>, with the token in <code>tags.token</code></td>
+<td>One JSON file for each message (mode <code>0600</code>) under <code>MAPI_OUTBOX_DIR</code>. The <code>dev</code> profile serves the newest messages at <code>GET /dev/outbox?to=&lt;address&gt;</code>, with the token in <code>tags.token</code></td>
 </tr>
 <tr>
 <td><code>console</code></td>
-<td>Single-user installs</td>
-<td>Logs the message, link included</td>
+<td>Single-user installations</td>
+<td>Logs the message, with the link</td>
 </tr>
 <tr>
 <td><code>none</code></td>
@@ -4991,10 +5061,11 @@ since anyone can cause them), <code>auth.email_verified</code>, <code>tenant.cre
 </tr>
 </tbody>
 </table>
-<p>The <code>multi-tenant</code> profile refuses <code>console</code> and <code>outbox</code> while sign-up is on: whoever can
-read the logs or the disk could verify any address. Without an SMTP host sign-up is simply
-off (<code>POST /auth/signup</code> answers <code>403</code>). Messages are plain text; header values with line
-breaks are refused (no header injection through a sign-up's name).</p>
+<p>The <code>multi-tenant</code> profile refuses <code>console</code> and <code>outbox</code> while sign-up is on. With these
+mailers, each person who can read the logs or the disk could verify all addresses. Without an SMTP host,
+sign-up is off (<code>POST /auth/signup</code> answers <code>403</code>). Messages are plain text. The mailer
+refuses header values with line breaks. Thus nobody can inject a header through the name of
+a sign-up.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># dev: follow a verification link without a mail server</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>localhost:8000/auth/signup<span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"email":"ana@acme.example","name":"Ana","accepted_terms":true,"terms_version":"2026-10"}'</span>
@@ -5003,12 +5074,12 @@ breaks are refused (no header injection through a sign-up's name).</p>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>-d<span class="w"> </span><span class="s2">"{\"token\":\"</span><span class="nv">$TOKEN</span><span class="s2">\"}"</span>
 </span></code></pre></div>
 <h2 id="disposable-addresses">Disposable addresses<a class="headerlink" href="#disposable-addresses" title="Permanent link">&para;</a></h2>
-<p>The built-in list (<code>mapi_spec.trust.DEFAULT_DISPOSABLE_DOMAINS</code>) is deliberately small. Add
-domains with <code>MAPI_SIGNUP_BLOCKED_DOMAINS</code> (comma-separated) or point
-<code>MAPI_SIGNUP_BLOCKLIST_PATH</code> at a file (one domain per line, <code>#</code> comments), for example a
-maintained public disposable-domain list refreshed by your deployment. A listed domain also
-blocks its subdomains. Deployments that want a vendor check plug a
-<code>mapi_spec.trust.DisposableEmailPolicy</code> into <code>TrustServices.email_policy</code>.</p>
+<p>The built-in list (<code>mapi_spec.trust.DEFAULT_DISPOSABLE_DOMAINS</code>) is small on purpose. To add
+domains, use <code>MAPI_SIGNUP_BLOCKED_DOMAINS</code> (comma-separated). You can also point
+<code>MAPI_SIGNUP_BLOCKLIST_PATH</code> at a file (one domain on each line, <code>#</code> comments). For example,
+use a public disposable-domain list that your deployment updates. A domain on the list also
+blocks its subdomains. If a deployment wants a vendor check, it can add a
+<code>mapi_spec.trust.DisposableEmailPolicy</code> to <code>TrustServices.email_policy</code>.</p>
 <h2 id="rate-limits">Rate limits<a class="headerlink" href="#rate-limits" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5020,44 +5091,46 @@ blocks its subdomains. Deployments that want a vendor check plug a
 </thead>
 <tbody>
 <tr>
-<td>Sign-ups per client address and hour</td>
+<td>Sign-ups for each client address in each hour</td>
 <td>5</td>
 <td><code>MAPI_SIGNUP_PER_IP_PER_HOUR</code></td>
 </tr>
 <tr>
-<td><em>Verified</em> sign-ups per e-mail domain and day</td>
+<td><em>Verified</em> sign-ups for each e-mail domain in each day</td>
 <td>25</td>
 <td><code>MAPI_SIGNUP_PER_DOMAIN_PER_DAY</code></td>
 </tr>
 <tr>
-<td><em>Verified</em> sign-ups on the whole platform per hour</td>
+<td><em>Verified</em> sign-ups on the whole platform in each hour</td>
 <td>500</td>
 <td><code>MAPI_SIGNUP_GLOBAL_PER_HOUR</code></td>
 </tr>
 <tr>
-<td>Verification attempts per client address and minute</td>
+<td>Verification attempts for each client address in each minute</td>
 <td>20</td>
 <td><code>MAPI_VERIFY_PER_IP_PER_MINUTE</code></td>
 </tr>
 </tbody>
 </table>
-<p>They are counted in Postgres from the sign-ups themselves, so they hold across API
-instances. Every request counts toward the per-address limit, which is what holds back
-unverified floods. The domain and platform caps count only sign-ups whose link was
-opened: otherwise anyone could send 25 made-up <code>@gmail.com</code> (or <code>@your-customer.com</code>)
-addresses and lock that domain out of sign-up for a day. Large free-mail domains
-(<code>MAPI_SIGNUP_SHARED_EMAIL_DOMAINS</code>, by default <code>gmail.com</code>, <code>outlook.com</code>, <code>yahoo.com</code>,
-<code>icloud.com</code>, <code>proton.me</code> and similar) have no per-domain cap at all. Behind the Google Cloud load balancer, <a href="../security-hardening/#cloud-armor">Cloud Armor</a>
-adds per-IP rate <em>bans</em> in front of <code>/auth/signup</code> and <code>/auth/*</code> before a request reaches the
-API. Client addresses are stored only as keyed digests.</p>
-<p>The client address is the connecting peer unless that peer is a trusted proxy
-(<code>MAPI_TRUSTED_PROXIES</code>): then it is the right-most <code>X-Forwarded-For</code> hop that is not a
-trusted proxy, so callers behind one load balancer keep separate limits and a caller cannot
-forge its address by sending the header itself. The multi-tenant profile refuses to start
-without the setting (<code>none</code> when clients reach the API directly).</p>
+<p>The server counts the limits in Postgres from the sign-ups. Thus the limits apply across API
+instances. Each request counts toward the limit for each address. This limit stops floods of
+unverified sign-ups. The domain and platform caps count only sign-ups whose link was opened.
+If not, a person could send 25 false <code>@gmail.com</code> (or <code>@your-customer.com</code>) addresses. That
+domain could then not sign up for one day.</p>
+<p>Large free-mail domains (<code>MAPI_SIGNUP_SHARED_EMAIL_DOMAINS</code>, by default <code>gmail.com</code>,
+<code>outlook.com</code>, <code>yahoo.com</code>, <code>icloud.com</code>, <code>proton.me</code> and similar domains) have no cap for
+each domain. Behind the Google Cloud load balancer,
+<a href="../security-hardening/#cloud-armor">Cloud Armor</a> adds rate <em>bans</em> for each IP in front of
+<code>/auth/signup</code> and <code>/auth/*</code>. These bans apply before a request goes to the API. The server keeps client
+addresses only as keyed digests.</p>
+<p>The client address is the peer that connects, but not if that peer is a trusted proxy
+(<code>MAPI_TRUSTED_PROXIES</code>). Then the client address is the right-most <code>X-Forwarded-For</code> hop
+that is not a trusted proxy. Thus callers behind one load balancer keep separate limits. A
+caller cannot forge its address when it sends the header itself. The multi-tenant profile
+does not start without the setting (use <code>none</code> when clients connect to the API directly).</p>
 <h2 id="sybil-heuristics-and-the-review-queue">Sybil heuristics and the review queue<a class="headerlink" href="#sybil-heuristics-and-the-review-queue" title="Permanent link">&para;</a></h2>
 <p>When a sign-up is verified, the platform looks back <code>MAPI_SIGNUP_SYBIL_WINDOW_DAYS</code> (30) days
-for workspaces created from the same signals:</p>
+for workspaces that come from the same signals:</p>
 <table>
 <thead>
 <tr>
@@ -5072,7 +5145,7 @@ for workspaces created from the same signals:</p>
 </tr>
 <tr>
 <td><code>same_device</code></td>
-<td>the same browser: a random, HttpOnly <code>mapi_device</code> cookie set at sign-up</td>
+<td>the same browser: a random, HttpOnly <code>mapi_device</code> cookie that the server sets at sign-up</td>
 </tr>
 <tr>
 <td><code>same_email</code></td>
@@ -5080,15 +5153,15 @@ for workspaces created from the same signals:</p>
 </tr>
 <tr>
 <td><code>domain_burst</code></td>
-<td>many verified sign-ups from one domain within an hour (twice the threshold); never for the shared free-mail domains</td>
+<td>many verified sign-ups from one domain in one hour (two times the threshold). Never for the shared free-mail domains</td>
 </tr>
 </tbody>
 </table>
-<p>At <code>MAPI_SIGNUP_SYBIL_THRESHOLD</code> (3) earlier workspaces the new sign-up is <strong>flagged</strong>: the
-workspace works, and it waits in the review queue (<code>auth.signup_flagged</code> in the audit log).
-With <code>MAPI_SIGNUP_FLAGGED_SUSPEND=true</code> a flagged workspace is suspended (read-only) until an
-operator approves it.</p>
-<p>Operators review flagged sign-ups:</p>
+<p>At <code>MAPI_SIGNUP_SYBIL_THRESHOLD</code> (3) earlier workspaces, the server <strong>flags</strong> the new
+sign-up. The workspace works, and it waits in the review queue (<code>auth.signup_flagged</code> in the
+audit log). With <code>MAPI_SIGNUP_FLAGGED_SUSPEND=true</code>, the server suspends a flagged workspace
+(read-only) until an operator approves it.</p>
+<p>Operators examine flagged sign-ups:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># the queue, newest first</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-b<span class="w"> </span>cookies<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/admin/signups?review=flagged"</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># reject: the workspace is suspended (audited, with the reason)</span>
@@ -5096,12 +5169,13 @@ operator approves it.</p>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{"decision":"reject","reason":"device farm"}'</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># approve: the flag is cleared, and a suspension the review caused is lifted</span>
 </span></code></pre></div>
-<p>An approval only lifts suspensions the review itself caused (never an operator's own
-suspension). Rejecting a sign-up that was never verified kills its link.</p>
+<p>An approval removes only the suspensions that the review caused. It never removes a
+suspension that an operator set. If you reject a sign-up that was never verified, its link
+stops working.</p>
 <h2 id="identity-verification-and-cut-line-a">Identity verification and cut line A<a class="headerlink" href="#identity-verification-and-cut-line-a" title="Permanent link">&para;</a></h2>
-<p>Every tenant has a verification record: <code>GET /v1/tenants/{tenant_id}/verification</code> answers
-<code>email_verified</code>, <code>identity_verified</code>, the method and <code>uploaded_code_allowed</code> with a reason in
-plain words. The rule (<code>mapi_spec.trust.uploaded_code_allowed</code>):</p>
+<p>Each tenant has a verification record. <code>GET /v1/tenants/{tenant_id}/verification</code> answers
+<code>email_verified</code>, <code>identity_verified</code>, the method and <code>uploaded_code_allowed</code>, with a reason
+in plain words. The rule (<code>mapi_spec.trust.uploaded_code_allowed</code>):</p>
 <table>
 <thead>
 <tr>
@@ -5116,45 +5190,49 @@ plain words. The rule (<code>mapi_spec.trust.uploaded_code_allowed</code>):</p>
 </tr>
 <tr>
 <td><code>verified</code></td>
-<td>only once identity is verified</td>
+<td>only after identity verification</td>
 </tr>
 <tr>
 <td><code>public</code></td>
-<td>never before cut line B (<code>MAPI_PUBLIC_CODE_UPLOAD_ENABLED</code>, M5); then only with identity verification</td>
+<td>never before cut line B (<code>MAPI_PUBLIC_CODE_UPLOAD_ENABLED</code>, M5). After cut line B, only with identity verification</td>
 </tr>
 </tbody>
 </table>
-<p>The rule is enforced at <strong>run admission</strong>: a run of uploaded code for a tenant that may not
-run it is refused with <code>403 IDENTITY_VERIFICATION_REQUIRED</code> (audited as a denied
-<code>run.create</code>). Built-in models and declarative specs are always admitted. The plugin upload
-of M4 calls the same check (<code>mapi_server.services.verification.require_uploaded_code_allowed</code>).</p>
-<p>Operators record identity verification after an out-of-band check (a contract, an invoice):</p>
+<p>The server enforces the rule at <strong>run admission</strong>. If a tenant cannot run uploaded code, the
+server refuses its runs of uploaded code with <code>403 IDENTITY_VERIFICATION_REQUIRED</code>. The audit
+log records this as a denied <code>run.create</code>. The server always admits built-in models and
+declarative specs. The plugin upload of M4 calls the same check
+(<code>mapi_server.services.verification.require_uploaded_code_allowed</code>).</p>
+<p>After a check outside the platform (a contract, an invoice), operators record the identity
+verification:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-b<span class="w"> </span>cookies<span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-CSRF-Token: </span><span class="nv">$CSRF</span><span class="s2">"</span><span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/admin/tenants/acme/verification"</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"identity_verified":true,"method":"manual","reason":"signed enterprise contract"}'</span>
 </span></code></pre></div>
-<p>The request-path database role may only <em>read</em> verification records, so no tenant session can
-mark its own tenant verified. A card or document provider plugs in as a
-<code>mapi_server.services.trust.IdentityVerifier</code> (a deterministic <code>FakeIdentityVerifier</code> exists
-for tests and drills); no vendor is integrated yet.</p>
+<p>The request-path database role can only <em>read</em> verification records. Thus no tenant session
+can mark its own tenant as verified. A card or document provider connects as a
+<code>mapi_server.services.trust.IdentityVerifier</code>. A deterministic <code>FakeIdentityVerifier</code> is
+available for tests and drills. No vendor is integrated yet.</p>
 <h2 id="bot-checks">Bot checks<a class="headerlink" href="#bot-checks" title="Permanent link">&para;</a></h2>
-<p><code>SignupRequest.challenge</code> carries a bot-check token (for example Cloudflare Turnstile). The
-server consults <code>TrustServices.challenge</code> (<code>mapi_server.services.trust.SignupChallenge</code>); the
-default accepts every sign-up, leaving the rate limits, Cloud Armor and the Sybil review to
-do the work. A deployment that adds a vendor check implements the protocol.</p>
+<p><code>SignupRequest.challenge</code> contains a bot-check token (for example Cloudflare Turnstile). The
+server asks <code>TrustServices.challenge</code> (<code>mapi_server.services.trust.SignupChallenge</code>). The
+default accepts all sign-ups. Then the rate limits, Cloud Armor and the Sybil review do the
+work. A deployment that adds a vendor check implements the protocol.</p>
 <h2 id="runbook-a-sign-up-wave">Runbook: a sign-up wave<a class="headerlink" href="#runbook-a-sign-up-wave" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Look at the queue (<code>GET /v1/admin/signups?review=flagged</code>) and the audit log
    (<code>auth.signup_rejected</code>, <code>auth.signup_flagged</code>).</li>
-<li>Lower the limits (<code>MAPI_SIGNUP_PER_IP_PER_HOUR</code>, <code>MAPI_SIGNUP_GLOBAL_PER_HOUR</code>) or set
-   <code>MAPI_SIGNUP_FLAGGED_SUSPEND=true</code>, and redeploy the API.</li>
-<li>Block the domains (<code>MAPI_SIGNUP_BLOCKED_DOMAINS</code>) and, at the edge, lower
-   <code>cloud_armor.rate_limits.signup_per_minute</code> in Terraform.</li>
-<li>Reject the flagged sign-ups; suspend any other workspace with
-   <code>PATCH /v1/admin/tenants/{id}</code>. Public workspaces never ran uploaded code, so their runs
-   used built-in models only; the <a href="../../guides/administration/">kill switches</a> and the spend
-   cap still bound what they can spend.</li>
-<li>To close sign-up entirely: <code>MAPI_SIGNUP_ENABLED=false</code>.</li>
+<li>Decrease the limits (<code>MAPI_SIGNUP_PER_IP_PER_HOUR</code>, <code>MAPI_SIGNUP_GLOBAL_PER_HOUR</code>), or set
+   <code>MAPI_SIGNUP_FLAGGED_SUSPEND=true</code>.</li>
+<li>Deploy the API again.</li>
+<li>Block the domains (<code>MAPI_SIGNUP_BLOCKED_DOMAINS</code>).</li>
+<li>At the edge, decrease <code>cloud_armor.rate_limits.signup_per_minute</code> in Terraform.</li>
+<li>Reject the flagged sign-ups.</li>
+<li>Suspend all other workspaces that you must stop with <code>PATCH /v1/admin/tenants/{id}</code>.
+   Public workspaces never ran uploaded code, so their runs used only built-in models. The
+   <a href="../../guides/administration/">kill switches</a> and the spend cap still limit what they can
+   spend.</li>
+<li>To close sign-up fully, set <code>MAPI_SIGNUP_ENABLED=false</code>.</li>
 </ol>
 
 

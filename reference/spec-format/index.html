@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4635,6 +4665,8 @@
       
         
       
+        
+      
     
     
     
@@ -4723,6 +4755,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4881,9 +4941,10 @@
 
 
 <h1 id="spec-format-reference">Spec format reference<a class="headerlink" href="#spec-format-reference" title="Permanent link">&para;</a></h1>
-<p>Every model on modeling-api starts as a <strong>ModelSpec</strong>: a small YAML (or JSON) file that names
-your dataset, the preprocessing pipeline, the model plugin and how to fit and evaluate it.
-The same file drives the Guided wizard, the Expert editor, the CLI and the API.</p>
+<p>Each model on modeling-api starts as a <strong>ModelSpec</strong>. This is a small YAML (or JSON) file. It
+gives your dataset, the preprocessing pipeline and the model plugin. It also tells how to fit
+and evaluate the model. The Guided wizard, the Expert editor, the CLI and the API all use the
+same file.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi/v1</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ModelSpec</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">metadata</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">eu-geo-mmm</span><span class="p p-Indicator">,</span><span class="nt"> project</span><span class="p">:</span><span class="w"> </span><span class="nv">growth</span><span class="p p-Indicator">}</span>
@@ -4922,35 +4983,35 @@ The same file drives the Guided wizard, the Expert editor, the CLI and the API.<
 <tbody>
 <tr>
 <td><code>metadata</code></td>
-<td><code>name</code> and <code>project</code> (lowercase slugs), optional <code>labels</code> and <code>description</code></td>
+<td><code>name</code> and <code>project</code> (lowercase slugs). Optional: <code>labels</code> and <code>description</code></td>
 </tr>
 <tr>
 <td><code>data.dataset</code></td>
-<td><code>dataset://&lt;project&gt;/&lt;name&gt;@latest|vN|sha256:&lt;hex&gt;</code> — pinned to an exact version at submit</td>
+<td><code>dataset://&lt;project&gt;/&lt;name&gt;@latest|vN|sha256:&lt;hex&gt;</code> — The API pins it to an exact version when you submit</td>
 </tr>
 <tr>
 <td><code>data.side_tables</code></td>
-<td>Small constant datasets (FX, holidays). <code>score_policy</code>: <code>pinned</code>, <code>latest</code> or <code>supplied</code></td>
+<td>Small constant datasets (FX, holidays). <code>score_policy</code> is <code>pinned</code>, <code>latest</code> or <code>supplied</code></td>
 </tr>
 <tr>
 <td><code>data.bind</code></td>
-<td>Maps <strong>canonical</strong> names (what plugins and steps use) to <strong>dataset</strong> names. Outputs are reverse-bound by default</td>
+<td>Maps <strong>canonical</strong> names (the names that plugins and steps use) to <strong>dataset</strong> names. By default, the outputs get the dataset names again</td>
 </tr>
 <tr>
 <td><code>data.split</code></td>
-<td><code>time_holdout</code>, <code>last_per_group</code>, <code>as_of</code>, <code>leave_group_out</code> or <code>mask_block</code>, applied at <code>after_step</code></td>
+<td><code>time_holdout</code>, <code>last_per_group</code>, <code>as_of</code>, <code>leave_group_out</code> or <code>mask_block</code>. The split occurs at <code>after_step</code></td>
 </tr>
 <tr>
 <td><code>pipeline</code></td>
-<td>Ordered steps <code>{id, use: &lt;id&gt;@&lt;semver range&gt;, with: {...}}</code></td>
+<td>Steps in sequence: <code>{id, use: &lt;id&gt;@&lt;semver range&gt;, with: {...}}</code></td>
 </tr>
 <tr>
 <td><code>model</code></td>
-<td>Plugin <code>use</code>, its <code>settings</code> and the <code>fit</code> block</td>
+<td>The plugin <code>use</code>, its <code>settings</code> and the <code>fit</code> block</td>
 </tr>
 <tr>
 <td><code>outputs</code></td>
-<td>Derived quantities, plot recipes and the number of draws kept for the UI</td>
+<td>Derived quantities, plot recipes and the number of draws that the UI keeps</td>
 </tr>
 <tr>
 <td><code>evaluate</code></td>
@@ -4958,24 +5019,25 @@ The same file drives the Guided wizard, the Expert editor, the CLI and the API.<
 </tr>
 <tr>
 <td><code>execution</code></td>
-<td>Resource class (<code>S</code>, <code>M</code>, <code>L</code>, <code>XL</code>) and timeout (<code>45m</code>, <code>1h30m</code>). Each class caps the input data a run reads (dataset plus side tables): S 0.5 GB, M 2 GB, L 5 GB, XL 50 GB. Validation reports <code>PAYLOAD_TOO_LARGE</code> at <code>/execution/resource_class</code> when the data is bigger, and names the class that fits. Ingest runs pick the smallest class that holds the upload.</td>
+<td>The resource class (<code>S</code>, <code>M</code>, <code>L</code>, <code>XL</code>) and the timeout (<code>45m</code>, <code>1h30m</code>). Each class has a limit for the input data that a run reads (dataset plus side tables): S 0.5 GB, M 2 GB, L 5 GB, XL 50 GB. If the data is larger, validation reports <code>PAYLOAD_TOO_LARGE</code> at <code>/execution/resource_class</code>. The message gives the class that fits. Ingest runs select the smallest class that holds the upload.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="versions-in-use">Versions in <code>use:</code><a class="headerlink" href="#versions-in-use" title="Permanent link">&para;</a></h2>
-<p><code>use:</code> takes an npm-style semver range: <code>^1</code> (any 1.x), <code>~1.2</code> (1.2.x), <code>&gt;=1.2 &lt;2</code>, <code>1.x</code>,
-an exact <code>1.2.3</code>, or <code>*</code>. The highest matching non-yanked version is chosen at submit time and
-recorded with the run, so re-running a revision is reproducible.</p>
+<p><code>use:</code> takes a semver range in the npm style: <code>^1</code> (all 1.x), <code>~1.2</code> (1.2.x), <code>&gt;=1.2 &lt;2</code>,
+<code>1.x</code>, an exact <code>1.2.3</code>, or <code>*</code>. When you submit, the API selects the highest version that
+matches and is not yanked. The run records this version. Thus, you can run a revision again
+and get the same result.</p>
 <h2 id="where-the-split-happens">Where the split happens<a class="headerlink" href="#where-the-split-happens" title="Permanent link">&para;</a></h2>
-<p>Some dims only exist after preprocessing — daily data resampled to weeks, for instance. The
-split therefore happens at a named <strong>stage</strong> (<code>after_step</code>). If you leave it out, the split
-happens right after the leading steps that learn nothing from the data (such as unit
-conversion and resampling). If a step that <em>learns</em> from the data (scaling, encoding,
-seasonality fits) runs before the split, validation reports <strong><code>LEAKAGE_RISK</code></strong>: its state
-would be learned from the holdout.</p>
+<p>Some dims exist only after preprocessing. For example, a resample step can change daily data
+to weeks. Thus, the split occurs at a named <strong>stage</strong> (<code>after_step</code>). If you do not give a
+stage, the split occurs immediately after the first steps that learn nothing from the data.
+Examples are unit conversion and resample steps. A step that <em>learns</em> from the data (scale,
+encode, seasonality fit) can run before the split. Then validation reports <strong><code>LEAKAGE_RISK</code></strong>,
+because the step learns its state from the holdout.</p>
 <h2 id="validation-messages">Validation messages<a class="headerlink" href="#validation-messages" title="Permanent link">&para;</a></h2>
-<p><code>mapi spec check</code> and <code>POST /v1/specs:validate</code> return every problem at once, each with a
-stable <code>code</code> and a JSON pointer to the offending field:</p>
+<p><code>mapi spec check</code> and <code>POST /v1/specs:validate</code> return all the problems at the same time.
+Each problem has a stable <code>code</code> and a JSON pointer to the incorrect field:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">"code"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SPLIT_INVALID"</span><span class="p">,</span><span class="w"> </span><span class="nt">"pointer"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/data/split/dim"</span><span class="p">,</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w"> </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"split dim 'week' does not exist at stage 'raw'"</span><span class="p">,</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w"> </span><span class="nt">"suggested_action"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Set data.split.after_step to the stage where the dim exists (e.g. after a resample step)."</span><span class="p">}</span>
@@ -4990,27 +5052,27 @@ stable <code>code</code> and a JSON pointer to the offending field:</p>
 <tbody>
 <tr>
 <td><code>SCHEMA_INVALID</code></td>
-<td>A field has the wrong shape, or a step/model needs data the pipeline does not produce</td>
+<td>A field has the wrong shape, or a step or model needs data that the pipeline does not make</td>
 </tr>
 <tr>
 <td><code>SPEC_PARSE_ERROR</code></td>
-<td>Not valid YAML/JSON, or uses anchors, aliases or tags (not allowed)</td>
+<td>The text is not valid YAML/JSON, or it uses anchors, aliases or tags (not permitted)</td>
 </tr>
 <tr>
 <td><code>PAYLOAD_TOO_LARGE</code></td>
-<td>Over 256 KB, nesting deeper than 32 or more than 10 000 values</td>
+<td>More than 256 KB, more than 32 levels of nesting, or more than 10 000 values</td>
 </tr>
 <tr>
 <td><code>REF_UNRESOLVED</code></td>
-<td>Unknown step, model, plot, side table or derived quantity, or no matching version</td>
+<td>The step, model, plot, side table or derived quantity is unknown, or no version matches</td>
 </tr>
 <tr>
 <td><code>SETTINGS_INVALID</code></td>
-<td>Settings don't match the step's or model's settings schema</td>
+<td>The settings do not agree with the settings schema of the step or model</td>
 </tr>
 <tr>
 <td><code>BINDING_INVALID</code></td>
-<td><code>data.bind</code> names something the dataset does not have</td>
+<td><code>data.bind</code> gives a name that the dataset does not have</td>
 </tr>
 <tr>
 <td><code>SPLIT_INVALID</code></td>
@@ -5022,7 +5084,7 @@ stable <code>code</code> and a JSON pointer to the offending field:</p>
 </tr>
 <tr>
 <td><code>DIM_POLICY_LOOSENED</code></td>
-<td><code>dim_policies</code> tries to loosen a plugin's dim policy</td>
+<td><code>dim_policies</code> tries to make the dim policy of a plugin less strict</td>
 </tr>
 <tr>
 <td><code>RECURSIVE_UNSUPPORTED</code></td>
@@ -5041,14 +5103,19 @@ stable <code>code</code> and a JSON pointer to the offending field:</p>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="nt">interventions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[{</span><span class="nt">var</span><span class="p">:</span><span class="w"> </span><span class="nv">spend</span><span class="p p-Indicator">,</span><span class="nt"> sel</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">channel</span><span class="p">:</span><span class="w"> </span><span class="nv">meta</span><span class="p p-Indicator">},</span><span class="nt"> multiply</span><span class="p">:</span><span class="w"> </span><span class="nv">1.2</span><span class="p p-Indicator">}]</span>
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="nv">expected</span><span class="p p-Indicator">,</span><span class="nt"> summary</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mean</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">hdi_90</span><span class="p p-Indicator">],</span><span class="nt"> draws</span><span class="p">:</span><span class="w"> </span><span class="nv">200</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p>Score requests are checked against the fitted model before anything runs: unseen levels on
-fixed dims (<code>UNSEEN_LEVELS</code>), horizons beyond what the fit supports (<code>HORIZON_EXCEEDS_FIT</code>,
-HTTP 409 — refit required), missing future values of covariates
-(<code>MISSING_FUTURE_COVARIATE</code>), gaps after the fitted range (<code>NON_CONTIGUOUS_EXTENSION</code>) and
-summaries the model's uncertainty representation cannot support (<code>CAPABILITY_UNSUPPORTED</code> —
-for example summing quantiles).</p>
+<p>Before something runs, the API does a check of each score request against the fitted model.
+It finds these problems:</p>
+<ul>
+<li>Unseen levels on fixed dims (<code>UNSEEN_LEVELS</code>).</li>
+<li>Horizons that are longer than the fit can support (<code>HORIZON_EXCEEDS_FIT</code>, HTTP 409). You must
+  fit the model again.</li>
+<li>Missing future values of covariates (<code>MISSING_FUTURE_COVARIATE</code>).</li>
+<li>Gaps after the fitted range (<code>NON_CONTIGUOUS_EXTENSION</code>).</li>
+<li>Summaries that the uncertainty representation of the model cannot support
+  (<code>CAPABILITY_UNSUPPORTED</code>). An example is the sum of quantiles.</li>
+</ul>
 <h2 id="json-schemas">JSON Schemas<a class="headerlink" href="#json-schemas" title="Permanent link">&para;</a></h2>
-<p>Editors can validate specs as you type using the published JSON Schemas
+<p>Editors can use the published JSON Schemas to validate specs while you type
 (<code>GET /v1/schemas/modelspec.json</code>, or <code>python -m mapi_spec export-schemas ./schemas</code>).</p>
 
 

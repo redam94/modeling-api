@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4706,6 +4736,8 @@
       
         
       
+        
+      
     
     
     
@@ -4794,6 +4826,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5013,21 +5073,25 @@
 
 
 <h1 id="tabular-models-with-scikit-learn-and-xgboost">Tabular models with scikit-learn and xgboost<a class="headerlink" href="#tabular-models-with-scikit-learn-and-xgboost" title="Permanent link">&para;</a></h1>
-<p><code>mapi-sklearn</code> turns any allow-listed scikit-learn or xgboost estimator into a full
-modeling-api plugin. You describe <em>which dims are samples</em> and <em>which variables are
-features</em>; the platform stacks your labelled <code>xr.Dataset</code> into a design matrix, fits,
-persists safely, and at score time rebuilds exactly the same columns, handles new stores
-and forecast horizons, and unstacks predictions back to labelled arrays — with honest
-uncertainty.</p>
+<p><code>mapi-sklearn</code> changes each scikit-learn or xgboost estimator on the allow-list into a full
+modeling-api plugin. You tell <em>which dims are samples</em> and <em>which variables are features</em>. The
+platform does the rest:</p>
+<ul>
+<li>It stacks your labelled <code>xr.Dataset</code> into a design matrix.</li>
+<li>It fits the estimator and keeps it safely.</li>
+<li>At score time, it builds exactly the same columns again.</li>
+<li>It accepts new stores and forecast horizons.</li>
+<li>It unstacks the predictions back into labelled arrays, with correct uncertainty.</li>
+</ul>
 <h2 id="the-plugins">The plugins<a class="headerlink" href="#the-plugins" title="Permanent link">&para;</a></h2>
-<p>The uncertainty kind decides the output <strong>representation</strong>, which in turn decides which
-summaries and aggregations are valid. Each kind is its own plugin:</p>
+<p>The kind of uncertainty sets the <strong>representation</strong> of the output. The representation then sets
+which summaries and aggregations are valid. Each kind is a different plugin:</p>
 <table>
 <thead>
 <tr>
 <th>Plugin</th>
 <th>Representation</th>
-<th>What <code>y_hat</code> holds</th>
+<th>What <code>y_hat</code> contains</th>
 <th>Aggregate over cells?</th>
 </tr>
 </thead>
@@ -5035,42 +5099,42 @@ summaries and aggregations are valid. Each kind is its own plugin:</p>
 <tr>
 <td><code>sklearn.tabular_regressor</code></td>
 <td>point</td>
-<td>point prediction (+ <code>contributions</code>)</td>
-<td>linear only, flagged</td>
+<td>A point prediction (+ <code>contributions</code>)</td>
+<td>Linear only, with a flag</td>
 </tr>
 <tr>
 <td><code>sklearn.tabular_quantiles</code></td>
 <td>quantiles</td>
-<td>conditional quantiles <code>(quantile, ...)</code></td>
-<td>no</td>
+<td>Conditional quantiles <code>(quantile, ...)</code></td>
+<td>No</td>
 </tr>
 <tr>
 <td><code>sklearn.tabular_bootstrap</code></td>
 <td>draws</td>
-<td>one joint draw per bootstrap replicate <code>(chain, draw, ...)</code></td>
-<td>yes, any</td>
+<td>One joint draw for each bootstrap replicate <code>(chain, draw, ...)</code></td>
+<td>Yes, all</td>
 </tr>
 <tr>
 <td><code>sklearn.tabular_conformal</code></td>
 <td>interval</td>
 <td><code>(bound=[lower, upper, point], ...)</code>, attr <code>alpha</code></td>
-<td>no</td>
+<td>No</td>
 </tr>
 <tr>
 <td><code>sklearn.tabular_classifier</code></td>
 <td>point</td>
-<td>probability of the positive class</td>
-<td>linear only, flagged</td>
+<td>The probability of the positive class</td>
+<td>Linear only, with a flag</td>
 </tr>
 </tbody>
 </table>
 <div class="admonition note">
 <p class="admonition-title">Why conformal is an interval, not draws</p>
-<p>A split-conformal interval guarantees <em>per-cell</em> coverage (<code>P(y in interval) &gt;= 1 - alpha</code>).
-It is not a distribution, so summing intervals across stores or weeks would claim a
-coverage nobody measured. The platform rejects such aggregations with
-<code>CAPABILITY_UNSUPPORTED</code>. If you need totals, use <code>sklearn.tabular_bootstrap</code>, whose draws
-are joint.</p>
+<p>A split-conformal interval guarantees the coverage <em>for each cell</em>
+(<code>P(y in interval) &gt;= 1 - alpha</code>). It is not a distribution. A sum of intervals across
+stores or weeks claims a coverage that nobody measured. Thus the platform rejects these
+aggregations with <code>CAPABILITY_UNSUPPORTED</code>. For totals, use <code>sklearn.tabular_bootstrap</code>,
+because its draws are joint.</p>
 </div>
 <h2 id="a-store-demand-forecast">A store-demand forecast<a class="headerlink" href="#a-store-demand-forecast" title="Permanent link">&para;</a></h2>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi/v1</span>
@@ -5100,14 +5164,16 @@ are joint.</p>
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="nt">evaluate</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rmse</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">mape</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">coverage_80</span><span class="p p-Indicator">]}</span>
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="nt">execution</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">resource_class</span><span class="p">:</span><span class="w"> </span><span class="nv">S</span><span class="p p-Indicator">,</span><span class="nt"> timeout</span><span class="p">:</span><span class="w"> </span><span class="nv">10m</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p>What happens:</p>
+<p>What occurs:</p>
 <ol>
-<li>The holdout (last 12 weeks) is scored <strong>through the score path</strong>, using context tails from
-   the training weeks, and <code>rmse</code>, <code>mape</code> and <code>coverage_80</code> are computed in units sold (the
-   <code>log1p</code> is inverted; quantiles map exactly through monotone transforms).</li>
-<li>The model is refitted on all weeks; the bundle stores the xgboost model as JSON.</li>
-<li>A forecast request supplies future prices and promotions; lags are rebuilt from the stored
-   tail, and the platform checks the weeks continue the fitted range without gaps.</li>
+<li>The platform scores the holdout (the last 12 weeks) <strong>through the score path</strong>. It uses
+   context tails from the training weeks. It calculates <code>rmse</code>, <code>mape</code> and <code>coverage_80</code> in
+   units sold. The platform inverts the <code>log1p</code>. Quantiles map exactly through monotone
+   transforms.</li>
+<li>The platform fits the model again on all weeks. The bundle keeps the xgboost model as JSON.</li>
+<li>A forecast request gives the future prices and promotions. The platform builds the lags again
+   from the stored tail. It also does a check that the weeks continue the fitted range without
+   gaps.</li>
 </ol>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi/v1</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ScoreRequest</span>
@@ -5130,82 +5196,90 @@ are joint.</p>
 <tr>
 <td><code>estimator</code></td>
 <td>—</td>
-<td><code>{kind, params}</code> from the allow-list below (required for the built-in plugins)</td>
+<td><code>{kind, params}</code> from the allow-list below (necessary for the built-in plugins)</td>
 </tr>
 <tr>
 <td><code>target</code></td>
 <td><code>y</code></td>
-<td>canonical name of the target variable</td>
+<td>The canonical name of the target variable</td>
 </tr>
 <tr>
 <td><code>rows</code></td>
 <td>—</td>
-<td>dims stacked into samples; every row dim of the target</td>
+<td>The dims that the platform stacks into samples. Each row dim of the target.</td>
 </tr>
 <tr>
 <td><code>time_dim</code> / <code>time_kind</code></td>
 <td><code>time</code> / <code>time</code></td>
-<td>the row dim that extends at forecast time and its kind (<code>time</code>, <code>integer</code>, <code>index</code>; <code>none</code> when no row dim extends)</td>
+<td>The row dim that extends at forecast time, and its kind (<code>time</code>, <code>integer</code>, <code>index</code>). Use <code>none</code> if no row dim extends.</td>
 </tr>
 <tr>
 <td><code>columns</code></td>
 <td><code>{roles: [covariate, media, spend, control, exposure]}</code></td>
-<td>feature variables by role, or an explicit <code>vars</code> list; <code>exclude</code> removes names</td>
+<td>The feature variables by role, or an explicit <code>vars</code> list. <code>exclude</code> removes names.</td>
 </tr>
 <tr>
 <td><code>coord_features</code></td>
 <td><code>{}</code></td>
-<td>encode row-dim labels as features: <code>category</code>, <code>onehot</code>, <code>ordinal</code>, <code>numeric</code></td>
+<td>Encode the labels of row dims as features: <code>category</code>, <code>onehot</code>, <code>ordinal</code>, <code>numeric</code></td>
 </tr>
 <tr>
 <td><code>new_levels</code></td>
 <td><code>pooled</code></td>
-<td>what an unseen level of a row dim becomes: <code>pooled</code>, <code>zero</code> or <code>error</code></td>
+<td>What an unseen level of a row dim becomes: <code>pooled</code>, <code>zero</code> or <code>error</code></td>
 </tr>
 <tr>
 <td><code>pooled_max_levels</code></td>
 <td>256</td>
-<td>pool over at most this many (most frequent) fitted levels</td>
+<td>Pool over a maximum of this number of fitted levels (the most frequent)</td>
 </tr>
 <tr>
 <td><code>weight</code>, <code>mask</code></td>
 <td>—</td>
-<td>sample-weight variable; boolean mask of usable cells</td>
+<td>A variable for the sample weight. A boolean mask of the cells that you can use.</td>
 </tr>
 <tr>
 <td><code>forecast_strategy</code></td>
 <td><code>direct</code></td>
-<td><code>recursive</code> is rejected with <code>RECURSIVE_UNSUPPORTED</code> in v1</td>
+<td>In v1, the platform rejects <code>recursive</code> with <code>RECURSIVE_UNSUPPORTED</code>.</td>
 </tr>
 <tr>
 <td><code>retransform</code></td>
 <td><code>median</code></td>
-<td>point predictions through a non-linear inverse (<code>log1p</code>): <code>median</code> or Duan <code>smearing</code></td>
+<td>Point predictions through a non-linear inverse (<code>log1p</code>): <code>median</code> or Duan <code>smearing</code></td>
 </tr>
 <tr>
 <td><code>contributions</code></td>
 <td><code>auto</code></td>
-<td>point/bootstrap plugins: <code>auto</code>, <code>exact</code>, <code>zeroing</code>, <code>none</code></td>
+<td>For the point and bootstrap plugins: <code>auto</code>, <code>exact</code>, <code>zeroing</code>, <code>none</code></td>
 </tr>
 <tr>
 <td><code>n_jobs</code></td>
 <td>1</td>
-<td>estimator threads (kept at 1 by default for bit-reproducible fits)</td>
+<td>The threads of the estimator. The default is 1, so that fits are the same bit for bit.</td>
 </tr>
 </tbody>
 </table>
-<p>Variables with dims beyond <code>rows</code> become one column per label — <code>spend(store, channel, time)</code>
-with rows <code>[store, time]</code> gives <code>spend[tv]</code>, <code>spend[search]</code>. Variables missing a row dim
-(calendar features over <code>time</code> only) are broadcast. Rows with a missing target, a non-positive
-weight, <code>mask</code> false or (for estimators without native missing-value support) a missing
-feature are left out of training and reported in a <code>ROWS_DROPPED</code> diagnostic.</p>
+<p>A variable with dims that are not in <code>rows</code> becomes one column for each label. For example,
+<code>spend(store, channel, time)</code> with the rows <code>[store, time]</code> gives <code>spend[tv]</code>, <code>spend[search]</code>.
+The platform broadcasts a variable that does not have a row dim (calendar features over <code>time</code>
+only). The platform does not use some rows for the training:</p>
+<ul>
+<li>Rows with a missing target</li>
+<li>Rows with a weight that is zero or less</li>
+<li>Rows where <code>mask</code> is false</li>
+<li>Rows with a missing feature, for estimators that cannot accept missing values natively</li>
+</ul>
+<p>A <code>ROWS_DROPPED</code> diagnostic reports these rows.</p>
 <h3 id="coordinate-features">Coordinate features<a class="headerlink" href="#coordinate-features" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>category</code> — integer codes declared natively to xgboost and to
-  <code>HistGradientBoostingRegressor</code> (up to 254 levels); one-hot for every other estimator.</li>
-<li><code>onehot</code> — one 0/1 column per fitted level.</li>
-<li><code>ordinal</code> — the level's position as a number (for ordered dims).</li>
-<li><code>numeric</code> — the label itself: numbers as-is, datetimes as days since the first fitted label.</li>
+<li><code>category</code>: integer codes. The platform declares them natively to xgboost and to
+  <code>HistGradientBoostingRegressor</code> (a maximum of 254 levels). For all other estimators, it uses
+  one-hot columns.</li>
+<li><code>onehot</code>: one 0/1 column for each fitted level.</li>
+<li><code>ordinal</code>: the position of the level as a number (for ordered dims).</li>
+<li><code>numeric</code>: the label. Numbers stay as they are. Datetimes become the days since the first
+  fitted label.</li>
 </ul>
 <h2 id="estimators">Estimators<a class="headerlink" href="#estimators" title="Permanent link">&para;</a></h2>
 <table>
@@ -5239,7 +5313,7 @@ feature are left out of training and reported in a <code>ROWS_DROPPED</code> dia
 <tr>
 <td><code>sklearn.QuantileRegressor</code></td>
 <td>regression</td>
-<td>one model per level</td>
+<td>one model for each level</td>
 <td>—</td>
 <td>one-hot</td>
 <td>skops</td>
@@ -5255,7 +5329,7 @@ feature are left out of training and reported in a <code>ROWS_DROPPED</code> dia
 <tr>
 <td><code>sklearn.GradientBoostingRegressor</code></td>
 <td>regression</td>
-<td>one model per level</td>
+<td>one model for each level</td>
 <td>—</td>
 <td>one-hot</td>
 <td>skops</td>
@@ -5263,7 +5337,7 @@ feature are left out of training and reported in a <code>ROWS_DROPPED</code> dia
 <tr>
 <td><code>sklearn.HistGradientBoostingRegressor</code></td>
 <td>regression</td>
-<td>one model per level</td>
+<td>one model for each level</td>
 <td>native</td>
 <td>native</td>
 <td>skops</td>
@@ -5286,68 +5360,75 @@ feature are left out of training and reported in a <code>ROWS_DROPPED</code> dia
 </tr>
 </tbody>
 </table>
-<p>Every kind has a bounded Pydantic params model (<code>extra="forbid"</code>). Parameters the platform
-owns — seeds, threads, categorical declarations, and the loss/objective an uncertainty kind
-needs — are not settable; for example <code>sklearn.tabular_quantiles</code> sets xgboost's
-<code>objective: reg:quantileerror</code> itself and rejects a conflicting one. Because the params
-models are a discriminated union, the control plane validates them <strong>statically</strong>: a
-<code>max_depth: -1</code> is rejected with a JSON pointer before any run starts.</p>
+<p>Each kind has a bounded Pydantic params model (<code>extra="forbid"</code>). You cannot set the parameters
+that the platform owns: seeds, threads, categorical declarations, and the loss or objective that
+a kind of uncertainty needs. For example, <code>sklearn.tabular_quantiles</code> sets the xgboost
+<code>objective: reg:quantileerror</code>. It rejects an objective that does not agree. The params models
+are a discriminated union. Thus the control plane validates them <strong>statically</strong>. For example, it
+rejects <code>max_depth: -1</code> with a JSON pointer before a run starts.</p>
 <h2 id="uncertainty">Uncertainty<a class="headerlink" href="#uncertainty" title="Permanent link">&para;</a></h2>
-<p><strong>Quantiles.</strong> xgboost fits all levels at once; quantile-capable sklearn estimators fit one
-model per level. Crossing quantiles are sorted (monotone rearrangement, which never increases
-pinball loss) and the fraction of crossing rows is reported as <code>QUANTILE_CROSSING</code>. When you
-leave <code>output.summary</code> unset, the default (<code>median, q5, q95</code>) adapts to your grid — with
-<code>[0.1, 0.5, 0.9]</code> you get <code>median, q10, q90</code>. Explicitly requested levels outside the grid
-are an error: quantiles are interpolated, never extrapolated.</p>
-<p><strong>Bootstrap.</strong> <code>n</code> replicates refit the estimator on resampled rows — or, with <code>by: store</code>,
-on resampled whole stores (a cluster bootstrap that keeps within-store dependence). <code>expected</code>
-outputs are the replicate predictions; <code>predictive</code> outputs add an out-of-bag residual per
-cell. Draws are joint, so totals over stores, counterfactual deltas and any summary are valid.</p>
-<p><strong>Split conformal.</strong> A <code>calibration</code> fraction is held out — by default the most recent weeks
-(<code>calibration_by: last</code>), which mimics forecasting; <code>random</code> picks rows at random. The radius
-is the <code>ceil((n+1)(1-alpha))</code>-th smallest absolute calibration residual; too small a
-calibration set for the requested <code>alpha</code> is a <code>SETTINGS_INVALID</code> error rather than an
-infinite interval. <code>refit: true</code> refits the point model on all rows afterwards (sharper, but
-the finite-sample guarantee then holds only approximately).</p>
+<p><strong>Quantiles.</strong> xgboost fits all levels at the same time. The sklearn estimators that can do
+quantiles fit one model for each level. The platform sorts quantiles that cross (monotone
+rearrangement, which never increases the pinball loss). It reports the fraction of rows that
+cross as <code>QUANTILE_CROSSING</code>. If you do not set <code>output.summary</code>, the default
+(<code>median, q5, q95</code>) changes to agree with your grid. For example, with <code>[0.1, 0.5, 0.9]</code> you get
+<code>median, q10, q90</code>. If you request a level outside the grid, you get an error. The platform
+interpolates quantiles. It never extrapolates them.</p>
+<p><strong>Bootstrap.</strong> <code>n</code> replicates fit the estimator again on resampled rows. With <code>by: store</code>, they
+fit it on resampled whole stores. This is a cluster bootstrap that keeps the dependence in each
+store. <code>expected</code> outputs are the predictions of the replicates. <code>predictive</code> outputs add an
+out-of-bag residual for each cell. The draws are joint. Thus totals over stores, counterfactual
+deltas and all summaries are valid.</p>
+<p><strong>Split conformal.</strong> The platform keeps a <code>calibration</code> fraction out of the fit. By default,
+this fraction is the most recent weeks (<code>calibration_by: last</code>), as in a forecast. <code>random</code>
+selects rows at random. The radius is the <code>ceil((n+1)(1-alpha))</code>-th smallest absolute
+calibration residual. The calibration set can be too small for the requested <code>alpha</code>. Then you
+get a <code>SETTINGS_INVALID</code> error, not an infinite interval. <code>refit: true</code> fits the point model
+again on all rows after the calibration. The interval is then narrower, but the finite-sample
+guarantee is only approximate (not exact).</p>
 <h2 id="new-stores-skus-and-markets">New stores, skus and markets<a class="headerlink" href="#new-stores-skus-and-markets" title="Permanent link">&para;</a></h2>
-<p>When score data contains a label of a row dim that was not seen at fit, the dim's effective
-policy decides (the tighter of the data's policy and the plugin's <code>new_levels</code>):</p>
+<p>Score data can contain a label of a row dim that the fit did not see. Then the effective policy
+of the dim decides. This policy is the stricter of the policy of the data and the <code>new_levels</code>
+of the plugin:</p>
 <ul>
-<li><code>pooled</code> — the prediction is the training-frequency-weighted average of the predictions the
-  row would get under each fitted level. For a linear model with one-hot features this equals
-  predicting with the average encoding; quantiles and interval bounds are averaged
-  (Vincentisation); bootstrap draws are averaged per draw so they stay joint.</li>
-<li><code>zero</code> — the level contributes nothing: all one-hot columns are 0, category codes are
-  missing (estimators with native missing-value support).</li>
-<li><code>error</code> (or a <code>fixed</code> dim) — <code>UNSEEN_LEVELS</code> before anything runs.</li>
+<li><code>pooled</code>: the prediction is an average of the predictions that the row gets under each fitted
+  level. The training frequency of each level is the weight. For a linear model with one-hot
+  features, this is equal to a prediction with the average encoding. The platform calculates the
+  average of quantiles and interval bounds (Vincentisation). It calculates the average of
+  bootstrap draws for each draw, so that they stay joint.</li>
+<li><code>zero</code>: the level adds nothing. All one-hot columns are 0. The category codes are missing (for
+  estimators that accept missing values natively).</li>
+<li><code>error</code> (or a <code>fixed</code> dim): <code>UNSEEN_LEVELS</code> before the run starts.</li>
 </ul>
 <h2 id="contributions">Contributions<a class="headerlink" href="#contributions" title="Permanent link">&para;</a></h2>
-<p>Point and bootstrap plugins can return <code>contributions(component, ...)</code> next to <code>y_hat</code>:</p>
+<p>The point plugins and the bootstrap plugins can return <code>contributions(component, ...)</code> next to
+<code>y_hat</code>:</p>
 <ul>
-<li><strong>exact</strong> (linear estimators; the default with <code>contributions: auto</code>) — <code>intercept</code> plus
-  <code>coef × x</code> per column, with a coordinate feature's one-hot columns summed into one
-  component. Components add up to the prediction exactly.</li>
-<li><strong>zeroing</strong> (any estimator) — counterfactual zeroing: <code>baseline</code> is the prediction with every
-  feature at zero, each feature's contribution is the drop when only it is zeroed, and
-  <code>interaction</code> holds the remainder so the components still add up. These are labelled
-  <code>counterfactual_zeroing</code> and are <strong>not</strong> Shapley values (SHAP is out of scope for v1).</li>
+<li><strong>exact</strong> (linear estimators. This is the default with <code>contributions: auto</code>): <code>intercept</code>
+  plus <code>coef × x</code> for each column. The platform adds the one-hot columns of a coordinate feature
+  into one component. The sum of the components is exactly equal to the prediction.</li>
+<li><strong>zeroing</strong> (all estimators): counterfactual zeroing. <code>baseline</code> is the prediction with all
+  features at zero. The contribution of each feature is the decrease when only that feature is
+  zero. <code>interaction</code> contains the remainder, so that the sum of the components stays correct.
+  These contributions have the label <code>counterfactual_zeroing</code>. They are <strong>not</strong> Shapley values.
+  SHAP is not in the scope of v1.</li>
 </ul>
 <p>Contributions are additive in <strong>model space</strong> (<code>output: {units: model}</code>). Through a non-linear
-inverse such as <code>log1p</code> the per-component inverse is not a decomposition; request model units
-when you want the parts to add up.</p>
+inverse, for example <code>log1p</code>, the inverse of each component is not a decomposition. If you want
+a sum of the parts that is correct, request model units.</p>
 <h2 id="persistence-and-safety">Persistence and safety<a class="headerlink" href="#persistence-and-safety" title="Permanent link">&para;</a></h2>
-<p>Fitted estimators are stored in the bundle's <code>/native</code> group — never pickled:</p>
+<p>The bundle keeps the fitted estimators in its <code>/native</code> group. It never uses pickle:</p>
 <ul>
-<li>scikit-learn estimators with <a href="https://skops.readthedocs.io">skops</a>. Loading lists the
-  file's types first and refuses anything outside that estimator's allow-list (for example a
-  random forest may contain <code>sklearn.tree._tree.Tree</code>, a ridge regression nothing extra); the
-  loaded object must be exactly the expected class.</li>
-<li>xgboost models as the booster's JSON document.</li>
+<li>scikit-learn estimators with <a href="https://skops.readthedocs.io">skops</a>. Before the platform loads
+  the file, it lists the types in the file. It refuses all types that are not on the allow-list
+  of that estimator. For example, a random forest can contain <code>sklearn.tree._tree.Tree</code>. A ridge
+  regression can contain no extra types. The loaded object must be exactly the expected class.</li>
+<li>xgboost models as the JSON document of the booster.</li>
 </ul>
-<p>The bundle manifest records size, CRC32C, MD5 and SHA-256 of every file, and the contract kit
-checks that no pickle-like entry exists.</p>
+<p>The bundle manifest records the size, CRC32C, MD5 and SHA-256 of each file. The contract kit
+does a check that the bundle contains no entry that looks like pickle.</p>
 <h2 id="write-your-own-sklearn-plugin">Write your own sklearn plugin<a class="headerlink" href="#write-your-own-sklearn-plugin" title="Permanent link">&para;</a></h2>
-<p>Implement <code>estimator()</code> and pick a base class for the representation you want:</p>
+<p>Implement <code>estimator()</code>. Then select a base class for the representation that you want:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sklearn</span><span class="w"> </span><span class="kn">import</span> <span class="n">PointSettings</span><span class="p">,</span> <span class="n">SklearnModel</span><span class="p">,</span> <span class="n">capabilities_for</span>
@@ -5365,11 +5446,11 @@ checks that no pickle-like entry exists.</p>
 </span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">estimator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="n">PointSettings</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Ridge</span><span class="p">:</span>
 </span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>        <span class="k">return</span> <span class="n">Ridge</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># must be exactly an allow-listed class</span>
 </span></code></pre></div>
-<p><code>estimator()</code> may return an allow-listed instance, a <code>{kind, params}</code> mapping or a choice
-model; subclasses of estimators and parameters outside the params model are rejected. Base
-classes: <code>SklearnModel</code> (point), <code>SklearnQuantileModel</code>, <code>SklearnBootstrapModel</code>,
-<code>SklearnConformalModel</code>, <code>SklearnClassifier</code>.</p>
-<p>Run the contract kit on synthetic data before you publish:</p>
+<p><code>estimator()</code> can return an instance from the allow-list, a <code>{kind, params}</code> mapping or a choice
+model. The platform rejects subclasses of estimators and parameters that are not in the params
+model. The base classes are <code>SklearnModel</code> (point), <code>SklearnQuantileModel</code>,
+<code>SklearnBootstrapModel</code>, <code>SklearnConformalModel</code> and <code>SklearnClassifier</code>.</p>
+<p>Before you publish, run the contract kit on synthetic data:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelFixture</span><span class="p">,</span> <span class="n">check_model</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sklearn.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">demand_dataset</span><span class="p">,</span> <span class="n">demand_registry</span><span class="p">,</span> <span class="n">demand_schema</span><span class="p">,</span> <span class="n">demand_spec</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
@@ -5388,11 +5469,12 @@ classes: <code>SklearnModel</code> (point), <code>SklearnQuantileModel</code>, <
 </span></code></pre></div>
 <h2 id="limits-in-v1">Limits in v1<a class="headerlink" href="#limits-in-v1" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Forecasting is direct only: future features must be supplied or derived by the pipeline.</li>
+<li>Forecasts are direct only. You must give the future features, or the pipeline must calculate
+  them.</li>
 <li>Classification is binary.</li>
-<li>Row dims other than <code>time_dim</code> are declared categorical, so integer-labelled groups (numeric
-  store ids) need string labels.</li>
-<li>Contributions are not available for quantile or conformal plugins.</li>
+<li>The platform declares all row dims other than <code>time_dim</code> as categorical. Thus groups with
+  integer labels (numeric store ids) need string labels.</li>
+<li>Contributions are not available for the quantile plugins or the conformal plugins.</li>
 </ul>
 
 

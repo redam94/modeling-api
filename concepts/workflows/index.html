@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1291,6 +1293,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4677,6 +4707,8 @@
       
         
       
+        
+      
     
     
     
@@ -4765,6 +4797,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4968,22 +5028,24 @@
 
 
 <h1 id="workflows-v05">Workflows <span class="mapi-badge">v0.5</span><a class="headerlink" href="#workflows-v05" title="Permanent link">&para;</a></h1>
-<p>A <strong>workflow</strong> strings the steps of an analysis together so they run as one, the same way
-every time: check the data, decide what to do about it, prepare it, choose settings, fit,
-test against benchmarks, pick a winner, run the governance checks and write a report. Each
-step is a <strong>node</strong>; the arrows between them carry typed results. A workflow is a document
-(<code>kind: Workflow</code>, YAML or JSON) that is versioned like a spec, validated before it runs,
-and can run on a schedule or whenever a dataset gets a new version.</p>
+<p>A <strong>workflow</strong> connects the steps of an analysis. The steps run as one unit, in the same way
+each time. A usual sequence is: do a check of the data, decide what to do, prepare the data,
+choose settings, fit, and test against benchmarks. Then select the best model, do the
+governance checks and write a report. Each step is a <strong>node</strong>. The arrows between the nodes
+carry typed results.</p>
+<p>A workflow is a document (<code>kind: Workflow</code>, YAML or JSON). It has versions, the same as a
+spec. The platform validates it before it runs. A workflow can run on a schedule, or each
+time that a dataset gets a new version.</p>
 <div class="admonition info">
 <p class="admonition-title">Status</p>
-<p>The contracts live in <code>mapi_spec.workflow</code>, <code>mapi_spec.workflow_nodes</code>,
+<p>The contracts are in <code>mapi_spec.workflow</code>, <code>mapi_spec.workflow_nodes</code>,
 <code>mapi_spec.workflow_templates</code>, <code>mapi_spec.expr</code>, <code>mapi_spec.splitplan</code> and
-<code>mapi_spec.stattests</code>; the engine and the node implementations in <code>mapi_workflows</code>; the
-endpoints in the <a href="../../reference/http-api/#m35">HTTP API reference</a>. The
-<a href="../../guides/workflows/">workflows guide</a> is the practical walkthrough and cookbook.</p>
+<code>mapi_spec.stattests</code>. The engine and the node implementations are in <code>mapi_workflows</code>.
+The endpoints are in the <a href="../../reference/http-api/#m35">HTTP API reference</a>. The
+<a href="../../guides/workflows/">workflows guide</a> gives the practical walkthrough and cookbook.</p>
 </div>
 <h2 id="the-canonical-example">The canonical example<a class="headerlink" href="#the-canonical-example" title="Permanent link">&para;</a></h2>
-<p>The template <code>ts_readiness_arimax</code> is what most forecasting projects need:</p>
+<p>Most forecasting projects need the template <code>ts_readiness_arimax</code>:</p>
 <pre class="mermaid"><code>flowchart LR
   D[(data)] --&gt; ADF[ADF] &amp; KPSS[KPSS] &amp; PP[PP] &amp; ZA[Zivot-Andrews] &amp; S[Seasonal strength]
   ADF &amp; KPSS &amp; PP &amp; ZA --&gt; W{Difference?}
@@ -4998,18 +5060,18 @@ endpoints in the <a href="../../reference/http-api/#m35">HTTP API reference</a>.
   F --&gt; N[Naive benchmarks]
   BT &amp; N --&gt; C[Compare] --&gt; SEL[Select] --&gt; G[Governance] --&gt; R[Report]</code></pre>
 <ol>
-<li><strong>Unit-root tests.</strong> ADF and Phillips-Perron ask "does the series wander?"; KPSS asks the
-   opposite question; Zivot-Andrews allows for one sudden break.</li>
-<li><strong>Decisions.</strong> A branch differences the series only if the tests say it wanders; another
-   seasonally differences it only if the season is strong.</li>
-<li><strong>Orders.</strong> ACF/PACF suggests how many past values matter; an information-criterion grid
-   search picks the AR and MA orders, with the differencing decision passed in.</li>
-<li><strong>An honest backtest.</strong> An expanding-window plan with an optional gap (for late data)
-   and several horizons (1, 4 and 8 weeks ahead) refits ARIMAX on every fold.</li>
-<li><strong>Benchmarks.</strong> The same folds score naive and seasonal-naive forecasts; the comparison
-   and selection only keep ARIMAX if it beats them.</li>
-<li><strong>Governance and report.</strong> The chosen model goes through the policy checks and a
-   plain-language report explains every decision.</li>
+<li><strong>Unit-root tests.</strong> ADF and Phillips-Perron ask "does the series wander?". KPSS asks the
+   opposite question. Zivot-Andrews permits one sudden break.</li>
+<li><strong>Decisions.</strong> One branch differences the series only if the tests show that it wanders.
+   A different branch seasonally differences the series only if the season is strong.</li>
+<li><strong>Orders.</strong> ACF/PACF shows how many past values are important. An information-criterion
+   grid search selects the AR and MA orders. It gets the differencing decision as an input.</li>
+<li><strong>A correct backtest.</strong> An expanding-window plan refits ARIMAX on each fold. The plan has
+   an optional gap (for late data) and some horizons (1, 4 and 8 weeks ahead).</li>
+<li><strong>Benchmarks.</strong> The same folds score naive and seasonal-naive forecasts. The comparison
+   and the selection keep ARIMAX only if it is better than the benchmarks.</li>
+<li><strong>Governance and report.</strong> The selected model goes through the policy checks. A
+   plain-language report explains each decision.</li>
 </ol>
 <h2 id="the-document">The document<a class="headerlink" href="#the-document" title="Permanent link">&para;</a></h2>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi/v1</span>
@@ -5043,11 +5105,11 @@ endpoints in the <a href="../../reference/http-api/#m35">HTTP API reference</a>.
 <tbody>
 <tr>
 <td><code>params</code></td>
-<td>Run-time parameters with a type, a default (or <code>required: true</code>), bounds and allowed values; a run may override them</td>
+<td>Run-time parameters with a type, a default (or <code>required: true</code>), bounds and permitted values. A run can override them.</td>
 </tr>
 <tr>
 <td><code>inputs</code></td>
-<td>What the workflow consumes: <code>dataset</code>, <code>model_version</code>, <code>split_plan</code>... with an optional default reference</td>
+<td>The items that the workflow uses: <code>dataset</code>, <code>model_version</code>, <code>split_plan</code>... with an optional default reference</td>
 </tr>
 <tr>
 <td><code>nodes[].use</code></td>
@@ -5055,61 +5117,65 @@ endpoints in the <a href="../../reference/http-api/#m35">HTTP API reference</a>.
 </tr>
 <tr>
 <td><code>nodes[].inputs</code></td>
-<td>Port bindings: <code>inputs.&lt;name&gt;</code> or <code>&lt;node&gt;.&lt;port&gt;</code>. For a single-value port a list gives <strong>alternatives</strong> - the first one whose node ran; for a multiple port (<code>compare.models</code> candidates, report items) a list collects every source that ran</td>
+<td>Port bindings: <code>inputs.&lt;name&gt;</code> or <code>&lt;node&gt;.&lt;port&gt;</code>. For a single-value port, a list gives <strong>alternatives</strong>. The port uses the first alternative whose node ran. For a multiple port (<code>compare.models</code> candidates, report items), a list collects all sources that ran.</td>
 </tr>
 <tr>
 <td><code>nodes[].with</code></td>
-<td>Parameters, checked against the node's JSON Schema. A value can be <code>{$param: name}</code> (a workflow parameter) or <code>{$expr: "..."}</code> (computed from upstream results)</td>
+<td>Parameters. The platform checks them against the JSON Schema of the node. A value can be <code>{$param: name}</code> (a workflow parameter) or <code>{$expr: "..."}</code> (calculated from upstream results).</td>
 </tr>
 <tr>
 <td><code>nodes[].when</code></td>
-<td><code>&lt;branch&gt;.then</code> or <code>&lt;branch&gt;.else</code>: the node only runs on that arm</td>
+<td><code>&lt;branch&gt;.then</code> or <code>&lt;branch&gt;.else</code>. The node runs only on that arm.</td>
 </tr>
 <tr>
 <td><code>nodes[].retries</code>, <code>timeout</code>, <code>cache</code>, <code>on_failure</code></td>
-<td>Per-node execution settings (<code>on_failure: continue</code> treats a failure like a skip)</td>
+<td>Execution settings for each node. With <code>on_failure: continue</code>, the platform treats a failure as a skip.</td>
 </tr>
 <tr>
 <td><code>outputs</code></td>
-<td>Named results of the workflow (<code>&lt;node&gt;.&lt;port&gt;</code>), what a parent workflow reads from a sub-workflow</td>
+<td>Named results of the workflow (<code>&lt;node&gt;.&lt;port&gt;</code>). A parent workflow reads these results from a sub-workflow.</td>
 </tr>
 </tbody>
 </table>
-<p>A node gated by an arm that was not taken is <strong>skipped</strong>, and so is every node that needs it,
-unless that node's input has an alternative. This is how "difference only if needed" flows
-into the next step: <code>data: [diff.data, inputs.data]</code>.</p>
+<p>If a node is gated by an arm that the workflow did not take, the node is <strong>skipped</strong>. All
+nodes that need that node are also skipped, unless their input has an alternative. This is
+how "difference only if necessary" goes into the next step: <code>data: [diff.data, inputs.data]</code>.</p>
 <h3 id="typed-ports">Typed ports<a class="headerlink" href="#typed-ports" title="Permanent link">&para;</a></h3>
-<p>Every edge carries one of <code>dataset</code>, <code>test_result</code>, <code>split_plan</code>, <code>model_version</code>, <code>metrics</code>,
-<code>table</code>, <code>plot</code>, <code>report</code> or <code>evidence</code> (<code>mapi_spec.workflow_nodes.PortType</code>). Binding a
-<code>test_result</code> to a <code>dataset</code> port is a validation error, before anything runs.</p>
+<p>Each edge carries one of these types: <code>dataset</code>, <code>test_result</code>, <code>split_plan</code>,
+<code>model_version</code>, <code>metrics</code>, <code>table</code>, <code>plot</code>, <code>report</code> or <code>evidence</code>
+(<code>mapi_spec.workflow_nodes.PortType</code>). If you bind a <code>test_result</code> to a <code>dataset</code> port, you
+get a validation error before a node runs.</p>
 <h2 id="conditions-a-safe-expression-language">Conditions: a safe expression language<a class="headerlink" href="#conditions-a-safe-expression-language" title="Permanent link">&para;</a></h2>
-<p>Branch conditions and <code>$expr</code> values use a tiny language (<code>mapi_spec.expr</code>), parsed by a
-hand-written parser and evaluated over JSON. It is <strong>never</strong> passed to Python's <code>eval</code>, never
-reads an attribute of a Python object, and every input is bounded (2000 characters, 400
-tokens, nesting depth 32, 10 000 evaluation steps).</p>
+<p>Branch conditions and <code>$expr</code> values use a very small language (<code>mapi_spec.expr</code>). A
+hand-written parser parses it, and the platform evaluates it over JSON. The platform
+<strong>never</strong> gives it to the Python <code>eval</code>. It never reads an attribute of a Python object. All
+inputs have limits: 2000 characters, 400 tokens, nesting depth 32 and 10 000 evaluation steps.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>nodes.adf.p_value &lt; params.alpha and not nodes.kpss.reject
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>nodes.seas.strength &gt;= 0.64 or 'seasonal' in params.flags
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>coalesce(nodes.search.best_score, 0) &lt; 500 and exists(nodes.za.details.break_at)
 </span></code></pre></div>
 <ul>
-<li><strong>Values:</strong> numbers, <code>'text'</code> or <code>"text"</code>, <code>true</code>, <code>false</code>, <code>null</code>, lists <code>[a, b]</code>.</li>
-<li><strong>References:</strong> <code>nodes.&lt;id&gt;.&lt;field&gt;</code> (a node's result), <code>params.&lt;name&gt;</code>, <code>inputs.&lt;name&gt;</code>,
-  <code>run.&lt;field&gt;</code>; index with <code>[0]</code> or <code>['5%']</code>.</li>
+<li><strong>Values:</strong> numbers, <code>'text'</code> or <code>"text"</code>, <code>true</code>, <code>false</code>, <code>null</code>, and lists <code>[a, b]</code>.</li>
+<li><strong>References:</strong> <code>nodes.&lt;id&gt;.&lt;field&gt;</code> (the result of a node), <code>params.&lt;name&gt;</code>,
+  <code>inputs.&lt;name&gt;</code> and <code>run.&lt;field&gt;</code>. Index with <code>[0]</code> or <code>['5%']</code>.</li>
 <li><strong>Operators:</strong> <code>== != &lt; &lt;= &gt; &gt;=</code>, <code>in</code>, <code>not in</code>, <code>and</code>, <code>or</code>, <code>not</code>, <code>+ - * / %</code>, unary <code>-</code>
-  and parentheses. Comparisons cannot be chained (<code>a &lt; b &lt; c</code> is refused: write
-  <code>a &lt; b and b &lt; c</code>).</li>
+  and parentheses. You cannot chain comparisons. The language refuses <code>a &lt; b &lt; c</code>. Write
+  <code>a &lt; b and b &lt; c</code>.</li>
 <li><strong>Functions:</strong> <code>abs</code>, <code>min</code>, <code>max</code>, <code>len</code>, <code>round</code>, <code>any</code>, <code>all</code>, <code>exists</code>, <code>coalesce</code> and
-  <code>if(condition, a, b)</code>, which only evaluates the chosen value.</li>
+  <code>if(condition, a, b)</code>. The <code>if</code> function evaluates only the selected value.</li>
 </ul>
-<p>The rules are strict so a condition means what it says: <code>and</code>/<code>or</code>/<code>not</code> need true or false
-(no "truthy" numbers), ordering compares numbers with numbers and text with text, and a
-missing result is an error unless it is wrapped in <code>exists</code> or <code>coalesce</code>. Static validation
-checks that every referenced node runs <strong>before</strong> the branch and that the field is one the
-node produces (its <code>result_fields</code>).</p>
+<p>The rules are strict. Thus, a condition means exactly what it says:</p>
+<ul>
+<li><code>and</code>/<code>or</code>/<code>not</code> need true or false. Numbers are not "truthy".</li>
+<li>An order comparison compares numbers with numbers and text with text.</li>
+<li>A missing result is an error, unless it is in <code>exists</code> or <code>coalesce</code>.</li>
+</ul>
+<p>Static validation makes sure that each referenced node runs <strong>before</strong> the branch. It also
+makes sure that the node produces the field (its <code>result_fields</code>).</p>
 <h2 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
-<p><code>POST /v1/workflows:validate</code> (and every saved revision) runs
-<code>mapi_spec.workflow.validate_workflow</code>, which reports each problem with a JSON pointer:</p>
+<p><code>POST /v1/workflows:validate</code> runs <code>mapi_spec.workflow.validate_workflow</code>. Each saved revision
+also runs it. It reports each problem with a JSON pointer:</p>
 <table>
 <thead>
 <tr>
@@ -5156,30 +5222,32 @@ node produces (its <code>result_fields</code>).</p>
 </tr>
 </tbody>
 </table>
-<p>A revision with errors is stored (so you can fix it) but cannot run
-(<code>409 WORKFLOW_NOT_RUNNABLE</code>).</p>
+<p>The platform stores a revision with errors, thus you can correct it. But the revision cannot
+run (<code>409 WORKFLOW_NOT_RUNNABLE</code>).</p>
 <h2 id="runs-caching-and-automation">Runs, caching and automation<a class="headerlink" href="#runs-caching-and-automation" title="Permanent link">&para;</a></h2>
 <p>A run (<code>POST /v1/workflows/{workflow_id}/runs</code>) is a parent run of kind <code>workflow</code>. The
-orchestrator walks the graph in topological order and:</p>
+orchestrator goes through the graph in topological order. It does these actions:</p>
 <ul>
-<li>evaluates <strong>branches</strong> and <strong>selections</strong> itself, on JSON results only (<code>orchestrator</code>
-  nodes), recording a <code>BranchDecision</code> with the values the condition read;</li>
-<li>sends <strong>tests, transforms, splits, searches, backtests, forecasts, evaluations and
-  governance checks</strong> to sandboxed <code>workflow_node</code> child runs (user data is only ever
-  decoded in the sandbox);</li>
-<li>starts <strong>fits</strong> as ordinary <code>fit</code> child runs and <strong>sub-workflows</strong> as child workflow runs
+<li>It evaluates <strong>branches</strong> and <strong>selections</strong> itself, on JSON results only (<code>orchestrator</code>
+  nodes). It records a <code>BranchDecision</code> with the values that the condition read.</li>
+<li>It sends <strong>tests, transforms, splits, searches, backtests, forecasts, evaluations and
+  governance checks</strong> to sandboxed <code>workflow_node</code> child runs. Only the sandbox decodes user
+  data.</li>
+<li>It starts <strong>fits</strong> as usual <code>fit</code> child runs, and <strong>sub-workflows</strong> as child workflow runs
   (see <a href="../../guides/workflows/#where-nodes-run">where nodes run</a>).</li>
 </ul>
-<p>Each node's identity is a <strong>cache key</strong> (<code>node_cache_key</code>): the resolved implementation, its
-resolved parameters and the content of its inputs. An unchanged node reuses its earlier result
-(status <code>cached</code>) - rerunning a workflow after changing only the final report re-runs only
-the report. Every node records its status, attempt, result, outputs, child runs and cost.</p>
-<p><strong>Schedules</strong> run a workflow on a cron expression in a time zone (<code>@daily</code>, <code>0 6 * * 1</code>; at
-most every 15 minutes; daylight-saving gaps are handled). <strong>Triggers</strong> run it whenever a
-dataset gets a new version, bound to one of its inputs. Terminal runs notify webhooks.</p>
+<p>The identity of each node is a <strong>cache key</strong> (<code>node_cache_key</code>). The key contains the
+resolved implementation, its resolved parameters and the content of its inputs. If a node
+did not change, it uses its earlier result again (status <code>cached</code>). For example, if you change
+only the final report and run the workflow again, only the report runs again. Each node
+records its status, attempt, result, outputs, child runs and cost.</p>
+<p><strong>Schedules</strong> run a workflow on a cron expression in a time zone (<code>@daily</code>, <code>0 6 * * 1</code>). The
+shortest interval is 15 minutes. The schedule handles daylight-saving gaps. <strong>Triggers</strong> run a
+workflow each time that a dataset gets a new version. A trigger has a binding to one of the
+inputs of the workflow. Terminal runs send a notification to webhooks.</p>
 <h2 id="the-node-catalog">The node catalog<a class="headerlink" href="#the-node-catalog" title="Permanent link">&para;</a></h2>
-<p><code>GET /v1/catalog/workflow-nodes</code> lists every implementation with its ports, parameter
-schema, result fields and an <a href="../about-and-choosing/">About card</a>.</p>
+<p><code>GET /v1/catalog/workflow-nodes</code> lists all implementations. For each implementation, it gives
+its ports, parameter schema, result fields and an <a href="../about-and-choosing/">About card</a>.</p>
 <table>
 <thead>
 <tr>
@@ -5194,7 +5262,7 @@ schema, result fields and an <a href="../about-and-choosing/">About card</a>.</p
 </tr>
 <tr>
 <td>Data processing</td>
-<td><code>transform.difference</code>, <code>transform.seasonal_difference</code>, <code>transform.log</code>, <code>transform.box_cox</code>, <code>transform.steps</code> (any catalog preprocessing steps), <code>transform.select</code></td>
+<td><code>transform.difference</code>, <code>transform.seasonal_difference</code>, <code>transform.log</code>, <code>transform.box_cox</code>, <code>transform.steps</code> (all catalog preprocessing steps), <code>transform.select</code></td>
 </tr>
 <tr>
 <td>Train/test plans</td>
@@ -5206,7 +5274,7 @@ schema, result fields and an <a href="../about-and-choosing/">About card</a>.</p
 </tr>
 <tr>
 <td>Models</td>
-<td><code>model.fit</code> (any catalog model), <code>model.backtest</code>, <code>model.forecast</code></td>
+<td><code>model.fit</code> (all catalog models), <code>model.backtest</code>, <code>model.forecast</code></td>
 </tr>
 <tr>
 <td>Evaluation</td>
@@ -5230,20 +5298,26 @@ schema, result fields and an <a href="../about-and-choosing/">About card</a>.</p
 </tr>
 </tbody>
 </table>
-<p>Every test returns a <code>StatTestResult</code>: the statistic, the p-value, the decision at the
-significance level (<code>reject</code>, and a label such as <code>unit_root</code> or <code>stationary</code>), the verdict
-in plain words and, for panels, the result per series. KPSS's null hypothesis is the "good"
-case, so its labels are the other way round from ADF's; <code>mapi_spec.stattests.decide</code> keeps
-them straight.</p>
+<p>Each test returns a <code>StatTestResult</code>. It contains these items:</p>
+<ul>
+<li>The statistic and the p-value</li>
+<li>The decision at the significance level: <code>reject</code>, and a label such as <code>unit_root</code> or
+  <code>stationary</code></li>
+<li>The verdict in plain words</li>
+<li>For panels, the result for each series</li>
+</ul>
+<p>The null hypothesis of KPSS is the "good" case. Thus, its labels are the opposite of the
+labels of ADF. <code>mapi_spec.stattests.decide</code> keeps them correct.</p>
 <h3 id="traintest-plans">Train/test plans<a class="headerlink" href="#traintest-plans" title="Permanent link">&para;</a></h3>
-<p>A <code>SplitPlan</code> describes many folds at once (<code>mapi_spec.splitplan</code>). Window plans have
-<code>horizons</code> (scored separately), a <code>step</code> between origins, a <code>gap</code> between training and test,
-<code>n_folds</code> and an <code>anchor</code> (by default the last test window ends at the last period). Folds are
-computed from the number of periods alone, so the web app shows them before anything runs;
-<code>expanding_window</code> and <code>rolling_origin</code> match scikit-learn's <code>TimeSeriesSplit</code>, and an
+<p>A <code>SplitPlan</code> describes many folds at one time (<code>mapi_spec.splitplan</code>). Window plans have
+these fields: <code>horizons</code> (scored separately), a <code>step</code> between origins, a <code>gap</code> between
+training and test, <code>n_folds</code> and an <code>anchor</code>. By default, the last test window ends at the
+last period. The platform calculates folds from the number of periods only. Thus, the web app
+shows the folds before a node runs.</p>
+<p><code>expanding_window</code> and <code>rolling_origin</code> match the scikit-learn <code>TimeSeriesSplit</code>. An
 expanding fold is exactly the existing <code>as_of</code> split with its <code>gap</code>. <code>geo_holdout</code> holds out
-whole markets (optionally only over their last periods), and <code>nested</code> runs an inner plan
-inside each outer training window for honest tuning.</p>
+full markets, optionally only over their last periods. <code>nested</code> runs an inner plan in each
+outer training window, for correct tuning.</p>
 <h2 id="the-gallery">The gallery<a class="headerlink" href="#the-gallery" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5255,11 +5329,11 @@ inside each outer training window for honest tuning.</p>
 <tbody>
 <tr>
 <td><code>ts_readiness_arimax</code></td>
-<td>Unit-root tests, differencing decided by branches, order search, an expanding-window backtest against naive benchmarks, selection, governance, report</td>
+<td>Unit-root tests, differencing that branches decide, order search, an expanding-window backtest against naive benchmarks, selection, governance and a report</td>
 </tr>
 <tr>
 <td><code>var_vecm_cointegration</code></td>
-<td>Johansen test; a VECM with the selected rank when the series are tied together, otherwise differences, a lag search and a VAR; Granger tests; report</td>
+<td>A Johansen test. If the series are tied together, a VECM with the selected rank. If not, differences, a lag search and a VAR. Granger tests and a report.</td>
 </tr>
 <tr>
 <td><code>mmm_governed</code></td>
@@ -5267,12 +5341,12 @@ inside each outer training window for honest tuning.</p>
 </tr>
 <tr>
 <td><code>forecast_bakeoff</code></td>
-<td>SARIMAX, ETS, Theta and the smooth-trend model backtested on the same folds against benchmarks; the winner is refitted</td>
+<td>A backtest of SARIMAX, ETS, Theta and the smooth-trend model on the same folds, against benchmarks. The platform fits the best model again.</td>
 </tr>
 </tbody>
 </table>
-<p>Create a workflow from a template with <code>POST /v1/workflows</code> and <code>{"template": "&lt;id&gt;"}</code>, then
-edit its parameters or nodes like any other workflow.</p>
+<p>To make a workflow from a template, use <code>POST /v1/workflows</code> with <code>{"template": "&lt;id&gt;"}</code>.
+Then edit its parameters or nodes, the same as for all other workflows.</p>
 
 
 

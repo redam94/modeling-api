@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1291,6 +1293,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4738,6 +4768,8 @@
       
         
       
+        
+      
     
     
     
@@ -4826,6 +4858,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5090,44 +5150,53 @@
 
 
 <h1 id="guided-mode-v04">Guided mode <span class="mapi-badge">v0.4</span><a class="headerlink" href="#guided-mode-v04" title="Permanent link">&para;</a></h1>
-<p>Guided mode is for analysts who know their business but not PyMC. It is organised around
-<strong>tasks, not screens</strong>: pick what you want to learn, answer questions about your columns,
-state what you already believe, run, read a plain-language report and play with what-if
-sliders. Behind every answer sits the same <code>ModelSpec</code> that Expert mode edits, so "View as
-YAML" always shows the real thing and Expert edits round-trip back.</p>
-<p>This page explains the concepts and the contracts in <code>mapi_spec</code> that the server, the web app
-and the client share. The endpoints are listed in the
-<a href="../../reference/http-api/#guided-and-integrations">HTTP API reference</a>.</p>
+<p>Guided mode is for analysts who know their business but do not know PyMC. Guided mode uses
+<strong>tasks, not screens</strong>. You select what you want to learn and answer questions about your
+columns. You tell what you already believe. Then you start a run, read a report in plain
+language and move the what-if sliders. Each answer goes into the same <code>ModelSpec</code> that Expert
+mode edits. Thus "View as YAML" always shows the real spec, and edits in Expert mode come back
+to Guided mode.</p>
+<p>This page tells about the concepts and the contracts in <code>mapi_spec</code>. The server, the web app
+and the client use the same contracts. The
+<a href="../../reference/http-api/#guided-and-integrations">HTTP API reference</a> gives the endpoints.</p>
 <div class="admonition info">
 <p class="admonition-title">Status</p>
-<p>The server and the runner serve every contract on this page: the data path (templates,
-role detection, drafts, the sandboxed ingest presets and the
-persona lock, walked through in
-<a href="../../guides/guided-data/">From a spreadsheet to a Guided draft</a>) and the modelling path
-(business priors, lift tests, the scorecard, the what-if grids and the forecast and
-counterfactual views, in <a href="../../guides/guided-modelling/">Guided modelling</a>). The web app's
-Guided screens use all of it: see
+<p>The server and the runner serve all the contracts on this page. The data path includes
+the templates, role detection, drafts, the ingest presets in the sandbox and the persona
+lock. <a href="../../guides/guided-data/">From a spreadsheet to a Guided draft</a> shows the data path.
+The modelling path includes business priors, lift tests, the scorecard, the what-if grids
+and the forecast and counterfactual views. <a href="../../guides/guided-modelling/">Guided modelling</a>
+shows the modelling path. The Guided screens of the web app use all of it. Refer to
 <a href="../../guides/guided-tutorial/">Your first analysis in Guided mode</a>.</p>
 </div>
 <h2 id="the-persona-lock">The persona lock<a class="headerlink" href="#the-persona-lock" title="Permanent link">&para;</a></h2>
-<p>Every user picks Guided or Expert in the header, and the choice is remembered (until then, a
-self-service workspace starts in Guided mode and any other in Expert). A project admin
-can <strong>lock a project to Guided mode</strong> (<code>Project.guided_locked</code>: <strong>Settings &gt; Mode &gt; Lock
-… to Guided mode</strong> in the web app, or
-<code>PATCH /v1/tenants/{tenant_id}/projects/{project_id}</code>; audited as <code>project.guided_lock</code>):
-members below admin then only see Guided screens.</p>
-<p>The API holds those members to the same line when they <strong>write specs</strong>
-(<code>mapi_spec.guided.guided_lock_issues</code>): a stored spec must be a Guided spec - its
-<code>metadata.labels.guided</code> names a template and <code>model.use</code> is that template's plugin - and
-the fields the template marks <code>advanced</code> or <code>hidden</code> keep their values (a revision keeps its
-parent's, a new spec the template's). Answers, <code>basic</code> settings, business priors and lift
-tests stay editable. Anything else is <code>403 FORBIDDEN</code> with one issue per JSON pointer.
-Admins, static validation, runs and scoring - and so integrations calling endpoints - are not
-affected.</p>
+<p>Each user selects Guided or Expert in the header, and the app keeps the selection. Before a
+user selects a mode, a self-service workspace starts in Guided mode. All other workspaces
+start in Expert mode. A project admin can <strong>lock a project to Guided mode</strong>
+(<code>Project.guided_locked</code>). In the web app, use <strong>Settings &gt; Mode &gt; Lock
+… to Guided mode</strong>. With the API, use
+<code>PATCH /v1/tenants/{tenant_id}/projects/{project_id}</code>. The audit log records the change as
+<code>project.guided_lock</code>. After the lock, members below admin see only Guided screens.</p>
+<p>The API applies the same limit when these members <strong>write specs</strong>
+(<code>mapi_spec.guided.guided_lock_issues</code>). A stored spec must be a Guided spec. Its
+<code>metadata.labels.guided</code> names a template, and <code>model.use</code> is the plugin of that template.
+The fields that the template marks <code>advanced</code> or <code>hidden</code> keep their values. A revision keeps
+the values of its parent, and a new spec keeps the values of the template. Members can edit
+answers, <code>basic</code> settings, business priors and lift tests. All other changes get
+<code>403 FORBIDDEN</code>, with one issue for each JSON pointer.</p>
+<p>The lock has no effect on admins, static validation, runs or scoring. Thus integrations that
+call endpoints also have no limit.</p>
 <h2 id="1-what-do-you-want-to-learn-templates">1. "What do you want to learn?" - templates<a class="headerlink" href="#1-what-do-you-want-to-learn-templates" title="Permanent link">&para;</a></h2>
-<p>A template (<code>GuidedTemplate</code>) is data: a title and description in plain words, the questions,
-the built-in plugin it uses, a <code>ModelSpec</code> template with <code>{{placeholder}}</code> strings, default
-settings, the scorecard checks that apply and <code>x-ui-level</code> hints for every field.</p>
+<p>A template (<code>GuidedTemplate</code>) is data. It contains these items:</p>
+<ul>
+<li>a title and a description in plain words</li>
+<li>the questions</li>
+<li>the built-in plugin that it uses</li>
+<li>a <code>ModelSpec</code> template with <code>{{placeholder}}</code> strings</li>
+<li>default settings</li>
+<li>the scorecard checks that apply</li>
+<li><code>x-ui-level</code> hints for each field.</li>
+</ul>
 <table>
 <thead>
 <tr>
@@ -5143,7 +5212,7 @@ settings, the scorecard checks that apply and <code>x-ui-level</code> hints for 
 <tr>
 <td><code>geo_mmm</code> - Geo marketing mix</td>
 <td><code>mmm.bayesian</code> (mmm-framework)</td>
-<td>What each channel adds in each market; moving budget</td>
+<td>The contribution of each channel in each market; budget changes between channels</td>
 <td>yes</td>
 <td>yes</td>
 <td>yes, and lift tests</td>
@@ -5151,7 +5220,7 @@ settings, the scorecard checks that apply and <code>x-ui-level</code> hints for 
 <tr>
 <td><code>weekly_forecast</code> - Weekly forecast</td>
 <td><code>ts.hsgp_trend</code></td>
-<td>One series, weeks or months ahead, with a range</td>
+<td>One series, some weeks or months ahead, with a range</td>
 <td>—</td>
 <td>yes</td>
 <td>—</td>
@@ -5159,7 +5228,7 @@ settings, the scorecard checks that apply and <code>x-ui-level</code> hints for 
 <tr>
 <td><code>store_demand</code> - Demand by store</td>
 <td><code>tabular.regressor</code></td>
-<td>Units per store and week from prices and promotions (low/median/high)</td>
+<td>Units for each store and week from prices and promotions (low/median/high)</td>
 <td>—</td>
 <td>yes</td>
 <td>—</td>
@@ -5167,7 +5236,7 @@ settings, the scorecard checks that apply and <code>x-ui-level</code> hints for 
 <tr>
 <td><code>customer_choice</code> - Customer choice</td>
 <td><code>choice.multinomial_logit</code></td>
-<td>Which product customers pick and how price shifts the choice</td>
+<td>The product that customers select, and how price changes the selection</td>
 <td>presets</td>
 <td>—</td>
 <td>—</td>
@@ -5176,73 +5245,77 @@ settings, the scorecard checks that apply and <code>x-ui-level</code> hints for 
 </table>
 <div class="admonition tip">
 <p class="admonition-title">Customer choice: a conditional logit with household effects</p>
-<p><code>customer_choice</code> targets the built-in <code>choice.multinomial_logit</code>: alternative-specific
-utilities over price and promotion, household-specific product preferences (a
-random-intercept logit fitted at its posterior mode) and Bayesian-bootstrap draws over
-households, so shares, counterfactual deltas and sums over trips keep their uncertainty.
-A product without a price on a trip was not on the shelf; new households draw their
-preferences from the fitted spread. Choice values must name products the way the price
-columns do (<code>price_cola</code> goes with the choice <code>cola</code>). See
+<p><code>customer_choice</code> uses the built-in <code>choice.multinomial_logit</code>. The model has utilities
+for each alternative from price and promotion. It has a product preference for each
+household: a random-intercept logit, fitted at its posterior mode. It also has
+Bayesian-bootstrap draws over households. Thus shares, counterfactual deltas and sums over
+trips keep their uncertainty. If a product has no price on a trip, the product was not on
+the shelf. New households draw their preferences from the fitted spread. Choice values
+must name products in the same way as the price columns (<code>price_cola</code> goes with the choice
+<code>cola</code>). Refer to
 <a href="../../reference/models/#choicemultinomial_logit-which-product-customers-pick">Built-in models</a>.</p>
 </div>
-<p>Every template fits with <code>fit.mode: evaluate_then_refit</code>: the model is first fitted without
-the latest periods to measure its forecast error, then refitted on everything, which is what
-endpoints require.</p>
+<p>All templates fit with <code>fit.mode: evaluate_then_refit</code>. First, the platform fits the model
+without the latest periods, to measure its forecast error. Then it fits the model again on all
+the data. Endpoints need this fit mode.</p>
 <h2 id="2-questions-instead-of-a-role-mapper">2. Questions instead of a role mapper<a class="headerlink" href="#2-questions-instead-of-a-role-mapper" title="Permanent link">&para;</a></h2>
-<p>Instead of mapping columns to dims and roles, the user answers questions such as "Which column
-is the result you want to explain?" or "Which columns are media spend (one per channel)?". A
-question (<code>GuidedQuestion</code>) says what its answer becomes:</p>
+<p>The user does not map columns to dims and roles. The user answers questions, for example
+"Which column is the result you want to explain?" or "Which columns are media spend (one per
+channel)?". A question (<code>GuidedQuestion</code>) tells what its answer becomes:</p>
 <ul>
-<li>a <strong>dim</strong> (<code>date</code> → the time dim, <code>geo</code> → markets), with the dim's policy;</li>
-<li>a <strong>variable with a role</strong> (<code>kpi</code> → the target);</li>
-<li><strong>one variable along a new dim</strong> built from several columns (<code>spend</code> → one <code>spend</code> variable
-  along <code>channel</code>, one label per column: <code>tv_spend</code> becomes channel <code>tv</code>);</li>
-<li>several separate variables (<code>controls</code>), or a choice or a number (frequency, holdout length).</li>
+<li>a <strong>dim</strong> (<code>date</code> → the time dim, <code>geo</code> → markets), with the policy of the dim</li>
+<li>a <strong>variable with a role</strong> (<code>kpi</code> → the target)</li>
+<li><strong>one variable along a new dim</strong> that the platform makes from some columns (<code>spend</code> → one
+  <code>spend</code> variable along <code>channel</code>, with one label for each column: <code>tv_spend</code> becomes channel
+  <code>tv</code>)</li>
+<li>some separate variables (<code>controls</code>), or a choice or a number (frequency, holdout length).</li>
 </ul>
 <h3 id="role-detection">Role detection<a class="headerlink" href="#role-detection" title="Permanent link">&para;</a></h3>
-<p>The browser profiles the upload locally (nothing hostile reaches the servers just to be
-previewed) and sends <code>ColumnProfile</code>s - name, type, row and missing counts, distinct values,
-range, detected date frequency. <code>POST /v1/guided/detect-roles</code> (or the pure function
-<code>mapi_spec.guided.suggest_roles</code>) ranks the columns for every question and pre-fills answers:</p>
+<p>The browser makes a profile of the upload on the local computer. Thus no dangerous data goes
+to the servers for a preview. The browser sends <code>ColumnProfile</code>s. Each profile has the name,
+the type, the row and missing counts, the distinct values, the range and the date frequency
+that the browser found. <code>POST /v1/guided/detect-roles</code> (or the pure function
+<code>mapi_spec.guided.suggest_roles</code>) ranks the columns for each question and fills in the
+answers:</p>
 <ul>
-<li>names are split into words (<code>SearchSpend</code> → <code>search spend</code>) and matched against each
-  question's keywords;</li>
-<li>types must fit (a date question wants dates; spend wants numbers, preferably never negative);</li>
-<li>
-<p>label-like columns (few repeated values) suit dim questions; mostly empty columns lose points.</p>
-</li>
-<li>
-<p>dates in order and trip numbers that count up suit ordered dims; spend with negative values
-  and columns that never change lose points.</p>
-</li>
+<li>The function splits names into words (<code>SearchSpend</code> → <code>search spend</code>). It compares the words
+  with the keywords of each question.</li>
+<li>Types must agree. A date question needs dates. A spend question needs numbers, and numbers
+  that are never negative are better.</li>
+<li>Columns that look like labels (few values that repeat) are good for dim questions. Columns
+  that are almost empty lose points.</li>
+<li>Dates in sequence and trip numbers that increase are good for ordered dims. Spend with
+  negative values and columns that do not change lose points.</li>
 </ul>
-<p>Every candidate comes with a <code>confidence</code> between 0 and 1 and a <code>reason_plain</code> such as "named
-like a revenue column; never negative". Answers are pre-filled at confidence 0.5 or more, a
-column answers at most one question, and the data frequency is read from the chosen date
-column. Required questions left without a candidate come back as warnings.</p>
-<p>Detection also works on a <strong>stored dataset version</strong> (<code>dataset</code> instead of <code>columns</code>): its
-ingest run wrote <code>columns.json</code>, the sandbox's profile of every uploaded column (for MFF
-uploads: of the pivoted variables), and versions without one are profiled from their stored
-schema and summary - the API only ever reads that JSON.</p>
+<p>Each candidate has a <code>confidence</code> between 0 and 1 and a <code>reason_plain</code>, for example "named
+like a revenue column; never negative". The function fills in an answer when the confidence
+is 0.5 or more. A column answers a maximum of one question. The function reads the data
+frequency from the selected date column. If a necessary question has no candidate, the
+function returns a warning.</p>
+<p>Detection also works on a <strong>stored dataset version</strong> (<code>dataset</code> instead of <code>columns</code>). The
+ingest run of the version wrote <code>columns.json</code>. This file is the profile that the sandbox made
+of each uploaded column (for MFF uploads, of the pivoted variables). For versions without this
+file, the platform makes the profile from the stored schema and summary. The API reads only
+that JSON.</p>
 <h3 id="drafts-and-view-as-yaml">Drafts and "View as YAML"<a class="headerlink" href="#drafts-and-view-as-yaml" title="Permanent link">&para;</a></h3>
-<p><code>POST /v1/guided/drafts</code> (<code>mapi_spec.guided.build_draft</code>) turns <code>GuidedAnswers</code> into a
-<code>GuidedDraft</code>:</p>
+<p><code>POST /v1/guided/drafts</code> (<code>mapi_spec.guided.build_draft</code>) changes <code>GuidedAnswers</code> into a
+<code>GuidedDraft</code>. The draft contains these items:</p>
 <ul>
-<li>an <code>IngestMapping</code> for the upload (column names become safe dataset names:
-  <code>Revenue (EUR)</code> → <code>revenue_eur</code>);</li>
-<li>the <code>ModelSpec</code> document, with every placeholder filled from answers, template defaults or
-  lookups (for example the season length from the frequency), and the business priors and
-  lift tests in its <code>calibration</code> block;</li>
+<li>an <code>IngestMapping</code> for the upload. Column names become safe dataset names:
+  <code>Revenue (EUR)</code> → <code>revenue_eur</code>.</li>
+<li>the <code>ModelSpec</code> document. Each placeholder gets a value from the answers, the template
+  defaults or lookups (for example, the season length from the frequency). The <code>calibration</code>
+  block contains the business priors and lift tests.</li>
 <li>the same spec as YAML.</li>
 </ul>
-<p>The server validates the draft statically against the catalog, with the schema the mapping
-promises (<code>mapi_spec.guided.draft_schema</code>), and returns the findings in <code>issues</code>. Nothing is
-stored: upload the data as a dataset version with the mapping and save the spec with
-<code>POST /v1/specs</code>. Wrong answers come back as <code>GUIDED_ANSWERS_INVALID</code> pointing at
-<code>/answers/&lt;question&gt;</code>.</p>
+<p>The server does a static validation of the draft against the catalog. It uses the schema that
+the mapping gives (<code>mapi_spec.guided.draft_schema</code>). It returns the findings in <code>issues</code>. The
+server stores nothing. Upload the data as a dataset version with the mapping. Then save the
+spec with <code>POST /v1/specs</code>. Incorrect answers come back as <code>GUIDED_ANSWERS_INVALID</code>, with a
+pointer to <code>/answers/&lt;question&gt;</code>.</p>
 <h2 id="file-formats-and-presets">File formats and presets<a class="headerlink" href="#file-formats-and-presets" title="Permanent link">&para;</a></h2>
-<p>Uploads are parsed only in a sandboxed ingest run. Besides an explicit column mapping, the
-<code>IngestMapping.preset</code> field names a file contract marketing teams already have:</p>
+<p>Only a sandboxed ingest run parses uploads. You can give an explicit column mapping. Or the
+<code>IngestMapping.preset</code> field can name a file contract that marketing teams already use:</p>
 <table>
 <thead>
 <tr>
@@ -5253,7 +5326,7 @@ stored: upload the data as a dataset version with the mapping and save the spec 
 <tbody>
 <tr>
 <td><code>csv</code>, <code>parquet</code></td>
-<td>A column mapping: <code>dims</code>, <code>vars</code> and, for wide tables, <code>wide</code> (<code>WideVarMapping</code>: one variable from one column per label)</td>
+<td>A column mapping: <code>dims</code>, <code>vars</code> and, for wide tables, <code>wide</code> (<code>WideVarMapping</code>: one variable from one column for each label)</td>
 </tr>
 <tr>
 <td><code>mff</code> (format or preset)</td>
@@ -5261,16 +5334,16 @@ stored: upload the data as a dataset version with the mapping and save the spec 
 </tr>
 <tr>
 <td><code>meridian</code></td>
-<td>Google Meridian's <code>CoordToColumns</code> wide table (<code>MeridianColumns</code>): <code>time</code>, <code>geo</code>, <code>kpi</code>, <code>controls</code>, and parallel <code>media</code>/<code>media_spend</code> (and reach/frequency) lists per channel</td>
+<td>The <code>CoordToColumns</code> wide table of Google Meridian (<code>MeridianColumns</code>): <code>time</code>, <code>geo</code>, <code>kpi</code>, <code>controls</code>, and parallel <code>media</code>/<code>media_spend</code> (and reach/frequency) lists for each channel</td>
 </tr>
 <tr>
 <td><code>zarr_zip</code>, <code>netcdf</code></td>
-<td>Self-describing labelled datasets</td>
+<td>Labelled datasets that describe themselves</td>
 </tr>
 </tbody>
 </table>
-<p>The <strong>MFF</strong> ("model feature format") long table has one row per period, key combination and
-variable - the MFF convention mmm-framework uses too (<code>mapi_spec.ingest.MFF_COLUMNS</code>):</p>
+<p>The <strong>MFF</strong> ("model feature format") long table has one row for each period, key combination
+and variable. mmm-framework uses the same MFF convention (<code>mapi_spec.ingest.MFF_COLUMNS</code>):</p>
 <table>
 <thead>
 <tr>
@@ -5281,15 +5354,15 @@ variable - the MFF convention mmm-framework uses too (<code>mapi_spec.ingest.MFF
 <tbody>
 <tr>
 <td><code>Period</code></td>
-<td>The date; weekly data must fall on the same weekday</td>
+<td>The date. Weekly data must be on the same day of the week.</td>
 </tr>
 <tr>
 <td><code>Geography</code>, <code>Product</code></td>
-<td>Panel levels; each becomes a dim when it has more than one level. A blank label (or <code>National</code>, <code>Total</code>, <code>All</code>) is the total: a variable given only there (national TV) is spread across the levels - geographies equally, products by the KPI's share (<code>MffOptions.allocation</code>), as mmm-framework does</td>
+<td>Panel levels. Each column becomes a dim when it has more than one level. A blank label (or <code>National</code>, <code>Total</code>, <code>All</code>) is the total. The ingest spreads a variable that has values only in the total (national TV) across the levels. Geographies get equal parts. Products get parts by the share of the KPI (<code>MffOptions.allocation</code>). mmm-framework does the same.</td>
 </tr>
 <tr>
 <td><code>Outlet</code>, <code>Campaign</code>, <code>Creative</code></td>
-<td>Breakdowns: rows that differ only there are summed, unless <code>MffOptions.split</code> keeps the column as a dim</td>
+<td>Breakdowns. The ingest adds together rows that are different only in these columns. <code>MffOptions.split</code> keeps the column as a dim.</td>
 </tr>
 <tr>
 <td><code>VariableName</code></td>
@@ -5301,12 +5374,12 @@ variable - the MFF convention mmm-framework uses too (<code>mapi_spec.ingest.MFF
 </tr>
 </tbody>
 </table>
-<p>MFF tables can also be pivoted and then mapped like a CSV (the variables become columns),
-and <code>MffOptions.combine</code> joins key columns into one dim. The ingest enforces caps on rows, columns, cell length and
-decompression and explains every refusal; see
+<p>You can also pivot MFF tables and then map them like a CSV file (the variables become
+columns). <code>MffOptions.combine</code> joins key columns into one dim. The ingest applies limits on
+rows, columns, cell length and decompression. It explains each refusal. Refer to
 <a href="../../guides/guided-data/#file-formats-and-presets">File formats and presets</a>.</p>
 <h2 id="3-business-priors-and-lift-tests">3. Business priors and lift tests<a class="headerlink" href="#3-business-priors-and-lift-tests" title="Permanent link">&para;</a></h2>
-<p>Users state what they already believe <strong>in business units</strong> (<code>BusinessPriors</code>):</p>
+<p>Users tell what they already believe <strong>in business units</strong> (<code>BusinessPriors</code>):</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">calibration</span><span class="p">:</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">business_priors</span><span class="p">:</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">channels</span><span class="p">:</span>
@@ -5319,33 +5392,36 @@ decompression and explains every refusal; see
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nt">       spend_delta</span><span class="p">:</span><span class="w"> </span><span class="nv">-120000</span><span class="p p-Indicator">,</span><span class="nt"> kpi_delta</span><span class="p">:</span><span class="w"> </span><span class="nv">-260000</span><span class="p p-Indicator">,</span><span class="nt"> ci</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">-380000</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">-140000</span><span class="p p-Indicator">],</span><span class="nt"> ci_level</span><span class="p">:</span><span class="w"> </span><span class="nv">0.9</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
 <ul>
-<li><strong>Credibility</strong> is the probability that the truth lies inside the range. A range
-  <code>[low, high]</code> at credibility <em>c</em> becomes a log-normal (ROI) or logit-normal (share) whose
-  central <em>c</em> interval is exactly that range (<code>lognormal_from_range</code>).</li>
-<li>Shares must fit inside the KPI: the smallest shares (channels plus baseline) cannot add up
-  to more than 100% (<code>BUSINESS_PRIORS_INVALID</code>).</li>
-<li>At least one belief is stated, but any one will do: <code>baseline_share</code> alone (no
-  <code>channels</code>) narrows only the baseline, and channels without a belief keep the model's
-  default priors.</li>
-<li><strong>Lift tests</strong> are experiment results used as calibration data: extra (or removed) spend on
-  one channel, optionally in one geo, over a window, and the incremental KPI it caused with a
-  standard error or confidence interval. The model treats each as an extra observation of the
-  channel's incremental effect.</li>
-<li>Only models that declare them (<code>Capabilities.calibration</code>) accept them; otherwise static
-  validation reports <code>CALIBRATION_UNSUPPORTED</code>.</li>
+<li><strong>Credibility</strong> is the probability that the true value is in the range. A range
+  <code>[low, high]</code> at credibility <em>c</em> becomes a log-normal (ROI) or a logit-normal (share)
+  distribution. The central <em>c</em> interval of this distribution is exactly that range
+  (<code>lognormal_from_range</code>).</li>
+<li>Shares must fit in the KPI. The smallest shares (channels plus baseline) cannot add up to
+  more than 100% (<code>BUSINESS_PRIORS_INVALID</code>).</li>
+<li>You must give a minimum of one belief, but any one is sufficient. <code>baseline_share</code> alone (no
+  <code>channels</code>) makes only the baseline narrower. Channels without a belief keep the default
+  priors of the model.</li>
+<li><strong>Lift tests</strong> are experiment results that the model uses as calibration data. A lift test
+  has extra (or removed) spend on one channel, optionally in one geo, over a window. It also
+  has the incremental KPI that the spend caused, with a standard error or a confidence
+  interval. The model uses each lift test as an extra observation of the incremental effect of
+  the channel.</li>
+<li>Only models that declare them (<code>Capabilities.calibration</code>) accept them. For other models,
+  static validation reports <code>CALIBRATION_UNSUPPORTED</code>.</li>
 </ul>
-<p>Turning beliefs into model-space priors needs the data's scale and the model's transforms, so
-it runs in the sandbox as a <code>translate_priors</code> run (<code>POST /v1/guided/prior-translations</code>). Its
-result (<code>PriorTranslationResult</code>) holds the priors to write at <code>/model/settings/priors</code>
-(<code>apply_prior_translation</code>) and a <strong>prior-predictive preview in business units</strong>: ROI and
-contribution-share distributions per channel, the baseline share and a KPI fan - so users see
-what their beliefs imply before fitting. The math, the lift-test likelihood and the checks
-each layer runs are in <a href="../../guides/guided-modelling/">Guided modelling</a>.</p>
+<p>To change beliefs into priors in model space, the platform needs the scale of the data and the
+transforms of the model. Thus this change occurs in the sandbox as a <code>translate_priors</code> run
+(<code>POST /v1/guided/prior-translations</code>). Its result (<code>PriorTranslationResult</code>) contains the
+priors to write at <code>/model/settings/priors</code> (<code>apply_prior_translation</code>). It also contains a
+<strong>prior-predictive preview in business units</strong>. The preview shows the ROI and
+contribution-share distributions for each channel, the baseline share and a KPI fan. Thus
+users see the effect of their beliefs before the fit. <a href="../../guides/guided-modelling/">Guided modelling</a>
+gives the math, the lift-test likelihood and the checks that each layer does.</p>
 <h2 id="scorecard">4. Run, then the sanity scorecard<a class="headerlink" href="#scorecard" title="Permanent link">&para;</a></h2>
-<p>Every fit gets a <code>Scorecard</code> of plain-language checks, each <code>pass</code>, <code>warn</code> or <code>fail</code>, with the
-measured value, the threshold, a <code>message_plain</code>, a suggested action and a link back to this
-page. <code>overall</code> is the worst item. Templates choose their checks and may tighten thresholds.
-The catalog is <code>mapi_spec.scorecard.SCORECARD_CHECKS</code>:</p>
+<p>Each fit gets a <code>Scorecard</code> of checks in plain language. Each check is <code>pass</code>, <code>warn</code> or
+<code>fail</code>. It has the measured value, the threshold, a <code>message_plain</code>, a suggested action and a
+link back to this page. <code>overall</code> is the worst item. Templates select their checks and can make
+thresholds stricter. The catalog is <code>mapi_spec.scorecard.SCORECARD_CHECKS</code>:</p>
 <h4 id="convergence">Convergence<a class="headerlink" href="#convergence" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -5361,7 +5437,7 @@ The catalog is <code>mapi_spec.scorecard.SCORECARD_CHECKS</code>:</p>
 <td><a id="check-convergence-rhat"></a><code>convergence.rhat</code> (Chains agree)</td>
 <td><code>r_hat_max</code></td>
 <td>warn above 1.01, fail above 1.05</td>
-<td>Run more tuning and draws, or simplify the model.</td>
+<td>Run more tuning and draws, or make the model simpler.</td>
 </tr>
 <tr>
 <td><a id="check-convergence-ess"></a><code>convergence.ess</code> (Enough independent draws)</td>
@@ -5370,10 +5446,10 @@ The catalog is <code>mapi_spec.scorecard.SCORECARD_CHECKS</code>:</p>
 <td>Increase the number of draws.</td>
 </tr>
 <tr>
-<td><a id="check-convergence-divergences"></a><code>convergence.divergences</code> (Sampler stayed on track)</td>
+<td><a id="check-convergence-divergences"></a><code>convergence.divergences</code> (The sampler had no problems)</td>
 <td><code>divergence_rate</code></td>
 <td>warn above 0%, fail above 1%</td>
-<td>Raise target_accept, or use more informative priors.</td>
+<td>Increase target_accept, or use more informative priors.</td>
 </tr>
 </tbody>
 </table>
@@ -5392,29 +5468,30 @@ The catalog is <code>mapi_spec.scorecard.SCORECARD_CHECKS</code>:</p>
 <td><a id="check-holdout-mape"></a><code>holdout.mape</code> (Holdout error)</td>
 <td><code>mape</code></td>
 <td>warn above 10%, fail above 25%</td>
-<td>Check the last periods of data for gaps or one-off events, and add holidays or controls that explain them.</td>
+<td>Look for gaps or one-time events in the last periods of data. Add holidays or controls that explain them.</td>
 </tr>
 <tr>
-<td><a id="check-holdout-coverage-90"></a><code>holdout.coverage_90</code> (Uncertainty is honest)</td>
+<td><a id="check-holdout-coverage-90"></a><code>holdout.coverage_90</code> (The uncertainty is correct)</td>
 <td><code>coverage_90</code></td>
 <td>warn when more than 10% away from 90%, fail when more than 25% away</td>
-<td>Look for trends or shifts the model does not capture.</td>
+<td>Look for trends or shifts that the model does not include.</td>
 </tr>
 <tr>
-<td><a id="check-holdout-hit-rate"></a><code>holdout.hit_rate</code> (Beats a naive guess)</td>
+<td><a id="check-holdout-hit-rate"></a><code>holdout.hit_rate</code> (Better than a simple guess)</td>
 <td><code>accuracy_lift</code></td>
 <td>warn below +2 points, fail below -10 points</td>
-<td>Add what drives the choice for every product (price, promotions, displays), or collect more trips per customer.</td>
+<td>Add the drivers of the choice for each product (price, promotions, displays). Or collect more trips for each customer.</td>
 </tr>
 </tbody>
 </table>
-<p><code>holdout.hit_rate</code> is the check of the <code>customer_choice</code> template: on each household's
-held-out trip, the model's most likely product is compared with the product bought
-(<code>accuracy</code>, the hit rate) and with always guessing the most popular product of the held-out
-trips (<code>accuracy_naive</code> - a strict baseline, since it knows the holdout's own shares).
-<code>accuracy_lift</code> is the difference in percentage points. The template also reports the
-<code>log_score</code> (mean log probability of the bought product; higher is better) and the
-multi-class <code>brier</code> score (0 is perfect) in the model's metrics.</p>
+<p><code>holdout.hit_rate</code> is the check of the <code>customer_choice</code> template. For each household, the
+check uses the trip in the holdout. It compares the most probable product of the model with
+the product that the household bought (<code>accuracy</code>, the hit rate). It also compares the model
+with a guess that is always the most popular product of the holdout trips (<code>accuracy_naive</code>).
+This baseline is strict, because it knows the shares of the holdout. <code>accuracy_lift</code> is the
+difference in percentage points. The template also reports two more values in the metrics of
+the model. These are the <code>log_score</code> (the mean log probability of the bought product, where
+higher is better) and the multi-class <code>brier</code> score (0 is perfect).</p>
 <h4 id="plausibility">Plausibility<a class="headerlink" href="#plausibility" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -5430,31 +5507,31 @@ multi-class <code>brier</code> score (0 is perfect) in the model's metrics.</p>
 <td><a id="check-plausibility-negative-roi"></a><code>plausibility.negative_roi</code> (No channel loses money)</td>
 <td><code>negative_roi_share</code></td>
 <td>warn above 10%, fail above 50%</td>
-<td>Check the channel's spend data, or state an ROI range in business priors.</td>
+<td>Examine the spend data of the channel, or give an ROI range in business priors.</td>
 </tr>
 <tr>
-<td><a id="check-plausibility-roi-absurd"></a><code>plausibility.roi_absurd</code> (Returns are believable)</td>
+<td><a id="check-plausibility-roi-absurd"></a><code>plausibility.roi_absurd</code> (Returns are not too high)</td>
 <td><code>roi_max</code></td>
 <td>warn above 20, fail above 100</td>
-<td>Check spend units and gaps, or state an ROI range in business priors.</td>
+<td>Examine the spend units and gaps, or give an ROI range in business priors.</td>
 </tr>
 <tr>
-<td><a id="check-plausibility-share-outlier"></a><code>plausibility.share_outlier</code> (No channel dominates)</td>
+<td><a id="check-plausibility-share-outlier"></a><code>plausibility.share_outlier</code> (No channel is too large)</td>
 <td><code>max_channel_share</code></td>
 <td>warn above 60%, fail above 90%</td>
-<td>Check for a missing control (price, promotions, seasonality).</td>
+<td>Look for a missing control (price, promotions, seasonality).</td>
 </tr>
 <tr>
-<td><a id="check-plausibility-baseline-share"></a><code>plausibility.baseline_share</code> (Baseline is plausible)</td>
+<td><a id="check-plausibility-baseline-share"></a><code>plausibility.baseline_share</code> (The baseline is in the usual range)</td>
 <td><code>baseline_share</code></td>
 <td>warn when more than 40% away from 50%, fail when more than 48% away</td>
-<td>State a baseline share in business priors, or review the controls.</td>
+<td>Give a baseline share in business priors, or examine the controls.</td>
 </tr>
 <tr>
-<td><a id="check-plausibility-prior-overlap"></a><code>plausibility.prior_overlap</code> (The data informed the model)</td>
+<td><a id="check-plausibility-prior-overlap"></a><code>plausibility.prior_overlap</code> (The data changed the model)</td>
 <td><code>prior_overlap_max</code></td>
 <td>warn above 90%, fail above 99%</td>
-<td>Add data that varies the driver (or a lift test), or state a business prior you trust for it.</td>
+<td>Add data where the driver changes (or a lift test). Or give a business prior for it that you trust.</td>
 </tr>
 </tbody>
 </table>
@@ -5473,7 +5550,7 @@ multi-class <code>brier</code> score (0 is perfect) in the model's metrics.</p>
 <td><a id="check-data-missing"></a><code>data.missing</code> (Few missing values)</td>
 <td><code>missing_fraction</code></td>
 <td>warn above 5%, fail above 30%</td>
-<td>Fill the gaps in the source data, or drop the affected series.</td>
+<td>Fill the gaps in the source data, or remove the series that have gaps.</td>
 </tr>
 <tr>
 <td><a id="check-data-history"></a><code>data.history</code> (Enough history)</td>
@@ -5482,47 +5559,51 @@ multi-class <code>brier</code> score (0 is perfect) in the model's metrics.</p>
 <td>Add more history if you have it.</td>
 </tr>
 <tr>
-<td><a id="check-data-spend-variation"></a><code>data.spend_variation</code> (Spend varies enough)</td>
+<td><a id="check-data-spend-variation"></a><code>data.spend_variation</code> (Spend changes enough)</td>
 <td><code>spend_cv_min</code></td>
 <td>warn below 10%, fail below 2%</td>
-<td>Add a lift test for the channel, or state its ROI in business priors.</td>
+<td>Add a lift test for the channel, or give its ROI in business priors.</td>
 </tr>
 </tbody>
 </table>
-<p>How the runner measures each check is in
-<a href="../../guides/guided-modelling/#the-sanity-scorecard">Guided modelling</a>. The scorecard also
-gates promotion to an endpoint: see
+<p><a href="../../guides/guided-modelling/#the-sanity-scorecard">Guided modelling</a> tells how the runner
+measures each check. The scorecard also controls promotion to an endpoint. Refer to
 <a href="../integrations/#promotion-gate">Integrations</a>.</p>
 <h2 id="5-what-if-sliders">5. What-if sliders<a class="headerlink" href="#5-what-if-sliders" title="Permanent link">&para;</a></h2>
-<p>Sliders answer instantly because every MMM fit precomputes <strong>per-draw response grids</strong>
-(<code>ResponseGridView</code>, <code>ui/grids/response_curves.json</code>, format <code>mapi.response-grid/v1</code>): for
-each thinned posterior draw, channel and spend multiplier, the channel's total contribution
-over the fit window, the spend at each grid point, the actual spend and the baseline.</p>
-<p>A <code>WhatIfScenario</code> sets a multiplier per channel (<code>1</code> = what was actually spent). The
-interpolation contract, shared by the web app and <code>mapi_spec.whatif.evaluate_scenario</code>:</p>
+<p>Sliders give answers immediately, because each MMM fit calculates <strong>response grids for each
+draw</strong> before you use them (<code>ResponseGridView</code>, <code>ui/grids/response_curves.json</code>, format
+<code>mapi.response-grid/v1</code>). The grid has values for each thinned posterior draw, channel and
+spend multiplier. It contains the total contribution of the channel over the fit window and
+the spend at each grid point. It also contains the actual spend and the baseline.</p>
+<p>A <code>WhatIfScenario</code> sets a multiplier for each channel (<code>1</code> = the actual spend). The web app
+and <code>mapi_spec.whatif.evaluate_scenario</code> use the same interpolation contract:</p>
 <ol>
-<li>a channel without a multiplier keeps <code>1</code>; multipliers outside the grid are refused
-   (<code>SCENARIO_OUT_OF_RANGE</code>) - the grid is never extrapolated;</li>
-<li>per draw and channel, the contribution is interpolated <strong>linearly</strong> between the two grid
-   points around the multiplier, and so is spend;</li>
-<li>per draw, KPI = baseline + the channels' contributions, and the change is taken against all
-   multipliers at <code>1</code>; means and quantiles are computed <strong>after</strong> summing, so the uncertainty
-   band stays joint across channels.</li>
+<li>A channel without a multiplier keeps <code>1</code>. The contract refuses multipliers outside the grid
+   (<code>SCENARIO_OUT_OF_RANGE</code>). It never extrapolates the grid.</li>
+<li>For each draw and channel, the contract interpolates the contribution <strong>linearly</strong> between
+   the two grid points around the multiplier. It does the same for spend.</li>
+<li>For each draw, KPI = baseline + the contributions of the channels. The change is the
+   difference from the KPI with all multipliers at <code>1</code>. The contract calculates means and
+   quantiles <strong>after</strong> the sum. Thus the uncertainty band stays joint across channels.</li>
 </ol>
-<p>The web app answers the sliders in the browser with a TypeScript port of this contract, which
-its unit tests check against golden cases the spec tests export
+<p>The web app calculates the slider answers in the browser with a TypeScript port of this
+contract. Its unit tests compare the port with golden cases that the spec tests export
 (<code>packages/spec/tests/snapshots/whatif_golden.json</code>).</p>
-<p><strong>Run exact</strong> turns the scenario into a <code>counterfactual</code> score request with one <code>multiply</code>
-intervention per changed channel and submits a real score run
+<p><strong>Run exact</strong> changes the scenario into a <code>counterfactual</code> score request, with one <code>multiply</code>
+intervention for each changed channel. Then it starts a real score run
 (<code>POST /v1/guided/requests:compile</code>, then score).</p>
 <h3 id="forecasts-and-counterfactuals">Forecasts and counterfactuals<a class="headerlink" href="#forecasts-and-counterfactuals" title="Permanent link">&para;</a></h3>
-<p>Guided forecasts (<code>forecast_request</code>) ask for a horizon and a policy for covariates whose
-future the user did not supply (<code>ScoreRequest.future_covariates</code>): <code>carry_last</code> (default in
-Guided mode), <code>seasonal_naive</code>, <code>zero</code>, or <code>supplied</code> with a scenario dataset. Intervention
-presets build counterfactuals in one click: <strong>channel off</strong> (<code>ChannelOff</code>: that channel's spend
-set to zero) and <strong>budget × k</strong> (<code>BudgetScale</code>: every, or the listed, channel's spend scaled
-by <em>k</em>), over the fit window or over a forecast horizon. Responses default to expected values
-with the mean and a 90% interval (Q2).</p>
+<p>Guided forecasts (<code>forecast_request</code>) need a horizon. They also need a policy for covariates
+that have no future values from the user (<code>ScoreRequest.future_covariates</code>). The policies are
+<code>carry_last</code> (the default in Guided mode), <code>seasonal_naive</code>, <code>zero</code>, or <code>supplied</code> with a
+scenario dataset. Intervention presets make counterfactuals with one click:</p>
+<ul>
+<li><strong>channel off</strong> (<code>ChannelOff</code>): the spend of that channel is zero.</li>
+<li><strong>budget × k</strong> (<code>BudgetScale</code>): the platform multiplies the spend of all channels, or of the
+  listed channels, by <em>k</em>.</li>
+</ul>
+<p>The presets apply over the fit window or over a forecast horizon. By default, responses are
+expected values with the mean and a 90% interval (Q2).</p>
 
 
 

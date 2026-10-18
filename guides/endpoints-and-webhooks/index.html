@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -1972,6 +2002,17 @@
     <span class="md-ellipsis">
       
         Inline data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#forecasts-with-your-latest-actuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forecasts with your latest actuals
       
     </span>
   </a>
@@ -4751,6 +4792,8 @@
       
         
       
+        
+      
     
     
     
@@ -4839,6 +4882,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4976,6 +5047,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#forecasts-with-your-latest-actuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forecasts with your latest actuals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#snippets" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5103,22 +5185,24 @@
 
 
 <h1 id="endpoints-and-webhooks-v04">Endpoints and webhooks <span class="mapi-badge">v0.4</span><a class="headerlink" href="#endpoints-and-webhooks-v04" title="Permanent link">&para;</a></h1>
-<p>An <strong>endpoint</strong> gives a model version a stable name, <code>endpoint://&lt;project&gt;/&lt;alias&gt;</code>, that
-other applications call. A better version can then be promoted, or a bad one rolled back,
-without changing any of them. A <strong>webhook</strong> tells another application when something happens
-in a project: a run finished, a model version is ready, an endpoint changed.</p>
-<p>This guide does both with <code>curl</code>. The concepts behind them (the promotion gate, signatures,
-the SSRF policy) are in <a href="../../concepts/integrations/">Integrations</a>, and every operation is
-listed in the <a href="../../reference/http-api/#guided-and-integrations">HTTP API reference</a>.</p>
-<p>The examples assume <code>MAPI_TOKEN</code> holds an API token, <code>MAPI_PROJECT</code> the <code>&lt;tenant&gt;/&lt;project&gt;</code>
-it acts in, and <code>API</code> the base URL:</p>
+<p>An <strong>endpoint</strong> gives a model version a stable name, <code>endpoint://&lt;project&gt;/&lt;alias&gt;</code>. Other
+applications call this name. You can promote a better version, or roll back a bad version,
+and the applications do not change. A <strong>webhook</strong> tells another application when an event
+occurs in a project. For example, a run finished, a model version is ready, or an endpoint
+changed.</p>
+<p>This guide uses <code>curl</code> for endpoints and webhooks. <a href="../../concepts/integrations/">Integrations</a>
+gives the concepts: the promotion gate, signatures and the SSRF policy. The
+<a href="../../reference/http-api/#guided-and-integrations">HTTP API reference</a> lists all the
+operations.</p>
+<p>In the examples, <code>MAPI_TOKEN</code> holds an API token and <code>MAPI_PROJECT</code> holds the
+<code>&lt;tenant&gt;/&lt;project&gt;</code> for the token. <code>API</code> holds the base URL:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">API</span><span class="o">=</span>http://127.0.0.1:8000
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>api<span class="o">()</span><span class="w"> </span><span class="o">{</span><span class="w"> </span>curl<span class="w"> </span>-sS<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-Mapi-Project: </span><span class="nv">$MAPI_PROJECT</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
 </span></code></pre></div>
 <h2 id="promote-a-model-version">Promote a model version<a class="headerlink" href="#promote-a-model-version" title="Permanent link">&para;</a></h2>
-<p><code>PUT /v1/endpoints/{alias}</code> creates the alias, or points it at another version. Name the
-version by reference or by id:</p>
+<p><code>PUT /v1/endpoints/{alias}</code> makes the alias, or points the alias at a different version. Give
+the version by reference or by id:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>api<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/endpoints/geo-mmm-prod"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--data<span class="w"> </span><span class="s1">'{"model": "model://growth/eu-geo-mmm@v3", "expected_revision": 0}'</span>
 </span></code></pre></div>
@@ -5132,10 +5216,14 @@ version by reference or by id:</p>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">"overridden"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">}</span>
 </span></code></pre></div>
-<p><code>expected_revision</code> makes the call safe against a colleague promoting at the same time: <code>0</code>
-means "the alias must be new", <code>N</code> means "it must still be at revision N" (<code>409 CONFLICT</code>
-otherwise). Sending the same body again changes nothing.</p>
-<p>The <strong>promotion gate</strong> decides whether the version may serve:</p>
+<p><code>expected_revision</code> makes the call safe if a colleague promotes at the same time:</p>
+<ul>
+<li><code>0</code> means "the alias must be new".</li>
+<li><code>N</code> means "the alias must still be at revision N".</li>
+<li>If the alias does not agree, the answer is <code>409 CONFLICT</code>.</li>
+</ul>
+<p>If you send the same body again, nothing changes.</p>
+<p>The <strong>promotion gate</strong> decides if the version can serve:</p>
 <table>
 <thead>
 <tr>
@@ -5145,76 +5233,81 @@ otherwise). Sending the same body again changes nothing.</p>
 </thead>
 <tbody>
 <tr>
-<td>Its scorecard passes, it was fitted with <code>evaluate_then_refit</code>, and it takes the input the endpoint's callers send</td>
+<td>Its scorecard passes, the fit used <code>evaluate_then_refit</code>, and it takes the input that the callers of the endpoint send</td>
 <td>Promoted</td>
 </tr>
 <tr>
-<td>Its scorecard warns, or it has none; it was never scored on a holdout (no <code>data.split</code>), or a check its guided template asks for could not run (<code>NOT_EVALUATED</code>)</td>
+<td>Its scorecard warns, or it has no scorecard. Or it had no score on a holdout (no <code>data.split</code>). Or a check that its guided template asks for did not run (<code>NOT_EVALUATED</code>)</td>
 <td><code>409 OVERRIDE_REQUIRED</code>, unless a project admin overrides</td>
 </tr>
 <tr>
-<td>Its scorecard fails, the fit was interrupted, or it was fitted <code>train_only</code></td>
+<td>Its scorecard fails, the fit stopped before it finished, or the fit used <code>train_only</code></td>
 <td><code>409 PROMOTION_BLOCKED</code></td>
 </tr>
 <tr>
-<td>It expects different input (a dim removed, a new required variable, ...)</td>
-<td>Blocked by default; the endpoint's <code>schema_change</code> policy can make it <code>warn</code> or <code>allow</code></td>
+<td>It expects different input (for example, a removed dim or a new necessary variable)</td>
+<td>Blocked by default. The <code>schema_change</code> policy of the endpoint can change this to <code>warn</code> or <code>allow</code></td>
 </tr>
 </tbody>
 </table>
-<p>Relaxing the endpoint's <code>evaluation_policy</code> (<code>schema_change</code> from <code>block</code> to <code>warn</code> or
-<code>allow</code>, or <code>fit_mode</code> to <code>train_only</code>) disarms the gate as an override does, so only a
-signed-in project admin may send a laxer policy; an <code>endpoints:promote</code> token gets
-<code>403 FORBIDDEN</code> (the same or a stricter policy is fine). The promotion's audit event records
-the policy before and after.</p>
-<p>Each refusal lists the gate's reasons in the problem's <code>errors</code>, with the scorecard check
-that caused it:</p>
+<p>A less strict <code>evaluation_policy</code> on the endpoint stops the gate, as an override does. For
+example, <code>schema_change</code> from <code>block</code> to <code>warn</code> or <code>allow</code>, or <code>fit_mode</code> to <code>train_only</code>. Thus
+only a signed-in project admin can send a less strict policy. An <code>endpoints:promote</code> token gets
+<code>403 FORBIDDEN</code>. The token can send the same policy or a stricter policy. The audit event of
+the promotion records the policy before and after.</p>
+<p>Each refusal gives the reasons of the gate in the <code>errors</code> of the problem. Each reason has the
+scorecard check that caused it:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">"code"</span><span class="p">:</span><span class="w"> </span><span class="s2">"OVERRIDE_REQUIRED"</span><span class="p">,</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="mi">409</span><span class="p">,</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">"errors"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="p">{</span><span class="nt">"code"</span><span class="p">:</span><span class="w"> </span><span class="s2">"OVERRIDE_REQUIRED"</span><span class="p">,</span><span class="w"> </span><span class="nt">"severity"</span><span class="p">:</span><span class="w"> </span><span class="s2">"warning"</span><span class="p">,</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">     </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Holdout error: Forecasts were off by 14%."</span><span class="p">,</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">     </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Holdout error: The forecast error on the holdout periods was 14%."</span><span class="p">,</span>
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">     </span><span class="nt">"context"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"gate_code"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SCORECARD_WARN"</span><span class="p">,</span><span class="w"> </span><span class="nt">"check"</span><span class="p">:</span><span class="w"> </span><span class="s2">"holdout.mape"</span><span class="p">}}</span>
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="p">]</span>
 </span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="p">}</span>
 </span></code></pre></div>
-<p><strong>Evaluated, then refitted.</strong> An endpoint serves versions whose fit evaluated the holdout and
-then refitted on all the data (<code>fit.mode: evaluate_then_refit</code>, the default of every spec),
-so forecasts start from the full history. Both happen inside the one fit run; the version's
-lineage links the evaluation. To serve an exploration fit, give the endpoint the policy
-<code>{"fit_mode": "train_only"}</code>.</p>
+<p><strong>Evaluated, then refitted.</strong> An endpoint serves versions with a fit that evaluated the
+holdout and then fitted again on all the data. This is <code>fit.mode: evaluate_then_refit</code>, the
+default of all specs. Thus forecasts start from the full history. The two steps occur in the
+same fit run. The lineage of the version links the evaluation. To serve an exploration fit,
+give the endpoint the policy <code>{"fit_mode": "train_only"}</code>.</p>
 <h3 id="overriding">Overriding<a class="headerlink" href="#overriding" title="Permanent link">&para;</a></h3>
 <p>An override is a human decision. A signed-in <strong>project admin</strong> sends <code>override: true</code> with a
-reason, from the web app or a session; no API token can override, whatever its scopes:</p>
+reason. The admin sends it from the web app or from a session. An API token cannot override,
+for all scopes:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span><span class="nt">"model_version_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mv_01jaf3e1f2g3h4j5k6m7n8p9q0"</span><span class="p">,</span><span class="w"> </span><span class="nt">"override"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w"> </span><span class="nt">"reason"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Holdout MAPE is high because of the strike in week 41; accepted by the CMO."</span><span class="p">}</span>
 </span></code></pre></div>
-<p>The reason is kept in the endpoint's history and in the audit log
-(<code>endpoint.promote_override</code>), next to the checks that warned.</p>
+<p>The endpoint history and the audit log (<code>endpoint.promote_override</code>) keep the reason. The
+reason is next to the checks that warned.</p>
 <h3 id="history-and-rollback">History and rollback<a class="headerlink" href="#history-and-rollback" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/endpoints/geo-mmm-prod/history"</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/endpoints/geo-mmm-prod/rollback"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--data<span class="w"> </span><span class="s1">'{"reason": "v4 over-forecasts after the price change"}'</span>
 </span></code></pre></div>
-<p>A rollback points the alias at the version of an earlier revision (by default the last one
-that served another version; <code>to_revision</code> picks one). It is a new revision, audited with its
-reason; the gate is not run again. <code>DELETE /v1/endpoints/{alias}</code> removes the alias and its
-history - model versions stay.</p>
+<p>A rollback points the alias at the version of an earlier revision. By default, this is the
+last revision that served a different version. <code>to_revision</code> selects a revision. A rollback is
+a new revision, and the audit log records it with its reason. The gate does not run again.
+<code>DELETE /v1/endpoints/{alias}</code> removes the alias and its history. The model versions stay.</p>
 <h2 id="score-an-endpoint">Score an endpoint<a class="headerlink" href="#score-an-endpoint" title="Permanent link">&para;</a></h2>
-<p>Ask the endpoint what it expects. The answer has the input schema frozen at promotion and an
-example body that validates:</p>
+<p>Ask the endpoint what it expects. The answer has the input schema from the time of the
+promotion. It also has an example body that is valid:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/endpoints/geo-mmm-prod/schema"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.example
 </span></code></pre></div>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"forecast"</span><span class="p">,</span><span class="w"> </span><span class="nt">"horizon"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"dim"</span><span class="p">:</span><span class="w"> </span><span class="s2">"time"</span><span class="p">,</span><span class="w"> </span><span class="nt">"periods"</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">},</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w"> </span><span class="nt">"future_covariates"</span><span class="p">:</span><span class="w"> </span><span class="s2">"carry_last"</span><span class="p">,</span><span class="w"> </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"expected"</span><span class="p">,</span><span class="w"> </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90"</span><span class="p">]}}</span>
 </span></code></pre></div>
-<p>Then score. <code>Prefer: wait=60</code> waits up to a minute: <code>200</code> with links to the outputs if the run
-finished, <code>202</code> with the run otherwise. A finished answer also carries the numbers inline in
-<code>summary</code>: one table per output, the coordinate columns then one column per statistic (the
-mean and the 90% HDI by default), so a spreadsheet or a shell script needs no zarr or Arrow
-reader. A result above 100,000 cells is cut short (<code>truncated</code>); <code>score.zarr.zip</code> always has
-everything.</p>
+<p>Then score the endpoint. <code>Prefer: wait=60</code> waits for a maximum of one minute:</p>
+<ul>
+<li>If the run finished, the answer is <code>200</code> with links to the outputs.</li>
+<li>If the run did not finish, the answer is <code>202</code> with the run.</li>
+</ul>
+<p>A finished answer also has the numbers in <code>summary</code>. There is one table for each output. The
+table has the coordinate columns, then one column for each statistic. By default, the
+statistics are the mean and the 90% HDI. Thus a spreadsheet or a shell script does not need a
+zarr or Arrow reader. If a result has more than 100,000 cells, the server cuts it (<code>truncated</code>).
+<code>score.zarr.zip</code> always has all the data.</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"tables"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"variable"</span><span class="p">:</span><span class="w"> </span><span class="s2">"revenue"</span><span class="p">,</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">                        </span><span class="nt">"columns"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"geo"</span><span class="p">,</span><span class="w"> </span><span class="s2">"time"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90_lower"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90_upper"</span><span class="p">],</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">                        </span><span class="nt">"rows"</span><span class="p">:</span><span class="w"> </span><span class="p">[[</span><span class="s2">"de"</span><span class="p">,</span><span class="w"> </span><span class="s2">"2026-01-05"</span><span class="p">,</span><span class="w"> </span><span class="mf">1520.4</span><span class="p">,</span><span class="w"> </span><span class="mf">1402.1</span><span class="p">,</span><span class="w"> </span><span class="mf">1633.9</span><span class="p">]]}],</span>
@@ -5225,17 +5318,19 @@ everything.</p>
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--data<span class="w"> </span><span class="s1">'{"mode": "forecast", "horizon": {"dim": "time", "periods": 8},</span>
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="s1">           "future_covariates": "carry_last"}'</span>
 </span></code></pre></div>
-<p>To collect a result that took longer, <strong>send the same call again with the same
-<code>Idempotency-Key</code></strong>: it answers for the run the first call started, waiting again if you ask.
-This works with the narrowest token there is, <code>score:&lt;alias&gt;</code>, which can read and score one
-endpoint and nothing else.</p>
+<p>To get a result that took more time, <strong>send the same call again with the same
+<code>Idempotency-Key</code></strong>. The answer is for the run that the first call started. If you ask, the
+call waits again. This works with the smallest token, <code>score:&lt;alias&gt;</code>. This token can read and
+score one endpoint and nothing more.</p>
 <h3 id="inline-data">Inline data<a class="headerlink" href="#inline-data" title="Permanent link">&para;</a></h3>
-<p><code>data</code> and <code>scenario</code> can be <code>dataset://</code> references, or small datasets sent inline as XrJSON
-(the shape of <code>xr.Dataset.to_dict()</code>, up to 5 MB each), so scripts and spreadsheets need no
-upload. A caller that cannot read datasets (a <code>score:&lt;alias&gt;</code> token) sends data inline or
-names the dataset the endpoint's model was fitted on; any other reference, and a missing one,
-gets the same <code>403 FORBIDDEN</code>, so such a token can neither score the project's other
-datasets nor find out which exist:</p>
+<p><code>data</code> and <code>scenario</code> can be <code>dataset://</code> references. They can also be small datasets that you
+send inline as XrJSON. XrJSON has the shape of <code>xr.Dataset.to_dict()</code>, with a maximum of 5 MB
+each. Thus scripts and spreadsheets do not need an upload.</p>
+<p>A caller that cannot read datasets (a <code>score:&lt;alias&gt;</code> token) sends data inline. Or it gives the
+dataset that the model of the endpoint was fitted on. All other references get the same
+<code>403 FORBIDDEN</code>. A reference to a dataset that does not exist also gets <code>403 FORBIDDEN</code>. Thus
+such a token cannot score the other datasets of the project. It also cannot find which datasets
+exist:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"predict"</span><span class="p">,</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span><span class="nt">"data"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5250,32 +5345,85 @@ datasets nor find out which exist:</p>
 </span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="w">  </span><span class="p">}</span>
 </span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>Before anything runs, the server checks the payload against the endpoint's input contract -
-every variable must be one the endpoint takes, with its dims; coordinates must be dims of the
-input; a <code>predict</code> call must send every input - and then runs the usual
-<a href="../../concepts/coord-plans/">coordinate checks</a> (modes, horizon, unseen levels, future
-covariates). It reads only the payload's coordinates for that: the values are decoded inside
-the sandboxed score run, never by the API. The score run gives each coordinate the type of the
-model's dim (dates arrive as ISO strings), so an inline payload scores exactly like the same
-rows uploaded as a dataset.</p>
-<p>The input contract (<code>GET …/schema</code> → <code>snapshot.input_schema</code>) names dims and variables the way
-the spec does after <code>data.bind</code>: if the spec binds <code>time: week</code> and <code>y: revenue</code>, an inline
-payload sends a <code>time</code> dim, not <code>week</code>. The score run renames the payload to the dataset's own
-names before scoring, and results come back under the dataset's names, as for any score.
-<code>POST …/validate</code> runs the same checks and answers
-<code>200</code> with the issues, without running anything.</p>
-<p>Bodies above 10.25 MB are refused with <code>413 PAYLOAD_TOO_LARGE</code>; upload larger data as a
-dataset and reference it.</p>
-<h3 id="snippets">Snippets<a class="headerlink" href="#snippets" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/endpoints/geo-mmm-prod/snippets?language=python&amp;language=curl"</span>
+<p>Before a run starts, the server checks the payload against the input contract of the endpoint:</p>
+<ul>
+<li>Each variable must be a variable that the endpoint takes, with its dims.</li>
+<li>Coordinates must be dims of the input.</li>
+<li>A <code>predict</code> call must send all the inputs.</li>
+</ul>
+<p>Then the server does the usual <a href="../../concepts/coord-plans/">coordinate checks</a>: modes, horizon,
+unseen levels and future covariates. For these checks, it reads only the coordinates of the
+payload. The sandboxed score run decodes the values. The API never decodes them. The score run
+gives each coordinate the type of the dim of the model. Dates arrive as ISO strings. Thus an
+inline payload gives the same score as the same rows in an uploaded dataset.</p>
+<p>The input contract (<code>GET …/schema</code> → <code>snapshot.input_schema</code>) uses the dim and variable names
+that the spec uses after <code>data.bind</code>. For example, if the spec binds <code>time: week</code> and
+<code>y: revenue</code>, an inline payload sends a <code>time</code> dim, not <code>week</code>. The score run changes the
+payload names to the names of the dataset before it scores. The results use the names of the
+dataset, as for all scores. <code>POST …/validate</code> does the same checks and answers <code>200</code> with the
+issues. It does not run anything.</p>
+<p>The server refuses bodies of more than 10.25 MB with <code>413 PAYLOAD_TOO_LARGE</code>. For larger data,
+upload a dataset and give its reference.</p>
+<h3 id="forecasts-with-your-latest-actuals">Forecasts with your latest actuals<a class="headerlink" href="#forecasts-with-your-latest-actuals" title="Permanent link">&para;</a></h3>
+<p>A forecasting endpoint takes two things in one call, without a new fit
+(<a href="../../concepts/forecasting-with-actuals/">Forecasts with actuals</a>):</p>
+<ul>
+<li>The actuals that arrived after the fit.</li>
+<li>The dates to forecast.</li>
+</ul>
+<p>Send inline data along the time dim. Fill the target on the periods that you have. Leave the
+target empty (<code>null</code>) on the periods to forecast.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/endpoints/ts-forecast/score"</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Prefer: wait=60'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>--data<span class="w"> </span><span class="s1">'{"mode": "forecast", "horizon": {"dim": "t", "periods": 8},</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="s1">           "future_covariates": "carry_last",</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="s1">           "data": {"coords": {"t": {"dims": ["t"], "data": ["1961-01-01", "1961-02-01",</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="s1">                                     "1961-03-01", "1961-04-01", "1961-05-01"]}},</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="s1">                    "data_vars": {"y": {"dims": ["t"], "data": [417, 391, 419, null, null]}}}}'</span>
 </span></code></pre></div>
-<p>returns ready-to-run code for Python, TypeScript, curl, R, Google Sheets (Apps Script) and a
-notebook cell, with this server's address and the endpoint's example payload. <code>base_url=</code> puts
-another address in (a public one, behind a proxy). Snippets read the token from <code>MAPI_TOKEN</code>
-and never contain a secret. From Python, <code>Client().endpoint("geo-mmm-prod").score(ds)</code>
-sends an <code>xr.Dataset</code> and returns one
-(<a href="../python-client/#endpoints-webhooks-and-sharing">The Python client</a>); the CLI has
-<code>mapi endpoints score</code>; budgets are optimised from the model version itself (<a href="../../tutorials/optimise-a-budget/">Optimise a budget</a>).</p>
+<p>This call updates the model with January to March. It forecasts April and May, the two empty
+rows. A warning tells you that the server did not use <code>horizon.periods</code>. If you send only the
+three actuals, the server forecasts the 8 periods after March. The <code>summary.conditioning</code> of
+the answer tells what occurred. It tells this in fields (<code>conditioned</code>, <code>n_actuals</code>,
+<code>actuals_through</code>, <code>fit_end</code>, <code>horizon_source</code>, details for each series) and in words
+(<code>message</code>).</p>
+<p><code>GET …/schema</code> gives the same table for spreadsheets and scripts:</p>
+<ul>
+<li><code>input_table</code> lists the columns: the time column first, then the target, the drivers and
+  other inputs. The periods after the fit are empty rows.</li>
+<li><code>snapshot.conditions_on_actuals</code> tells if the model can use actuals.</li>
+<li><code>actuals_example</code> is a call over those periods that is ready for you to fill.</li>
+</ul>
+<p>If a model cannot use actuals, it refuses target values in a forecast with
+<code>422 ACTUALS_NOT_SUPPORTED</code>. It does not ignore them. For inline data, it refuses before a run
+starts. Actuals get <code>422 ACTUALS_INVALID</code> if they have a gap that the model cannot filter. They
+also get it if they do not have the drivers that were observed with them.</p>
+<p>In Python, <code>api.endpoints.forecast("ts-forecast", rows)</code> takes the same table as a DataFrame or
+a list of rows. You can also give <code>actuals=</code> and <code>future=</code> separately.
+<code>result.conditioning.message</code> tells what the forecast used. In a terminal,
+<code>mapi endpoints forecast ts-forecast input.csv</code> reads the table from a CSV file
+(<a href="../cli/#endpoints-webhooks-and-sharing">The command line</a>). In Google Sheets, the table is the
+<strong>Input</strong> sheet (<a href="../../tutorials/google-sheets/#5-add-your-latest-actuals-and-future-dates">Connect Google Sheets</a>).</p>
+<h3 id="snippets">Snippets<a class="headerlink" href="#snippets" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/endpoints/geo-mmm-prod/snippets?language=python&amp;language=curl"</span>
+</span></code></pre></div>
+<p>This call gives code that is ready to run for these languages:</p>
+<ul>
+<li>Python</li>
+<li>TypeScript</li>
+<li>curl</li>
+<li>R</li>
+<li>Google Sheets (Apps Script)</li>
+<li>A notebook cell.</li>
+</ul>
+<p>The code has the address of this server and the example payload of the endpoint. For a
+forecasting endpoint, it also has a call over the periods after the fit, for you to fill with
+actuals. It also has an Apps Script that reads the actuals from an <strong>Input</strong> sheet.
+<code>base_url=</code> puts a different address in the code, for example a public address behind a proxy.
+Snippets read the token from <code>MAPI_TOKEN</code> and never contain a secret.</p>
+<p>In Python, <code>Client().endpoint("geo-mmm-prod").score(ds)</code> sends an <code>xr.Dataset</code> and returns an
+<code>xr.Dataset</code> (<a href="../python-client/#endpoints-webhooks-and-sharing">The Python client</a>). The CLI
+has <code>mapi endpoints score</code>. To optimise a budget, use the model version
+(<a href="../../tutorials/optimise-a-budget/">Optimise a budget</a>).</p>
 <h3 id="tokens-for-integrations">Tokens for integrations<a class="headerlink" href="#tokens-for-integrations" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5287,51 +5435,51 @@ sends an <code>xr.Dataset</code> and returns one
 <tbody>
 <tr>
 <td><code>score:geo-mmm-prod</code></td>
-<td>An application that scores this endpoint (reads its schema and snippets too)</td>
+<td>An application that scores this endpoint. It can also read the schema and snippets of the endpoint</td>
 </tr>
 <tr>
 <td><code>score:*</code></td>
-<td>Every endpoint and model of the project</td>
+<td>All endpoints and models of the project</td>
 </tr>
 <tr>
 <td><code>endpoints:promote</code></td>
-<td>CI that promotes passing versions and rolls back (never overrides)</td>
+<td>CI that promotes versions that pass and rolls back. It never overrides</td>
 </tr>
 <tr>
 <td><code>webhooks:manage</code></td>
-<td>Managing webhooks from a script</td>
+<td>A script that manages webhooks</td>
 </tr>
 </tbody>
 </table>
-<p>Every call counts against the token's own rate limit (<code>429 RATE_LIMITED</code> with <code>Retry-After</code>)
-and every score run against its vCPU-second budget (<code>429 QUOTA_EXCEEDED</code>), on top of the
-tenant's.</p>
+<p>Each call counts against the rate limit of the token (<code>429 RATE_LIMITED</code> with <code>Retry-After</code>).
+Each score run counts against the vCPU-second budget of the token (<code>429 QUOTA_EXCEEDED</code>).
+These limits are in addition to the limits of the tenant.</p>
 <h2 id="webhooks">Webhooks<a class="headerlink" href="#webhooks" title="Permanent link">&para;</a></h2>
 <h3 id="subscribe">Subscribe<a class="headerlink" href="#subscribe" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--data<span class="w"> </span><span class="s1">'{"url": "https://hooks.example.com/mapi",</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="s1">           "events": ["run.succeeded", "run.failed", "endpoint.promoted"]}'</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--data<span class="w"> </span><span class="s1">'{"url": "https://hooks.example.com/mapi",</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="s1">           "events": ["run.succeeded", "run.failed", "endpoint.promoted"]}'</span>
 </span></code></pre></div>
-<p>The answer holds the signing secret, <code>whsec_…</code>. <strong>It is the only time you see it</strong>: store it
-with the receiver. Managing webhooks needs the project admin role (or a <code>webhooks:manage</code>
-token of an admin): deliveries reveal what a project is doing.</p>
-<p>The URL must be <code>https</code> on port 443 or 8443 and name a public host: the server resolves it
-and refuses (<code>422 WEBHOOK_URL_BLOCKED</code>) any host with a private, loopback, link-local,
-metadata or otherwise internal address. It checks again at every delivery and connects only
-to the address it checked, so a DNS answer that changes later cannot point a delivery inside
-the platform.</p>
+<p>The answer holds the signing secret, <code>whsec_…</code>. <strong>You see it only one time.</strong> Keep the secret
+with the receiver. To manage webhooks, you need the project admin role, or a <code>webhooks:manage</code>
+token of an admin. The reason is that deliveries show what a project does.</p>
+<p>The URL must be <code>https</code> on port 443 or 8443, and it must give a public host. The server
+resolves the host. It refuses (<code>422 WEBHOOK_URL_BLOCKED</code>) a host with an internal address. This
+includes private, loopback, link-local and metadata addresses. The server checks again at each
+delivery. It connects only to the address that it checked. Thus a DNS answer that changes
+later cannot send a delivery into the platform.</p>
 <h3 id="what-a-delivery-looks-like">What a delivery looks like<a class="headerlink" href="#what-a-delivery-looks-like" title="Permanent link">&para;</a></h3>
-<div class="language-http highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nf">POST</span> <span class="nn">/mapi</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="na">Host</span><span class="o">:</span> <span class="l">hooks.example.com</span>
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
-</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="na">User-Agent</span><span class="o">:</span> <span class="l">mapi-webhooks/1</span>
-</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="na">Mapi-Signature</span><span class="o">:</span> <span class="l">t=1792000000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd</span>
-</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="na">Mapi-Event-Id</span><span class="o">:</span> <span class="l">evt_01jaf3k1m2n3p4q5r6s7t8v9w0</span>
-</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="na">Mapi-Event-Type</span><span class="o">:</span> <span class="l">run.succeeded</span>
-</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="na">Mapi-Webhook-Id</span><span class="o">:</span> <span class="l">whk_01jaf3h1j2k3m4n5p6q7r8s9t0</span>
-</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="na">Mapi-Delivery-Id</span><span class="o">:</span> <span class="l">whd_01jaf3m1n2p3q4r5s6t7v8w9x0</span>
-</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
-</span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="p">{</span><span class="nt">"api_version"</span><span class="p">:</span><span class="s2">"v1"</span><span class="p">,</span><span class="nt">"created"</span><span class="p">:</span><span class="s2">"2026-10-15T09:30:00Z"</span><span class="p">,</span><span class="nt">"data"</span><span class="p">:{</span><span class="nt">"kind"</span><span class="p">:</span><span class="s2">"fit"</span><span class="p">,</span><span class="nt">"model_version_id"</span><span class="p">:</span><span class="s2">"mv_01jaf3e1f2g3h4j5k6m7n8p9q0"</span><span class="p">,</span><span class="nt">"run_id"</span><span class="p">:</span><span class="s2">"run_01jaf3q2x8m9v7k5h4g3f2e1d0"</span><span class="p">,</span><span class="nt">"state"</span><span class="p">:</span><span class="s2">"succeeded"</span><span class="p">},</span><span class="nt">"id"</span><span class="p">:</span><span class="s2">"evt_01jaf3k1m2n3p4q5r6s7t8v9w0"</span><span class="p">,</span><span class="nt">"project"</span><span class="p">:</span><span class="s2">"growth"</span><span class="p">,</span><span class="nt">"tenant"</span><span class="p">:</span><span class="s2">"acme"</span><span class="p">,</span><span class="nt">"type"</span><span class="p">:</span><span class="s2">"run.succeeded"</span><span class="p">}</span>
+<div class="language-http highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nf">POST</span> <span class="nn">/mapi</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="na">Host</span><span class="o">:</span> <span class="l">hooks.example.com</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="na">User-Agent</span><span class="o">:</span> <span class="l">mapi-webhooks/1</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="na">Mapi-Signature</span><span class="o">:</span> <span class="l">t=1792000000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="na">Mapi-Event-Id</span><span class="o">:</span> <span class="l">evt_01jaf3k1m2n3p4q5r6s7t8v9w0</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="na">Mapi-Event-Type</span><span class="o">:</span> <span class="l">run.succeeded</span>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="na">Mapi-Webhook-Id</span><span class="o">:</span> <span class="l">whk_01jaf3h1j2k3m4n5p6q7r8s9t0</span>
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="na">Mapi-Delivery-Id</span><span class="o">:</span> <span class="l">whd_01jaf3m1n2p3q4r5s6t7v8w9x0</span>
+</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>
+</span><span id="__span-14-11"><a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="p">{</span><span class="nt">"api_version"</span><span class="p">:</span><span class="s2">"v1"</span><span class="p">,</span><span class="nt">"created"</span><span class="p">:</span><span class="s2">"2026-10-15T09:30:00Z"</span><span class="p">,</span><span class="nt">"data"</span><span class="p">:{</span><span class="nt">"kind"</span><span class="p">:</span><span class="s2">"fit"</span><span class="p">,</span><span class="nt">"model_version_id"</span><span class="p">:</span><span class="s2">"mv_01jaf3e1f2g3h4j5k6m7n8p9q0"</span><span class="p">,</span><span class="nt">"run_id"</span><span class="p">:</span><span class="s2">"run_01jaf3q2x8m9v7k5h4g3f2e1d0"</span><span class="p">,</span><span class="nt">"state"</span><span class="p">:</span><span class="s2">"succeeded"</span><span class="p">},</span><span class="nt">"id"</span><span class="p">:</span><span class="s2">"evt_01jaf3k1m2n3p4q5r6s7t8v9w0"</span><span class="p">,</span><span class="nt">"project"</span><span class="p">:</span><span class="s2">"growth"</span><span class="p">,</span><span class="nt">"tenant"</span><span class="p">:</span><span class="s2">"acme"</span><span class="p">,</span><span class="nt">"type"</span><span class="p">:</span><span class="s2">"run.succeeded"</span><span class="p">}</span>
 </span></code></pre></div>
 <table>
 <thead>
@@ -5343,7 +5491,7 @@ the platform.</p>
 <tbody>
 <tr>
 <td><code>run.succeeded</code>, <code>run.failed</code></td>
-<td><code>run_id</code>, <code>kind</code>, <code>state</code>, <code>model_version_id</code>; failures add <code>failure_class</code> and <code>code</code></td>
+<td><code>run_id</code>, <code>kind</code>, <code>state</code>, <code>model_version_id</code>. Failures also have <code>failure_class</code> and <code>code</code></td>
 </tr>
 <tr>
 <td><code>model.version.ready</code></td>
@@ -5355,7 +5503,7 @@ the platform.</p>
 </tr>
 <tr>
 <td><code>score.completed</code></td>
-<td><code>run_id</code>, <code>model_version_id</code>, <code>outputs</code> (names), and <code>endpoint</code> (<code>alias</code>, <code>ref</code>, <code>revision</code>) when it came through one</td>
+<td><code>run_id</code>, <code>model_version_id</code>, <code>outputs</code> (names), and <code>endpoint</code> (<code>alias</code>, <code>ref</code>, <code>revision</code>) if the score came through an endpoint</td>
 </tr>
 <tr>
 <td><code>tenant.deletion.completed</code></td>
@@ -5363,90 +5511,110 @@ the platform.</p>
 </tr>
 </tbody>
 </table>
-<p>Events are recorded in the same database transaction as what caused them, so an event is sent
-if and only if it happened. Delivery is <em>at least once</em>: deduplicate on <code>Mapi-Event-Id</code>.
-Envelopes carry ids and states, never data, signed URLs or secrets; fetch results with the
-API.</p>
-<p><strong>No plot attachments.</strong> Webhooks do not attach rendered plots (the platform plan had them as
-an option). A receiver is a third party reached over the internet, often a chat or automation
-service that logs or forwards what it gets, so a chart - or a signed link to one - in the body
-would publish model results beyond the project. A receiver that wants a chart renders it with
-its own token when the event arrives: on <code>model.version.ready</code>, call
-<code>POST /v1/plots:render</code> with <code>{"source": {"model_id": ..., "version": ..., "plot_id":
-"core.ppc_fan"}, "format": "png"}</code> and <code>Prefer: wait=60</code>, then download the PNG from the
-answer's link (render runs need a token with <code>runs:create</code>).</p>
+<p>The server records each event in the same database transaction as its cause. Thus the server
+sends an event only if the event occurred, and always if it occurred. Delivery is <em>at least
+once</em>. Use <code>Mapi-Event-Id</code> to remove duplicates. Envelopes have ids and states. They never have
+data, signed URLs or secrets. Use the API to get the results.</p>
+<p><strong>No plot attachments.</strong> Webhooks do not attach rendered plots. The platform plan had them as
+an option. A receiver is a third party on the internet. It is frequently a chat or automation
+service that logs or sends on what it gets. Thus a chart in the body, or a signed link to a
+chart, would publish model results outside the project. If a receiver wants a chart, it renders
+the chart with its own token when the event arrives:</p>
+<ol>
+<li>On <code>model.version.ready</code>, call <code>POST /v1/plots:render</code> with <code>Prefer: wait=60</code> and this body:
+   <code>{"source": {"model_id": ..., "version": ..., "plot_id": "core.ppc_fan"}, "format": "png"}</code>.</li>
+<li>Download the PNG from the link in the answer.</li>
+</ol>
+<p>Render runs need a token with <code>runs:create</code>.</p>
 <h3 id="verify-it">Verify it<a class="headerlink" href="#verify-it" title="Permanent link">&para;</a></h3>
-<p>Recompute the HMAC over the <strong>raw</strong> body before parsing it, compare in constant time, and
-refuse timestamps more than five minutes away from your clock:</p>
+<ol>
+<li>Calculate the HMAC again over the <strong>raw</strong> body, before you parse the body.</li>
+<li>Compare the values in constant time.</li>
+<li>Refuse timestamps that are more than five minutes from your clock.</li>
+</ol>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Python</label><label for="__tabbed_1_2">Node</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client.webhooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">verify</span>
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapiError</span>
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="n">raw_body</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="k">try</span><span class="p">:</span>
-</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        <span class="n">event</span> <span class="o">=</span> <span class="n">verify</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="n">raw_body</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">)</span>  <span class="c1"># a WebhookEnvelope</span>
-</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="k">except</span> <span class="n">MapiError</span><span class="p">:</span>
-</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        <span class="k">return</span> <span class="mi">401</span>
-</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    <span class="o">...</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client.webhooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">verify</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapiError</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="n">raw_body</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>        <span class="n">event</span> <span class="o">=</span> <span class="n">verify</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="n">raw_body</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">)</span>  <span class="c1"># a WebhookEnvelope</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="k">except</span> <span class="n">MapiError</span><span class="p">:</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>        <span class="k">return</span> <span class="mi">401</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    <span class="o">...</span>
 </span></code></pre></div>
 <p><a href="../webhook-receivers/">Receiving webhooks</a> has complete FastAPI and Flask receivers.</p>
 </div>
 <div class="tabbed-block">
-<div class="language-js highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">import</span><span class="w"> </span><span class="nx">crypto</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">"node:crypto"</span><span class="p">;</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">verify</span><span class="p">(</span><span class="nx">rawBody</span><span class="p">,</span><span class="w"> </span><span class="nx">header</span><span class="p">,</span><span class="w"> </span><span class="nx">secret</span><span class="p">,</span><span class="w"> </span><span class="nx">now</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Date</span><span class="p">.</span><span class="nx">now</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1000</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">parts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Object</span><span class="p">.</span><span class="nx">groupBy</span><span class="p">(</span><span class="nx">header</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">","</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="nx">p</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">)[</span><span class="mf">0</span><span class="p">]);</span>
-</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Number</span><span class="p">(</span><span class="nx">parts</span><span class="p">.</span><span class="nx">t</span><span class="o">?</span><span class="p">.[</span><span class="mf">0</span><span class="p">]</span><span class="o">?</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">)[</span><span class="mf">1</span><span class="p">]);</span>
-</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nb">Number</span><span class="p">.</span><span class="nx">isInteger</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">Math</span><span class="p">.</span><span class="nx">abs</span><span class="p">(</span><span class="nx">now</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">t</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">300</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
-</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">crypto</span><span class="p">.</span><span class="nx">createHmac</span><span class="p">(</span><span class="s2">"sha256"</span><span class="p">,</span><span class="w"> </span><span class="nx">secret</span><span class="p">)</span>
-</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="w">    </span><span class="p">.</span><span class="nx">update</span><span class="p">(</span><span class="sb">`</span><span class="si">${</span><span class="nx">t</span><span class="si">}</span><span class="sb">.`</span><span class="p">).</span><span class="nx">update</span><span class="p">(</span><span class="nx">rawBody</span><span class="p">).</span><span class="nx">digest</span><span class="p">(</span><span class="s2">"hex"</span><span class="p">);</span>
-</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="nx">parts</span><span class="p">.</span><span class="nx">v1</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="p">[]).</span><span class="nx">some</span><span class="p">((</span><span class="nx">p</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">got</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">Buffer</span><span class="p">.</span><span class="kr">from</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">)[</span><span class="mf">1</span><span class="p">]</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="s2">"hex"</span><span class="p">);</span>
-</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">got</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">32</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">crypto</span><span class="p">.</span><span class="nx">timingSafeEqual</span><span class="p">(</span><span class="nx">got</span><span class="p">,</span><span class="w"> </span><span class="nx">Buffer</span><span class="p">.</span><span class="kr">from</span><span class="p">(</span><span class="nx">expected</span><span class="p">,</span><span class="w"> </span><span class="s2">"hex"</span><span class="p">));</span>
-</span><span id="__span-15-12"><a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="w">  </span><span class="p">});</span>
-</span><span id="__span-15-13"><a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="p">}</span>
+<div class="language-js highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">import</span><span class="w"> </span><span class="nx">crypto</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">"node:crypto"</span><span class="p">;</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">verify</span><span class="p">(</span><span class="nx">rawBody</span><span class="p">,</span><span class="w"> </span><span class="nx">header</span><span class="p">,</span><span class="w"> </span><span class="nx">secret</span><span class="p">,</span><span class="w"> </span><span class="nx">now</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Date</span><span class="p">.</span><span class="nx">now</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1000</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">parts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Object</span><span class="p">.</span><span class="nx">groupBy</span><span class="p">(</span><span class="nx">header</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">","</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="nx">p</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">)[</span><span class="mf">0</span><span class="p">]);</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Number</span><span class="p">(</span><span class="nx">parts</span><span class="p">.</span><span class="nx">t</span><span class="o">?</span><span class="p">.[</span><span class="mf">0</span><span class="p">]</span><span class="o">?</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">)[</span><span class="mf">1</span><span class="p">]);</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nb">Number</span><span class="p">.</span><span class="nx">isInteger</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">Math</span><span class="p">.</span><span class="nx">abs</span><span class="p">(</span><span class="nx">now</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">t</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">300</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">crypto</span><span class="p">.</span><span class="nx">createHmac</span><span class="p">(</span><span class="s2">"sha256"</span><span class="p">,</span><span class="w"> </span><span class="nx">secret</span><span class="p">)</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="w">    </span><span class="p">.</span><span class="nx">update</span><span class="p">(</span><span class="sb">`</span><span class="si">${</span><span class="nx">t</span><span class="si">}</span><span class="sb">.`</span><span class="p">).</span><span class="nx">update</span><span class="p">(</span><span class="nx">rawBody</span><span class="p">).</span><span class="nx">digest</span><span class="p">(</span><span class="s2">"hex"</span><span class="p">);</span>
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="nx">parts</span><span class="p">.</span><span class="nx">v1</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="p">[]).</span><span class="nx">some</span><span class="p">((</span><span class="nx">p</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-16-10"><a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">got</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">Buffer</span><span class="p">.</span><span class="kr">from</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">)[</span><span class="mf">1</span><span class="p">]</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="s2">"hex"</span><span class="p">);</span>
+</span><span id="__span-16-11"><a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">got</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">32</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">crypto</span><span class="p">.</span><span class="nx">timingSafeEqual</span><span class="p">(</span><span class="nx">got</span><span class="p">,</span><span class="w"> </span><span class="nx">Buffer</span><span class="p">.</span><span class="kr">from</span><span class="p">(</span><span class="nx">expected</span><span class="p">,</span><span class="w"> </span><span class="s2">"hex"</span><span class="p">));</span>
+</span><span id="__span-16-12"><a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="w">  </span><span class="p">});</span>
+</span><span id="__span-16-13"><a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="p">}</span>
 </span></code></pre></div>
 </div>
 </div>
 </div>
-<p>Answer any <code>2xx</code> quickly and do the work afterwards: the platform waits at most 5 seconds and
-reads at most 256 KiB of the answer. Redirects are not followed.</p>
+<p>Answer with a <code>2xx</code> quickly, and do the work after. The platform waits for a maximum of 5
+seconds. It reads a maximum of 256 KiB of the answer. The platform does not follow redirects.</p>
 <h3 id="retries-failures-and-replays">Retries, failures and replays<a class="headerlink" href="#retries-failures-and-replays" title="Permanent link">&para;</a></h3>
-<p>A delivery that does not get a <code>2xx</code> is retried after 1 minute, 5 minutes, 30 minutes, 2, 6,
-12 and 24 hours (each with up to 10% jitter), 8 tries in all. An event that still could not be
-delivered counts as one failure of the webhook; after 20 such events in a row the webhook is
-<strong>disabled</strong> and says why (<code>disabled_reason</code>). A receiver that answers <code>410 Gone</code> disables it
-at once. Both are audited (<code>webhook.disabled</code>). Fix the receiver, then turn it back on:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>api<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks/whk_01jaf3h1j2k3m4n5p6q7r8s9t0"</span><span class="w"> </span>--data<span class="w"> </span><span class="s1">'{"active": true}'</span>
+<p>If a delivery does not get a <code>2xx</code>, the platform tries again after these times:
+1 minute, 5 minutes and 30 minutes. Then it tries after 2, 6, 12 and 24 hours. Each time has a maximum of 10%
+jitter. There are 8 tries in total. If an event is still not delivered, it counts as one
+failure of the webhook. After 20 such events in a sequence, the platform <strong>disables</strong> the
+webhook. The webhook tells the reason (<code>disabled_reason</code>). If a receiver answers <code>410 Gone</code>,
+the platform disables the webhook immediately.</p>
+<p>The audit log records the two types of disable (<code>webhook.disabled</code>). To enable the webhook
+again:</p>
+<ol>
+<li>Repair the receiver.</li>
+<li>
+<p>Enable the webhook:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>api<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks/whk_01jaf3h1j2k3m4n5p6q7r8s9t0"</span><span class="w"> </span>--data<span class="w"> </span><span class="s1">'{"active": true}'</span>
 </span></code></pre></div>
-<p>or, from the command line, <code>mapi webhooks update whk_01jaf3h1j2k3m4n5p6q7r8s9t0 --enable</code>.</p>
-<p>The delivery log has every delivery with its status (<code>pending</code>, <code>retrying</code>, <code>succeeded</code>,
-<code>failed</code>, <code>blocked</code>), the last response code, duration and the start of the answer:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks/whk_01jaf3h1j2k3m4n5p6q7r8s9t0/deliveries?status=failed"</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks/whk_01jaf3h1j2k3m4n5p6q7r8s9t0/deliveries/whd_01jaf3m1n2p3q4r5s6t7v8w9x0:replay"</span>
+<p>Or, in the command line, use <code>mapi webhooks update whk_01jaf3h1j2k3m4n5p6q7r8s9t0 --enable</code>.</p>
+</li>
+</ol>
+<p>The delivery log has each delivery with its status (<code>pending</code>, <code>retrying</code>, <code>succeeded</code>,
+<code>failed</code>, <code>blocked</code>). It also has the last response code, the duration and the start of the
+answer:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks/whk_01jaf3h1j2k3m4n5p6q7r8s9t0/deliveries?status=failed"</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks/whk_01jaf3h1j2k3m4n5p6q7r8s9t0/deliveries/whd_01jaf3m1n2p3q4r5s6t7v8w9x0:replay"</span>
 </span></code></pre></div>
-<p>A replay sends the same event again (same event id) as a new delivery.</p>
+<p>A replay sends the same event again (with the same event id) as a new delivery.</p>
 <h3 id="rotate-the-secret">Rotate the secret<a class="headerlink" href="#rotate-the-secret" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks/whk_01jaf3h1j2k3m4n5p6q7r8s9t0:rotate-secret"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/webhooks/whk_01jaf3h1j2k3m4n5p6q7r8s9t0:rotate-secret"</span>
 </span></code></pre></div>
-<p>returns the new secret, once. For 24 hours deliveries carry two <code>v1</code> signatures, one per
-secret, so the receiver can switch over without dropping any.</p>
+<p>This call gives the new secret, one time. For 24 hours, deliveries have two <code>v1</code> signatures,
+one for each secret. Thus the receiver can change to the new secret and lose no deliveries.</p>
 <h2 id="running-it">Running it<a class="headerlink" href="#running-it" title="Permanent link">&para;</a></h2>
-<p>Deliveries are sent by the worker (<code>mapi-server worker</code>), never by the API: a relay loop
-looks for due deliveries every <code>MAPI_WEBHOOK_POLL_INTERVAL_S</code> and hands each try to the
-<code>webhooks</code> procrastinate queue. Retries are scheduled in the database, so a worker that dies
-mid-delivery only delays it. The settings are in the
-<a href="../../operations/configuration/">configuration reference</a>; the metrics
-(<code>mapi_webhook_deliveries_total</code>, <code>mapi_webhook_ssrf_blocked_total</code>,
-<code>mapi_webhooks_disabled_total</code>, <code>mapi_endpoint_promotions_total</code>,
-<code>mapi_endpoint_score_requests_total</code>, ...) are listed in
-<a href="../../operations/observability/">Observability</a>.</p>
-<p>For development, a receiver on your own machine is not a public host. Allow it explicitly -
-these settings are refused in the <code>multi-tenant</code> profile:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_WEBHOOK_DEV_ALLOWLIST</span><span class="o">=</span>localhost
-</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_WEBHOOK_ALLOW_HTTP</span><span class="o">=</span><span class="nb">true</span><span class="w">   </span><span class="c1"># only for the allow-listed hosts</span>
+<p>The worker (<code>mapi-server worker</code>) sends deliveries. The API never sends them. A relay loop
+looks for deliveries that are due at each <code>MAPI_WEBHOOK_POLL_INTERVAL_S</code>. It gives each try to
+the <code>webhooks</code> procrastinate queue. The database keeps the schedule of the retries. Thus, if a
+worker stops during a delivery, the delivery is only late.</p>
+<p>The <a href="../../operations/configuration/">configuration reference</a> gives the settings.
+<a href="../../operations/observability/">Observability</a> lists the metrics, for example:</p>
+<ul>
+<li><code>mapi_webhook_deliveries_total</code></li>
+<li><code>mapi_webhook_ssrf_blocked_total</code></li>
+<li><code>mapi_webhooks_disabled_total</code></li>
+<li><code>mapi_endpoint_promotions_total</code></li>
+<li><code>mapi_endpoint_score_requests_total</code>.</li>
+</ul>
+<p>For development, a receiver on your own machine is not a public host. You must allow it
+explicitly. The <code>multi-tenant</code> profile refuses these settings:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_WEBHOOK_DEV_ALLOWLIST</span><span class="o">=</span>localhost
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_WEBHOOK_ALLOW_HTTP</span><span class="o">=</span><span class="nb">true</span><span class="w">   </span><span class="c1"># only for the allow-listed hosts</span>
 </span></code></pre></div>
 
 

@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -2206,15 +2236,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setting-up-a-real-identity-provider" class="md-nav__link">
+  <a href="#set-up-a-real-identity-provider" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setting up a real identity provider
+        Set up a real identity provider
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Setting up a real identity provider">
+    <nav class="md-nav" aria-label="Set up a real identity provider">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4712,6 +4742,8 @@
       
         
       
+        
+      
     
     
     
@@ -4820,6 +4852,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../project/changelog/" class="md-nav__link">
         
   
@@ -4897,15 +4957,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setting-up-a-real-identity-provider" class="md-nav__link">
+  <a href="#set-up-a-real-identity-provider" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setting up a real identity provider
+        Set up a real identity provider
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Setting up a real identity provider">
+    <nav class="md-nav" aria-label="Set up a real identity provider">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5025,8 +5085,8 @@
 
 
 <h1 id="authentication-v03">Authentication <span class="mapi-badge">v0.3</span><a class="headerlink" href="#authentication-v03" title="Permanent link">&para;</a></h1>
-<p>A v0.3 deployment answers <code>401 UNAUTHENTICATED</code> to anyone it does not know. There are three
-ways in, one per kind of caller:</p>
+<p>A v0.3 deployment answers <code>401 UNAUTHENTICATED</code> to all callers that it does not know. There
+are three ways in, one for each type of caller:</p>
 <table>
 <thead>
 <tr>
@@ -5039,54 +5099,59 @@ ways in, one per kind of caller:</p>
 <tbody>
 <tr>
 <td>A person in a <strong>browser</strong></td>
-<td>The organisation's identity provider (OpenID Connect)</td>
-<td>An <code>HttpOnly</code> session cookie; the app never sees a token</td>
+<td>The identity provider of the organisation (OpenID Connect)</td>
+<td>An <code>HttpOnly</code> session cookie. The app never sees a token.</td>
 <td><a href="#browser-sign-in">Browser sign-in</a></td>
 </tr>
 <tr>
 <td>A person in a <strong>terminal</strong></td>
 <td><code>mapi login</code>: the same provider, from the command line</td>
-<td>The provider's ID token as <code>Authorization: Bearer</code></td>
+<td>The ID token of the provider as <code>Authorization: Bearer</code></td>
 <td><a href="#the-command-line">The command line</a></td>
 </tr>
 <tr>
 <td>A <strong>program</strong></td>
-<td>Nothing: a person mints it an API token</td>
+<td>Nothing. A person mints an API token for it.</td>
 <td><code>Authorization: Bearer mapi_…</code></td>
 <td><a href="#api-tokens">API tokens</a></td>
 </tr>
 </tbody>
 </table>
-<p>Whichever way, the caller is a user (<code>usr_…</code>) with roles in projects, and every request is
-checked against those roles at that moment (<a href="../administration/#roles">Administration</a>). This
-page is for the people who sign in and set up sign-in; the protocol details (cookies, CSRF,
-PKCE, JWKS, the database roles) are in
-<a href="../../operations/authentication/">Authentication and tenant isolation</a>.</p>
+<p>In all three ways, the caller is a user (<code>usr_…</code>) with roles in projects. The platform
+checks each request against those roles at that time
+(<a href="../administration/#roles">Administration</a>). This page is for the persons who sign in and
+who set up sign-in. For the protocol details (cookies, CSRF, PKCE, JWKS, the database roles),
+see <a href="../../operations/authentication/">Authentication and tenant isolation</a>.</p>
 <h2 id="browser-sign-in">Browser sign-in<a class="headerlink" href="#browser-sign-in" title="Permanent link">&para;</a></h2>
-<p><img alt="The web app's sign-in page" class="mapi-shot" src="../../assets/screenshots/signin.png" /></p>
-<p>Opening the web app without a session shows <strong>Sign in to your workspace</strong>. <strong>Continue to sign
-in</strong> goes to the API's <code>/auth/login</code>, which sends the browser to the identity provider; after
-the provider's own sign-in the browser comes back to the page it started on.</p>
-<p>The API does all the OpenID Connect work (authorization code with PKCE, a nonce, ID-token
-verification against the provider's keys) and keeps the tokens to itself: the browser holds
-only two cookies, a <code>__Host-</code> session cookie that scripts cannot read and a CSRF token. A
-session ends after 2 hours idle or 12 hours in all, or at <strong>Sign out</strong>.</p>
-<p><img alt="The project switcher: every tenant and project you belong to, with your role in each" class="mapi-shot" src="../../assets/screenshots/project-switcher.png" /></p>
-<p>Once signed in, the <strong>project switcher</strong> at the top left lists every tenant and project you
-have a role in, with that role and the tenant's trust tier. Everything the app shows and does
-happens in the selected project (it is sent as <code>X-Mapi-Project</code> on every request). The avatar
-menu shows who you are; a shield marks a platform operator.</p>
-<p>The <strong>first sign-in</strong> of a person creates their user from the provider's <code>(issuer, subject)</code>
-and, if the provider says the e-mail is <strong>verified</strong>, claims every invitation sent to that
-address (a tenant admin's <strong>Add member</strong>, an operator's <code>--admin-email</code>). Someone with no
-membership yet sees <em>You are not in a project yet</em>.</p>
+<p><img alt="The sign-in page of the web app" class="mapi-shot" src="../../assets/screenshots/signin.png" /></p>
+<p>If you open the web app without a session, it shows <strong>Sign in to your workspace</strong>.
+<strong>Continue to sign in</strong> goes to <code>/auth/login</code> on the API. The API sends the browser to the
+identity provider. After the sign-in at the provider, the browser comes back to the page
+where it started.</p>
+<p>The API does all the OpenID Connect work. This work is the authorization code with PKCE, a
+nonce, and the verification of the ID token against the keys of the provider. The API keeps
+the tokens. The browser holds only two cookies: a <code>__Host-</code> session cookie that scripts
+cannot read, and a CSRF token. A session ends after 2 hours without activity or after 12
+hours in total. It also ends when you click <strong>Sign out</strong>.</p>
+<p><img alt="The project switcher: all tenants and projects that you belong to, with your role in each" class="mapi-shot" src="../../assets/screenshots/project-switcher.png" /></p>
+<p>After you sign in, the <strong>project switcher</strong> at the top left lists each tenant and project
+where you have a role. It shows that role and the trust tier of the tenant. All that the app
+shows and does applies to the selected project. The app sends the project as
+<code>X-Mapi-Project</code> on each request. The avatar menu shows who you are. A shield marks a
+platform operator.</p>
+<p>The <strong>first sign-in</strong> of a person creates their user from the <code>(issuer, subject)</code> of the
+provider. If the provider tells that the e-mail is <strong>verified</strong>, the platform also claims all
+invitations to that address. Invitations come from <strong>Add member</strong> (a tenant admin) or
+<code>--admin-email</code> (an operator). A person with no membership yet sees <em>You are not in a
+project yet</em>.</p>
 <h2 id="the-development-idp">The development IdP<a class="headerlink" href="#the-development-idp" title="Permanent link">&para;</a></h2>
-<p><code>make dev</code> (and Docker Compose) run the servers in the <code>dev</code> profile, which mounts a small
-OpenID provider inside the API at <code>/dev/idp</code>. Sign-in then works offline, through exactly the
-same code path as a real provider: RS256-signed ID tokens, PKCE, single-use codes.</p>
-<p><img alt="The development IdP's account chooser" class="mapi-shot" src="../../assets/screenshots/dev-idp.png" /></p>
-<p>There are no passwords: whoever can reach a <code>dev</code> API can sign in as any listed account. The
-accounts come from <code>MAPI_DEVIDP_USERS</code>:</p>
+<p><code>make dev</code> (and Docker Compose) run the servers in the <code>dev</code> profile. This profile mounts a
+small OpenID provider inside the API at <code>/dev/idp</code>. Then sign-in works offline, through
+exactly the same code path as a real provider. It uses RS256-signed ID tokens, PKCE and
+single-use codes.</p>
+<p><img alt="The account chooser of the development IdP" class="mapi-shot" src="../../assets/screenshots/dev-idp.png" /></p>
+<p>There are no passwords. All persons who can get to a <code>dev</code> API can sign in as any listed
+account. The accounts come from <code>MAPI_DEVIDP_USERS</code>:</p>
 <table>
 <thead>
 <tr>
@@ -5104,16 +5169,16 @@ accounts come from <code>MAPI_DEVIDP_USERS</code>:</p>
 <td><code>runner</code> in <code>default/default</code></td>
 </tr>
 <tr>
-<td><code>viewer@dev.local</code> (and any further addresses)</td>
+<td><code>viewer@dev.local</code> (and all other addresses)</td>
 <td><code>viewer</code> in <code>default/default</code></td>
 </tr>
 </tbody>
 </table>
-<p>Scripts sign in without a browser with <code>mapi_client.oidc.dev_idp_login(api_url, email)</code>,
-which runs the same flow and returns an ID token valid for an hour. <code>make seed</code>, the
-end-to-end tests and the walkthroughs on this page use it; a server in any other profile
-answers 404, so it cannot be pointed at production. The walkthrough below is
-<code>docs/snippets/auth_tour.sh</code>, run by the test suite against <code>make dev</code>:</p>
+<p>Scripts sign in without a browser with <code>mapi_client.oidc.dev_idp_login(api_url, email)</code>.
+This function does the same flow and returns an ID token that is valid for an hour.
+<code>make seed</code>, the end-to-end tests and the walkthroughs on this page use it. A server in any
+other profile answers 404. Thus you cannot use the function against production. The
+walkthrough below is <code>docs/snippets/auth_tour.sh</code>. The test suite runs it against <code>make dev</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">API</span><span class="o">=</span><span class="si">${</span><span class="nv">MAPI_URL</span><span class="k">:-</span><span class="si">${</span><span class="nv">MAPI_API_URL</span><span class="k">:-</span><span class="nv">http</span><span class="p">://127.0.0.1:</span><span class="nv">8000</span><span class="si">}}</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>/dev/null<span class="w"> </span>-w<span class="w"> </span><span class="s1">'anonymous: %{http_code}\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/me"</span><span class="w">      </span><span class="c1"># 401: sign in first</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># dev profile only: what `mapi login` gets from a real identity provider, without a browser</span>
@@ -5126,52 +5191,61 @@ answers 404, so it cannot be pointed at production. The walkthrough below is
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>anonymous: 401
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>{"email":"analyst@dev.local","auth":"session","operator":false,"projects":["acme/growth admin","acme/retail admin","default/default runner"]}
 </span></code></pre></div>
-<p><code>MAPI_STACK_PROFILE=single-tenant make dev</code> turns sign-in off altogether: the v0.2 behaviour,
-where every request acts as the local administrator of <code>default</code>.</p>
-<h2 id="setting-up-a-real-identity-provider">Setting up a real identity provider<a class="headerlink" href="#setting-up-a-real-identity-provider" title="Permanent link">&para;</a></h2>
-<p>The API signs people in with any <strong>OpenID Connect provider that offers the authorization-code
-flow</strong>: it needs an issuer whose <code>/.well-known/openid-configuration</code> lists an authorization
-endpoint, a token endpoint and a JWKS.</p>
+<p><code>MAPI_STACK_PROFILE=single-tenant make dev</code> turns off sign-in fully. This is the v0.2
+behaviour: each request acts as the local administrator of <code>default</code>.</p>
+<h2 id="set-up-a-real-identity-provider">Set up a real identity provider<a class="headerlink" href="#set-up-a-real-identity-provider" title="Permanent link">&para;</a></h2>
+<p>The API can sign in persons with any <strong>OpenID Connect provider that has the
+authorization-code flow</strong>. The provider needs an issuer whose
+<code>/.well-known/openid-configuration</code> lists an authorization endpoint, a token endpoint and a
+JWKS.</p>
 <h3 id="google-accounts">Google accounts<a class="headerlink" href="#google-accounts" title="Permanent link">&para;</a></h3>
-<p>The default of the <a href="../../operations/gcp-deployment/">Google Cloud deployment</a> and the
-simplest choice for an organisation on Google Workspace:</p>
+<p>Google accounts are the default of the
+<a href="../../operations/gcp-deployment/">Google Cloud deployment</a>. They are the simplest selection
+for an organisation on Google Workspace.</p>
 <ol>
-<li>In the Google Cloud console (<strong>APIs &amp; Services → Credentials</strong>) create an <strong>OAuth client
-   ID</strong> of type <em>Web application</em>, with the authorized redirect URI
+<li>In the Google Cloud console (<strong>APIs &amp; Services → Credentials</strong>), create an <strong>OAuth client
+   ID</strong> of type <em>Web application</em>. Set the authorized redirect URI to
    <code>https://&lt;your app domain&gt;/auth/callback</code>.</li>
-<li>Give Terraform its id (<code>oidc_client_id</code> in <code>terraform.tfvars</code>) and its secret as the
-   ephemeral variable <code>TF_VAR_oidc_client_secret</code> with <code>oidc_client_secret_version = 1</code>
-   (<a href="../../operations/gcp-deployment/#4-add-the-oauth-client-secret">step 4 of the deployment</a>).
-   Outside Terraform, set <code>MAPI_OIDC_ISSUER=https://accounts.google.com</code>,
+<li>Give the id to Terraform (<code>oidc_client_id</code> in <code>terraform.tfvars</code>). Give the secret as the
+   ephemeral variable <code>TF_VAR_oidc_client_secret</code>, with <code>oidc_client_secret_version = 1</code>
+   (<a href="../../operations/gcp-deployment/#4-add-the-oauth-client-secret">step 4 of the deployment</a>).</li>
+<li>If you do not use Terraform, set <code>MAPI_OIDC_ISSUER=https://accounts.google.com</code>,
    <code>MAPI_OIDC_CLIENT_ID</code> and <code>MAPI_OIDC_CLIENT_SECRET</code> on the API.</li>
-<li>List the operators' e-mails in <code>MAPI_OPERATOR_EMAILS</code>, and create each organisation's
-   tenant with an <code>--admin-email</code> (<a href="../administration/#tenants">Administration</a>).</li>
+<li>Put the e-mails of the operators in <code>MAPI_OPERATOR_EMAILS</code>.</li>
+<li>Create the tenant of each organisation with an <code>--admin-email</code>
+   (<a href="../administration/#tenants">Administration</a>).</li>
 </ol>
-<p><code>MAPI_OIDC_EXTRA_PARAMS='{"hd": "acme.com"}'</code> pre-selects a Workspace domain in Google's
-account chooser. It is only a hint: who may do what is decided by memberships, never by the
-e-mail domain.</p>
+<p><code>MAPI_OIDC_EXTRA_PARAMS='{"hd": "acme.com"}'</code> selects a Workspace domain in advance in the
+account chooser of Google. It is only a hint. Memberships control who can do what. The
+e-mail domain never controls it.</p>
 <h3 id="identity-platform">Identity Platform<a class="headerlink" href="#identity-platform" title="Permanent link">&para;</a></h3>
 <p>Terraform also enables <strong>Identity Platform</strong> in the control project
-(<code>infra/terraform/modules/control/identity.tf</code>): it registers the app's domain as an
-authorized domain, turns off anonymous and (by default) e-mail/password sign-in, and is where
-SAML and OIDC providers for enterprise single sign-on are added, in the console or with
-<code>google_identity_platform_*_idp_config</code> resources kept outside the module (their secrets do not
-belong in its state).</p>
+(<code>infra/terraform/modules/control/identity.tf</code>). It registers the domain of the app as an
+authorized domain. It turns off anonymous sign-in and, by default, e-mail/password sign-in.
+You add SAML and OIDC providers for enterprise single sign-on in Identity Platform. Add them
+in the console, or with <code>google_identity_platform_*_idp_config</code> resources outside the module.
+Keep these resources outside the module, because their secrets must not be in its state.</p>
 <div class="admonition warning">
 <p class="admonition-title">Known gap in v0.3</p>
-<p>The API's sign-in cannot use Identity Platform's own tokens yet. Those (issuer
-<code>https://securetoken.google.com/&lt;project&gt;</code>) are obtained with Identity Platform's client
-SDK, and that issuer offers no authorization-code endpoint for the API to redirect to. Until
-that adapter exists, point <code>MAPI_OIDC_ISSUER</code> at Google (above) or directly at the
-organisation's own OpenID provider (below). The Identity Platform configuration that
-Terraform creates is harmless meanwhile.</p>
+<p>The sign-in of the API cannot use the tokens of Identity Platform yet. You get those
+tokens (issuer <code>https://securetoken.google.com/&lt;project&gt;</code>) with the client SDK of
+Identity Platform. That issuer has no authorization-code endpoint for the API to
+redirect to. Until that adapter exists, point <code>MAPI_OIDC_ISSUER</code> at Google (above). As an
+alternative, point it directly at the own OpenID provider of the organisation (below).
+Until then, the Identity Platform configuration that Terraform creates causes no
+problems.</p>
 </div>
 <h3 id="other-providers">Other providers<a class="headerlink" href="#other-providers" title="Permanent link">&para;</a></h3>
-<p>Okta, Microsoft Entra ID, Keycloak, Auth0 and any other standard provider work the same way:
-register a web client with the redirect URI <code>https://&lt;your app domain&gt;/auth/callback</code>, then set
-<code>MAPI_OIDC_ISSUER</code> to its issuer (and <code>MAPI_OIDC_DISCOVERY_URL</code> if its discovery document is not
-under the issuer), <code>MAPI_OIDC_CLIENT_ID</code> and <code>MAPI_OIDC_CLIENT_SECRET</code>. ID tokens must be signed
-with an asymmetric algorithm (<code>MAPI_OIDC_ALGORITHMS</code>, default <code>RS256,ES256</code>).</p>
+<p>Okta, Microsoft Entra ID, Keycloak, Auth0 and all other standard providers work in the same
+way:</p>
+<ol>
+<li>Register a web client with the redirect URI <code>https://&lt;your app domain&gt;/auth/callback</code>.</li>
+<li>Set <code>MAPI_OIDC_ISSUER</code> to its issuer.</li>
+<li>If its discovery document is not under the issuer, set <code>MAPI_OIDC_DISCOVERY_URL</code>.</li>
+<li>Set <code>MAPI_OIDC_CLIENT_ID</code> and <code>MAPI_OIDC_CLIENT_SECRET</code>.</li>
+</ol>
+<p>ID tokens must have a signature with an asymmetric algorithm (<code>MAPI_OIDC_ALGORITHMS</code>,
+default <code>RS256,ES256</code>).</p>
 <h2 id="the-command-line">The command line<a class="headerlink" href="#the-command-line" title="Permanent link">&para;</a></h2>
 <p><code>mapi login</code> signs in with the same provider, from the terminal:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mapi<span class="w"> </span>--profile<span class="w"> </span>prod<span class="w"> </span>--url<span class="w"> </span>https://api.mapi.example<span class="w"> </span>login<span class="w"> </span><span class="se">\</span>
@@ -5181,30 +5255,34 @@ with an asymmetric algorithm (<code>MAPI_OIDC_ALGORITHMS</code>, default <code>R
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>mapi<span class="w"> </span>whoami<span class="w">                                     </span><span class="c1"># who, how, and your projects and roles</span>
 </span></code></pre></div>
 <ul>
-<li>With a browser, it opens the provider's page and listens once on <code>127.0.0.1</code> for the
-  redirect (authorization code with PKCE).</li>
-<li><code>--device</code> prints a short code to enter on another device (providers that support the device
-  flow).</li>
-<li><code>--with-token</code> stores an API token read from standard input instead (CI).</li>
+<li>With a browser, it opens the page of the provider. It listens one time on <code>127.0.0.1</code> for
+  the redirect (authorization code with PKCE).</li>
+<li><code>--device</code> shows a short code. Type the code on a different device. This works with
+  providers that support the device flow.</li>
+<li><code>--with-token</code> reads an API token from standard input and stores it instead (CI).</li>
 </ul>
-<p>It keeps the sign-in in <code>credentials.json</code> next to the config file (mode <code>0600</code>) and sends the
-provider's ID token as <code>Authorization: Bearer</code>. The API accepts such a token only when its
-audience is one of <code>MAPI_OIDC_CLI_CLIENT_IDS</code> (default <code>mapi-cli</code>): register the CLI with your
-provider as a public <em>installed app</em> client with a loopback redirect, PKCE and the <code>openid
-email</code> scopes. Google's installed-app clients need a client secret, which the CLI reads from
-<code>MAPI_OIDC_CLIENT_SECRET</code> and never prints.</p>
-<p>Against the development IdP:</p>
+<p>The CLI keeps the sign-in in <code>credentials.json</code> next to the config file (mode <code>0600</code>). It
+sends the ID token of the provider as <code>Authorization: Bearer</code>. The API accepts such a token
+only when its audience is one of <code>MAPI_OIDC_CLI_CLIENT_IDS</code> (default <code>mapi-cli</code>). Register
+the CLI with your provider as a public <em>installed app</em> client. Use a loopback redirect, PKCE
+and the <code>openid email</code> scopes. The installed-app clients of Google need a client secret. The
+CLI reads it from <code>MAPI_OIDC_CLIENT_SECRET</code> and never shows it.</p>
+<p>To sign in against the development IdP, use this command:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>mapi<span class="w"> </span>login<span class="w"> </span>--issuer<span class="w"> </span>https://dev-idp.mapi.localhost<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">           </span>--discovery-url<span class="w"> </span>http://127.0.0.1:8000/dev/idp
 </span></code></pre></div>
-<p>Then choose where commands act with <code>mapi use &lt;tenant&gt;/&lt;project&gt;</code> (or <code>--project</code>, or
-<code>MAPI_PROJECT</code>); <code>mapi whoami</code> shows who you are, how you are signed in and your projects. See
+<p>Then select the project where commands act. Use <code>mapi use &lt;tenant&gt;/&lt;project&gt;</code>, <code>--project</code>
+or <code>MAPI_PROJECT</code>. <code>mapi whoami</code> shows who you are, how you signed in and your projects. See
 <a href="../cli/#sign-in-and-choose-a-project">The command line</a>.</p>
 <h2 id="api-tokens">API tokens<a class="headerlink" href="#api-tokens" title="Permanent link">&para;</a></h2>
-<p>Programs never sign in. A person mints them a token in one project, with only the scopes it
-needs; the token then acts as that person, narrowed by its scopes, and only in that project.
-In the web app it is <strong>Tokens → New token</strong> (<a href="../administration/#api-tokens">Administration</a>);
-from the CLI, <code>mapi tokens create</code>; over HTTP:</p>
+<p>Programs never sign in. A person mints a token for them in one project, with only the scopes
+that the program needs. The token then acts as that person, but only in that project. Its
+scopes limit what it can do. To mint a token, use one of these methods:</p>
+<ul>
+<li>In the web app, use <strong>Tokens → New token</strong> (<a href="../administration/#api-tokens">Administration</a>).</li>
+<li>From the CLI, use <code>mapi tokens create</code>.</li>
+<li>Over HTTP, use this request:</li>
+</ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nv">CREATED</span><span class="o">=</span><span class="k">$(</span>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/tokens"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$ID_TOKEN</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'X-Mapi-Project: default/default'</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"name": "auth-guide", "scopes": ["models:read"], "expires_in_days": 1}'</span><span class="k">)</span>
@@ -5215,21 +5293,24 @@ from the CLI, <code>mapi tokens create</code>; over HTTP:</p>
 </span></code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>{"id":"tok_01m50mxfqh4k95ed2dv2jc005v","display":"mapi_hhb9gjzf_…","scopes":["models:read"],"project":"default/default","expires_at":"2026-10-16T20:44:02.161164Z"}
 </span></code></pre></div>
-<p>The secret (<code>mapi_&lt;prefix&gt;_&lt;secret&gt;&lt;checksum&gt;</code>) is in the response <strong>once</strong>. The server keeps
-only an HMAC of it; listings show the prefix (<code>mapi_hhb9gjzf_…</code>). The built-in checksum lets
-clients and secret scanners reject a mistyped or made-up token without asking the server.</p>
-<p>A program sends it as a bearer. The token is bound to its project, so it needs no
-<code>X-Mapi-Project</code> header:</p>
+<p>The secret (<code>mapi_&lt;prefix&gt;_&lt;secret&gt;&lt;checksum&gt;</code>) is in the response <strong>one time</strong> only. The
+server keeps only an HMAC of it. Lists show the prefix (<code>mapi_hhb9gjzf_…</code>). Clients and
+secret scanners use the built-in checksum to reject an incorrect or invented token. They do
+not have to ask the server.</p>
+<p>A program sends the token as a bearer. The token is bound to its project, so it does not
+need an <code>X-Mapi-Project</code> header:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/me"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">'{auth, operator}'</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/runs?limit=2"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | "\(.id) \(.kind) \(.state)"'</span><span class="w">   </span><span class="c1"># bound to its project: no header needed</span>
 </span></code></pre></div>
-<p>The Python client takes it as <code>Client(token=…)</code> or <code>MAPI_TOKEN</code>, the CLI as <code>--token</code>,
-<code>MAPI_TOKEN</code> or <code>mapi login --with-token</code> (<a href="../python-client/#projects-tokens-and-usage">Python client</a>).
-Both refuse to send a token over plain HTTP to anything but a loopback address.</p>
+<p>The Python client accepts the token as <code>Client(token=…)</code> or <code>MAPI_TOKEN</code>. The CLI accepts it
+as <code>--token</code>, <code>MAPI_TOKEN</code> or <code>mapi login --with-token</code>
+(<a href="../python-client/#projects-tokens-and-usage">Python client</a>). Both refuse to send a token
+over plain HTTP to an address that is not a loopback address.</p>
 <h3 id="what-a-token-cannot-do">What a token cannot do<a class="headerlink" href="#what-a-token-cannot-do" title="Permanent link">&para;</a></h3>
-<p>Scopes only narrow. A <code>models:read</code> token cannot start a run even when its owner is a runner;
-it cannot act in another project; and no token carries operator powers:</p>
+<p>Scopes can only make a token more limited. A <code>models:read</code> token cannot start a run, also
+when its owner is a runner. A token cannot act in a different project. No token has operator
+powers:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># models:read cannot spend compute, even though its owner is a runner</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/runs"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{"kind": "fit", "spec": "spec://default/eu-geo-mmm"}'</span><span class="w"> </span><span class="se">\</span>
@@ -5243,8 +5324,8 @@ it cannot act in another project; and no token carries operator powers:</p>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>{"status":403,"code":"FORBIDDEN"}
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>{"status":403,"code":"FORBIDDEN"}
 </span></code></pre></div>
-<p>Tokens expire (default 90 days, at most 365). Revoking one, or removing its owner from the
-project, stops it at the next request:</p>
+<p>Tokens expire. The default is 90 days, and the maximum is 365 days. If you revoke a token, or
+remove its owner from the project, the token stops at the next request:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>/dev/null<span class="w"> </span>-w<span class="w"> </span><span class="s1">'revoke: %{http_code}\n'</span><span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/tokens/</span><span class="nv">$TOKEN_ID</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$ID_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'X-Mapi-Project: default/default'</span>
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/me"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">'{status, code}'</span><span class="w">   </span><span class="c1"># at once</span>
@@ -5252,8 +5333,9 @@ project, stops it at the next request:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>revoke: 204
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>{"status":401,"code":"UNAUTHENTICATED"}
 </span></code></pre></div>
-<p>Failed uses of a known token (a wrong secret, an expired or revoked token) are written to the
-audit log as <code>token.auth_failed</code>; no error ever echoes the token back.</p>
+<p>The platform writes failed uses of a known token to the audit log as <code>token.auth_failed</code>.
+Examples are an incorrect secret, or an expired or revoked token. No error ever shows the
+token.</p>
 <h2 id="who-can-see-what">Who can see what<a class="headerlink" href="#who-can-see-what" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5273,9 +5355,9 @@ audit log as <code>token.auth_failed</code>; no error ever echoes the token back
 </tr>
 <tr>
 <td>Projects</td>
-<td>Every project with a role (choose one per request)</td>
+<td>Each project with a role (select one for each request)</td>
 <td>Same</td>
-<td>Only the one it was minted in</td>
+<td>Only the project where it was minted</td>
 </tr>
 <tr>
 <td>Permissions</td>
@@ -5297,8 +5379,8 @@ audit log as <code>token.auth_failed</code>; no error ever echoes the token back
 </tr>
 <tr>
 <td>Ends</td>
-<td>2 h idle, 12 h total, sign-out</td>
-<td><code>mapi logout</code>; the CLI renews the ID token with a refresh token when the provider issued one, otherwise <code>mapi login</code> again</td>
+<td>2 h without activity, 12 h total, sign-out</td>
+<td><code>mapi logout</code>. If the provider gave a refresh token, the CLI uses it to renew the ID token. If not, use <code>mapi login</code> again.</td>
 <td>Expiry or revocation</td>
 </tr>
 </tbody>
@@ -5306,8 +5388,8 @@ audit log as <code>token.auth_failed</code>; no error ever echoes the token back
 <h2 id="where-next">Where next<a class="headerlink" href="#where-next" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../administration/">Administration</a>: tenants, members, roles, tokens, quotas and audit.</li>
-<li><a href="../../operations/authentication/">Authentication and tenant isolation</a>: the operator's view,
-  with cookies, CSRF, row-level security and Pub/Sub push authentication.</li>
+<li><a href="../../operations/authentication/">Authentication and tenant isolation</a>: the view of the
+  operator, with cookies, CSRF, row-level security and Pub/Sub push authentication.</li>
 <li><a href="../../concepts/tenancy-and-auth/">Tenancy and authentication</a>: the concepts and the
   request-authorization pipeline.</li>
 </ul>

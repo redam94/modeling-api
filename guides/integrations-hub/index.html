@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4684,6 +4714,8 @@
       
         
       
+        
+      
     
     
     
@@ -4772,6 +4804,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4969,21 +5029,27 @@
 
 
 <h1 id="the-integrations-hub-v04">The Integrations hub <span class="mapi-badge">v0.4</span><a class="headerlink" href="#the-integrations-hub-v04" title="Permanent link">&para;</a></h1>
-<p><strong>Integrations</strong> in the web app's sidebar (<span class="keys"><kbd class="key-g">G</kbd></span> then <span class="keys"><kbd class="key-i">I</kbd></span>) is where a fitted model leaves
-the platform: a spreadsheet scores it, a dashboard embeds its chart, your pipeline hears when
-a fit is ready. Everything on these pages is one or two calls of the
-<a href="../../reference/http-api/#guided-and-integrations">HTTP API</a>; the concepts behind them - the
-promotion gate, signed webhooks, embed links for platform recipes only - are explained in
-<a href="../../concepts/integrations/">Integrations</a>, and <a href="../endpoints-and-webhooks/">Endpoints and webhooks</a>
-does the same with <code>curl</code>.</p>
-<p>The hub has four tabs: <strong>Overview</strong> (the Guided cards and the developer entry points),
-<strong>Endpoints</strong>, <strong>Webhooks</strong> and <strong>Plots and links</strong>. Guided mode's last step,
-<a href="../guided-tutorial/#7-share">Share</a>, leads here: an endpoint or chart link made there is listed
-in the hub straight away, and its <strong>Code for this endpoint</strong> button opens the endpoint's
-snippets. In a project locked to Guided mode, the hub stays in the navigation.</p>
+<p><strong>Integrations</strong> in the sidebar of the web app (<span class="keys"><kbd class="key-g">G</kbd></span> then <span class="keys"><kbd class="key-i">I</kbd></span>) is where a fitted model
+goes out of the platform. For example, a spreadsheet scores the model, a dashboard embeds its
+chart, or your pipeline gets a message when a fit is ready. Each action on these pages is one
+or two calls of the <a href="../../reference/http-api/#guided-and-integrations">HTTP API</a>.
+<a href="../../concepts/integrations/">Integrations</a> tells the concepts: the promotion gate, signed
+webhooks, and embed links only for platform recipes.
+<a href="../endpoints-and-webhooks/">Endpoints and webhooks</a> does the same tasks with <code>curl</code>.</p>
+<p>The hub has four tabs:</p>
+<ul>
+<li><strong>Overview</strong>: The Guided cards and the entry points for developers.</li>
+<li><strong>Endpoints</strong>.</li>
+<li><strong>Webhooks</strong>.</li>
+<li><strong>Plots and links</strong>.</li>
+</ul>
+<p>The last step of Guided mode, <a href="../guided-tutorial/#7-share">Share</a>, goes to the hub. If you make
+an endpoint or a chart link in that step, the hub lists it immediately. Its <strong>Code for this
+endpoint</strong> button opens the snippets of the endpoint. In a project that is locked to Guided
+mode, the hub stays in the navigation.</p>
 <h2 id="overview-connect-in-a-few-steps">Overview: connect in a few steps<a class="headerlink" href="#overview-connect-in-a-few-steps" title="Permanent link">&para;</a></h2>
 <p><img alt="The Integrations overview: Google Sheets, BI dashboard and webhook cards, and the developer entry points" class="mapi-shot" src="../../assets/screenshots/integrations-overview.png" /></p>
-<p>Three cards cover the common cases without reading any API documentation:</p>
+<p>Three cards cover the usual cases. You do not need to read API documentation:</p>
 <table>
 <thead>
 <tr>
@@ -4995,12 +5061,12 @@ snippets. In a project locked to Guided mode, the hub stays in the navigation.</
 <tbody>
 <tr>
 <td><strong>Google Sheets</strong></td>
-<td>The Apps Script that scores an endpoint from a sheet - the rows of a sheet named <code>Input</code> (a header row with the endpoint's dims and inputs, one row per coordinate), or the example call - and writes the answer's summary (mean and 90% interval per coordinate) to a sheet named <code>Result</code>, with the steps to install it</td>
-<td>An endpoint; a token from <strong>Create a token</strong> (it can only score that endpoint)</td>
+<td>The Apps Script that scores an endpoint from a sheet, with the steps to install it. The script reads the rows of a sheet with the name <code>Input</code>, or it uses the example call. The <code>Input</code> sheet has a header row with the dims and inputs of the endpoint, and one row for each coordinate. For a forecast, it has your actuals and the dates to forecast, with the target empty. The card shows a preview. The script writes the summary of the answer (mean and 90% interval for each coordinate) to a sheet with the name <code>Result</code>. Above the summary, it writes a note that tells the conditions of the forecast</td>
+<td>An endpoint. A token from <strong>Create a token</strong>. This token can only score that endpoint</td>
 </tr>
 <tr>
 <td><strong>BI dashboard</strong></td>
-<td>A read-only, expiring embed link for Looker Studio, Power BI or Notion (Slack shows a link as a card without the chart: post the PNG there)</td>
+<td>A read-only embed link that expires, for Looker Studio, Power BI or Notion. Slack shows a link as a card without the chart. For Slack, post the PNG</td>
 <td>A saved plot of a platform recipe</td>
 </tr>
 <tr>
@@ -5010,16 +5076,26 @@ snippets. In a project locked to Guided mode, the hub stays in the navigation.</
 </tr>
 </tbody>
 </table>
-<p>Below them, <strong>For developers</strong> links to the endpoints, to <a href="../administration/#api-tokens">scoped tokens</a>
-and to the server's own interactive API documentation (<code>/docs</code>) and OpenAPI 3.1 document
-(<code>/openapi.json</code>).</p>
+<p>Below the cards, <strong>For developers</strong> has links to these items:</p>
+<ul>
+<li>The endpoints.</li>
+<li><a href="../administration/#api-tokens">Scoped tokens</a>.</li>
+<li>The interactive API documentation of the server (<code>/docs</code>).</li>
+<li>The OpenAPI 3.1 document of the server (<code>/openapi.json</code>).</li>
+</ul>
 <h2 id="endpoints-and-aliases">Endpoints and aliases<a class="headerlink" href="#endpoints-and-aliases" title="Permanent link">&para;</a></h2>
-<p>The <strong>Endpoints</strong> tab lists the project's endpoints: the alias, the model version it serves,
-its revision, the gate it passed and when it was promoted. Click one to open its page.</p>
+<p>The <strong>Endpoints</strong> tab lists the endpoints of the project. For each endpoint, it shows the
+alias, the model version that it serves and its revision. It also shows the gate that it
+passed and the date of the promotion. To open the page of an endpoint, click it.</p>
 <h3 id="promoting-through-the-gate">Promoting through the gate<a class="headerlink" href="#promoting-through-the-gate" title="Permanent link">&para;</a></h3>
-<p><strong>Promote a model</strong> (project admins) asks for the endpoint's name, a model and a version.
-The dialog shows the version's <a href="../../concepts/guided-mode/#scorecard">sanity scorecard</a> and
-the <strong>expected gate</strong>; <strong>Promote</strong> asks the server, which decides:</p>
+<p>Only project admins can promote.</p>
+<ol>
+<li>Click <strong>Promote a model</strong>.</li>
+<li>Type the name of the endpoint, and select a model and a version. The dialog shows the
+   <a href="../../concepts/guided-mode/#scorecard">sanity scorecard</a> of the version and the <strong>expected
+   gate</strong>.</li>
+<li>Click <strong>Promote</strong>. The server decides:</li>
+</ol>
 <p><img alt="The promote dialog after the server asked for an override, with the scorecard, the reason and the override field" class="mapi-shot" src="../../assets/screenshots/integrations-promote-gate.png" /></p>
 <table>
 <thead>
@@ -5038,145 +5114,203 @@ the <strong>expected gate</strong>; <strong>Promote</strong> asks the server, wh
 <tr>
 <td><strong>Needs an override</strong> (<code>409 OVERRIDE_REQUIRED</code>)</td>
 <td>The reasons, each with its check (<code>holdout.mape</code>), and an <strong>Override reason</strong> field</td>
-<td>A project admin signed in to the app writes why and clicks <strong>Override and promote</strong>; the override is audited as <code>endpoint.promote_override</code>. No API token can override</td>
+<td>A project admin who is signed in to the app writes the reason and clicks <strong>Override and promote</strong>. The audit log records the override as <code>endpoint.promote_override</code>. An API token cannot override</td>
 </tr>
 <tr>
 <td><strong>Blocked</strong> (<code>409 PROMOTION_BLOCKED</code>)</td>
-<td>The reasons; no override</td>
-<td>A failing scorecard, an interrupted fit, a <code>train_only</code> fit or a breaking input change: fix it and promote a new version</td>
+<td>The reasons. No override</td>
+<td>The cause is a scorecard that fails, a fit that stopped, a <code>train_only</code> fit or an input change that breaks callers. Repair the cause and promote a new version</td>
 </tr>
 </tbody>
 </table>
-<p>The server also checks what the app cannot see - that the version was refitted on all data
-after its holdout evaluation, and that its input contract still matches what callers send - so
-an expected <strong>Passes</strong> can still come back blocked. <strong>Description and evaluation policy</strong>
-sets the endpoint's <a href="../../concepts/integrations/#promotion-gate">EvaluationPolicy</a>: accept
-exploration fits too, and block, warn about or allow input-contract changes. If someone else
-promoted the endpoint while the dialog was open, the server refuses the stale revision and the
-dialog says so.</p>
+<p>The server also checks two things that the app cannot see:</p>
+<ul>
+<li>The version was fitted again on all the data after its holdout evaluation.</li>
+<li>Its input contract still agrees with what callers send.</li>
+</ul>
+<p>Thus an expected <strong>Passes</strong> can still come back blocked. <strong>Description and evaluation policy</strong>
+sets the <a href="../../concepts/integrations/#promotion-gate">EvaluationPolicy</a> of the endpoint. With
+it, you can accept exploration fits. You can also block, warn about or allow changes to the
+input contract. If a different person promoted the endpoint while the dialog was open, the
+server refuses the old revision. The dialog tells you this.</p>
 <h3 id="an-endpoints-page">An endpoint's page<a class="headerlink" href="#an-endpoints-page" title="Permanent link">&para;</a></h3>
 <p><img alt="An endpoint's page: the version it serves, the gate's reasons and the history with rollback" class="mapi-shot" src="../../assets/screenshots/integrations-endpoint.png" /></p>
 <ul>
-<li><strong>Version and history</strong>: the version served now (linked to its model page), who promoted
-  it and how, the gate's reasons, and every promotion and rollback with its reason. <strong>Roll back</strong>
-  returns to the previous revision's version, <strong>Roll back here</strong> to any earlier one; both ask
-  for a reason, which is audited. The gate is not re-run on a rollback: that version passed it
-  before. <strong>Delete endpoint</strong> needs the alias typed out; integrations calling it get <code>404</code>.</li>
-<li><strong>Schema and Try it</strong>: the input contract frozen at promotion (score modes, the dim a
-  forecast extends, dimensions and variables) and the example call. <strong>Validate</strong> runs the
-  server's static checks (<code>POST …/validate</code>), <strong>Score</strong> a real score run (<code>POST …/score</code> with
-  <code>Prefer: wait=30</code>, runner role) - edit the call first to try your own.</li>
-<li><strong>Snippets</strong>: ready-to-run code for <strong>Python</strong>, <strong>TypeScript</strong>, <strong>curl</strong>, <strong>R</strong>, <strong>Apps Script</strong>
-  and <strong>Notebook</strong> (a Jupyter or marimo cell that returns an <code>xarray.Dataset</code>),
-  generated by the server with the example call, shown and copied exactly as the server wrote
-  it, each with what to install first. Snippets never contain a secret: they read the token
-  from <code>MAPI_TOKEN</code>.</li>
+<li>
+<p><strong>Version and history</strong>: This shows these items:</p>
+<ul>
+<li>The version that serves now, with a link to its model page.</li>
+<li>The person who promoted it, and how.</li>
+<li>The reasons of the gate.</li>
+<li>Each promotion and rollback with its reason.</li>
+</ul>
+<p><strong>Roll back</strong> goes back to the version of the previous revision. <strong>Roll back here</strong> goes
+back to an earlier revision. The two buttons ask for a reason, and the audit log records
+it. A rollback does not run the gate again, because that version passed it before.
+<strong>Delete endpoint</strong> needs you to type the alias. Integrations that call a deleted endpoint
+get <code>404</code>.</p>
+</li>
+<li>
+<p><strong>Schema and Try it</strong>: This shows the input contract from the time of the promotion. The
+  contract has the score modes, the dim that a forecast extends, and the dimensions and
+  variables. It also shows the example call. To try your own call, edit the call first.</p>
+<ul>
+<li><strong>Validate</strong> runs the static checks of the server (<code>POST …/validate</code>).</li>
+<li><strong>Score</strong> does a real score run (<code>POST …/score</code> with <code>Prefer: wait=30</code>). It needs the
+  runner role.</li>
+</ul>
+<p>A forecasting endpoint also has <strong>Your latest actuals and the dates to forecast</strong>. This is
+its input table: the time column, the target and the drivers. The periods after the fit
+are rows. To use it, do these steps:</p>
+<ol>
+<li>Fill the target where you have actuals.</li>
+<li>Leave the target empty on the dates to forecast. Use <strong>Add a period</strong> or <strong>Paste from a
+   spreadsheet</strong>.</li>
+<li>Click <strong>Use in the call</strong>.</li>
+</ol>
+<p>After <strong>Score</strong>, a note above the first summary tables tells the conditions of the
+forecast. Examples are <em>Conditioned on 3 actuals through 1961-03-01</em> and <em>From the end of
+the fitted history</em> (<a href="../../concepts/forecasting-with-actuals/">Forecasts with actuals</a>).</p>
+</li>
+<li>
+<p><strong>Snippets</strong>: Code that is ready to run for <strong>Python</strong>, <strong>TypeScript</strong>, <strong>curl</strong>, <strong>R</strong>,
+  <strong>Apps Script</strong> and <strong>Notebook</strong>. <strong>Notebook</strong> is a Jupyter or marimo cell that returns an
+  <code>xarray.Dataset</code>. The server makes the code with the example call. The app shows and copies
+  the code exactly as the server wrote it. Each snippet tells what to install first. Snippets
+  never contain a secret. They read the token from <code>MAPI_TOKEN</code>.</p>
+</li>
 </ul>
 <p><img alt="Schema and Try it: the input contract and a validated example call" class="mapi-shot" src="../../assets/screenshots/integrations-try-it.png" /></p>
 <p><img alt="The snippet tabs with the Python client snippet" class="mapi-shot" src="../../assets/screenshots/integrations-snippets.png" /></p>
-<p><strong>Token for this endpoint</strong> (and <strong>Create a score:… token</strong> on the Snippets tab) opens the
-Tokens page's <strong>New token</strong> dialog prefilled for a <code>score:&lt;alias&gt;</code> token: it can read and score
-that endpoint and nothing else, with a 120 requests-per-minute limit to start from.</p>
+<p><strong>Token for this endpoint</strong> opens the <strong>New token</strong> dialog of the Tokens page. <strong>Create a
+score:… token</strong> on the Snippets tab opens the same dialog. The dialog is filled for a
+<code>score:&lt;alias&gt;</code> token. This token can read and score that endpoint and nothing more. Its
+initial limit is 120 requests each minute.</p>
 <h2 id="webhooks">Webhooks<a class="headerlink" href="#webhooks" title="Permanent link">&para;</a></h2>
-<p>The <strong>Webhooks</strong> tab (project admins; others see why it is empty) lists every webhook with its
-events, status and last delivery. <strong>New webhook</strong> asks for an https URL, a description and the
-<a href="../../concepts/integrations/#webhooks">events</a> to send. The platform refuses URLs on private
-or internal addresses (<code>WEBHOOK_URL_BLOCKED</code>), and says so under the URL field.</p>
-<p>The <strong>signing secret is shown once</strong>, right after creation: copy it into your receiver's
-configuration (the dialog's <strong>Done</strong> stays disabled until you copy it or tick that you stored
-it). The dialog also shows the few lines that verify a delivery's <code>Mapi-Signature</code>.</p>
+<p>The <strong>Webhooks</strong> tab is for project admins. Other users see why the tab is empty. The tab lists
+each webhook with its events, its status and its last delivery. <strong>New webhook</strong> asks for an
+https URL, a description and the <a href="../../concepts/integrations/#webhooks">events</a> to send. The
+platform refuses URLs on private or internal addresses (<code>WEBHOOK_URL_BLOCKED</code>). It tells you
+this below the URL field.</p>
+<p>The app <strong>shows the signing secret one time</strong>, immediately after you make the webhook. Copy
+the secret into the configuration of your receiver. The <strong>Done</strong> button of the dialog stays
+disabled until you copy the secret, or tick that you stored it. The dialog also shows the
+lines of code that verify the <code>Mapi-Signature</code> of a delivery.</p>
 <p><img alt="A webhook's page: its events, the secret's hint, and the delivery log with an expanded failure" class="mapi-shot" src="../../assets/screenshots/integrations-webhook.png" /></p>
-<p>A webhook's page has:</p>
+<p>The page of a webhook has these items:</p>
 <ul>
-<li><strong>Settings</strong>: enable or disable it, change its events, <strong>Rotate secret</strong> (the new secret is
-  shown once; the old one keeps signing for 24 hours).</li>
-<li><strong>Delivery log</strong>: every try, newest first - the event, its status (<em>Delivered</em>, <em>Retrying</em>,
-  <em>Failed</em>, <em>Blocked</em>, <em>Pending</em>), the attempt number, your receiver's response code and the
-  time it took. <strong>Details</strong> shows the error, the next retry and the first KiB of your
-  receiver's answer (as untrusted text). <strong>Replay</strong> sends a delivery again; <strong>Resend
-  newest</strong> replays the newest one, so you can check a receiver you just fixed. There is no
-  synthetic test event: a new webhook gets its first delivery from the next subscribed event
-  in the project (a fit or score finishing, a version ready, a promotion).</li>
-<li>A webhook that kept failing (20 consecutive failed events, or a <code>410 Gone</code>) is <strong>disabled
-  automatically</strong>: the page says why. Fix the receiver, then switch it back on (here, or
-  with <code>mapi webhooks update WEBHOOK_ID --enable</code>); that resets the failure count.</li>
+<li><strong>Settings</strong>: Enable or disable the webhook, and change its events. <strong>Rotate secret</strong> makes a
+  new secret. The app shows the new secret one time. The old secret continues to sign for 24
+  hours.</li>
+<li>
+<p><strong>Delivery log</strong>: Each try, newest first. For each try, the log shows the event and its status
+  (<em>Delivered</em>, <em>Retrying</em>, <em>Failed</em>, <em>Blocked</em>, <em>Pending</em>). It also shows the try number, the
+  response code of your receiver and the duration.</p>
+<ul>
+<li><strong>Details</strong> shows the error, the next retry and the first KiB of the answer of your
+  receiver, as untrusted text.</li>
+<li><strong>Replay</strong> sends a delivery again.</li>
+<li><strong>Resend newest</strong> sends the newest delivery again. Thus you can check a receiver that you
+  repaired.</li>
+</ul>
+<p>There is no synthetic test event. A new webhook gets its first delivery from the next
+subscribed event in the project. Examples are a fit or a score that finishes, a version
+that is ready, or a promotion.</p>
+</li>
+<li>
+<p>A webhook that continues to fail is <strong>disabled automatically</strong>. This occurs after 20 failed
+  events in a sequence, or after a <code>410 Gone</code>. The page tells the reason. To enable the
+  webhook again:</p>
+<ol>
+<li>Repair the receiver.</li>
+<li>Switch the webhook on again on this page, or with
+   <code>mapi webhooks update WEBHOOK_ID --enable</code>. This sets the failure count to zero.</li>
+</ol>
+</li>
 </ul>
 <h2 id="plots-and-links">Plots and links<a class="headerlink" href="#plots-and-links" title="Permanent link">&para;</a></h2>
 <p><img alt="Saved plots with their downloads and embed links" class="mapi-shot" src="../../assets/screenshots/integrations-sharing.png" /></p>
-<p>The <strong>Plots and links</strong> tab keeps the plots you report on:</p>
+<p>The <strong>Plots and links</strong> tab keeps the plots that you use in reports:</p>
 <ul>
-<li><strong>Save a model plot</strong> picks a model, a version and one of its plots. The <strong>Share</strong> button in
-  a model version's plot gallery opens the same dialog prefilled. A saved plot keeps pointing at
-  that version, so a link to it never changes when the model is refitted.</li>
-<li><strong>Download</strong> renders PNG, SVG or PDF in the sandbox (a <code>render</code> run, runner role; slow
-  formats are followed until they finish) and checks the file's checksum before saving it.
-  Plotly figures need kaleido and a Chrome in the runner image: when the server answers
-  <code>MODE_NOT_SUPPORTED</code>, the Plotly download buttons are disabled with the server's reason.</li>
-<li><strong>Create link</strong> makes a tokenised, read-only, expiring link - 7 to 365 days, 30 by default -
-  optionally limited to the sites that may frame it (https origins). Only plots of the
-  platform's own recipes can be shared; others say why the button is disabled. The link and
-  its <code>&lt;iframe&gt;</code> code are <strong>shown once</strong>; the table below each plot lists its links with their
-  status, expiry and view count, and <strong>Revoke</strong> ends one at once (viewers then see "This link
-  has expired").</li>
+<li><strong>Save a model plot</strong> selects a model, a version and one of its plots. The <strong>Share</strong> button
+  in the plot gallery of a model version opens the same dialog, already filled. A saved plot
+  continues to point at that version. Thus a link to it never changes when you fit the model
+  again.</li>
+<li><strong>Download</strong> renders PNG, SVG or PDF in the sandbox. This is a <code>render</code> run, and it needs the
+  runner role. The app monitors slow formats until they finish. It checks the checksum of the
+  file before it saves the file. Plotly figures need kaleido and a Chrome in the runner image.
+  If the server answers <code>MODE_NOT_SUPPORTED</code>, the app disables the Plotly download buttons and
+  shows the reason of the server.</li>
+<li><strong>Create link</strong> makes a read-only link with a token. The link expires after 7 to 365 days,
+  and the default is 30 days. Optionally, you can limit the link to the sites that can frame it
+  (https origins). You can share only plots of the recipes of the platform. For other plots,
+  the app tells why the button is disabled. The app <strong>shows the link and its <code>&lt;iframe&gt;</code> code
+  one time</strong>. The table below each plot lists its links with their status, expiry and view
+  count. <strong>Revoke</strong> stops a link immediately. Then viewers see "This link has expired".</li>
 </ul>
 <p><img alt="The embed link dialog: the link and its iframe code, shown once" class="mapi-shot" src="../../assets/screenshots/integrations-embed-link.png" /></p>
-<p>See <a href="../sharing-plots/">Sharing plots</a> for what the embed page does and does not load.</p>
+<p>See <a href="../sharing-plots/">Sharing plots</a> for what the embed page loads and does not load.</p>
 <h2 id="sign-up-and-e-mail-verification">Sign-up and e-mail verification<a class="headerlink" href="#sign-up-and-e-mail-verification" title="Permanent link">&para;</a></h2>
-<p>When the server allows self-service sign-up, the sign-in screen links to <strong>Create a
-workspace</strong> (<code>/signup</code>), a page that works without a session:</p>
+<p>If the server allows self-service sign-up, the sign-in screen has a link to <strong>Create a
+workspace</strong> (<code>/signup</code>). This page works without a session:</p>
 <p><img alt="The sign-up page refusing a disposable e-mail address" class="mapi-shot" src="../../assets/screenshots/signup.png" /></p>
 <ol>
-<li>Enter a work e-mail, your name, optionally the organisation (it names the workspace) and
-   accept the terms: the <strong>terms of service</strong> and the <strong>acceptable-use policy</strong> open in a new
-   tab (<code>/terms</code> and <code>/acceptable-use</code>, or the installation's own documents set with
-   <code>VITE_TERMS_URL</code> and <code>VITE_ACCEPTABLE_USE_URL</code>). Disposable e-mail addresses are refused
-   at the e-mail field; a server with sign-up closed says so.</li>
-<li><strong>Check your inbox</strong>: the answer is the same whether or not the address already has an
-   account. The link works once, for 24 hours; <strong>Send the link again</strong> replaces it. On a
-   development server the page links straight to the mail in the outbox (<code>make outbox</code>).</li>
-<li>The link opens <code>/verify-email</code>, which removes the token from the address bar and asks you
-   to <strong>Confirm and create my workspace</strong>. That creates a <code>public</code>-tier workspace with a
-   <code>default</code> project and makes you its admin; <strong>Sign in</strong> then goes through the usual
-   identity-provider flow and opens the new workspace in Guided mode. An expired or reused
-   link explains how to get a new one.</li>
+<li>Type a work e-mail and your name. Optionally, type the organisation. The organisation gives
+   the workspace its name.</li>
+<li>Accept the terms. The <strong>terms of service</strong> and the <strong>acceptable-use policy</strong> open in a new
+   tab. These are <code>/terms</code> and <code>/acceptable-use</code>, or the documents of the installation that
+   <code>VITE_TERMS_URL</code> and <code>VITE_ACCEPTABLE_USE_URL</code> set. The e-mail field refuses disposable
+   e-mail addresses. If sign-up is closed on the server, the page tells you this.</li>
+<li>Look at your e-mail (<strong>Check your inbox</strong>). The answer is the same if the address already
+   has an account or not. The link works one time, for 24 hours. <strong>Send the link again</strong>
+   replaces the link. On a development server, the page links directly to the mail in the
+   outbox (<code>make outbox</code>).</li>
+<li>Open the link. It opens <code>/verify-email</code>, which removes the token from the address bar.</li>
+<li>Click <strong>Confirm and create my workspace</strong>. The app makes a <code>public</code>-tier workspace with a
+   <code>default</code> project, and makes you its admin.</li>
+<li>Click <strong>Sign in</strong>. The usual identity-provider flow starts and opens the new workspace in
+   Guided mode.</li>
 </ol>
+<p>If the link expired or you used it before, the page tells you how to get a new link.</p>
 <h2 id="settings-data">Settings &gt; Data<a class="headerlink" href="#settings-data" title="Permanent link">&para;</a></h2>
 <p>Organisation admins find a <strong>Data</strong> section at the bottom of <strong>Settings</strong>:</p>
 <p><img alt="Settings &gt; Data: the GDPR export and deleting the organisation" class="mapi-shot" src="../../assets/screenshots/settings-data.png" /></p>
 <ul>
-<li><strong>Export your data</strong> packs everything the organisation stored - workspace records
-  (credentials redacted), datasets, model manifests, the audit log and the cost ledger, as you
-  choose - into one archive. The page follows the export and offers <strong>Download archive</strong>; the
-  link lasts 15 minutes, so reload the page for a fresh one. Exports work while the
-  organisation is suspended.</li>
-<li><strong>Delete the organisation</strong> needs the organisation id typed out. The organisation is
-  suspended (read-only) at once and its runs are cancelled; for 7 days a banner on every page
-  says when the purge starts, and <strong>Cancel the deletion</strong> restores it. Then every store is
-  purged, with the progress shown per store. The audit log (pseudonymised) and the cost ledger
-  (amounts only) are kept for their legal retention - see
+<li><strong>Export your data</strong> puts all the data that the organisation stored into one archive. You
+  select the items: workspace records (with credentials removed), datasets, model manifests,
+  the audit log and the cost ledger. The page monitors the export and shows <strong>Download
+  archive</strong>. The link is valid for 15 minutes. For a new link, reload the page. Exports work
+  while the organisation is suspended.</li>
+<li><strong>Delete the organisation</strong> needs you to type the organisation id. The platform suspends the
+  organisation (read-only) immediately and cancels its runs. For 7 days, a banner on each page
+  tells when the purge starts. <strong>Cancel the deletion</strong> restores the organisation. Then the
+  platform purges each store, and shows the progress for each store. The platform keeps the
+  audit log (pseudonymised) and the cost ledger (amounts only) for their legal retention. See
   <a href="../data-deletion/">Deleting and exporting data</a>.</li>
 </ul>
 <h2 id="admin-console-additions">Admin console additions<a class="headerlink" href="#admin-console-additions" title="Permanent link">&para;</a></h2>
-<p>Platform operators get two more things in <strong>Admin</strong>:</p>
-<ul>
-<li><strong>Sign-ups</strong>: the review queue of sign-ups a Sybil heuristic flagged (same network address,
-  same browser, a repeated address, a burst from one domain), with the reasons in plain words.
-  <strong>Approve</strong> clears the flag; <strong>Reject</strong> suspends the workspace the sign-up created. Both
-  need a reason, which is audited.</li>
-</ul>
-<p><img alt="The sign-up review queue" class="mapi-shot" src="../../assets/screenshots/admin-signups.png" /></p>
+<p>Platform operators get these items in <strong>Admin</strong>:</p>
 <ul>
 <li>
-<p><strong>Trust</strong> on each tenant row: its e-mail and identity verification and whether uploaded code
-  is allowed, <strong>Mark identity verified</strong> (with the method and a reason) or withdraw it, and its
-  deletion's status per store, with <strong>Retry the purge</strong> after a failure.</p>
+<p><strong>Sign-ups</strong>: The review queue of sign-ups that a Sybil heuristic flagged. The heuristic
+  looks for the same network address, the same browser, a repeated address, or a burst from
+  one domain. The queue gives the reasons in plain words. <strong>Approve</strong> removes the flag.
+  <strong>Reject</strong> suspends the workspace that the sign-up made. The two buttons need a reason, and
+  the audit log records it.</p>
+<p><img alt="The sign-up review queue" class="mapi-shot" src="../../assets/screenshots/admin-signups.png" /></p>
 </li>
 <li>
-<p><strong>Promotions</strong>: the endpoint promotions that needed attention, across tenants and newest
-  first - admin overrides of the scorecard gate (with the reason and the failing checks) and
-  refused promotions (blocked, or needing an override). Nothing waits in a queue: the gate
-  decides each promotion at once. The rows come from the audit log
-  (<code>endpoint.promote_override</code>, and <code>endpoint.promote</code> with the outcome <code>denied</code>).</p>
+<p><strong>Trust</strong> on each tenant row: This shows the e-mail and identity verification of the tenant,
+  and if uploaded code is allowed. <strong>Mark identity verified</strong> sets the verification, with the
+  method and a reason. You can also withdraw it. The row also shows the status of the deletion
+  for each store. After a failure, use <strong>Retry the purge</strong>.</p>
+</li>
+<li>
+<p><strong>Promotions</strong>: The endpoint promotions that needed attention, across tenants and newest
+  first. These are admin overrides of the scorecard gate, with the reason and the checks that
+  failed. They are also refused promotions: blocked, or with a need for an override. Nothing
+  waits in a queue, because the gate decides each promotion immediately. The rows come from the
+  audit log (<code>endpoint.promote_override</code>, and <code>endpoint.promote</code> with the outcome <code>denied</code>).</p>
 </li>
 </ul>
 

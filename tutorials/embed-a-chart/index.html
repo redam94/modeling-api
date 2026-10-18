@@ -1189,6 +1189,8 @@
       
         
       
+        
+      
     
     
     
@@ -1426,6 +1428,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4654,6 +4684,8 @@
       
         
       
+        
+      
     
     
     
@@ -4742,6 +4774,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4922,32 +4982,43 @@
 
 
 <h1 id="embed-a-chart-in-notion-slack-or-bi-v04">Embed a chart in Notion, Slack or BI <span class="mapi-badge">v0.4</span><a class="headerlink" href="#embed-a-chart-in-notion-slack-or-bi-v04" title="Permanent link">&para;</a></h1>
-<p>A chart from a fitted model belongs where decisions are made: the planning page in Notion,
-the weekly thread in Slack, the dashboard in Looker Studio or Power BI. An <strong>embed link</strong>
-shows one chart, read-only, to anyone who has the link, until it expires or you revoke it.
-Nobody needs an account, and the link can read nothing else.</p>
-<p>This is what the link opens: the chart, its plain-language caption, a PNG fallback and the
-expiry date.</p>
+<p>Put the chart of a fitted model where people make decisions. Examples are the page for plans
+in Notion, the weekly thread in Slack, and the dashboard in Looker Studio or Power BI. An
+<strong>embed link</strong> shows one chart, read-only, to all persons who have the link. It works until
+it expires or until you revoke it. No person needs an account, and the link can read
+nothing else.</p>
+<p>The link opens this page. It shows the chart, its caption in plain language, a PNG fallback
+and the expiry date.</p>
 <p><img alt="A shared response-curve chart on its embed page" class="mapi-shot" src="../../assets/screenshots/embed-page.png" /></p>
 <h2 id="what-can-be-shared">What can be shared<a class="headerlink" href="#what-can-be-shared" title="Permanent link">&para;</a></h2>
-<p>Only charts the platform drew with one of <strong>its own recipes</strong> (<code>core.*</code>, <code>mmm.*</code>, <code>ml.*</code>,
-<code>ts.*</code>, <code>choice.*</code>): response curves, decompositions, forecast fans, scorecard charts and the
-like. A chart written by a plugin or by hand is refused (<code>EMBED_NOT_ALLOWED</code>), because a
-shared link runs the chart's specification in a stranger's browser, and only specifications
-the platform wrote are allowed to do that. Share those inside the project, or as a PNG.</p>
-<p>A link points at one <strong>model version</strong>, so it never changes under your readers when the model
-is refitted: share the new version's chart when you want them to see it.</p>
+<p>You can share only charts that the platform drew with one of <strong>its own recipes</strong> (<code>core.*</code>,
+<code>mmm.*</code>, <code>ml.*</code>, <code>ts.*</code>, <code>choice.*</code>). Examples are response curves, decompositions, forecast
+fans and scorecard charts. The platform refuses a chart that a plugin or a person wrote
+(<code>EMBED_NOT_ALLOWED</code>). The reason is that a shared link runs the specification of the chart
+in the browser of an unknown person. Only specifications that the platform wrote can do
+that. Share the other charts inside the project, or as a PNG.</p>
+<p>A link points at one <strong>model version</strong>. Thus the chart does not change for your readers when
+the model is fitted again. If you want them to see the new version, share the chart of the
+new version.</p>
 <h2 id="1-create-the-link">1. Create the link<a class="headerlink" href="#1-create-the-link" title="Permanent link">&para;</a></h2>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">In Guided mode</label><label for="__tabbed_1_2">In the Integrations hub</label><label for="__tabbed_1_3">Python</label><label for="__tabbed_1_4">CLI</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>On the last step, <strong>Share</strong>, choose <strong>Share a chart</strong>, pick the chart and create the link.</p>
+<ol>
+<li>On the last step, <strong>Share</strong>, select <strong>Share a chart</strong>.</li>
+<li>Select the chart.</li>
+<li>Create the link.</li>
+</ol>
 </div>
 <div class="tabbed-block">
-<p><strong>Integrations → Plots and links → Save a model plot</strong> (or <strong>Share</strong> in a model version's
-plot gallery): pick the model, the version and the chart. Then <strong>Create link</strong> on the
-saved plot. Optionally give it a label, an expiry (7 to 365 days, 30 by default) and
-the sites that may frame it.</p>
+<ol>
+<li>Go to <strong>Integrations → Plots and links → Save a model plot</strong>. Alternatively, use
+   <strong>Share</strong> in the plot gallery of a model version.</li>
+<li>Select the model, the version and the chart.</li>
+<li>On the saved plot, click <strong>Create link</strong>.</li>
+<li>Optionally, give it a label, an expiry and the sites that can frame it. The expiry is
+   7 to 365 days. The default is 30 days.</li>
+</ol>
 <p><img alt="The embed link dialog, with the link and its iframe code shown once" class="mapi-shot" src="../../assets/screenshots/integrations-embed-link.png" /></p>
 </div>
 <div class="tabbed-block">
@@ -4978,8 +5049,8 @@ the sites that may frame it.</p>
 </div>
 </div>
 </div>
-<p>The link and its <code>&lt;iframe&gt;</code> code are shown <strong>once</strong>: the platform keeps only a keyed hash of
-the token, like a password. Copy it now.</p>
+<p>The platform shows the link and its <code>&lt;iframe&gt;</code> code <strong>one time</strong> only. It keeps only a keyed
+hash of the token, as for a password. Copy the link now.</p>
 <h2 id="2-put-it-where-people-look">2. Put it where people look<a class="headerlink" href="#2-put-it-where-people-look" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4992,45 +5063,47 @@ the token, like a password. Copy it now.</p>
 <tbody>
 <tr>
 <td><strong>Notion</strong></td>
-<td>Type <code>/embed</code>, paste the link</td>
-<td>Leave <em>sites that may frame it</em> empty unless you have checked which origin frames the embed (see below)</td>
+<td>Type <code>/embed</code>, then paste the link.</td>
+<td>Keep <em>sites that may frame it</em> empty, unless you know which origin frames the embed (see below).</td>
 </tr>
 <tr>
 <td><strong>Slack</strong></td>
-<td>Paste the link in a message or a canvas</td>
-<td>Slack shows links, not live frames: readers click through to the chart. For an image in the thread, post the PNG (step 4)</td>
+<td>Paste the link in a message or a canvas.</td>
+<td>Slack shows links, not live frames. Readers click the link to see the chart. For an image in the thread, post the PNG (step 4).</td>
 </tr>
 <tr>
 <td><strong>Looker Studio</strong></td>
-<td><strong>Insert → URL embed</strong>, paste the link</td>
-<td>Allow <code>https://lookerstudio.google.com</code> if you restrict sites</td>
+<td>Use <strong>Insert → URL embed</strong>, then paste the link.</td>
+<td>If you restrict sites, permit <code>https://lookerstudio.google.com</code>.</td>
 </tr>
 <tr>
 <td><strong>Power BI</strong></td>
-<td>On a dashboard, <strong>Add a tile → Web content</strong>, paste the <code>&lt;iframe&gt;</code> code</td>
-<td>Reports have no built-in web frame: use a custom visual that renders HTML, or the PNG</td>
+<td>On a dashboard, use <strong>Add a tile → Web content</strong>. Then paste the <code>&lt;iframe&gt;</code> code.</td>
+<td>Reports have no built-in web frame. Use a custom visual that renders HTML, or use the PNG.</td>
 </tr>
 <tr>
 <td><strong>Confluence, internal portals, any web page</strong></td>
-<td>Paste the <code>&lt;iframe&gt;</code> code (in Confluence, through an iframe or HTML macro)</td>
-<td>Set <code>width</code> and <code>height</code> to fit the page</td>
+<td>Paste the <code>&lt;iframe&gt;</code> code. In Confluence, use an iframe or HTML macro.</td>
+<td>Set <code>width</code> and <code>height</code> to fit the page.</td>
 </tr>
 <tr>
 <td><strong>Slides, PDFs, e-mail</strong></td>
-<td>Use the PNG (step 4)</td>
-<td>These cannot show live content</td>
+<td>Use the PNG (step 4).</td>
+<td>These cannot show live content.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Sites that may frame it.</strong> With a list of <code>https://</code> origins, the embed page draws the
-chart only when the page that directly frames it is one of them, and shows <em>This plot can
-only be shown on the sites it was shared with</em> elsewhere. Opened directly, the link always
-works. Some tools frame embeds through an embedding service of their own; the origin the
-check sees is then that service's, so if the notice appears, add the origin your browser's
-developer tools show as the frame's parent, or create the link without a restriction.</p>
+<p><strong>Sites that may frame it.</strong> You can give a list of <code>https://</code> origins. Then the embed page
+draws the chart only when the page that directly frames it is in the list. On other pages,
+it shows <em>This plot can only be shown on the sites it was shared with</em>. If you open the link
+directly, it always works. Some tools frame embeds through their own embed service. Then
+the check sees the origin of that service. If the notice shows, add the origin that the
+developer tools of your browser show as the parent of the frame. Alternatively, create the
+link without a restriction.</p>
 <h2 id="3-check-it">3. Check it<a class="headerlink" href="#3-check-it" title="Permanent link">&para;</a></h2>
-<p>Open the link in a private window: no sign-in, one chart. From Python, the same public view
-that the embed page reads, and the list of the plot's links with their view counts:</p>
+<p>Open the link in a private window. You do not sign in, and you see one chart. From Python,
+you can get the same public view that the embed page reads. You can also get the list of the
+links of the plot, with their view counts:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">view</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">plots</span><span class="o">.</span><span class="n">embed</span><span class="p">(</span><span class="n">link</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>  <span class="c1"># what the link shows, fetched without credentials</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">title</span><span class="p">,</span> <span class="s2">"| expires"</span><span class="p">,</span> <span class="n">view</span><span class="o">.</span><span class="n">expires_at</span><span class="o">.</span><span class="n">date</span><span class="p">(),</span> <span class="s2">"|"</span><span class="p">,</span> <span class="n">view</span><span class="o">.</span><span class="n">plot</span><span class="o">.</span><span class="n">provenance</span><span class="o">.</span><span class="n">recipe</span><span class="p">)</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">for</span> <span class="n">embed</span> <span class="ow">in</span> <span class="n">api</span><span class="o">.</span><span class="n">plots</span><span class="o">.</span><span class="n">embeds</span><span class="p">(</span><span class="n">saved</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
@@ -5039,37 +5112,41 @@ that the embed page reads, and the list of the plot's links with their view coun
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>EU response curves (v3) | expires 2026-11-14 | mmm.response_curves@1.0.0
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>mpe_7k2m9q… Weekly marketing review active 0 views
 </span></code></pre></div>
-<p>The list never shows a token again, only its first characters (<code>display</code>).</p>
+<p>The list does not show a token again. It shows only the first characters of the token
+(<code>display</code>).</p>
 <h2 id="4-a-png-svg-or-pdf-instead">4. A PNG, SVG or PDF instead<a class="headerlink" href="#4-a-png-svg-or-pdf-instead" title="Permanent link">&para;</a></h2>
-<p>For slides, a PDF report or a Slack thread, render the chart to a file. Rendering is a small
-sandboxed run (the <code>runner</code> role), and the file is checked against its checksum when you
-download it:</p>
+<p>For slides, a PDF report or a Slack thread, render the chart to a file. The render is a
+small sandboxed run (the <code>runner</code> role). When you download the file, the platform checks it
+against its checksum:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">render</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">plots</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">saved_plot_id</span><span class="o">=</span><span class="n">saved</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"png"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1200</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">600</span><span class="p">)</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">png</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">plots</span><span class="o">.</span><span class="n">download_render</span><span class="p">(</span><span class="n">render</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"eu-response-curves.png"</span><span class="p">))</span>  <span class="c1"># CRC32C-checked</span>
 </span></code></pre></div>
-<p>In the hub, the <strong>Download</strong> buttons of a saved plot do the same; on the command line,
-<code>mapi plots render --saved plt_… -f pdf -o chart.pdf</code>. When you create a link with the <code>runner</code> role, a PNG is rendered too, and
-the embed page offers it as <strong>Open as PNG</strong> for tools that cannot show interactive content.</p>
+<p>In the hub, the <strong>Download</strong> buttons of a saved plot do the same thing. On the command line,
+use <code>mapi plots render --saved plt_… -f pdf -o chart.pdf</code>. When you create a link with the
+<code>runner</code> role, the platform also renders a PNG. The embed page shows it as <strong>Open as PNG</strong>
+for tools that cannot show interactive content.</p>
 <h2 id="5-revoke-it">5. Revoke it<a class="headerlink" href="#5-revoke-it" title="Permanent link">&para;</a></h2>
-<p>When the meeting is over, or the link went somewhere it should not:</p>
+<p>Revoke the link when the meeting is complete. Also revoke it if the link went to a location
+where it must not be:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">api</span><span class="o">.</span><span class="n">plots</span><span class="o">.</span><span class="n">revoke_embed</span><span class="p">(</span><span class="n">saved</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">link</span><span class="o">.</span><span class="n">embed</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>  <span class="c1"># dashboards showing it stop on next load</span>
 </span></code></pre></div>
-<p>In the hub: <strong>Revoke</strong> in the plot's list of links; on the command line,
-<code>mapi plots revoke &lt;plot_id&gt; &lt;embed_id&gt;</code>. Every dashboard showing the link stops on its next
-load and says <em>This link has expired or was revoked</em>. Deleting the saved plot revokes all of
-its links; deleting the organisation revokes every link at once.</p>
+<p>In the hub, click <strong>Revoke</strong> in the list of links of the plot. On the command line, use
+<code>mapi plots revoke &lt;plot_id&gt; &lt;embed_id&gt;</code>. Each dashboard that shows the link stops when it
+loads again. It shows <em>This link has expired or was revoked</em>. If you delete the saved plot,
+the platform revokes all of its links. If you delete the organisation, the platform revokes
+all links at the same time.</p>
 <h2 id="what-a-viewers-browser-can-and-cannot-do">What a viewer's browser can and cannot do<a class="headerlink" href="#what-a-viewers-browser-can-and-cannot-do" title="Permanent link">&para;</a></h2>
-<p>The embed page is served from the <strong>plot sandbox's origin</strong>, not the app's. It sends no
-cookie or credential, its Content-Security-Policy lets it fetch the one public embed view and
-nothing else, the view is validated again in the browser, and every text is written as text.
-The view carries the chart's data inline (up to 1.5 MB), so the page never touches storage.
-Per-link and per-address rate limits stop a link from being scraped
-(<a href="../../guides/sharing-plots/#the-embed-page">Sharing plots</a>).</p>
+<p>The embed page comes from the <strong>origin of the plot sandbox</strong>, not from the origin of the app.
+It sends no cookie or credential. Its Content-Security-Policy lets it get the one public
+embed view and nothing else. The browser validates the view again, and the page writes each
+text as text. The view carries the data of the chart inline (up to 1.5 MB). Thus the page
+never touches storage. Rate limits for each link and for each address stop persons who try to scrape
+a link (<a href="../../guides/sharing-plots/#the-embed-page">Sharing plots</a>).</p>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../google-sheets/">Connect Google Sheets</a> for the numbers behind the chart.</li>
-<li><a href="../../guides/sharing-plots/">Sharing plots</a>: every option of saving, rendering and embedding,
-  with <code>curl</code>.</li>
+<li><a href="../google-sheets/">Connect Google Sheets</a> to get the numbers behind the chart.</li>
+<li><a href="../../guides/sharing-plots/">Sharing plots</a> gives all the options to save, render and
+  embed, with <code>curl</code>.</li>
 </ul>
 
 

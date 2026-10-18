@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4872,6 +4902,8 @@
       
         
       
+        
+      
     
     
     
@@ -4960,6 +4992,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5345,13 +5405,19 @@
 
 
 <h1 id="workflows-v05">Workflows <span class="mapi-badge">v0.5</span><a class="headerlink" href="#workflows-v05" title="Permanent link">&para;</a></h1>
-<p>A workflow strings statistical tests, data processing, train/test plans, models, governance
-checks and reports into one graph that runs the same way every time. This guide is the
-practical side: how to start from the gallery, the canonical "readiness → ARIMAX" document
-line by line, a cookbook of patterns, where every node runs, and how to schedule and watch
-runs. The <a href="../../concepts/workflows/">Workflows concept page</a> covers the document format,
-the condition language and validation in depth. The
-<a href="../../reference/workflow-nodes/">node reference</a> lists every node with its About card,
+<p>A workflow connects statistical tests, data processing, train/test plans, models, governance
+checks and reports into one graph. The graph runs the same way each time. This guide gives
+the practical information:</p>
+<ul>
+<li>How to start from the gallery.</li>
+<li>The canonical "readiness → ARIMAX" document, line by line.</li>
+<li>A cookbook of patterns.</li>
+<li>Where each node runs.</li>
+<li>How to schedule runs and how to monitor them.</li>
+</ul>
+<p>The <a href="../../concepts/workflows/">Workflows concept page</a> gives the full data about the document
+format, the condition language and the validation. The
+<a href="../../reference/workflow-nodes/">node reference</a> lists all nodes with their About cards,
 ports, parameters and result fields.</p>
 <table>
 <thead>
@@ -5362,11 +5428,11 @@ ports, parameters and result fields.</p>
 </thead>
 <tbody>
 <tr>
-<td>Run a ready-made analysis</td>
+<td>Run an analysis that is ready to use</td>
 <td><a href="#start-from-the-gallery">Start from the gallery</a></td>
 </tr>
 <tr>
-<td>Build, run and watch workflows in the browser</td>
+<td>Build, run and monitor workflows in the browser</td>
 <td><a href="#in-the-web-app">In the web app</a></td>
 </tr>
 <tr>
@@ -5374,7 +5440,7 @@ ports, parameters and result fields.</p>
 <td><a href="#the-canonical-workflow">The canonical workflow</a></td>
 </tr>
 <tr>
-<td>Build your own</td>
+<td>Build your own workflow</td>
 <td><a href="#cookbook">Cookbook</a></td>
 </tr>
 <tr>
@@ -5382,7 +5448,7 @@ ports, parameters and result fields.</p>
 <td><a href="#where-nodes-run">Where nodes run</a></td>
 </tr>
 <tr>
-<td>Automate it</td>
+<td>Run it automatically</td>
 <td><a href="#schedules-and-triggers">Schedules and triggers</a></td>
 </tr>
 <tr>
@@ -5390,46 +5456,46 @@ ports, parameters and result fields.</p>
 <td><a href="#run-it-locally">Run it locally</a></td>
 </tr>
 <tr>
-<td>Copy a complete, tested analysis</td>
+<td>Copy a complete analysis that has tests</td>
 <td><a href="../workflow-cookbook/">Workflow cookbook</a></td>
 </tr>
 <tr>
-<td>Drive it from Python or a terminal</td>
+<td>Control it from Python or a terminal</td>
 <td><code>api.workflows</code> (<a href="../python-client/#workflows-governance-and-explorers">client</a>), <code>mapi workflows</code> (<a href="../cli/#workflows-governance-and-explorers">CLI</a>)</td>
 </tr>
 </tbody>
 </table>
 <h2 id="start-from-the-gallery">Start from the gallery<a class="headerlink" href="#start-from-the-gallery" title="Permanent link">&para;</a></h2>
-<p>The gallery has four templates, each with a plain-language About card
+<p>The gallery has four templates. Each template has an About card in plain language
 (<code>GET /v1/workflow-templates</code>):</p>
 <table>
 <thead>
 <tr>
 <th>Template</th>
-<th>Pick it when</th>
+<th>Select it when</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>ts_readiness_arimax</code></td>
-<td>You have one weekly or daily KPI and want a defensible ARIMAX forecast: the tests decide the differencing, a search picks the AR and MA orders, a backtest proves it beats naive forecasts</td>
+<td>You have one weekly or daily KPI and you want an ARIMAX forecast that you can defend. The tests decide the differencing. A search selects the AR and MA orders. A backtest shows that the model is better than naive forecasts.</td>
 </tr>
 <tr>
 <td><code>var_vecm_cointegration</code></td>
-<td>Several series move together (sales, price, distribution) and you want to know whether they are tied in the long run before choosing a VECM or a VAR</td>
+<td>Some series move together (for example sales, price and distribution). You want to know if they have a long-run relation before you select a VECM or a VAR.</td>
 </tr>
 <tr>
 <td><code>mmm_governed</code></td>
-<td>A marketing mix model that must pass the governance policy before anyone uses it</td>
+<td>You need a marketing mix model that must pass the governance policy before a person uses it.</td>
 </tr>
 <tr>
 <td><code>forecast_bakeoff</code></td>
-<td>You do not know which forecasting model suits the data: SARIMAX, ETS, Theta and a smooth trend compete on the same folds</td>
+<td>You do not know which forecast model is correct for the data. SARIMAX, ETS, Theta and a smooth trend compete on the same folds.</td>
 </tr>
 </tbody>
 </table>
-<p>Creating a workflow from a template copies its document into your project as revision 1;
-from then on it is yours to edit.</p>
+<p>When you make a workflow from a template, the server copies the template document into your
+project as revision 1. After that, the workflow is yours and you can edit it.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># create it (the name and project come from the request's project)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>api<span class="w"> </span>POST<span class="w"> </span>/v1/workflows<span class="w"> </span>-d<span class="w"> </span><span class="s1">'{"template": "ts_readiness_arimax"}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'{id, ref, latest_revision}'</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
@@ -5442,38 +5508,53 @@ from then on it is yours to edit.</p>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># follow it: each node, each branch decision, then the result</span>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>api<span class="w"> </span>GET<span class="w"> </span><span class="s2">"/v1/workflow-runs/</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.nodes[] | {node_id, status, result}'</span>
 </span></code></pre></div>
-<p><code>api</code> is the helper of the <a href="../http-api/">HTTP API guide</a> (it adds the token and the project
-header). The same from the command line is <code>mapi workflows create --template
+<p><code>api</code> is the helper of the <a href="../http-api/">HTTP API guide</a>. It adds the token and the project
+header. To do the same from the command line, use <code>mapi workflows create --template
 ts_readiness_arimax</code>, then <code>mapi workflows run ts-readiness-arimax -i
-data=dataset://growth/weekly_sales@latest -p 'drivers=["price"]' --watch</code>; from Python,
-<code>api.workflows.create(template="ts_readiness_arimax")</code> and <code>api.workflows.run(...)</code>. <code>@latest</code> is resolved when the run starts and recorded as an exact version, so the
-run is reproducible: <code>GET /v1/workflow-runs/{run_id}</code> shows <code>dataset://growth/weekly_sales@v7</code>.</p>
-<p>A run answers <code>202</code> with the run's view. Starting one with an <code>Idempotency-Key</code> that was
-already used returns the first run (<code>200</code>) instead of starting another.</p>
+data=dataset://growth/weekly_sales@latest -p 'drivers=["price"]' --watch</code>. From Python, use
+<code>api.workflows.create(template="ts_readiness_arimax")</code> and <code>api.workflows.run(...)</code>. The
+server resolves <code>@latest</code> when the run starts and records it as an exact version. Thus you
+can make the run again with the same result: <code>GET /v1/workflow-runs/{run_id}</code> shows
+<code>dataset://growth/weekly_sales@v7</code>.</p>
+<p>When you start a run, the server answers <code>202</code> with the view of the run. If you start a run
+with an <code>Idempotency-Key</code> that you used before, the server returns the first run (<code>200</code>). It
+does not start a different run.</p>
 <h2 id="in-the-web-app">In the web app<a class="headerlink" href="#in-the-web-app" title="Permanent link">&para;</a></h2>
-<p><strong>Workflows</strong> in the sidebar (<span class="keys"><kbd class="key-g">G</kbd></span> then <span class="keys"><kbd class="key-w">W</kbd></span>) opens the project's workflows and the
-gallery. Everything below uses the same endpoints as the rest of this guide.</p>
+<p>To open the workflows of the project and the gallery, click <strong>Workflows</strong> in the sidebar
+(<span class="keys"><kbd class="key-g">G</kbd></span> then <span class="keys"><kbd class="key-w">W</kbd></span>). All the functions below use the same endpoints as the remaining part of
+this guide.</p>
 <h3 id="recipes-for-guided-users">Recipes for Guided users<a class="headerlink" href="#recipes-for-guided-users" title="Permanent link">&para;</a></h3>
-<p>In Guided mode the sidebar entry reads <strong>Recipes</strong> and the page opens on them: the gallery templates as About cards (what each
-does in plain words, when to use it and when not, what it needs and gives, a tiny example).
-<strong>Run on my data</strong> asks for a dataset and, only when the recipe needs them, the settings it
-cannot guess (the drivers of the marketing-mix recipe); the rest sit under <em>Fine-tune</em>. The
-first run creates the project's workflow from the template; later runs reuse it. The Data
-Explorer of data over time offers the readiness recipe with that data already chosen
-(<em>Check it is ready to forecast</em>). The run
-page then shows each step in plain words as it finishes, with the decisions taken and the
-report's summary.</p>
-<p><img alt="A recipe in Guided mode: the About card in plain words, then the data to run it on" class="mapi-shot" src="../../assets/screenshots/workflows-recipe.png" /></p>
+<p>In Guided mode, the sidebar item shows <strong>Recipes</strong>, and the page opens on the recipes. The
+recipes are the gallery templates as About cards. Each card tells in plain words:</p>
+<ul>
+<li>What the recipe does.</li>
+<li>When to use it and when not to use it.</li>
+<li>What it needs and what it gives.</li>
+<li>A very small example.</li>
+</ul>
+<p><strong>Run on my data</strong> asks for a dataset. It also asks for the settings that the recipe cannot
+guess, but only when the recipe needs them (for example, the drivers of the marketing-mix
+recipe). The other settings are under <em>Fine-tune</em>. The first run makes the workflow of the
+project from the template. Subsequent runs use that workflow again. The Data Explorer of
+data over time shows the readiness recipe with that data already selected (<em>Check it is ready
+to forecast</em>). Then the run page shows each step in plain words when the step is complete. It
+also shows the decisions and the summary of the report.</p>
+<p><img alt="A recipe in Guided mode: the About card in plain words, then the data that the recipe runs on" class="mapi-shot" src="../../assets/screenshots/workflows-recipe.png" /></p>
 <h3 id="start-from-a-template-expert">Start from a template (Expert)<a class="headerlink" href="#start-from-a-template-expert" title="Permanent link">&para;</a></h3>
-<p><strong>Use this template</strong> opens a three-step wizard: the template's About card and the workflow's
-name, its parameters (saved as the workflow's defaults; every run can still change them) and
-the data it runs on by default (saved as the input's default reference, so schedules and runs
-started without data use it). The workflow is created as revision 1.</p>
-<p><img alt="The workflow gallery: each template's About card, difficulty and typical runtime" class="mapi-shot" src="../../assets/screenshots/workflows-gallery.png" /></p>
+<p><strong>Use this template</strong> opens a wizard that has three steps:</p>
+<ol>
+<li>The About card of the template and the name of the workflow.</li>
+<li>The parameters. The app saves them as the defaults of the workflow. Each run can change
+   them.</li>
+<li>The default data for the run. The app saves it as the default reference of the input.
+   Schedules use it, and runs that start without data use it.</li>
+</ol>
+<p>The app makes the workflow as revision 1.</p>
+<p><img alt="The workflow gallery: the About card, difficulty and usual runtime of each template" class="mapi-shot" src="../../assets/screenshots/workflows-gallery.png" /></p>
 <h3 id="the-editor">The editor<a class="headerlink" href="#the-editor" title="Permanent link">&para;</a></h3>
-<p>A workflow's <strong>Editor</strong> tab has three panes, side by side on wide screens and stacked on
-narrow ones:</p>
-<p><img alt="The editor on the readiness-to-ARIMAX workflow: tests on the left, decisions, the order search, the backtest, selection, governance and the report on the right" class="mapi-shot" src="../../assets/screenshots/workflows-editor.png" /></p>
+<p>The <strong>Editor</strong> tab of a workflow has three panes. On wide screens the panes are side by side.
+On narrow screens they are one above the other.</p>
+<p><img alt="The editor on the readiness-to-ARIMAX workflow: tests on the left, then decisions, the order search, the backtest, the selection, governance and the report on the right" class="mapi-shot" src="../../assets/screenshots/workflows-editor.png" /></p>
 <table>
 <thead>
 <tr>
@@ -5484,92 +5565,111 @@ narrow ones:</p>
 <tbody>
 <tr>
 <td><strong>Nodes</strong> (the palette)</td>
-<td>Every node of <code>GET /v1/catalog/workflow-nodes</code>, grouped by kind, each kind and node with its About card; search by name, id or what it is for. Drag a node onto the canvas, or pick it and press <strong>Add</strong> (the keyboard path).</td>
+<td>Shows all nodes of <code>GET /v1/catalog/workflow-nodes</code> in groups by kind. Each kind and each node has its About card. You can search by name, by id or by purpose. To add a node, drag it onto the canvas. Or, select it and push <strong>Add</strong> (this is the keyboard method).</td>
 </tr>
 <tr>
 <td><strong>Canvas</strong></td>
-<td>The graph. Data edges are coloured by port type and numbered when a port has alternatives (<em>alt 1</em>, <em>alt 2</em>); dashed edges run from a branch's <strong>then</strong>/<strong>else</strong> arm to the top edge of the nodes it gates; dotted edges show results a condition or <code>$expr</code> reads. Drag from an output to an input to bind it: an edge between ports of different types, a node feeding itself or a cycle is refused, with the reason above the canvas. Select a node or edge and press <span class="keys"><kbd class="key-delete">Del</kbd></span> to remove it. Problems are counted on the nodes they concern. Node positions are remembered in your browser only (<strong>Tidy layout</strong> forgets them); the document never stores them.</td>
+<td>Shows the graph. The color of a data edge shows the port type. If a port has alternatives, the edges have numbers (<em>alt 1</em>, <em>alt 2</em>). Dashed edges go from the <strong>then</strong>/<strong>else</strong> arm of a branch to the top edge of the nodes that the arm controls. Dotted edges show results that a condition or <code>$expr</code> reads. To bind an output to an input, drag from the output to the input. The canvas refuses an edge between ports of different types, a node that feeds itself and a cycle. It shows the reason above the canvas. To remove a node or an edge, select it and push <span class="keys"><kbd class="key-delete">Del</kbd></span>. Each node shows the number of problems that it has. Your browser keeps the node positions, and only your browser keeps them (<strong>Tidy layout</strong> removes them). The document never keeps them.</td>
 </tr>
 <tr>
 <td><strong>Node editor</strong></td>
-<td>The selected node's About card, its id and label, each input port with its type and its sources in order (add one, reorder alternatives, disconnect), the branch arm that gates it (<strong>When it runs</strong>), its settings - a form generated from the node's JSON Schema, where each field can also take a workflow <strong>parameter</strong> or an <strong>expression</strong> - and how it runs (retries, time limit, failure handling, caching). A model node picks its model from the catalog with the model's About card; <code>governance.check</code> picks a check; <code>subworkflow.run</code> picks a saved workflow and revision, whose inputs and outputs become the node's ports. With no node selected, the pane edits the workflow's description, parameters, inputs, outputs and run limits.</td>
+<td>Shows the selected node: its About card, its id and label, and each input port with its type and its sources in sequence. You can add a source, change the sequence of alternatives and disconnect a source. It also shows the branch arm that controls the node (<strong>When it runs</strong>). It shows the settings: a form that the app makes from the JSON Schema of the node. Each field can also use a workflow <strong>parameter</strong> or an <strong>expression</strong>. Then it shows how the node runs: retries, time limit, failure handling and caching. A model node selects its model from the catalog, with the About card of the model. <code>governance.check</code> selects a check. <code>subworkflow.run</code> selects a saved workflow and revision. The inputs and outputs of that workflow become the ports of the node. If you select no node, the pane edits the description, parameters, inputs, outputs and run limits of the workflow.</td>
 </tr>
 </tbody>
 </table>
-<p>A <strong>branch</strong> node gets a condition editor: write the condition, insert results of upstream
-nodes (<code>nodes.adf.reject</code>) or parameters from the list, and the server checks it as you type
-(<code>POST /v1/workflows:validate</code>, the issue at <code>/nodes/&lt;i&gt;/with/condition</code>). The browser never
-evaluates a condition.</p>
-<p><strong>YAML</strong> and <strong>JSON</strong> show the same document in the code editor, with the server's problems
-as markers. An edit there updates the canvas as soon as the text reads as a workflow; until
-then the canvas keeps the last readable version and says why. Every change is checked live
-(the status reads <em>Ready to run</em> or <em>N problems</em>; the <strong>Problems</strong> list jumps to the node of
-each one), undo and redo work across all three views, and <strong>Save revision</strong> (<span class="keys"><kbd class="key-command">Cmd</kbd><span>+</span><kbd class="key-s">S</kbd></span>)
-stores the next revision with a message. A revision with problems is saved too, but cannot
-run. If someone saved a newer revision meanwhile, the save is refused and your draft is
-kept. <strong>Revisions</strong> lists every revision with its verdict; open one in the editor or compare
-two side by side.</p>
+<p>A <strong>branch</strong> node has a condition editor. Write the condition. Insert results of upstream
+nodes (<code>nodes.adf.reject</code>) or parameters from the list. The server does a check of the
+condition while you type (<code>POST /v1/workflows:validate</code>, with the issue at
+<code>/nodes/&lt;i&gt;/with/condition</code>). The browser never calculates a condition.</p>
+<p><strong>YAML</strong> and <strong>JSON</strong> show the same document in the code editor. Markers show the problems
+that the server found. When the text is a correct workflow, an edit there updates the canvas
+immediately. Until then, the canvas keeps the last version that it could read and tells why.
+The app does a check of each change immediately. The status shows <em>Ready to run</em> or
+<em>N problems</em>. The <strong>Problems</strong> list goes to the node of each problem.</p>
+<p>Undo and redo operate across all three views. <strong>Save revision</strong> (<span class="keys"><kbd class="key-command">Cmd</kbd><span>+</span><kbd class="key-s">S</kbd></span>) saves the next
+revision with a message. The app also saves a revision that has problems, but that revision
+cannot run. If a different person saved a newer revision in the meantime, the app refuses the
+save and keeps your draft. <strong>Revisions</strong> lists all revisions with their verdicts. You can
+open a revision in the editor or compare two revisions side by side.</p>
 <h3 id="running-and-watching">Running and watching<a class="headerlink" href="#running-and-watching" title="Permanent link">&para;</a></h3>
-<p><strong>Run workflow</strong> binds the inputs (a dataset from the project, the latest version when it
-runs or an exact one), adjusts the parameters for this run only and starts it with an
-<code>Idempotency-Key</code>. The run page follows <code>GET /v1/workflow-runs/{run_id}/events</code> live and
-resumes with <code>Last-Event-ID</code> after a dropped connection:</p>
+<p><strong>Run workflow</strong> binds the inputs. An input is a dataset from the project: the latest version
+at the time of the run, or an exact version. You can change the parameters for this run only.
+The app starts the run with an <code>Idempotency-Key</code>. The run page follows
+<code>GET /v1/workflow-runs/{run_id}/events</code> live. If the connection stops, the page continues
+with <code>Last-Event-ID</code>. The run page has these tabs:</p>
 <ul>
-<li><strong>Graph</strong>: the canvas with each node's status (waiting, queued, running, done, reused,
+<li><strong>Graph</strong>: the canvas with the status of each node (waiting, queued, running, done, reused,
   skipped, failed, cancelled).</li>
-<li><strong>Steps</strong>: every node in plain words: its verdict, what a decision meant ("The tests found
-  that the series wanders ..., so it was differenced"), why a node was not needed, how long
-  it took. A comparison or selection names its candidates by their step labels ("ARIMAX").</li>
-<li><strong>Decisions</strong>: each branch's plain explanation, the steps it ran or skipped, the verdicts
-  of the earlier steps it read ("What decided it"), and under <em>For experts: the condition</em>
-  the expression and the values it read (open in Expert mode, collapsed in a Guided recipe).</li>
-<li><strong>Outputs</strong> and <strong>Events</strong>: the run's outputs (the report, rendered) and the event log.</li>
+<li><strong>Steps</strong>: each node in plain words. It shows the verdict and the meaning of a decision
+  ("The tests found that the series wanders ..., so it was differenced"). It also shows why
+  the run did not need a node, and how long the node took. A comparison or a selection
+  identifies its candidates by their step labels ("ARIMAX").</li>
+<li><strong>Decisions</strong>: the plain explanation of each branch and the steps that it ran or skipped.
+  It also shows the verdicts of the earlier steps that it read ("What decided it"). Under
+  <em>For experts: the condition</em>, it shows the expression and the values that it read. This
+  section is open in Expert mode and closed in a Guided recipe.</li>
+<li><strong>Outputs</strong> and <strong>Events</strong>: the outputs of the run (the app shows the report) and the event
+  log.</li>
 </ul>
-<p><img alt="A finished run: 19 of 19 steps, the decisions taken, the cost, and every node done on the graph" class="mapi-shot" src="../../assets/screenshots/workflows-run-monitor.png" /></p>
-<p><img alt="Decisions: each branch's condition, the values it read and the arm it took" class="mapi-shot" src="../../assets/screenshots/workflows-decisions.png" /></p>
-<p>Select a step to open its drawer: whether it ran or reused an earlier result (with a link to
-the run it came from), its test verdict (the statistic, p-value and decision, per series for
-panels), its outputs (tables, scores, train/test folds, reports, governance evidence, charts
-in the plot sandbox, and a download for file outputs such as derived datasets), the settings
-it ran with, its sandbox run, fits or child workflow runs with their logs, and its cost.
-<strong>Cancel run</strong> stops a running workflow and its children; the run's cost is shown when it
-finishes.</p>
-<p><img alt="A step's drawer: the ADF verdict with its p-value and statistic, the settings it ran with, its sandbox run and logs" class="mapi-shot" src="../../assets/screenshots/workflows-node-drawer.png" /></p>
-<p>A model the run fitted opens in the <a href="../model-explorer/#in-the-web-app">Model Explorer</a>:
-<strong>Explore <em>name</em> vN</strong> sits under the run's summary when it succeeds, beside the fit step's
-runs and on every <code>model_version</code> output, with a <strong>Validation</strong> link to that version's
-validations. The Model Explorer's lineage links back to this run.</p>
+<p><img alt="A finished run: 19 of 19 steps, the decisions, the cost, and all nodes done on the graph" class="mapi-shot" src="../../assets/screenshots/workflows-run-monitor.png" /></p>
+<p><img alt="Decisions: the condition of each branch, the values that it read and the arm that it took" class="mapi-shot" src="../../assets/screenshots/workflows-decisions.png" /></p>
+<p>To open the drawer of a step, select the step. The drawer shows:</p>
+<ul>
+<li>If the step ran or used an earlier result again. If it used an earlier result, a link goes
+  to the run that made that result.</li>
+<li>The test verdict: the statistic, the p-value and the decision. For panels, it shows them
+  for each series.</li>
+<li>The outputs: tables, scores, train/test folds, reports, governance evidence, charts in the
+  plot sandbox, and a download for file outputs (for example, derived datasets).</li>
+<li>The settings of the step.</li>
+<li>Its sandbox run, its fits or its child workflow runs, with their logs.</li>
+<li>Its cost.</li>
+</ul>
+<p><strong>Cancel run</strong> stops a workflow that runs and its children. When the run stops, the app shows
+the cost of the run.</p>
+<p><img alt="The drawer of a step: the ADF verdict with its p-value and statistic, the settings of the step, its sandbox run and logs" class="mapi-shot" src="../../assets/screenshots/workflows-node-drawer.png" /></p>
+<p>You can open a model that the run fitted in the
+<a href="../model-explorer/#in-the-web-app">Model Explorer</a>. The link <strong>Explore <em>name</em> vN</strong> is in these
+locations:</p>
+<ul>
+<li>Below the summary of the run, when the run is successful.</li>
+<li>Next to the runs of the fit step.</li>
+<li>On each <code>model_version</code> output.</li>
+</ul>
+<p>The link has a <strong>Validation</strong> link to the validations of that version. The lineage in the
+Model Explorer has a link back to this run.</p>
 <h3 id="schedules-and-triggers-in-the-app">Schedules and triggers in the app<a class="headerlink" href="#schedules-and-triggers-in-the-app" title="Permanent link">&para;</a></h3>
-<p><strong>Schedules and triggers</strong> adds a schedule from presets or a cron expression, in a time zone,
-and previews the next five firing times exactly as the server computes them (daylight-saving
-gaps skipped, repeats fired once); an expression that would fire more often than every 15
-minutes is refused before it is sent. Schedules can be paused and deleted. A <strong>trigger</strong>
-runs the workflow whenever a chosen dataset gets a new version, bound to one of its dataset
-inputs, after a debounce.</p>
-<p><img alt="A new schedule from a preset, with the next five firing times in its time zone" class="mapi-shot" src="../../assets/screenshots/workflows-schedule.png" /></p>
+<p><strong>Schedules and triggers</strong> adds a schedule from presets or from a cron expression, in a time
+zone. It shows the next five run times exactly as the server calculates them. It skips
+daylight-saving gaps, and it fires repeated times only once. If an expression fires more
+frequently than each 15 minutes, the app refuses it before it sends it. You can pause and
+delete schedules. A <strong>trigger</strong> runs the workflow each time a selected dataset gets a new
+version. The trigger binds the dataset to one of the dataset inputs and runs after a
+debounce.</p>
+<p><img alt="A new schedule from a preset, with the next five run times in its time zone" class="mapi-shot" src="../../assets/screenshots/workflows-schedule.png" /></p>
 <h2 id="the-canonical-workflow">The canonical workflow<a class="headerlink" href="#the-canonical-workflow" title="Permanent link">&para;</a></h2>
-<p>This is the <code>ts_readiness_arimax</code> template exactly as the server stores it (the docs build
-checks they are identical):</p>
+<p>This is the <code>ts_readiness_arimax</code> template exactly as the server keeps it. The docs build
+makes sure that the two are identical:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># The canonical workflow: time-series readiness -&gt; ARIMAX (template ts_readiness_arimax).</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Kept identical to mapi_spec.workflow_templates.TS_READINESS_ARIMAX by a test.</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi/v1</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Workflow</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nt">metadata</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">ts-readiness-arimax</span><span class="p p-Indicator">,</span><span class="nt"> project</span><span class="p">:</span><span class="w"> </span><span class="nv">templates</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nt">params</span><span class="p">:</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">alpha</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">number</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">0.05</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">0.001</span><span class="p p-Indicator">,</span><span class="nt"> maximum</span><span class="p">:</span><span class="w"> </span><span class="nv">0.2</span><span class="p p-Indicator">,</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">Significance level of the tests</span><span class="p p-Indicator">}</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">season</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">integer</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">52</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="nt"> maximum</span><span class="p">:</span><span class="w"> </span><span class="nv">400</span><span class="p p-Indicator">,</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">Season length in periods (52 for weekly data)</span><span class="p p-Indicator">}</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">alpha</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">number</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">0.05</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">0.001</span><span class="p p-Indicator">,</span><span class="nt"> maximum</span><span class="p">:</span><span class="w"> </span><span class="nv">0.2</span><span class="p p-Indicator">,</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">The significance level of the tests</span><span class="p p-Indicator">}</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">season</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">integer</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">52</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="nt"> maximum</span><span class="p">:</span><span class="w"> </span><span class="nv">400</span><span class="p p-Indicator">,</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">The length of a season in periods (52 for weekly data)</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="nt">horizons</span><span class="p">:</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">8</span><span class="p p-Indicator">]</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Forecast horizons scored in the backtest</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">  </span><span class="nt">gap</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">integer</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nt"> maximum</span><span class="p">:</span><span class="w"> </span><span class="nv">52</span><span class="p p-Indicator">,</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">Periods between training and test (late data)</span><span class="p p-Indicator">}</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The forecast horizons that the backtest scores</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">  </span><span class="nt">gap</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">integer</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nt"> maximum</span><span class="p">:</span><span class="w"> </span><span class="nv">52</span><span class="p p-Indicator">,</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">The periods between the training data and the test data (for late data)</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="nt">n_folds</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">integer</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="nt"> maximum</span><span class="p">:</span><span class="w"> </span><span class="nv">50</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">  </span><span class="nt">max_p</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">integer</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nt"> maximum</span><span class="p">:</span><span class="w"> </span><span class="nv">8</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span><span class="nt">max_q</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">integer</span><span class="p p-Indicator">,</span><span class="nt"> default</span><span class="p">:</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="nt"> minimum</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nt"> maximum</span><span class="p">:</span><span class="w"> </span><span class="nv">8</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">  </span><span class="nt">drivers</span><span class="p">:</span>
 </span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
 </span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Driver columns known for the future</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The driver columns that you know for the future</span>
 </span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="nt">inputs</span><span class="p">:</span>
 </span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">  </span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="nv">dataset</span><span class="p p-Indicator">,</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">The weekly (or daily) series to model</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="nt">nodes</span><span class="p">:</span>
@@ -5584,8 +5684,8 @@ checks they are identical):</p>
 </span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Seasonal difference?</span>
 </span><span id="__span-1-33"><a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="w">  </span><span class="nt">with</span><span class="p">:</span>
 </span><span id="__span-1-34"><a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="w">    </span><span class="nt">condition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nodes.seas.seasonal</span>
-</span><span id="__span-1-35"><a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a><span class="w">    </span><span class="nt">explain_then</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The series repeats a strong seasonal pattern, so it was compared with the same period one season earlier (seasonal differencing).</span>
-</span><span id="__span-1-36"><a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="w">    </span><span class="nt">explain_else</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The series has no strong seasonal pattern, so it was not seasonally differenced.</span>
+</span><span id="__span-1-35"><a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a><span class="w">    </span><span class="nt">explain_then</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The series has a strong seasonal pattern. The workflow compared each value with the same period one season earlier (a seasonal difference).</span>
+</span><span id="__span-1-36"><a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="w">    </span><span class="nt">explain_else</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The series has no strong seasonal pattern, so the workflow did not apply a seasonal difference.</span>
 </span><span id="__span-1-37"><a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sdiff</span>
 </span><span id="__span-1-38"><a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transform.seasonal_difference</span>
 </span><span id="__span-1-39"><a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a><span class="w">  </span><span class="nt">inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">}</span>
@@ -5630,15 +5730,15 @@ checks they are identical):</p>
 </span><span id="__span-1-78"><a id="__codelineno-1-78" name="__codelineno-1-78" href="#__codelineno-1-78"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test.acf_pacf</span>
 </span><span id="__span-1-79"><a id="__codelineno-1-79" name="__codelineno-1-79" href="#__codelineno-1-79"></a><span class="w">  </span><span class="nt">inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="nv">cand.data</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-80"><a id="__codelineno-1-80" name="__codelineno-1-80" href="#__codelineno-1-80"></a><span class="w">  </span><span class="nt">with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">nlags</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> max_order</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">}</span>
-</span><span id="__span-1-81"><a id="__codelineno-1-81" name="__codelineno-1-81" href="#__codelineno-1-81"></a><span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Too much differencing?</span>
+</span><span id="__span-1-81"><a id="__codelineno-1-81" name="__codelineno-1-81" href="#__codelineno-1-81"></a><span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Too many differences?</span>
 </span><span id="__span-1-82"><a id="__codelineno-1-82" name="__codelineno-1-82" href="#__codelineno-1-82"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wanders</span>
 </span><span id="__span-1-83"><a id="__codelineno-1-83" name="__codelineno-1-83" href="#__codelineno-1-83"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">branch.if</span>
 </span><span id="__span-1-84"><a id="__codelineno-1-84" name="__codelineno-1-84" href="#__codelineno-1-84"></a><span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Difference?</span>
 </span><span id="__span-1-85"><a id="__codelineno-1-85" name="__codelineno-1-85" href="#__codelineno-1-85"></a><span class="w">  </span><span class="nt">with</span><span class="p">:</span>
 </span><span id="__span-1-86"><a id="__codelineno-1-86" name="__codelineno-1-86" href="#__codelineno-1-86"></a><span class="w">    </span><span class="nt">condition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject) and nodes.overdiff.acf[1] &gt; -0.5</span>
 </span><span id="__span-1-87"><a id="__codelineno-1-87" name="__codelineno-1-87" href="#__codelineno-1-87"></a><span class="w">    </span><span class="c1"># plain words for the run report and the run monitor</span>
-</span><span id="__span-1-88"><a id="__codelineno-1-88" name="__codelineno-1-88" href="#__codelineno-1-88"></a><span class="w">    </span><span class="nt">explain_then</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The tests found that the series wanders rather than returning to a steady level, so it was differenced (the model works on the change from one period to the next).</span>
-</span><span id="__span-1-89"><a id="__codelineno-1-89" name="__codelineno-1-89" href="#__codelineno-1-89"></a><span class="w">    </span><span class="nt">explain_else</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The tests found that the series returns to a steady level (or that differencing it would go too far), so it was used as it is.</span>
+</span><span id="__span-1-88"><a id="__codelineno-1-88" name="__codelineno-1-88" href="#__codelineno-1-88"></a><span class="w">    </span><span class="nt">explain_then</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The tests found that the series wanders and does not return to a steady level. The workflow applied a difference, so the model uses the change from one period to the next.</span>
+</span><span id="__span-1-89"><a id="__codelineno-1-89" name="__codelineno-1-89" href="#__codelineno-1-89"></a><span class="w">    </span><span class="nt">explain_else</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The tests found that the series returns to a steady level, or that a difference would go too far. The workflow used the series as it is.</span>
 </span><span id="__span-1-90"><a id="__codelineno-1-90" name="__codelineno-1-90" href="#__codelineno-1-90"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">diff</span>
 </span><span id="__span-1-91"><a id="__codelineno-1-91" name="__codelineno-1-91" href="#__codelineno-1-91"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transform.difference</span>
 </span><span id="__span-1-92"><a id="__codelineno-1-92" name="__codelineno-1-92" href="#__codelineno-1-92"></a><span class="w">  </span><span class="nt">inputs</span><span class="p">:</span>
@@ -5728,70 +5828,76 @@ checks they are identical):</p>
 </span><span id="__span-1-176"><a id="__codelineno-1-176" name="__codelineno-1-176" href="#__codelineno-1-176"></a><span class="w">  </span><span class="nt">with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="nv">Time-series readiness and ARIMAX</span><span class="p p-Indicator">}</span>
 </span><span id="__span-1-177"><a id="__codelineno-1-177" name="__codelineno-1-177" href="#__codelineno-1-177"></a><span class="nt">outputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="nv">select.model</span><span class="p p-Indicator">,</span><span class="nt"> report</span><span class="p">:</span><span class="w"> </span><span class="nv">report.report</span><span class="p p-Indicator">,</span><span class="nt"> evidence</span><span class="p">:</span><span class="w"> </span><span class="nv">governance.evidence</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p>Reading it from the top:</p>
+<p>This list explains the document from the top:</p>
 <dl>
 <dt><code>params</code></dt>
-<dd>Everything a user may change per run, each with a type, a default and bounds. A run that
-passes <code>{"alpha": "x"}</code> is refused with <code>422</code> and the pointer <code>/params/alpha</code>; so is a
-number larger than 1e15 either way (conditions and <code>$expr</code> compute with parameters).</dd>
+<dd>All values that a user can change for each run. Each value has a type, a default and
+limits. If a run sends <code>{"alpha": "x"}</code>, the server refuses it with <code>422</code> and the pointer
+<code>/params/alpha</code>. The server also refuses a number that is more than 1e15 or less than
+-1e15, because conditions and <code>$expr</code> calculate with parameters.</dd>
 <dt><code>seas</code>, <code>seasonal</code> and <code>sdiff</code></dt>
-<dd>The seasonal decision comes first (as in <code>nsdiffs</code> before <code>ndiffs</code>): the seasonal
-strength of the raw series decides whether to take a seasonal difference, which only
-runs on the <code>then</code> arm of <code>seasonal</code>. When the arm is not taken the node is
-<strong>skipped</strong>, not failed.</dd>
+<dd>The seasonal decision is first (as <code>nsdiffs</code> is before <code>ndiffs</code>). The seasonal strength
+of the raw series decides if the workflow takes a seasonal difference. The seasonal
+difference runs only on the <code>then</code> arm of <code>seasonal</code>. If the workflow does not take the
+arm, the node is <strong>skipped</strong>. It is not failed.</dd>
 <dt><code>adf</code>, <code>kpss</code>, <code>pp</code>, <code>za</code></dt>
-<dd>Four unit-root tests on the seasonally differenced series (or the raw series when
-there is no seasonal difference): <code>data: [sdiff.data, inputs.data]</code> is a list of
-<strong>alternatives</strong>, the first node that ran. Testing the raw levels of a seasonal series
-would find the seasonal unit root and add a first difference on top of the seasonal
-one, over-differencing it. ADF and Phillips-Perron's null hypothesis is "the series
-wanders"; KPSS's is "the series is stable", so its decision labels run the other way;
-Zivot-Andrews allows one structural break. Each returns a <code>StatTestResult</code> with a
-<code>verdict_plain</code> sentence.</dd>
+<dd>Four unit-root tests on the seasonally differenced series. If there is no seasonal
+difference, the tests use the raw series. <code>data: [sdiff.data, inputs.data]</code> is a list of
+<strong>alternatives</strong>: the workflow uses the first node that ran. A test of the raw levels of
+a seasonal series finds the seasonal unit root. Thus it adds a first difference on top
+of the seasonal difference, and the series gets too much differencing.
+The null hypothesis of ADF and Phillips-Perron is "the series wanders". The null
+hypothesis of KPSS is "the series is stable", so its decision labels go in the opposite
+direction. Zivot-Andrews accepts one structural break. Each test returns a
+<code>StatTestResult</code> with a <code>verdict_plain</code> sentence.</dd>
 <dt><code>cand</code> and <code>overdiff</code></dt>
-<dd>An over-differencing guard: a trial first difference and its autocorrelations. A
-lag-1 autocorrelation below -0.5 after differencing is the signature of a unit root
-that is not there.</dd>
+<dd>A guard against too much differencing: a trial first difference and its
+autocorrelations. If the lag-1 autocorrelation is less than -0.5 after differencing, it
+shows a unit root that does not exist.</dd>
 <dt><code>wanders</code> (<code>branch.if</code>)</dt>
 <dd><code>(not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)
-and nodes.overdiff.acf[1] &gt; -0.5</code> reads: difference unless the evidence for stationarity
-is clear, and never when differencing would over-difference. The condition is parsed by
-the safe expression language (never <code>eval</code>), and the run records which values it read,
-so the decision can be audited later.</dd>
+and nodes.overdiff.acf[1] &gt; -0.5</code> means this: difference the series unless the evidence
+for stationarity is clear. Never difference when differencing gives too much
+differencing. The safe expression language parses the condition (it never uses <code>eval</code>).
+The run records which values it read, so you can audit the decision later.</dd>
 <dt><code>diff</code></dt>
 <dd>The first difference of the same alternatives, on the <code>then</code> arm of <code>wanders</code>. <code>acf</code>
-uses three alternatives, so it always looks at the most-processed series.</dd>
+uses three alternatives, so it always uses the series that has the most processing.</dd>
 <dt><code>order</code> (<code>search.arma_order</code>)</dt>
-<dd>An information-criterion grid over AR orders <code>0..max_p</code> and MA orders <code>0..max_q</code>.
-<code>d</code> and <code>D</code> pass the differencing decisions in, so the search scores exactly the
-model that is fitted, ARIMA(p, d, q)(0, D, 0) with the season length, on the raw
-series. With the backtest's plan on its <code>split</code> port it only searches the periods
-before the first test window, so the backtest stays out of sample.</dd>
+<dd>A grid of information criteria over AR orders <code>0..max_p</code> and MA orders <code>0..max_q</code>.
+<code>d</code> and <code>D</code> give the differencing decisions to the search. Thus the search scores
+exactly the model that the workflow fits: ARIMA(p, d, q)(0, D, 0) with the season length,
+on the raw series. The <code>split</code> port has the plan of the backtest. With this plan, the
+search uses only the periods before the first test window. Thus the backtest stays out
+of sample.</dd>
 <dt><code>folds</code> (<code>split.expanding_window</code>)</dt>
-<dd>An expanding-window plan: <code>n_folds</code> origins, <code>step: 4</code> periods apart, a <code>gap</code> between
-training and test (for data that arrives late) and every horizon in <code>horizons</code> scored
-separately. The folds are computed from the number of periods alone.</dd>
+<dd>An expanding-window plan. It has <code>n_folds</code> origins, with <code>step: 4</code> periods between them.
+It has a <code>gap</code> between the training and the test, for data that arrives late. It scores
+each horizon in <code>horizons</code> separately. The server calculates the folds from the number of
+periods only.</dd>
 <dt><code>backtest</code> and <code>naive</code></dt>
-<dd>The ARIMAX model refitted on every fold, and naive and seasonal-naive forecasts on the
-<strong>same</strong> folds. The <code>settings</code> are built from upstream results with <code>$expr</code>.</dd>
+<dd>The workflow fits the ARIMAX model again on each fold. It also makes naive and
+seasonal-naive forecasts on the <strong>same</strong> folds. <code>$expr</code> makes the <code>settings</code> from
+upstream results.</dd>
 <dt><code>compare</code>, <code>fit</code>, <code>select</code></dt>
-<dd><code>compare.models</code> ranks the candidates by MAE; <code>select.best</code> keeps the fitted ARIMAX
-only if it beats every benchmark in <code>must_beat</code> (here <code>naive</code>) by at least <code>margin</code>.
-Otherwise the workflow stops with a plain explanation (<code>reason_plain</code>).</dd>
+<dd><code>compare.models</code> puts the candidates in sequence by MAE. <code>select.best</code> keeps the fitted
+ARIMAX only if it is better than each benchmark in <code>must_beat</code> (here <code>naive</code>) by at least
+<code>margin</code>. If not, the workflow stops with a plain explanation (<code>reason_plain</code>).</dd>
 <dt><code>governance</code></dt>
-<dd>Runs the governance policy in force for the project (null tests, residual checks,
-stability...; see <a href="../../concepts/governance/">Governance</a>) and produces an evidence
-record. The result says <code>passed</code> and lists <code>failed_checks</code>; the report shows both, and
-the <a href="#gate-on-governance-and-keep-the-evidence">gate recipe</a> stops a workflow on a
-failure.</dd>
+<dd>Runs the governance policy that applies to the project and makes an evidence record. The
+policy includes null tests, residual checks, stability and other checks (see
+<a href="../../concepts/governance/">Governance</a>). The result shows <code>passed</code> and lists
+<code>failed_checks</code>. The report shows the two. The
+<a href="#gate-on-governance-and-keep-the-evidence">gate recipe</a> stops a workflow on a failure.</dd>
 <dt><code>report</code> and <code>outputs</code></dt>
-<dd>A <code>mapi.report/v1</code> document with a section per test, decision, table and metric.
-<code>outputs</code> names what the run hands back (and what a parent workflow can read).</dd>
+<dd>A <code>mapi.report/v1</code> document with a section for each test, decision, table and metric.
+<code>outputs</code> gives the names of the values that the run returns. A parent workflow can read
+these values.</dd>
 </dl>
 <h2 id="cookbook">Cookbook<a class="headerlink" href="#cookbook" title="Permanent link">&para;</a></h2>
-<p>Each recipe is a fragment of <code>nodes:</code>; paste it into a document that declares
-<code>inputs: {data: {type: dataset}}</code>. Validate before saving with
-<code>POST /v1/workflows:validate</code>: every problem comes back with a JSON pointer.</p>
+<p>Each recipe is a part of <code>nodes:</code>. Paste it into a document that declares
+<code>inputs: {data: {type: dataset}}</code>. Before you save, validate the document with
+<code>POST /v1/workflows:validate</code>. The server returns each problem with a JSON pointer.</p>
 <h3 id="difference-only-when-the-tests-say-so">Difference only when the tests say so<a class="headerlink" href="#difference-only-when-the-tests-say-so" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">adf</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">test.adf</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">}}</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">kpss</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">test.kpss</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">}}</span>
@@ -5806,11 +5912,13 @@ failure.</dd>
 </span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1"># downstream nodes take the differenced series if it exists, else the original</span>
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">lb</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">test.ljung_box</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">diff.data</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">]}}</span>
 </span></code></pre></div>
-<p><code>explain_then</code> and <code>explain_else</code> (up to 300 characters each) are recorded with the decision
-(<code>BranchDecision.explain_plain</code>) and lead the report's summary; without them the summary
-reads "Difference? yes". The gallery templates set both.</p>
-<p>A node that needs <code>diff.data</code> <em>without</em> an alternative is skipped with it. Add
-<code>when: wanders.else</code> to a node to run it only when the series was left alone.</p>
+<p>The run records <code>explain_then</code> and <code>explain_else</code> (each has a maximum of 300 characters)
+with the decision (<code>BranchDecision.explain_plain</code>). They are the first part of the summary of
+the report. Without them, the summary shows "Difference? yes". The gallery templates set the
+two values.</p>
+<p>If a node needs <code>diff.data</code> <em>without</em> an alternative, the workflow skips that node together
+with <code>diff</code>. To run a node only when the workflow did not change the series, add
+<code>when: wanders.else</code> to the node.</p>
 <h3 id="pick-ar-and-ma-terms">Pick AR and MA terms<a class="headerlink" href="#pick-ar-and-ma-terms" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">acf</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">test.acf_pacf</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">diff.data</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">]},</span><span class="nt"> with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">max_order</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">}}</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">order</span>
@@ -5825,10 +5933,11 @@ reads "Difference? yes". The gallery templates set both.</p>
 </span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="nt">settings</span><span class="p">:</span>
 </span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">      </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">$expr</span><span class="p">:</span><span class="w"> </span><span class="s">"[nodes.order.best_p,</span><span class="nv"> </span><span class="s">if(nodes.wanders.value,</span><span class="nv"> </span><span class="s">1,</span><span class="nv"> </span><span class="s">0),</span><span class="nv"> </span><span class="s">nodes.order.best_q]"</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p><code>acf</code> suggests orders from the significant autocorrelations (<code>suggested_p</code>, <code>suggested_q</code>)
-and is quick to read; <code>search.arma_order</code> actually fits every candidate and is what the model
-should use. <code>search.sarima_order</code> adds seasonal orders, <code>search.var_lag_order</code> chooses a VAR's
-lag length and <code>search.coint_rank</code> a VECM's cointegration rank.</p>
+<p><code>acf</code> gives possible orders from the significant autocorrelations (<code>suggested_p</code>,
+<code>suggested_q</code>). Its result is fast to read. <code>search.arma_order</code> fits each candidate, and the
+model must use its result. <code>search.sarima_order</code> adds seasonal orders.
+<code>search.var_lag_order</code> selects the lag length of a VAR. <code>search.coint_rank</code> selects the
+cointegration rank of a VECM.</p>
 <h3 id="honest-traintest-plans">Honest train/test plans<a class="headerlink" href="#honest-traintest-plans" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># 6 expanding folds, 2 periods between training and test, horizons 1, 4 and 13</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">folds</span>
@@ -5847,15 +5956,15 @@ lag length and <code>search.coint_rank</code> a VECM's cointegration rank.</p>
 </span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="c1"># hold out whole markets (MMM, geo experiments)</span>
 </span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">geo</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">split.geo_holdout</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">},</span><span class="nt"> with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">n</span><span class="p">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="nt"> seed</span><span class="p">:</span><span class="w"> </span><span class="nv">7</span><span class="p p-Indicator">}}</span>
 </span></code></pre></div>
-<p><code>split.blocked_kfold</code> and <code>split.purged_kfold</code> cut contiguous blocks (with a purge gap) for
-models that are not forecasters. A plan is a <code>split_plan</code> value: feed the same plan to every
-<code>model.backtest</code>, <code>evaluate.baseline</code> and <code>search.grid</code> node you want to compare. Given a
-<code>split.nested</code> plan, <code>search.grid</code> runs nested cross-validation: each outer fold picks its
-grid point on its own inner folds, and that point is refitted on the outer training window
-and scored on the outer test window. <code>best_score</code> is the score of those outer forecasts (the
-honest error of the tuned model), <code>outer_scores</code> and <code>selected_per_fold</code> show each fold, and
-<code>best_settings</code> is the point the outer folds chose most often. <code>model.backtest</code> on a nested
-plan scores its outer folds.</p>
+<p><code>split.blocked_kfold</code> and <code>split.purged_kfold</code> cut continuous blocks (with a purge gap) for
+models that do not forecast. A plan is a <code>split_plan</code> value. Give the same plan to each
+<code>model.backtest</code>, <code>evaluate.baseline</code> and <code>search.grid</code> node that you want to compare.</p>
+<p>If <code>search.grid</code> gets a <code>split.nested</code> plan, it does nested cross-validation. Each outer fold
+selects its grid point on its own inner folds. The node fits that point again on the outer
+training window and scores it on the outer test window. <code>best_score</code> is the score of those
+outer forecasts (the honest error of the tuned model). <code>outer_scores</code> and
+<code>selected_per_fold</code> show each fold. <code>best_settings</code> is the point that the outer folds
+selected most frequently. <code>model.backtest</code> on a nested plan scores its outer folds.</p>
 <h3 id="beat-the-benchmarks-or-stop">Beat the benchmarks, or stop<a class="headerlink" href="#beat-the-benchmarks-or-stop" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">naive</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">evaluate.baseline</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">,</span><span class="nt"> split</span><span class="p">:</span><span class="w"> </span><span class="nv">folds.plan</span><span class="p p-Indicator">},</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">   with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">methods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">naive</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">seasonal_naive</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">drift</span><span class="p p-Indicator">],</span><span class="nt"> season</span><span class="p">:</span><span class="w"> </span><span class="nv">52</span><span class="p p-Indicator">}}</span>
@@ -5870,9 +5979,10 @@ plan scores its outer folds.</p>
 </span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">select</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">select.best</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="nv">compare.table</span><span class="p p-Indicator">,</span><span class="nt"> models</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">fit.model</span><span class="p p-Indicator">]},</span>
 </span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="nt">   with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="nv">mase</span><span class="p p-Indicator">,</span><span class="nt"> must_beat</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">naive</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">seasonal_naive</span><span class="p p-Indicator">],</span><span class="nt"> margin</span><span class="p">:</span><span class="w"> </span><span class="nv">0.05</span><span class="p p-Indicator">}}</span>
 </span></code></pre></div>
-<p><code>compare.diebold_mariano</code> tests whether the difference in forecast errors is more than
-luck (with the Harvey-Leybourne-Newbold small-sample correction). <code>select.threshold</code> keeps
-the rows of a comparison table within limits (<code>max</code>, <code>min</code>) when there is no single winner.</p>
+<p><code>compare.diebold_mariano</code> tests if the difference in forecast errors is more than chance. It
+uses the Harvey-Leybourne-Newbold small-sample correction. If there is no single winner,
+<code>select.threshold</code> keeps the rows of a comparison table that are in the limits (<code>max</code>,
+<code>min</code>).</p>
 <h3 id="long-run-relationships-vecm-or-var">Long-run relationships: VECM or VAR<a class="headerlink" href="#long-run-relationships-vecm-or-var" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">joh</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">test.johansen</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">}}</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">tied</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">branch.if</span><span class="p p-Indicator">,</span>
@@ -5886,16 +5996,20 @@ the rows of a comparison table within limits (<code>max</code>, <code>min</code>
 </span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">var</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">model.fit</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">d.data</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">]},</span><span class="nt"> when</span><span class="p">:</span><span class="w"> </span><span class="nv">tied.else</span><span class="p p-Indicator">,</span>
 </span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="nt">   with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="nv">ts.var@^1</span><span class="p p-Indicator">,</span><span class="nt"> settings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">lags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">$expr</span><span class="p">:</span><span class="w"> </span><span class="s">"nodes.lags.best_lag"</span><span class="p p-Indicator">}}}}</span>
 </span></code></pre></div>
-<p>A Johansen rank equal to the number of series means every series is already stable (growth
-rates, changes): there is nothing to error-correct, and <code>ts.vecm</code> refuses that rank, so the
-VAR is fitted on the levels; rank 0 means separate random walks, and the VAR is fitted on
-the changes.</p>
-<p>The data holds the series along one dimension, one value per series and period
-(<code>value(series, quarter)</code>: the layout of the statsmodels multivariate models; ingest a wide
-sheet with the <code>wide</code> mapping). The tests and searches use every series of that dimension,
-or the ones named in <code>vars</code> (labels such as <code>[sales, price]</code>), and the model nodes bind the
-models' <code>variable</code> dimension to it. The <code>var_vecm_cointegration</code> template is the complete
-version, with Granger tests and a report.</p>
+<p>If the Johansen rank is equal to the number of series, each series is already stable (for
+example, growth rates or changes). Then there is no error to correct, and <code>ts.vecm</code> refuses
+that rank. Thus the workflow fits the VAR on the levels. Rank 0 means separate random walks.
+Then the workflow fits the VAR on the changes. A VAR that is fitted on the output of
+<code>transform.difference</code> forecasts the changes, not the levels. It cannot update its forecast
+with actuals, because the endpoint does not difference the data that you send. The model has
+the label <code>mapi.io/data-space: transformed</code>, the server refuses actuals, and each answer
+shows a warning (<a href="../../concepts/forecasting-with-actuals/#which-models-can">Forecasts with actuals</a>).</p>
+<p>The data keeps the series along one dimension, with one value for each series and period
+(<code>value(series, quarter)</code>). This is the layout of the statsmodels multivariate models. To
+ingest a wide sheet, use the <code>wide</code> mapping. The tests and searches use all series of that
+dimension, or the series in <code>vars</code> (labels such as <code>[sales, price]</code>). The model nodes bind
+the <code>variable</code> dimension of the models to it. The <code>var_vecm_cointegration</code> template is the
+complete version, with Granger tests and a report.</p>
 <h3 id="search-model-settings-on-a-plan">Search model settings on a plan<a class="headerlink" href="#search-model-settings-on-a-plan" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">grid</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">search.grid</span>
@@ -5907,9 +6021,9 @@ version, with Granger tests and a report.</p>
 </span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rmse</span>
 </span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">    </span><span class="nt">max_points</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9</span>
 </span></code></pre></div>
-<p>Every grid point is backtested on the plan; <code>best</code> is the winning settings refitted on all
-the data (<code>best_settings</code>, <code>best_score</code> in the result). A grid larger than <code>max_points</code>
-fails the node (<code>WORKFLOW_INVALID</code>) before any point is fitted.</p>
+<p>The node does a backtest of each grid point on the plan. <code>best</code> is the winning settings,
+fitted again on all the data (<code>best_settings</code>, <code>best_score</code> in the result). If a grid has
+more points than <code>max_points</code>, the node fails (<code>WORKFLOW_INVALID</code>) before it fits a point.</p>
 <h3 id="gate-on-governance-and-keep-the-evidence">Gate on governance and keep the evidence<a class="headerlink" href="#gate-on-governance-and-keep-the-evidence" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">gov</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">governance.policy</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="nv">select.model</span><span class="p p-Indicator">,</span><span class="nt"> data</span><span class="p">:</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">},</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nt">   with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">submit</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="p p-Indicator">}}</span>
@@ -5917,20 +6031,22 @@ fails the node (<code>WORKFLOW_INVALID</code>) before any point is fitted.</p>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">pack</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">report.evidence_pack</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="nv">select.model</span><span class="p p-Indicator">,</span><span class="nt"> evidence</span><span class="p">:</span><span class="w"> </span><span class="nv">gov.evidence</span><span class="p p-Indicator">},</span>
 </span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="nt">   when</span><span class="p">:</span><span class="w"> </span><span class="nv">approved.then</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p><code>governance.policy</code> records the outcome of every check of the policy in force (or the one
-named by <code>policy</code>) as evidence; it does not fail when a check fails, so the evidence of a
-rejected model is kept too. The branch makes everything after it depend on the verdict.
-<code>governance.check</code> runs a single check with its own thresholds, which is handy while a policy
-is being designed. The checks are the platform's own implementations (the same as a
-validation request's), measured in the node's sandbox on the model and its data; the policy
-in force is the one the project or tenant set up for the model's family (the platform's
-default policies apply until you add your own). With <code>submit: true</code> a passing model is
-recorded as a validation of that model version: <code>validated</code>, or <code>awaiting_approval</code> when the
-policy asks for a reviewer (see <a href="../governance/">governance</a>). A node's <code>policy</code> only adds to
-the policies in force (the tenant floor and the project's policies always apply), and the
-validation counts as submitted by the person who started the run - or who created its
-schedule or trigger - so that person cannot approve it. Governance nodes are never cached:
-the checks run again on every run.</p>
+<p><code>governance.policy</code> records the result of each check of the policy that applies (or of the
+policy in <code>policy</code>) as evidence. It does not fail when a check fails, so it also keeps the
+evidence of a rejected model. Because of the branch, all nodes after it depend on the
+verdict. <code>governance.check</code> runs one check with its own thresholds. This is useful while you
+design a policy.</p>
+<p>The checks are the implementations of the platform. They are the same as the checks of a
+validation request. The node measures them in its sandbox, on the model and its data. The
+policy that applies is the policy that the project or tenant set for the model family. The
+default policies of the platform apply until you add your own policies.</p>
+<p>If <code>submit: true</code> is set and the model passes, the server records a validation of that model
+version. The status is <code>validated</code>, or <code>awaiting_approval</code> if the policy needs a reviewer
+(see <a href="../governance/">governance</a>). The <code>policy</code> of a node only adds to the policies that
+apply. The tenant floor and the policies of the project always apply. The server records the
+validation as submitted by the person who started the run, or by the person who made its
+schedule or trigger. Thus that person cannot approve it. The server never caches governance
+nodes: the checks run again on each run.</p>
 <h3 id="reuse-a-workflow-as-a-node">Reuse a workflow as a node<a class="headerlink" href="#reuse-a-workflow-as-a-node" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># workflow "readiness" declares  outputs: {stationary: wanders.result, report: report.report}</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ready</span>
@@ -5939,11 +6055,12 @@ the checks run again on every run.</p>
 </span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="nt">with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">workflow</span><span class="p">:</span><span class="w"> </span><span class="s">"workflow://growth/readiness@r3"</span><span class="p p-Indicator">,</span><span class="nt"> params</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">alpha</span><span class="p">:</span><span class="w"> </span><span class="nv">0.01</span><span class="p p-Indicator">}}</span>
 </span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">summary</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">report.summary</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">items</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ready.report</span><span class="p p-Indicator">]}}</span>
 </span></code></pre></div>
-<p>The child runs as its own workflow run (<code>trigger: parent</code>), visible on its own page and
-cancelled with its parent. Its ports are the child's <code>outputs</code>. Pin a revision (<code>@r3</code>) so a
-later edit of the child does not change the parent silently; <code>@latest</code> is allowed too.
-A workflow that would run itself, directly or through another, fails with
-<code>WORKFLOW_INVALID</code>, and sub-workflows nest at most 8 deep.</p>
+<p>The child runs as a separate workflow run (<code>trigger: parent</code>). It has its own page, and it
+stops when the server cancels its parent. Its ports are the <code>outputs</code> of the child. Pin a
+revision (<code>@r3</code>). Then a subsequent edit of the child does not change the parent without
+notice. You can also use <code>@latest</code>. If a workflow runs itself, directly or through a
+different workflow, it fails with <code>WORKFLOW_INVALID</code>. Sub-workflows can go a maximum of 8
+levels deep.</p>
 <h3 id="failures-retries-and-time-limits">Failures, retries and time limits<a class="headerlink" href="#failures-retries-and-time-limits" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">za</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test.zivot_andrews</span>
@@ -5954,13 +6071,14 @@ A workflow that would run itself, directly or through another, fails with
 </span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">  </span><span class="nt">cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">          </span><span class="c1"># always recompute</span>
 </span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="nt">execution</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">max_parallel</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> timeout</span><span class="p">:</span><span class="w"> </span><span class="nv">2h</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
-<p><code>execution</code> applies to the whole run: how many nodes run at once and a deadline after which
-the run fails with <code>TIMEOUT</code>. A failed node without <code>on_failure: continue</code> fails the run; the
-nodes still pending are cancelled, the ones running are stopped, and the run's <code>error</code> names
-the node. A condition or <code>$expr</code> that cannot be computed on the data it reads (a number too
-large, values nested too deeply) fails its node with <code>EXPRESSION_ERROR</code>. Should the
-orchestrator itself be unable to advance a run, the run fails with <code>INTERNAL_ERROR</code> and its
-running children are stopped; other runs are not held up.</p>
+<p><code>execution</code> applies to the full run. It sets how many nodes run at the same time. It also
+sets a deadline. After the deadline, the run fails with <code>TIMEOUT</code>. If a node fails and it
+does not have <code>on_failure: continue</code>, the run fails. Then the server cancels the nodes that
+wait, stops the nodes that run, and gives the name of the node in the <code>error</code> of the run.</p>
+<p>If a condition or <code>$expr</code> cannot calculate on the data that it reads, its node fails with
+<code>EXPRESSION_ERROR</code>. For example, a number is too large, or the values are nested too deeply.
+If the orchestrator cannot move a run forward, the run fails with <code>INTERNAL_ERROR</code>. Then the
+server stops the children of the run that run. This does not stop other runs.</p>
 <h2 id="where-nodes-run">Where nodes run<a class="headerlink" href="#where-nodes-run" title="Permanent link">&para;</a></h2>
 <p>The control plane never decodes your data. Each node implementation declares where it runs
 (<code>runs_in</code> in the node catalog):</p>
@@ -5976,46 +6094,48 @@ running children are stopped; other runs are not held up.</p>
 <tr>
 <td>The orchestrator</td>
 <td><code>branch.if</code>, <code>compare.models</code>, <code>select.best</code>, <code>select.threshold</code>, <code>report.summary</code>, <code>report.evidence_pack</code></td>
-<td>On the JSON results of upstream nodes only, in the API process, with no child run and no cost</td>
+<td>Only on the JSON results of upstream nodes, in the API process. There is no child run and no cost.</td>
 </tr>
 <tr>
 <td>A sandboxed <code>workflow_node</code> run</td>
 <td>tests, transforms, splits, order searches, <code>model.backtest</code>, <code>model.forecast</code>, <code>evaluate.*</code>, <code>compare.diebold_mariano</code>, <code>governance.*</code></td>
-<td>A child run on the same executor and isolation as fits; it reads its inputs through generation-pinned signed URLs and writes a result the finalizer verifies</td>
+<td>A child run on the same executor and isolation as fits. It reads its inputs through signed URLs that are pinned to a generation. It writes a result. The finalizer does a check of that result.</td>
 </tr>
 <tr>
 <td>A child <code>fit</code> run</td>
 <td><code>model.fit</code>, and the winner of <code>search.grid</code> (after a <code>workflow_node</code> run scored the grid)</td>
-<td>An ordinary fit of a stored spec named <code>wf-&lt;workflow&gt;-&lt;node&gt;</code>, so the model version is a normal one (scoring, endpoints, approvals)</td>
+<td>A usual fit of a stored spec with the name <code>wf-&lt;workflow&gt;-&lt;node&gt;</code>. Thus the model version is a usual model version (scoring, endpoints, approvals).</td>
 </tr>
 <tr>
 <td>A child workflow run</td>
 <td><code>subworkflow.run</code></td>
-<td>The child workflow, with its own nodes</td>
+<td>The child workflow, with its own nodes.</td>
 </tr>
 </tbody>
 </table>
-<p>Two consequences worth knowing:</p>
+<p>Two important results of this:</p>
 <ul>
-<li><strong>Derived datasets are real datasets.</strong> The differenced series of node <code>diff</code> of workflow
-  <code>ts-readiness</code> is registered as <code>dataset://&lt;project&gt;/wf-ts-readiness-diff@vN</code>. You can open
-  it in the Data explorer or start another workflow from it. These datasets do not fire
-  dataset triggers, so a workflow cannot trigger itself.</li>
-<li><strong>Fitted models carry their preprocessing.</strong> When <code>model.fit</code> reads the output of a
-  <code>transform.steps</code> node, the steps are written into the stored spec ahead of the model, so
-  scoring new data applies the same preprocessing. Differencing nodes are the exception: pass
-  <code>d</code> (or <code>order</code>) to the model instead, as the canonical template does.</li>
+<li><strong>Derived datasets are real datasets.</strong> The server registers the differenced series of node
+  <code>diff</code> of workflow <code>ts-readiness</code> as <code>dataset://&lt;project&gt;/wf-ts-readiness-diff@vN</code>. You can
+  open it in the Data explorer or start a different workflow from it. These datasets do not
+  fire dataset triggers, so a workflow cannot trigger itself.</li>
+<li><strong>Fitted models keep their preprocessing.</strong> When <code>model.fit</code> reads the output of a
+  <code>transform.steps</code> node, the server writes the steps into the stored spec before the model.
+  Thus, when you score new data, the model uses the same preprocessing. Differencing nodes
+  are the exception. For them, give <code>d</code> (or <code>order</code>) to the model, as the canonical template
+  does.</li>
 </ul>
-<p>The run's <code>cost</code> is the sum over its child runs; orchestrator nodes are free. Each node lists
-its child runs (<code>child_runs</code>, one per attempt); they are ordinary runs with a <code>parent_run_id</code>
-and the labels <code>workflow</code> and <code>workflow-node</code>.</p>
+<p>The <code>cost</code> of the run is the sum of the costs of its child runs. Orchestrator nodes have no
+cost. Each node lists its child runs (<code>child_runs</code>, one for each attempt). They are usual
+runs with a <code>parent_run_id</code> and the labels <code>workflow</code> and <code>workflow-node</code>.</p>
 <h3 id="caching">Caching<a class="headerlink" href="#caching" title="Permanent link">&para;</a></h3>
-<p>Every node has a cache key made of its implementation and version, its resolved parameters
-and the identity of its inputs (dataset content hashes, model versions, upstream keys). When a
-project already has a successful result with the same key, the node is marked <code>cached</code> with
-<code>cached_from</code> naming the run that produced it, and no child run starts. Change one parameter
-of the final report and only the report runs again. Start a run with <code>"use_cache": false</code> to
-recompute everything, or set <code>cache: false</code> on a node.</p>
+<p>Each node has a cache key. The key contains the implementation and its version, the resolved
+parameters and the identity of the inputs (dataset content hashes, model versions, upstream
+keys). If a project already has a successful result with the same key, the server marks the
+node as <code>cached</code>. Then <code>cached_from</code> gives the name of the run that made the result, and no
+child run starts. If you change one parameter of the final report, only the report runs
+again. To calculate all nodes again, start a run with <code>"use_cache": false</code>. Or, set
+<code>cache: false</code> on a node.</p>
 <h2 id="watching-a-run">Watching a run<a class="headerlink" href="#watching-a-run" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6027,29 +6147,29 @@ recompute everything, or set <code>cache: false</code> on a node.</p>
 <tbody>
 <tr>
 <td><code>GET /v1/workflow-runs/{run_id}</code></td>
-<td>Status, every node (status, attempt, result, outputs, child runs, timing), branch decisions with the values they read, outputs, error and cost</td>
+<td>The status, each node (status, attempt, result, outputs, child runs, timing), the branch decisions with the values that they read, the outputs, the error and the cost</td>
 </tr>
 <tr>
 <td><code>GET /v1/workflow-runs/{run_id}/nodes/{node_id}</code></td>
-<td>One node in detail</td>
+<td>The details of one node</td>
 </tr>
 <tr>
 <td><code>GET /v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}</code></td>
-<td>A signed download link for a file output (a derived dataset, a table too large to inline)</td>
+<td>A signed download link for a file output (a derived dataset, or a table that is too large to show inline)</td>
 </tr>
 <tr>
 <td><code>GET /v1/workflow-runs/{run_id}/events</code></td>
-<td>The event log as JSON, or as server-sent events with <code>Accept: text/event-stream</code> (a <code>snapshot</code> first, <code>Last-Event-ID</code> to resume, <code>end</code> when the run finished)</td>
+<td>The event log as JSON, or as server-sent events with <code>Accept: text/event-stream</code>. The stream sends a <code>snapshot</code> first. Use <code>Last-Event-ID</code> to continue. The stream sends <code>end</code> when the run is complete.</td>
 </tr>
 <tr>
 <td><code>POST /v1/workflow-runs/{run_id}:cancel</code></td>
-<td>Cancels the run and every running child (<code>cancelling</code> until the children have stopped)</td>
+<td>Cancels the run and each child that runs. The status is <code>cancelling</code> until the children stop.</td>
 </tr>
 </tbody>
 </table>
-<p>Finished runs send the <code>workflow.run.succeeded</code> and <code>workflow.run.failed</code>
-<a href="../endpoints-and-webhooks/">webhooks</a>, with the run id, the workflow revision, the status and
-the outputs.</p>
+<p>When a run is complete, the server sends the <code>workflow.run.succeeded</code> or <code>workflow.run.failed</code>
+<a href="../endpoints-and-webhooks/">webhook</a>. The webhook contains the run id, the workflow revision,
+the status and the outputs.</p>
 <h2 id="schedules-and-triggers">Schedules and triggers<a class="headerlink" href="#schedules-and-triggers" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># every Monday at 06:00 Berlin time, on the latest data</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>api<span class="w"> </span>POST<span class="w"> </span><span class="s2">"/v1/workflows/</span><span class="nv">$WF</span><span class="s2">/schedules"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{</span>
@@ -6064,24 +6184,28 @@ the outputs.</p>
 </span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="s1">}'</span>
 </span></code></pre></div>
 <ul>
-<li>A <strong>schedule</strong> fires once per due time, in its time zone (daylight-saving changes
-  included). Expressions that would fire more often than every 15 minutes are refused, as are
-  unknown time zones. <code>PATCH</code> with <code>{"active": false}</code> pauses it; <code>last_run_id</code> and
-  <code>next_run_at</code> show where it stands.</li>
-<li>A <strong>trigger</strong> binds a new dataset version to one of the workflow's inputs. Versions that
-  arrive within <code>debounce_seconds</code> of each other start one run, on the newest version.</li>
-<li>Runs started by schedules and triggers carry <code>trigger: schedule</code> or
-  <code>trigger: dataset.version.created</code> and the schedule or trigger id, are audited as the
-  platform acting for the person who created the schedule, and count against the project's
-  quotas like any other run. They run as that person (an API token's owner when a token
-  created the schedule): a schedule or trigger whose creator is no longer allowed to run
-  workflows in the project - removed, demoted below <code>runner</code>, or whose token was revoked or
-  expired - pauses itself (<code>active: false</code>, audited) instead of firing.</li>
+<li>A <strong>schedule</strong> fires one time for each due time, in its time zone. This includes
+  daylight-saving changes. The server refuses expressions that fire more frequently than each
+  15 minutes. It also refuses unknown time zones. To pause a schedule, send <code>PATCH</code> with
+  <code>{"active": false}</code>. <code>last_run_id</code> and <code>next_run_at</code> show the status of the schedule.</li>
+<li>A <strong>trigger</strong> binds a new dataset version to one of the inputs of the workflow. If some
+  versions arrive in <code>debounce_seconds</code> of each other, they start one run, on the newest
+  version.</li>
+<li>Runs that schedules and triggers start have <code>trigger: schedule</code> or
+  <code>trigger: dataset.version.created</code>, and the schedule id or trigger id. The audit log
+  records them as the platform that acts for the person who made the schedule. They count
+  against the quotas of the project, as all other runs do.</li>
+<li>These runs run as the person who made the schedule. If an API token made the schedule, they
+  run as the owner of the token. The creator possibly cannot run workflows in the project
+  any more. For example, the creator is removed, or has a role below <code>runner</code>, or the token
+  is revoked or expired. In this case, the schedule or trigger pauses itself
+  (<code>active: false</code>, audited). It does not fire.</li>
 </ul>
 <h2 id="run-it-locally">Run it locally<a class="headerlink" href="#run-it-locally" title="Permanent link">&para;</a></h2>
-<p>The same engine runs in a Python process, which is the fastest way to develop a workflow
-against a dataset you have in memory. <code>LocalRunner</code> executes every node in threads, honours
-branches, alternatives, retries, timeouts and cancellation, and caches results in memory:</p>
+<p>The same engine runs in a Python process. This is the fastest method to develop a workflow on
+a dataset that you have in memory. <code>LocalRunner</code> runs each node in threads. It obeys
+branches, alternatives, retries, timeouts and cancellation. It keeps results in a memory
+cache:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec.workflow_templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">TS_READINESS_ARIMAX</span><span class="p">,</span> <span class="n">instantiate_template</span>
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_workflows.runtime.local</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalRunner</span>
 </span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_workflows.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">test_registry</span><span class="p">,</span> <span class="n">weekly_series</span>
@@ -6113,13 +6237,13 @@ branches, alternatives, retries, timeouts and cancellation, and caches results i
 </span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="p">)</span>
 </span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="nb">print</span><span class="p">({</span><span class="n">n</span><span class="o">.</span><span class="n">node_id</span><span class="p">:</span> <span class="n">n</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">again</span><span class="o">.</span><span class="n">nodes</span><span class="p">}[</span><span class="s2">"backtest"</span><span class="p">])</span>  <span class="c1"># cached</span>
 </span></code></pre></div>
-<p>The example uses <code>mapi_workflows.testing.test_registry()</code>: the real statsmodels models
-(<code>ts.sarimax</code>, <code>ts.var</code>, <code>ts.vecm</code>, ...) with the SDK's toy models and the built-in steps
-(install <code>mapi-workflows[testing]</code>). <code>mapi_sdk.default_registry()</code> gives every installed
-plugin. <code>LocalRunner(governance=GovernanceServices(...))</code> supplies the policy resolver for
-governance nodes; the check runners are the installed ones (<code>mapi-runner</code> exports every
-check through the <code>mapi.governance_checks</code> entry point), and <code>runners=</code> adds or replaces
-some.</p>
+<p>The example uses <code>mapi_workflows.testing.test_registry()</code>. It contains the real statsmodels
+models (<code>ts.sarimax</code>, <code>ts.var</code>, <code>ts.vecm</code>, ...), the toy models of the SDK and the built-in
+steps (install <code>mapi-workflows[testing]</code>). <code>mapi_sdk.default_registry()</code> gives all installed
+plugins. <code>LocalRunner(governance=GovernanceServices(...))</code> gives the policy resolver for
+governance nodes. The check runners are the installed check runners. <code>mapi-runner</code> exports
+all checks through the <code>mapi.governance_checks</code> entry point. Use <code>runners=</code> to add or
+replace some check runners.</p>
 <h2 id="limits-and-settings">Limits and settings<a class="headerlink" href="#limits-and-settings" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6133,49 +6257,49 @@ some.</p>
 <tr>
 <td><code>MAPI_WORKFLOW_TICK_S</code></td>
 <td>1.0</td>
-<td>How often the orchestrator advances active runs</td>
+<td>How frequently the orchestrator moves active runs forward</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_MAX_ACTIVE_RUNS</code></td>
 <td>20</td>
-<td>Runs a project may have going at once, sub-workflow runs included (<code>429</code> beyond; a <code>subworkflow.run</code> node over it fails with <code>QUOTA_EXCEEDED</code>)</td>
+<td>The number of runs that a project can have at the same time, sub-workflow runs included. More runs get <code>429</code>. A <code>subworkflow.run</code> node above this limit fails with <code>QUOTA_EXCEEDED</code>.</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_MAX_SCHEDULES</code></td>
 <td>20</td>
-<td>Active schedules per project</td>
+<td>Active schedules for each project</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_MAX_TRIGGERS</code></td>
 <td>20</td>
-<td>Active triggers per project</td>
+<td>Active triggers for each project</td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_NODE_TIMEOUT_S</code></td>
 <td>1800</td>
-<td>Timeout of a node without its own <code>timeout</code></td>
+<td>The timeout of a node that does not have its own <code>timeout</code></td>
 </tr>
 <tr>
 <td><code>MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES</code></td>
 <td>1 MiB</td>
-<td>Largest JSON output a node may return</td>
+<td>The largest JSON output that a node can return</td>
 </tr>
 </tbody>
 </table>
-<p>A document has at most 200 nodes; conditions at most 2000 characters. Workflows,
-revisions, runs, node runs, events, schedules and triggers are tenant data with row-level
-security, like everything else.</p>
+<p>A document has a maximum of 200 nodes. A condition has a maximum of 2000 characters.
+Workflows, revisions, runs, node runs, events, schedules and triggers are tenant data with
+row-level security, as all other data are.</p>
 <h2 id="known-limitations-in-v05">Known limitations in v0.5<a class="headerlink" href="#known-limitations-in-v05" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Plot outputs of <code>evaluate.residuals</code> and <code>model.forecast</code> are not produced yet; their
-  tables and results are.</li>
-<li>Detrending, STL adjustment and lag/lead features are not separate nodes: use
-  <code>transform.steps</code> with the catalog's preprocessing steps.</li>
-<li>In the web editor, node positions are a per-browser view preference (the document has no
-  place for them), and a sub-workflow's ports appear once its revision is loaded.</li>
+<li>The nodes <code>evaluate.residuals</code> and <code>model.forecast</code> do not make plot outputs yet. They make
+  their tables and results.</li>
+<li>Detrending, STL adjustment and lag/lead features are not separate nodes. Use
+  <code>transform.steps</code> with the preprocessing steps of the catalog.</li>
+<li>In the web editor, each browser keeps the node positions as a view preference. The document
+  has no place for them. The ports of a sub-workflow show when the app loads its revision.</li>
 <li>The <a href="../python-client/#workflows-governance-and-explorers">Python client</a> and the
-  <a href="../cli/#workflows-governance-and-explorers">CLI</a> cover every workflow operation; the web
-  app's screens are in <a href="#in-the-web-app">In the web app</a>.</li>
+  <a href="../cli/#workflows-governance-and-explorers">CLI</a> can do all workflow operations. The
+  screens of the web app are in <a href="#in-the-web-app">In the web app</a>.</li>
 </ul>
 
 

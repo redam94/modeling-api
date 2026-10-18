@@ -1178,6 +1178,8 @@
       
         
       
+        
+      
     
     
     
@@ -1415,6 +1417,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4643,6 +4673,8 @@
       
         
       
+        
+      
     
     
     
@@ -4731,6 +4763,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4900,11 +4960,11 @@
 
 
 <h1 id="use-cases">Use cases<a class="headerlink" href="#use-cases" title="Permanent link">&para;</a></h1>
-<p>Each use case below starts from something ready-made - a Guided template an analyst can run
-from a spreadsheet, or a gallery workflow that automates the whole analysis - and a built-in
-model that a data scientist can configure, extend or replace in a spec. All of them share the
-platform: sandboxed runs, the scorecard, governance policies, the explorers, endpoints,
-snippets, webhooks and embeds.</p>
+<p>Each use case below starts from an item that is ready to use. This item is a Guided
+template that an analyst can run from a spreadsheet, or a gallery workflow that automates the
+full analysis. Each use case also has a built-in model. A data scientist can configure,
+extend or replace this model in a spec. All use cases share the platform: sandboxed runs, the
+scorecard, governance policies, the explorers, endpoints, snippets, webhooks and embeds.</p>
 <table>
 <thead>
 <tr>
@@ -4919,13 +4979,13 @@ snippets, webhooks and embeds.</p>
 <td><a href="#marketing-mix-budget-planning">Budget planning</a></td>
 <td>Guided <em>Geo marketing mix</em>, or the <code>mmm_governed</code> workflow</td>
 <td><code>mmm.bayesian</code> (or <code>mmm.frequentist</code>), on mmm-framework</td>
-<td>What does each channel bring in, and where should the next euro go?</td>
+<td>What does each channel bring in, and where must the next euro go?</td>
 </tr>
 <tr>
 <td><a href="#governed-forecasting-pipeline">Governed forecasting pipeline</a></td>
 <td>The <code>ts_readiness_arimax</code> workflow, scheduled</td>
 <td><code>ts.sarimax</code> (ARIMAX), checked against naive forecasts</td>
-<td>Can we publish this forecast every Monday - and prove it beats doing nothing clever?</td>
+<td>Can we publish this forecast each Monday? Can we prove that it is better than a naive forecast?</td>
 </tr>
 <tr>
 <td><a href="#macro-and-var-analysis">Macro and VAR analysis</a></td>
@@ -4954,27 +5014,28 @@ snippets, webhooks and embeds.</p>
 </tbody>
 </table>
 <h2 id="marketing-mix-budget-planning">Marketing-mix budget planning<a class="headerlink" href="#marketing-mix-budget-planning" title="Permanent link">&para;</a></h2>
-<p><strong>The question.</strong> Media spend goes to TV, search and social in several markets. What did each
-channel add to revenue, what is each euro returning now, and how should next quarter's budget
-be split?</p>
-<p><strong>The data.</strong> One row per week and market: revenue, spend per channel, and optional controls
-such as price or distribution. Two years of weekly data is a good start. MFF long tables
-and Meridian-shaped tables are recognised directly.</p>
+<p><strong>The question.</strong> Media spend goes to TV, search and social in some markets. What did each
+channel add to revenue? What does each euro return now? How do we divide the budget of the
+next quarter?</p>
+<p><strong>The data.</strong> One row for each week and market: revenue, spend for each channel, and
+optional controls (for example, price or distribution). Two years of weekly data is a good
+start. The platform recognises MFF long tables and Meridian-shaped tables directly.</p>
 <p><strong>What you get.</strong></p>
 <ul>
-<li>Contribution and ROI per channel and market with 90% ranges, response curves and a
+<li>Contribution and ROI for each channel and market with 90% ranges, response curves, and a
   decomposition of revenue into baseline and channels.</li>
-<li>Beliefs entered as <strong>ROI or share ranges</strong> and <strong>lift tests</strong> as calibration, translated into
-  model priors in a sandbox with a preview in business units.</li>
-<li><strong>What-if sliders</strong> whose ranges stay joint when several channels move, "Run exact",
-  channel-off counterfactuals and forecasts.</li>
-<li><strong>Budget plans</strong> from the model itself (<code>POST …:optimize</code>, mmm-framework planning): the
-  allocation within your bounds, the uplift and the chance it helps, how stable each move
-  is, and the efficient frontier - and an <strong>endpoint</strong> a planning tool calls.</li>
-<li><strong>Proof before the plan.</strong> The default marketing-mix policy refits the model on shuffled
-  sales and with fake noise channels, checks the effect signs and the holdout error, and
-  records the evidence; the <code>mmm_governed</code> workflow does it all - collinearity check, fit,
-  policy, report, evidence pack - in one run.</li>
+<li>Beliefs as <strong>ROI or share ranges</strong>, and <strong>lift tests</strong> as calibration. A sandbox translates
+  them into model priors, with a preview in business units.</li>
+<li><strong>What-if sliders</strong> whose ranges stay joint when some channels move. "Run exact",
+  counterfactuals with a channel set to off, and forecasts.</li>
+<li><strong>Budget plans</strong> from the model (<code>POST …:optimize</code>, mmm-framework planning). A plan gives
+  the allocation in your bounds, the uplift and the probability that it helps. It also gives
+  the stability of each move and the efficient frontier. A planning tool can call an
+  <strong>endpoint</strong> for the plan.</li>
+<li><strong>Proof before the plan.</strong> The default marketing-mix policy fits the model again on
+  shuffled sales and with fake noise channels. It checks the effect signs and the holdout
+  error, and records the evidence. The <code>mmm_governed</code> workflow does all of this in one run:
+  collinearity check, fit, policy, report and evidence pack.</li>
 </ul>
 <p><strong>Start here.</strong>
 <a href="../guides/guided-tutorial/">Your first MMM in Guided mode</a> →
@@ -4982,60 +5043,69 @@ and Meridian-shaped tables are recognised directly.</p>
 <a href="../tutorials/optimise-a-budget/">Optimise a budget</a>.
 Writing your own MMM spec: <a href="../guides/mmm/">the marketing-mix guide</a> and <a href="../models/mmm-framework/">mmm-framework on the platform</a>.</p>
 <h2 id="governed-forecasting-pipeline">Governed forecasting pipeline<a class="headerlink" href="#governed-forecasting-pipeline" title="Permanent link">&para;</a></h2>
-<p><strong>The question.</strong> Finance publishes a weekly demand forecast that other teams plan on. Every
-Monday it has to be refreshed on the latest data, and whoever signs it off wants to know that
-the model was chosen by the data, beats a naive forecast on weeks it never saw, and is not
-just fitting noise.</p>
-<p><strong>The data.</strong> One weekly KPI with at least two years of history, plus drivers you know ahead
-(prices, promotions, holidays), uploaded as a new dataset version every week.</p>
+<p><strong>The question.</strong> Finance publishes a weekly demand forecast. Other teams use it for their
+plans. Each Monday, Finance must update it with the latest data. The person who approves it
+must know three things. The data chose the model. The model is better than a naive forecast
+on weeks that it did not see. The model does not only fit noise.</p>
+<p><strong>The data.</strong> One weekly KPI with a minimum of two years of history. Also drivers that you
+know before (prices, promotions, holidays). You upload them as a new dataset version each
+week.</p>
 <p><strong>What you get.</strong></p>
 <ul>
-<li>The <code>ts_readiness_arimax</code> workflow, run by a <strong>schedule</strong> (<code>0 6 * * 1</code>, Europe/Berlin) or a
-  <strong>trigger</strong> on each new dataset version: ADF, KPSS, Phillips-Perron and Zivot-Andrews decide
-  the differencing, an information-criterion search picks the AR and MA orders, an
-  expanding-window backtest scores ARIMAX against naive and seasonal-naive on the same folds
-  at 1, 4 and 8 weeks, and the model is kept only if it beats them.</li>
-<li>A <strong>governance policy</strong> for forecasts you publish - null tests, benchmarks, residual
-  whiteness, holdout accuracy - with a <strong>second person's approval</strong> and
-  <code>require_validated_for_promotion</code>, so the endpoint the planners call can only ever serve a
-  validated version (<code>409 NOT_VALIDATED</code> otherwise).</li>
-<li>Every week's run on the record: each test's verdict, each branch with the values it read,
-  the chosen orders, the backtest table, the Diebold-Mariano verdict, the governance evidence
-  and an evidence pack for the auditor. Unchanged steps are reused from the cache, so a
-  rerun costs only what changed.</li>
+<li>The <code>ts_readiness_arimax</code> workflow. A <strong>schedule</strong> (<code>0 6 * * 1</code>, Europe/Berlin) or a
+  <strong>trigger</strong> on each new dataset version runs it:<ul>
+<li>ADF, KPSS, Phillips-Perron and Zivot-Andrews decide the differencing.</li>
+<li>An information-criterion search selects the AR and MA orders.</li>
+<li>An expanding-window backtest scores ARIMAX against naive and seasonal-naive forecasts.
+  It uses the same folds at 1, 4 and 8 weeks.</li>
+<li>The workflow keeps the model only if it is better than these forecasts.</li>
 </ul>
-<p>The canonical run on a wandering weekly KPI, captured on a laptop: all four tests say
-"difference once", the search picks ARIMA(1, 1, 1), the model beats "same as last week" by
-25% on 13 held-out weeks - and the record also says that the one-week edge over naive <em>may be
-luck</em> and that two of twenty shuffled fits did as well. That is the kind of honesty a
-sign-off needs (<a href="../whats-new-0.5/#the-canonical-example-three-ways">the full output</a>).</p>
+</li>
+<li>A <strong>governance policy</strong> for forecasts that you publish: null tests, benchmarks, residual
+  whiteness and holdout accuracy. It has the <strong>approval of a second person</strong> and
+  <code>require_validated_for_promotion</code>. Thus the endpoint that the planners call can serve only
+  a validated version. If not, it gives <code>409 NOT_VALIDATED</code>.</li>
+<li>A record of the run each week. It has the verdict of each test, each branch with the values
+  that it read and the selected orders. It also has the backtest table, the Diebold-Mariano
+  verdict, the governance evidence and an evidence pack for the auditor. The platform uses
+  unchanged steps again from the cache. Thus a new run costs only what changed.</li>
+</ul>
+<p>We captured the canonical run on a laptop, with a weekly KPI that wanders. All four tests
+say "difference once". The search selects ARIMA(1, 1, 1). On 13 held-out weeks, the model is
+25% better than "same as last week". But the record also tells that the one-week advantage
+over naive <em>is possibly luck</em>. It also tells that two of twenty shuffled fits were equally good.
+An approval needs this type of honesty
+(<a href="../whats-new-0.5/#the-canonical-example-three-ways">the full output</a>).</p>
 <p><strong>Start here.</strong>
 <a href="../guides/workflow-cookbook/#readiness-to-arimax">Workflow cookbook: readiness to ARIMAX</a> →
 <a href="../guides/governance/">Validate models with governance policies</a> →
 <a href="../guides/workflows/#schedules-and-triggers">Schedules and triggers</a> →
 <a href="../guides/endpoints-and-webhooks/">Endpoints and webhooks</a>.</p>
 <h2 id="macro-and-var-analysis">Macro and VAR analysis<a class="headerlink" href="#macro-and-var-analysis" title="Permanent link">&para;</a></h2>
-<p><strong>The question.</strong> Several series drive each other - income and consumption, prices of close
-substitutes, sales, distribution and search interest. Are they tied together in the long run?
-If one is shocked, how do the others respond, and for how long? Does one help predict
-another?</p>
-<p><strong>The data.</strong> Two to five series at the same frequency, one value per series and period
-(<code>value(series, quarter)</code>; a wide sheet is ingested with the <code>wide</code> mapping), ideally 50
-periods or more.</p>
+<p><strong>The question.</strong> Some series drive each other. Examples are income and consumption, the
+prices of close substitutes, or sales, distribution and search interest. Are the series tied
+together in the long run? If one series gets a shock, how do the others respond, and for how
+long? Does one series help to predict another?</p>
+<p><strong>The data.</strong> Two to five series at the same frequency, with one value for each series and
+period (<code>value(series, quarter)</code>). The ingest reads a wide sheet with the <code>wide</code> mapping. The
+best length is 50 periods or more.</p>
 <p><strong>What you get.</strong></p>
 <ul>
-<li>The <code>var_vecm_cointegration</code> workflow: a Johansen trace test decides the branch. Tied
-  series get a cointegration-rank search and a <strong>VECM</strong> on the levels; untied ones are
-  differenced, the lag order is chosen by AIC and a <strong>VAR</strong> is fitted on the changes.
-  Granger tests run either way, and a forecast comes from whichever system was fitted.</li>
-<li><strong>Impulse responses with bands</strong> and <strong>variance decompositions</strong> in the Model Explorer,
-  the Johansen table, the speed of adjustment (<code>alpha</code>: how fast a gap closes) and the
-  long-run relations (<code>beta</code>), and Granger tables.</li>
-<li><code>ts.varmax</code> when outside drivers matter, <code>ts.dynamic_factor</code> for many series moving with a
-  few common factors, <code>ts.ecm</code> (ARDL bounds test) for one equation with long-run drivers.</li>
+<li>The <code>var_vecm_cointegration</code> workflow. A Johansen trace test decides the branch. Tied
+  series get a cointegration-rank search and a <strong>VECM</strong> on the levels. The workflow
+  differences the series that are not tied. AIC selects the lag order, and the workflow fits
+  a <strong>VAR</strong> on the changes. Granger tests run on the two branches. The forecast comes from
+  the system that the workflow fitted.</li>
+<li><strong>Impulse responses with bands</strong> and <strong>variance decompositions</strong> in the Model Explorer.
+  Also the Johansen table, the speed of adjustment (<code>alpha</code>: how fast a gap closes), the
+  long-run relations (<code>beta</code>) and Granger tables.</li>
+<li><code>ts.varmax</code> when outside drivers are important. <code>ts.dynamic_factor</code> for many series that
+  move with some common factors. <code>ts.ecm</code> (ARDL bounds test) for one equation with long-run
+  drivers.</li>
 </ul>
-<p>On three simulated weekly series where <code>a</code> and <code>b</code> share one stochastic trend and <code>c</code>
-wanders on its own (160 weeks), the cookbook's workflow found exactly that, run on a laptop:</p>
+<p>We ran the workflow of the cookbook on a laptop with three simulated weekly series (160
+weeks). In the data, <code>a</code> and <code>b</code> share one stochastic trend, and <code>c</code> wanders alone. The
+workflow found exactly that:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>johansen  The series share at least one long-run relationship.
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>          (trace statistic 69.1, rank 1)
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>tied      took the then arm   {'nodes.johansen.rank': 1}
@@ -5046,42 +5116,44 @@ wanders on its own (160 weeks), the cookbook's workflow found exactly that, run 
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>forecast  8 weeks: dataset://growth/wf-macro-system-forecast-forecast@v1
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>skipped   diff, lags, var   (the VAR branch was not needed)
 </span></code></pre></div>
-<p>(A summary of the run's node results; the cookbook shows the client calls that read them.)</p>
+<p>(This is a summary of the node results of the run. The cookbook shows the client calls that
+read them.)</p>
 <p><strong>Start here.</strong>
 <a href="../guides/workflow-cookbook/#varvecm-cointegration">Workflow cookbook: VAR/VECM cointegration</a> →
 <a href="../models/statsmodels/">statsmodels time-series models</a> →
 <a href="../guides/model-explorer/">Explore a model: impulse responses</a>.</p>
 <h2 id="weekly-forecasting">Weekly forecasting<a class="headerlink" href="#weekly-forecasting" title="Permanent link">&para;</a></h2>
-<p><strong>The question.</strong> Orders, visits, calls or sales: what will the next 8 to 26 weeks look
-like, with a range a planner can use?</p>
-<p><strong>The data.</strong> One date column and one numeric column, weekly or daily, with at least two
-seasons of history for a seasonal pattern.</p>
+<p><strong>The question.</strong> What will the orders, visits, calls or sales be in the next 8 to 26 weeks?
+What is the range that a planner can use?</p>
+<p><strong>The data.</strong> One date column and one numeric column, weekly or daily. For a seasonal
+pattern, the history must have a minimum of two seasons.</p>
 <p><strong>What you get.</strong></p>
 <ul>
 <li>A forecast fan: the median and the 50% and 90% ranges, with the fitted history and the
-  split line, so you can see how the model did on the weeks it did not see.</li>
-<li>A holdout check: the error and how often the actual values fell inside the 90% range.</li>
-<li>The model's <code>max_extension</code> declares how far it may forecast; a longer horizon is refused
-  with <code>HORIZON_EXCEEDS_FIT</code> before any compute.</li>
-<li>A Google Sheet that refreshes the forecast every morning from the endpoint.</li>
+  split line. Thus you can see the result of the model on the weeks that it did not see.</li>
+<li>A holdout check: the error, and how frequently the actual values were in the 90% range.</li>
+<li>The <code>max_extension</code> of the model declares how far it can forecast. The platform refuses a
+  longer horizon with <code>HORIZON_EXCEEDS_FIT</code> before any compute.</li>
+<li>A Google Sheet that gets a new forecast from the endpoint each morning.</li>
 </ul>
 <p><strong>Start here.</strong>
 <a href="../guides/guided-tutorial/">The Guided tutorial</a> (pick <em>Weekly forecast</em>) →
 <a href="../tutorials/google-sheets/">Connect Google Sheets</a> →
 <a href="../guides/time-series/">Forecasting and sequential models</a>.</p>
 <h2 id="demand-by-store">Demand by store<a class="headerlink" href="#demand-by-store" title="Permanent link">&para;</a></h2>
-<p><strong>The question.</strong> How many units will each store sell each week, given prices, promotions and
-the calendar, and what about a store the model has never seen?</p>
-<p><strong>The data.</strong> One row per store and week: units sold, and drivers such as price and a
-promotion flag.</p>
+<p><strong>The question.</strong> How many units will each store sell each week, with the prices, promotions
+and calendar? How many units will a store sell that the model did not see?</p>
+<p><strong>The data.</strong> One row for each store and week: units sold, and drivers (for example, price
+and a promotion flag).</p>
 <p><strong>What you get.</strong></p>
 <ul>
-<li>An xgboost model with calendar features, a low and a high estimate (quantiles) per store and
-  week, and the importance of each driver.</li>
-<li>New stores scored by declaration: the store dim's policy says whether an unseen store may
-  be scored and how, instead of whatever the model does with an unknown category.</li>
-<li>An endpoint a replenishment system can call with next week's plan, and a webhook when a
-  refit is ready.</li>
+<li>An xgboost model with calendar features. A low and a high estimate (quantiles) for each
+  store and week, and the importance of each driver.</li>
+<li>The platform scores new stores by declaration. The policy of the store dim tells if the
+  platform can score a store that the model did not see, and how. The result does not depend
+  on what the model does with an unknown category.</li>
+<li>An endpoint that a replenishment system can call with the plan for the next week. A webhook
+  when a new fit is ready.</li>
 </ul>
 <p><strong>Start here.</strong>
 <a href="../guides/guided-tutorial/">The Guided tutorial</a> (pick <em>Demand by store</em>) →
@@ -5089,26 +5161,28 @@ promotion flag.</p>
 <a href="../guides/endpoints-and-webhooks/">Endpoints and webhooks</a> →
 <a href="../guides/webhook-receivers/">Receive webhooks</a>.
 The <code>xgb_store_demand</code> <a href="../guides/conformance/">conformance fixture</a> runs the same problem end
-to end in a few seconds.</p>
+to end in some seconds.</p>
 <h2 id="customer-choice">Customer choice<a class="headerlink" href="#customer-choice" title="Permanent link">&para;</a></h2>
-<p><strong>The question.</strong> On each shopping trip, which product does a household pick, and how does a
-price change or a promotion shift the shares?</p>
-<p><strong>The data.</strong> One row per trip and product: which product was chosen, its price and any
-promotion, with the household and the trip identified.</p>
+<p><strong>The question.</strong> On each shopping trip, which product does a household select? How does a
+change in price or a promotion move the shares?</p>
+<p><strong>The data.</strong> One row for each trip and product: the product that the household selected,
+its price and its promotion, if there is one. The row identifies the household and the
+trip.</p>
 <p><strong>What you get.</strong></p>
 <ul>
 <li>A conditional logit with household effects and Bayesian-bootstrap draws.</li>
-<li>The holdout hit rate on each household's last trip, compared with always guessing the most
-  popular product, in plain words on the scorecard.</li>
+<li>The holdout hit rate on the last trip of each household. The scorecard compares it, in
+  plain words, with a guess of the most popular product each time.</li>
 <li>Price and promotion counterfactuals: how the shares move when a price changes.</li>
 </ul>
 <p><strong>Start here.</strong>
 <a href="../guides/guided-tutorial/">The Guided tutorial</a> (pick <em>Customer choice</em>) →
 <a href="../reference/models/">Built-in models</a>.</p>
 <h2 id="your-own-model">Your own model<a class="headerlink" href="#your-own-model" title="Permanent link">&para;</a></h2>
-<p>None of these fits? A PyMC model is one <code>build()</code> method and an sklearn model one
-<code>estimator()</code>; the platform handles the coordinates, splits, replayed preprocessing,
-summaries, bundles, endpoints and integrations.
+<p>If none of these use cases is correct for you, write your own model. A PyMC model is one
+<code>build()</code> method, and an sklearn model is one <code>estimator()</code>. The platform does the
+coordinates, splits, replayed preprocessing, summaries, bundles, endpoints and
+integrations.
 <a href="../guides/port-a-model/">Port a model in 15 minutes</a> ·
 <a href="../why/">Why modeling-api?</a></p>
 

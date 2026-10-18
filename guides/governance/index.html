@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4745,6 +4775,8 @@
       
         
       
+        
+      
     
     
     
@@ -4833,6 +4865,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5091,17 +5151,22 @@
 
 
 <h1 id="validate-models-with-governance-policies-v05">Validate models with governance policies <span class="mapi-badge">v0.5</span><a class="headerlink" href="#validate-models-with-governance-policies-v05" title="Permanent link">&para;</a></h1>
-<p>A model that informs decisions should prove it learned something real. This guide shows how
-to say which checks a model must pass (a <strong>policy</strong>), run them on a model version (a
-<strong>validation</strong>), have a second person <strong>approve</strong> it, export the <strong>evidence pack</strong> for an
-auditor, and make endpoints refuse models that are not validated. The concepts and the full
-state machine are in <a href="../../concepts/governance/">Governance</a>; every operation is in the
-<a href="../../reference/http-api/#m35">HTTP API reference</a>.</p>
-<p>Everything here can also be done in the web app: see <a href="#in-the-web-app">In the web app</a>.
-Why the null tests matter, in plain words and in statistics, is in
-<a href="../null-tests/">Can you trust this model?</a>. From Python, use <code>api.governance</code> and
-<code>api.validations</code> (<a href="../python-client/#governance">client guide</a>); from a terminal,
-<code>mapi governance</code>, <code>mapi validate model</code>, <code>mapi validations</code> and <code>mapi approve</code>
+<p>If a model gives information for decisions, it must show that it learned something real. This
+guide shows how to do these tasks:</p>
+<ul>
+<li>Tell which checks a model must pass (a <strong>policy</strong>).</li>
+<li>Run the checks on a model version (a <strong>validation</strong>).</li>
+<li>Get a second person to <strong>approve</strong> the version.</li>
+<li>Export the <strong>evidence pack</strong> for an auditor.</li>
+<li>Make endpoints refuse models that are not validated.</li>
+</ul>
+<p><a href="../../concepts/governance/">Governance</a> gives the concepts and the full state machine. The
+<a href="../../reference/http-api/#m35">HTTP API reference</a> gives all the operations.</p>
+<p>You can also do all these tasks in the web app. See <a href="#in-the-web-app">In the web app</a>.
+<a href="../null-tests/">Can you trust this model?</a> tells why the null tests are important, in plain
+words and in statistics. In Python, use <code>api.governance</code> and <code>api.validations</code>
+(<a href="../python-client/#governance">client guide</a>). In a terminal, use <code>mapi governance</code>,
+<code>mapi validate model</code>, <code>mapi validations</code> and <code>mapi approve</code>
 (<a href="../cli/#workflows-governance-and-explorers">CLI guide</a>):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mapi<span class="w"> </span>governance<span class="w"> </span>checks<span class="w">                        </span><span class="c1"># what a policy can require</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mapi<span class="w"> </span>governance<span class="w"> </span>checks<span class="w"> </span>--about<span class="w"> </span>null.permutation_target<span class="w"> </span>--expert
@@ -5112,108 +5177,115 @@ Why the null tests matter, in plain words and in statistics, is in
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>mapi<span class="w"> </span>approve<span class="w"> </span><span class="s2">"</span><span class="nv">$VALIDATION</span><span class="s2">"</span><span class="w"> </span>--comment<span class="w"> </span><span class="s2">"Null tests convincing; beats naive by 25%"</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>mapi<span class="w"> </span>validations<span class="w"> </span>pack<span class="w"> </span><span class="s2">"</span><span class="nv">$VALIDATION</span><span class="s2">"</span><span class="w"> </span>--out<span class="w"> </span>evidence.html<span class="w">          </span><span class="c1"># for the auditor</span>
 </span></code></pre></div>
-<p>The examples below use <code>curl</code> with an API token (see <a href="../endpoints-and-webhooks/">Endpoints and webhooks</a>
-for the <code>api</code> helper):</p>
+<p>The examples below use <code>curl</code> with an API token. For the <code>api</code> helper, see
+<a href="../endpoints-and-webhooks/">Endpoints and webhooks</a>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>api<span class="o">()</span><span class="w"> </span><span class="o">{</span><span class="w"> </span>curl<span class="w"> </span>-sS<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$MAPI_TOKEN</span><span class="s2">"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-Mapi-Project: </span><span class="nv">$MAPI_PROJECT</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
 </span></code></pre></div>
 <h2 id="what-the-checks-mean-in-plain-words">What the checks mean, in plain words<a class="headerlink" href="#what-the-checks-mean-in-plain-words" title="Permanent link">&para;</a></h2>
-<p>Every check has an About card (<code>GET /v1/catalog/governance-checks</code>); the
-<a href="../../reference/generated/governance-checks/">governance checks reference</a> lists each one
-with its card, metric, default limits, requirements and parameters. In short:</p>
+<p>Each check has an About card (<code>GET /v1/catalog/governance-checks</code>). The
+<a href="../../reference/generated/governance-checks/">governance checks reference</a> lists each check
+with its card, metric, default limits, necessary conditions and parameters. In summary:</p>
 <table>
 <thead>
 <tr>
 <th>Check</th>
 <th>It asks</th>
-<th>How it is measured</th>
+<th>How the platform measures it</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>null.permutation_target</code></td>
-<td>Does the model beat versions of itself fitted on <strong>shuffled data</strong>?</td>
-<td>A model with drivers keeps its result and gets its drivers shuffled together in blocks of time, so trend, season and controls cannot pass on their own; a model without drivers (or one that ignores them) gets the period-to-period changes of its result shuffled and added up again from the same start (the plain values for a series that does not wander), which keeps how much it wanders but removes anything predictable. The model is refitted <code>n_permutations</code> times and scored on its held-out skill against the null forecast (the last value, or the mean), which does not depend on the level a shuffle lands on. The p-value is the share of shuffled fits that did as well as the real one, <code>(1 + #as good) / (n + 1)</code>. With 20 shuffles the smallest possible p is 0.048, so use at least 19 for a 5% test.</td>
+<td>Is the model better than versions of itself that were fitted on <strong>shuffled data</strong>?</td>
+<td>A model with drivers keeps its result. The platform shuffles its drivers together in blocks of time. Thus trend, season and controls cannot pass alone. For a model without drivers (or a model that ignores them), the platform shuffles the changes from period to period of its result. Then it adds them up again from the same start. For a series that does not wander, it shuffles the plain values. This keeps the quantity of wander, but removes all that is predictable. The platform fits the model again <code>n_permutations</code> times. It scores each fit on its held-out skill against the null forecast (the last value, or the mean). This skill does not change with the level where a shuffle lands. The p-value is the fraction of shuffled fits that did as well as the real fit, <code>(1 + #as good) / (n + 1)</code>. With 20 shuffles, the smallest possible p is 0.048. Thus, for a 5% test, use a minimum of 19.</td>
 </tr>
 <tr>
 <td><code>null.noise_regressors</code></td>
 <td>Does the model give <strong>fake drivers made of pure noise</strong> almost no credit?</td>
-<td><code>n_noise</code> placebo drivers are added - a real driver shuffled in time, or Gaussian noise with its mean and spread - as new channels of a marketing-mix model or new variables of any other model, and the model is refitted. Placebos get the model's default prior: the real channels' priors and calibration (business priors, lift tests) are not copied. Each placebo's share of the real drivers' total effect is measured by switching it off and scoring again (of the result when the drivers' effect cannot be measured). A Bayesian model is flagged when a placebo's share is above the warn limit with at least 90% posterior probability - not when its interval misses zero, which a marketing mix model's positive-only effects always do; frequentist models' placebo p-values are judged with Holm's correction for the number of placebos.</td>
+<td>The platform adds <code>n_noise</code> placebo drivers. Each placebo is a real driver shuffled in time, or Gaussian noise with the mean and spread of a real driver. The placebos are new channels of a marketing-mix model, or new variables of other models. Then the platform fits the model again. Placebos get the default prior of the model. The platform does not copy the priors and calibration of the real channels (business priors, lift tests). The platform switches each placebo off and scores again. Thus it measures the share of each placebo in the total effect of the real drivers. If it cannot measure the effect of the drivers, it uses the share of the result. The check flags a Bayesian model when a placebo share is above the warn limit with a minimum of 90% posterior probability. It does not flag it when the interval does not include zero, because the positive-only effects of a marketing mix model always do this. For frequentist models, the check uses Holm's correction for the number of placebos on the placebo p-values.</td>
 </tr>
 <tr>
 <td><code>null.placebo_time_shift</code></td>
-<td>Do the effects <strong>vanish when the drivers are moved</strong> months away?</td>
-<td>The drivers are shifted (<code>shifts</code>, default ±26 periods, wrapped around) and the model refitted; the check reports the placebo effect as a share of the real one. A model that still finds most of the effect is picking up trend or season, not the drivers.</td>
+<td>Do the effects <strong>go away when the drivers move</strong> months away?</td>
+<td>The platform shifts the drivers (<code>shifts</code>, default ±26 periods, wrapped around) and fits the model again. The check gives the placebo effect as a share of the real effect. If a model still finds most of the effect, it finds trend or season, not the drivers.</td>
 </tr>
 <tr>
 <td><code>baseline.beats_naive</code></td>
 <td>Is the model better than <strong>simple benchmarks</strong> on held-out periods?</td>
-<td>The train-only model is scored on the held-out periods next to "same as last period", "same as last season", the mean or the drift line, forecast from the training history. Skill is <code>1 - error(model) / error(best benchmark)</code>; MASE is reported too.</td>
+<td>The platform scores the train-only model on the held-out periods. It compares the model with "same as last period", "same as last season", the mean and the drift line. It forecasts these benchmarks from the training history. Skill is <code>1 - error(model) / error(best benchmark)</code>. The check also gives MASE.</td>
 </tr>
 <tr>
 <td><code>residuals.whiteness</code></td>
 <td>Is there <strong>no pattern left</strong> in the errors?</td>
-<td>Ljung-Box on the in-sample residuals of every series (the smallest p-value counts; ARMA orders reduce the degrees of freedom).</td>
+<td>Ljung-Box on the in-sample residuals of each series. The smallest p-value counts. ARMA orders decrease the degrees of freedom.</td>
 </tr>
 <tr>
 <td><code>stability.rolling_params</code></td>
 <td>Are the key estimates <strong>stable over time</strong>?</td>
-<td>The model is refitted on rolling windows of history; the check reports the largest coefficient of variation of the key estimates across windows.</td>
+<td>The platform fits the model again on rolling windows of history. The check gives the largest coefficient of variation of the key estimates across the windows.</td>
 </tr>
 <tr>
 <td><code>plausibility.signs</code></td>
-<td>Do effects <strong>point the expected way</strong>?</td>
-<td>By default media and spend must raise the result (switch a channel off and the prediction must fall, per posterior draw for Bayesian models). List other expectations in <code>expected</code>, e.g. <code>{"price": "negative"}</code>.</td>
+<td>Do effects <strong>go in the expected direction</strong>?</td>
+<td>By default, media and spend must increase the result. If you switch a channel off, the prediction must decrease. For Bayesian models, this applies to each posterior draw. List other expectations in <code>expected</code>, for example <code>{"price": "negative"}</code>.</td>
 </tr>
 <tr>
 <td><code>sensitivity.prior</code></td>
-<td>Bayesian models: are the answers <strong>driven by the data</strong>, not the assumptions?</td>
-<td>Every prior width the model uses - including the plugin's defaults that the settings leave out (for <code>mmm.bayesian</code>: the default ROI prior <code>LogNormal(0, 1)</code>, <code>seasonality.prior_sigma</code>, <code>trend.growth_prior_sigma</code>, <code>hierarchy.media_geo_sigma</code>) and business priors translated at fit time - is multiplied by each of <code>scales</code> (<code>sigma</code>, <code>scale</code>, <code>sd</code>, <code>tau</code> under a <code>prior…</code> key, and keys named <code>…prior_sigma</code> or <code>…_sigma</code>; never Beta/Gamma <code>beta</code> or <code>b</code> parameters, which are not widths); the check reports the largest relative move of a key posterior mean.</td>
+<td>For Bayesian models: do the <strong>data control the answers</strong>, and not the assumptions?</td>
+<td>The platform multiplies each prior width of the model by each value of <code>scales</code>. This includes the default values of the plugin that the settings do not give. For <code>mmm.bayesian</code>, these are the default ROI prior <code>LogNormal(0, 1)</code>, <code>seasonality.prior_sigma</code>, <code>trend.growth_prior_sigma</code> and <code>hierarchy.media_geo_sigma</code>. It also includes business priors that the platform translates at fit time. Widths are <code>sigma</code>, <code>scale</code>, <code>sd</code> and <code>tau</code> under a <code>prior…</code> key, and keys named <code>…prior_sigma</code> or <code>…_sigma</code>. Beta/Gamma <code>beta</code> or <code>b</code> parameters are not widths, and the platform never changes them. The check gives the largest relative change of a key posterior mean.</td>
 </tr>
 <tr>
 <td><code>recovery.simulated</code></td>
 <td>Does the model <strong>find known answers</strong>?</td>
-<td>Data is simulated from the fit (its expected values plus block-bootstrapped residuals), the model is refitted <code>n_sims</code> times, and the check counts how often the 90% intervals contain the fitted values (target 90%, a parametric-bootstrap version of simulation-based calibration).</td>
+<td>The platform simulates data from the fit: its expected values and block-bootstrapped residuals. It fits the model again <code>n_sims</code> times. The check counts how frequently the 90% intervals contain the fitted values. The target is 90%. This is a parametric-bootstrap version of simulation-based calibration.</td>
 </tr>
 <tr>
 <td><code>convergence</code></td>
-<td>Did the <strong>fit finish properly</strong>?</td>
-<td>Bayesian: the largest split R-hat (divergences and effective sample size as evidence; any divergence makes a pass a warning). Others: the optimiser's converged flag.</td>
+<td>Did the <strong>fit finish correctly</strong>?</td>
+<td>Bayesian: the largest split R-hat. Divergences and the effective sample size are evidence. One divergence changes a pass to a warning. Other models: the converged flag of the optimiser.</td>
 </tr>
 <tr>
 <td><code>holdout.accuracy</code></td>
 <td>Is the error on <strong>unseen data</strong> below your limit?</td>
-<td>The fit's holdout metric (<code>mape</code> by default, as a fraction). For <code>rmse</code> or <code>mae</code> set thresholds in the KPI's units.</td>
+<td>The holdout metric of the fit (<code>mape</code> by default, as a fraction). For <code>rmse</code> or <code>mae</code>, set thresholds in the units of the KPI.</td>
 </tr>
 <tr>
 <td><code>data.quality</code></td>
-<td>Is the <strong>data good enough</strong>?</td>
-<td>The Data Explorer's quality warnings that are not just information: missing shares above <code>max_missing</code>, fewer than <code>min_history_periods</code>, constant drivers, negative spend, values outside declared bounds, duplicated periods, long gaps, collinear drivers.</td>
+<td>Is the <strong>data sufficiently good</strong>?</td>
+<td>The quality warnings of the Data Explorer that are more than information: missing shares above <code>max_missing</code>, fewer than <code>min_history_periods</code>, constant drivers, negative spend, values outside declared bounds, duplicated periods, long gaps and collinear drivers.</td>
 </tr>
 </tbody>
 </table>
-<p>Every result carries the measured value, the threshold, a plain-language <code>message_plain</code>, a
-<code>suggested_action</code> when it did not pass, and evidence (tables, numbers) for the auditor.</p>
-<h3 id="model-families">Model families<a class="headerlink" href="#model-families" title="Permanent link">&para;</a></h3>
-<p>Checks adapt to how a model is estimated (<code>mapi_spec.governance.model_kind</code>):</p>
+<p>Each result has these items:</p>
 <ul>
-<li><strong>Bayesian</strong> (MCMC, VI, SMC): refits use a budget of at most 200 draws and 200 tuning
-  steps on 2 chains (<code>RefitBudget</code>), intervals are highest-density intervals, and
-  <code>sensitivity.prior</code> applies.</li>
-<li><strong>Frequentist</strong> (statsmodels, MAP, Kalman, ridge): refits run as configured; intervals are
-  confidence intervals from standard errors; <code>convergence</code> reads the optimiser flag.</li>
-<li><strong>Machine learning</strong> (scikit-learn, xgboost, quantile and conformal models): no parameter
-  intervals, so <code>recovery.simulated</code> and <code>stability.rolling_params</code> are skipped when the model
-  has no coefficients; the null tests and benchmarks apply unchanged.</li>
+<li>The measured value.</li>
+<li>The threshold.</li>
+<li>A plain-language <code>message_plain</code>.</li>
+<li>A <code>suggested_action</code>, if the check did not pass.</li>
+<li>Evidence (tables, numbers) for the auditor.</li>
 </ul>
-<p>A check that does not apply is reported as <code>skipped</code> with the reason (for example "the model
-has no test period (add a data split and refit)"); a check that could not be computed is
-<code>error</code>, which blocks validation when the check is blocking. A governance run refits at most
-<code>max_refits</code> times (120 by default).</p>
+<h3 id="model-families">Model families<a class="headerlink" href="#model-families" title="Permanent link">&para;</a></h3>
+<p>The checks change for the method that estimates the model (<code>mapi_spec.governance.model_kind</code>):</p>
+<ul>
+<li><strong>Bayesian</strong> (MCMC, VI, SMC): A new fit uses a budget of a maximum of 200 draws and 200
+  tuning steps on 2 chains (<code>RefitBudget</code>). Intervals are highest-density intervals.
+  <code>sensitivity.prior</code> applies.</li>
+<li><strong>Frequentist</strong> (statsmodels, MAP, Kalman, ridge): A new fit runs as configured. Intervals
+  are confidence intervals from standard errors. <code>convergence</code> reads the optimiser flag.</li>
+<li><strong>Machine learning</strong> (scikit-learn, xgboost, quantile and conformal models): There are no
+  parameter intervals. If the model has no coefficients, the platform skips
+  <code>recovery.simulated</code> and <code>stability.rolling_params</code>. The null tests and the benchmarks apply
+  with no change.</li>
+</ul>
+<p>If a check does not apply, the result is <code>skipped</code> with the reason. For example: "the model
+has no test period (add a data split and refit)". If the platform cannot calculate a check, the
+result is <code>error</code>. If the check is blocking, <code>error</code> blocks the validation. A governance run
+fits the model again a maximum of <code>max_refits</code> times (120 by default).</p>
 <h2 id="the-default-policies">The default policies<a class="headerlink" href="#the-default-policies" title="Permanent link">&para;</a></h2>
-<p>The first time a project uses governance the platform seeds three <strong>tenant-wide</strong> policies.
-They decide what a validation checks, but they <strong>do not gate promotion and do not require
-approval</strong>: an admin turns those on.</p>
+<p>When a project uses governance for the first time, the platform makes three <strong>tenant-wide</strong>
+policies. They decide what a validation checks. But they <strong>do not gate promotion and do not
+need approval</strong>. An admin can switch on these functions.</p>
 <table>
 <thead>
 <tr>
@@ -5248,15 +5320,82 @@ approval</strong>: an admin turns those on.</p>
 </tr>
 </tbody>
 </table>
-<p>The thresholds are the catalog defaults: shuffled-result p-value ≤ 0.05 passes (≤ 0.10
-warns), fake-driver share ≤ 2% passes (≤ 5% warns), placebo effect ≤ 25% passes (≤ 50%
-warns), benchmark skill ≥ 0.05 passes (≥ 0 warns), Ljung-Box p ≥ 0.05 passes (≥ 0.01 warns),
-rolling variation ≤ 25% (≤ 50%), wrong-sign share ≤ 10% (≤ 25%), prior sensitivity ≤ 20%
-(≤ 50%), interval coverage within 10 points of 90% (25 points warns), R-hat ≤ 1.01 (≤ 1.05),
-holdout MAPE ≤ 15% (≤ 30%), and no data problems (up to 2 warns).</p>
+<p>The thresholds are the catalog defaults:</p>
+<table>
+<thead>
+<tr>
+<th>Measure</th>
+<th>Passes</th>
+<th>Warns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shuffled-result p-value</td>
+<td>≤ 0.05</td>
+<td>≤ 0.10</td>
+</tr>
+<tr>
+<td>Fake-driver share</td>
+<td>≤ 2%</td>
+<td>≤ 5%</td>
+</tr>
+<tr>
+<td>Placebo effect</td>
+<td>≤ 25%</td>
+<td>≤ 50%</td>
+</tr>
+<tr>
+<td>Benchmark skill</td>
+<td>≥ 0.05</td>
+<td>≥ 0</td>
+</tr>
+<tr>
+<td>Ljung-Box p</td>
+<td>≥ 0.05</td>
+<td>≥ 0.01</td>
+</tr>
+<tr>
+<td>Rolling variation</td>
+<td>≤ 25%</td>
+<td>≤ 50%</td>
+</tr>
+<tr>
+<td>Wrong-sign share</td>
+<td>≤ 10%</td>
+<td>≤ 25%</td>
+</tr>
+<tr>
+<td>Prior sensitivity</td>
+<td>≤ 20%</td>
+<td>≤ 50%</td>
+</tr>
+<tr>
+<td>Interval coverage</td>
+<td>within 10 points of 90%</td>
+<td>within 25 points</td>
+</tr>
+<tr>
+<td>R-hat</td>
+<td>≤ 1.01</td>
+<td>≤ 1.05</td>
+</tr>
+<tr>
+<td>Holdout MAPE</td>
+<td>≤ 15%</td>
+<td>≤ 30%</td>
+</tr>
+<tr>
+<td>Data problems</td>
+<td>none</td>
+<td>a maximum of 2</td>
+</tr>
+</tbody>
+</table>
 <h2 id="write-a-policy">Write a policy<a class="headerlink" href="#write-a-policy" title="Permanent link">&para;</a></h2>
-<p>Project admins add policies to a project; tenant admins add tenant-wide ones, which every
-project inherits as a floor (a project can tighten a threshold, never loosen it):</p>
+<p>Project admins add policies to a project. Tenant admins add tenant-wide policies. Each project
+gets the tenant-wide policies as a minimum. A project can make a threshold stricter, but it
+can never make it less strict:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/governance/policies"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="s1">  "name": "Forecasts we publish",</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="s1">  "applies_to": {"families": ["ts"]},</span>
@@ -5271,133 +5410,191 @@ project inherits as a floor (a project can tighten a threshold, never loosen it)
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="s1">  "require_validated_for_promotion": true</span>
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="s1">}'</span>
 </span></code></pre></div>
-<p><code>PUT …/policies/{policy_id}</code> saves the next <strong>version</strong> (send <code>expected_version</code> to refuse a
-concurrent edit with <code>409</code>); <code>GET …/versions</code> lists every version; <code>DELETE</code> retires the
-policy but keeps its versions for audit. <code>GET /v1/governance/policies</code> lists the policies in
-force in the project, tenant-wide first.</p>
+<ul>
+<li><code>PUT …/policies/{policy_id}</code> saves the next <strong>version</strong>. To refuse an edit that occurs at
+  the same time with <code>409</code>, send <code>expected_version</code>.</li>
+<li><code>GET …/versions</code> lists all the versions.</li>
+<li><code>DELETE</code> retires the policy, but keeps its versions for audit.</li>
+<li><code>GET /v1/governance/policies</code> lists the policies in force in the project. The tenant-wide
+  policies are first.</li>
+</ul>
 <h2 id="validate-a-model-version">Validate a model version<a class="headerlink" href="#validate-a-model-version" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models/</span><span class="nv">$MODEL_ID</span><span class="s2">/versions/7/validations"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{"note": "Q4 refresh"}'</span>
 </span></code></pre></div>
-<p>The answer (<code>202</code>) is a validation in <code>checks_running</code> with the checks it is held to and the
-governance run (<code>workflow_run_id</code>) that measures them in the sandbox. A validation is always
-held to <strong>every</strong> policy in force for the model (the tenant-wide floor and the project's own);
-<code>policy_ids</code> can only add more active policies on top of them, never leave one out. The
-version is locked while a request is checked, so two simultaneous requests (or a request and
-a workflow's submission) make one validation; the other gets <code>409
-VALIDATION_TRANSITION_INVALID</code>. Follow the run like any
-other (<code>GET /v1/runs/{run_id}</code>, or its event stream). When it finishes the validation moves
-on by itself:</p>
+<p>The answer (<code>202</code>) is a validation in <code>checks_running</code>. It has the checks that apply to it. It
+also has the governance run (<code>workflow_run_id</code>) that measures the checks in the sandbox.</p>
+<p><strong>All</strong> the policies in force for the model always apply to a validation. These are the
+tenant-wide minimum and the policies of the project. <code>policy_ids</code> can only add more active
+policies. It can never remove a policy. The platform locks the version while it checks a
+request. Thus two requests at the same time make one validation. A request and the submission
+of a workflow also make one validation. The other request gets <code>409
+VALIDATION_TRANSITION_INVALID</code>.</p>
+<p>Monitor the run as you monitor other runs (<code>GET /v1/runs/{run_id}</code>, or its event stream). When
+the run finishes, the validation moves to the next status automatically:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>checks_running -&gt; checks_passed -&gt; validated              (no approval required)
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>checks_running -&gt; checks_passed -&gt; awaiting_approval      (approval required)
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>checks_running -&gt; checks_failed                           (a blocking check failed or errored)
 </span></code></pre></div>
-<p><code>GET /v1/validations/{validation_id}</code> shows the status, every result and the history;
-<code>GET …/evidence</code> pages through the results with their evidence. After a failure (or a
-rejection) fix the model or the data and <code>POST /v1/validations/{id}:resubmit</code>: a new round
-starts under the policies in force now. <code>:cancel</code> stops running checks (back to <code>draft</code>).</p>
+<p><code>GET /v1/validations/{validation_id}</code> shows the status, all the results and the history.
+<code>GET …/evidence</code> gives the results with their evidence, one page at a time.</p>
+<p>If the validation fails, or a reviewer rejects it, do these steps:</p>
+<ol>
+<li>Repair the model or the data.</li>
+<li>Send <code>POST /v1/validations/{id}:resubmit</code>. A new round starts under the policies that are
+   in force now.</li>
+</ol>
+<p><code>:cancel</code> stops the checks that run. The validation goes back to <code>draft</code>.</p>
 <h2 id="approve-as-a-second-person">Approve as a second person<a class="headerlink" href="#approve-as-a-second-person" title="Permanent link">&para;</a></h2>
-<p>When a policy requires approval, someone other than the submitter who holds the <strong>reviewer</strong>
-capability (or is a project admin) decides. Grant it on the membership:</p>
+<p>When a policy needs approval, a different person from the submitter decides. This person must
+have the <strong>reviewer</strong> capability, or be a project admin. Give the capability on the
+membership:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>api<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/tenants/acme/projects/growth/members/</span><span class="nv">$USER_ID</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"capabilities": ["reviewer"]}'</span>
 </span></code></pre></div>
-<p>Reviewers find their queue at <code>GET /v1/validations?status=awaiting_approval</code> and decide in a
-signed-in session (API tokens can never approve):</p>
+<p>Reviewers find their queue at <code>GET /v1/validations?status=awaiting_approval</code>. They decide in a
+signed-in session. API tokens can never approve:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/validations/</span><span class="nv">$VALIDATION_ID</span><span class="s2">/approvals"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{"decision": "approve",</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="s1">  "comment": "Null tests are convincing; benchmarks beaten by 30%."}'</span>
 </span></code></pre></div>
-<p>The submitter is refused (<code>403 SELF_APPROVAL_FORBIDDEN</code>); each reviewer decides once per
-round; <code>approvals_required</code> approvals validate the version; one rejection (which needs a
-comment) rejects it. A validated version that should no longer be used is retired with
-<code>:deprecate</code> and a reason.</p>
+<ul>
+<li>The platform refuses the submitter (<code>403 SELF_APPROVAL_FORBIDDEN</code>).</li>
+<li>Each reviewer decides one time in each round.</li>
+<li><code>approvals_required</code> approvals validate the version.</li>
+<li>One rejection rejects the version. A rejection needs a comment.</li>
+</ul>
+<p>If a validated version must not be used again, retire it with <code>:deprecate</code> and a reason.</p>
 <h2 id="promotion-requires-validation">Promotion requires validation<a class="headerlink" href="#promotion-requires-validation" title="Permanent link">&para;</a></h2>
-<p>When any policy in force says <code>require_validated_for_promotion</code>, promoting a model version to
-an endpoint needs its latest validation to be <code>validated</code> <strong>and</strong> to have covered every such
-policy as it stands now: either it names the policy at its current version, or it was held to
-each of the policy's checks at least as strictly (severity, limits and settings) and had the
-reviewers the policy asks for. A version validated before a gating policy was added or made
-stricter is reported as <em>validated under other or older policies</em>; request a new validation
-(allowed in that case). Anything else is refused with <code>409 NOT_VALIDATED</code>, and no
-administrator override changes that; the refusal is audited as
-<code>endpoint.promote_not_validated</code>.</p>
+<p>A policy in force can say <code>require_validated_for_promotion</code>. If it does, you can promote a
+model version to an endpoint only when these conditions are true:</p>
+<ul>
+<li>The latest validation of the version is <code>validated</code>.</li>
+<li>The latest validation covered each such policy as it is now.</li>
+</ul>
+<p>A validation covers a policy in one of two ways:</p>
+<ul>
+<li>It gives the policy at its current version.</li>
+<li>It applied each check of the policy at the same strictness or stricter (severity, limits and
+  settings). It also had the reviewers that the policy asks for.</li>
+</ul>
+<p>If a version was validated before a gating policy was added or made stricter, the platform
+shows it as <em>validated under other or older policies</em>. In this case, request a new validation.
+The platform refuses all other promotions with <code>409 NOT_VALIDATED</code>. No administrator override
+changes this. The audit log records the refusal as <code>endpoint.promote_not_validated</code>.</p>
 <h2 id="export-the-evidence-pack">Export the evidence pack<a class="headerlink" href="#export-the-evidence-pack" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/validations/</span><span class="nv">$VALIDATION_ID</span><span class="s2">/evidence-pack"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{"format": "html"}'</span>
 </span></code></pre></div>
-<p>The answer is the pack as JSON (<code>format: mapi.evidence-pack/v1</code>): the validation with every
-result, its evidence, approvals and history, the policies at the versions it was held to, the
-model's lineage and sanity scorecard, and a <code>digest</code> (sha256 of the canonical content).
-With <code>format: html</code> it also carries <code>download</code>, a signed link to a static, self-contained HTML
-rendering: inline styles only, no scripts, no external assets (a Content-Security-Policy
-forbids them), every value escaped. Exports are audited (<code>model.evidence_export</code>).</p>
+<p>The answer is the pack as JSON (<code>format: mapi.evidence-pack/v1</code>). The pack has these items:</p>
+<ul>
+<li>The validation with all the results, their evidence, the approvals and the history.</li>
+<li>The policies at the versions that applied to the validation.</li>
+<li>The lineage and the sanity scorecard of the model.</li>
+<li>A <code>digest</code> (sha256 of the canonical content).</li>
+</ul>
+<p>With <code>format: html</code>, the answer also has <code>download</code>. This is a signed link to a static HTML
+page that contains all its content. The page has only inline styles. It has no scripts and no
+external assets, because a Content-Security-Policy prevents them. The page escapes all values.
+The audit log records exports (<code>model.evidence_export</code>).</p>
 <h2 id="in-the-web-app">In the web app<a class="headerlink" href="#in-the-web-app" title="Permanent link">&para;</a></h2>
-<p><strong>Governance</strong> in the sidebar (<span class="keys"><kbd class="key-g">G</kbd></span> then <span class="keys"><kbd class="key-v">V</kbd></span>) has three tabs: <strong>In force here</strong> (the
-tenant-wide policies first, then the project's own, with what each covers, its number of
-checks, whether it needs a reviewer and whether it gates promotion), <strong>Tenant-wide</strong> and the
-<strong>Check catalog</strong>, where every check has its About card, what it measures and its default
-limits.</p>
+<p><strong>Governance</strong> in the sidebar (<span class="keys"><kbd class="key-g">G</kbd></span> then <span class="keys"><kbd class="key-v">V</kbd></span>) has three tabs:</p>
+<ul>
+<li><strong>In force here</strong>: The tenant-wide policies first, then the policies of the project. For each
+  policy, the tab shows what it covers and its number of checks. It also shows if the policy
+  needs a reviewer and if it gates promotion.</li>
+<li><strong>Tenant-wide</strong>.</li>
+<li><strong>Check catalog</strong>: Each check has its About card, what it measures and its default limits.</li>
+</ul>
 <p><img alt="Governance: the policies in force in the project, tenant-wide first" class="mapi-shot" src="../../assets/screenshots/governance-policies.png" /></p>
 <h3 id="editing-a-policy">Editing a policy<a class="headerlink" href="#editing-a-policy" title="Permanent link">&para;</a></h3>
-<p>Open a policy (project admins edit project policies, tenant admins tenant-wide ones; everyone
-else sees them read-only) or press <strong>New policy</strong>:</p>
-<ul>
-<li><strong>Covers</strong>: model families, model ids and Guided templates; empty lists match every model.</li>
-<li><strong>Required checks</strong>: add a check from the catalog - its About card shows before you add it</li>
-<li>then set its severity (<em>Blocking</em>, <em>Warning</em>, <em>Information</em>), switch on <strong>Custom</strong> limits
-  to set its warn and fail values (the page refuses a fail limit that is looser than the warn
-  limit, as the server does) and adjust its settings, a form generated from the check's
-  parameters (for example the number of shuffles).</li>
-<li><strong>Sign-off and promotion</strong>: <strong>Require approval by a reviewer</strong> (and how many),
-  <strong>Only validated models can be promoted to an endpoint</strong>, and <strong>Active</strong>.</li>
-</ul>
+<p>Project admins edit project policies. Tenant admins edit tenant-wide policies. Other users can
+only read the policies.</p>
+<ol>
+<li>Open a policy, or click <strong>New policy</strong>.</li>
+<li>In <strong>Covers</strong>, set the model families, the model ids and the Guided templates. Empty lists
+   match all models.</li>
+<li>In <strong>Required checks</strong>, add a check from the catalog. Its About card shows before you add
+   it.</li>
+<li>Set the severity of the check: <em>Blocking</em>, <em>Warning</em> or <em>Information</em>.</li>
+<li>To set the warn and fail values of the check, switch on <strong>Custom</strong> limits.</li>
+<li>Adjust the settings of the check. The form for the settings comes from the parameters of
+   the check, for example the number of shuffles.</li>
+<li>In <strong>Sign-off and promotion</strong>, set <strong>Require approval by a reviewer</strong> and the number of
+   reviewers.</li>
+<li>Set <strong>Only validated models can be promoted to an endpoint</strong> and <strong>Active</strong>.</li>
+<li>Click <strong>Save version N</strong>. The app saves the next version.</li>
+</ol>
+<p>The page refuses a fail limit that is less strict than the warn limit, as the server does.</p>
 <div class="grid">
 <p><img alt="A project policy: what it covers, its required checks, and its versions" class="mapi-shot" src="../../assets/screenshots/governance-policy.png" /></p>
 <p><img alt="Adding a check: its About card shows before it is added" class="mapi-shot" src="../../assets/screenshots/governance-policy-editor.png" /></p>
 </div>
-<p><strong>Save version N</strong> stores the next version; a concurrent edit is refused and kept on screen.
-<strong>Versions</strong> lists every version and compares two side by side. <strong>Retire policy</strong> keeps its
-versions for audit.</p>
+<p>If a different person edits the policy at the same time, the app refuses your save. Your edit
+stays on the screen. <strong>Versions</strong> lists all the versions and compares two versions side by
+side. <strong>Retire policy</strong> keeps the versions of the policy for audit.</p>
 <h3 id="validating-a-model-version">Validating a model version<a class="headerlink" href="#validating-a-model-version" title="Permanent link">&para;</a></h3>
-<p>A model version's page has a <strong>Validation</strong> button. It lists the version's validations and
-requests a new one: the policies it is held to (every policy in force always applies; ticking
-others adds them), optionally the data to check against, and a note. The validation page then shows:</p>
+<p>The page of a model version has a <strong>Validation</strong> button. The button lists the validations of
+the version and requests a new validation. A new request has these items:</p>
 <ul>
-<li><strong>Status</strong>: where the validation is on its path (draft → checks running → checks passed →
-  awaiting approval → validated, or checks failed, rejected, deprecated) and the history of
-  every transition with who made it and their note.</li>
-<li><strong>Checks</strong>: failures first, each with its plain-language message, <strong>What to do</strong> when it
-  did not pass, the measured value against its limit and its evidence: small tables, numbers
-  and, for the shuffled-result test, the distribution of the shuffled fits' errors with the
-  real model's error marked (drawn in the plot sandbox).</li>
+<li>The policies that apply. All the policies in force always apply. If you tick other
+  policies, they also apply.</li>
+<li>The data to check against (optional).</li>
+<li>A note.</li>
+</ul>
+<p>The validation page then shows these items:</p>
+<ul>
+<li><strong>Status</strong>: The position of the validation on its path. The path is draft → checks running →
+  checks passed → awaiting approval → validated. Other statuses are checks failed, rejected and
+  deprecated. The status also shows the history of each transition, with the person who made
+  it and their note.</li>
+<li><strong>Checks</strong>: Failures first. Each check has its plain-language message and <strong>What to do</strong> if
+  it did not pass. It also has the measured value against its limit, and its evidence. The
+  evidence is small tables and numbers. For the shuffled-result test, it is also a plot. The
+  plot shows the distribution of the errors of the shuffled fits, with a mark at the error of
+  the real model. The plot sandbox draws the plot.</li>
 <li><strong>Approvals</strong>, <strong>Evidence pack</strong> and <strong>Held to</strong> (the policy versions).</li>
 </ul>
 <p><img alt="A validation awaiting approval: where it is on its path, its history, the checks and the reviewer's form" class="mapi-shot" src="../../assets/screenshots/governance-validation.png" /></p>
 <p><img alt="Evidence of the shuffled-result test: the real model's error against the 19 fits on shuffled results" class="mapi-shot" src="../../assets/screenshots/governance-evidence.png" /></p>
-<p>Depending on its state the page offers <strong>Cancel checks</strong>, <strong>Resubmit</strong> (after failed checks or
-a rejection) and <strong>Deprecate</strong> (with a reason, for a validated version; project admins).
-<strong>Export evidence pack</strong> saves the readable HTML page or the JSON as a file; the HTML is never
-opened inside the app.</p>
+<p>The page shows these buttons for the applicable states:</p>
+<ul>
+<li><strong>Cancel checks</strong>.</li>
+<li><strong>Resubmit</strong>, after failed checks or a rejection.</li>
+<li><strong>Deprecate</strong>, with a reason, for a validated version. Only project admins can deprecate.</li>
+</ul>
+<p><strong>Export evidence pack</strong> saves the HTML page or the JSON as a file. The app never opens the
+HTML.</p>
 <h3 id="reviewing">Reviewing<a class="headerlink" href="#reviewing" title="Permanent link">&para;</a></h3>
-<p>Reviewers find <strong>Review queue</strong> on the Governance page (with the number waiting), or
-<strong>Validations</strong> filtered by <em>Awaiting approval</em>. The approval form appears only to members who
-may approve: project admins, and editors or runners who hold the <strong>reviewer</strong> capability.
-Rejecting needs a comment. On your own submission the form says that a second person has to
-review it and its buttons are disabled; the server refuses it anyway
-(<code>SELF_APPROVAL_FORBIDDEN</code>).</p>
-<p>Project admins grant and revoke the capability in the <strong>Reviewer</strong> column of <strong>Members</strong>
-(admins hold it implicitly; viewers cannot hold it).</p>
+<p>Reviewers find <strong>Review queue</strong> on the Governance page, with the number of validations that
+wait. They can also use <strong>Validations</strong> with the filter <em>Awaiting approval</em>. The approval form
+shows only to members who can approve. These are project admins, and editors or runners who
+have the <strong>reviewer</strong> capability. A rejection needs a comment.</p>
+<p>On your own submission, the form tells you that a second person must review it. Its buttons
+are disabled. The server also refuses your decision (<code>SELF_APPROVAL_FORBIDDEN</code>).</p>
+<p>Project admins give and remove the capability in the <strong>Reviewer</strong> column of <strong>Members</strong>.
+Admins have the capability automatically. Viewers cannot have it.</p>
 <p><img alt="The review queue: validations whose checks passed and that wait for a second person" class="mapi-shot" src="../../assets/screenshots/governance-review-queue.png" /></p>
 <h3 id="promotion-in-the-app">Promotion in the app<a class="headerlink" href="#promotion-in-the-app" title="Permanent link">&para;</a></h3>
-<p>When a policy gates promotion, promoting a version that is not validated from <strong>Integrations</strong>
-is refused with <em>A governance policy requires a validated model</em>, the version's current
-validation status, and links to its validation (or to request one). No override is offered:
-none passes this rule.</p>
+<p>A policy can gate promotion. In this case, if you promote a version that is not validated from
+<strong>Integrations</strong>, the app refuses. It shows <em>A governance policy requires a validated model</em>
+and the current validation status of the version. It also shows links to the validation, or to
+request a validation. The app gives no override, because no override passes this rule.</p>
 <h2 id="audit-and-webhooks">Audit and webhooks<a class="headerlink" href="#audit-and-webhooks" title="Permanent link">&para;</a></h2>
-<p>Every policy change (<code>policy.create</code>, <code>policy.update</code>, <code>policy.delete</code>), request
-(<code>model.validation_request</code>), transition (<code>model.validation_transition</code>, with from, to and the
-actor), decision (<code>model.approve</code>, <code>model.reject</code>) and deprecation is in the audit log.
-Subscribe webhooks to <code>model.validation.checks_passed</code>, <code>model.validation.checks_failed</code>,
-<code>model.validation.awaiting_approval</code>, <code>model.validated</code>, <code>model.rejected</code> and
-<code>model.deprecated</code> to drive review queues and release pipelines.</p>
+<p>The audit log records these events:</p>
+<ul>
+<li>Each policy change (<code>policy.create</code>, <code>policy.update</code>, <code>policy.delete</code>).</li>
+<li>Each request (<code>model.validation_request</code>).</li>
+<li>Each transition (<code>model.validation_transition</code>, with from, to and the actor).</li>
+<li>Each decision (<code>model.approve</code>, <code>model.reject</code>).</li>
+<li>Each deprecation.</li>
+</ul>
+<p>To start review queues and release pipelines, subscribe webhooks to these events:</p>
+<ul>
+<li><code>model.validation.checks_passed</code></li>
+<li><code>model.validation.checks_failed</code></li>
+<li><code>model.validation.awaiting_approval</code></li>
+<li><code>model.validated</code></li>
+<li><code>model.rejected</code></li>
+<li><code>model.deprecated</code>.</li>
+</ul>
 
 
 

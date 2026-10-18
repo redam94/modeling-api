@@ -280,6 +280,12 @@
           "title": "Checkpointable",
           "type": "boolean"
         },
+        "conditions_on_actuals": {
+          "default": false,
+          "description": "A forecast can be conditioned on actuals sent with the request (target values for periods after, or at the end of, the fitted history): the model updates its state with them without re-estimating its parameters and forecasts from the last actual (mapi_spec.actuals). Models without it refuse such requests with ACTUALS_NOT_SUPPORTED instead of ignoring the actuals",
+          "title": "Conditions On Actuals",
+          "type": "boolean"
+        },
         "contribution_scale": {
           "default": "none",
           "enum": [
@@ -851,7 +857,7 @@
           "items": [
             {
               "code": "RHAT_OK",
-              "message_plain": "All chains converged to the same answer.",
+              "message_plain": "All chains got the same answer.",
               "metric": "r_hat_max",
               "status": "pass",
               "threshold": 1.01,
@@ -860,10 +866,10 @@
             },
             {
               "code": "HOLDOUT_MAPE",
-              "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+              "message_plain": "The forecast error on the last 8 weeks was 14%.",
               "metric": "mape",
               "status": "warn",
-              "suggested_action": "Add holidays or check data for the last weeks.",
+              "suggested_action": "Add holidays, or look at the data for the last weeks.",
               "threshold": 0.1,
               "title": "Holdout error",
               "value": 0.14
@@ -909,7 +915,7 @@
       "examples": [
         {
           "code": "RHAT_OK",
-          "message_plain": "All chains converged to the same answer.",
+          "message_plain": "All chains got the same answer.",
           "metric": "r_hat_max",
           "status": "pass",
           "threshold": 1.01,
@@ -921,10 +927,10 @@
           "check": "holdout.mape",
           "code": "HOLDOUT_MAPE",
           "docs_anchor": "check-holdout-mape",
-          "message_plain": "Forecasts were off by 14% on the held-out periods.",
+          "message_plain": "The forecast error on the holdout periods was 14%.",
           "metric": "mape",
           "status": "warn",
-          "suggested_action": "Check the last weeks of data for gaps or one-off events.",
+          "suggested_action": "Look for gaps or one-time events in the last weeks of data.",
           "threshold": 0.1,
           "title": "Holdout error",
           "value": 0.14
@@ -1161,7 +1167,7 @@
         "items": [
           {
             "code": "RHAT_OK",
-            "message_plain": "All chains converged to the same answer.",
+            "message_plain": "All chains got the same answer.",
             "metric": "r_hat_max",
             "status": "pass",
             "threshold": 1.01,
@@ -1170,10 +1176,10 @@
           },
           {
             "code": "HOLDOUT_MAPE",
-            "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+            "message_plain": "The forecast error on the last 8 weeks was 14%.",
             "metric": "mape",
             "status": "warn",
-            "suggested_action": "Add holidays or check data for the last weeks.",
+            "suggested_action": "Add holidays, or look at the data for the last weeks.",
             "threshold": 0.1,
             "title": "Holdout error",
             "value": 0.14

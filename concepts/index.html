@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1291,6 +1293,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4519,6 +4549,8 @@
       
         
       
+        
+      
     
     
     
@@ -4607,6 +4639,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4721,8 +4781,8 @@
 
 
 <h1 id="concepts">Concepts<a class="headerlink" href="#concepts" title="Permanent link">&para;</a></h1>
-<p>modeling-api is built from a few ideas that fit together. Each page in this section explains
-one of them with code you can run.</p>
+<p>modeling-api uses a small set of ideas that fit together. Each page in this section tells
+about one idea and gives code that you can run.</p>
 <pre class="mermaid"><code>flowchart TB
     subgraph CP["Contracts — mapi-spec (pure JSON, no numpy)"]
         direction LR
@@ -4748,81 +4808,90 @@ one of them with code you can run.</p>
     PIPE --&gt; PLUG --&gt; BUN
     BUN --&gt; COORD --&gt; PLUG
     PLUG --&gt; SUM</code></pre>
-<p>The split between the two halves matters. The <strong>contracts</strong> are JSON in, JSON out; the
-platform's API depends only on them, so it can validate any spec and any score request without
-importing your code or decoding your arrays. The <strong>runtime</strong> touches arrays and runs plugins;
-it lives in notebooks and in the sandboxed runner. How the platform puts the two halves
-together is in the <a href="architecture/">Architecture overview</a>, and what keeps it safe in the
-<a href="security/">Security model</a>.</p>
+<p>The split between the two halves is important. The <strong>contracts</strong> accept JSON and give JSON.
+The API of the platform uses only the contracts. Thus, it can validate all specs and score
+requests, and it does not import your code or decode your arrays. The <strong>runtime</strong> works on
+arrays and runs plugins in notebooks and in the sandboxed runner. The
+<a href="architecture/">Architecture overview</a> tells how the platform connects the two halves. The
+<a href="security/">Security model</a> tells how the platform keeps them safe.</p>
 <h2 id="the-ideas">The ideas<a class="headerlink" href="#the-ideas" title="Permanent link">&para;</a></h2>
 <div class="grid cards">
 <ul>
 <li>
 <p><strong><a href="labelled-data/">Labelled data</a></strong></p>
 <p>Data is an <code>xr.Dataset</code>. A <code>DataSchema</code> gives each dim a policy (<code>fixed</code>, <code>extend</code>,
-<code>new_levels</code>) and each variable a role, units and missingness rules. Bindings map your
-names to a model's canonical names and back.</p>
+<code>new_levels</code>). It gives each variable a role, units and rules for missing values. Bindings
+map your names to the canonical names of a model, and back.</p>
 </li>
 <li>
 <p><strong><a href="pipelines/">Pipelines and stages</a></strong></p>
-<p>Steps learn state on train and replay it at score time. The split happens at a named
-stage; look-back steps store per-group context tails; inverse transforms stop at the last
-reshape and record the output space.</p>
+<p>Steps learn state on the train data and use it again when you score. The split occurs at
+a named stage. Look-back steps keep a context tail for each group. Inverse transforms stop
+at the last reshape and record the output space.</p>
 </li>
 <li>
 <p><strong><a href="representations/">Representations and summaries</a></strong></p>
-<p>Draws, quantiles, intervals, points and moments. The representation decides which
-summaries exist and which aggregations are honest.</p>
+<p>Draws, quantiles, intervals, points and moments. The representation sets which summaries
+exist and which aggregations are correct.</p>
 </li>
 <li>
 <p><strong><a href="bundles/">Bundles</a></strong></p>
-<p>The fitted artifact: one zarr zip plus JSON sidecars, every file hashed, no pickle.</p>
+<p>The fitted artifact is one zarr zip and JSON sidecars. Each file has a hash. Bundles do
+not use pickle.</p>
 </li>
 <li>
 <p><strong><a href="coord-plans/">Coord plans and typed errors</a></strong></p>
-<p>Score requests are checked against the fitted coordinates before any compute: unseen
-levels, horizons, gaps, missing future covariates, impossible summaries.</p>
+<p>The platform compares score requests with the fitted coordinates before it calculates.
+It finds unseen levels, horizons, gaps, missing future covariates and impossible
+summaries.</p>
+</li>
+<li>
+<p><strong><a href="forecasting-with-actuals/">Forecasts with actuals</a></strong></p>
+<p>Send the actuals that came after the fit, and the dates to forecast. The model updates
+with fixed parameters and forecasts from the last actual. Or it refuses the request. It
+never ignores the actuals.</p>
 </li>
 <li>
 <p><strong><a href="capabilities/">Capabilities and manifests</a></strong></p>
-<p>What a model declares about itself, statically: representation, score modes, outputs,
-derived quantities, which preprocessing it owns.</p>
+<p>The static data that a model declares about itself: representation, score modes,
+outputs, derived quantities and the preprocessing that it owns.</p>
 </li>
 <li>
 <p><strong><a href="tenancy-and-auth/">Tenancy and authentication</a></strong> <span class="mapi-badge">v0.3</span></p>
-<p>Tenants, projects and roles; API tokens and their scopes; browser sign-in; how every
-request is authorized.</p>
+<p>Tenants, projects and roles. API tokens and their scopes. Sign-in from the browser. How
+the platform authorizes each request.</p>
 </li>
 <li>
 <p><strong><a href="quotas-and-cost/">Quotas and cost</a></strong> <span class="mapi-badge">v0.3</span></p>
-<p>vCPU-second quotas at token, tenant and global level; interactive and batch priority;
-exact per-run cost from a versioned price table.</p>
+<p>Quotas in vCPU-seconds for each token, each tenant and the full platform. Priority for
+interactive and batch runs. The exact cost of each run, from a versioned price table.</p>
 </li>
 <li>
 <p><strong><a href="guided-mode/">Guided mode</a></strong> <span class="mapi-badge">v0.4</span></p>
-<p>Templates, plain-language questions with role detection, business priors and lift tests,
-the sanity scorecard and instant what-if sliders over per-draw response grids.</p>
+<p>Templates, and questions in plain language that find the role of each column. Business
+priors and lift tests. The sanity scorecard. What-if sliders that show results
+immediately, from a response grid for each draw.</p>
 </li>
 <li>
 <p><strong><a href="integrations/">Integrations</a></strong> <span class="mapi-badge">v0.4</span></p>
-<p>Endpoints and aliases with a gated promotion, code snippets, signed webhooks, rendered
-and embedded plots, and the trust lifecycle from sign-up to deletion.</p>
+<p>Endpoints and aliases, with gates on promotion. Code snippets, signed webhooks, and
+rendered and embedded plots. The trust lifecycle from sign-up to deletion.</p>
 </li>
 <li>
 <p><strong><a href="workflows/">Workflows</a></strong> <span class="mapi-badge">v0.5</span></p>
 <p>Versioned DAGs of statistical tests, transforms, branches, train/test plans, searches,
-fits, comparisons, governance and reports, with typed ports, a safe condition language,
-caching, schedules and triggers.</p>
+fits, comparisons, governance and reports. Workflows have typed ports, a safe condition
+language, a cache, schedules and triggers.</p>
 </li>
 <li>
 <p><strong><a href="governance/">Governance</a></strong> <span class="mapi-badge">v0.5</span></p>
-<p>Policies of checks - null tests against shuffled targets and fake drivers, benchmarks,
-residuals, stability - a validation state machine, second-person approval, evidence packs
-and promotion that requires validation.</p>
+<p>Policies of checks: null tests with shuffled targets and fake drivers, benchmarks,
+residuals and stability. A validation state machine and approval by a second person.
+Evidence packs, and a promotion that needs validation.</p>
 </li>
 <li>
 <p><strong><a href="about-and-choosing/">About cards and choosing</a></strong> <span class="mapi-badge">v0.5</span></p>
-<p>A plain-language card on every model, step, node, check and template, and the
+<p>A card in plain language on each model, step, node, check and template. The
 deterministic <em>Help me choose</em> ranking.</p>
 </li>
 </ul>
@@ -4838,27 +4907,27 @@ deterministic <em>Help me choose</em> ranking.</p>
 <tbody>
 <tr>
 <td><strong>Canonical name</strong></td>
-<td>The name a step or model uses (<code>geo</code>, <code>time</code>, <code>y</code>). <code>data.bind</code> maps it to your dataset's name (<code>market</code>, <code>date</code>, <code>revenue</code>).</td>
+<td>The name that a step or a model uses (<code>geo</code>, <code>time</code>, <code>y</code>). <code>data.bind</code> maps it to the name in your dataset (<code>market</code>, <code>date</code>, <code>revenue</code>).</td>
 </tr>
 <tr>
 <td><strong>Stage</strong></td>
-<td>The dataset after a named step. <code>raw</code> is the bound input. Splits, context and scenario entry points (<code>inputs_stage</code>) all refer to stages.</td>
+<td>The dataset after a named step. <code>raw</code> is the bound input. Splits, context and the entry points of scenarios (<code>inputs_stage</code>) all refer to stages.</td>
 </tr>
 <tr>
 <td><strong>Step state</strong></td>
-<td>What a step learned at fit time: JSON plus labelled arrays (for example <code>scale(geo, channel)</code>), and a context tail for look-back steps. Never written into the spec.</td>
+<td>The data that a step learned at fit time: JSON and labelled arrays (for example <code>scale(geo, channel)</code>). Look-back steps also keep a context tail. The platform never writes the step state into the spec.</td>
 </tr>
 <tr>
 <td><strong>Score</strong></td>
-<td>The umbrella term for "predict with replayed preprocessing". Modes: <code>predict</code>, <code>forecast</code>, <code>counterfactual</code>, <code>simulate</code>, <code>filter</code>, <code>evaluate</code>.</td>
+<td>The general term for "predict with the same preprocessing as the fit". Modes: <code>predict</code>, <code>forecast</code>, <code>counterfactual</code>, <code>simulate</code>, <code>filter</code>, <code>evaluate</code>.</td>
 </tr>
 <tr>
 <td><strong>Representation</strong></td>
-<td>How a model encodes uncertainty: <code>draws</code>, <code>quantiles</code>, <code>interval</code>, <code>point</code> or <code>moments</code>.</td>
+<td>How a model shows uncertainty: <code>draws</code>, <code>quantiles</code>, <code>interval</code>, <code>point</code> or <code>moments</code>.</td>
 </tr>
 <tr>
 <td><strong>Output space</strong></td>
-<td>Where an output's values live after inversion, for example <code>raw</code> or <code>weekly</code>.</td>
+<td>The space of the output values after the inverse transforms, for example <code>raw</code> or <code>weekly</code>.</td>
 </tr>
 <tr>
 <td><strong>Bundle</strong></td>
@@ -4866,23 +4935,23 @@ deterministic <em>Help me choose</em> ranking.</p>
 </tr>
 <tr>
 <td><strong>Run</strong></td>
-<td>A unit of work (<code>fit</code>, <code>score</code>, …) submitted to an executor as JSON.</td>
+<td>A unit of work (<code>fit</code>, <code>score</code>, …) that the platform sends to an executor as JSON.</td>
 </tr>
 <tr>
 <td><strong>Workflow</strong></td>
-<td>A versioned graph of nodes (tests, transforms, splits, searches, fits, checks, reports); a workflow run is a parent run whose nodes run in the orchestrator, as sandboxed <code>workflow_node</code> runs or as child fits.</td>
+<td>A versioned graph of nodes (tests, transforms, splits, searches, fits, checks, reports). A workflow run is a parent run. Its nodes run in the orchestrator, as sandboxed <code>workflow_node</code> runs or as child fits.</td>
 </tr>
 <tr>
 <td><strong>Policy</strong></td>
-<td>The governance checks a model must pass, with thresholds and severities, per model family; tenant-wide or per project, versioned.</td>
+<td>The governance checks that a model must pass, with thresholds and severities, for each model family. A policy applies to a full tenant or to one project. Each policy has versions.</td>
 </tr>
 <tr>
 <td><strong>Validation</strong></td>
-<td>One model version measured against the policies in force, with its results, evidence, approvals and status (<code>draft</code> … <code>validated</code>).</td>
+<td>The measurement of one model version against the current policies. It has results, evidence, approvals and a status (<code>draft</code> … <code>validated</code>).</td>
 </tr>
 <tr>
 <td><strong>About card</strong></td>
-<td>The plain-language description every selectable catalog item carries.</td>
+<td>The description in plain language that each catalog item has, if you can select the item.</td>
 </tr>
 </tbody>
 </table>

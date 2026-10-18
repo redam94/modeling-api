@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4534,6 +4564,8 @@
       
         
       
+        
+      
     
     
     
@@ -4642,6 +4674,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../project/changelog/" class="md-nav__link">
         
   
@@ -4710,21 +4770,22 @@
 
 
 <h1 id="openapi-explorer-v02">OpenAPI explorer <span class="mapi-badge">v0.2</span><a class="headerlink" href="#openapi-explorer-v02" title="Permanent link">&para;</a></h1>
-<p>The <code>/v1</code> API's OpenAPI 3.1 document, rendered with <a href="https://github.com/Redocly/redoc">Redoc</a>.
-It is the committed <code>apps/web/openapi.json</code>, generated from the server's own FastAPI app and
-the <code>mapi_spec.api</code> models (<code>uv run python apps/web/scripts/gen_openapi.py</code>); CI fails when
-it drifts from the server. A running API serves the same document at <code>/openapi.json</code>.</p>
+<p>This page shows the OpenAPI 3.1 document of the <code>/v1</code> API. <a href="https://github.com/Redocly/redoc">Redoc</a>
+renders the document. The document is the committed file <code>apps/web/openapi.json</code>. A script makes
+it from the FastAPI app of the server and the <code>mapi_spec.api</code> models
+(<code>uv run python apps/web/scripts/gen_openapi.py</code>). CI fails when the file is different from the
+server. A running API serves the same document at <code>/openapi.json</code>.</p>
 <p><a class="md-button" href="../openapi-viewer.html">Open full screen</a>
 <a class="md-button" href="../generated/openapi.json">Download openapi.json</a></p>
 <iframe class="mapi-openapi" src="../openapi-viewer.html" title="OpenAPI explorer"
         loading="lazy" referrerpolicy="no-referrer"></iframe>
 
-<p>The explorer loads nothing from outside this site: the Redoc bundle (version 2.5.4) is
-vendored by <code>scripts/vendor_redoc.py</code>, which checks the npm tarball's integrity and pins the
-bundle's SHA-256, and a Content-Security-Policy on the page allows scripts, styles, images and
-requests from this site only.</p>
-<p>For prose (conventions, idempotency, server-sent events, which errors each endpoint returns)
-read the <a href="../http-api/">HTTP API reference</a>; for a worked example, the
+<p>The explorer loads nothing from outside this site. The script <code>scripts/vendor_redoc.py</code> copies
+the Redoc bundle (version 2.5.4) into the repository. The script does a check of the integrity
+of the npm tarball and pins the SHA-256 of the bundle. A Content-Security-Policy on the page
+permits scripts, styles, images and requests from this site only.</p>
+<p>For descriptions of the conventions, idempotency, server-sent events and the errors of each
+endpoint, read the <a href="../http-api/">HTTP API reference</a>. For a full example, read the
 <a href="../../guides/http-api/">HTTP API guide</a>.</p>
 
 

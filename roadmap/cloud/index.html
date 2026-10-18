@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4599,6 +4629,8 @@
       
         
       
+        
+      
     
     
     
@@ -4687,6 +4719,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4814,14 +4874,14 @@
 <h1 id="cloud-and-multi-tenant-core-v03">Cloud and multi-tenant core <span class="mapi-badge">v0.3</span><a class="headerlink" href="#cloud-and-multi-tenant-core-v03" title="Permanent link">&para;</a></h1>
 <div class="admonition success">
 <p class="admonition-title">Status: available in v0.3 (milestone M2), a private beta</p>
-<p>v0.3 makes the platform multi-tenant and gives it a cloud execution backend: one fresh
-sandbox per run on Cloud Run Jobs. The run protocol (bootstrap object, signed events,
-verified outputs, signed bundle manifests) is the one that already ran locally in
-<a href="../platform-api/">v0.2</a>; v0.3 adds the cloud counterparts of the local pieces.
-Everything multi-tenant runs on a laptop too (<code>make dev</code>). The cloud pieces are tested
-against fakes, and a <a href="../../operations/gcp-deployment/#before-you-start-the-verify-m0-checklist">short checklist</a>
-of cloud behaviours waits for a real project. To use it: <a href="../../guides/administration/">Administration</a>,
-<a href="../../guides/authentication/">Authentication</a>, <a href="../../operations/gcp-deployment/">Deploy to Google Cloud</a>.</p>
+<p>v0.3 makes the platform multi-tenant. It also gives the platform a cloud execution
+backend: each run gets one new sandbox on Cloud Run Jobs. The run protocol (bootstrap
+object, signed events, verified outputs, signed bundle manifests) did not change from
+<a href="../platform-api/">v0.2</a>. v0.3 adds the cloud versions of the local parts. All
+multi-tenant functions also run on a laptop (<code>make dev</code>). We tested the cloud parts
+against fakes. A <a href="../../operations/gcp-deployment/#before-you-start-the-verify-m0-checklist">short checklist</a>
+of cloud behaviours waits for a real project. For instructions, read <a href="../../guides/administration/">Administration</a>,
+<a href="../../guides/authentication/">Authentication</a> and <a href="../../operations/gcp-deployment/">Deploy to Google Cloud</a>.</p>
 </div>
 <h2 id="one-sandbox-per-run">One sandbox per run<a class="headerlink" href="#one-sandbox-per-run" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart TB
@@ -4834,19 +4894,21 @@ of cloud behaviours waits for a real project. To use it: <a href="../../guides/a
     SUP --&gt;|"HMAC-signed events"| EV["Events service"]
     OBJ --&gt;|"server-computed hashes"| FIN["Finalizer&lt;br/&gt;verifies, then publishes"]</code></pre>
 <ul>
-<li><strong>Isolation.</strong> Each run gets a fresh micro-VM sandbox (Cloud Run Jobs, gen2). A trusted
-  <strong>supervisor</strong> holds the run's short-lived credentials; an untrusted <strong>worker</strong> runs the
-  harness and the plugin under a different user, with no credentials and no network.</li>
-<li><strong>No egress.</strong> Sandboxes cannot reach the internet, including DNS. Data comes in and results
-  go out only through object-scoped signed URLs.</li>
-<li><strong>Outputs are claims.</strong> The finalizer checks every artifact against the hashes and object
-  generation the store computed itself, then copies it somewhere the sandbox cannot write. A
-  manifest that does not match is rejected as <code>INTEGRITY_FAILURE</code>.</li>
-<li><strong>Progress you can trust.</strong> Only the supervisor writes events, each line HMAC-signed and
-  sequence-numbered; the executor's own status decides whether a run is alive.</li>
-<li><strong>Resumable long fits.</strong> Segmented PyMC sampling checkpoints to the run's prefix, so a
-  preempted fit resumes where it stopped. (Checkpoints, <code>partial</code> runs and resume already work
-  locally in v0.2.)</li>
+<li><strong>Isolation.</strong> Each run gets a new micro-VM sandbox (Cloud Run Jobs, gen2). A trusted
+  <strong>supervisor</strong> holds the short-lived credentials of the run. An untrusted <strong>worker</strong> runs
+  the harness and the plugin under a different user. The worker has no credentials and no
+  network.</li>
+<li><strong>No egress.</strong> Sandboxes cannot connect to the internet, and they cannot use DNS. Data
+  comes in and results go out only through signed URLs for one object.</li>
+<li><strong>Outputs are claims.</strong> The finalizer checks each artifact against the hashes and the
+  object generation that the store calculated. Then it copies the artifact to a location
+  where the sandbox cannot write. If a manifest does not agree, the finalizer rejects it as
+  <code>INTEGRITY_FAILURE</code>.</li>
+<li><strong>Progress you can trust.</strong> Only the supervisor writes events. Each line has an HMAC
+  signature and a sequence number. The status from the executor tells if a run is alive.</li>
+<li><strong>Long fits can resume.</strong> Segmented PyMC sampling writes checkpoints to the prefix of the
+  run. Thus a preempted fit resumes where it stopped. (Checkpoints, <code>partial</code> runs and
+  resume already work locally in v0.2.)</li>
 </ul>
 <table>
 <thead>
@@ -4884,29 +4946,30 @@ of cloud behaviours waits for a real project. To use it: <a href="../../guides/a
 </table>
 <h2 id="multi-tenant-core">Multi-tenant core<a class="headerlink" href="#multi-tenant-core" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Tenants and projects with role-based access; row-level security in Postgres on every table
-  (every row and storage key already carries <code>tenant_id</code> and <code>project_id</code> in v0.2).</li>
-<li>Scoped API tokens with their own budgets; per-tenant quotas in vCPU-seconds; interactive and
-  batch priority classes so one big sweep cannot starve everyone's scoring.</li>
-<li>A per-run cost ledger shown in the UI.</li>
-<li>The contracts for all of this are already published: see
+<li>Tenants and projects with role-based access. Postgres applies row-level security on each
+  table. (In v0.2, each row and storage key already has <code>tenant_id</code> and <code>project_id</code>.)</li>
+<li>Scoped API tokens with their own budgets, and quotas for each tenant in vCPU-seconds.
+  Interactive and batch priority classes stop one big sweep from blocking the scoring of all
+  other users.</li>
+<li>A cost ledger for each run, which shows in the UI.</li>
+<li>We already published the contracts for all of these functions. See
   <a href="../../concepts/tenancy-and-auth/">Tenancy and authentication</a>,
   <a href="../../concepts/quotas-and-cost/">Quotas and cost</a> and the
   <a href="../../reference/http-api/#multi-tenant-api">multi-tenant HTTP API</a>.</li>
-<li>Other backends plug in through the same <code>Executor</code> protocol, each gated by an executor
-  conformance suite.</li>
-<li>The infrastructure is code: Terraform for the control, exec, data and build projects and the
-  VPC Service Controls perimeter, with deploy scripts and a GitHub Actions workflow. See
-  <a href="../../operations/gcp-deployment/">Deploy to Google Cloud</a> and
+<li>Other backends connect through the same <code>Executor</code> protocol. Each backend must pass an
+  executor conformance suite.</li>
+<li>The infrastructure is code. Terraform sets up the control, exec, data and build projects
+  and the VPC Service Controls perimeter. There are also deploy scripts and a GitHub Actions
+  workflow. See <a href="../../operations/gcp-deployment/">Deploy to Google Cloud</a> and
   <a href="../../operations/security-hardening/">Security hardening on Google Cloud</a>.</li>
 </ul>
-<p>The Cloud Run executor, the authenticated Pub/Sub event path, KMS manifest signing and the
-hardened Cloud Storage driver are described in <a href="../../operations/cloud-run/">Cloud Run Jobs executor</a>
-(tested against fakes; no live cloud yet).</p>
+<p><a href="../../operations/cloud-run/">Cloud Run Jobs executor</a> describes the Cloud Run executor, the
+authenticated Pub/Sub event path, KMS manifest signing and the hardened Cloud Storage driver.
+We tested these parts against fakes. They did not run on a live cloud yet.</p>
 <h2 id="what-it-means-for-plugins">What it means for plugins<a class="headerlink" href="#what-it-means-for-plugins" title="Permanent link">&para;</a></h2>
-<p>Nothing changes in your code. The contract kit already checks the properties the cloud relies
-on: no pickle, deterministic bundles, typed errors, evaluate path equals score path. A plugin
-that passes <code>check_model</code> today is ready for sandboxed execution.</p>
+<p>You do not change your code. The contract kit already checks the properties that the cloud
+needs: no pickle, deterministic bundles, typed errors, and the evaluate path is the same as
+the score path. If a plugin passes <code>check_model</code> now, it is ready for sandboxed execution.</p>
 
 
 

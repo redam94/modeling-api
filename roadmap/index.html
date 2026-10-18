@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4519,6 +4549,8 @@
       
         
       
+        
+      
     
     
     
@@ -4607,6 +4639,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4743,10 +4803,15 @@
 
 
 <h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
-<p>modeling-api ships as three products, in this order: a typed modelling runtime, a job platform
-around it, and a hosted multi-user platform. The rules that make the last one safe (no pickle,
-JSON-only contracts, static validation, sanitized plots, sandboxed runs whose outputs are
-verified) are in the code from the first release.</p>
+<p>modeling-api ships as three products, in this sequence:</p>
+<ol>
+<li>A typed modelling runtime.</li>
+<li>A job platform around the runtime.</li>
+<li>A hosted platform for many users.</li>
+</ol>
+<p>Some rules make the hosted platform safe. These rules are in the code from the first
+release: no pickle, contracts in JSON only, static validation, sanitized plots, and
+sandboxed runs with verified outputs.</p>
 <pre class="mermaid"><code>timeline
     title Releases
     v0.1 · M0 · contract layer : SDK, specs and schemas : 28 steps, PyMC and sklearn base classes : 11 built-in models, plots, sanitizer : conformance corpus
@@ -4768,37 +4833,37 @@ verified) are in the code from the first release.</p>
 <tr>
 <td><strong>v0.1</strong></td>
 <td>M0</td>
-<td>The contract layer: specs, the xarray runtime, steps, models, plots, the conformance corpus, all in your own Python process</td>
+<td>The contract layer: specs, the xarray runtime, steps, models, plots and the conformance corpus. All of it runs in your own Python process.</td>
 <td><span class="mapi-badge">available</span></td>
 </tr>
 <tr>
 <td><strong>v0.2</strong></td>
 <td>M1</td>
-<td><a href="platform-api/">The local platform</a>: the same work as API calls and sandboxed runs, with the Expert web app, on a laptop or one Docker host</td>
+<td><a href="platform-api/">The local platform</a>: the same work as API calls and sandboxed runs, with the Expert web app. It runs on a laptop or on one Docker host.</td>
 <td><span class="mapi-badge">available</span></td>
 </tr>
 <tr>
 <td><strong>v0.3</strong></td>
 <td>M2</td>
-<td><a href="cloud/">Cloud and multi-tenant core</a>: tenants, sign-in, tokens, quotas and cost; one fresh sandbox per run on Cloud Run; a private beta</td>
+<td><a href="cloud/">Cloud and multi-tenant core</a>: tenants, sign-in, tokens, quotas and cost. Each run gets one new sandbox on Cloud Run. This release is a private beta.</td>
 <td><span class="mapi-badge">available</span></td>
 </tr>
 <tr>
 <td><strong>v0.4</strong></td>
 <td>M3</td>
-<td><a href="guided-ui/">Guided mode and integrations</a>: analysts from spreadsheet to report and scenario; endpoints, webhooks and embeds for other apps; the first public launch</td>
+<td><a href="guided-ui/">Guided mode and integrations</a>: analysts go from a spreadsheet to a report and a scenario. Other apps get endpoints, webhooks and embeds. This release is the first public launch.</td>
 <td><span class="mapi-badge">available</span></td>
 </tr>
 <tr>
 <td><strong>v0.5</strong></td>
 <td>M3.5</td>
-<td><a href="workflows-governance/">Workflows, governance, explorers, mmm-framework and statsmodels</a>: automated, versioned analyses; models held to null tests and a second person's approval; budget plans; About cards and Help me choose</td>
+<td><a href="workflows-governance/">Workflows, governance, explorers, mmm-framework and statsmodels</a>: automated, versioned analyses. Models must pass null tests and get the approval of a second person. Also budget plans, About cards and Help me choose.</td>
 <td><span class="mapi-badge">available</span></td>
 </tr>
 <tr>
 <td><strong>v0.6</strong></td>
 <td>M4</td>
-<td><a href="expert-plugins/">Expert plugins and MCP</a>: plugin upload for allow-listed experts, a curated MCP server for AI agents, sweeps and SBC as parent runs</td>
+<td><a href="expert-plugins/">Expert plugins and MCP</a>: plugin upload for allow-listed experts, a curated MCP server for AI agents, and sweeps and SBC as parent runs.</td>
 <td><span class="mapi-badge mapi-badge--soon">next</span></td>
 </tr>
 </tbody>
@@ -4806,80 +4871,105 @@ verified) are in the code from the first release.</p>
 <h2 id="what-v05-contains">What v0.5 contains<a class="headerlink" href="#what-v05-contains" title="Permanent link">&para;</a></h2>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Workflows</strong>: versioned DAGs of statistical tests, transforms, branches, split plans,
-      order searches, model fits, evaluations, comparisons, governance and reports; live
-      events, caching, schedules and dataset triggers
-      (<a href="../guides/workflow-cookbook/">cookbook</a>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Governance</strong>: versioned project and tenant policies, twelve checks including null
-      tests against shuffled targets and placebo regressors, second-person approval,
-      evidence packs, promotion that requires validation
-      (<a href="../guides/null-tests/">null tests explained</a>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Data and Model Explorers</strong>, side-by-side comparisons with Diebold-Mariano tests</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>mmm-framework</strong> as the marketing-mix engine, with in-sandbox <strong>budget optimisation</strong></li>
+      order searches, model fits, evaluations, comparisons, governance and reports. Also
+      live events, a cache, schedules and dataset triggers
+      (<a href="../guides/workflow-cookbook/">cookbook</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Governance</strong>: versioned project and tenant policies and twelve checks. The checks
+      include null tests against shuffled targets and placebo regressors. Also
+      second-person approval, evidence packs and promotion that needs validation
+      (<a href="../guides/null-tests/">null tests explained</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Data and Model Explorers</strong>, with side-by-side comparisons and Diebold-Mariano tests</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>mmm-framework</strong> as the marketing-mix engine, with <strong>budget optimisation</strong> in the sandbox</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Twelve statsmodels</strong> time-series models</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>About cards</strong> on every selectable item and <strong>Help me choose</strong>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>About cards</strong> on each item that you can select, and <strong>Help me choose</strong>
       (<a href="../guides/choosing-a-model/">choosing a model</a>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> The Python client and the CLI for all of it</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> The web app's screens for all of it: the visual workflow builder, the run monitor,
-      Guided recipes, the policy editor, the review queue, the explorers, About cards and
-      the chooser, budget plans</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> The Python client and the CLI for all of these items</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> The screens of the web app for all of these items:
+      the visual workflow builder, the run monitor, Guided recipes, the policy editor, the
+      review queue, the explorers, About cards and the chooser, and budget plans</li>
 </ul>
-<p>Verified end to end through a live local stack: the canonical workflow, governance with a
-second person, mmm-framework with a budget plan, the explorers and the chooser, and the CLI
-(<a href="../operations/m35-verification/">M3.5 verification</a>). As for v0.4, still to do: a real
-Google Cloud project, Docker-isolated executors, and the sessions with five non-technical
-testers.</p>
+<p>We verified these items end to end on a live local stack
+(<a href="../operations/m35-verification/">M3.5 verification</a>):</p>
+<ul>
+<li>the canonical workflow</li>
+<li>governance with a second person</li>
+<li>mmm-framework with a budget plan</li>
+<li>the explorers and the chooser</li>
+<li>the CLI.</li>
+</ul>
+<p>Some work is not done yet, the same as for v0.4. It includes a real Google Cloud project,
+Docker-isolated executors, and the sessions with five non-technical testers.</p>
 <h2 id="what-v04-contains">What v0.4 contains<a class="headerlink" href="#what-v04-contains" title="Permanent link">&para;</a></h2>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Guided mode</strong>: four templates (geo marketing mix, weekly forecast, demand by store,
-      customer choice), a question flow with role detection, drafts with "View as YAML", the
-      persona lock (<a href="../guides/guided-tutorial/">tutorial</a>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Sandboxed ingest</strong> of CSV, Parquet, MFF and Meridian-shaped tables with plain-language
-      refusals</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Business priors</strong> as ROI or share ranges, translated in a sandbox with a
-      prior-predictive preview, and <strong>lift tests</strong> as calibration
-      (<a href="../guides/guided-modelling/">Guided modelling</a>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> The <strong>sanity scorecard</strong> written by every fit, and the <strong>promotion gate</strong> that uses it</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>What-if sliders</strong> over per-draw response grids, "Run exact", forecast and
+      customer choice). Also a question flow with role detection, drafts with "View as YAML",
+      and the persona lock (<a href="../guides/guided-tutorial/">tutorial</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Sandboxed ingest</strong> of CSV, Parquet, MFF and Meridian-shaped tables. Refusals are in
+      plain language.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Business priors</strong> as ROI or share ranges. A sandbox translates them and shows a
+      prior-predictive preview. Also <strong>lift tests</strong> as calibration
+      (<a href="../guides/guided-modelling/">Guided modelling</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> The <strong>sanity scorecard</strong> that each fit writes, and the <strong>promotion gate</strong> that uses it</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>What-if sliders</strong> over response grids for each draw, "Run exact", and forecast and
       counterfactual views</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Endpoints and aliases</strong>, <code>score:&lt;alias&gt;</code> tokens, <strong>snippets</strong> in seven languages, a
-      <strong>Google Sheets</strong> card (<a href="../tutorials/google-sheets/">Connect Google Sheets</a>)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Endpoints and aliases</strong>, <code>score:&lt;alias&gt;</code> tokens, <strong>snippets</strong> in seven languages, and
+      a <strong>Google Sheets</strong> card (<a href="../tutorials/google-sheets/">Connect Google Sheets</a>)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Signed webhooks</strong> with an outbox, retries, a delivery log, replays and an SSRF guard
       (<a href="../guides/webhook-receivers/">Receive webhooks</a>)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Saved plots, static renders and embed links</strong> (<a href="../tutorials/embed-a-chart/">Embed a chart</a>)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> The Python client's endpoints; new CLI commands</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> The endpoints of the Python client, and new CLI commands</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Sign-up</strong> with e-mail verification and abuse controls, <strong>tenant deletion</strong>, the
       <strong>GDPR export</strong>, and a <strong>Cloud Armor</strong> policy</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> The Integrations hub, trust pages and admin additions in the web app</li>
 </ul>
-<p>Verified end to end on a laptop (<a href="../operations/m3-verification/">M3 verification</a>). Still
-to come for M3's exit: the sessions with five non-technical testers. Still to do against a
-real Google Cloud project, as for v0.3: the
-<a href="../operations/gcp-deployment/#before-you-start-the-verify-m0-checklist">[verify M0] checklist</a>,
-cold-start measurements, and public workspaces running on an executor that enforces egress
-and DNS.</p>
+<p>We verified these items end to end on a laptop
+(<a href="../operations/m3-verification/">M3 verification</a>). The exit of M3 also needs the
+sessions with five non-technical testers. These sessions are not done yet. Some work against
+a real Google Cloud project is not done yet, the same as for v0.3:</p>
+<ul>
+<li>the <a href="../operations/gcp-deployment/#before-you-start-the-verify-m0-checklist">[verify M0] checklist</a></li>
+<li>cold-start measurements</li>
+<li>public workspaces on an executor that enforces egress and DNS.</li>
+</ul>
 <h2 id="next-v06-m4-expert-plugins-and-mcp">Next: v0.6 · M4, expert plugins and MCP<a class="headerlink" href="#next-v06-m4-expert-plugins-and-mcp" title="Permanent link">&para;</a></h2>
-<p><strong>Plugin upload for allow-listed experts</strong>: their own model plugins, built into hash-pinned
-overlays (with native wheels from a curated mirror), checked by the contract kit on upload,
-with fast dev overlays and a vetted tier of ported sibling models. An <strong>MCP server</strong> gives AI
-assistants and agents a small, curated, injection-safe set of tools: list and describe
-models, score an endpoint, read a run, fetch a plot. Budget optimisations already run as <strong>in-sandbox
-<code>optimize</code> jobs</strong> and backtests as workflow nodes (v0.5); <strong><code>Sweep</code> and <code>SBC</code></strong> run as one
-parent each. <a href="expert-plugins/">More</a>.</p>
+<p><strong>Plugin upload for allow-listed experts.</strong> Experts upload their own model plugins. The
+platform builds them into hash-pinned overlays, with native wheels from a curated mirror. The
+contract kit checks each plugin on upload. Also fast dev overlays and a vetted tier of ported
+sibling models.</p>
+<p>An <strong>MCP server</strong> gives AI assistants and agents a small, curated set of tools that are safe
+from injection. The tools list and describe models, score an endpoint, read a run and get a
+plot.</p>
+<p>Budget optimisations already run as <strong>in-sandbox <code>optimize</code> jobs</strong>, and backtests run as
+workflow nodes (v0.5). <strong><code>Sweep</code> and <code>SBC</code></strong> each run as one parent. <a href="expert-plugins/">More</a>.</p>
 <h2 id="after-v06">After v0.6<a class="headerlink" href="#after-v06" title="Permanent link">&para;</a></h2>
-<p>In the order they are planned:</p>
+<p>This is the planned sequence:</p>
 <ol>
-<li><strong>Public code upload</strong> (M5): uploaded plugins for every tenant, behind a separate
-   execution project, signed base images, verification before any code runs, Sybil controls,
-   a takedown process, a rehearsed kill-switch drill and an external penetration test, with
-   the security suite green for two weeks first.</li>
-<li><strong>Scale and depth</strong> (M6), each when real usage asks for it: warm scorers for sub-second
-   exact answers, GPU and large-data executors, other clouds, recursive forecasting, chained
-   models (full-funnel and KPI graphs), and a plugin marketplace with a consent model.</li>
+<li>
+<p><strong>Public code upload</strong> (M5): uploaded plugins for all tenants. This release needs these
+   controls:</p>
+<ul>
+<li>a separate execution project</li>
+<li>signed base images</li>
+<li>verification before code runs</li>
+<li>Sybil controls</li>
+<li>a takedown process</li>
+<li>a rehearsed kill-switch drill</li>
+<li>an external penetration test.</li>
+</ul>
+<p>The security suite must first be green for two weeks.
+2. <strong>Scale and depth</strong> (M6). Each item comes when real usage needs it:
+- warm scorers for exact answers in less than one second
+- GPU and large-data executors
+- other clouds
+- recursive forecasting
+- chained models (full-funnel and KPI graphs)
+- a plugin marketplace with a consent model.</p>
+</li>
 </ol>
 <div class="admonition note">
 <p class="admonition-title">Dates</p>
-<p>Releases are cut when their exit criteria pass, not on a calendar. Follow the
-<a href="../project/changelog/">changelog</a> for what has landed.</p>
+<p>We cut a release when it passes its exit criteria, not on a calendar date. Read the
+<a href="../project/changelog/">changelog</a> to see the changes that we released.</p>
 </div>
 
 

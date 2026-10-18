@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -3225,6 +3255,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#scientific-model-pack-sci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scientific-model pack (sci.*)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4691,6 +4732,8 @@
       
         
       
+        
+      
     
     
     
@@ -4779,6 +4822,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4970,6 +5041,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#scientific-model-pack-sci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scientific-model pack (sci.*)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4993,7 +5075,7 @@
 
 
 <h1 id="plots-reference-mapi-plots">Plots reference (<code>mapi-plots</code>)<a class="headerlink" href="#plots-reference-mapi-plots" title="Permanent link">&para;</a></h1>
-<p><code>mapi-plots</code> has two halves with different dependency footprints:</p>
+<p><code>mapi-plots</code> has two parts. Each part has different dependencies:</p>
 <table>
 <thead>
 <tr>
@@ -5018,11 +5100,11 @@
 </tr>
 </tbody>
 </table>
-<p>An import-linter contract keeps the sanitizer and templates free of numpy, pandas, xarray,
-pyarrow, altair, plotly and <code>mapi_sdk</code>, and <code>import mapi_plots</code> loads nothing heavy (exports are
-lazy).</p>
+<p>An import-linter contract makes sure that the sanitizer and the templates do not import
+numpy, pandas, xarray, pyarrow, altair, plotly or <code>mapi_sdk</code>. <code>import mapi_plots</code> loads no
+large modules, because the exports are lazy.</p>
 <h2 id="the-plotspec-envelope">The PlotSpec envelope<a class="headerlink" href="#the-plotspec-envelope" title="Permanent link">&para;</a></h2>
-<p>Defined in <code>mapi_spec.plots</code> (the contract package):</p>
+<p>The contract package <code>mapi_spec.plots</code> defines the envelope:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">core.ppc_fan</span><span class="w">                    </span><span class="c1"># [A-Za-z0-9_.-]{1,128}</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Fit and forecast</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vega-lite</span><span class="w">                     </span><span class="c1"># or plotly</span>
@@ -5038,11 +5120,12 @@ lazy).</p>
 </span></code></pre></div>
 <ul>
 <li>Vega-Lite references data with <code>{"data": {"name": "fan"}}</code>.</li>
-<li>Plotly references a column with <code>{"$ref": "&lt;dataset&gt;.&lt;column&gt;"}</code> in any data-array attribute
-  (and in <code>arrayOk</code> attributes such as <code>marker.color</code>). The part before the first <code>.</code> is the
-  dataset; the rest is the column (<code>trace0.marker.color</code> → dataset <code>trace0</code>, column
-  <code>marker.color</code>). Its JSON Schema ships as <code>mapi_plots.sanitize.PLOTLY_REF_SCHEMA</code> and as the
-  file <code>mapi_plots/sanitize/schemas/plotly-ref.schema.json</code>:</li>
+<li>Plotly references a column with <code>{"$ref": "&lt;dataset&gt;.&lt;column&gt;"}</code> in a data-array attribute.
+  It also uses this reference in <code>arrayOk</code> attributes, for example <code>marker.color</code>. The part
+  before the first <code>.</code> is the dataset. The remaining part is the column
+  (<code>trace0.marker.color</code> → dataset <code>trace0</code>, column <code>marker.color</code>). The JSON Schema of the
+  reference is <code>mapi_plots.sanitize.PLOTLY_REF_SCHEMA</code>. It is also in the file
+  <code>mapi_plots/sanitize/schemas/plotly-ref.schema.json</code>:</li>
 </ul>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">"$schema"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://json-schema.org/draft/2020-12/schema"</span><span class="p">,</span>
@@ -5055,8 +5138,9 @@ lazy).</p>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">}</span>
 </span></code></pre></div>
 <ul>
-<li>Inline Arrow datasets are at most 2 MiB of base64 each. Recipe datasets are written
-  compactly (float32, int32, dictionary-encoded strings); timestamps are UTC milliseconds.</li>
+<li>The maximum size of each inline Arrow dataset is 2 MiB of base64. Recipes write datasets in
+  a compact format (float32, int32, dictionary-encoded strings). Timestamps are UTC
+  milliseconds.</li>
 </ul>
 <h2 id="sanitizer">Sanitizer<a class="headerlink" href="#sanitizer" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plots.sanitize</span><span class="w"> </span><span class="kn">import</span> <span class="n">sanitize_plot</span><span class="p">,</span> <span class="n">check_plot</span><span class="p">,</span> <span class="n">sanitize_spec</span><span class="p">,</span> <span class="n">SanitizeLimits</span>
@@ -5068,10 +5152,16 @@ lazy).</p>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">issues</span> <span class="o">=</span> <span class="n">check_plot</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>               <span class="c1"># errors + changes, never raises</span>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">spec</span><span class="p">,</span> <span class="n">changes</span> <span class="o">=</span> <span class="n">sanitize_spec</span><span class="p">(</span><span class="s2">"plotly"</span><span class="p">,</span> <span class="n">figure_dict</span><span class="p">)</span>   <span class="c1"># bare spec, no envelope</span>
 </span></code></pre></div>
-<p><code>SanitizeError</code> is a <code>MapiError</code>; <code>err.issues</code> lists every violation (capped at
-<code>max_issues</code>), each with an RFC 6901 <code>pointer</code>, a platform-written <code>message</code>, the rule in
-<code>context["rule"]</code> and any user-supplied text only in <code>untrusted_text</code>. <code>err.rules</code> is the set of
-rules that fired. The error code is the most severe present:</p>
+<p><code>SanitizeError</code> is a <code>MapiError</code>. <code>err.issues</code> lists all violations, up to <code>max_issues</code>. Each
+violation has these items:</p>
+<ul>
+<li>An RFC 6901 <code>pointer</code>.</li>
+<li>A <code>message</code> that the platform wrote.</li>
+<li>The rule, in <code>context["rule"]</code>.</li>
+<li>Text from the user, if there is some. This text is only in <code>untrusted_text</code>.</li>
+</ul>
+<p><code>err.rules</code> is the set of rules that fired. The error code is the most severe code that is
+present:</p>
 <table>
 <thead>
 <tr>
@@ -5094,7 +5184,7 @@ rules that fired. The error code is the most severe present:</p>
 <tr>
 <td><code>SPEC_PARSE_ERROR</code></td>
 <td>400</td>
-<td><code>parse</code> (invalid JSON, duplicate keys, NaN/Infinity)</td>
+<td><code>parse</code> (JSON that is not valid, duplicate keys, NaN/Infinity)</td>
 </tr>
 <tr>
 <td><code>SCHEMA_INVALID</code></td>
@@ -5103,7 +5193,8 @@ rules that fired. The error code is the most severe present:</p>
 </tr>
 </tbody>
 </table>
-<p>Changes (never errors) use the rules <code>html_stripped</code>, <code>schema_url</code> and <code>template_pruned</code>.</p>
+<p>Changes use the rules <code>html_stripped</code>, <code>schema_url</code> and <code>template_pruned</code>. Changes are not
+errors.</p>
 <h3 id="limits">Limits<a class="headerlink" href="#limits" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5115,7 +5206,7 @@ rules that fired. The error code is the most severe present:</p>
 <tbody>
 <tr>
 <td><code>max_document_bytes</code></td>
-<td>16 MiB (whole PlotSpec, inline Arrow included)</td>
+<td>16 MiB (the full PlotSpec, with the inline Arrow data)</td>
 </tr>
 <tr>
 <td><code>max_spec_bytes</code></td>
@@ -5131,7 +5222,7 @@ rules that fired. The error code is the most severe present:</p>
 </tr>
 <tr>
 <td><code>max_string_bytes</code></td>
-<td>64 KiB (inline Arrow payloads are capped by the envelope instead)</td>
+<td>64 KiB (the envelope sets the limit for inline Arrow payloads)</td>
 </tr>
 <tr>
 <td><code>max_array_items</code></td>
@@ -5153,34 +5244,49 @@ rules that fired. The error code is the most severe present:</p>
 </table>
 <h3 id="vega-lite-rules">Vega-Lite rules<a class="headerlink" href="#vega-lite-rules" title="Permanent link">&para;</a></h3>
 <ol>
-<li><code>$schema</code> must be an official Vega-Lite v5 or v6 URL (or absent); it is pinned to v6.4.1.</li>
-<li>The spec must validate against the vendored Vega-Lite v6.4.1 JSON Schema (draft-07,
-   local <code>$ref</code>s only).</li>
-<li>No <code>url</code> key anywhere; no <code>href</code>; no <code>image</code> mark; <code>formatType</code> only <code>number</code>, <code>time</code> or
-   <code>utc</code>; <code>config.customFormatTypes</code> must not be enabled.</li>
-<li>Expressions — <code>expr</code>, <code>calculate</code>, <code>filter</code>/<code>test</code> strings (and their <code>and</code>/<code>or</code>/<code>not</code>
-   compositions), any <code>…Expr</code> key such as <code>labelExpr</code>, and bracketed filters inside selection
-   event streams — must use only allow-listed Vega functions. Method calls, <code>this</code>/<code>new</code>,
-   assignment, statements, template and regex literals, <code>\u</code>/<code>\x</code> escapes, non-ASCII outside
-   strings, computed member access with a non-literal key, browser globals (<code>window</code>,
-   <code>document</code>, <code>fetch</code>, <code>globalThis</code> …) and <code>event.view</code> are rejected.</li>
+<li><code>$schema</code> must be an official Vega-Lite v5 or v6 URL, or not present. The sanitizer sets it
+   to v6.4.1.</li>
+<li>The spec must be valid against the vendored Vega-Lite v6.4.1 JSON Schema (draft-07, local
+   <code>$ref</code>s only).</li>
+<li>Do not use these items: a <code>url</code> key at any location, <code>href</code>, and the <code>image</code> mark.
+   <code>formatType</code> can only be <code>number</code>, <code>time</code> or <code>utc</code>. Do not enable
+   <code>config.customFormatTypes</code>.</li>
+<li>
+<p>Expressions must use only Vega functions from the allow list. Expressions are:</p>
+<ul>
+<li><code>expr</code>, <code>calculate</code> and <code>filter</code>/<code>test</code> strings, and their <code>and</code>/<code>or</code>/<code>not</code>
+  compositions.</li>
+<li>Each <code>…Expr</code> key, for example <code>labelExpr</code>.</li>
+<li>Filters in brackets in selection event streams.</li>
+</ul>
+<p>The sanitizer rejects these items: method calls, <code>this</code>/<code>new</code>, assignment, statements,
+template and regex literals, and <code>\u</code>/<code>\x</code> escapes. It also rejects non-ASCII characters
+outside strings, and computed member access with a key that is not a literal. It also
+rejects browser globals (<code>window</code>, <code>document</code>, <code>fetch</code>, <code>globalThis</code> …) and <code>event.view</code>.</p>
+</li>
 </ol>
 <h3 id="plotly-rules">Plotly rules<a class="headerlink" href="#plotly-rules" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Top level has only <code>data</code>, <code>layout</code>, <code>frames</code> and <code>config</code>.</li>
-<li>Trace types, attribute names and value types are checked against a table derived from the
-   official plotly.js 4.1.1 <code>plot-schema.json</code> (enumerations, flag lists, subplot ids, colour
-   scales, info arrays; <code>xaxis2</code>-style subplot keys; <code>annotationdefaults</code>-style keys in
-   templates). Unknown attributes are errors — except inside <code>layout.template</code>, where they
-   (and tile-map sections) are pruned and reported.</li>
+<li>The top level has only <code>data</code>, <code>layout</code>, <code>frames</code> and <code>config</code>.</li>
+<li>The sanitizer does a check of trace types, attribute names and value types against a table.
+   This table comes from the official plotly.js 4.1.1 <code>plot-schema.json</code>. It has enumerations,
+   flag lists, subplot ids, colour scales and info arrays. It also has subplot keys of the
+   <code>xaxis2</code> type, and template keys of the <code>annotationdefaults</code> type.</li>
+<li>Unknown attributes are errors. In <code>layout.template</code>, the sanitizer removes unknown
+   attributes and tile-map sections, and reports them.</li>
 <li>Data arrays are inline lists, dataset references or plotly.py typed arrays
-   (<code>{dtype: i1|u1|u1c|i2|u2|i4|u4|f4|f8, bdata, shape?}</code>, validated for base64, length and
-   shape).</li>
-<li>Tile-map traces/subplots, non-<code>data:image/(png|jpeg|gif|webp);base64</code> image sources (also
-   inside <code>updatemenus</code>/<code>sliders</code> relayout arguments), <code>url</code>/<code>href</code>/<code>topojsonURL</code> keys and
-   network <code>config</code> options are rejected.</li>
-<li>Strings are stripped to <code>&lt;b&gt; &lt;i&gt; &lt;br&gt; &lt;sub&gt; &lt;sup&gt;</code> (attributes dropped, stray <code>&lt;</code> escaped);
-   <code>&lt;extra&gt;</code> survives in hover templates.</li>
+   (<code>{dtype: i1|u1|u1c|i2|u2|i4|u4|f4|f8, bdata, shape?}</code>). The sanitizer does a check of the
+   base64, length and shape of typed arrays.</li>
+<li>The sanitizer rejects these items:<ul>
+<li>Tile-map traces and subplots.</li>
+<li>Image sources that are not <code>data:image/(png|jpeg|gif|webp);base64</code>. This rule also
+  applies in the relayout arguments of <code>updatemenus</code>/<code>sliders</code>.</li>
+<li><code>url</code>/<code>href</code>/<code>topojsonURL</code> keys.</li>
+<li>Network <code>config</code> options.</li>
+</ul>
+</li>
+<li>Strings can keep only <code>&lt;b&gt; &lt;i&gt; &lt;br&gt; &lt;sub&gt; &lt;sup&gt;</code>. The sanitizer removes attributes and
+   escapes a stray <code>&lt;</code>. <code>&lt;extra&gt;</code> stays in hover templates.</li>
 </ol>
 <h3 id="vendored-schemas">Vendored schemas<a class="headerlink" href="#vendored-schemas" title="Permanent link">&para;</a></h3>
 <table>
@@ -5199,12 +5305,12 @@ rules that fired. The error code is the most severe present:</p>
 </tr>
 <tr>
 <td><code>plotly-structure-v4.1.1.json</code></td>
-<td>derived from <code>plotly.js@v4.1.1/dist/plot-schema.json</code></td>
+<td>made from <code>plotly.js@v4.1.1/dist/plot-schema.json</code></td>
 <td>same</td>
 </tr>
 <tr>
 <td><code>VENDORED.json</code></td>
-<td>source URLs and SHA-256 digests (checked by a unit test)</td>
+<td>source URLs and SHA-256 digests (a unit test does a check of them)</td>
 <td>same</td>
 </tr>
 </tbody>
@@ -5226,11 +5332,11 @@ rules that fired. The error code is the most severe present:</p>
 <tr>
 <td><code>dim:&lt;name&gt;</code></td>
 <td>a dim of the schema</td>
-<td><code>time</code> → temporal, numeric → quantitative, ordered/index → ordinal, else nominal</td>
+<td><code>time</code> → temporal, numeric → quantitative, ordered/index → ordinal, other → nominal</td>
 </tr>
 <tr>
 <td><code>role:&lt;role&gt;</code></td>
-<td>the single variable with that role (lists for <code>tooltip</code>)</td>
+<td>the one variable with that role (lists for <code>tooltip</code>)</td>
 <td>from the dtype</td>
 </tr>
 <tr>
@@ -5241,7 +5347,7 @@ rules that fired. The error code is the most severe present:</p>
 <tr>
 <td><code>coord:&lt;name&gt;</code></td>
 <td>a coordinate (dim or not)</td>
-<td>from the dim, else nominal</td>
+<td>from the dim, or nominal if it is not a dim</td>
 </tr>
 <tr>
 <td><code>stat:&lt;name&gt;</code></td>
@@ -5251,26 +5357,28 @@ rules that fired. The error code is the most severe present:</p>
 </tbody>
 </table>
 <p><code>render_template(template, data, schema=None, *, group=None, value=None, optional=())</code> (extra
-<code>recipes</code>) also builds the dataset from an <code>xr.Dataset</code>/tree group; the schema defaults to
-<code>attrs["mapi_schema"]</code> or is inferred (roles from each variable's <code>role</code> attribute).</p>
+<code>recipes</code>) also makes the dataset from an <code>xr.Dataset</code> or a tree group. The default schema is
+<code>attrs["mapi_schema"]</code>. If that is not available, the function infers the schema. It gets the
+roles from the <code>role</code> attribute of each variable.</p>
 <h2 id="recipes-mapi_plotsrecipes">Recipes (<code>mapi_plots.recipes</code>)<a class="headerlink" href="#recipes-mapi_plotsrecipes" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">get_recipe</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Recipe</span>                 <span class="c1"># bundled recipes (core + packs)</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">standard_recipes</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Recipe</span><span class="p">]</span>       <span class="c1"># entry point  mapi.plots: core</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">mapi_plots</span><span class="o">.</span><span class="n">packs</span><span class="o">.</span><span class="n">mmm</span><span class="o">.</span><span class="n">mmm_recipes</span><span class="p">()</span>       <span class="c1"># entry point  mapi.plots: mmm</span>
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">mapi_plots</span><span class="o">.</span><span class="n">packs</span><span class="o">.</span><span class="n">ml</span><span class="o">.</span><span class="n">ml_recipes</span><span class="p">()</span>         <span class="c1"># entry point  mapi.plots: ml</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">Recipe</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">settings</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlotSpec</span>       <span class="c1"># also Recipe(data, **settings)</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">Recipe</span><span class="o">.</span><span class="n">catalog_entry</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">PlotCatalogEntry</span>        <span class="c1"># id, version, persona, required groups/representation</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="c1"># what the runner calls for outputs.plots: never raises for a single bad plot</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="n">report</span> <span class="o">=</span> <span class="n">render_plots</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="p">[</span><span class="s2">"core.ppc_fan"</span><span class="p">,</span> <span class="s2">"mmm.response_curves@^1"</span><span class="p">],</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>                      <span class="n">registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s2">"core.ppc_fan"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"facet"</span><span class="p">:</span> <span class="s2">"market"</span><span class="p">}})</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="n">report</span><span class="o">.</span><span class="n">plots</span>          <span class="c1"># sanitized PlotSpecs</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="n">report</span><span class="o">.</span><span class="n">issues</span>         <span class="c1"># skipped plots: REF_UNRESOLVED / SCHEMA_INVALID / USER_CODE_ERROR</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>                      <span class="c1"># (warnings) and PLOT_UNSAFE (error)</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">report</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>      <span class="c1"># plots.json sidecar body</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">mapi_plots</span><span class="o">.</span><span class="n">packs</span><span class="o">.</span><span class="n">sci</span><span class="o">.</span><span class="n">sci_recipes</span><span class="p">()</span>       <span class="c1"># entry point  mapi.plots: sci (Plotly)</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">Recipe</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">settings</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlotSpec</span>       <span class="c1"># also Recipe(data, **settings)</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">Recipe</span><span class="o">.</span><span class="n">catalog_entry</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">PlotCatalogEntry</span>        <span class="c1"># id, version, persona, required groups/representation</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1"># what the runner calls for outputs.plots: never raises for a single bad plot</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="n">report</span> <span class="o">=</span> <span class="n">render_plots</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="p">[</span><span class="s2">"core.ppc_fan"</span><span class="p">,</span> <span class="s2">"mmm.response_curves@^1"</span><span class="p">],</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>                      <span class="n">registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s2">"core.ppc_fan"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"facet"</span><span class="p">:</span> <span class="s2">"market"</span><span class="p">}})</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="n">report</span><span class="o">.</span><span class="n">plots</span>          <span class="c1"># sanitized PlotSpecs</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">report</span><span class="o">.</span><span class="n">issues</span>         <span class="c1"># skipped plots: REF_UNRESOLVED / SCHEMA_INVALID / USER_CODE_ERROR</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>                      <span class="c1"># (warnings) and PLOT_UNSAFE (error)</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="n">report</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>      <span class="c1"># plots.json sidecar body</span>
 </span></code></pre></div>
-<p>Write your own with the decorator — the result works with <code>Registry.register</code> and the
-<code>mapi.plots</code> entry-point group:</p>
+<p>To write your own recipe, use the decorator. The result works with <code>Registry.register</code> and
+the <code>mapi.plots</code> entry-point group:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">altair</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">alt</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plots.recipes</span><span class="w"> </span><span class="kn">import</span> <span class="n">Figure</span><span class="p">,</span> <span class="n">RecipeSettings</span><span class="p">,</span> <span class="n">named</span><span class="p">,</span> <span class="n">recipe</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
@@ -5286,8 +5394,14 @@ rules that fired. The error code is the most severe present:</p>
 </span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    <span class="n">chart</span> <span class="o">=</span> <span class="n">alt</span><span class="o">.</span><span class="n">Chart</span><span class="p">(</span><span class="n">named</span><span class="p">(</span><span class="s2">"weekly"</span><span class="p">))</span><span class="o">.</span><span class="n">mark_line</span><span class="p">()</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s2">"date:T"</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">var</span><span class="si">}</span><span class="s2">:Q"</span><span class="p">)</span>
 </span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    <span class="k">return</span> <span class="n">Figure</span><span class="p">(</span><span class="n">chart</span><span class="p">,</span> <span class="p">{</span><span class="s2">"weekly"</span><span class="p">:</span> <span class="n">frame</span><span class="p">},</span> <span class="n">caption</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Total </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">var</span><span class="si">}</span><span class="s2"> per week."</span><span class="p">)</span>
 </span></code></pre></div>
+<p>A recipe can also return a Plotly figure (<code>plotly.graph_objects.Figure</code> or a
+<code>{data, layout, frames}</code> dict) in <code>Figure.chart</code>. <code>Recipe.render</code> then sends it through
+<code>from_plotly</code> with the same title, caption, persona and provenance. The recipe can also give
+its own DataFrames in <code>Figure.datasets</code>. The traces then refer to their columns with
+<code>{"$ref": "&lt;dataset&gt;.&lt;column&gt;"}</code>. The function <code>plotly_plot</code> applies the inline-text rules to
+the string columns of these DataFrames.</p>
 <h3 id="settings-shared-by-every-recipe">Settings shared by every recipe<a class="headerlink" href="#settings-shared-by-every-recipe" title="Permanent link">&para;</a></h3>
-<p><code>title</code> (override), <code>width</code> (480), <code>height</code> (180). Unknown settings are rejected.</p>
+<p><code>title</code> (override), <code>width</code> (480), <code>height</code> (180). The recipe rejects unknown settings.</p>
 <h3 id="per-recipe-settings">Per-recipe settings<a class="headerlink" href="#per-recipe-settings" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5347,7 +5461,7 @@ rules that fired. The error code is the most severe present:</p>
 </tr>
 <tr>
 <td><code>mmm.marginal_cost</code></td>
-<td>as response curves + <code>metric</code> (cost | roi), <code>clip_quantile</code> (0.98)</td>
+<td>the same as response curves, + <code>metric</code> (cost | roi), <code>clip_quantile</code> (0.98)</td>
 </tr>
 <tr>
 <td><code>mmm.budget_plans</code></td>
@@ -5357,10 +5471,84 @@ rules that fired. The error code is the most severe present:</p>
 <td><code>ml.feature_importance</code></td>
 <td><code>top</code> (20), <code>feature_dim</code> (feature), <code>source</code> (auto | importance | coefficients)</td>
 </tr>
+<tr>
+<td><code>sci.field_map</code></td>
+<td><code>var</code>, <code>group</code> (auto | posterior | predictions | posterior_predictive), <code>y</code>, <code>x</code>, <code>frame</code>, <code>select</code>, <code>stats</code> ([mean, sd]; also median, z, q05, q95, draws), <code>n_draws</code> (3), <code>max_draws</code> (400), <code>max_cells</code> (40 000), <code>max_frames</code> (24), <code>colormap</code>, <code>log</code>, <code>origin</code>, <code>aspect</code> (equal | auto), <code>columns</code> (3), <code>width</code> (760), <code>height</code> (280, one row of panels)</td>
+</tr>
+<tr>
+<td><code>sci.vector_field</code></td>
+<td>the same as <code>sci.field_map</code> (no <code>n_draws</code>), + <code>component</code>, <code>stats</code> ([mean, sd]; also q05, q95), <code>arrows</code> (20)</td>
+</tr>
+<tr>
+<td><code>sci.profile_bands</code></td>
+<td><code>var</code>, <code>group</code>, <code>observed_var</code>, <code>along</code>, <code>by</code>, <code>select</code>, <code>levels</code> ([0.5, 0.9]), <code>point</code> (median | mean), <code>max_curves</code> (12), <code>max_draws</code> (1 000), <code>colormap</code> (viridis), <code>log</code> (false), <code>width</code> (640), <code>height</code> (360)</td>
+</tr>
+<tr>
+<td><code>sci.ensemble</code></td>
+<td><code>var</code>, <code>group</code>, <code>observed_var</code>, <code>along</code>, <code>select</code>, <code>n_draws</code> (40), <code>levels</code> ([0.9]), <code>point</code> (median | mean | none), <code>max_draws</code> (2 000), <code>seed</code> (0), <code>log</code> (false), <code>width</code> (640), <code>height</code> (320)</td>
+</tr>
 </tbody>
 </table>
-<p>Convergence diagnostics are rank-normalised split R-hat and bulk/tail ESS (Vehtari et al. 2021),
-implemented in numpy and tested to match ArviZ exactly.</p>
+<h3 id="scientific-model-pack-sci">Scientific-model pack (<code>sci.*</code>)<a class="headerlink" href="#scientific-model-pack-sci" title="Permanent link">&para;</a></h3>
+<p>The <code>sci.*</code> recipes make Plotly figures for models with gridded outputs, vector fields,
+profiles and trajectories. They read draws (<code>chain</code>/<code>draw</code> or <code>sample</code> dims) from
+<code>posterior</code>, <code>predictions</code> or <code>posterior_predictive</code>. They read the actual values from
+<code>observed_data</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Recipe</th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sci.field_map</code></td>
+<td>One heatmap panel for each statistic of a gridded output. A slider and a Play button show one <code>frame</code> at a time.</td>
+</tr>
+<tr>
+<td><code>sci.vector_field</code></td>
+<td>The length of a vector as colours, arrows of the mean vector, and the sd of the length.</td>
+</tr>
+<tr>
+<td><code>sci.profile_bands</code></td>
+<td>The median and the 50% and 90% bands along <code>along</code>, one curve for each level of <code>by</code>, and the actual values. A slider shows one level with its bands.</td>
+</tr>
+<tr>
+<td><code>sci.ensemble</code></td>
+<td>Some draws as thin lines, the 90% band of all draws, the median and the actual values.</td>
+</tr>
+</tbody>
+</table>
+<p>Statistics of <code>sci.field_map</code>:</p>
+<ul>
+<li><code>mean</code>, <code>median</code>: the average value and the middle value of the draws.</li>
+<li><code>sd</code>: the uncertainty. A high sd shows where the data do not fix the value.</li>
+<li><code>z</code>: the mean divided by the sd. Values far from zero are clear.</li>
+<li><code>q05</code>, <code>q95</code>: the limits of the 90% interval.</li>
+<li><code>draws</code>: <code>n_draws</code> possible fields from the model.</li>
+</ul>
+<p>The grid dims come from the settings. If you do not set them, the recipe uses the <code>grid</code> of
+the output (<code>OutputDecl.grid</code>). It reads the <code>grid</code> from the <code>grid</code> attribute of the variable
+or from the model manifest in the bundle. The <code>colormap</code>, <code>log</code> and <code>origin</code> settings also
+come from the <code>grid</code> when you do not set them. If the output has more dims than the plot
+uses, use <code>select</code> to pick one level of each, for example <code>select: {species: 0}</code>.</p>
+<p>The size of a field plot has limits:</p>
+<ul>
+<li>All the cells of a plot are in one dataset: <code>x</code>, <code>y</code> and one column for each statistic
+  and frame. The recipe keeps this dataset below the inline Arrow limit (2 MB).</li>
+<li>If the field has too many cells, the recipe calculates the average of each block of
+  k × k cells. A cell with no value (NaN) stays empty. The caption tells the block size.</li>
+<li>A field of 189 × 193 cells with six panels and one frame has its full resolution.</li>
+<li><code>max_frames</code> sets the maximum number of frames. The slider shows frames at equal
+  intervals.</li>
+</ul>
+<p>The plot sandbox shows the Plotly <code>frames</code>, <code>sliders</code> and <code>updatemenus</code> of these plots. In
+dark mode, it changes the palette colours of the traces to their dark variants, the same as
+for Vega-Lite.</p>
+<p>The convergence diagnostics are rank-normalised split R-hat and bulk/tail ESS (Vehtari et al.
+2021). The package calculates them with numpy. Tests make sure that the values agree exactly
+with ArviZ.</p>
 
 
 

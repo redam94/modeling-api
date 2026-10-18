@@ -99,13 +99,13 @@
           "decision": "unit_root",
           "lags": 3,
           "n_obs": 156,
-          "null_plain": "The series has a unit root (it wanders without returning to a stable level).",
+          "null_plain": "The series has a unit root (it moves away from a stable level and does not return).",
           "p_value": 0.57,
           "reject": false,
           "statistic": -1.42,
           "test": "test.adf",
           "var": "y",
-          "verdict_plain": "The series wanders: consider differencing it."
+          "verdict_plain": "The series does not return to a stable level. Use the differences of the series."
         }
       ],
       "properties": {

@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1437,6 +1439,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4665,6 +4695,8 @@
       
         
       
+        
+      
     
     
     
@@ -4753,6 +4785,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4944,12 +5004,12 @@
 
 
 <h1 id="labelled-data">Labelled data<a class="headerlink" href="#labelled-data" title="Permanent link">&para;</a></h1>
-<p>Every model on modeling-api reads <strong>one <code>xr.Dataset</code></strong>: variables with named dims, and dims
-with coordinate labels. Nothing is positional, so the platform can reorder, subset, extend and
-add labels safely, and you can score data whose stores are in a different order than at fit
-time.</p>
-<p>A <strong><code>DataSchema</code></strong> describes such a dataset: what each dim is and what may happen to it at
-score time, and what each variable means to a model.</p>
+<p>Each model on modeling-api reads <strong>one <code>xr.Dataset</code></strong>. The dataset has variables with named
+dims, and dims with coordinate labels. Nothing depends on position. Thus the platform can
+safely reorder, subset and extend the data, and add labels. You can also score data that has
+its stores in a different sequence than at fit time.</p>
+<p>A <strong><code>DataSchema</code></strong> describes such a dataset. It tells what each dim is and what can occur to
+it at score time. It also tells what each variable means to a model.</p>
 <h2 id="a-schema-in-one-look">A schema in one look<a class="headerlink" href="#a-schema-in-one-look" title="Permanent link">&para;</a></h2>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dense</span><span class="w">                       </span><span class="c1"># or: long (one row per observation + *_idx variables)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">dims</span><span class="p">:</span>
@@ -4962,7 +5022,8 @@ score time, and what each variable means to a model.</p>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nt">            future_required</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
 <h2 id="dims-and-their-policies">Dims and their policies<a class="headerlink" href="#dims-and-their-policies" title="Permanent link">&para;</a></h2>
-<p>The <strong>policy</strong> is the heart of the contract: it says what a score request may do with a dim.</p>
+<p>The <strong>policy</strong> is the most important part of the contract. It tells what a score request can
+do with a dim.</p>
 <table>
 <thead>
 <tr>
@@ -4976,24 +5037,24 @@ score time, and what each variable means to a model.</p>
 <tr>
 <td><code>fixed</code></td>
 <td>channels, products, states</td>
-<td>Only labels seen at fit (any subset, any order)</td>
+<td>Only labels from the fit (any subset, any sequence)</td>
 <td><code>UNSEEN_LEVELS</code></td>
 </tr>
 <tr>
 <td><code>extend</code></td>
 <td>time, observation index</td>
-<td>New labels appended <strong>after</strong> the fitted range, without gaps, up to <code>max_extension</code></td>
+<td>New labels <strong>after</strong> the fitted range, without gaps, up to <code>max_extension</code></td>
 <td><code>NON_CONTIGUOUS_EXTENSION</code>, <code>COORD_NOT_ALLOWED</code>, <code>HORIZON_EXCEEDS_FIT</code></td>
 </tr>
 <tr>
 <td><code>new_levels</code></td>
 <td>markets, stores, counties, households</td>
-<td>Unseen labels allowed, handled by <code>new_level_strategy</code></td>
+<td>New labels are permitted. <code>new_level_strategy</code> controls them.</td>
 <td><code>UNSEEN_LEVELS</code> when the strategy is <code>error</code></td>
 </tr>
 </tbody>
 </table>
-<p><code>new_level_strategy</code> decides what an unseen level becomes:</p>
+<p><code>new_level_strategy</code> tells what a new level becomes:</p>
 <table>
 <thead>
 <tr>
@@ -5005,39 +5066,41 @@ score time, and what each variable means to a model.</p>
 <tbody>
 <tr>
 <td><code>hyperprior</code></td>
-<td>A fresh draw from the fitted population distribution, per posterior draw</td>
-<td>A new market in a hierarchical MMM: honest, wider uncertainty</td>
+<td>A new draw from the fitted population distribution, for each posterior draw</td>
+<td>A new market in a hierarchical MMM: the uncertainty is honest and wider</td>
 </tr>
 <tr>
 <td><code>pooled</code></td>
-<td>The population average (or a frequency-weighted average of fitted levels)</td>
+<td>The population average (or an average of fitted levels, weighted by frequency)</td>
 <td>A new store in an xgboost demand model</td>
 </tr>
 <tr>
 <td><code>zero</code></td>
-<td>The level contributes nothing</td>
+<td>The level adds nothing</td>
 <td>A new category in a one-hot model</td>
 </tr>
 <tr>
 <td><code>error</code></td>
-<td>Rejected</td>
+<td>The platform refuses the level</td>
 <td>The default</td>
 </tr>
 </tbody>
 </table>
 <p>Other <code>DimSpec</code> fields:</p>
 <ul>
-<li><code>kind</code>: <code>categorical</code>, <code>time</code>, <code>integer</code>, <code>float</code> or <code>index</code>;</li>
-<li><code>freq</code>: a pandas frequency for time dims (<code>D</code>, <code>W-SUN</code>, <code>MS</code>), so the platform can generate
-  forecast coordinates and check contiguity;</li>
-<li><code>max_extension</code>: how many periods a forecast may reach past the fit without a refit;</li>
-<li><code>ordered</code>: whether a categorical dim has a meaningful order.</li>
+<li><code>kind</code>: <code>categorical</code>, <code>time</code>, <code>integer</code>, <code>float</code> or <code>index</code>.</li>
+<li><code>freq</code>: a pandas frequency for time dims (<code>D</code>, <code>W-SUN</code>, <code>MS</code>). With it, the platform can
+  make forecast coordinates and do a check for gaps.</li>
+<li><code>max_extension</code>: the maximum number of periods that a forecast can go past the fit without a
+  new fit.</li>
+<li><code>ordered</code>: tells if a categorical dim has a sequence that has a meaning.</li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Policies only tighten</p>
-<p>A model's schema template declares the loosest policy it can handle; your data's schema and
-the spec's <code>dim_policies</code> may only make it tighter (<code>fixed</code> is the tightest). Trying to
-loosen it is <code>DIM_POLICY_LOOSENED</code>.</p>
+<p>The schema template of a model declares the least strict policy that the model can use.
+The schema of your data and the <code>dim_policies</code> of the spec can only make it stricter
+(<code>fixed</code> is the strictest). If you try to make it less strict, you get
+<code>DIM_POLICY_LOOSENED</code>.</p>
 </div>
 <h2 id="variables-and-roles">Variables and roles<a class="headerlink" href="#variables-and-roles" title="Permanent link">&para;</a></h2>
 <table>
@@ -5058,40 +5121,40 @@ loosen it is <code>DIM_POLICY_LOOSENED</code>.</p>
 </tr>
 <tr>
 <td><code>units</code></td>
-<td>A pint-style string (<code>EUR</code>, <code>units</code>, <code>1</code>). Steps update it (<code>fx_convert</code> → <code>EUR</code>, scaling → <code>1</code>), and outputs report it</td>
+<td>A string in pint style (<code>EUR</code>, <code>units</code>, <code>1</code>). Steps update it (<code>fx_convert</code> → <code>EUR</code>, scaling → <code>1</code>), and outputs report it</td>
 </tr>
 <tr>
 <td><code>missing</code></td>
-<td><code>forbid</code> (default), <code>allow</code> (NaN is fine) or <code>mask</code> (a mask variable marks valid cells)</td>
+<td><code>forbid</code> (default), <code>allow</code> (NaN is permitted) or <code>mask</code> (a mask variable shows the valid cells)</td>
 </tr>
 <tr>
 <td><code>missing_sentinel</code></td>
-<td>A code such as <code>-99.99</code> that means "missing" and is turned into NaN by <code>core.replace_sentinel</code></td>
+<td>A code, for example <code>-99.99</code>, that means "missing". <code>core.replace_sentinel</code> changes it to NaN</td>
 </tr>
 <tr>
 <td><code>future_required</code></td>
-<td>Must be supplied over a forecast horizon (planned prices, promotions, budgets)</td>
+<td>You must supply values over a forecast horizon (planned prices, promotions, budgets)</td>
 </tr>
 <tr>
 <td><code>index_of</code></td>
-<td>Long layout: this integer variable indexes that dim (<code>county_idx(obs)</code> → <code>county</code>)</td>
+<td>Long layout: this integer variable is the index of that dim (<code>county_idx(obs)</code> → <code>county</code>)</td>
 </tr>
 <tr>
 <td><code>bounds</code></td>
-<td>Allowed value range, checked in plain language</td>
+<td>The permitted range of values. The platform does a check and reports in plain language</td>
 </tr>
 </tbody>
 </table>
-<p>Roles let plugins and plot templates work across datasets: "every <code>spend</code> variable", "the
-<code>target</code> over time, one line per geo".</p>
+<p>With roles, plugins and plot templates work across datasets. For example, "each <code>spend</code>
+variable" or "the <code>target</code> over time, one line for each geo".</p>
 <h2 id="two-layouts-for-ragged-data">Two layouts for ragged data<a class="headerlink" href="#two-layouts-for-ragged-data" title="Permanent link">&para;</a></h2>
-<p>Real panels are often ragged: households have different numbers of trips, animals different
-track lengths. A schema uses one of two canonical forms, and the built-in steps <code>core.to_long</code>
-and <code>core.to_padded</code> convert between them.</p>
+<p>Real panels are frequently ragged. For example, households have different numbers of trips,
+and animals have tracks of different lengths. A schema uses one of two canonical forms. The
+built-in steps <code>core.to_long</code> and <code>core.to_padded</code> change data from one form to the other.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Long</label><label for="__tabbed_1_2">Padded</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>One row per observation along an <code>obs</code> dim, plus index variables:</p>
+<p>One row for each observation along an <code>obs</code> dim, plus index variables:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">dims</span><span class="p">:</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">obs</span><span class="p">:</span><span class="w">    </span><span class="p p-Indicator">{</span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="nv">integer</span><span class="p p-Indicator">,</span><span class="nt"> policy</span><span class="p">:</span><span class="w"> </span><span class="nv">extend</span><span class="p p-Indicator">}</span>
@@ -5116,8 +5179,9 @@ and <code>core.to_padded</code> convert between them.</p>
 </div>
 </div>
 <h2 id="draft-a-schema-from-data">Draft a schema from data<a class="headerlink" href="#draft-a-schema-from-data" title="Permanent link">&para;</a></h2>
-<p><code>infer_schema</code> gives you a starting point: time dims become <code>extend</code> with an inferred
-frequency, other dims <code>fixed</code>, variables <code>covariate</code> unless you say otherwise.</p>
+<p><code>infer_schema</code> gives you a schema to start with. Time dims become <code>extend</code> with a frequency
+that the function finds. Other dims become <code>fixed</code>. Variables become <code>covariate</code>, unless you
+give a different role.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
@@ -5147,8 +5211,9 @@ frequency, other dims <code>fixed</code>, variables <code>covariate</code> unles
 </span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="nb">print</span><span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">vars</span><span class="p">[</span><span class="s2">"revenue"</span><span class="p">]</span><span class="o">.</span><span class="n">role</span><span class="p">)</span>  <span class="c1"># target</span>
 </span></code></pre></div>
 <h2 id="data-checks-in-plain-language">Data checks in plain language<a class="headerlink" href="#data-checks-in-plain-language" title="Permanent link">&para;</a></h2>
-<p><code>validate_dataset</code> checks a dataset against its schema and describes every problem for a
-non-expert reader. Fitting and scoring run the same checks and stop on errors.</p>
+<p><code>validate_dataset</code> does a check of a dataset against its schema. It describes each problem for
+a reader who is not an expert. The fit and the score do the same checks and stop if they find
+errors.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">broken</span> <span class="o">=</span> <span class="n">media</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">broken</span><span class="p">[</span><span class="s2">"revenue"</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[{</span><span class="s2">"market"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"FR"</span><span class="p">,</span> <span class="s2">"UK"</span><span class="p">],</span> <span class="s2">"date"</span><span class="p">:</span> <span class="n">days</span><span class="p">[</span><span class="mi">10</span><span class="p">:</span><span class="mi">12</span><span class="p">]}]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
@@ -5157,9 +5222,9 @@ non-expert reader. Fitting and scoring run the same checks and stop on errors.</
 </span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1"># error SCHEMA_INVALID - 2 markets are missing 2 days of revenue in March 2026</span>
 </span></code></pre></div>
 <h2 id="binding-your-names-the-models-names">Binding: your names, the model's names<a class="headerlink" href="#binding-your-names-the-models-names" title="Permanent link">&para;</a></h2>
-<p>Steps and models are written against <strong>canonical names</strong> (<code>geo</code>, <code>time</code>, <code>y</code>, <code>spend</code>). A
-spec's <code>data.bind</code> maps them to your dataset's names. The binding is stored in the bundle and
-<strong>reversed on every output</strong>, so results come back in your vocabulary.</p>
+<p>Steps and models use <strong>canonical names</strong> (<code>geo</code>, <code>time</code>, <code>y</code>, <code>spend</code>). The <code>data.bind</code> of a
+spec maps these names to the names of your dataset. The bundle stores the binding. The
+platform <strong>reverses the binding on each output</strong>. Thus the results use your names.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">BindingMap</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">binding</span> <span class="o">=</span> <span class="n">BindingMap</span><span class="p">({</span><span class="s2">"dims"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"geo"</span><span class="p">:</span> <span class="s2">"market"</span><span class="p">,</span> <span class="s2">"time"</span><span class="p">:</span> <span class="s2">"date"</span><span class="p">},</span> <span class="s2">"vars"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"y"</span><span class="p">:</span> <span class="s2">"revenue"</span><span class="p">}})</span>
@@ -5173,8 +5238,8 @@ spec's <code>data.bind</code> maps them to your dataset's names. The binding is 
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="nt">vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="nv">revenue</span><span class="p p-Indicator">,</span><span class="nt"> spend</span><span class="p">:</span><span class="w"> </span><span class="nv">spend</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
 <h2 id="side-tables">Side tables<a class="headerlink" href="#side-tables" title="Permanent link">&para;</a></h2>
-<p>Small constant datasets that steps read (FX rates, holiday calendars) are <strong>side tables</strong>,
-declared in the spec with a score-time policy:</p>
+<p><strong>Side tables</strong> are small constant datasets that steps read (FX rates, holiday calendars). The
+spec declares each side table with a policy for score time:</p>
 <table>
 <thead>
 <tr>
@@ -5185,7 +5250,7 @@ declared in the spec with a score-time policy:</p>
 <tbody>
 <tr>
 <td><code>pinned</code></td>
-<td>The exact version used at fit time (holidays)</td>
+<td>The exact version from the fit (holidays)</td>
 </tr>
 <tr>
 <td><code>latest</code></td>
@@ -5193,11 +5258,12 @@ declared in the spec with a score-time policy:</p>
 </tr>
 <tr>
 <td><code>supplied</code></td>
-<td>The score request must name the table (<code>request.side_tables</code>), e.g. FX rates for the forecast period</td>
+<td>The score request must name the table (<code>request.side_tables</code>), for example FX rates for the forecast period</td>
 </tr>
 </tbody>
 </table>
-<p>A step that needs a table with too little coverage fails with <code>SIDE_TABLE_COVERAGE</code>.</p>
+<p>If a step needs a table that does not have sufficient coverage, the step fails with
+<code>SIDE_TABLE_COVERAGE</code>.</p>
 <h2 id="wire-formats">Wire formats<a class="headerlink" href="#wire-formats" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5210,7 +5276,7 @@ declared in the spec with a score-time policy:</p>
 <tbody>
 <tr>
 <td>XrJSON</td>
-<td>Small payloads, curl, TypeScript: the <code>Dataset.to_dict()</code> shape with explicit dtypes and caps</td>
+<td>Small payloads, curl, TypeScript: the <code>Dataset.to_dict()</code> shape with explicit dtypes and limits</td>
 <td><code>mapi_sdk.wire.to_xrjson</code> / <code>from_xrjson</code></td>
 </tr>
 <tr>
@@ -5225,7 +5291,7 @@ declared in the spec with a score-time policy:</p>
 </tr>
 <tr>
 <td>pickle</td>
-<td><strong>Never</strong>, across any boundary</td>
+<td><strong>Never</strong>, across all boundaries</td>
 <td>–</td>
 </tr>
 </tbody>

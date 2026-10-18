@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4684,6 +4714,8 @@
       
         
       
+        
+      
     
     
     
@@ -4772,6 +4804,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4969,9 +5029,10 @@
 
 
 <h1 id="port-a-model-in-15-minutes">Port a model in 15 minutes<a class="headerlink" href="#port-a-model-in-15-minutes" title="Permanent link">&para;</a></h1>
-<p>You have a model that works in a notebook. This guide turns it into a plugin that the platform
-can fit, score on new data, forecast, version and plot, and proves it with the contract kit.
-You write the statistics; the platform writes everything around them.</p>
+<p>You have a model that works in a notebook. This guide changes it into a plugin. The platform can
+fit the plugin, score it on new data, forecast with it, keep its versions and plot it. The
+contract kit proves that the plugin works. You write the statistics. The platform writes all the
+other code.</p>
 <pre class="mermaid"><code>flowchart LR
     A["0–3 min&lt;br/&gt;&lt;b&gt;Pick a base class&lt;/b&gt;"] --&gt; B["3–6 min&lt;br/&gt;&lt;b&gt;Declare the data contract&lt;/b&gt;"]
     B --&gt; C["6–11 min&lt;br/&gt;&lt;b&gt;Write build / estimator / fit+score&lt;/b&gt;"]
@@ -4990,38 +5051,46 @@ You write the statistics; the platform writes everything around them.</p>
 <tr>
 <td><strong><code>PyMCModel</code></strong></td>
 <td><code>build(ds, settings, ctx) -&gt; pm.Model</code></td>
-<td>Engines (nutpie, PyMC with resumable segments, MAP, ADVI), convergence diagnostics, rebuild-and-predict scoring, new levels from the hyperprior, common-random-number counterfactuals, fast scoring</td>
+<td>Engines (nutpie, PyMC with segments that can continue, MAP, ADVI), convergence diagnostics, scores that build the model again and predict, new levels from the hyperprior, counterfactuals with common random numbers, fast scores</td>
 </tr>
 <tr>
 <td><strong><code>SklearnModel</code></strong></td>
 <td><code>estimator(settings)</code></td>
-<td>Stacking labelled dims into rows and features, coordinate features, safe persistence (skops / xgboost JSON), quantile / bootstrap / conformal uncertainty, pooled new levels, contributions</td>
+<td>It stacks labelled dims into rows and features. Also coordinate features, safe persistence (skops / xgboost JSON), quantile / bootstrap / conformal uncertainty, pooled new levels, contributions</td>
 </tr>
 <tr>
 <td><strong><code>CustomModel</code></strong></td>
 <td><code>fit(...)</code> and <code>score(...)</code></td>
-<td>Binding, preprocessing, splits, context tails, coordinate canonicalisation, inverse transforms, summaries, bundles</td>
+<td>Binding, preprocessing, splits, context tails, the canonical form of coordinates, inverse transforms, summaries, bundles</td>
 </tr>
 </tbody>
 </table>
-<p>All three get, for free: validated settings with JSON Schemas, static spec validation,
-evaluate-then-refit, CoordPlan checks, representation-aware summaries, plots and bundles.</p>
+<p>The three base classes get these items at no cost:</p>
+<ul>
+<li>Validated settings with JSON Schemas</li>
+<li>Static validation of the spec</li>
+<li>An evaluation, then a new fit</li>
+<li>CoordPlan checks</li>
+<li>Summaries that obey the representation</li>
+<li>Plots and bundles</li>
+</ul>
 <h2 id="1-pick-a-base-class-03-min">1. Pick a base class (0–3 min)<a class="headerlink" href="#1-pick-a-base-class-03-min" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Your model is a <strong>PyMC</strong> model → <code>mapi_pymc.PyMCModel</code>.</li>
-<li>Your model is an <strong>sklearn or xgboost estimator</strong> on a design matrix → <code>mapi_sklearn.SklearnModel</code>
-  (or the quantile, bootstrap, conformal or classifier variants).</li>
-<li>Anything else (statsmodels, JAX, a Kalman filter, closed-form maths) → <code>mapi_sdk.CustomModel</code>.</li>
+<li>If your model is a <strong>PyMC</strong> model, use <code>mapi_pymc.PyMCModel</code>.</li>
+<li>If your model is an <strong>sklearn or xgboost estimator</strong> on a design matrix, use
+  <code>mapi_sklearn.SklearnModel</code> (or the quantile, bootstrap, conformal or classifier variants).</li>
+<li>For all other models (statsmodels, JAX, a Kalman filter, closed-form mathematics), use
+  <code>mapi_sdk.CustomModel</code>.</li>
 </ul>
 <h2 id="2-declare-the-data-contract-36-min">2. Declare the data contract (3–6 min)<a class="headerlink" href="#2-declare-the-data-contract-36-min" title="Permanent link">&para;</a></h2>
-<p>Write down, in <strong>canonical names</strong>, the dims and variables your model needs and what may
-happen to each dim at score time. This is the model's <code>schema_template</code>. Users bind their own
-dataset names onto it in the spec.</p>
+<p>Write the dims and the variables that your model needs, in <strong>canonical names</strong>. For each dim,
+write what can occur to it at score time. This is the <code>schema_template</code> of the model. In the
+spec, users bind the names of their own dataset to it.</p>
 <div class="admonition tip">
-<p class="admonition-title">Three questions per dim</p>
-<p>Can a score request bring a <strong>new level</strong> (a new county, store, market)? Then <code>new_levels</code>,
-with a strategy. Does it <strong>grow</strong> at forecast time (time, observations)? Then <code>extend</code>.
-Otherwise <code>fixed</code>.</p>
+<p class="admonition-title">Three questions for each dim</p>
+<p>Can a score request bring a <strong>new level</strong> (a new county, store or market)? If yes, the dim
+is <code>new_levels</code>, with a strategy. Does the dim <strong>grow</strong> at forecast time (time,
+observations)? If yes, the dim is <code>extend</code>. If not, the dim is <code>fixed</code>.</p>
 </div>
 <h2 id="3-write-the-model-611-min">3. Write the model (6–11 min)<a class="headerlink" href="#3-write-the-model-611-min" title="Permanent link">&para;</a></h2>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">PyMC</label><label for="__tabbed_1_2">scikit-learn / xgboost</label><label for="__tabbed_1_3">Custom</label></div>
@@ -5069,7 +5138,7 @@ Otherwise <code>fixed</code>.</p>
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>            <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">"y"</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">observed</span><span class="p">(</span><span class="s2">"y"</span><span class="p">),</span> <span class="n">dims</span><span class="o">=</span><span class="s2">"obs"</span><span class="p">)</span>
 </span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>        <span class="k">return</span> <span class="n">model</span>
 </span></code></pre></div>
-<p>The <code>ctx</code> helpers are what make scoring work without you thinking about it:</p>
+<p>The <code>ctx</code> helpers make the scores work. You do not have to think about them:</p>
 <table>
 <thead>
 <tr>
@@ -5080,27 +5149,27 @@ Otherwise <code>fixed</code>.</p>
 <tbody>
 <tr>
 <td><code>ctx.coords()</code></td>
-<td>The model's coords; at score time includes new levels</td>
+<td>The coords of the model. At score time, it includes new levels.</td>
 </tr>
 <tr>
 <td><code>ctx.data(name)</code></td>
-<td>A <code>pm.Data</code> over the training values at fit and the score values at score time (the model is rebuilt)</td>
+<td>A <code>pm.Data</code> over the training values at fit time and over the score values at score time (the platform builds the model again)</td>
 </tr>
 <tr>
 <td><code>ctx.observed(name)</code></td>
-<td>The target at fit; a placeholder at score time (never imputed)</td>
+<td>The target at fit time. A placeholder at score time (never imputed).</td>
 </tr>
 <tr>
 <td><code>ctx.hier_effect(name, dim)</code></td>
-<td>A partially pooled effect whose <strong>new levels</strong> are drawn from the hyperprior per posterior draw</td>
+<td>A partially pooled effect. Its <strong>new levels</strong> come from the hyperprior, for each posterior draw.</td>
 </tr>
 <tr>
 <td><code>ctx.position(dim)</code></td>
-<td>0, 1, 2, … along an <code>extend</code> dim, continued into the forecast horizon</td>
+<td>0, 1, 2, … along an <code>extend</code> dim. The count continues into the forecast horizon.</td>
 </tr>
 </tbody>
 </table>
-<p><code>expected</code> names the <code>Deterministic</code> that is the expected value of each output, so
+<p><code>expected</code> names the <code>Deterministic</code> that is the expected value of each output. Thus
 <code>output.kind: expected</code> returns it without observation noise.</p>
 </div>
 <div class="tabbed-block">
@@ -5121,10 +5190,10 @@ Otherwise <code>fixed</code>.</p>
 </span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">estimator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="n">PointSettings</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Ridge</span><span class="p">:</span>
 </span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        <span class="k">return</span> <span class="n">Ridge</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># must be exactly an allow-listed class</span>
 </span></code></pre></div>
-<p><code>estimator()</code> returns an <strong>allow-listed</strong> estimator instance (or a <code>{kind, params}</code>
-mapping). Subclasses and parameters outside the estimator's params model are rejected, so the
-bundle can always be loaded safely. Rows, columns and coordinate features are settings,
-not code: see <a href="../sklearn/">Tabular models</a>.</p>
+<p><code>estimator()</code> returns an estimator instance from the <strong>allow-list</strong> (or a <code>{kind, params}</code>
+mapping). The platform rejects subclasses and parameters that are not in the params model of
+the estimator. Thus the platform can always load the bundle safely. Rows, columns and
+coordinate features are settings, not code. See <a href="../sklearn/">Tabular models</a>.</p>
 </div>
 <div class="tabbed-block">
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">PREDICTIONS</span><span class="p">,</span> <span class="n">CustomModel</span><span class="p">,</span> <span class="n">FitOutput</span><span class="p">,</span> <span class="n">ModelSettings</span><span class="p">,</span> <span class="n">new_level_mask</span>
@@ -5186,20 +5255,22 @@ not code: see <a href="../sklearn/">Tabular models</a>.</p>
 </span></code></pre></div>
 <p>The rules for <code>score</code>:</p>
 <ul>
-<li>the dataset arrives <strong>canonicalised</strong>: fit order, new levels appended and flagged by
-  <code>&lt;dim&gt;__is_new</code> (<code>new_level_mask(ds, dim)</code>), so position-indexed parameters line up;</li>
-<li>return an <code>xr.DataTree</code> with a <code>predictions</code> group in your declared representation;</li>
-<li>never look at targets in the payload (<code>evaluate</code> mode passes them for metrics, not for
-  you).</li>
+<li>The dataset comes in the <strong>canonical</strong> form. It has the fit order. New levels come at
+  the end, with the flag <code>&lt;dim&gt;__is_new</code> (<code>new_level_mask(ds, dim)</code>). Thus parameters that
+  use the position as an index stay aligned.</li>
+<li>Return an <code>xr.DataTree</code> with a <code>predictions</code> group in the representation that you
+  declared.</li>
+<li>Never look at the targets in the payload. The <code>evaluate</code> mode sends them for the metrics,
+  not for you.</li>
 </ul>
-<p><code>FitOutput.groups</code> uses ArviZ group names (<code>posterior</code>, <code>sample_stats</code>, …), <code>learned</code> holds
-small JSON, and <code>native</code> holds bytes in a <strong>safe</strong> format only (skops, xgboost JSON,
-safetensors). Pickle is rejected.</p>
+<p><code>FitOutput.groups</code> uses the ArviZ group names (<code>posterior</code>, <code>sample_stats</code>, …). <code>learned</code>
+contains small JSON. <code>native</code> contains bytes in a <strong>safe</strong> format only (skops, xgboost JSON,
+safetensors). The platform rejects pickle.</p>
 </div>
 </div>
 </div>
 <h2 id="4-write-a-tiny-spec-1113-min">4. Write a tiny spec (11–13 min)<a class="headerlink" href="#4-write-a-tiny-spec-1113-min" title="Permanent link">&para;</a></h2>
-<p>The spec the contract kit fits. Keep it small and fast: few draws, few trees.</p>
+<p>The contract kit fits this spec. Keep it small and fast: use few draws and few trees.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">PyMC</label><label for="__tabbed_2_2">Custom (with a step)</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
@@ -5259,7 +5330,8 @@ safetensors). Pickle is rejected.</p>
 </div>
 </div>
 <h2 id="5-run-the-contract-kit-1315-min">5. Run the contract kit (13–15 min)<a class="headerlink" href="#5-run-the-contract-kit-1315-min" title="Permanent link">&para;</a></h2>
-<p><code>check_model</code> fits your fixture and then tries to break your plugin the way real users will:</p>
+<p><code>check_model</code> fits your fixture. Then it tries to break your plugin in the same ways that real
+users will:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>contract kit: model acme.geo_baseline@1.0.0
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  [PASS] manifest: acme.geo_baseline@1.0.0 (point)
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  [PASS] fit: bundle ef4100375dbb, metrics ['mape', 'rmse']
@@ -5286,54 +5358,54 @@ safetensors). Pickle is rejected.</p>
 <tbody>
 <tr>
 <td><code>bundle_roundtrip_no_pickle</code></td>
-<td>Scores are identical after writing and reading the bundle, and nothing in it is pickle</td>
+<td>The scores are the same after the kit writes and reads the bundle. The bundle contains no pickle.</td>
 </tr>
 <tr>
 <td><code>shuffled_scoring</code>, <code>subset_scoring</code></td>
-<td>Reordered labels and subsets give the same answers for the same cells</td>
+<td>Labels in a different sequence and subsets give the same answers for the same cells.</td>
 </tr>
 <tr>
 <td><code>new_level_policies</code></td>
-<td>Every strategy your dims declare works (or raises <code>UNSEEN_LEVELS</code> when it should)</td>
+<td>Each strategy that your dims declare works (or raises <code>UNSEEN_LEVELS</code> when it must).</td>
 </tr>
 <tr>
 <td><code>extend_typed_errors</code></td>
-<td>Gaps and out-of-range time labels raise typed errors</td>
+<td>Gaps and time labels out of range raise typed errors.</td>
 </tr>
 <tr>
 <td><code>unsupported_mode</code></td>
-<td>Undeclared modes are refused</td>
+<td>The model refuses modes that it does not declare.</td>
 </tr>
 <tr>
 <td><code>context_window_equivalence</code></td>
-<td>Scoring the last training periods as a forecast equals the in-sample result</td>
+<td>A forecast score of the last training periods is equal to the in-sample result.</td>
 </tr>
 <tr>
 <td><code>evaluate_path_equals_score_path</code></td>
-<td>The holdout metrics are reproduced through the normal score path</td>
+<td>The normal score path makes the same holdout metrics again.</td>
 </tr>
 <tr>
 <td><code>output_space_and_units</code></td>
-<td>Outputs are inverted and labelled with units and output space</td>
+<td>The outputs are inverted. They have labels for the units and the output space.</td>
 </tr>
 <tr>
 <td><code>representation_aggregation</code></td>
-<td>Aggregations are allowed or refused according to the representation</td>
+<td>The representation controls which aggregations the model allows or refuses.</td>
 </tr>
 <tr>
 <td><code>additive_contributions</code></td>
-<td>Declared-additive contributions sum to the prediction</td>
+<td>The sum of the contributions that are declared additive is equal to the prediction.</td>
 </tr>
 <tr>
 <td><code>seed_determinism</code></td>
-<td>The same seed gives the same fit and scores, when the plugin claims it</td>
+<td>If the plugin claims it, the same seed gives the same fit and scores.</td>
 </tr>
 </tbody>
 </table>
-<p>A failed check raises <code>ContractViolation</code> with the report (pass <code>raise_on_failure=False</code> to
-get the report instead).</p>
+<p>If a check fails, the kit raises <code>ContractViolation</code> with the report. To get the report as a
+return value, pass <code>raise_on_failure=False</code>.</p>
 <h3 id="in-your-test-suite">In your test suite<a class="headerlink" href="#in-your-test-suite" title="Permanent link">&para;</a></h3>
-<p><code>mapi-sdk</code> installs a pytest plugin, so the kit is available as fixtures in any project:</p>
+<p><code>mapi-sdk</code> installs a pytest plugin. Thus the kit is available as fixtures in all projects:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelFixture</span><span class="p">,</span> <span class="n">toy</span>  <span class="c1"># toy: small reference steps and models</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
@@ -5368,8 +5440,9 @@ get the report instead).</p>
 </span><span id="__span-6-32"><a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>    <span class="k">assert</span> <span class="n">report</span><span class="o">.</span><span class="n">ok</span>
 </span></code></pre></div>
 <h2 id="bonus-a-preprocessing-step">Bonus: a preprocessing step<a class="headerlink" href="#bonus-a-preprocessing-step" title="Permanent link">&para;</a></h2>
-<p>Steps follow the same pattern: settings, an optional state, <code>fit</code> / <code>transform</code> / <code>inverse</code>,
-and a static <code>effect_template</code> that tells the control plane how the schema changes.</p>
+<p>Steps use the same pattern. A step has settings, an optional state, <code>fit</code> / <code>transform</code> /
+<code>inverse</code>, and a static <code>effect_template</code>. The <code>effect_template</code> tells the control plane how the
+schema changes.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">Step</span><span class="p">,</span> <span class="n">StepContext</span><span class="p">,</span> <span class="n">StepSettings</span><span class="p">,</span> <span class="n">StepState</span>
@@ -5431,13 +5504,21 @@ and a static <code>effect_template</code> that tells the control plane how the s
 </span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="c1">#   [PASS] transform_never_learns: ...</span>
 </span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="c1">#   ...</span>
 </span></code></pre></div>
-<p>The step kit checks the exported catalog entry, deterministic and pure fitting, that
-<code>transform</code> never learns, the state's bundle round trip, that the declared schema effect matches
-the real output, that a missing target is tolerated, the inverse round trip, context-window
-equivalence for look-back steps, and every unseen-level policy. More in
-<a href="../plugins/">Write a step or model plugin</a>.</p>
+<p>The step kit does a check of these items:</p>
+<ul>
+<li>The exported catalog entry</li>
+<li>A deterministic and pure fit</li>
+<li>That <code>transform</code> never learns</li>
+<li>The bundle round trip of the state</li>
+<li>That the declared schema effect agrees with the real output</li>
+<li>That the step accepts a missing target</li>
+<li>The inverse round trip</li>
+<li>The equivalence of the context window for steps that look back</li>
+<li>Each policy for unseen levels</li>
+</ul>
+<p>For more information, see <a href="../plugins/">Write a step or model plugin</a>.</p>
 <h2 id="ship-it">Ship it<a class="headerlink" href="#ship-it" title="Permanent link">&para;</a></h2>
-<p>Register your plugins through entry points in your package's <code>pyproject.toml</code>; the value may
+<p>Register your plugins through entry points in the <code>pyproject.toml</code> of your package. The value can
 be a class, a tuple of classes or a function that returns them:</p>
 <div class="language-toml highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">[project.entry-points.</span><span class="s2">"mapi.models"</span><span class="k">]</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">acme</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"acme_models.plugins:PLUGINS"</span><span class="w">      </span><span class="c1"># PLUGINS = (Radon, GeoBaseline)</span>
@@ -5445,21 +5526,21 @@ be a class, a tuple of classes or a function that returns them:</p>
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="k">[project.entry-points.</span><span class="s2">"mapi.steps"</span><span class="k">]</span>
 </span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">acme</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"acme_models.steps:STEPS"</span><span class="w">          </span><span class="c1"># STEPS = (ScaleStep,)</span>
 </span></code></pre></div>
-<p><code>mapi_sdk.default_registry()</code> then finds them, and so will the platform's runner images.</p>
+<p><code>mapi_sdk.default_registry()</code> then finds them. The runner images of the platform also find them.</p>
 <div class="admonition success">
 <p class="admonition-title">Checklist</p>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>schema_template</code> in canonical names, with honest dim policies</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>schema_template</code> in canonical names, with correct dim policies</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>capabilities</code>: representation, score modes, contribution scale</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>outputs</code> with <code>units_of</code>, so results come back in the user's units</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>outputs</code> with <code>units_of</code>, so that the results come back in the units of the user</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> settings as a <code>ModelSettings</code> subclass with defaults and descriptions (they become
   the form in the UI)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> a tiny spec and <code>check_model</code> passing in CI</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> a tiny spec, and <code>check_model</code> passes in CI</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> no pickle: native artifacts as skops, xgboost JSON or safetensors</li>
 </ul>
 </div>
-<p>See the full worked guides: <a href="../pymc/">PyMC</a>, <a href="../sklearn/">scikit-learn and xgboost</a>,
-<a href="../plugins/">steps and custom models</a>.</p>
+<p>For the full guides with examples, see <a href="../pymc/">PyMC</a>, <a href="../sklearn/">scikit-learn and xgboost</a>
+and <a href="../plugins/">steps and custom models</a>.</p>
 
 
 

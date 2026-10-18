@@ -100,7 +100,9 @@
         "SELF_APPROVAL_FORBIDDEN",
         "NOT_VALIDATED",
         "EXPLORE_INVALID",
-        "OPTIMIZE_INFEASIBLE"
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -572,10 +574,10 @@
       "issues": [
         {
           "code": "MISSING_FUTURE_COVARIATE",
-          "message": "forecasting needs future values of ['spend'] at stage 'raw'",
+          "message": "the forecast needs future values of ['spend'] at stage 'raw'",
           "pointer": "/scenario",
           "severity": "error",
-          "suggested_action": "Provide them in a scenario dataset."
+          "suggested_action": "Supply them in a scenario dataset."
         }
       ],
       "valid": false

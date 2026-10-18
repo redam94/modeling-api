@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1415,6 +1417,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4643,6 +4673,8 @@
       
         
       
+        
+      
     
     
     
@@ -4731,6 +4763,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4900,12 +4960,15 @@
 
 
 <h1 id="architecture-overview-v04">Architecture overview <span class="mapi-badge">v0.4</span><a class="headerlink" href="#architecture-overview-v04" title="Permanent link">&para;</a></h1>
-<p>modeling-api is three layers, built in this order: a typed modelling runtime (the SDK, the
-steps and the model plugins), a job platform around it (the API, the queue, the executors and
-the runner), and, from v0.3, a hosted multi-tenant platform. The rules that make the last one
-safe hold from the first: the control plane never imports plugin code and never decodes your
-arrays, every run happens in a sandbox, and every output is checked against what the storage
-itself computed.</p>
+<p>modeling-api has three layers. The project made them in this sequence:</p>
+<ol>
+<li>A typed runtime for models: the SDK, the steps and the model plugins.</li>
+<li>A job platform around it: the API, the queue, the executors and the runner.</li>
+<li>From v0.3, a hosted platform for many tenants.</li>
+</ol>
+<p>The rules that keep the last layer safe also apply to the first layers. The control plane never
+imports plugin code and never decodes your arrays. Each run occurs in a sandbox. The platform
+compares each output with the values that the storage calculated.</p>
 <pre class="mermaid"><code>flowchart TB
     subgraph clients["Clients"]
         web["Web app&lt;br/&gt;(app origin)"]
@@ -4949,57 +5012,57 @@ itself computed.</p>
 <tr>
 <td><strong>API</strong></td>
 <td><code>mapi-server</code> (<code>mapi-server api</code>)</td>
-<td>The <code>/v1</code> HTTP API: datasets, specs and their static validation, runs, models, scoring, plots; server-sent events; signed URLs</td>
-<td>Import <code>mapi_sdk</code>, a plugin, numpy or xarray (an import-linter contract, also enforced inside the server image)</td>
+<td>The <code>/v1</code> HTTP API: datasets, specs and their static validation, runs, models, scores and plots. Server-sent events. Signed URLs</td>
+<td>Import <code>mapi_sdk</code>, a plugin, numpy or xarray. An import-linter contract prevents this, also in the server image</td>
 </tr>
 <tr>
 <td><strong>Orchestrator</strong></td>
 <td><code>mapi-server</code> (<code>mapi-server worker</code>)</td>
-<td>Dispatcher, reconciler, event ingestion and the finalizer, over a procrastinate queue in the same PostgreSQL</td>
-<td>Decode a dataset or a bundle: it reads object <em>metadata</em> and size-capped JSON sidecars only</td>
+<td>The dispatcher, the reconciler, event ingestion and the finalizer. They use a procrastinate queue in the same PostgreSQL</td>
+<td>Decode a dataset or a bundle. It reads only object <em>metadata</em> and JSON sidecars with a size limit</td>
 </tr>
 <tr>
 <td><strong>Executor</strong></td>
 <td><code>mapi_server.executors</code></td>
-<td>Starts a runner for a run: <code>local-process</code> (a subprocess), <code>docker</code> / <code>docker-gvisor</code> (a container); Cloud Run Jobs in v0.3</td>
-<td>Pass anything but the run id and a nonce</td>
+<td>Starts a runner for a run: <code>local-process</code> (a subprocess), <code>docker</code> / <code>docker-gvisor</code> (a container), and Cloud Run Jobs in v0.3</td>
+<td>Send data other than the run id and a nonce</td>
 </tr>
 <tr>
 <td><strong>Runner</strong></td>
 <td><code>mapi-runner</code></td>
-<td>A trusted <em>supervisor</em> that fetches the run's instructions, starts an untrusted <em>worker</em>, uploads outputs and signs events</td>
-<td>Let the worker touch credentials, the network of the store or its stdout</td>
+<td>A trusted <em>supervisor</em>. It gets the instructions of the run, starts an untrusted <em>worker</em>, uploads outputs and signs events</td>
+<td>Let the worker use credentials, the network of the store or its stdout</td>
 </tr>
 <tr>
 <td><strong>SDK and plugins</strong></td>
 <td><code>mapi-sdk</code>, <code>mapi-steps</code>, <code>mapi-pymc</code>, <code>mapi-sklearn</code>, <code>mapi-plugin-*</code></td>
-<td>The modelling runtime: pipelines with fitted state, models, coord plans, summaries, bundles</td>
-<td>Run anywhere but in the worker (on the platform) or your own process (as a library)</td>
+<td>The runtime for models: pipelines with fitted state, models, coord plans, summaries and bundles</td>
+<td>Run in a location other than the worker (on the platform) or your own process (as a library)</td>
 </tr>
 <tr>
 <td><strong>Contracts</strong></td>
 <td><code>mapi-spec</code></td>
-<td>Every shape both sides agree on: specs, schemas, DTOs, the run protocol, error codes</td>
+<td>All the shapes that the two sides agree on: specs, schemas, DTOs, the run protocol and error codes</td>
 <td>Import numpy, xarray or pandas</td>
 </tr>
 <tr>
 <td><strong>Object store</strong></td>
 <td><code>mapi-gcs-shim</code> locally, Cloud Storage later</td>
-<td>Buckets with object generations, server-computed CRC32C and MD5, signed URLs and POST policies, per-principal permissions</td>
+<td>Buckets with object generations, CRC32C and MD5 that the server calculates, signed URLs and POST policies, and permissions for each principal</td>
 <td>—</td>
 </tr>
 <tr>
 <td><strong>Web app</strong>, <strong>plot sandbox</strong></td>
 <td><code>apps/web</code>, <code>apps/plot-sandbox</code></td>
-<td>The Guided and Expert UI and the Integrations hub; the plot sandbox is the only place Vega-Lite and Plotly specs render, including shared embed pages</td>
-<td>Render a plot on the app's own origin</td>
+<td>The Guided and Expert UI and the Integrations hub. The plot sandbox is the only location where Vega-Lite and Plotly specs render, also for shared embed pages</td>
+<td>Render a plot on the origin of the app</td>
 </tr>
 </tbody>
 </table>
 <h2 id="the-control-plane">The control plane<a class="headerlink" href="#the-control-plane" title="Permanent link">&para;</a></h2>
-<p>The API and the orchestrator share one PostgreSQL database. The API writes runs in state
-<code>created</code> and decides <code>queued</code> or <code>rejected</code> from static checks; everything after that
-belongs to the orchestrator.</p>
+<p>The API and the orchestrator use the same PostgreSQL database. The API writes runs in state
+<code>created</code>. Then it sets <code>queued</code> or <code>rejected</code> from static checks. The orchestrator owns all
+the subsequent states.</p>
 <pre class="mermaid"><code>flowchart LR
     subgraph api["API process"]
         routes["/v1 routes"]
@@ -5021,28 +5084,31 @@ belongs to the orchestrator.</p>
     fin --&gt;|"model versions,&lt;br/&gt;signed manifests"| pg
     pg --&gt;|"NOTIFY"| sse</code></pre>
 <ul>
-<li><strong>Static validation</strong> runs in the API, synchronously, from JSON only: each step's exported
-  <em>schema effect</em> and each model's settings schema and schema template, taken from the
-  catalog. The catalog is produced by a sandboxed <code>describe</code> run of the real runner and cached
-  per image digest, so the API validates against exactly what the runner will execute.</li>
-<li><strong>The dispatcher</strong> leases queued runs through a token bucket, writes an <em>intent row</em>
-  (run, attempt, nonce) and then calls the executor, so a crash between the two can be
-  recovered.</li>
-<li><strong>The reconciler</strong> is level-triggered: every 10 seconds it compares each active run with the
-  executor's own status, which is the source of truth for liveness. Silence only marks a run
-  <code>stalled</code>; an execution that vanished is retried as a new attempt (within a cost window),
-  and orphaned executions are adopted by their nonce.</li>
-<li><strong>The finalizer</strong> turns a finished execution into a model version (see
+<li><strong>Static validation</strong> runs in the API, synchronously, and uses only JSON. It uses the
+  exported <em>schema effect</em> of each step, and the settings schema and schema template of each
+  model, from the catalog. A sandboxed <code>describe</code> run of the real runner makes the catalog.
+  The platform keeps the catalog in a cache for each image digest. Thus, the API validates
+  against exactly the code that the runner will run.</li>
+<li><strong>The dispatcher</strong> leases queued runs through a token bucket. It writes an <em>intent row</em>
+  (run, attempt, nonce) and then calls the executor. Thus, the platform can recover from a
+  crash between the two operations.</li>
+<li><strong>The reconciler</strong> is level-triggered. Every 10 seconds, it compares each active run with
+  the status from the executor. This status is the source of truth for liveness. If a run
+  sends no events, the reconciler only marks it <code>stalled</code>. If an execution disappears, the
+  reconciler tries it again as a new attempt (in a cost window). The reconciler adopts orphaned
+  executions by their nonce.</li>
+<li><strong>The finalizer</strong> changes a finished execution into a model version (see
   <a href="#storage-and-integrity">Storage and integrity</a>).</li>
-<li><strong>Events</strong> are verified, deduplicated on <code>(run, attempt, seq)</code>, and stored as one
-  <code>run_progress</code> row per run plus <code>run_events</code> for state changes, warnings, diagnostics and
-  metrics. A PostgreSQL <code>NOTIFY</code> wakes the SSE streams of every API process.</li>
+<li><strong>Events</strong>: the orchestrator verifies them and removes duplicates on <code>(run, attempt, seq)</code>.
+  It keeps one <code>run_progress</code> row for each run. It also keeps <code>run_events</code> for state changes,
+  warnings, diagnostics and metrics. A PostgreSQL <code>NOTIFY</code> starts the SSE streams of each API
+  process again.</li>
 </ul>
-<p>The state machine, every transition and who owns it are in the
-<a href="../../reference/run-protocol/#run-states">Run protocol</a>.</p>
+<p>The <a href="../../reference/run-protocol/#run-states">Run protocol</a> gives the state machine, all the
+transitions and the owner of each transition.</p>
 <h2 id="the-run-sandbox">The run sandbox<a class="headerlink" href="#the-run-sandbox" title="Permanent link">&para;</a></h2>
-<p>Every run, whatever its kind (<code>ingest</code>, <code>describe</code>, <code>validate</code>, <code>fit</code>, <code>score</code>), gets a fresh
-pair of processes: a trusted supervisor and an untrusted worker.</p>
+<p>Each run gets a new pair of processes: a trusted supervisor and an untrusted worker. This
+applies to all types of run (<code>ingest</code>, <code>describe</code>, <code>validate</code>, <code>fit</code>, <code>score</code>).</p>
 <pre class="mermaid"><code>sequenceDiagram
     participant D as Dispatcher
     participant S as Object store
@@ -5061,25 +5127,27 @@ pair of processes: a trusted supervisor and an untrusted worker.</p>
     R-&gt;&gt;S: PUT manifest.json (signed claim of every object)
     R--&gt;&gt;D: "complete" event, exit 0</code></pre>
 <ul>
-<li><strong>No credentials in the environment.</strong> The executor passes only <code>MAPI_RUN_ID</code> and
-  <code>MAPI_NONCE</code>. The run's signed URLs and its event HMAC key are in a one-time <em>bootstrap</em>
-  object that the supervisor reads and deletes before any model code starts.</li>
+<li><strong>No credentials in the environment.</strong> The executor sends only <code>MAPI_RUN_ID</code> and
+  <code>MAPI_NONCE</code>. The signed URLs of the run and its event HMAC key are in a one-time
+  <em>bootstrap</em> object. The supervisor reads and deletes this object before model code starts.</li>
 <li><strong>The worker is untrusted.</strong> It runs the SDK harness and the plugin with an allow-listed
-  environment (every <code>MAPI_*</code> removed), in its own session, under uid 10001 with
-  <code>no_new_privs</code> when the supervisor runs as root (containers, Cloud Run). It talks only to
-  the supervisor, through length-prefixed JSON frames that must match their schemas.</li>
-<li><strong>Only the supervisor writes events.</strong> Its stdout carries one JSON event per line, each
-  with a sequence number and an HMAC; anything the worker prints becomes a capped,
-  control-character-stripped <code>log</code> event.</li>
-<li><strong>Caps everywhere.</strong> Log lines (4 KB) and total logs (20 MB), event size, output objects and
-  bytes, and a scratch budget per resource class. Breaking one is a <code>SANDBOX_VIOLATION</code> or
-  <code>RESOURCE_EXHAUSTED</code>, never a silent truncation of results.</li>
-<li><strong>Checkpoints.</strong> On SIGTERM or near the deadline, a PyMC fit flushes its last segment and the
-  supervisor uploads a <code>partial</code> manifest; the run can be resumed from there.</li>
+  environment (with all <code>MAPI_*</code> removed), in its own session. When the supervisor runs as
+  root (containers, Cloud Run), the worker runs under uid 10001 with <code>no_new_privs</code>. It
+  communicates only with the supervisor, through length-prefixed JSON frames. Each frame must
+  agree with its schema.</li>
+<li><strong>Only the supervisor writes events.</strong> Its stdout has one JSON event on each line. Each event
+  has a sequence number and an HMAC. All text that the worker prints becomes a <code>log</code> event. The
+  <code>log</code> event has a size limit and has no control characters.</li>
+<li><strong>Limits everywhere.</strong> There are limits for log lines (4 KB) and total logs (20 MB), event
+  size, output objects and bytes, and a scratch budget for each resource class. If a run goes
+  above a limit, the result is <code>SANDBOX_VIOLATION</code> or <code>RESOURCE_EXHAUSTED</code>. The platform never
+  cuts results silently.</li>
+<li><strong>Checkpoints.</strong> On SIGTERM or near the deadline, a PyMC fit writes its last segment, and
+  the supervisor uploads a <code>partial</code> manifest. The run can continue from that point.</li>
 </ul>
-<p>On a laptop the worker cannot change user, so runs report <code>DEV_MODE_ISOLATION</code>: the process
-split, the scrubbed environment, the event signing and the output verification all still
-apply, but the worker runs as you. See the <a href="../security/">security model</a>.</p>
+<p>On a laptop, the worker cannot change the user, so runs report <code>DEV_MODE_ISOLATION</code>. The
+process split, the scrubbed environment, the event signatures and the output verification
+continue to apply. But the worker runs as you. See the <a href="../security/">security model</a>.</p>
 <h2 id="storage-and-integrity">Storage and integrity<a class="headerlink" href="#storage-and-integrity" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     subgraph buckets["Buckets: mapi-{env}-*"]
@@ -5113,34 +5181,36 @@ apply, but the worker runs as you. See the <a href="../security/">security model
 <tr>
 <td><code>bootstrap</code></td>
 <td>The dispatcher</td>
-<td>The supervisor, with a principal that may <em>get and delete</em> there and nothing else (no list)</td>
+<td>The supervisor, with a principal that can only <em>get and delete</em> there (no list)</td>
 </tr>
 <tr>
 <td><code>runs</code></td>
-<td>Runs, through a POST policy limited to their attempt prefix and a size range</td>
+<td>Runs, through a POST policy with a limit to their attempt prefix and a size range</td>
 <td>The finalizer (metadata)</td>
 </tr>
 <tr>
 <td><code>bundles</code></td>
-<td>The finalizer only, by server-side copy; write-once under a retention lock</td>
-<td>Clients and runs, through signed GETs minted after verification</td>
+<td>Only the finalizer, with a server-side copy. Write-once under a retention lock</td>
+<td>Clients and runs, through signed GETs that the platform makes after verification</td>
 </tr>
 <tr>
 <td><code>data</code></td>
-<td>The finalizer, by server-side copy of ingest outputs</td>
+<td>The finalizer, with a server-side copy of ingest outputs</td>
 <td>Runs, through signed GETs</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Outputs are claims.</strong> When a run ends, the finalizer lists the attempt prefix and reads each
-object's metadata: the size, CRC32C, MD5 and <em>generation</em> the store computed. It compares
-them with the run's signed manifest and refuses missing, changed or unexpected objects
-(<code>INTEGRITY_FAILURE</code>). It validates the small JSON sidecars under size caps, sanitizes the
-plots, copies the verified generations into the bundles bucket, and signs a
-<strong>bundle manifest</strong> that binds the tenant, run, spec hash, data hash, catalog digest and every
-destination generation (an EC P-256 key locally, standing in for Cloud KMS). Every later
-download link is minted only after that signature checks, so a swapped object can never be
-served. Bundles themselves are zarr zips plus JSON: nothing is pickled.</p>
+<p><strong>Outputs are claims.</strong> When a run ends, the finalizer lists the attempt prefix. It reads the
+metadata of each object: the size, CRC32C, MD5 and <em>generation</em> that the store calculated. It
+compares these values with the signed manifest of the run. It refuses missing, changed or
+unexpected objects (<code>INTEGRITY_FAILURE</code>). It validates the small JSON sidecars under size
+limits and sanitizes the plots. Then it copies the verified generations into the bundles
+bucket.</p>
+<p>Then the finalizer signs a <strong>bundle manifest</strong>. The manifest binds the tenant, the run, the
+spec hash, the data hash, the catalog digest and each destination generation. Locally, an EC
+P-256 key replaces Cloud KMS. The platform makes each subsequent download link only after it
+checks that signature. Thus, it can never serve an object that was replaced. Bundles are zarr
+zips and JSON. The platform does not use pickle.</p>
 <h2 id="the-event-path">The event path<a class="headerlink" href="#the-event-path" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     W["Worker"] --&gt;|"frames"| S["Supervisor"]
@@ -5153,16 +5223,16 @@ served. Bundles themselves are zarr zips plus JSON: nothing is pickled.</p>
     RE --&gt;|"NOTIFY"| SSE["SSE streams&lt;br/&gt;Last-Event-ID resume"]
     RP --&gt; SSE
     SSE --&gt; C(("web app ·&lt;br/&gt;CLI · client"))</code></pre>
-<p>Locally the executor reads events straight from the supervisor's stdout. In the cloud the
-same lines travel through Cloud Logging and Pub/Sub to <code>POST /internal/events</code>; the
-verification is the same. Progress is coalesced to one event every couple of seconds and kept
-as a single row, so a long fit does not write thousands of rows; only state changes,
-warnings, diagnostics, checkpoints, metrics and terminal events are persisted and replayed to
-a reconnecting client.</p>
+<p>Locally, the executor reads events directly from the stdout of the supervisor. In the cloud,
+the same lines go through Cloud Logging and Pub/Sub to <code>POST /internal/events</code>. The
+verification is the same. The platform combines progress into one event every two or three
+seconds and keeps it as one row. Thus, a long fit does not write thousands of rows. The
+platform keeps only state changes, warnings, diagnostics, checkpoints, metrics and terminal
+events. It sends these events again to a client that connects again.</p>
 <h2 id="the-integration-paths-v04">The integration paths (v0.4)<a class="headerlink" href="#the-integration-paths-v04" title="Permanent link">&para;</a></h2>
-<p>Three paths take a model's results out of the platform. None of them gives the outside world
-more than it needs: an endpoint call runs in a sandbox like any score, a webhook carries ids
-and states only, and an embed link shows one chart.</p>
+<p>Three paths send the results of a model out of the platform. No path gives more data to the
+outside world than it needs. An endpoint call runs in a sandbox, as all scores do. A webhook
+sends only ids and states. An embed link shows one chart.</p>
 <pre class="mermaid"><code>flowchart LR
     subgraph out["Outside"]
         app["Sheets · BI ·&lt;br/&gt;your app"]
@@ -5186,24 +5256,27 @@ and states only, and an embed link shows one chart.</p>
     viewer --&gt; page --&gt;|"fetch, CSP-limited"| embed
     embed --&gt;|"data inlined from the&lt;br/&gt;verified bundle"| bun</code></pre>
 <ul>
-<li><strong>Endpoints</strong> freeze the model version's input contract when it is promoted, so a call is
-  checked statically (dims, coordinates, future covariates) before a run is started; the
-  payload is stored as a run input and decoded only in the sandbox. Promotion goes through
-  the <a href="../integrations/#promotion-gate">scorecard gate</a>.</li>
-<li><strong>Webhooks</strong> are written to an outbox in the same transaction as the change they report
-  (a finished run, a ready model version, a promotion), then delivered by the worker through
-  the <a href="../integrations/#ssrf-protection">SSRF guard</a>, signed, retried and logged.</li>
-<li><strong>Embeds</strong> are served to a page on the plot sandbox's origin, which may fetch nothing but
-  the public embed view; the API inlines the plot's data from the verified bundle without
-  decoding it (<a href="../../guides/sharing-plots/#the-embed-page">Sharing plots</a>).</li>
+<li><strong>Endpoints</strong> freeze the input contract of the model version at promotion. Thus, the
+  platform checks a call statically (dims, coordinates, future covariates) before it starts a
+  run. The platform keeps the payload as a run input and decodes it only in the sandbox.
+  Promotion goes through the <a href="../integrations/#promotion-gate">scorecard gate</a>.</li>
+<li><strong>Webhooks</strong>: the platform writes them to an outbox in the same transaction as the change
+  that they report (a finished run, a model version that is ready, a promotion). Then the
+  worker delivers them through the <a href="../integrations/#ssrf-protection">SSRF guard</a>. The worker
+  signs, retries and logs each delivery.</li>
+<li><strong>Embeds</strong>: the platform serves them to a page on the origin of the plot sandbox. This page
+  can get only the public embed view. The API puts the data of the plot from the verified
+  bundle into the page, and does not decode it
+  (<a href="../../guides/sharing-plots/#the-embed-page">Sharing plots</a>).</li>
 </ul>
 <h2 id="where-to-read-more">Where to read more<a class="headerlink" href="#where-to-read-more" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../reference/run-protocol/">Run protocol</a>: states, bootstrap, event wire format, exit
-  codes, manifests, storage layout.</li>
-<li><a href="../../reference/runner/">Runner</a>: what the supervisor guarantees.</li>
+<li><a href="../../reference/run-protocol/">Run protocol</a>: states, bootstrap, the wire format of events,
+  exit codes, manifests and the storage layout.</li>
+<li><a href="../../reference/runner/">Runner</a>: the guarantees of the supervisor.</li>
 <li><a href="../../reference/gcs-shim/">GCS shim</a>: the local object store, its buckets and principals.</li>
-<li><a href="../security/">Security model</a>: what is enforced on a laptop and what production adds.</li>
+<li><a href="../security/">Security model</a>: the controls on a laptop, and the controls that production
+  adds.</li>
 <li><a href="../../reference/http-api/">HTTP API</a> and the <a href="../../reference/openapi/">OpenAPI explorer</a>.</li>
 </ul>
 

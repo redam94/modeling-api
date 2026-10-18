@@ -69,7 +69,7 @@
         {
           "check": "holdout.mape",
           "code": "SCORECARD_WARN",
-          "message_plain": "Holdout error: forecasts were off by 14%.",
+          "message_plain": "Holdout error: the forecast error was 14%.",
           "outcome": "needs_override"
         }
       ],

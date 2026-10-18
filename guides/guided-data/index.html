@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4668,6 +4698,8 @@
       
         
       
+        
+      
     
     
     
@@ -4756,6 +4788,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4937,13 +4997,18 @@
 
 
 <h1 id="from-a-spreadsheet-to-a-guided-draft-v04">From a spreadsheet to a Guided draft <span class="mapi-badge">v0.4</span><a class="headerlink" href="#from-a-spreadsheet-to-a-guided-draft-v04" title="Permanent link">&para;</a></h1>
-<p>This guide follows the Guided data path over the HTTP API: pick a template, let the platform
-suggest which column answers which question, turn the answers into a draft (an ingest
-mapping plus a <code>ModelSpec</code>), upload the data with that mapping and save the spec. The web
-app's Guided screens and the Python client make exactly these calls. The concepts are in
-<a href="../../concepts/guided-mode/">Guided mode</a>.</p>
-<p>Every call is project-scoped: send <code>X-Mapi-Project: &lt;tenant&gt;/&lt;project&gt;</code> (or use a token
-bound to the project). The examples use the single-tenant development server.</p>
+<p>This guide follows the Guided data path over the HTTP API. You do these steps:</p>
+<ol>
+<li>Select a template.</li>
+<li>Let the platform suggest which column answers each question.</li>
+<li>Change the answers into a draft. A draft is an ingest mapping and a <code>ModelSpec</code>.</li>
+<li>Upload the data with that mapping.</li>
+<li>Save the spec.</li>
+</ol>
+<p>The Guided screens of the web app and the Python client make the same calls.
+<a href="../../concepts/guided-mode/">Guided mode</a> gives the concepts.</p>
+<p>All calls are project-scoped. Send <code>X-Mapi-Project: &lt;tenant&gt;/&lt;project&gt;</code>, or use a token that
+is bound to the project. The examples use the single-tenant development server.</p>
 <pre class="mermaid"><code>sequenceDiagram
     participant B as Browser or client
     participant API as API (JSON only)
@@ -4965,37 +5030,42 @@ bound to the project). The examples use the single-tenant development server.</p
 <tr>
 <th>Template</th>
 <th>Built-in model</th>
-<th>Data it expects</th>
+<th>Data that it expects</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>geo_mmm</code></td>
 <td><code>mmm.bayesian</code> (mmm-framework)</td>
-<td>one row per market and week: the result, one spend column per channel, optional controls</td>
+<td>One row for each market and week: the result, one spend column for each channel, and optional controls</td>
 </tr>
 <tr>
 <td><code>weekly_forecast</code></td>
 <td><code>ts.hsgp_trend</code></td>
-<td>one row per week (or day): the series to forecast</td>
+<td>One row for each week (or day): the series to forecast</td>
 </tr>
 <tr>
 <td><code>store_demand</code></td>
 <td><code>tabular.regressor</code></td>
-<td>one row per store and week: units sold and the drivers (price, promotions)</td>
+<td>One row for each store and week: the units sold and the drivers (price, promotions)</td>
 </tr>
 <tr>
 <td><code>customer_choice</code></td>
 <td><code>choice.multinomial_logit</code></td>
-<td>one row per household and shopping trip: the product chosen and one price (and promotion) column per product</td>
+<td>One row for each household and shopping trip: the product chosen, and one price (and promotion) column for each product</td>
 </tr>
 </tbody>
 </table>
-<p><code>GET /v1/guided/templates/{id}</code> returns one template with its questions, the spec template,
-the scorecard checks and the <code>x-ui-level</code> of every field.</p>
+<p><code>GET /v1/guided/templates/{id}</code> gives one template with these items:</p>
+<ul>
+<li>Its questions.</li>
+<li>The spec template.</li>
+<li>The scorecard checks.</li>
+<li>The <code>x-ui-level</code> of each field.</li>
+</ul>
 <h2 id="2-let-the-platform-suggest-the-answers">2. Let the platform suggest the answers<a class="headerlink" href="#2-let-the-platform-suggest-the-answers" title="Permanent link">&para;</a></h2>
-<p>The browser profiles the upload locally, so nothing hostile reaches the servers just to be
-previewed, and sends one <code>ColumnProfile</code> per column:</p>
+<p>The browser profiles the upload locally. Thus no hostile data goes to the servers only for a
+preview. The browser sends one <code>ColumnProfile</code> for each column:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>localhost:8000/v1/guided/detect-roles<span class="w"> </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="s1">  "template_id": "geo_mmm",</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="s1">  "columns": [</span>
@@ -5007,21 +5077,31 @@ previewed, and sends one <code>ColumnProfile</code> per column:</p>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="s1">    {"name": "avg_price", "dtype": "number", "n_rows": 520, "min": 1, "max": 3}</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="s1">  ]}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.questions[] | {question_id, answer}'</span>
 </span></code></pre></div>
-<p>Each question comes back with ranked candidates, a <code>confidence</code> and a <code>reason_plain</code>
-("named like a revenue column; never negative"). The heuristics look at names (split into
-words, matched against each question's keywords), types, the number of distinct values
-(labels suit dims), ordered dates and trip numbers, negative or constant values (bad spend
-candidates) and mostly empty columns. A column answers at most one question; required
-questions without a good candidate come back as warnings in <code>issues</code>.</p>
+<p>Each question comes back with ranked candidates, a <code>confidence</code> and a <code>reason_plain</code>. An
+example reason is "named like a revenue column; never negative". The heuristics look at these
+properties:</p>
+<ul>
+<li>Names. The heuristics split names into words and compare them with the keywords of each
+  question.</li>
+<li>Types.</li>
+<li>The number of distinct values. Labels are good for dims.</li>
+<li>Ordered dates and trip numbers.</li>
+<li>Negative or constant values. These are bad candidates for spend.</li>
+<li>Columns that are almost empty.</li>
+</ul>
+<p>A column answers a maximum of one question. If a necessary question has no good candidate, it
+comes back as a warning in <code>issues</code>.</p>
 <h3 id="from-a-stored-dataset">From a stored dataset<a class="headerlink" href="#from-a-stored-dataset" title="Permanent link">&para;</a></h3>
-<p>Instead of <code>columns</code>, name a stored version: <code>{"template_id": "geo_mmm", "dataset":
-"dataset://growth/eu_media@v2"}</code>. Every ingest run since v0.4 writes <code>columns.json</code> - the
-profile of each <strong>uploaded</strong> column, computed in the sandbox - and detection reads it (also
-downloadable as <code>GET /v1/datasets/{id}/versions/{v}/artifacts/columns.json</code>). For an MFF
-upload the profiles are those of the pivoted table: <code>Period</code>, the key columns that vary and
-one column per <code>VariableName</code>, so <code>TV_Spend</code> answers the spend question. Versions ingested
-before v0.4 (and zarr or netCDF uploads) fall back to their dims and variables, read from the
-stored schema and summary. Either way the API reads only JSON metadata, never the data.</p>
+<p>Instead of <code>columns</code>, give a stored version: <code>{"template_id": "geo_mmm", "dataset":
+"dataset://growth/eu_media@v2"}</code>. Each ingest run from v0.4 writes <code>columns.json</code>. This file
+has the profile of each <strong>uploaded</strong> column, which the sandbox calculates. Detection reads
+this file. You can also download it with
+<code>GET /v1/datasets/{id}/versions/{v}/artifacts/columns.json</code>.</p>
+<p>For an MFF upload, the profiles are the profiles of the pivoted table. These are <code>Period</code>, the
+key columns that vary, and one column for each <code>VariableName</code>. Thus <code>TV_Spend</code> answers the
+spend question. For versions ingested before v0.4, and for zarr or netCDF uploads, detection
+uses their dims and variables. It reads them from the stored schema and summary. In all cases,
+the API reads only JSON metadata, never the data.</p>
 <h2 id="3-turn-the-answers-into-a-draft">3. Turn the answers into a draft<a class="headerlink" href="#3-turn-the-answers-into-a-draft" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>localhost:8000/v1/guided/drafts<span class="w"> </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="s1">  "template_id": "geo_mmm", "name": "eu-geo-mmm", "dataset": "eu_media",</span>
@@ -5029,33 +5109,40 @@ stored schema and summary. Either way the API reads only JSON metadata, never th
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="s1">              "spend": ["TV_Spend", "Search_Spend"], "controls": ["avg_price"]},</span>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="s1">  "columns": [ ...the same profiles... ]}'</span>
 </span></code></pre></div>
-<p>The <code>GuidedDraft</code> holds:</p>
+<p>The <code>GuidedDraft</code> holds these items:</p>
 <ul>
-<li><code>mapping</code>: the <code>IngestMapping</code> for the upload. Column names become safe dataset names
-  (<code>Avg Price</code> → <code>avg_price</code>); spend columns become one <code>spend</code> variable along a new
-  <code>channel</code> dim, labelled from the names (<code>TV_Spend</code> → <code>tv</code>; for the choice template
-  <code>price_cola</code> and <code>promo_cola</code> both label product <code>cola</code>).</li>
-<li><code>spec</code> and <code>yaml</code>: the <code>ModelSpec</code> for the project, with <code>fit.mode: evaluate_then_refit</code>.</li>
-<li><code>issues</code>: answer warnings (a column whose type does not fit the question) and the
-  <strong>static validator's</strong> findings. The draft is validated against the catalog with the
-  schema its mapping promises, before any data exists - for example a control named
-  <code>Fourier</code> would clash with the seasonality the template adds (<code>/pipeline/4</code>).</li>
+<li><code>mapping</code>: The <code>IngestMapping</code> for the upload. Column names become safe dataset names
+  (<code>Avg Price</code> → <code>avg_price</code>). Spend columns become one <code>spend</code> variable along a new <code>channel</code>
+  dim. The labels come from the names (<code>TV_Spend</code> → <code>tv</code>). For the choice template,
+  <code>price_cola</code> and <code>promo_cola</code> both give the label of the product <code>cola</code>.</li>
+<li><code>spec</code> and <code>yaml</code>: The <code>ModelSpec</code> for the project, with <code>fit.mode: evaluate_then_refit</code>.</li>
+<li><code>issues</code>: Answer warnings (a column with a type that does not agree with the question) and
+  the findings of the <strong>static validator</strong>. The validator checks the draft against the catalog
+  with the schema that its mapping promises, before data exists. For example, a control with
+  the name <code>Fourier</code> would conflict with the seasonality that the template adds
+  (<code>/pipeline/4</code>).</li>
 </ul>
-<p>Impossible answers are <code>422 GUIDED_ANSWERS_INVALID</code> pointing at <code>/answers/&lt;question&gt;</code>: a
-missing required answer, a column used twice, two columns that would get the same dataset
-name, a choice or number out of range.</p>
-<p>For an MFF upload send <code>"format": "mff"</code>: the answers then name <code>Period</code>, the MFF key columns
-and <code>VariableName</code> values, and the mapping uses the <code>mff</code> preset.</p>
-<p>Nothing is stored. Upload the data with the draft's mapping and save the spec:</p>
+<p>Impossible answers get <code>422 GUIDED_ANSWERS_INVALID</code>, which points at <code>/answers/&lt;question&gt;</code>.
+Impossible answers are these:</p>
+<ul>
+<li>A necessary answer is missing.</li>
+<li>A column is used two times.</li>
+<li>Two columns would get the same dataset name.</li>
+<li>A choice or a number is out of range.</li>
+</ul>
+<p>For an MFF upload, send <code>"format": "mff"</code>. Then the answers give <code>Period</code>, the MFF key columns
+and the <code>VariableName</code> values. The mapping uses the <code>mff</code> preset.</p>
+<p>The draft call stores nothing. Upload the data with the mapping of the draft, then save the
+spec:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>localhost:8000/v1/datasets/<span class="nv">$DS</span>/versions<span class="w"> </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-d<span class="w"> </span><span class="s2">"{\"upload_id\": \"</span><span class="nv">$UPLOAD</span><span class="s2">\", \"mapping\": </span><span class="k">$(</span>jq<span class="w"> </span>.mapping<span class="w"> </span>draft.json<span class="k">)</span><span class="s2">}"</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>localhost:8000/v1/specs<span class="w"> </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s2">"{\"yaml\": </span><span class="k">$(</span>jq<span class="w"> </span>.yaml<span class="w"> </span>draft.json<span class="k">)</span><span class="s2">}"</span>
 </span></code></pre></div>
 <h2 id="file-formats-and-presets">File formats and presets<a class="headerlink" href="#file-formats-and-presets" title="Permanent link">&para;</a></h2>
-<p>Every upload is parsed in a sandboxed ingest run. Tabular uploads are CSV (comma, semicolon,
-tab or <code>|</code> separated, UTF-8, optionally gzip-compressed) or Parquet; <code>zarr_zip</code> and <code>netcdf</code>
-are self-describing.</p>
+<p>A sandboxed ingest run parses each upload. Tabular uploads are CSV or Parquet. A CSV file can
+use comma, semicolon, tab or <code>|</code> separators. It must be UTF-8, and it can be gzip-compressed.
+<code>zarr_zip</code> and <code>netcdf</code> files have their own descriptions.</p>
 <table>
 <thead>
 <tr>
@@ -5066,21 +5153,22 @@ are self-describing.</p>
 <tbody>
 <tr>
 <td><code>dims</code>, <code>vars</code>, <code>wide</code></td>
-<td>one column per dim and variable; <code>wide</code> gathers one column per label into one variable along a new dim. Wide variables sharing a dim must use the same labels</td>
+<td>One column for each dim and variable. <code>wide</code> collects one column for each label into one variable along a new dim. Wide variables that share a dim must use the same labels</td>
 </tr>
 <tr>
 <td><code>preset: mff</code> (or <code>format: mff</code>)</td>
-<td>pivots the MFF long table: <code>Period</code> becomes the time dim, key columns with several values become dims, every <code>VariableName</code> a variable. With <code>vars</code>/<code>wide</code>, those pick and rename the pivoted variables like CSV columns. <code>mff.combine</code> joins key columns into one dim (<code>{"geo": ["Geography", "Product"]}</code> gives labels such as <code>US|Watches</code>)</td>
+<td>Pivots the MFF long table. <code>Period</code> becomes the time dim. Key columns with more than one value become dims. Each <code>VariableName</code> becomes a variable. With <code>vars</code>/<code>wide</code>, these select and rename the pivoted variables, as for CSV columns. <code>mff.combine</code> joins key columns into one dim. For example, <code>{"geo": ["Geography", "Product"]}</code> gives labels such as <code>US|Watches</code></td>
 </tr>
 <tr>
 <td><code>preset: meridian</code></td>
-<td>Google Meridian's <code>CoordToColumns</code> contract on a wide table: <code>time</code>, <code>geo</code>, <code>kpi</code> (target), <code>revenue_per_kpi</code>, <code>population</code>, <code>controls</code>, and <code>media</code>/<code>media_spend</code> (and reach and frequency) along <code>channel</code></td>
+<td>The <code>CoordToColumns</code> contract of Google Meridian on a wide table: <code>time</code>, <code>geo</code>, <code>kpi</code> (target), <code>revenue_per_kpi</code>, <code>population</code>, <code>controls</code>, and <code>media</code>/<code>media_spend</code> (and reach and frequency) along <code>channel</code></td>
 </tr>
 </tbody>
 </table>
 <h3 id="limits">Limits<a class="headerlink" href="#limits" title="Permanent link">&para;</a></h3>
-<p>The ingest checks what a file <em>declares</em> before a parser allocates anything, and every cell
-after parsing (<code>IngestJob</code> sets the limits; the server's defaults are below).</p>
+<p>The ingest checks what a file <em>declares</em> before a parser allocates memory. It checks each cell
+after the parse. <code>IngestJob</code> sets the limits. The table below gives the defaults of the
+server.</p>
 <table>
 <thead>
 <tr>
@@ -5093,40 +5181,41 @@ after parsing (<code>IngestJob</code> sets the limits; the server's defaults are
 <tr>
 <td>rows</td>
 <td>50 million</td>
-<td>CSV: parsing stops one row past it; Parquet: from its metadata</td>
+<td>CSV: the parse stops one row after the limit. Parquet: from its metadata</td>
 </tr>
 <tr>
 <td>columns</td>
 <td>4,096</td>
-<td>the CSV header or Parquet schema; MFF: distinct variables</td>
+<td>The CSV header or the Parquet schema. MFF: distinct variables</td>
 </tr>
 <tr>
-<td>characters per cell or column name</td>
+<td>characters for each cell or column name</td>
 <td>4,096 (names: 256)</td>
-<td>every header and text cell</td>
+<td>Each header and text cell</td>
 </tr>
 <tr>
 <td>decompression ratio</td>
 <td>50 × the stored size</td>
-<td>gzip CSV (streamed), Parquet, zip archives, netCDF (decoded bytes); files that decode to less than 64 MiB are never refused for their ratio</td>
+<td>gzip CSV (streamed), Parquet, zip archives, netCDF (decoded bytes). The ingest never refuses files that decode to less than 64 MiB because of their ratio</td>
 </tr>
 <tr>
 <td>uncompressed size</td>
-<td>the ingest run's scratch budget: 3 GiB (class S), 6 GiB (M), 12 GiB (L)</td>
-<td>the same, as an absolute size; the class is the smallest whose dataset cap holds the upload</td>
+<td>The scratch budget of the ingest run: 3 GiB (class S), 6 GiB (M), 12 GiB (L)</td>
+<td>The same, as an absolute size. The class is the smallest class with a dataset cap that holds the upload</td>
 </tr>
 <tr>
 <td>dataset size</td>
-<td>250 million values, and 8 bytes per value within the scratch budget</td>
-<td>the dense dataset a table pivots to (every combination of the dim labels, times the variables), checked before it is built (<code>PAYLOAD_TOO_LARGE</code>)</td>
+<td>250 million values, and 8 bytes for each value in the scratch budget</td>
+<td>The dense dataset that a table pivots to (each combination of the dim labels, multiplied by the variables). The ingest checks it before it builds the dataset (<code>PAYLOAD_TOO_LARGE</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>Dates with a UTC offset or a time zone (<code>2024-01-07T00:00:00+01:00</code>, a tz-aware Parquet
-timestamp) are read as the local date and time they name, the offset dropped, so midnight
-labels stay on their day; the ingest reports it as an <code>info</code> issue.</p>
-<p>bzip2, xz and zstd compressed uploads are refused. Every refusal is one plain-language
-message and a suggested action, for example:</p>
+<p>Some dates have a UTC offset or a time zone, for example <code>2024-01-07T00:00:00+01:00</code> or a
+tz-aware Parquet timestamp. The ingest reads them as the local date and time that they give,
+and removes the offset. Thus midnight labels stay on their day. The ingest gives this as an
+<code>info</code> issue.</p>
+<p>The ingest refuses bzip2, xz and zstd compressed uploads. Each refusal is one plain-language
+message and a suggested action. For example:</p>
 <table>
 <thead>
 <tr>
@@ -5168,27 +5257,30 @@ message and a suggested action, for example:</p>
 </tr>
 </tbody>
 </table>
-<p>A failed ingest marks the dataset version <code>failed</code>; its <code>issues</code> carry the messages and the
-run's events carry them as diagnostics with <code>message_plain</code> and <code>suggested_action</code>. Cell
-values are only ever quoted in <code>untrusted_text</code>.</p>
+<p>If an ingest fails, the dataset version becomes <code>failed</code>. Its <code>issues</code> have the messages. The
+events of the run also have them as diagnostics with <code>message_plain</code> and <code>suggested_action</code>.
+The platform quotes cell values only in <code>untrusted_text</code>.</p>
 <h2 id="locking-a-project-to-guided-mode">Locking a project to Guided mode<a class="headerlink" href="#locking-a-project-to-guided-mode" title="Permanent link">&para;</a></h2>
-<p>A project admin locks a project in the web app (<strong>Settings &gt; Mode &gt; Lock … to Guided
-mode</strong>) or with <code>PATCH /v1/tenants/{tenant}/projects/{project}
-{"guided_locked": true}</code> (audited as <code>project.guided_lock</code>). Members below admin then see
-the Guided screens only, and their spec writes (<code>POST /v1/specs</code> and new revisions) must stay
-Guided specs:</p>
+<p>A project admin can lock a project in two ways:</p>
 <ul>
-<li>the spec names its template in <code>metadata.labels.guided</code> (drafts do) and uses that
-  template's plugin;</li>
-<li>fields the template marks <code>advanced</code> or <code>hidden</code> keep their values: a revision may not
-  change them from its parent, and a new spec has the template's values wherever the
-  template fixes them (for <code>geo_mmm</code>: the pipeline, the adstock and saturation settings, the
-  fit settings and the execution block);</li>
-<li>answers, <code>basic</code> settings (such as <code>pooling</code>), business priors and lift tests may change.</li>
+<li>In the web app: <strong>Settings &gt; Mode &gt; Lock … to Guided mode</strong>.</li>
+<li>With <code>PATCH /v1/tenants/{tenant}/projects/{project} {"guided_locked": true}</code>.</li>
 </ul>
-<p>Anything else is <code>403 FORBIDDEN</code> with one issue per offending pointer and the suggestion to
-ask an admin. Admins, <code>POST /v1/specs:validate</code>, runs and scoring are not affected, and the
-lock does not reach integrations' score calls.</p>
+<p>The audit log records the lock as <code>project.guided_lock</code>. Then members below admin see only the
+Guided screens. Their spec writes (<code>POST /v1/specs</code> and new revisions) must stay Guided specs:</p>
+<ul>
+<li>The spec gives its template in <code>metadata.labels.guided</code>, and it uses the plugin of that
+  template. Drafts do this.</li>
+<li>Fields that the template marks <code>advanced</code> or <code>hidden</code> keep their values. A revision cannot
+  change them from its parent. A new spec has the values of the template where the template
+  sets them. For <code>geo_mmm</code>, these are the pipeline, the adstock and saturation settings, the
+  fit settings and the execution block.</li>
+<li>Answers, <code>basic</code> settings (such as <code>pooling</code>), business priors and lift tests can change.</li>
+</ul>
+<p>All other writes get <code>403 FORBIDDEN</code>, with one issue for each pointer that is not permitted.
+The issue suggests that you ask an admin. The lock does not apply to admins,
+<code>POST /v1/specs:validate</code>, runs and scores. The lock also does not apply to the score calls of
+integrations.</p>
 
 
 

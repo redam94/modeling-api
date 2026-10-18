@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1393,6 +1395,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4621,6 +4651,8 @@
       
         
       
+        
+      
     
     
     
@@ -4709,6 +4741,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4856,8 +4916,8 @@
 
 
 <h1 id="bundles">Bundles<a class="headerlink" href="#bundles" title="Permanent link">&para;</a></h1>
-<p>A <strong>bundle</strong> is everything a fit produced that scoring needs, in a form that is safe to store,
-move and read back: one <code>bundle.zarr.zip</code> plus four JSON sidecars.</p>
+<p>A <strong>bundle</strong> contains all the results of a fit that scoring needs. Its form is safe to store,
+move and read again. A bundle is one <code>bundle.zarr.zip</code> and four JSON sidecars.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>fruit-demand-v1/
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── bundle.zarr.zip      # one zarr v3 zip: the whole fitted model as an xr.DataTree
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── manifest.json        # identity, provenance, lineage and the hashes of every file
@@ -4881,8 +4941,9 @@ move and read back: one <code>bundle.zarr.zip</code> plus four JSON sidecars.</p
 </span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">again</span> <span class="o">=</span> <span class="n">Bundle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">registry</span><span class="p">)</span>  <span class="c1"># every file's size and hashes are verified here</span>
 </span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="k">assert</span> <span class="n">again</span><span class="o">.</span><span class="n">bundle_id</span> <span class="o">==</span> <span class="n">bundle</span><span class="o">.</span><span class="n">bundle_id</span>
 </span></code></pre></div>
-<p><code>Bundle.read</code> recomputes the size, CRC32C, MD5 and SHA-256 of every file and compares them with
-the manifest. A damaged or tampered bundle raises <code>BundleError</code> (<code>INTEGRITY_FAILURE</code>).</p>
+<p><code>Bundle.read</code> calculates the size, CRC32C, MD5 and SHA-256 of each file again. Then it
+compares them with the manifest. If a bundle is damaged or changed without permission,
+<code>Bundle.read</code> raises <code>BundleError</code> (<code>INTEGRITY_FAILURE</code>).</p>
 <h2 id="what-is-inside">What is inside<a class="headerlink" href="#what-is-inside" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">manifest</span><span class="o">.</span><span class="n">role</span><span class="p">,</span> <span class="n">manifest</span><span class="o">.</span><span class="n">plugin</span><span class="p">[</span><span class="s2">"id"</span><span class="p">],</span> <span class="n">manifest</span><span class="o">.</span><span class="n">spec_hash</span><span class="p">[:</span><span class="mi">19</span><span class="p">])</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># production tabular.regressor sha256:...</span>
@@ -4904,7 +4965,7 @@ the manifest. A damaged or tampered bundle raises <code>BundleError</code> (<cod
 <tbody>
 <tr>
 <td><code>/spec</code></td>
-<td>The canonical spec and the resolved spec (pinned versions, every stage's schema)</td>
+<td>The canonical spec and the resolved spec (pinned versions, the schema of each stage)</td>
 </tr>
 <tr>
 <td><code>/schema/raw</code>, <code>/schema/model</code></td>
@@ -4912,11 +4973,11 @@ the manifest. A damaged or tampered bundle raises <code>BundleError</code> (<cod
 </tr>
 <tr>
 <td><code>/binding</code></td>
-<td>Canonical ↔ dataset names, reversed on every output</td>
+<td>Canonical ↔ dataset names, reversed on each output</td>
 </tr>
 <tr>
 <td><code>/preprocess/&lt;step&gt;</code></td>
-<td>Each step's learned JSON state, labelled <code>arrays</code> and per-group <code>context</code> tail</td>
+<td>For each step: the learned JSON state, labelled <code>arrays</code> and the <code>context</code> tail for each group</td>
 </tr>
 <tr>
 <td><code>/model</code></td>
@@ -4940,7 +5001,7 @@ the manifest. A damaged or tampered bundle raises <code>BundleError</code> (<cod
 </tr>
 <tr>
 <td><code>/fit_coords/&lt;stage&gt;</code></td>
-<td>The fitted coordinates at every stage (what CoordPlan checks against)</td>
+<td>The fitted coordinates at each stage (CoordPlan checks against them)</td>
 </tr>
 <tr>
 <td><code>/side_tables/&lt;name&gt;</code></td>
@@ -4948,31 +5009,32 @@ the manifest. A damaged or tampered bundle raises <code>BundleError</code> (<cod
 </tr>
 <tr>
 <td><code>/thin</code></td>
-<td>The bundle-wide thinning index for draws</td>
+<td>The thinning index for draws, for the full bundle</td>
 </tr>
 </tbody>
 </table>
 <h2 id="no-pickle-ever">No pickle, ever<a class="headerlink" href="#no-pickle-ever" title="Permanent link">&para;</a></h2>
-<p>Pickle executes code when it is loaded, so it has no place in an artifact that moves between
+<p>Pickle runs code when it loads. Thus pickle must not be in an artifact that moves between
 users, services and sandboxes.</p>
 <ul>
-<li>Model groups are labelled arrays in zarr; settings, states and manifests are JSON.</li>
-<li>Native estimators are stored as <strong>skops</strong> (loading lists the file's types first and refuses
-  anything outside that estimator's allow-list) or <strong>xgboost JSON</strong>.</li>
-<li><code>FitOutput.native</code> entries that look like pickle (<code>.pkl</code>, <code>.joblib</code>, <code>.pt</code>, pickle magic
-  bytes, …) are rejected when a bundle is written <strong>and</strong> when it is read. The contract kit
-  checks it for every plugin.</li>
+<li>Model groups are labelled arrays in zarr. Settings, states and manifests are JSON.</li>
+<li>Native estimators are stored as <strong>skops</strong> or <strong>xgboost JSON</strong>. When skops loads a file, it
+  first lists the types in the file. It refuses all types that are not on the allow list of
+  that estimator.</li>
+<li>Some <code>FitOutput.native</code> entries look like pickle (<code>.pkl</code>, <code>.joblib</code>, <code>.pt</code>, pickle magic
+  bytes, …). The platform rejects these entries when it writes a bundle <strong>and</strong> when it reads
+  a bundle. The contract kit checks this for each plugin.</li>
 </ul>
 <h2 id="hashes-in-the-forms-object-stores-report">Hashes in the forms object stores report<a class="headerlink" href="#hashes-in-the-forms-object-stores-report" title="Permanent link">&para;</a></h2>
-<p>CRC32C and MD5 are recorded base64-encoded, the way Google Cloud Storage computes them on
-upload. The platform binds a signed manifest to the object generations and server-computed
-hashes, so an uploaded artifact cannot be swapped or replayed (see
-<a href="../architecture/#storage-and-integrity">Storage and integrity</a>). SHA-256 is recorded too, for
-content addressing.</p>
+<p>The platform records CRC32C and MD5 in base64, the same as Google Cloud Storage calculates
+them on upload. The platform binds a signed manifest to the object generations and to the
+hashes that the server calculated. Thus a person cannot replace or replay an uploaded
+artifact (see <a href="../architecture/#storage-and-integrity">Storage and integrity</a>). The platform
+also records SHA-256, for content addressing.</p>
 <h2 id="lineage">Lineage<a class="headerlink" href="#lineage" title="Permanent link">&para;</a></h2>
-<p>The manifest records the spec hash, the data hash, the plugin and every step version, and the
-library versions a bundle was fitted with; <code>manifest.lineage</code> links a production bundle to its
-evaluation bundle. "Which data and which code made this forecast?" always has an answer.</p>
+<p>The manifest records the spec hash, the data hash, the version of the plugin and of each step,
+and the library versions of the fit. <code>manifest.lineage</code> links a production bundle to its
+evaluation bundle. Thus you can always find which data and which code made a forecast.</p>
 <p>Next: <a href="../coord-plans/">Coord plans and typed errors</a>.</p>
 
 

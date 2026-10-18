@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4623,6 +4653,8 @@
       
         
       
+        
+      
     
     
     
@@ -4711,6 +4743,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4847,14 +4907,15 @@
 
 
 <h1 id="choosing-a-model-v05">Choosing a model <span class="mapi-badge">v0.5</span><a class="headerlink" href="#choosing-a-model-v05" title="Permanent link">&para;</a></h1>
-<p>You do not need to know what "SARIMAX" means to pick a good forecasting model, and you should
-not have to read a statistics textbook to know when <em>not</em> to use one. Every model, preprocessing
-step, workflow node, governance check and template carries an <strong>About card</strong> in plain words, and
-<strong>Help me choose</strong> turns a few questions about your goal and your data into a ranked shortlist
-with the reasons. This page shows both, then compares the model families for those who want the
-detail. The contract behind them is in <a href="../../concepts/about-and-choosing/">About cards and choosing</a>.</p>
+<p>You do not need to know what "SARIMAX" means to select a good forecast model. Also, you do
+not need to read a statistics textbook to know when <em>not</em> to use one. Each model,
+preprocessing step, workflow node, governance check and template has an <strong>About card</strong> in
+plain words. <strong>Help me choose</strong> asks some questions about your goal and your data. Then it
+gives a ranked shortlist with the reasons. This page shows the two tools. Then it compares
+the model families, for persons who want the details. For the contract behind the tools, see
+<a href="../../concepts/about-and-choosing/">About cards and choosing</a>.</p>
 <h2 id="answer-a-few-questions">Answer a few questions<a class="headerlink" href="#answer-a-few-questions" title="Permanent link">&para;</a></h2>
-<p>Eight questions, all optional; the goal counts most:</p>
+<p>There are eight questions. All are optional. The goal has the most weight:</p>
 <table>
 <thead>
 <tr>
@@ -4872,7 +4933,7 @@ detail. The contract behind them is in <a href="../../concepts/about-and-choosin
 <td>one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time</td>
 </tr>
 <tr>
-<td>How often is it recorded?</td>
+<td>How often do you record the data?</td>
 <td>daily · weekly · monthly or less often · not over time</td>
 </tr>
 <tr>
@@ -4885,10 +4946,10 @@ detail. The contract behind them is in <a href="../../concepts/about-and-choosin
 </tr>
 <tr>
 <td>Do you need a range?</td>
-<td>essential · nice to have · one number is enough</td>
+<td>essential · it would be good · one number is enough</td>
 </tr>
 <tr>
-<td>How comfortable with statistics?</td>
+<td>How much do you know about statistics?</td>
 <td>new to it · the basics · expert</td>
 </tr>
 <tr>
@@ -4905,9 +4966,10 @@ detail. The contract behind them is in <a href="../../concepts/about-and-choosin
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.sarimax<span class="w">                         </span><span class="c1"># one item's About card</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.sarimax<span class="w"> </span>--expert<span class="w">                </span><span class="c1"># ... with the maths and references</span>
 </span></code></pre></div>
-<p><code>mapi choose</code> asks the questions one by one (numbers; several for questions that take
-more than one answer; Enter skips) and prints the shortlist, then the About card of the
-top three. With the four answers above, on a local stack (shortened):</p>
+<p><code>mapi choose</code> asks the questions one at a time. Type a number. For questions that accept
+more than one answer, type more than one number. To skip a question, push Enter. The
+command shows the shortlist, and then the About card of the first three items. This is
+the result for the four answers above, on a local stack (shortened):</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Recommended for you
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a> # ┃ item                ┃ kind              ┃ fit  ┃ difficulty   ┃ time               ┃ why
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━
@@ -4939,11 +5001,12 @@ top three. With the four answers above, on a local stack (shortened):</p>
 </span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>…
 </span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>unanswered (answer them to sharpen the ranking): frequency, history, uncertainty, speed
 </span></code></pre></div>
-<p>Being new to statistics counts: models that need more experience (<code>ts.ardl</code> above,
-<code>ts.sarimax</code> sixth) carry a caution and rank below beginner-friendly choices, including
-the <em>readiness</em> workflow, which chooses an ARIMAX's settings for you. Answer
-<code>experience=intermediate</code>, or skip the question, and <code>ts.ardl</code> and <code>ts.sarimax</code> - the
-models that use the drivers - come first.</p>
+<p>The answer "new to it" (statistics) has an effect. Models that need more experience
+have a caution, and they rank below the models for beginners. Examples are <code>ts.ardl</code>
+above and <code>ts.sarimax</code> in position six. The models for beginners include the
+<em>readiness</em> workflow, which selects the settings of an ARIMAX for you. If you answer
+<code>experience=intermediate</code>, or skip the question, <code>ts.ardl</code> and <code>ts.sarimax</code> come first.
+These are the models that use the drivers.</p>
 </div>
 <div class="tabbed-block">
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
@@ -4973,18 +5036,24 @@ models that use the drivers - come first.</p>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<p><strong>Help me choose</strong> on the model, template and workflow pickers asks the same questions and
-shows the same ranking; every card has <em>About</em> with the plain explanation first and the
-expert detail folded away.</p>
+<p><strong>Help me choose</strong> on the model, template and workflow pickers asks the same questions.
+It shows the same ranking. Each card has <em>About</em>. <em>About</em> shows the plain explanation
+first. The expert details are folded away.</p>
 </div>
 </div>
 </div>
-<p>The ranking is deterministic and explainable: a matching answer adds the question's weight, a
-mismatch subtracts it, items harder than your experience or slower than your patience lose
-points, and every recommendation lists its <strong>reasons</strong> ("Suits: forecast the future") and its
-<strong>cautions</strong> ("Needs expert-level statistics knowledge", "Usually takes long"). Without a
-<code>kind</code> the candidates are the places you start from - models, guided templates and workflow
-templates; <code>--kind step</code>, <code>node</code> or <code>check</code> ranks one kind of building block.</p>
+<p>The ranking is deterministic, and you can see why each item has its position:</p>
+<ul>
+<li>An answer that matches adds the weight of the question. An answer that does not match
+  subtracts it.</li>
+<li>Items that are more difficult than your experience lose points. Items that are slower
+  than your answer for speed also lose points.</li>
+<li>Each recommendation lists its <strong>reasons</strong> ("Suits: forecast the future").</li>
+<li>Each recommendation lists its <strong>cautions</strong> ("Needs expert-level statistics knowledge",
+  "Usually takes long").</li>
+</ul>
+<p>Without a <code>kind</code>, the candidates are the items that you start from: models, guided templates
+and workflow templates. <code>--kind step</code>, <code>node</code> or <code>check</code> ranks only one type of item.</p>
 <h2 id="read-an-about-card">Read an About card<a class="headerlink" href="#read-an-about-card" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mapi<span class="w"> </span>about<span class="w"> </span>ts.ets
 </span></code></pre></div>
@@ -5008,11 +5077,18 @@ templates; <code>--kind step</code>, <code>node</code> or <code>check</code> ran
 </span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>Related: ts.theta, ts.arima, evaluate.baseline
 </span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>(--expert shows the maths and references)
 </span></code></pre></div>
-<p>Every card has the same parts: a one- or two-sentence summary without jargon, when to use it
-and when not, the data it needs, what it assumes, what you get, how hard it is, how long it
-usually takes, a tiny example and related items. <code>--expert</code> (or <em>Expert detail</em> in the web app)
-adds the maths and the references. The platform refuses catalog items without a complete card,
-so every model you can pick explains itself - including your own plugins
+<p>Each card has the same parts:</p>
+<ul>
+<li>A summary of one or two sentences, without jargon.</li>
+<li>When to use the item, and when not to use it.</li>
+<li>The data that it needs, and what it assumes.</li>
+<li>What you get.</li>
+<li>How difficult it is, and how long it usually takes.</li>
+<li>A very small example, and related items.</li>
+</ul>
+<p><code>--expert</code> (or <em>Expert detail</em> in the web app) adds the maths and the references. The
+platform refuses catalog items that do not have a complete card. Thus each model that you
+can select explains itself. This also applies to your own plugins
 (<a href="../plugins/">the About check</a>).</p>
 <h2 id="the-model-families-compared">The model families, compared<a class="headerlink" href="#the-model-families-compared" title="Permanent link">&para;</a></h2>
 <table>
@@ -5026,22 +5102,22 @@ so every model you can pick explains itself - including your own plugins
 </thead>
 <tbody>
 <tr>
-<td>Measure what each marketing channel adds; plan budgets</td>
+<td>Measure what each marketing channel adds. Plan budgets.</td>
 <td><code>mmm.bayesian</code></td>
-<td>Pooled over markets, adstock and saturation, business priors and lift tests, ranges on everything, budget optimisation</td>
-<td><code>mmm.frequentist</code> for a quick first look; the <code>mmm_governed</code> workflow to gate it on null tests</td>
+<td>Pooled over markets. Adstock and saturation, business priors and lift tests. Ranges on all values. Budget optimisation.</td>
+<td><code>mmm.frequentist</code> for a quick first look. The <code>mmm_governed</code> workflow to gate it on null tests.</td>
 </tr>
 <tr>
 <td>Forecast one series with known drivers (price, promotions)</td>
 <td><code>ts.sarimax</code></td>
-<td>Past values, season and drivers, prediction intervals, forecasts from planned drivers</td>
-<td>The <code>ts_readiness_arimax</code> workflow to choose the differencing and orders and prove it beats naive</td>
+<td>Past values, season and drivers. Prediction intervals. Forecasts from planned drivers.</td>
+<td>The <code>ts_readiness_arimax</code> workflow. It selects the differencing and orders, and proves that the model is better than naive.</td>
 </tr>
 <tr>
 <td>Forecast without drivers, fast and robust</td>
 <td><code>ts.ets</code> or <code>ts.theta</code></td>
-<td>Strong, simple baselines that are hard to beat</td>
-<td>The <code>forecast_bakeoff</code> workflow: let them compete</td>
+<td>Strong, simple baselines that are difficult to beat</td>
+<td>The <code>forecast_bakeoff</code> workflow, which lets them compete</td>
 </tr>
 <tr>
 <td>See the trend under the noise</td>
@@ -5052,60 +5128,62 @@ so every model you can pick explains itself - including your own plugins
 <tr>
 <td>Know how an effect builds up over weeks</td>
 <td><code>ts.ardl</code></td>
-<td>Lags of the drivers, chosen automatically</td>
-<td><code>ts.ecm</code> when the result and drivers trend together</td>
+<td>Lags of the drivers, selected automatically</td>
+<td><code>ts.ecm</code> when the result and drivers have the same trend</td>
 </tr>
 <tr>
 <td>Several series that drive each other</td>
 <td><code>ts.var</code></td>
 <td>Impulse responses, variance decompositions, Granger tests</td>
-<td><code>ts.vecm</code> when they are tied in the long run (the <code>var_vecm_cointegration</code> workflow decides)</td>
+<td><code>ts.vecm</code> when they are tied in the long run. The <code>var_vecm_cointegration</code> workflow decides.</td>
 </tr>
 <tr>
-<td>Spot regimes (normal vs promotion-driven)</td>
+<td>Find regimes (normal or caused by promotions)</td>
 <td><code>ts.markov_switching</code></td>
-<td>Probability of each regime per period</td>
+<td>Probability of each regime for each period</td>
 <td><code>ts.gaussian_hmm</code> for a Bayesian hidden-state model</td>
 </tr>
 <tr>
-<td>Predict a value per store, product or customer</td>
+<td>Predict a value for each store, product or customer</td>
 <td><code>sklearn.tabular_regressor</code></td>
-<td>Gradient boosting or forests, quantiles and conformal intervals</td>
-<td><code>tabular.hierarchical_glm</code> when groups should borrow strength</td>
+<td>Gradient boosting or forests. Quantiles and conformal intervals.</td>
+<td><code>tabular.hierarchical_glm</code> when groups must borrow strength</td>
 </tr>
 <tr>
-<td>Understand which product people choose</td>
+<td>Understand which product people select</td>
 <td><code>choice.multinomial_logit</code></td>
 <td>Price and promotion effects, household effects</td>
 <td></td>
 </tr>
 <tr>
-<td>Check data before modelling</td>
+<td>Check data before you model it</td>
 <td>the <a href="../data-explorer/">Data Explorer</a></td>
 <td>Stationarity, cross-correlation with the KPI, STL, VIF, quality warnings</td>
 <td></td>
 </tr>
 <tr>
-<td>Check a model can be trusted</td>
+<td>Make sure that you can trust a model</td>
 <td>a <a href="../null-tests/">governance policy</a></td>
 <td>Null tests, benchmarks, residuals, stability, signs</td>
 <td></td>
 </tr>
 </tbody>
 </table>
-<p>The detail for each family: <a href="../../models/mmm-framework/">Marketing-mix models</a>,
+<p>For the details of each family, see these pages:
+<a href="../../models/mmm-framework/">Marketing-mix models</a>,
 <a href="../../models/statsmodels/">statsmodels time-series models</a>,
-<a href="../time-series/">forecasting</a>, <a href="../sklearn/">tabular models</a>,
+<a href="../time-series/">forecasting</a>, <a href="../sklearn/">tabular models</a> and
 <a href="../../reference/models/">the built-in models</a>.</p>
 <h2 id="when-the-chooser-is-not-enough">When the chooser is not enough<a class="headerlink" href="#when-the-chooser-is-not-enough" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Compare instead of guessing.</strong> Fit two candidates and compare them on the same holdout:
+<li><strong>Compare. Do not guess.</strong> Fit two candidates and compare them on the same holdout. Use
   <code>mapi explore compare model://growth/a@v1 model://growth/b@v1</code> (metrics, ranking and
-  Diebold-Mariano tests), or run a <a href="../workflow-cookbook/#forecast-bake-off">bake-off workflow</a>.</li>
-<li><strong>Let the data decide the details.</strong> The readiness workflow chooses differencing and ARMA
-  orders by tests and information criteria, and records why.</li>
-<li><strong>Make "good enough" explicit.</strong> A governance policy turns "it looks fine" into checks with
-  thresholds, evidence and a second person's sign-off.</li>
+  Diebold-Mariano tests). Alternatively, run a
+  <a href="../workflow-cookbook/#forecast-bake-off">bake-off workflow</a>.</li>
+<li><strong>Let the data decide the details.</strong> The readiness workflow selects differencing and ARMA
+  orders with tests and information criteria. It records the reasons.</li>
+<li><strong>Make "good enough" explicit.</strong> A governance policy changes "it looks fine" into checks.
+  The checks have thresholds, evidence and the approval of a second person.</li>
 </ul>
 
 

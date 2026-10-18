@@ -1178,6 +1178,8 @@
       
         
       
+        
+      
     
     
     
@@ -1415,6 +1417,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4643,6 +4673,8 @@
       
         
       
+        
+      
     
     
     
@@ -4731,6 +4763,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4900,14 +4960,15 @@
 
 
 <h1 id="why-modeling-api">Why modeling-api?<a class="headerlink" href="#why-modeling-api" title="Permanent link">&para;</a></h1>
-<p>Most statistical models that matter to a business are built in a notebook, explained in a
-slide deck and then stop. Getting them in front of the people who make decisions, keeping
-them honest after the data changes, proving they learned something real, and letting other
-tools use them takes a second project that is mostly plumbing. modeling-api is that second
-project, done once, for a specific kind of model: <strong>Bayesian and classical models of
-labelled, multi-dimensional data</strong> (panels, time series, hierarchies) whose preprocessing and
-uncertainty must survive the trip to production - and whose analysis must be repeatable and
-defensible.</p>
+<p>Most statistical models that are important to a business start in a notebook. Someone
+explains them in a slide deck, and then the work stops. To make the models useful, a second
+project is necessary, and most of it is plumbing. The project must put the models in front of
+the persons who make decisions. It must keep the models honest after the data changes. It
+must prove that they learned something real, and let other tools use them.</p>
+<p>modeling-api is that second project, done one time, for a specific type of model: <strong>Bayesian
+and classical models of labelled, multi-dimensional data</strong> (panels, time series,
+hierarchies). The preprocessing and uncertainty of these models must stay correct in
+production. Their analysis must be repeatable and defensible.</p>
 <h2 id="the-problems-it-solves">The problems it solves<a class="headerlink" href="#the-problems-it-solves" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4920,63 +4981,63 @@ defensible.</p>
 <tbody>
 <tr>
 <td><strong>The preprocessing at score time is not the preprocessing at fit time</strong></td>
-<td>The scaling, lags and currency conversion are rewritten in the service, or refitted on the new data, or forgotten</td>
-<td>Steps store what they learned at fit time and <strong>replay</strong> it at score time, including per-group look-back tails; inverse transforms bring answers back to your units (<a href="../concepts/pipelines/">Pipelines</a>)</td>
+<td>Someone writes the scaling, lags and currency conversion again in the service. Or they fit them again on the new data, or they forget them</td>
+<td>Steps store what they learned at fit time and <strong>replay</strong> it at score time. This includes the look-back tail of each group. Inverse transforms bring answers back to your units (<a href="../concepts/pipelines/">Pipelines</a>)</td>
 </tr>
 <tr>
 <td><strong>Data is positional</strong></td>
-<td>Column 7 changes meaning, a new market is "row 12", a forecast's lags start from the wrong week</td>
-<td>Data is an <code>xr.Dataset</code> with named dims; each dim declares what may happen at score time (<code>fixed</code>, <code>extend</code>, <code>new_levels</code>) and requests are checked against it before any compute (<a href="../concepts/labelled-data/">Labelled data</a>)</td>
+<td>Column 7 changes meaning. A new market is "row 12". The lags of a forecast start from the wrong week</td>
+<td>Data is an <code>xr.Dataset</code> with named dims. Each dim declares what can occur at score time (<code>fixed</code>, <code>extend</code>, <code>new_levels</code>). The platform checks requests against it before any compute (<a href="../concepts/labelled-data/">Labelled data</a>)</td>
 </tr>
 <tr>
-<td><strong>The analysis lives in someone's head</strong></td>
-<td>"I ran ADF, it looked non-stationary, so I differenced and tried a few ARIMAs" - once, by hand, never written down</td>
-<td>A <strong>workflow</strong> runs the tests, takes the decisions by stated rules, searches the orders, backtests against naive forecasts and records every value it read; it reruns on a schedule or when the data changes, reusing unchanged steps (<a href="../concepts/workflows/">Workflows</a>)</td>
+<td><strong>The analysis is only in the head of one person</strong></td>
+<td>"I ran ADF, it looked non-stationary, so I differenced and tried a few ARIMAs". This occurs one time, by hand, and nobody writes it down</td>
+<td>A <strong>workflow</strong> runs the tests and makes the decisions by stated rules. It searches the orders, backtests against naive forecasts and records each value that it read. It runs again on a schedule or when the data changes. It uses the unchanged steps again (<a href="../concepts/workflows/">Workflows</a>)</td>
 </tr>
 <tr>
 <td><strong>A model goes live because it looks good</strong></td>
-<td>A good-looking fit, an R² on the training data, nobody checks whether noise would have done as well</td>
-<td><strong>Governance policies</strong>: the model must beat itself fitted on shuffled results, give fake noise drivers no credit and beat naive benchmarks out of sample; a second person signs off and endpoints refuse unvalidated versions (<a href="../guides/null-tests/">Null tests explained</a>)</td>
+<td>The fit looks good, and there is an R² on the training data. Nobody checks if noise can give the same result</td>
+<td><strong>Governance policies</strong>: the model must be better than the same model fitted on shuffled results. It must give no credit to fake noise drivers. It must be better than naive benchmarks out of sample. A second person approves, and endpoints refuse versions that are not validated (<a href="../guides/null-tests/">Null tests explained</a>)</td>
 </tr>
 <tr>
-<td><strong>Uncertainty is dropped or summed wrongly</strong></td>
-<td>A point estimate drives a budget decision; someone adds up 90% quantiles of 40 stores</td>
-<td>Every output carries its <strong>representation</strong> (draws, quantiles, interval, point, moments) and only the valid summaries and aggregations are offered (<a href="../concepts/representations/">Representations</a>)</td>
+<td><strong>Uncertainty is lost or added incorrectly</strong></td>
+<td>A point estimate controls a budget decision. Someone adds the 90% quantiles of 40 stores</td>
+<td>Each output has its <strong>representation</strong> (draws, quantiles, interval, point, moments). The platform gives only the valid summaries and aggregations (<a href="../concepts/representations/">Representations</a>)</td>
 </tr>
 <tr>
-<td><strong>Every scenario needs the data scientist</strong></td>
+<td><strong>Each scenario needs the data scientist</strong></td>
 <td>The analyst asks "what if we move 20% to search?" and waits a week</td>
-<td>Guided mode: templates, beliefs in business terms, a plain-language report, instant what-if sliders over per-draw response curves and budget plans from the posterior (<a href="../concepts/guided-mode/">Guided mode</a>)</td>
+<td>Guided mode has templates, beliefs in business terms and a report in plain language. It has instant what-if sliders over a response curve for each draw, and budget plans from the posterior (<a href="../concepts/guided-mode/">Guided mode</a>)</td>
 </tr>
 <tr>
-<td><strong>Picking a model needs a statistician</strong></td>
-<td>The analyst uses whatever the last project used, or the fanciest name</td>
-<td><strong>About cards</strong> on every model, step, node and check, in plain words, and <strong>Help me choose</strong>, which turns a few questions into a ranked shortlist with reasons (<a href="../guides/choosing-a-model/">Choosing a model</a>)</td>
+<td><strong>To choose a model, you need a statistician</strong></td>
+<td>The analyst uses the model of the last project, or the model with the most interesting name</td>
+<td>Each model, step, node and check has an <strong>About card</strong> in plain words. <strong>Help me choose</strong> asks some questions and gives a ranked shortlist with reasons (<a href="../guides/choosing-a-model/">Choosing a model</a>)</td>
 </tr>
 <tr>
-<td><strong>Data problems are found after the model</strong></td>
-<td>Gaps, a constant driver or a wandering series surface in the residuals a week later</td>
-<td>The <strong>Data Explorer</strong> profiles every upload in the sandbox: quality warnings, stationarity per series, cross-correlation with the KPI by lag, STL, collinearity (<a href="../guides/data-explorer/">Explore a dataset</a>)</td>
+<td><strong>You find data problems after the model</strong></td>
+<td>Gaps, a constant driver or a series that wanders show in the residuals one week later</td>
+<td>The <strong>Data Explorer</strong> makes a profile of each upload in the sandbox. It shows quality warnings, the stationarity of each series, cross-correlation with the KPI by lag, STL and collinearity (<a href="../guides/data-explorer/">Explore a dataset</a>)</td>
 </tr>
 <tr>
-<td><strong>Nobody knows whether to trust the model</strong></td>
-<td>Convergence warnings in a log nobody reads</td>
+<td><strong>Nobody knows if they can trust the model</strong></td>
+<td>Convergence warnings are in a log that nobody reads</td>
 <td>A <strong>sanity scorecard</strong> (convergence, holdout error and coverage, plausibility, data) in plain words, and a promotion gate that uses it (<a href="../concepts/guided-mode/#scorecard">Scorecard</a>)</td>
 </tr>
 <tr>
 <td><strong>Other tools need the model</strong></td>
-<td>A Flask app per model, a shared pickle, a CSV emailed every Monday</td>
-<td><strong>Endpoints</strong> with aliases, history and rollback, scoped tokens, generated snippets, signed webhooks, embeddable charts (<a href="../concepts/integrations/">Integrations</a>)</td>
+<td>A Flask app for each model, a shared pickle, or a CSV file in an e-mail each Monday</td>
+<td><strong>Endpoints</strong> with aliases, history and rollback. Scoped tokens, generated snippets, signed webhooks and charts that you can embed (<a href="../concepts/integrations/">Integrations</a>)</td>
 </tr>
 <tr>
 <td><strong>Many teams, untrusted code and data</strong></td>
-<td>One shared server where anything can read anything</td>
-<td>Tenants with row-level security, a fresh sandbox per run, outputs verified against the storage's own checksums and signed, quotas and a kill switch (<a href="../concepts/security/">Security model</a>)</td>
+<td>One shared server where all code can read all data</td>
+<td>Tenants with row-level security and a new sandbox for each run. Outputs that the platform verifies against the checksums of the storage and signs. Quotas and a kill switch (<a href="../concepts/security/">Security model</a>)</td>
 </tr>
 </tbody>
 </table>
 <h2 id="compared-with-notebooks-and-an-ad-hoc-flask-app">Compared with notebooks and an ad-hoc Flask app<a class="headerlink" href="#compared-with-notebooks-and-an-ad-hoc-flask-app" title="Permanent link">&para;</a></h2>
-<p>The most common alternative, and a perfectly good one for a single model and a single team.</p>
+<p>This is the most usual alternative. It is a good alternative for one model and one team.</p>
 <table>
 <thead>
 <tr>
@@ -4987,64 +5048,64 @@ defensible.</p>
 </thead>
 <tbody>
 <tr>
-<td>Getting started</td>
+<td>How to start</td>
 <td>Minutes: you already have the notebook</td>
-<td>A spec or a <code>build()</code> method; Guided templates and workflow recipes need no code at all</td>
+<td>A spec or a <code>build()</code> method. Guided templates and workflow recipes need no code</td>
 </tr>
 <tr>
 <td>Freedom</td>
 <td>Any library, any code</td>
-<td>Any PyMC or scikit-learn model through the plugin contract; built-in models for MMM (mmm-framework), twelve statsmodels time-series models, forecasting, demand and choice. Your own plugins run today on a deployment you control (installed into its runner); uploading them to a shared deployment comes in v0.6, first for allow-listed teams</td>
+<td>Any PyMC or scikit-learn model through the plugin contract. Built-in models for MMM (mmm-framework), twelve statsmodels time-series models, forecasting, demand and choice. Your own plugins run now on a deployment that you control (installed into its runner). Upload to a shared deployment comes in v0.6, first for allow-listed teams</td>
 </tr>
 <tr>
 <td>Preprocessing at score time</td>
-<td>Copied into the app by hand, or pickled with the model</td>
-<td>Declared steps with fitted state, replayed exactly; checked statically for leakage</td>
+<td>Someone copies it into the app by hand, or pickles it with the model</td>
+<td>Declared steps with fitted state that the platform replays exactly. Static checks find leakage</td>
 </tr>
 <tr>
 <td>Forecasts and new groups</td>
-<td>Whatever the code does with an unseen row or date</td>
-<td>Declared per dim, checked before compute, with typed errors (<code>UNSEEN_LEVELS</code>, <code>HORIZON_EXCEEDS_FIT</code>, …)</td>
+<td>The result depends on what the code does with a row or date that it did not see</td>
+<td>Declared for each dim and checked before compute, with typed errors (<code>UNSEEN_LEVELS</code>, <code>HORIZON_EXCEEDS_FIT</code>, …)</td>
 </tr>
 <tr>
-<td>Repeating the analysis</td>
-<td>Re-run the cells and hope the order is right</td>
-<td>A versioned workflow with typed ports, validated before it runs, scheduled or triggered by new data, with every decision recorded</td>
+<td>How to repeat the analysis</td>
+<td>Run the cells again, and hope that the sequence is correct</td>
+<td>A versioned workflow with typed ports. The platform validates it before it runs. A schedule or new data starts it. It records each decision</td>
 </tr>
 <tr>
-<td>Validating the model</td>
-<td>A holdout number in a slide, if anyone asks</td>
-<td>Null tests, benchmarks, residual and stability checks under a versioned policy, a second person's approval, an evidence pack for the auditor</td>
+<td>How to validate the model</td>
+<td>A holdout number in a slide, if someone asks</td>
+<td>Null tests, benchmarks, residual checks and stability checks under a versioned policy. The approval of a second person. An evidence pack for the auditor</td>
 </tr>
 <tr>
 <td>Model versions</td>
-<td>File names, a model registry if you set one up</td>
-<td>Immutable spec revisions, signed bundles, lineage, endpoints with history and rollback</td>
+<td>File names, and a model registry if you set one up</td>
+<td>Immutable spec revisions, signed bundles, lineage, and endpoints with history and rollback</td>
 </tr>
 <tr>
 <td>Who can use it</td>
-<td>People who can run the notebook or call the app</td>
-<td>Analysts in Guided mode, other apps through endpoints, sheets, BI embeds, webhooks</td>
+<td>Persons who can run the notebook or call the app</td>
+<td>Analysts in Guided mode. Other apps through endpoints, sheets, BI embeds and webhooks</td>
 </tr>
 <tr>
 <td>Security</td>
-<td>Whatever the app does; often pickle and an open port</td>
+<td>It depends on the app. Often there is pickle and an open port</td>
 <td>Sign-in, roles, scoped tokens, sandboxed runs, no pickle, verified outputs</td>
 </tr>
 <tr>
-<td>Operating it</td>
+<td>How to operate it</td>
 <td>You own the server</td>
-<td>You own the deployment (a laptop, Docker Compose or Google Cloud); multi-tenant from the start</td>
+<td>You own the deployment (a laptop, Docker Compose or Google Cloud). It is multi-tenant from the start</td>
 </tr>
 </tbody>
 </table>
-<p>Stay with the notebook when the model is a one-off analysis nobody else needs to call or
-check. Move when a second person, a second model or a second application needs it - or when
-someone asks "how do we know this is not noise?".</p>
+<p>Use the notebook when the model is a single analysis that nobody else must call or check.
+Move to modeling-api when a second person, a second model or a second application needs the
+model. Also move when someone asks "how do we know this is not noise?".</p>
 <h2 id="compared-with-workflow-orchestrators">Compared with workflow orchestrators<a class="headerlink" href="#compared-with-workflow-orchestrators" title="Permanent link">&para;</a></h2>
-<p>Airflow, Prefect, Dagster and their cousins are excellent at running arbitrary tasks on a
-schedule across systems. modeling-api's workflows are narrower on purpose: they are the
-<em>statistics</em> of one analysis, not a data pipeline.</p>
+<p>Airflow, Prefect, Dagster and similar tools are very good when you must run any type of
+task on a schedule across systems. The workflows of modeling-api are narrower on purpose. They
+are the <em>statistics</em> of one analysis, not a data pipeline.</p>
 <table>
 <thead>
 <tr>
@@ -5057,60 +5118,61 @@ schedule across systems. modeling-api's workflows are narrower on purpose: they 
 <tr>
 <td>A step is</td>
 <td>Any Python function or container</td>
-<td>A node from a catalog (51 of them: 17 statistical tests, transforms, 7 train/test plans, order searches, fits, backtests, comparisons, governance, reports) or a saved sub-workflow</td>
+<td>A node from a catalog (51 nodes: 17 statistical tests, transforms, 7 train/test plans, order searches, fits, backtests, comparisons, governance, reports) or a saved sub-workflow</td>
 </tr>
 <tr>
 <td>Between steps</td>
-<td>Whatever the code passes</td>
-<td>Typed ports (<code>dataset</code>, <code>test_result</code>, <code>split_plan</code>, <code>model_version</code>, …), checked before the run starts with a JSON pointer to every problem</td>
+<td>The data that the code sends</td>
+<td>Typed ports (<code>dataset</code>, <code>test_result</code>, <code>split_plan</code>, <code>model_version</code>, …). The platform checks them before the run starts, with a JSON pointer to each problem</td>
 </tr>
 <tr>
 <td>Decisions</td>
 <td>Python <code>if</code> statements</td>
-<td>Branch conditions in a small, safe expression language (never <code>eval</code>); the run records the values each condition read</td>
+<td>Branch conditions in a small, safe expression language (never <code>eval</code>). The run records the values that each condition read</td>
 </tr>
 <tr>
 <td>Where user data is read</td>
-<td>Wherever the task runs</td>
-<td>In a fresh sandbox without network; the orchestrator only sees JSON results</td>
+<td>The location where the task runs</td>
+<td>In a new sandbox without network. The orchestrator sees only JSON results</td>
 </tr>
 <tr>
 <td>Reuse</td>
-<td>Task caching you configure</td>
-<td>Every node's identity is its implementation, parameters and the content of its inputs: unchanged steps are reused automatically</td>
+<td>A task cache that you configure</td>
+<td>The identity of each node is its implementation, its parameters and the content of its inputs. The platform uses unchanged steps again automatically</td>
 </tr>
 <tr>
 <td>Output</td>
-<td>Whatever the tasks write</td>
-<td>Plain-language verdicts, a report, governance evidence and a model version ready to validate and promote</td>
+<td>The data that the tasks write</td>
+<td>Verdicts in plain language, a report, governance evidence and a model version that is ready to validate and promote</td>
 </tr>
 </tbody>
 </table>
-<p>Use an orchestrator to move data between systems and to call modeling-api; use a workflow
-for the analysis itself. They work well together: an orchestrator uploads the new week of
-data, and the dataset trigger runs the workflow.</p>
+<p>Use an orchestrator to move data between systems and to call modeling-api. Use a workflow
+for the analysis. The two tools work well together. For example, an orchestrator uploads the
+data of the new week, and the dataset trigger runs the workflow.</p>
 <h2 id="compared-with-marketing-mix-vendors-and-libraries">Compared with marketing-mix vendors and libraries<a class="headerlink" href="#compared-with-marketing-mix-vendors-and-libraries" title="Permanent link">&para;</a></h2>
-<p>Marketing-mix modelling is the first domain pack, so this comparison comes up most. modeling-api
-is <strong>not</strong> a new MMM methodology and does not compete with the statistics of the established
-libraries; it is a platform that runs MMMs, holds them to governance checks and puts them in
-front of planners.</p>
-<p><strong>Open-source MMM libraries</strong> (such as Google's Meridian and Meta's Robyn) are
-excellent at the model. They are libraries: you run them in a notebook, and serving,
-scenario tools for analysts, validation, versioning and access control are up to you.</p>
+<p>Marketing-mix models are the first domain pack, thus users ask about this comparison most.
+modeling-api is <strong>not</strong> a new MMM methodology. It does not compete with the statistics of the
+established libraries. It is a platform that runs MMMs, applies governance checks to them and
+puts them in front of planners.</p>
+<p><strong>Open-source MMM libraries</strong> (for example, Google's Meridian and Meta's Robyn) are
+very good at the model. But they are libraries, and you run them in a notebook. You must
+supply the serving, the scenario tools for analysts, the validation, the versions and the
+access control.</p>
 <ul>
-<li>The built-in MMMs run on <a href="../models/mmm-framework/">mmm-framework</a>, an open-source
-  (Apache-2.0) Bayesian MMM framework on PyMC; business priors become its ROI priors, lift
-  tests its experiment likelihoods, and its <code>planning</code> module optimises budgets from the
+<li>The built-in MMMs run on <a href="../models/mmm-framework/">mmm-framework</a>. This is an open-source
+  (Apache-2.0) Bayesian MMM framework on PyMC. Business priors become its ROI priors. Lift
+  tests become its experiment likelihoods. Its <code>planning</code> module optimises budgets from the
   posterior (<a href="../guides/mmm/">MMM guide</a>).</li>
-<li>Meridian-shaped tables (<code>time</code>, <code>geo</code>, <code>kpi</code>, <code>&lt;channel&gt;_spend</code>) are recognised by the
-  ingest; the Meridian model itself is not shipped (it needs TensorFlow).</li>
-<li>Robyn (R) is not supported.</li>
+<li>The ingest recognises Meridian-shaped tables (<code>time</code>, <code>geo</code>, <code>kpi</code>, <code>&lt;channel&gt;_spend</code>).
+  The Meridian model is not part of the platform, because it needs TensorFlow.</li>
+<li>The platform does not support Robyn (R).</li>
 </ul>
-<p><strong>Managed MMM services</strong> typically bundle data collection from ad platforms, a methodology,
-modelling as a service and planning dashboards. modeling-api does <strong>not</strong> collect data from
-ad platforms and offers no consulting; in exchange you own the spec, the data and the fitted
-posterior, can read every prior and every check, run models other than MMM on the same
-platform, and connect the result to your own tools.</p>
+<p><strong>Managed MMM services</strong> usually supply data collection from ad platforms, a methodology,
+models as a service and planning dashboards. modeling-api does <strong>not</strong> collect data from ad
+platforms, and it gives no consulting. But you own the spec, the data and the fitted
+posterior. You can read each prior and each check. You can run models other than MMM on the
+same platform, and connect the result to your own tools.</p>
 <table>
 <thead>
 <tr>
@@ -5129,21 +5191,21 @@ platform, and connect the result to your own tools.</p>
 </tr>
 <tr>
 <td>The model</td>
-<td>The vendor's</td>
-<td>Yours, in code</td>
-<td>mmm-framework's Bayesian (or fast frequentist) MMM, national or pooled over geos and products, or your own plugin</td>
+<td>The model of the vendor</td>
+<td>Your model, in code</td>
+<td>The Bayesian (or fast frequentist) MMM of mmm-framework, national or pooled over geos and products, or your own plugin</td>
 </tr>
 <tr>
 <td>Priors and calibration</td>
-<td>Varies, often hidden</td>
-<td>Yours, in code</td>
-<td>Business priors as ROI or share ranges, lift tests, all visible in the spec</td>
+<td>Different for each vendor, frequently hidden</td>
+<td>Your priors, in code</td>
+<td>Business priors as ROI or share ranges, and lift tests. You can see all of them in the spec</td>
 </tr>
 <tr>
-<td>Proof it is not fitting noise</td>
-<td>Rarely shown</td>
-<td>Up to you</td>
-<td>Shuffled-sales and fake-channel null tests, effect signs, holdout accuracy, prior sensitivity, with evidence and a reviewer's sign-off</td>
+<td>Proof that it does not fit noise</td>
+<td>Not frequently shown</td>
+<td>You must do it</td>
+<td>Shuffled-sales and fake-channel null tests, effect signs, holdout accuracy and prior sensitivity, with evidence and the approval of a reviewer</td>
 </tr>
 <tr>
 <td>Analyst scenarios</td>
@@ -5155,7 +5217,7 @@ platform, and connect the result to your own tools.</p>
 <td>Budget optimisation</td>
 <td>Usually included</td>
 <td>Library functions</td>
-<td>In-sandbox <code>optimize</code> runs on mmm-framework planning: bounds, groups, risk objectives (P10, CVaR), the efficient frontier</td>
+<td><code>optimize</code> runs in the sandbox on mmm-framework planning: bounds, groups, risk objectives (P10, CVaR) and the efficient frontier</td>
 </tr>
 <tr>
 <td>Other models on the same platform</td>
@@ -5172,9 +5234,10 @@ platform, and connect the result to your own tools.</p>
 </tbody>
 </table>
 <h2 id="compared-with-generic-ml-model-serving">Compared with generic ML model serving<a class="headerlink" href="#compared-with-generic-ml-model-serving" title="Permanent link">&para;</a></h2>
-<p>MLflow, BentoML, KServe, Seldon and the cloud providers' endpoints are excellent at what they
-target: packaging a trained model from almost any framework and serving it with low latency
-and autoscaling. modeling-api targets a narrower problem and makes different trade-offs.</p>
+<p>MLflow, BentoML, KServe, Seldon and the endpoints of the cloud providers are very good at
+their task. They package a trained model from almost any framework. They serve it with low
+latency and autoscaling. modeling-api is for a narrower problem, and it makes different
+trade-offs.</p>
 <div class="mapi-compare">
 <table>
 <thead>
@@ -5187,43 +5250,43 @@ and autoscaling. modeling-api targets a narrower problem and makes different tra
 <tbody>
 <tr>
 <td>Input contract</td>
-<td>Column or tensor signatures: names and shapes, no dimensions</td>
-<td><code>xr.Dataset</code> with named dims, coordinates, roles, units and per-dim score policies</td>
+<td>Column or tensor signatures: names and shapes, but no dimensions</td>
+<td><code>xr.Dataset</code> with named dims, coordinates, roles, units and a score policy for each dim</td>
 </tr>
 <tr>
 <td>Preprocessing at score time</td>
-<td>Up to you: bundle it into the artifact, or re-implement it</td>
-<td>Declared steps with <strong>fitted state</strong>, replayed exactly; stage-aware splits and per-group context tails</td>
+<td>You must do it. Put it in the artifact, or write it again</td>
+<td>Declared steps with <strong>fitted state</strong> that the platform replays exactly. Splits that know the stage, and a context tail for each group</td>
 </tr>
 <tr>
 <td>New groups and horizons</td>
-<td>Whatever the model does with an unseen row</td>
-<td>Declared per dim (<code>fixed</code>, <code>extend</code>, <code>new_levels</code> + strategy); checked before compute</td>
+<td>The result depends on what the model does with a row that it did not see</td>
+<td>Declared for each dim (<code>fixed</code>, <code>extend</code>, <code>new_levels</code> + strategy) and checked before compute</td>
 </tr>
 <tr>
 <td>Uncertainty</td>
-<td>Point predictions by default; intervals are a custom output</td>
-<td>A first-class <strong>representation</strong> that decides which summaries and aggregations are valid</td>
+<td>Point predictions by default. Intervals are a custom output</td>
+<td>A primary <strong>representation</strong> that decides which summaries and aggregations are valid</td>
 </tr>
 <tr>
 <td>Units of the answer</td>
-<td>Whatever space the model was trained in</td>
-<td>Inverted to original units, with the output space recorded on every variable</td>
+<td>The space that the model used for training</td>
+<td>Inverted to original units. Each variable records its output space</td>
 </tr>
 <tr>
 <td>Serialization</td>
-<td>Framework-native; pickle and cloudpickle are common</td>
-<td>Zarr zip + JSON, skops or xgboost JSON; <strong>pickle is rejected</strong> on write and on read</td>
+<td>Native to the framework. Pickle and cloudpickle are usual</td>
+<td>Zarr zip + JSON, skops or xgboost JSON. The platform <strong>rejects pickle</strong> on write and on read</td>
 </tr>
 <tr>
 <td>Promotion</td>
 <td>Usually manual, or a CI job</td>
-<td>Gated on a sanity scorecard and, when a policy says so, on a governance validation with null tests and a second person's approval</td>
+<td>A sanity scorecard is the gate. When a policy tells so, a governance validation is also a gate. It has null tests and the approval of a second person</td>
 </tr>
 <tr>
 <td>Latency</td>
 <td>Milliseconds, warm replicas, autoscaling, GPUs</td>
-<td>Batch: one sandboxed run per call (seconds, plus cold start in the cloud), and instant what-if from precomputed grids. No GPUs, no warm scorers yet</td>
+<td>Batch: one sandboxed run for each call (seconds, plus cold start in the cloud). Instant what-if from grids that the platform calculates before. No GPUs and no warm scorers yet</td>
 </tr>
 <tr>
 <td>Frameworks</td>
@@ -5232,33 +5295,34 @@ and autoscaling. modeling-api targets a narrower problem and makes different tra
 </tr>
 <tr>
 <td>Who it is for</td>
-<td>ML engineers serving many model types</td>
-<td>Statisticians, data scientists and the analysts and apps that use their models</td>
+<td>ML engineers who serve many types of model</td>
+<td>Statisticians, data scientists, and the analysts and apps that use their models</td>
 </tr>
 </tbody>
 </table>
 </div>
 <h2 id="when-to-use-something-else">When to use something else<a class="headerlink" href="#when-to-use-something-else" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>You need sub-second answers from the exact model</strong>, or thousands of requests per second:
-  use a model server. modeling-api answers sliders instantly from precomputed grids, but an
-  exact score is a sandboxed run.</li>
-<li><strong>Deep learning or GPU work</strong>: not supported before the scale milestone.</li>
-<li><strong>General data pipelines</strong> (moving data between systems, joins across databases, calling
-  APIs): use an orchestrator. Workflows are for the statistics of an analysis, built from
-  catalog nodes, and run without network access.</li>
-<li><strong>Your model needs the network at run time</strong> (an API, a database): runs have no egress by
+<li><strong>You need answers from the exact model in less than one second</strong>, or thousands of
+  requests each second. Use a model server. modeling-api answers sliders immediately from
+  grids that it calculates before. But an exact score is a sandboxed run.</li>
+<li><strong>Deep learning or GPU work</strong>. The platform does not support it before the scale milestone.</li>
+<li><strong>General data pipelines</strong> (move data between systems, join across databases, call APIs).
+  Use an orchestrator. Workflows are for the statistics of an analysis. They use catalog
+  nodes, and they run without network access.</li>
+<li><strong>Your model needs the network at run time</strong> (an API, a database). Runs have no egress, by
   design.</li>
-<li><strong>You want hosted public code upload today</strong>: on a shared deployment, uploaded plugins come
-  first to allow-listed teams (v0.6) and to the public only after an external penetration
-  test. On a deployment you control you can install and run your own plugins now.</li>
+<li><strong>You want to upload public code to a hosted platform now</strong>. On a shared deployment,
+  uploaded plugins come first to allow-listed teams (v0.6). They come to the public only after
+  an external penetration test. On a deployment that you control, you can install and run
+  your own plugins now.</li>
 </ul>
 <h2 id="where-it-stands">Where it stands<a class="headerlink" href="#where-it-stands" title="Permanent link">&para;</a></h2>
-<p>v0.5 is complete and tested on a laptop: the workflow, governance, mmm-framework, explorer
-and CLI journeys pass end to end against a live stack, as does every earlier journey, and
-the numbers on the <a href="../#measured-not-promised">home page</a> come from those runs. Two
-things are honestly still open: the cloud controls are tested against fakes until they meet
-a real Google Cloud project, and the study with five non-technical testers is still to run.
+<p>v0.5 is complete, and we tested it on a laptop. The workflow, governance, mmm-framework,
+explorer and CLI journeys pass end to end against a live stack. All earlier journeys also
+pass. The numbers on the <a href="../#measured-not-promised">home page</a> come from those runs.
+Two items are still open. We test the cloud controls against fakes until they meet a real
+Google Cloud project. Also, the study with five non-technical testers did not run yet.
 See <a href="../operations/m35-verification/">M3.5 verification</a>, <a href="../operations/m3-verification/">M3 verification</a>
 and the <a href="../roadmap/">roadmap</a>.</p>
 

@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4833,6 +4863,8 @@
       
         
       
+        
+      
     
     
     
@@ -4921,6 +4953,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5267,18 +5327,18 @@
 
 
 <h1 id="the-expert-web-app-v03">The Expert web app <span class="mapi-badge">v0.3</span><a class="headerlink" href="#the-expert-web-app-v03" title="Permanent link">&para;</a></h1>
-<p>The web app is the Expert-mode front end of the platform: data scientists upload data, write
-and validate specs, fit them, inspect the fitted models and score them, all against the same
-<code>/v1</code> <a href="../http-api/">HTTP API</a> that the CLI and the Python client use. Nothing the app does is
-privileged: every button is one or two API calls.</p>
-<p>This page walks through every page in navigation order. The screenshots come from the
-<a href="../../getting-started/quickstart/">quickstart</a> stack; <code>make dev</code> serves the app at
+<p>The web app is the Expert-mode front end of the platform. In the app, data scientists upload
+data, write and validate specs, fit them, inspect the fitted models and score them. The app
+uses the same <code>/v1</code> <a href="../http-api/">HTTP API</a> as the CLI and the Python client. The app has no
+special permissions. Each button is one or two API calls.</p>
+<p>This page shows each page in the sequence of the navigation. The screenshots come from the
+<a href="../../getting-started/quickstart/">quickstart</a> stack. <code>make dev</code> serves the app at
 <a href="http://127.0.0.1:5173">http://127.0.0.1:5173</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Guided mode</p>
-<p>The <strong>Guided / Expert</strong> switch in the header changes the whole app to the task flow for
-analysts described in <a href="../guided-tutorial/">Your first analysis in Guided mode</a>. Both modes
-edit the same <code>ModelSpec</code>.</p>
+<p>The <strong>Guided / Expert</strong> switch in the header changes all of the app to the task flow for
+analysts. <a href="../guided-tutorial/">Your first analysis in Guided mode</a> describes this flow.
+The two modes edit the same <code>ModelSpec</code>.</p>
 </div>
 <h2 id="the-shell">The shell<a class="headerlink" href="#the-shell" title="Permanent link">&para;</a></h2>
 <table>
@@ -5291,23 +5351,23 @@ edit the same <code>ModelSpec</code>.</p>
 <tbody>
 <tr>
 <td>Project switcher</td>
-<td>The tenant and project everything on the page acts in, with your role there; switch, create a project (tenant admins) or open its members. See <a href="../authentication/#browser-sign-in">Authentication</a>.</td>
+<td>Shows the tenant and the project for all the actions on the page, and your role there. You can switch to a different project, make a project (tenant admins) or open its members. See <a href="../authentication/#browser-sign-in">Authentication</a>.</td>
 </tr>
 <tr>
 <td>Sidebar</td>
-<td>Home, Guided, Datasets, Build, Runs, Models, Score, Workflows, Governance, Integrations, Catalog and Help me choose. In Guided mode, Guided, <strong>Help me choose</strong> and <strong>Recipes</strong> (the workflow gallery as ready-made recipes) come first and Home is left out; a Guided-locked project shows those three and Integrations. Under <strong>Project</strong>, Usage, Members and Tokens; under <strong>Platform</strong>, Admin (operators only); Settings at the bottom. <strong>Collapse</strong> (<span class="keys"><kbd class="key-command">Cmd</kbd><span>+</span><kbd class="key-b">B</kbd></span>) narrows it to icons.</td>
+<td>Home, Guided, Datasets, Build, Runs, Models, Score, Workflows, Governance, Integrations, Catalog and Help me choose. In Guided mode, Guided, <strong>Help me choose</strong> and <strong>Recipes</strong> (the workflow gallery as ready-made recipes) come first, and Home does not show. A project that is locked to Guided mode shows those three items and Integrations. Under <strong>Project</strong>: Usage, Members and Tokens. Under <strong>Platform</strong>: Admin (operators only). Settings is at the bottom. <strong>Collapse</strong> (<span class="keys"><kbd class="key-command">Cmd</kbd><span>+</span><kbd class="key-b">B</kbd></span>) makes the sidebar narrow, with only icons.</td>
 </tr>
 <tr>
 <td><strong>Jump to…</strong> (<span class="keys"><kbd class="key-command">Cmd</kbd><span>+</span><kbd class="key-k">K</kbd></span> or <span class="keys"><kbd class="key-slash">/</kbd></span>)</td>
-<td>A command palette: go to any page, start a new spec, switch the theme, or paste an id (<code>run_…</code>, <code>mdl_…</code>, <code>ds_…</code>, <code>spc_…</code>) to open it.</td>
+<td>A command palette. Go to a page, start a new spec, change the theme, or paste an id (<code>run_…</code>, <code>mdl_…</code>, <code>ds_…</code>, <code>spc_…</code>) to open it.</td>
 </tr>
 <tr>
 <td><strong>API connected</strong></td>
-<td>Polls <code>GET /readyz</code>: green when PostgreSQL, the object store and the catalog are ready, amber (<em>API degraded</em>) or red (<em>API unreachable</em>) otherwise. It links to <strong>Settings</strong>, which shows each check.</td>
+<td>Polls <code>GET /readyz</code>. It is green when PostgreSQL, the object store and the catalog are ready. Otherwise, it is amber (<em>API degraded</em>) or red (<em>API unreachable</em>). It links to <strong>Settings</strong>, which shows each check.</td>
 </tr>
 <tr>
 <td><strong>Guided / Expert</strong></td>
-<td>The persona switch, remembered per user on this browser. Until you choose, a self-service (<code>public</code> tier) workspace starts in Guided mode and any other one (or a platform operator) in Expert; in Guided mode <code>/</code> opens the Guided start page. Hidden for members below admin of a project locked to Guided mode.</td>
+<td>The persona switch. This browser remembers it for each user. Until you make a selection, a self-service (<code>public</code> tier) workspace starts in Guided mode. All other workspaces (and platform operators) start in Expert mode. In Guided mode, <code>/</code> opens the Guided start page. If a project is locked to Guided mode, members below admin do not see the switch.</td>
 </tr>
 <tr>
 <td>Display icon</td>
@@ -5319,41 +5379,53 @@ edit the same <code>ModelSpec</code>.</p>
 </tr>
 </tbody>
 </table>
-<p>Text that came from a run or a plugin (log lines, tracebacks, warning messages, plot
-captions) is always rendered as plain text, with ANSI escapes and control and bidi
-characters removed. It is labelled <strong>untrusted output</strong> where it appears.</p>
+<p>The app always shows text from a run or a plugin as plain text. This text includes log lines,
+tracebacks, warning messages and plot captions. The app removes ANSI escapes, control
+characters and bidi characters from it. The label <strong>untrusted output</strong> shows next to this
+text.</p>
 <h2 id="home">Home<a class="headerlink" href="#home" title="Permanent link">&para;</a></h2>
-<p><img alt="Home: nothing running, recently finished runs, models and shortcuts" class="mapi-shot" src="../../assets/screenshots/dashboard.png" /></p>
-<p>The landing page answers "is anything happening, and does anything need me?":</p>
+<p><img alt="Home: no runs in progress, recently finished runs, models and shortcuts" class="mapi-shot" src="../../assets/screenshots/dashboard.png" /></p>
+<p>The landing page tells you if work is in progress and if something needs your attention:</p>
 <ul>
-<li><strong>Running</strong> (the heading says <em>Nothing running</em> when idle): active runs with their live
-  progress bars;</li>
-<li><strong>Needs attention</strong>: failed, stalled or partial runs among the latest 50, each linking to
-  its run page;</li>
-<li><strong>Recently finished</strong>: the latest runs of every kind with their state and input;</li>
-<li><strong>Models</strong>: registered models with their latest version;</li>
-<li><strong>Start something</strong>: write a spec from the geo MMM template, upload a dataset, browse the
-  catalog. <strong>Upload data</strong> and <strong>New spec</strong> do the same from the header.</li>
+<li><strong>Running</strong> (the heading shows <em>Nothing running</em> when no run is active): the active runs
+  with their live progress bars.</li>
+<li><strong>Needs attention</strong>: the failed, stalled or partial runs in the latest 50. Each one links
+  to its run page.</li>
+<li><strong>Recently finished</strong>: the latest runs of all types, with their state and input.</li>
+<li><strong>Models</strong>: the registered models with their latest version.</li>
+<li><strong>Start something</strong>: write a spec from the geo MMM template, upload a dataset or look at the
+  catalog. <strong>Upload data</strong> and <strong>New spec</strong> in the header do the same.</li>
 </ul>
 <h2 id="datasets">Datasets<a class="headerlink" href="#datasets" title="Permanent link">&para;</a></h2>
 <p><img alt="The datasets list" class="mapi-shot" src="../../assets/screenshots/datasets.png" /></p>
-<p>A <em>dataset</em> is a named collection of immutable <em>versions</em>. <strong>New dataset</strong> asks for a name
-(lowercase letters, digits, <code>_</code> and <code>-</code>) and an optional description, then opens the upload panel.</p>
-<p><strong>Uploading.</strong> Pick a file:</p>
+<p>A <em>dataset</em> is a named collection of immutable <em>versions</em>.</p>
+<ol>
+<li>Click <strong>New dataset</strong>.</li>
+<li>Type a name (lowercase letters, digits, <code>_</code> and <code>-</code>).</li>
+<li>If necessary, type a description.</li>
+</ol>
+<p>The app then opens the upload panel.</p>
+<p><strong>Upload a file.</strong> Select a file:</p>
 <ul>
-<li>a <strong>zarr zip</strong> (<code>.zarr.zip</code>) or <strong>netCDF</strong> (<code>.nc</code>) file is self-describing: its dims,
-  coordinates and, if present, its <code>mapi_schema</code> attribute (roles, policies, units) are used
-  as they are;</li>
-<li>a <strong>CSV</strong> file is previewed <em>in your browser</em> (it is never parsed by the server) and you
-  map each column: a <strong>dim</strong> with its kind (<code>time</code>, <code>categorical</code>, …), its <strong>score-time
-  policy</strong> (<code>fixed</code>, <code>extend</code>, <code>new_levels</code>) and frequency, or a <strong>variable</strong> with its role
-  (<code>target</code>, <code>spend</code>, <code>covariate</code>, …), units and missing-value rule. Parquet files are mapped
-  the same way, without the local preview.</li>
+<li>A <strong>zarr zip</strong> (<code>.zarr.zip</code>) or <strong>netCDF</strong> (<code>.nc</code>) file describes itself. The app uses its
+  dims and coordinates without changes. If the file has a <code>mapi_schema</code> attribute (roles,
+  policies, units), the app also uses it without changes.</li>
+<li>
+<p>Your browser shows a preview of a <strong>CSV</strong> file. The server never parses the file. Map each
+  column:</p>
+<ul>
+<li>A <strong>dim</strong>: give its kind (<code>time</code>, <code>categorical</code>, …), its <strong>score-time policy</strong>
+  (<code>fixed</code>, <code>extend</code>, <code>new_levels</code>) and its frequency.</li>
+<li>A <strong>variable</strong>: give its role (<code>target</code>, <code>spend</code>, <code>covariate</code>, …), its units and its
+  missing-value rule.</li>
 </ul>
-<p><strong>Upload and ingest</strong> sends the file straight to object storage through a signed PUT URL (the
-API never sees the bytes), then starts a sandboxed <em>ingest</em> run. The page refreshes until the
-version is <code>ready</code>, or shows the ingest's issues in plain language ("3 markets are missing
-2 weeks in March").</p>
+<p>You map Parquet files in the same way, but without the local preview.</p>
+</li>
+</ul>
+<p><strong>Upload and ingest</strong> sends the file directly to object storage through a signed PUT URL. The
+API never sees the bytes. Then the app starts an <em>ingest</em> run in the sandbox. The page
+refreshes until the version is <code>ready</code>. If the ingest finds issues, the page shows them in
+plain language ("3 markets are missing 2 weeks in March").</p>
 <p><img alt="A dataset version with its schema" class="mapi-shot" src="../../assets/screenshots/dataset-detail.png" /></p>
 <p>A version page has five tabs:</p>
 <table>
@@ -5366,15 +5438,15 @@ version is <code>ready</code>, or shows the ingest's issues in plain language ("
 <tbody>
 <tr>
 <td><strong>Schema</strong></td>
-<td>Dims with kind, score-time policy, frequency and new-level strategy; variables with dims, dtype, role, units and missing-value rule</td>
+<td>Dims with kind, score-time policy, frequency and new-level strategy. Variables with dims, dtype, role, units and missing-value rule.</td>
 </tr>
 <tr>
 <td><strong>Coordinates</strong></td>
-<td>Each dim's coordinate range and values, searchable when there are many</td>
+<td>The coordinate range and values of each dim. You can search them when there are many.</td>
 </tr>
 <tr>
 <td><strong>Missingness</strong></td>
-<td>A heatmap of missing values per variable along the time dim, rendered in the plot sandbox</td>
+<td>A heatmap of missing values for each variable along the time dim. The plot sandbox renders it.</td>
 </tr>
 <tr>
 <td><strong>Preview</strong></td>
@@ -5382,25 +5454,30 @@ version is <code>ready</code>, or shows the ingest's issues in plain language ("
 </tr>
 <tr>
 <td><strong>About</strong></td>
-<td>The content hash, size, the ingest run, when it was created and the version message</td>
+<td>The content hash, the size, the ingest run, the date of creation and the version message</td>
 </tr>
 </tbody>
 </table>
 <p><code>dataset://default/eu_media_daily@v1</code> (the copy button next to the title) is the reference
-that specs and score requests use. <code>@latest</code> resolves to the newest ready version when a run
-is submitted, and the run records which one it got.</p>
+that specs and score requests use. When you submit a run, <code>@latest</code> resolves to the newest
+ready version. The run records the version that it got.</p>
 <h2 id="build">Build<a class="headerlink" href="#build" title="Permanent link">&para;</a></h2>
-<p><strong>Build</strong> lists the specs with their latest revision and whether it is valid. <strong>New spec</strong>
-opens the editor on the geo MMM template.</p>
+<p><strong>Build</strong> shows a list of the specs with their latest revision. It also shows if each
+revision is valid. <strong>New spec</strong> opens the editor on the geo MMM template.</p>
 <p><img alt="The spec editor with the seeded spec and its pipeline" class="mapi-shot" src="../../assets/screenshots/editor.png" /></p>
-<p><strong>The editor</strong> is Monaco with YAML support bound to the server's <code>modelspec.json</code> schema,
-so it completes keys and documents fields on hover. As you type (and on <span class="keys"><kbd class="key-command">Cmd</kbd><span>+</span><kbd class="key-enter">Enter</kbd></span>) the
-spec is sent to <code>POST /v1/specs:validate</code>: the server resolves every <code>dataset://</code> reference,
-step and model plugin, checks the settings against the plugin's sanitized JSON Schema, and
-propagates the data schema through the pipeline using each step's exported schema effect.
-Problems appear as squiggles at the exact YAML path and in the <strong>Issues</strong> tab, with their
-error code (<code>LEAKAGE_RISK</code>, <code>SCHEMA_INVALID</code>, …). The badge under the title says <code>valid</code> or
-how many errors there are.</p>
+<p><strong>The editor</strong> is Monaco with YAML support. It uses the <code>modelspec.json</code> schema of the server.
+Thus, it completes keys and shows the documentation of a field when you hover over it. When
+you type (and when you push <span class="keys"><kbd class="key-command">Cmd</kbd><span>+</span><kbd class="key-enter">Enter</kbd></span>), the app sends the spec to
+<code>POST /v1/specs:validate</code>. The server then does these steps:</p>
+<ol>
+<li>It resolves each <code>dataset://</code> reference, step and model plugin.</li>
+<li>It checks the settings against the sanitized JSON Schema of the plugin.</li>
+<li>It propagates the data schema through the pipeline. For this, it uses the exported schema
+   effect of each step.</li>
+</ol>
+<p>Problems show as squiggles at the exact YAML path and in the <strong>Issues</strong> tab. Each problem has
+its error code (<code>LEAKAGE_RISK</code>, <code>SCHEMA_INVALID</code>, …). The badge below the title shows <code>valid</code>
+or the number of errors.</p>
 <p><strong>The right-hand panel:</strong></p>
 <table>
 <thead>
@@ -5412,113 +5489,166 @@ how many errors there are.</p>
 <tbody>
 <tr>
 <td><strong>Pipeline</strong></td>
-<td>The raw data after binding, then one card per step: its plugin and version, what kind of step it is (<code>reshape</code>, <code>value</code>, <code>feature</code>), whether it learns state and is invertible, the dims it adds or changes, the context tail it keeps for scoring, and <strong>Schema after this step</strong>. The <strong>Train / holdout split</strong> marker sits where <code>data.split.after_step</code> puts it.</td>
+<td>The raw data after binding, then one card for each step. Each card shows the plugin and version, and the kind of step (<code>reshape</code>, <code>value</code>, <code>feature</code>). It also shows if the step learns state and is invertible, and the dims that it adds or changes. It also shows the context tail that it keeps for scoring, and <strong>Schema after this step</strong>. The <strong>Train / holdout split</strong> marker is at the position that <code>data.split.after_step</code> sets.</td>
 </tr>
 <tr>
 <td><strong>Issues</strong></td>
-<td>Every validation issue with its code, JSON pointer and message</td>
+<td>Each validation issue with its code, JSON pointer and message</td>
 </tr>
 <tr>
 <td><strong>Revisions</strong></td>
-<td>Every saved revision, with its message; pick two to see a diff</td>
+<td>Each saved revision, with its message. Select two revisions to see a diff.</td>
 </tr>
 </tbody>
 </table>
 <p><strong>The buttons:</strong></p>
 <ul>
 <li><strong>Save revision</strong> (<span class="keys"><kbd class="key-command">Cmd</kbd><span>+</span><kbd class="key-s">S</kbd></span>) stores the text as a new immutable revision (<code>r1</code>, <code>r2</code>, …)
-  with the optional message. Invalid revisions can be saved too, so work in progress is
-  never lost; they cannot be fitted.</li>
-<li><strong>Dry-run</strong> starts a sandboxed <code>validate</code> run of the saved revision: it checks the real data
-  array by array against the spec, fits the <em>pipeline</em> on it (not the model) and records the
-  schema at every stage. Use it when a step's effect is dynamic, or when the static check
-  passes and you want to know the data really fits.</li>
+  with the optional message. You can also save revisions that are not valid. Thus, you never
+  lose work in progress. You cannot fit a revision that is not valid.</li>
+<li><strong>Dry-run</strong> starts a <code>validate</code> run of the saved revision in the sandbox. It checks the real
+  data against the spec, one array at a time. It fits the <em>pipeline</em> on the data (not the
+  model). It records the schema at each stage. Use it when the effect of a step is dynamic.
+  Also use it when the static check passes and you want to know if the data really fits.</li>
 <li><strong>Fit</strong> submits a fit run of the saved revision and opens its run page.</li>
 </ul>
 <h2 id="runs">Runs<a class="headerlink" href="#runs" title="Permanent link">&para;</a></h2>
 <p><img alt="The runs list" class="mapi-shot" src="../../assets/screenshots/runs.png" /></p>
-<p>Every ingest, describe, dry-run, fit and score is a run. The list filters by state and kind
-and updates live.</p>
+<p>Each ingest, describe, dry-run, fit and score is a run. You can filter the list by state and
+by type. The list updates live.</p>
 <h3 id="run-detail">Run detail<a class="headerlink" href="#run-detail" title="Permanent link">&para;</a></h3>
-<p><img alt="A fit run while the sampler is drawing" class="mapi-shot" src="../../assets/screenshots/run-progress.png" /></p>
-<p>The run page subscribes to the run's server-sent event stream (<code>Live</code> next to the state) and
-resumes where it stopped after a disconnect.</p>
+<p><img alt="A fit run while the sampler makes draws" class="mapi-shot" src="../../assets/screenshots/run-progress.png" /></p>
+<p>The run page subscribes to the server-sent event stream of the run (<code>Live</code> next to the state).
+After a disconnect, it continues from the point where it stopped.</p>
 <ul>
 <li><strong>Progress</strong>: the current phase (<em>Starting the sandbox</em>, <em>Loading inputs</em>, <em>Fitting</em>,
-  <em>Rendering plots</em>, <em>Uploading outputs</em>, …), the latest message from the runner (for a
-  PyMC fit, the chain, draw and divergence counts) and a progress bar. <em>No progress reported
-  recently</em> appears when a run goes quiet for longer than expected; the run is marked
-  <code>stalled</code>, which is a warning, not a failure: the executor's own status decides whether
-  the run is alive.</li>
-<li><strong>Logs</strong>: the stdout and stderr the supervisor captured from the worker (capped and
-  stripped), with <strong>All / stdout / stderr / system</strong> filters, a text filter and <strong>Follow</strong>.</li>
-<li><strong>Details</strong>: timestamps, the spec revision, model version or dataset it ran on, the spec
-  hash, the run it retried, and its cost (<code>Not metered locally</code>).</li>
-<li><strong>Events</strong>: every persisted event, including the <code>DEV_MODE_ISOLATION</code> warning on a laptop,
-  diagnostics and metrics.</li>
+  <em>Rendering plots</em>, <em>Uploading outputs</em>, …), the latest message from the runner and a
+  progress bar. For a PyMC fit, the message shows the chain, draw and divergence counts.
+  <em>No progress reported recently</em> shows when a run is quiet for longer than expected. The
+  app then marks the run as <code>stalled</code>. This is a warning, not a failure. The status from the
+  executor tells if the run is alive.</li>
+<li><strong>Logs</strong>: the stdout and stderr that the supervisor captured from the worker. The logs have
+  a size limit, and the app removes unsafe characters. Use the <strong>All / stdout / stderr /
+  system</strong> filters, a text filter and <strong>Follow</strong>.</li>
+<li><strong>Details</strong>: the timestamps, and the spec revision, model version or dataset of the run. It
+  also shows the spec hash, the run that it retried and its cost (<code>Not metered locally</code>).</li>
+<li><strong>Events</strong>: each persisted event, with diagnostics and metrics. On a laptop, this includes
+  the <code>DEV_MODE_ISOLATION</code> warning.</li>
 </ul>
-<p><strong>Actions:</strong> <strong>Cancel</strong> (any active run; checkpointed fits stop as <code>partial</code>), <strong>Resume</strong> (a
-<code>partial</code> run continues from its checkpoints as a new attempt) and <strong>Retry</strong> (a new run from
-a failed one; after <code>RESOURCE_EXHAUSTED</code> the dialog suggests the next resource class). A
-succeeded fit links to its model version: <strong>Inspect model://default/eu-geo-mmm@v1</strong>.</p>
+<p><strong>Actions:</strong></p>
+<ul>
+<li><strong>Cancel</strong>: stops an active run. Fits with checkpoints stop as <code>partial</code>.</li>
+<li><strong>Resume</strong>: a <code>partial</code> run continues from its checkpoints as a new attempt.</li>
+<li><strong>Retry</strong>: makes a new run from a failed run. After <code>RESOURCE_EXHAUSTED</code>, the dialog
+  recommends the next resource class.</li>
+</ul>
+<p>A fit that succeeded links to its model version: <strong>Inspect model://default/eu-geo-mmm@v1</strong>.</p>
 <h2 id="models">Models<a class="headerlink" href="#models" title="Permanent link">&para;</a></h2>
-<p><strong>Models</strong> lists every model (one per spec name) and the model page lists its versions. Each
-successful fit registers a new version after the platform has verified the run's outputs
-and signed the bundle manifest. The version page has six tabs and a <strong>Score</strong> button.</p>
+<p><strong>Models</strong> shows a list of all the models (one for each spec name). The model page shows a
+list of its versions. After each fit that succeeds, the platform verifies the outputs of the
+run and signs the bundle manifest. Then it registers a new version. The version page has six
+tabs and a <strong>Score</strong> button.</p>
 <h3 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h3>
 <p><img alt="The scorecard and metrics of a model version" class="mapi-shot" src="../../assets/screenshots/scorecard.png" /></p>
-<p>The <strong>Scorecard</strong> rolls the diagnostics up into pass, warn and fail items, each with a
-plain-language message, the metric and its threshold, and a suggested action. <strong>Metrics</strong> are
-the holdout metrics the spec asked for (<code>evaluate.metrics</code>), computed by scoring the holdout
-through the normal scoring path before the refit. <strong>Capabilities</strong> are the plugin's: score
-modes, representation (<code>draws</code>, <code>quantiles</code>, <code>interval</code>, <code>point</code>, <code>moments</code>), how
-contributions combine, what preprocessing the model owns, and whether results are
-deterministic for a seed.</p>
+<p>The <strong>Scorecard</strong> collects the diagnostics into pass, warn and fail items. Each item has a
+plain-language message, the metric and its threshold, and a suggested action. <strong>Metrics</strong>
+are the holdout metrics that the spec asked for (<code>evaluate.metrics</code>). The platform calculates
+them before the refit. It scores the holdout through the normal score path. <strong>Capabilities</strong>
+come from the plugin. They are the score modes, the representation (<code>draws</code>, <code>quantiles</code>,
+<code>interval</code>, <code>point</code>, <code>moments</code>) and how contributions combine. They also tell which
+preprocessing the model owns, and if results are deterministic for a seed.</p>
 <h3 id="diagnostics">Diagnostics<a class="headerlink" href="#diagnostics" title="Permanent link">&para;</a></h3>
-<p><img alt="Per-variable diagnostics" class="mapi-shot" src="../../assets/screenshots/diagnostics.png" /></p>
-<p>One row per check and variable, sortable and filterable: R-hat, bulk and tail ESS,
-divergences, Pareto k, or "LOO invalid" with the plugin's reason.</p>
+<p><img alt="The diagnostics for each variable" class="mapi-shot" src="../../assets/screenshots/diagnostics.png" /></p>
+<p>The table has one row for each check and variable. You can sort and filter the rows. The
+checks are R-hat, bulk and tail ESS, divergences and Pareto k. A row can also show "LOO
+invalid" with the reason from the plugin.</p>
 <h3 id="plots">Plots<a class="headerlink" href="#plots" title="Permanent link">&para;</a></h3>
 <p><img alt="The posterior predictive check of the holdout weeks" class="mapi-shot" src="../../assets/screenshots/ppc.png" /></p>
-<p>The plot recipes the spec listed in <code>outputs.plots</code>, rendered from the bundle's precomputed
-plot data. Each card says which recipe made it (<code>core.ppc_fan@1.0.0</code>) and in which library
-(<code>vega-lite</code> or <code>plotly</code>), with a plain-language caption.</p>
-<p>Every plot, first-party included, renders inside an <code>&lt;iframe sandbox="allow-scripts"&gt;</code> served
-from the plot sandbox's own origin (port 5174 locally). The specs were checked by the server's
-sanitizer when the run finished and again on every read, and the sandbox refuses URL data,
-links, external images and tile maps before any charting library runs. The two windows talk
-only through a small, validated <code>postMessage</code> protocol. See
+<p>This tab shows the plot recipes that the spec lists in <code>outputs.plots</code>. The app renders them
+from the precomputed plot data in the bundle. Each card tells the recipe that made it
+(<code>core.ppc_fan@1.0.0</code>) and the library (<code>vega-lite</code> or <code>plotly</code>). Each card also has a
+plain-language caption.</p>
+<p>All plots, also the first-party plots, render in an <code>&lt;iframe sandbox="allow-scripts"&gt;</code>. This
+iframe comes from the own origin of the plot sandbox (port 5174 locally). The sanitizer of
+the server checked the specs when the run finished. It checks them again on each read. Before
+a chart library runs, the sandbox refuses URL data, links, external images and tile maps. The
+two windows communicate only through a small, validated <code>postMessage</code> protocol. See
 <a href="../../reference/web-app/#security">Web app and plot sandbox</a>.</p>
 <h3 id="data-tree">Data tree<a class="headerlink" href="#data-tree" title="Permanent link">&para;</a></h3>
-<p><img alt="The bundle's DataTree browser" class="mapi-shot" src="../../assets/screenshots/data-tree.png" /></p>
-<p>A browser over the bundle's <code>ui/tree_index.json</code>: every group of the fitted bundle
-(<code>binding</code>, <code>fit_coords</code> per stage, <code>model/posterior</code>, <code>sample_stats</code>, <code>log_likelihood</code>,
-<code>preprocess/&lt;step&gt;/{arrays,context}</code>, <code>derived/…</code>) with its variables, dims, shapes, units
-and attributes. It reads the index only; the arrays stay in the bundle, which you can
-download from <strong>Provenance</strong> or with the client.</p>
+<p><img alt="The DataTree browser of the bundle" class="mapi-shot" src="../../assets/screenshots/data-tree.png" /></p>
+<p>This tab is a browser for the <code>ui/tree_index.json</code> file of the bundle. It shows each group of
+the fitted bundle with its variables, dims, shapes, units and attributes. The groups are
+<code>binding</code>, <code>fit_coords</code> for each stage, <code>model/posterior</code>, <code>sample_stats</code>, <code>log_likelihood</code>,
+<code>preprocess/&lt;step&gt;/{arrays,context}</code> and <code>derived/…</code>. The tab reads only the index. The
+arrays stay in the bundle. You can download the bundle from <strong>Provenance</strong> or with the
+client.</p>
 <h3 id="preprocessing">Preprocessing<a class="headerlink" href="#preprocessing" title="Permanent link">&para;</a></h3>
-<p>A heatmap of each step's learned state (for example <code>scale(geo, channel)</code>), read from the
-bundle's <code>ui/preprocess.json</code> view: every step in order with its resolved plugin, whether it
-is stateful, its learned JSON and its numeric state arrays (larger arrays are listed as
-omitted). The full state is also browsable under <code>preprocess/</code> in <strong>Data tree</strong>.</p>
+<p>This tab shows a heatmap of the learned state of each step (for example
+<code>scale(geo, channel)</code>). The data comes from the <code>ui/preprocess.json</code> view of the bundle. The
+tab shows each step in sequence with its resolved plugin, and if it is stateful. It also
+shows its learned JSON and its numeric state arrays. For larger arrays, the list tells that
+they are omitted. You can also see the full state under <code>preprocess/</code> in <strong>Data tree</strong>.</p>
 <h3 id="provenance">Provenance<a class="headerlink" href="#provenance" title="Permanent link">&para;</a></h3>
 <p><img alt="Signature, lineage and bundle objects" class="mapi-shot" src="../../assets/screenshots/provenance.png" /></p>
 <ul>
-<li><strong>Signature</strong>: the bundle manifest's signature (EC P-256 locally, standing in for Cloud KMS),
-  the spec, data and catalog hashes it binds, and its status. The server checks it, the tenant
-  and every object generation before it hands out any download link.</li>
-<li><strong>Lineage</strong>: the fit run and attempt, plugin and version, engine and seed, executor and
-  resource class, dataset and side-table versions, the evaluation bundle it was refitted
-  from, and the library versions in the runner.</li>
-<li><strong>Bundle objects</strong>: every stored object with its size, CRC32C and generation; each can be
-  opened or downloaded through a short-lived signed URL, and the download is checked against
-  that CRC32C.</li>
+<li><strong>Signature</strong>: the signature of the bundle manifest (EC P-256 locally, in place of Cloud
+  KMS), its status, and the spec, data and catalog hashes that it binds. Before the server
+  gives a download link, it checks the signature, the tenant and each object generation.</li>
+<li><strong>Lineage</strong>: the fit run and attempt, the plugin and version, and the engine and seed. It
+  also shows the executor and resource class, and the dataset and side-table versions. It
+  also shows the evaluation bundle that the model was fitted again from, and the library
+  versions in the runner.</li>
+<li><strong>Bundle objects</strong>: each stored object with its size, CRC32C and generation. You can open
+  or download each object through a short-lived signed URL. The app compares the download
+  with that CRC32C.</li>
 </ul>
 <h2 id="score">Score<a class="headerlink" href="#score" title="Permanent link">&para;</a></h2>
 <p><img alt="The score form" class="mapi-shot" src="../../assets/screenshots/score-form.png" /></p>
-<p>Pick a model and version (or arrive from a model page). The form is built from the model's
-capabilities, so it only offers what the model can do, and the server checks the request
-statically before any run starts.</p>
+<p>Select a model and a version, or come to this page from a model page. The app makes the page
+from the inputs of the version (<code>GET /v1/models/{id}/versions/{v}/inputs</code>). Thus, the page shows
+only the options that the model can do. The server checks the request statically before a run
+starts.</p>
+<p><strong>What this model needs</strong> shows these items:</p>
+<ul>
+<li>The variable that the model predicts.</li>
+<li>The inputs that the model reads. A label shows the inputs that the model needs on future
+  periods, for example planned spend.</li>
+<li>The data that the model was fitted on: the fitted date range and each level of the other
+  dims.</li>
+</ul>
+<p>The names are the canonical names of the spec (its <code>data.bind</code>).</p>
+<p>Then do the steps of the form:</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What do you want to do?</strong></td>
+<td>Select a mode. The page shows only the modes that the plugin declares: <strong>Forecast</strong>, <strong>Predict</strong>, <strong>What if</strong> (counterfactual), <strong>Simulate</strong>, <strong>Evaluate</strong> and, for state-space models, <strong>Update with new data</strong> (filter).</td>
+</tr>
+<tr>
+<td><strong>How far ahead?</strong></td>
+<td>For a forecast: type the number of periods after the fitted end. The model uses its own time dim.</td>
+</tr>
+<tr>
+<td><strong>Values to score</strong></td>
+<td>Select one: <strong>Type values</strong>, <strong>Use a dataset</strong> or <strong>No new data</strong>. The grid of <strong>Type values</strong> starts with the periods to score and each fitted level. You can paste rows from a spreadsheet. You can also use <strong>Fill blanks</strong> to put one value in all the empty cells of a column. The app sends typed values inline (<code>ScoreCall.inline</code>, a maximum of 5 MB). The server checks them against the inputs of the model. You do not upload a file. For <strong>Use a dataset</strong>, <strong>Upload</strong> makes a dataset. Evaluate and filter need a dataset.</td>
+</tr>
+<tr>
+<td><strong>Future values … not given</strong></td>
+<td>For a forecast: select the value that empty future inputs get. The options are the last value, the value of the same period one year before, zero, or none. If you select none, you must give each value.</td>
+</tr>
+<tr>
+<td><strong>Changes</strong></td>
+<td>Change a variable on some levels before the model scores, for example multiply <code>spend</code> by <code>1.2</code> where <code>channel=tv</code>. <strong>What if</strong> compares the result with the changes and without them.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Advanced</strong> contains the other fields:</p>
 <table>
 <thead>
 <tr>
@@ -5528,32 +5658,16 @@ statically before any run starts.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Mode</strong></td>
-<td><code>predict</code>, <code>forecast</code>, <code>counterfactual</code>, <code>simulate</code>, <code>evaluate</code> (and <code>filter</code> for state-space models), as the plugin declares</td>
-</tr>
-<tr>
-<td><strong>Horizon dim</strong>, <strong>Periods</strong></td>
-<td>For <code>forecast</code>: how far to extend the time-like dim past the fitted range</td>
-</tr>
-<tr>
 <td><strong>Inputs enter at stage</strong></td>
-<td>Where the request's data enters the pipeline: <code>raw</code> (the dataset's own units), or a later stage such as <code>weekly</code>, to send weekly EUR spend directly. Steps before the stage are skipped, and so are their side tables.</td>
+<td>The position where the data of a dataset goes into the pipeline. This can be <code>raw</code> (the units of the dataset), or a later stage, for example <code>weekly</code>, to send weekly EUR spend directly. The pipeline skips the steps before the stage and their side tables. Typed values go into the pipeline at <code>raw</code>.</td>
 </tr>
 <tr>
-<td><strong>Input data</strong></td>
-<td>A <code>dataset://</code> reference (<strong>Upload</strong> creates one): future spend for a forecast, a new market, or a window of past data for a counterfactual</td>
-</tr>
-<tr>
-<td><strong>Scenario data</strong></td>
-<td>A changed copy of the input data; counterfactuals compare it with the input</td>
+<td><strong>Scenario dataset</strong></td>
+<td>A changed copy of the input data. <strong>What if</strong> compares it with the input.</td>
 </tr>
 <tr>
 <td><strong>Side tables</strong></td>
-<td>Tables with <code>score_policy: supplied</code> (here <code>fx</code>) default to the version the fit used and must cover the scored dates; <code>pinned</code> tables are replayed from the fit</td>
-</tr>
-<tr>
-<td><strong>Interventions</strong></td>
-<td>Change a variable on selected coordinates: <code>spend_local</code> where <code>channel=tv</code>, multiply by <code>1.2</code></td>
+<td>Tables with <code>score_policy: supplied</code> (here <code>fx</code>) use the version from the fit by default. They must cover the scored dates. The platform uses <code>pinned</code> tables again from the fit.</td>
 </tr>
 <tr>
 <td><strong>Quantity</strong></td>
@@ -5561,103 +5675,145 @@ statically before any run starts.</p>
 </tr>
 <tr>
 <td><strong>Units</strong>, <strong>Names</strong></td>
-<td>Original units (inverted back through the pipeline) or model space; your dataset's names or the plugin's canonical names</td>
+<td>Original units (inverted back through the pipeline) or model space. The names of your dataset or the canonical names of the plugin.</td>
 </tr>
 <tr>
 <td><strong>Summaries</strong>, <strong>Draws</strong></td>
-<td>Which summaries to return (<code>mean</code>, <code>median</code>, <code>sd</code>, <code>hdi_50</code>, <code>hdi_90</code>, quantiles), and how many joint draws (0 returns summaries only; counterfactual deltas need draws to show their uncertainty)</td>
+<td>The summaries to return (<code>mean</code>, <code>median</code>, <code>sd</code>, <code>hdi_50</code>, <code>hdi_90</code>, quantiles), and the number of joint draws. 0 returns only summaries. Counterfactual deltas need draws to show their uncertainty.</td>
 </tr>
 <tr>
 <td><strong>Variables</strong>, <strong>Seed</strong></td>
-<td>Restrict the outputs; fix the seed for reproducible draws</td>
+<td>Limit the outputs. Set the seed to get draws that you can reproduce.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Score</strong> sends <code>POST /v1/models/{id}/versions/{v}:score</code> with <code>Prefer: wait=30</code> and an
-idempotency key, then follows the run.</p>
-<p><img alt="A forecast for the fitted markets plus FR, a market the model has never seen" class="mapi-shot" src="../../assets/screenshots/score-new-market.png" /></p>
-<p><strong>Results</strong> shows the run's own plots (a forecast fan per market, or the scenario against the
-baseline for a counterfactual), the outputs with their sizes and signed links
-(<code>score.zarr.zip</code> is the full <code>xr.DataTree</code>, <code>ui/summary.arrow</code> the summary table), the
-summary as a table with one row per coordinate and one column per statistic, and a quick
-chart you can re-plot by any column. A market the model has not seen, like FR above, is drawn
-from the fitted hierarchy, so its band is wider; the result's <code>issues</code> say so.</p>
+<p>A checklist above the button shows the data that the app will send. It also shows the data
+that is missing. The button shows the name of the mode, for example <strong>Forecast</strong> or <strong>Predict</strong>.</p>
+<p>The button sends <code>POST /v1/models/{id}/versions/{v}:score</code> with <code>Prefer: wait=30</code> and an
+idempotency key. Then the page follows the run.</p>
+<p>You can send actuals with a forecast if the model can use them. The grid then has a column for
+the target. The run also returns predictions on the periods of the actuals. These predictions
+are one-step-ahead: each one is the value that the model expected before it saw the actual.
+<strong>Predictions against your actuals</strong> shows these items:</p>
+<ul>
+<li>The number of actuals that the app compared.</li>
+<li>The typical error and the percentage error.</li>
+<li>The percentage of actuals that are in the band.</li>
+<li>A chart for each series. The actuals show as diamonds. After the last actual, the forecast
+  shows as a dashed line.</li>
+<li>A table with the error for each period.</li>
+</ul>
+<p>The run returns the actuals that it used in <code>ScoreSummary.actuals</code>.</p>
+<p><img alt="A forecast for the fitted markets and FR, a market that the model did not see before" class="mapi-shot" src="../../assets/screenshots/score-new-market.png" /></p>
+<p><strong>Results</strong> shows these items:</p>
+<ul>
+<li>The plots of the run: a forecast fan for each market, or the scenario against the baseline
+  for a counterfactual.</li>
+<li>The outputs with their sizes and signed links. <code>score.zarr.zip</code> is the full <code>xr.DataTree</code>.
+  <code>ui/summary.arrow</code> is the summary table.</li>
+<li>The summary as a table, with one row for each coordinate and one column for each statistic.</li>
+<li>A quick chart. You can plot it again by a different column.</li>
+</ul>
+<p>If the model did not see a market before (for example FR above), the platform draws it from
+the fitted hierarchy. Thus, its band is wider. The <code>issues</code> of the result tell this.</p>
 <h2 id="workflows-and-governance-v05">Workflows and governance <span class="mapi-badge">v0.5</span><a class="headerlink" href="#workflows-and-governance-v05" title="Permanent link">&para;</a></h2>
-<p><strong>Workflows</strong> builds, runs, schedules and watches workflows: a template gallery, a visual
-editor with a node palette, typed ports and a YAML view, and a live run monitor. See
-<a href="../workflows/#in-the-web-app">In the web app</a>. <strong>Governance</strong> edits policies, follows
-validations and holds the reviewers' queue; see <a href="../governance/#in-the-web-app">In the web app</a>.</p>
+<p><strong>Workflows</strong> builds, runs, schedules and monitors workflows. It has a template gallery, a
+visual editor and a live run monitor. The editor has a node palette, typed ports and a YAML
+view. See <a href="../workflows/#in-the-web-app">In the web app</a>. <strong>Governance</strong> edits policies,
+follows validations and holds the queue of the reviewers. See
+<a href="../governance/#in-the-web-app">In the web app</a>.</p>
 <div class="grid">
 <p><img alt="The workflow editor: palette, canvas with typed ports, node editor" class="mapi-shot" src="../../assets/screenshots/workflows-editor.png" /></p>
-<p><img alt="A validation waiting for a reviewer, with its checks and evidence" class="mapi-shot" src="../../assets/screenshots/governance-validation.png" /></p>
+<p><img alt="A validation that waits for a reviewer, with its checks and evidence" class="mapi-shot" src="../../assets/screenshots/governance-validation.png" /></p>
 </div>
-<p>The screens lead into each other:</p>
+<p>The screens link to each other:</p>
 <ul>
-<li>A finished workflow run links each model it fitted to the <strong>Model Explorer</strong> and to the
-  version's validations (in the run summary, the fit step's runs and its outputs); the run
-  page of a workflow run opens its monitor, and a model's lineage leads back to the workflow
-  run that fitted it.</li>
-<li>The <strong>Model Explorer</strong> shows the version's validation status in its header (a link to the
-  version's validations) and, under <em>Governance evidence</em>, links to the latest validation and
-  the policies. A validation links back to the Model Explorer and to the run that computed
-  its checks.</li>
-<li>The <strong>Data Explorer</strong> of data over time offers the readiness workflow with that data
-  already bound: the <em>Run this recipe</em> page in Guided mode, the template wizard in Expert mode.</li>
-<li><strong>Start with this</strong> on an About card or a Help me choose result opens a workflow template
-  as a recipe (Guided) or in the template wizard (Expert), and a governance check in the
-  check catalog. In Guided mode a model opens the guided template built on it; one without
-  a guided template offers <strong>Set up in Expert mode</strong> (a deliberate switch) instead of opening
-  the spec editor.</li>
+<li>A finished workflow run links each model that it fitted to the <strong>Model Explorer</strong>. It also
+  links each model to the validations of the version. These links are in the run summary, in
+  the runs of the fit step and in its outputs. The run page of a workflow run opens its
+  monitor. The lineage of a model links back to the workflow run that fitted it.</li>
+<li>The header of the <strong>Model Explorer</strong> shows the validation status of the version. This is a
+  link to the validations of the version. Under <em>Governance evidence</em>, the Model Explorer
+  links to the latest validation and the policies. A validation links back to the Model
+  Explorer and to the run that calculated its checks.</li>
+<li>The <strong>Data Explorer</strong> for data over time offers the readiness workflow, with that data
+  already bound. In Guided mode, this is the <em>Run this recipe</em> page. In Expert mode, this is
+  the template wizard.</li>
+<li><strong>Start with this</strong> on an About card or on a Help me choose result opens a workflow
+  template. In Guided mode, it opens as a recipe. In Expert mode, it opens in the template
+  wizard. For a governance check, it opens the check in the check catalog. In Guided mode, a
+  model opens the guided template that uses it. If a model has no guided template, the app
+  shows <strong>Set up in Expert mode</strong> (a deliberate switch). The app does not open the spec
+  editor.</li>
 </ul>
 <h2 id="catalog">Catalog<a class="headerlink" href="#catalog" title="Permanent link">&para;</a></h2>
 <p><img alt="The catalog: models, steps and plot recipes" class="mapi-shot" src="../../assets/screenshots/catalog.png" /></p>
-<p>What the runner image provides, as exported by its sandboxed <em>describe</em> run and identified by
-its digest: <strong>Models</strong> (inference, representation, score modes, base image), <strong>Steps</strong> (kind,
-whether it learns state, invertibility, summary) and <strong>Plots</strong> (recipe, title, audience and
-the bundle groups it needs). Click a row for its full entry. Specs can only use what is listed here. The same data is in
-the <a href="../../reference/generated/models-catalog/">generated catalogs</a>.</p>
-<p>Since v0.5 the catalog opens on <strong>Browse</strong>: every item a user can pick by its plain-language
-About card, with <strong>Help me choose</strong> one click away (see <a href="../../concepts/about-and-choosing/#in-the-web-app">About cards and
+<p>The catalog shows the contents of the runner image. Its sandboxed <em>describe</em> run exports
+these contents, and its digest identifies them:</p>
+<ul>
+<li><strong>Models</strong>: inference, representation, score modes and base image.</li>
+<li><strong>Steps</strong>: kind, if it learns state, invertibility and summary.</li>
+<li><strong>Plots</strong>: recipe, title, audience and the bundle groups that it needs.</li>
+</ul>
+<p>Click a row to see its full entry. Specs can use only the items in this list. The
+<a href="../../reference/generated/models-catalog/">generated catalogs</a> have the same data.</p>
+<p>Since v0.5, the catalog opens on <strong>Browse</strong>. It shows each item that a user can select, with
+its plain-language About card. <strong>Help me choose</strong> is one click away (see <a href="../../concepts/about-and-choosing/#in-the-web-app">About cards and
 choosing</a>).</p>
 <h2 id="explorers-and-budget-plans-v05">Explorers and budget plans <span class="mapi-badge">v0.5</span><a class="headerlink" href="#explorers-and-budget-plans-v05" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Explore this version</strong> on a dataset version opens the
   <a href="../data-explorer/#in-the-web-app">Data Explorer</a>.</li>
-<li><strong>Explore</strong> on a model version opens the <a href="../model-explorer/#in-the-web-app">Model Explorer</a>
-  (parameters, diagnostics, fit, residuals, contributions, response curves, IRF/FEVD,
-  forecasts, backtests, governance evidence and lineage); <strong>Compare</strong> puts several versions
-  side by side with Diebold-Mariano tests; <strong>Optimise budget</strong> plans a marketing budget.</li>
+<li><strong>Explore</strong> on a model version opens the <a href="../model-explorer/#in-the-web-app">Model Explorer</a>.
+  It shows parameters, diagnostics, fit, residuals, contributions, response curves,
+  IRF/FEVD, forecasts, backtests, governance evidence and lineage.</li>
+<li><strong>Compare</strong> shows some versions side by side with Diebold-Mariano tests.</li>
+<li><strong>Optimise budget</strong> makes a plan for a marketing budget.</li>
 </ul>
 <h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
 <p><img alt="Settings: appearance, mode and connection" class="mapi-shot" src="../../assets/screenshots/settings.png" /></p>
-<p><strong>Appearance</strong> and <strong>Mode</strong> are stored in this browser. Project admins also find <strong>Lock
-… to Guided mode</strong> under Mode <span class="mapi-badge">v0.4</span>: the project's persona lock
-(stored on the server and audited; see <a href="../../concepts/guided-mode/#the-persona-lock">Guided mode</a>).
-<strong>Connection</strong> shows the API and plot
-sandbox the app was built for (<code>VITE_API_BASE</code>, <code>VITE_PLOTS_ORIGIN</code>), the server and contract
-versions, and the latency of each readiness check.</p>
-<p>Organisation admins also get <strong>Data</strong> <span class="mapi-badge">v0.4</span>: a GDPR export of
-everything the organisation stored, and deleting the organisation with a 7-day grace period in
-which it can be cancelled. See <a href="../integrations-hub/#settings-data">Settings &gt; Data</a>.</p>
+<p>This browser stores <strong>Appearance</strong> and <strong>Mode</strong>. Project admins also see <strong>Lock … to Guided
+mode</strong> under Mode <span class="mapi-badge">v0.4</span>. This is the persona lock of the
+project. The server stores and audits it (see
+<a href="../../concepts/guided-mode/#the-persona-lock">Guided mode</a>). <strong>Connection</strong> shows the API and
+the plot sandbox that the app was built for (<code>VITE_API_BASE</code>, <code>VITE_PLOTS_ORIGIN</code>). It also
+shows the server and contract versions, and the latency of each readiness check.</p>
+<p>Organisation admins also see <strong>Data</strong> <span class="mapi-badge">v0.4</span>. Here, they can do
+a GDPR export of all the data that the organisation stored. They can also delete the
+organisation. The deletion has a 7-day grace period, and they can cancel it in that period.
+See <a href="../integrations-hub/#settings-data">Settings &gt; Data</a>.</p>
 <h2 id="integrations-v04">Integrations <span class="mapi-badge">v0.4</span><a class="headerlink" href="#integrations-v04" title="Permanent link">&para;</a></h2>
 <p><img alt="The Integrations overview" class="mapi-shot" src="../../assets/screenshots/integrations-overview.png" /></p>
-<p>Where a model leaves the platform: Guided cards for Google Sheets, a BI dashboard and a webhook,
-and the Expert pages - endpoints and aliases promoted through the scorecard gate (with history,
-rollback, the input contract, <strong>Try it</strong> and snippets in six languages), webhooks with their
-delivery logs and replays, and saved plots with PNG/SVG/PDF downloads and expiring embed links.
-A plot gallery's <strong>Share</strong> button starts there too. Every page is described in
-<a href="../integrations-hub/">The Integrations hub</a>.</p>
-<p>The sign-in screen links to the public <strong>sign-up</strong> page when the server allows self-service
-sign-up; see <a href="../integrations-hub/#sign-up-and-e-mail-verification">Sign-up and e-mail verification</a>.</p>
+<p>This is where a model goes out of the platform. It has Guided cards for Google Sheets, a BI
+dashboard and a webhook. It also has these Expert pages:</p>
+<ul>
+<li>Endpoints and aliases that you promote through the scorecard gate. These pages have the
+  history, rollback, the input contract, <strong>Try it</strong> and snippets in six languages.</li>
+<li>Webhooks with their delivery logs and replays.</li>
+<li>Saved plots with PNG/SVG/PDF downloads and embed links that expire.</li>
+</ul>
+<p>The <strong>Share</strong> button of a plot gallery also starts here. <a href="../integrations-hub/">The Integrations
+hub</a> describes each page.</p>
+<p>If the server permits self-service sign-up, the sign-in screen links to the public
+<strong>sign-up</strong> page. See <a href="../integrations-hub/#sign-up-and-e-mail-verification">Sign-up and e-mail
+verification</a>.</p>
 <h2 id="guided">Guided<a class="headerlink" href="#guided" title="Permanent link">&para;</a></h2>
 <p><img alt="Guided mode: what do you want to learn?" class="mapi-shot" src="../../assets/screenshots/guided-templates.png" /></p>
-<p>The task flow for analysts: choose a template, answer questions about the data, state what
-you believe, fit, read the report and the sanity scorecard, try what-if scenarios and share
-the result. Every step has its own URL and <strong>View as YAML</strong>. The walkthrough is
+<p>This is the task flow for analysts:</p>
+<ol>
+<li>Select a template.</li>
+<li>Answer questions about the data.</li>
+<li>Tell what you believe.</li>
+<li>Fit the model.</li>
+<li>Read the report and the sanity scorecard.</li>
+<li>Try what-if scenarios.</li>
+<li>Share the result.</li>
+</ol>
+<p>Each step has its own URL and <strong>View as YAML</strong>. For a full example, see
 <a href="../guided-tutorial/">Your first analysis in Guided mode</a>.</p>
 <h2 id="team-pages">Usage, Members, Tokens and Admin <span class="mapi-badge">v0.3</span><a class="headerlink" href="#team-pages" title="Permanent link">&para;</a></h2>
-<p>The pages for running the platform for several people and organisations are described, with
-screenshots, in the <a href="../administration/">Administration guide</a>:</p>
+<p>These pages help you operate the platform for many persons and organisations. The
+<a href="../administration/">Administration guide</a> describes them, with screenshots:</p>
 <table>
 <thead>
 <tr>
@@ -5669,34 +5825,34 @@ screenshots, in the <a href="../administration/">Administration guide</a>:</p>
 <tbody>
 <tr>
 <td><strong>Usage</strong></td>
-<td>Everyone in the project; <strong>Organisation</strong> needs a tenant-wide admin</td>
+<td>All members of the project. <strong>Organisation</strong> needs a tenant-wide admin.</td>
 <td><a href="../administration/#cost-and-usage">Cost and quota use</a> for a UTC day or month</td>
 </tr>
 <tr>
 <td><strong>Members</strong></td>
-<td>Everyone; changes need an admin</td>
+<td>All members. Changes need an admin.</td>
 <td><a href="../administration/#projects-and-members">Who has which role</a>, invitations</td>
 </tr>
 <tr>
 <td><strong>Tokens</strong></td>
-<td>Everyone (their own); admins see everyone's</td>
-<td><a href="../administration/#api-tokens">API tokens</a>: create, list, revoke; <code>?preset=score:&lt;alias&gt;</code> opens a token for one endpoint</td>
+<td>All members (their own tokens). Admins see the tokens of all members.</td>
+<td><a href="../administration/#api-tokens">API tokens</a>: create, list, revoke. <code>?preset=score:&lt;alias&gt;</code> opens a token for one endpoint.</td>
 </tr>
 <tr>
 <td><strong>Admin</strong></td>
 <td>Platform operators</td>
-<td><a href="../administration/#tenants">Tenants</a>, <a href="../administration/#quotas">quotas</a>, <a href="../administration/#kill-switches">kill switches</a>, <a href="../administration/#executors">executors</a> and the <a href="../administration/#audit-log">audit log</a>; v0.4 adds the <a href="../integrations-hub/#admin-console-additions">sign-up review queue and tenant trust</a></td>
+<td><a href="../administration/#tenants">Tenants</a>, <a href="../administration/#quotas">quotas</a>, <a href="../administration/#kill-switches">kill switches</a>, <a href="../administration/#executors">executors</a> and the <a href="../administration/#audit-log">audit log</a>. v0.4 adds the <a href="../integrations-hub/#admin-console-additions">sign-up review queue and tenant trust</a>.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="where-next">Where next<a class="headerlink" href="#where-next" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../first-model-in-the-ui/">Your first model in the web app</a>: the E33 demo clicked through
-  from upload to counterfactual.</li>
+<li><a href="../first-model-in-the-ui/">Your first model in the web app</a>: the E33 demo, step by step in
+  the app, from upload to counterfactual.</li>
 <li><a href="../../reference/web-app/">Web app and plot sandbox</a>: build variables, the API client and
   the security headers.</li>
-<li><a href="../../concepts/security/">Security model</a>: what the sandbox and the plot iframe protect
-  against, locally and in production.</li>
+<li><a href="../../concepts/security/">Security model</a>: the risks that the sandbox and the plot iframe
+  prevent, locally and in production.</li>
 </ul>
 
 

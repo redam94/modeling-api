@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4613,6 +4643,8 @@
       
         
       
+        
+      
     
     
     
@@ -4701,6 +4733,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4837,7 +4897,7 @@
 
 
 <h1 id="web-app-and-plot-sandbox-v02">Web app and plot sandbox <span class="mapi-badge">v0.2</span><a class="headerlink" href="#web-app-and-plot-sandbox-v02" title="Permanent link">&para;</a></h1>
-<p>The browser front end is two separately served apps in the pnpm workspace:</p>
+<p>The front end in the browser has two apps in the pnpm workspace. Each app has its own server:</p>
 <table>
 <thead>
 <tr>
@@ -4852,19 +4912,19 @@
 <td>Web app</td>
 <td><code>@mapi/web</code> (<code>apps/web</code>)</td>
 <td><code>http://127.0.0.1:5173</code></td>
-<td>The SPA (React 19, TanStack Router/Query/Table, Monaco, Arrow): Expert mode and the Guided task flow</td>
+<td>The SPA (React 19, TanStack Router/Query/Table, Monaco, Arrow). It has Expert mode and the Guided task flow</td>
 </tr>
 <tr>
 <td>Plot sandbox</td>
 <td><code>@mapi/plot-sandbox</code> (<code>apps/plot-sandbox</code>)</td>
 <td><code>http://127.0.0.1:5174</code></td>
-<td>The only place Vega-Lite and Plotly specs render, on a separate origin</td>
+<td>The only place where Vega-Lite and Plotly specs render. It is on a separate origin</td>
 </tr>
 </tbody>
 </table>
-<p><code>make dev</code> starts both against the local API (<a href="../../operations/local-development/">Local development</a>).
-In production they are static files, served with the headers described below (the
-<code>mapi/web</code> image does this with nginx).</p>
+<p><code>make dev</code> starts the two apps with the local API (<a href="../../operations/local-development/">Local development</a>).
+In production, the apps are static files. The server sends them with the headers that this
+page describes. The <code>mapi/web</code> image uses nginx for this.</p>
 <h2 id="pages">Pages<a class="headerlink" href="#pages" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4876,47 +4936,47 @@ In production they are static files, served with the headers described below (th
 <tbody>
 <tr>
 <td>Home</td>
-<td>Runs in flight, runs that need attention, recent runs and models</td>
+<td>See the runs that are in progress, the runs that need attention, and the recent runs and models</td>
 </tr>
 <tr>
 <td>Datasets</td>
-<td>Create a dataset, preview a CSV locally, map columns to dims and variables, upload through a signed PUT, follow the ingest run; schema tables, coordinate browser, missingness heatmap and preview (<code>preview.json</code>, <code>profile.json</code>)</td>
+<td>Create a dataset. Preview a CSV file locally. Map columns to dims and variables. Upload through a signed PUT. Monitor the ingest run. See the schema tables, the coordinate browser, the missingness heatmap and the preview (<code>preview.json</code>, <code>profile.json</code>)</td>
 </tr>
 <tr>
 <td>Build</td>
-<td>Monaco YAML editor bound to <code>/v1/schemas/modelspec.json</code> with live <code>:validate</code> diagnostics at their JSON pointers; the pipeline as step cards with the schema at each stage, the split and context markers; save a revision, dry-run, fit, revision diff</td>
+<td>Use the Monaco YAML editor. It uses <code>/v1/schemas/modelspec.json</code> and shows live <code>:validate</code> diagnostics at their JSON pointers. See the pipeline as step cards with the schema at each stage, and markers for the split and the context. Save a revision, do a dry run, fit, and compare revisions</td>
 </tr>
 <tr>
 <td>Runs</td>
-<td>Filters by state and kind; live progress over SSE (resumes with <code>Last-Event-ID</code>), per-chain lanes, the <code>STALLED</code> banner, event timeline, logs; cancel, resume a partial run, retry one resource class up after <code>RESOURCE_EXHAUSTED</code></td>
+<td>Filter by state and kind. See live progress over SSE (it continues with <code>Last-Event-ID</code>), a lane for each chain, the <code>STALLED</code> banner, the event timeline and the logs. Cancel a run. Resume a partial run. After <code>RESOURCE_EXHAUSTED</code>, retry with the next larger resource class</td>
 </tr>
 <tr>
 <td>Inspect</td>
-<td>Scorecard, per-variable diagnostics, the DataTree browser (<code>ui/tree_index.json</code>), the preprocessing state viewer (<code>ui/preprocess.json</code>), lineage, signature and bundle objects, the plot gallery</td>
+<td>See the scorecard, the diagnostics for each variable, the DataTree browser (<code>ui/tree_index.json</code>), the viewer for the preprocessing state (<code>ui/preprocess.json</code>), the lineage, the signature, the bundle objects and the plot gallery</td>
 </tr>
 <tr>
 <td>Score</td>
-<td>Mode limited to the model's capabilities, horizon, <code>inputs_stage</code>, input and scenario datasets, the spec's side tables (supplied ones default to the version the fit used; pinned ones are replayed), interventions, output selector; <code>Prefer: wait=30</code>, then the run over SSE; the run's own plots (<code>GET /v1/runs/{id}/plots</code>, sanitized) in the sandbox, Arrow outputs as a table (summaries pivoted by statistic) and a quick chart</td>
+<td>Set the mode (only the modes that the model can do), the horizon, <code>inputs_stage</code>, the input and scenario datasets, the side tables of the spec, the interventions and the output selector. Supplied side tables use the version from the fit by default. Pinned side tables use the same version again. The app sends <code>Prefer: wait=30</code>, then follows the run over SSE. It shows the plots of the run (<code>GET /v1/runs/{id}/plots</code>, sanitized) in the sandbox. It shows Arrow outputs as a table (summaries pivoted by statistic) and a quick chart</td>
 </tr>
 <tr>
 <td>Guided</td>
-<td>The task flow for analysts (<code>/guided</code>, <code>/guided/new/&lt;template&gt;</code>, <code>/guided/&lt;spec&gt;/&lt;step&gt;</code>): templates, the question flow over a browser-side profile of the upload, business priors and lift tests with a sandboxed preview, the fit with plain-language progress, the report and sanity scorecard, what-if sliders interpolating the per-draw response grid in the browser (<code>src/features/guided/whatif.ts</code>, checked against <code>packages/spec/tests/snapshots/whatif_golden.json</code>), "Run exact", forecasts and scenario presets, promotion and embed links; see <a href="../../guides/guided-tutorial/">Your first analysis in Guided mode</a></td>
+<td>Use the task flow for analysts (<code>/guided</code>, <code>/guided/new/&lt;template&gt;</code>, <code>/guided/&lt;spec&gt;/&lt;step&gt;</code>). It has templates and questions. The browser makes a profile of the upload for the questions. Set business priors and lift tests, with a preview in a sandbox. Fit the model, with progress in plain language. See the report and the sanity scorecard. Use what-if sliders. The browser interpolates the response grid of each draw (<code>src/features/guided/whatif.ts</code>, tested against <code>packages/spec/tests/snapshots/whatif_golden.json</code>). Use "Run exact", forecasts, scenario presets, promotion and embed links. See <a href="../../guides/guided-tutorial/">Your first analysis in Guided mode</a></td>
 </tr>
 <tr>
 <td>Catalog, Settings</td>
-<td>Steps, models and plots of the image; theme, persona (remembered per user) and connection health</td>
+<td>See the steps, models and plots of the image. Set the theme and the persona (the app keeps it for each user). See the health of the connection</td>
 </tr>
 </tbody>
 </table>
 <h2 id="api-client">API client<a class="headerlink" href="#api-client" title="Permanent link">&para;</a></h2>
-<p><code>apps/web/openapi.json</code> is the control plane's own OpenAPI 3.1 document, written by
-<code>uv run python apps/web/scripts/gen_openapi.py</code> from <code>mapi_server.app.openapi_document()</code>
-(no database needed). <code>pnpm --filter @mapi/web openapi:types</code> generates
-<code>src/api/schema.d.ts</code> from it, and <code>openapi-fetch</code> gives typed calls. CI fails when either
-file drifts from the server (<code>gen_openapi.py --check</code>, <code>openapi:check</code>); <code>make api-types</code> runs
-both generators. Run-event payloads
-(<code>StatePayload</code>, <code>ProgressPayload</code>, …) are published as components so SSE frames are typed
-too.</p>
+<p><code>apps/web/openapi.json</code> is the OpenAPI 3.1 document of the control plane.
+<code>uv run python apps/web/scripts/gen_openapi.py</code> writes it from
+<code>mapi_server.app.openapi_document()</code>. This does not need a database.
+<code>pnpm --filter @mapi/web openapi:types</code> makes <code>src/api/schema.d.ts</code> from the document.
+<code>openapi-fetch</code> gives typed calls. If one of the two files is different from the server, CI
+fails (<code>gen_openapi.py --check</code>, <code>openapi:check</code>). <code>make api-types</code> runs the two generators.
+The document also publishes the run-event payloads (<code>StatePayload</code>, <code>ProgressPayload</code>, …) as
+components. Thus, the SSE frames also have types.</p>
 <table>
 <thead>
 <tr>
@@ -4929,53 +4989,61 @@ too.</p>
 <tr>
 <td><code>VITE_API_BASE</code></td>
 <td><code>http://127.0.0.1:8000</code></td>
-<td>The API. It must allow this origin (<code>MAPI_WEB_ORIGIN</code>, CORS).</td>
+<td>The API. It must permit this origin (<code>MAPI_WEB_ORIGIN</code>, CORS).</td>
 </tr>
 <tr>
 <td><code>VITE_PLOTS_ORIGIN</code></td>
 <td><code>http://127.0.0.1:5174</code></td>
-<td>The plot sandbox; must differ from the app origin.</td>
+<td>The plot sandbox. It must be different from the app origin.</td>
 </tr>
 <tr>
 <td><code>VITE_STORAGE_ORIGINS</code></td>
 <td><code>http://127.0.0.1:4443</code></td>
-<td>Signed-URL origins allowed by the CSP <code>connect-src</code>. The GCS shim answers CORS for <code>MAPI_WEB_ORIGIN</code>.</td>
+<td>The origins of signed URLs that the CSP <code>connect-src</code> permits. The GCS shim answers CORS for <code>MAPI_WEB_ORIGIN</code>.</td>
 </tr>
 <tr>
 <td><code>VITE_APP_ORIGINS</code> (sandbox)</td>
 <td><code>http://127.0.0.1:5173,http://localhost:5173</code></td>
-<td>Origins allowed to embed the sandbox and talk to it.</td>
+<td>The origins that can embed the sandbox and send messages to it.</td>
 </tr>
 </tbody>
 </table>
-<p><code>scripts/dev.py</code> sets these from the <code>MAPI_*</code> URLs, so <code>make dev</code> on other ports just works.</p>
+<p><code>scripts/dev.py</code> sets these variables from the <code>MAPI_*</code> URLs. Thus, <code>make dev</code> also works on other ports.</p>
 <h2 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>App origin.</strong> A strict CSP with <code>script-src 'self'</code>, <code>connect-src</code> limited to the API and
-  storage origins, <code>frame-src</code> the plot sandbox only, and <code>require-trusted-types-for 'script'</code>
-  with a default policy that admits same-origin script URLs only. Untrusted text (logs,
-  tracebacks, <code>untrusted_text</code>, plugin messages) renders as text with ANSI, control and bidi
-  characters stripped. Artifact downloads are checked against the <code>ArtifactLink</code> size and
-  CRC32C.</li>
-<li><strong>Plots.</strong> Every plot, first-party included, renders in a <code>sandbox="allow-scripts"</code> iframe
-  on the sandbox origin (no <code>allow-same-origin</code>). The sandbox refuses URL data, <code>href</code>
-  encodings, image marks, Plotly layout images and tile maps before any library loads; Vega
-  runs with <code>ast: true</code> and the interpreter, a loader that rejects every URL and a text-only
-  tooltip; Plotly uses the strict bundle. Its CSP is <code>default-src 'none'</code> with
-  <code>frame-ancestors</code> set to the app origins.</li>
-<li><strong>Messages.</strong> The <code>mapi.plot/v1</code> postMessage protocol is validated strictly in both
-  directions. Because the framed document has an opaque origin, the app accepts a message
-  only when <code>event.source</code> is the iframe's window and <code>event.origin</code> is <code>"null"</code>, and stops
-  posting if the frame ever navigates after its first load.</li>
+<li>
+<p><strong>App origin.</strong> The app has a strict CSP with these parts:</p>
+<ul>
+<li><code>script-src 'self'</code>.</li>
+<li><code>connect-src</code>, which permits only the API and storage origins.</li>
+<li><code>frame-src</code>, which permits only the plot sandbox.</li>
+<li><code>require-trusted-types-for 'script'</code>, with a default policy that permits only script URLs
+  from the same origin.</li>
+</ul>
+<p>Untrusted text (logs, tracebacks, <code>untrusted_text</code>, plugin messages) renders as text. The
+app removes ANSI, control and bidi characters from it. The app does a check of each
+artifact download against the size and the CRC32C in the <code>ArtifactLink</code>.
+- <strong>Plots.</strong> Each plot renders in a <code>sandbox="allow-scripts"</code> iframe on the sandbox origin
+  (no <code>allow-same-origin</code>). This rule also applies to first-party plots. Before a library
+  loads, the sandbox refuses URL data, <code>href</code> encodings, image marks, Plotly layout images and
+  tile maps. Vega runs with <code>ast: true</code> and the interpreter. It also has a loader that rejects
+  all URLs, and a tooltip that shows only text. Plotly uses the strict bundle. The CSP of the
+  sandbox is <code>default-src 'none'</code>, with <code>frame-ancestors</code> set to the app origins.
+- <strong>Messages.</strong> The app and the sandbox do a strict validation of the <code>mapi.plot/v1</code>
+  postMessage protocol in the two directions. The document in the frame has an opaque origin.
+  Thus, the app accepts a message only when <code>event.source</code> is the window of the iframe and
+  <code>event.origin</code> is <code>"null"</code>. If the frame goes to a different page after its first load, the
+  app stops sending messages.</p>
+</li>
 </ul>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pnpm<span class="w"> </span>-r<span class="w"> </span><span class="nb">test</span><span class="w">            </span><span class="c1"># Vitest (both apps) + the Playwright smoke suite (mock API, production build)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pnpm<span class="w"> </span>--filter<span class="w"> </span>@mapi/web<span class="w"> </span>e2e<span class="w">   </span><span class="c1"># @e2e specs against a running stack (MAPI_E2E=1)</span>
 </span></code></pre></div>
-<p>The smoke suite runs the mock-mode production build and fails on any CSP or Trusted Types
-violation; <code>e2e/guided.spec.ts</code> drives the whole Guided flow against the mock API
-(<code>src/mocks/guided.ts</code>). The <code>@e2e</code> specs reuse a running <code>make dev</code> stack; set <code>VITE_API_BASE</code>,
-<code>MAPI_WEB_ORIGIN</code> and <code>MAPI_PLOTS_ORIGIN</code> when it runs on other ports.</p>
+<p>The smoke suite runs the production build in mock mode. It fails on each CSP or Trusted Types
+violation. <code>e2e/guided.spec.ts</code> runs the full Guided flow against the mock API
+(<code>src/mocks/guided.ts</code>). The <code>@e2e</code> specs use a <code>make dev</code> stack that is running. If the stack
+runs on other ports, set <code>VITE_API_BASE</code>, <code>MAPI_WEB_ORIGIN</code> and <code>MAPI_PLOTS_ORIGIN</code>.</p>
 
 
 

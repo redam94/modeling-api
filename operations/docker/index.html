@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4616,6 +4646,8 @@
       
         
       
+        
+      
     
     
     
@@ -4704,6 +4736,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4846,13 +4906,14 @@
 
 
 <h1 id="docker-compose-v02">Docker Compose <span class="mapi-badge">v0.2</span><a class="headerlink" href="#docker-compose-v02" title="Permanent link">&para;</a></h1>
-<p><code>docker-compose.yml</code> runs the platform's <a href="../images/">container images</a> as a local stack on
-one machine, in the <code>dev</code> profile like <code>make dev</code> (sign in as <code>admin@dev.local</code>; see
-<a href="../local-development/#signing-in">signing in</a>): the same services as <code>make dev</code>, on the same ports, but from the
-exact images that production uses. You do not need Docker for development (see
-<a href="../local-development/">Local, without Docker</a>); use compose to check the images end to end or
-to run a self-contained demo. What is inside each image, how it is built and the build-time
-guards are on <a href="../images/">Container images</a>.</p>
+<p><code>docker-compose.yml</code> runs the <a href="../images/">container images</a> of the platform as a local stack
+on one machine. It uses the <code>dev</code> profile, the same as <code>make dev</code> (sign in as
+<code>admin@dev.local</code>, refer to <a href="../local-development/#signing-in">signing in</a>). It runs the same
+services as <code>make dev</code>, on the same ports, but from the exact images that production uses.</p>
+<p>You do not need Docker for development (refer to
+<a href="../local-development/">Local, without Docker</a>). Use compose to do a full check of the images,
+or to run a self-contained demo. <a href="../images/">Container images</a> tells what is in each image,
+how the build makes it, and the build-time checks.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env<span class="w">               </span><span class="c1"># set POSTGRES_PASSWORD</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>docker-build<span class="w">                  </span><span class="c1"># every image, tagged mapi/&lt;name&gt;:&lt;version&gt;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>make<span class="w"> </span>compose-up<span class="w">                    </span><span class="c1"># docker compose up -d --wait</span>
@@ -4890,7 +4951,7 @@ guards are on <a href="../images/">Container images</a>.</p>
 <tr>
 <td><code>postgres</code></td>
 <td><code>postgres:16</code> (pinned by digest)</td>
-<td>not published; see the override example</td>
+<td>not published. Refer to the override example</td>
 </tr>
 <tr>
 <td><code>gcs-shim</code></td>
@@ -4899,13 +4960,13 @@ guards are on <a href="../images/">Container images</a>.</p>
 </tr>
 <tr>
 <td><code>migrate</code></td>
-<td><code>mapi/server</code>, <code>migrate</code>; compose waits for it to exit with status 0</td>
+<td><code>mapi/server</code>, <code>migrate</code>. Compose waits until it stops with status 0</td>
 <td>—</td>
 </tr>
 <tr>
 <td><code>api</code></td>
 <td><code>mapi/server</code>, <code>api</code></td>
-<td>via <code>gcs-shim</code></td>
+<td>through <code>gcs-shim</code></td>
 </tr>
 <tr>
 <td><code>worker</code></td>
@@ -4924,41 +4985,50 @@ guards are on <a href="../images/">Container images</a>.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Why <code>api</code>, <code>worker</code> and <code>gcs-shim</code> share one network namespace.</strong> Signed URLs embed the object
-store's address, and the bootstrap URL template embeds it for runner processes. If the API
-reached the shim as <code>gcs-shim:4443</code> while the browser needed <code>127.0.0.1:4443</code>, every URL would
-need a public form and an internal form. With a shared namespace, <code>127.0.0.1:4443</code> and
-<code>127.0.0.1:8000</code> mean the same thing to the browser, the API, the orchestrator and every runner
-subprocess. That is exactly the <code>make dev</code> topology, and it matches the <code>LocalDev</code> defaults. The
-<code>web</code> container reaches the API as <code>api:8000</code>, which is a network alias of the shim's container.</p>
-<p><strong>Durable state.</strong> Three named volumes outlive the containers: <code>pgdata</code> (the database),
-<code>gcsdata</code> (the shim's objects and principal key files) and <code>keys</code> (the bundle-signing key).
-The worker's finalizer signs every bundle manifest, and the API verifies that signature
-before it hands out an artifact link, a <code>ui/</code> view or a plot, and before it accepts a score
-request. Both must therefore load the <em>same</em> key, and the key must survive restarts.
-<code>migrate</code> creates it once at <code>/var/lib/mapi/keys/bundle-signing-p256.pem</code>
+<p><strong>Why <code>api</code>, <code>worker</code> and <code>gcs-shim</code> share one network namespace.</strong> Signed URLs contain the
+address of the object store. The bootstrap URL template also contains it for runner
+processes. The API could connect to the shim as <code>gcs-shim:4443</code>, while the browser needs
+<code>127.0.0.1:4443</code>. Then each URL would need a public form and an internal form. With a shared
+namespace, <code>127.0.0.1:4443</code> and <code>127.0.0.1:8000</code> mean the same thing to the browser, the API,
+the orchestrator and each runner subprocess. This is exactly the <code>make dev</code> topology, and it
+agrees with the <code>LocalDev</code> defaults. The <code>web</code> container connects to the API as <code>api:8000</code>,
+which is a network alias of the container of the shim.</p>
+<p><strong>Durable state.</strong> Three named volumes stay after the containers stop: <code>pgdata</code> (the
+database), <code>gcsdata</code> (the objects and principal key files of the shim) and <code>keys</code> (the
+bundle-signing key). The finalizer of the worker signs each bundle manifest. The API verifies
+that signature before it gives an artifact link, a <code>ui/</code> view or a plot. It also verifies the
+signature before it accepts a score request. Thus the two services must load the <em>same</em> key,
+and the key must stay after restarts.</p>
+<p><code>migrate</code> makes the key one time at <code>/var/lib/mapi/keys/bundle-signing-p256.pem</code>
 (<code>MAPI_SIGNING_KEY_PATH</code>). <code>api</code> and <code>worker</code> mount the volume read-only, with
-<code>MAPI_SIGNING_KEY_CREATE=false</code>, so a missing key fails start-up loudly instead of a new key
-being minted silently. <code>MAPI_DATA_DIR</code> (<code>/tmp/mapi-data</code>) is per-container scratch.
-<code>make compose-down VOLUMES=1</code> deletes the key along with the data. A new key cannot verify old
-bundles, so delete it only together with the database and the objects.</p>
-<p><strong>Hardening.</strong> Every <code>mapi/*</code> service runs as a non-root user, with a read-only root filesystem,
-a tmpfs on <code>/tmp</code>, all Linux capabilities dropped and <code>no-new-privileges</code>. Ports are published on
-<code>127.0.0.1</code> only. The PostgreSQL password comes from <code>.env</code>, and compose refuses to start
-without it. The official <code>postgres</code> image is the one exception: it starts as root to fix data
-directory ownership, then drops to the <code>postgres</code> user.</p>
-<p><strong>Host names.</strong> The M1 API has no authentication, and a web page whose host name is
-re-pointed at <code>127.0.0.1</code> (DNS rebinding) is same-origin to itself, so CORS does not stop it.
-The API therefore answers only the <code>Host</code> names in <code>MAPI_ALLOWED_HOSTS</code> (default <code>127.0.0.1</code>,
-<code>localhost</code>, <code>api</code>, plus the host of <code>MAPI_API_URL</code>) and returns 400 for anything else. The
-app's nginx server answers only <code>MAPI_WEB_SERVER_NAMES</code> (default <code>127.0.0.1 localhost</code>) and
-closes the connection for any other host. The GCS shim does the same, for loopback names and
-the hosts of its endpoints (<code>--allowed-host</code> adds more). If you reach the stack under another
-name, such as a LAN host name, add it to both variables.</p>
+<code>MAPI_SIGNING_KEY_CREATE=false</code>. Thus, if the key is missing, start-up fails with a clear
+error, and the services do not mint a new key without a message. <code>MAPI_DATA_DIR</code>
+(<code>/tmp/mapi-data</code>) is the scratch directory of each container.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Do not delete the key without the database and the objects. A new key cannot verify old
+bundles. <code>make compose-down VOLUMES=1</code> deletes the key together with the data.</p>
+</div>
+<p><strong>Hardening.</strong> Each <code>mapi/*</code> service runs as a non-root user, with a read-only root
+filesystem, a tmpfs on <code>/tmp</code>, all Linux capabilities dropped and <code>no-new-privileges</code>.
+Compose publishes ports on <code>127.0.0.1</code> only. The PostgreSQL password comes from <code>.env</code>, and
+compose does not start without it. The official <code>postgres</code> image is the one exception. It
+starts as root to set the owner of the data directory, then it changes to the <code>postgres</code>
+user.</p>
+<p><strong>Host names.</strong> The M1 API has no authentication. An attacker can point the host name of a
+web page at <code>127.0.0.1</code> (DNS rebinding). The page is then same-origin to itself, so CORS does
+not stop it. Thus the API answers only the <code>Host</code> names in <code>MAPI_ALLOWED_HOSTS</code> (default
+<code>127.0.0.1</code>, <code>localhost</code>, <code>api</code>, and also the host of <code>MAPI_API_URL</code>). For all other names,
+it returns 400.</p>
+<p>The nginx server of the app answers only <code>MAPI_WEB_SERVER_NAMES</code> (default
+<code>127.0.0.1 localhost</code>). It closes the connection for all other hosts. The GCS shim does the
+same, for loopback names and the hosts of its endpoints (<code>--allowed-host</code> adds more). If you
+connect to the stack with a different name, for example a LAN host name, add it to the two
+variables.</p>
 <h3 id="executor-choice-local-process-vs-docker">Executor choice: local-process vs docker<a class="headerlink" href="#executor-choice-local-process-vs-docker" title="Permanent link">&para;</a></h3>
-<p>The compose worker runs the <strong>local-process executor inside a runner-capable image</strong>: each run
-is a <code>mapi-runner</code> subprocess of the worker container. That is the default because it needs
-no Docker socket and is daemon-agnostic. Its trade-offs:</p>
+<p>The compose worker runs the <strong>local-process executor inside a runner-capable image</strong>. Each
+run is a <code>mapi-runner</code> subprocess of the worker container. This is the default, because it
+needs no Docker socket and works with all daemons. The two executors have these differences:</p>
 <table>
 <thead>
 <tr>
@@ -4970,93 +5040,112 @@ no Docker socket and is daemon-agnostic. Its trade-offs:</p>
 <tbody>
 <tr>
 <td>Isolation</td>
-<td>Process only: runs share the worker's uid, filesystem (including its keys, see below), <code>/tmp</code> and memory limit</td>
-<td>One container per run, from the exact runner image, with its own limits and a network that reaches only the shim</td>
+<td>Process only: runs share the uid, filesystem (with its keys, refer to the text below), <code>/tmp</code> and memory limit of the worker</td>
+<td>One container for each run, from the exact runner image, with its own limits and a network that connects only to the shim</td>
 </tr>
 <tr>
 <td>Images</td>
-<td>One large image holding every plugin plus the control plane</td>
-<td><code>mapi/worker</code> for the orchestrator, and per run the <code>mapi/base-*</code> image that ships the run's plugin (<code>MAPI_DOCKER_IMAGES</code>)</td>
+<td>One large image with all plugins and the control plane</td>
+<td><code>mapi/worker</code> for the orchestrator. For each run, the <code>mapi/base-*</code> image that contains the plugin of the run (<code>MAPI_DOCKER_IMAGES</code>)</td>
 </tr>
 <tr>
 <td>Privileges</td>
-<td>None beyond the worker's own</td>
+<td>Only the privileges of the worker</td>
 <td>The worker mounts <code>/var/run/docker.sock</code>, which is <strong>root-equivalent on the host</strong></td>
 </tr>
 <tr>
 <td>Networking</td>
-<td>Runs reach <code>127.0.0.1:4443</code> directly</td>
+<td>Runs connect to <code>127.0.0.1:4443</code> directly</td>
 <td>Run containers join the <code>gcs-shim</code> network namespace (<code>MAPI_DOCKER_NETWORK=container:mapi-gcs-shim</code>)</td>
 </tr>
 <tr>
 <td>Use it for</td>
-<td>Day-to-day development, demos, CI</td>
-<td>Checking production images end to end, and self-hosted setups (gVisor <code>runsc</code> in v0.3)</td>
+<td>Daily development, demos, CI</td>
+<td>A full check of the production images, and self-hosted setups (gVisor <code>runsc</code> in v0.3)</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Docker executor settings.</strong> <code>MAPI_DOCKER_IMAGES</code> maps a plugin namespace to its runner
-image: <code>mmm.*</code> and <code>tabular.*</code> run in <code>mapi/base-bayes</code>, <code>sklearn.*</code> in <code>mapi/base-ml</code> and
-<code>ts.*</code> in <code>mapi/base-forecast</code>. A workflow node run goes to the image of the model it
-runs: its <code>model</code> parameter (a backtest or search of <code>ts.sarimax</code>), else the plugin of the
-model version bound to it (a forecast, evaluation or governance check of a fitted model).
-Runs without a model plugin (ingest, describe, statistical tests) use <code>MAPI_DOCKER_IMAGE</code>. The defaults are the tags <code>make docker-build</code> produces for the current
-version. <code>MAPI_DOCKER_NETWORK</code> must give the run a way to reach the object store, because
-the bootstrap object and every signed URL point at it. In compose that means joining the
-shim's network namespace (<code>container:mapi-gcs-shim</code>). An internal Docker network that holds
-only the shim also works, provided <code>MAPI_GCS_ENDPOINT</code> names the shim on that network.
-<code>none</code> would leave the runner with nothing to fetch its bootstrap object from, so the worker
-refuses to start with it.</p>
-<p><strong>docker-gvisor for verified and public tenants.</strong> Shared tiers need an executor with
-egress and DNS enforced. Since <code>none</code> is not usable, put the run containers on an internal
-network that holds nothing but the shim (<code>docker network create --internal mapi-sandbox</code>,
-the shim attached to it and to nothing that routes out), set
-<code>MAPI_DOCKER_NETWORK=mapi-sandbox</code> and declare it with <code>MAPI_DOCKER_NETWORK_ISOLATED=true</code>
-(<code>host</code>, <code>bridge</code> and <code>default</code> are refused). The executor then reports enforced egress and
-DNS, but the dispatcher places <code>verified</code> and <code>public</code> tenants on it only once the security
-suite ran against it with the <code>http_egress</code>, <code>dns_egress</code> and <code>metadata_token</code> probes
-blocked, and that result and a passing conformance run are recorded
-(<a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>).</p>
-<p><strong>Worker isolation in run containers.</strong> A run container starts its supervisor as root, with
-every Linux capability dropped except the few the uid split needs, and with
-<code>no-new-privileges</code>. The supervisor then starts the untrusted worker as uid 10001, which has no
-capabilities at all. So the worker cannot signal the supervisor, read its or the init
-process's environment, or write to its event pipe. The executor also sets
-<code>MAPI_REQUIRE_ISOLATION=1</code>, which makes the supervisor fail the run with <code>SANDBOX_VIOLATION</code>
-rather than run the worker under its own uid.</p>
-<p>Neither mode is a multi-tenant boundary. Both are single-tenant local stacks, and the
-local-process executor refuses any multi-tenant profile.</p>
-<p><strong>What a local-process run can reach.</strong> Every run is a subprocess of <code>mapi-server worker</code> and
-runs as the same uid, <code>10001</code>. There is no uid split before v0.3. Run code, meaning plugins
-and the steps they load, can therefore read everything the orchestrator can read:</p>
+image. <code>mmm.*</code> and <code>tabular.*</code> run in <code>mapi/base-bayes</code>, <code>sklearn.*</code> in <code>mapi/base-ml</code> and
+<code>ts.*</code> in <code>mapi/base-forecast</code>. A workflow node run goes to the image of the model that it
+runs. This is its <code>model</code> parameter (for example a backtest or search of <code>ts.sarimax</code>). If
+there is no <code>model</code> parameter, it is the plugin of the model version that is bound to the
+node. Examples are a forecast, an evaluation or a governance check of a fitted model. Runs without a model
+plugin (ingest, describe, statistical tests) use <code>MAPI_DOCKER_IMAGE</code>. The defaults are the
+tags that <code>make docker-build</code> makes for the current version.</p>
+<p><code>MAPI_DOCKER_NETWORK</code> must give the run a path to the object store, because the bootstrap
+object and each signed URL point at it. In compose, the run joins the network namespace of
+the shim (<code>container:mapi-gcs-shim</code>). An internal Docker network that holds only the shim
+also works, if <code>MAPI_GCS_ENDPOINT</code> names the shim on that network. With <code>none</code>, the runner
+cannot get its bootstrap object. Thus the worker does not start with <code>none</code>.</p>
+<p><strong>docker-gvisor for verified and public tenants.</strong> Shared tiers need an executor with egress
+and DNS enforced. You cannot use <code>none</code>. Thus, do these steps:</p>
+<ol>
+<li>Make an internal network that holds only the shim
+   (<code>docker network create --internal mapi-sandbox</code>).</li>
+<li>Attach the shim to this network, and to no network that routes out.</li>
+<li>Set <code>MAPI_DOCKER_NETWORK=mapi-sandbox</code>.</li>
+<li>Declare the network with <code>MAPI_DOCKER_NETWORK_ISOLATED=true</code>. The executor refuses
+   <code>host</code>, <code>bridge</code> and <code>default</code>.</li>
+</ol>
+<p>The executor then reports enforced egress and DNS. But the dispatcher puts <code>verified</code> and
+<code>public</code> tenants on it only after these conditions:</p>
 <ul>
-<li>the shim's control key (<code>/shim/gcs/_shim/keys/control.json</code>): <code>storage.admin</code> on every
-  bucket, enough to read or rewrite bundles, datasets and run outputs and to mint signed
-  URLs;</li>
-<li>the bundle-signing key (<code>/var/lib/mapi/keys/</code>), enough to forge a manifest the API accepts;</li>
-<li>the executions directory under <code>/tmp/mapi-data</code>, including the pid files that name the
-  nonces of runs in flight.</li>
+<li>The security suite ran against it, and the executor stopped the <code>http_egress</code>,
+  <code>dns_egress</code> and <code>metadata_token</code> probes.</li>
+<li>That result and a passing conformance run are on record
+  (<a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>).</li>
 </ul>
-<p>In this mode, then, bundle signatures and the finalizer's output checks protect against
-accidents, not against hostile plugin code. The orchestrator marks itself non-dumpable, so
-run code cannot ptrace it or read its <code>/proc/&lt;pid&gt;/environ</code> (<code>DATABASE_URL</code> with the
-password) or its memory. The worker also logs this warning at start-up. Run only trusted
-plugin code under local-process. The docker executor does not have this exposure: each
-attempt runs in its own container with none of these files mounted. The worker's <code>/tmp</code> is the
-scratch space for local-process runs. Size it with <code>MAPI_WORKER_TMPFS</code>, <code>MAPI_WORKER_MEMORY</code> and
+<p><strong>Worker isolation in run containers.</strong> A run container starts its supervisor as root, with
+<code>no-new-privileges</code>. All Linux capabilities are dropped, but not the few that the uid split
+needs. The supervisor then starts the untrusted worker as uid 10001, which has no
+capabilities. Thus the worker cannot signal the supervisor or write to its event pipe. It
+also cannot read the environment of the supervisor or of the init process. The executor also
+sets <code>MAPI_REQUIRE_ISOLATION=1</code>. With this setting, the supervisor fails the run with
+<code>SANDBOX_VIOLATION</code>, and it does not run the worker under its own uid.</p>
+<p>The two modes are not a multi-tenant boundary. They are single-tenant local stacks. The
+local-process executor refuses all multi-tenant profiles.</p>
+<p><strong>What a local-process run can reach.</strong> Each run is a subprocess of <code>mapi-server worker</code>,
+and it runs as the same uid, <code>10001</code>. There is no uid split before v0.3. Thus run code (the
+plugins and the steps that they load) can read all that the orchestrator can read:</p>
+<ul>
+<li>The control key of the shim (<code>/shim/gcs/_shim/keys/control.json</code>). It gives
+  <code>storage.admin</code> on all buckets. This is sufficient to read or write bundles, datasets and
+  run outputs again, and to mint signed URLs.</li>
+<li>The bundle-signing key (<code>/var/lib/mapi/keys/</code>). This is sufficient to forge a manifest that
+  the API accepts.</li>
+<li>The executions directory under <code>/tmp/mapi-data</code>. This includes the pid files that name the
+  nonces of the runs that are in progress.</li>
+</ul>
+<p>Thus, in this mode, bundle signatures and the output checks of the finalizer protect against
+accidents, but not against hostile plugin code. The orchestrator marks itself non-dumpable.
+Thus run code cannot ptrace it or read its memory. Run code also cannot read its
+<code>/proc/&lt;pid&gt;/environ</code> (<code>DATABASE_URL</code> with the password). The worker also logs this warning
+at start-up.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Run only trusted plugin code under local-process. Other code can read the keys above.</p>
+</div>
+<p>The docker executor does not have this risk. Each attempt runs in its own container, and
+none of these files are mounted. The <code>/tmp</code> of the worker is the scratch space for
+local-process runs. Set its size with <code>MAPI_WORKER_TMPFS</code>, <code>MAPI_WORKER_MEMORY</code> and
 <code>MAPI_WORKER_CPUS</code> in <code>.env</code>.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <p>Compose reads <code>.env</code> in the repository root (copy <code>.env.example</code>). <code>POSTGRES_PASSWORD</code> is
-required; the <code>MAPI_WORKER_*</code> sizes, the image version (<code>MAPI_VERSION</code>, set by the Makefile)
-and the web image's <code>MAPI_API_UPSTREAM</code> and <code>MAPI_WEB_SCRIPT_SRC_EXTRA</code> are optional. Every
-variable is in the <a href="../configuration/#docker-compose">configuration reference</a>.</p>
-<p><code>compose.override.example.yml</code> shows the two common changes: publishing PostgreSQL on the
-host, and switching the worker to the docker executor. Copy it to <code>compose.override.yml</code>
-(ignored by version control) to use it.</p>
+necessary. These variables are optional:</p>
+<ul>
+<li>The <code>MAPI_WORKER_*</code> sizes.</li>
+<li>The image version (<code>MAPI_VERSION</code>, which the Makefile sets).</li>
+<li><code>MAPI_API_UPSTREAM</code> and <code>MAPI_WEB_SCRIPT_SRC_EXTRA</code> of the web image.</li>
+</ul>
+<p>All the variables are in the <a href="../configuration/#docker-compose">configuration reference</a>.</p>
+<p><code>compose.override.example.yml</code> shows the two usual changes: it publishes PostgreSQL on the
+host, and it changes the worker to the docker executor. To use it, copy it to
+<code>compose.override.yml</code>. Version control ignores this file.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<p>A missing Docker daemon, <code>POSTGRES_PASSWORD</code>, an unhealthy <code>api</code> container, a read-only
-<code>/tmp</code> and ports that are already allocated are covered in
-<a href="../troubleshooting/#docker-and-compose">Troubleshooting</a>.</p>
+<p><a href="../troubleshooting/#docker-and-compose">Troubleshooting</a> tells about these problems: a
+missing Docker daemon, a missing <code>POSTGRES_PASSWORD</code>, an unhealthy <code>api</code> container, a
+read-only <code>/tmp</code> and ports that are already allocated.</p>
 
 
 

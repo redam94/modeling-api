@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -3248,6 +3278,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#forecasts-with-actuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forecasts with actuals
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5062,6 +5103,8 @@
       
         
       
+        
+      
     
     
     
@@ -5150,6 +5193,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5274,6 +5345,17 @@
     <span class="md-ellipsis">
       
         Long-running work and Prefer: wait
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#forecasts-with-actuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forecasts with actuals
       
     </span>
   </a>
@@ -5735,11 +5817,11 @@
 
 
 <h1 id="http-api-v1-v02">HTTP API (v1) <span class="mapi-badge">v0.2</span><a class="headerlink" href="#http-api-v1-v02" title="Permanent link">&para;</a></h1>
-<p>The platform API that ships with v0.2 (milestone M1, the local vertical slice). Every request
-and response body is a Pydantic model in <a href="../api/spec/#rest-dtos"><code>mapi_spec.api</code></a>. The server
-serves an OpenAPI 3.1 document generated from those models, and each model carries examples.
-The endpoint table on this page matches <code>mapi_spec.api.M1_ENDPOINTS</code>, and a test fails if the
-two drift apart.</p>
+<p>This page describes the platform API of v0.2 (milestone M1, the local vertical slice). Each
+request body and each response body is a Pydantic model in
+<a href="../api/spec/#rest-dtos"><code>mapi_spec.api</code></a>. The server serves an OpenAPI 3.1 document that it
+makes from those models. Each model has examples. The endpoint table on this page agrees with
+<code>mapi_spec.api.M1_ENDPOINTS</code>. If the two are different, a test fails.</p>
 <table>
 <thead>
 <tr>
@@ -5750,7 +5832,7 @@ two drift apart.</p>
 <tbody>
 <tr>
 <td><a href="../openapi/">OpenAPI explorer</a></td>
-<td>The OpenAPI 3.1 document, browsable, with every schema and example (<a href="../openapi-viewer.html">full screen</a>)</td>
+<td>The OpenAPI 3.1 document, which you can browse, with all schemas and examples (<a href="../openapi-viewer.html">full screen</a>)</td>
 </tr>
 <tr>
 <td><a href="../../guides/http-api/">HTTP API guide</a></td>
@@ -5764,12 +5846,12 @@ two drift apart.</p>
 </table>
 <div class="admonition info">
 <p class="admonition-title">M1 is single-tenant</p>
-<p>A local install has one tenant and one project, both called <code>default</code>. Every resource
-still carries <code>tenant_id</code> and <code>project_id</code>, and every storage key starts with
-<code>t/{tenant}/</code>, so multi-tenancy in v0.3 adds row-level security without changing the
-schema. There is no authentication in M1. The API listens on <code>127.0.0.1</code> only.
-The tenants, sign-in, tokens and quotas that v0.3 adds are described in
-<a href="#multi-tenant-api">Multi-tenant API</a>.</p>
+<p>A local installation has one tenant and one project. Their names are <code>default</code>. Each
+resource has a <code>tenant_id</code> and a <code>project_id</code>, and each storage key starts with
+<code>t/{tenant}/</code>. Thus, the multi-tenancy of v0.3 adds row-level security and does not change
+the schema. M1 has no authentication. The API listens only on <code>127.0.0.1</code>.
+<a href="#multi-tenant-api">Multi-tenant API</a> describes the tenants, sign-in, tokens and quotas
+that v0.3 adds.</p>
 </div>
 <h2 id="conventions">Conventions<a class="headerlink" href="#conventions" title="Permanent link">&para;</a></h2>
 <table>
@@ -5786,19 +5868,19 @@ The tenants, sign-in, tokens and quotas that v0.3 adds are described in
 </tr>
 <tr>
 <td>Bodies</td>
-<td><code>application/json</code> (UTF-8). Spec text travels as a string field (<code>yaml</code>) inside JSON.</td>
+<td><code>application/json</code> (UTF-8). The spec text is a string field (<code>yaml</code>) in the JSON.</td>
 </tr>
 <tr>
 <td>Unknown fields</td>
-<td>Request bodies <strong>reject</strong> unknown fields (<code>SCHEMA_INVALID</code>). Clients <strong>ignore</strong> unknown response fields, so the server can add fields without a new version.</td>
+<td>Request bodies <strong>reject</strong> unknown fields (<code>SCHEMA_INVALID</code>). Clients <strong>ignore</strong> unknown response fields. Thus, the server can add fields and not make a new version.</td>
 </tr>
 <tr>
 <td>Timestamps</td>
-<td>RFC 3339, timezone-aware, UTC (<code>2026-10-15T09:30:00Z</code>).</td>
+<td>RFC 3339, with a timezone, in UTC (<code>2026-10-15T09:30:00Z</code>).</td>
 </tr>
 <tr>
 <td>Ids</td>
-<td><code>&lt;prefix&gt;_&lt;26 lowercase Crockford base32&gt;</code>, ULID layout, sortable by creation time (<code>run_01jaf3q2x8m9v7k5h4g3f2e1d0</code>). Prefixes: <code>ds</code>, <code>upl</code>, <code>spc</code>, <code>run</code>, <code>mdl</code>, <code>mv</code>. Projects and tenants use slugs (<code>default</code>).</td>
+<td><code>&lt;prefix&gt;_&lt;26 lowercase Crockford base32&gt;</code>, with the ULID layout. You can sort them by the time of creation (<code>run_01jaf3q2x8m9v7k5h4g3f2e1d0</code>). The prefixes are <code>ds</code>, <code>upl</code>, <code>spc</code>, <code>run</code>, <code>mdl</code> and <code>mv</code>. Projects and tenants use slugs (<code>default</code>).</td>
 </tr>
 <tr>
 <td>Durations</td>
@@ -5806,17 +5888,17 @@ The tenants, sign-in, tokens and quotas that v0.3 adds are described in
 </tr>
 <tr>
 <td>Actions</td>
-<td>Non-CRUD actions use a colon suffix: <code>POST /v1/runs/{run_id}:cancel</code>.</td>
+<td>Actions that are not CRUD use a colon suffix: <code>POST /v1/runs/{run_id}:cancel</code>.</td>
 </tr>
 <tr>
 <td>Untrusted text</td>
-<td>Log lines, tracebacks and plugin messages only ever appear in <code>untrusted_text</code> or <code>LogLine.line</code>. Render them as text, never as HTML or markdown.</td>
+<td>Log lines, tracebacks and plugin messages occur only in <code>untrusted_text</code> or <code>LogLine.line</code>. Render them as text. Do not render them as HTML or markdown.</td>
 </tr>
 </tbody>
 </table>
 <h3 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">&para;</a></h3>
-<p>Every error is an <a href="https://www.rfc-editor.org/rfc/rfc7807">RFC 7807</a> problem document
-(<code>application/problem+json</code>, model <code>mapi_spec.Problem</code>) with a stable <code>code</code>:</p>
+<p>Each error is an <a href="https://www.rfc-editor.org/rfc/rfc7807">RFC 7807</a> problem document
+(<code>application/problem+json</code>, model <code>mapi_spec.Problem</code>). It has a stable <code>code</code>:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"urn:mapi:error:LEAKAGE_RISK"</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A stateful step runs before the split"</span><span class="p">,</span>
@@ -5830,27 +5912,27 @@ The tenants, sign-in, tokens and quotas that v0.3 adds are described in
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">}</span>
 </span></code></pre></div>
 <ul>
-<li>Malformed request bodies, path parameters and query parameters return <strong>422
-  <code>SCHEMA_INVALID</code></strong>. Each problem goes in <code>errors[]</code> with an RFC 6901 <code>pointer</code> into the
+<li>Incorrect request bodies, path parameters and query parameters return <strong>422
+  <code>SCHEMA_INVALID</code></strong>. Each problem goes in <code>errors[]</code>, with an RFC 6901 <code>pointer</code> into the
   request (<code>/body/kind</code>, <code>/query/limit</code>).</li>
-<li>Every endpoint can also return <code>RATE_LIMITED</code> (429), <code>INTERNAL_ERROR</code> (500) and
-  <code>INFRA_ERROR</code> (503). These are not repeated in the table.</li>
-<li>The full list of codes and their HTTP statuses is in <a href="../generated/error-codes/">Error codes</a>.</li>
+<li>All endpoints can also return <code>RATE_LIMITED</code> (429), <code>INTERNAL_ERROR</code> (500) and
+  <code>INFRA_ERROR</code> (503). The table does not show these codes again.</li>
+<li><a href="../generated/error-codes/">Error codes</a> has the full list of codes and their HTTP statuses.</li>
 </ul>
 <h3 id="pagination">Pagination<a class="headerlink" href="#pagination" title="Permanent link">&para;</a></h3>
 <p>List endpoints return <code>Page[T]</code>:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">"items"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">…</span><span class="w"> </span><span class="p">],</span><span class="w"> </span><span class="nt">"next_cursor"</span><span class="p">:</span><span class="w"> </span><span class="s2">"eyJpZCI6InJ1bl8wMWphZiJ9"</span><span class="p">}</span>
 </span></code></pre></div>
 <ul>
-<li>Pass <code>?limit=</code> (default 50, maximum 200) and <code>?cursor=&lt;next_cursor&gt;</code> to fetch the next
-  page. A <code>null</code> cursor means the current page is the last one.</li>
-<li>Cursors are opaque and only valid for the same list and filters.</li>
-<li>Items are ordered newest first by id.</li>
+<li>To get the next page, send <code>?limit=</code> (default 50, maximum 200) and <code>?cursor=&lt;next_cursor&gt;</code>.
+  A <code>null</code> cursor tells you that the current page is the last page.</li>
+<li>Cursors are opaque. A cursor is valid only for the same list and the same filters.</li>
+<li>The items are in order of id, with the newest item first.</li>
 </ul>
 <h3 id="idempotency">Idempotency<a class="headerlink" href="#idempotency" title="Permanent link">&para;</a></h3>
 <p><code>POST /v1/runs</code>, <code>…:score</code>, <code>…:retry</code>, <code>…:dry-run</code> and <code>POST …/versions</code> (ingest) accept an
-<code>Idempotency-Key</code> header (1–255 printable ASCII characters, scoped to the project and kept for
-24 hours):</p>
+<code>Idempotency-Key</code> header. The key has 1–255 printable ASCII characters. Its scope is the
+project, and the server keeps it for 24 hours:</p>
 <table>
 <thead>
 <tr>
@@ -5861,73 +5943,103 @@ The tenants, sign-in, tokens and quotas that v0.3 adds are described in
 <tbody>
 <tr>
 <td>First request with the key</td>
-<td>The normal response, for example <code>201 Created</code> with the <code>Run</code></td>
+<td>The usual response, for example <code>201 Created</code> with the <code>Run</code></td>
 </tr>
 <tr>
-<td>Same key, same body (byte-equal after canonical JSON)</td>
-<td><strong><code>200 OK</code></strong> with the originally created resource. No second run is created.</td>
+<td>Same key, same body (the bytes are equal after canonical JSON)</td>
+<td><strong><code>200 OK</code></strong> with the resource that the first request made. The server does not make a second run.</td>
 </tr>
 <tr>
 <td>Same key, different body</td>
 <td><strong><code>409 IDEMPOTENCY_CONFLICT</code></strong></td>
 </tr>
 <tr>
-<td>Same key while the first request is still in flight</td>
-<td><code>409 CONFLICT</code>. Retry later.</td>
+<td>Same key while the first request is in progress</td>
+<td><code>409 CONFLICT</code>. Try again later.</td>
 </tr>
 </tbody>
 </table>
-<p>Clients should generate one key per user intent, for example a UUIDv4 when the user clicks
-<strong>Fit</strong>, and reuse it on every network retry.</p>
+<p>Clients must make one key for each user intent, for example a UUIDv4 when the user clicks
+<strong>Fit</strong>. They must use that key again on each network retry.</p>
 <h3 id="long-running-work-and-prefer-wait">Long-running work and <code>Prefer: wait</code><a class="headerlink" href="#long-running-work-and-prefer-wait" title="Permanent link">&para;</a></h3>
-<p>Runs are asynchronous. Creating one returns the <code>Run</code> at once in state <code>created</code> or <code>queued</code>.
-<code>POST /v1/models/{model_id}/versions/{version}:score</code> also honours
-<a href="https://www.rfc-editor.org/rfc/rfc7240">RFC 7240</a> <code>Prefer: wait=N</code>, with N capped at 60
-seconds:</p>
+<p>Runs are asynchronous. When you make a run, the response gives the <code>Run</code> immediately, in the
+state <code>created</code> or <code>queued</code>. <code>POST /v1/models/{model_id}/versions/{version}:score</code> also
+obeys the <a href="https://www.rfc-editor.org/rfc/rfc7240">RFC 7240</a> header <code>Prefer: wait=N</code>. The
+maximum value of N is 60 seconds:</p>
 <ul>
-<li>If the score run reaches a terminal state within N seconds, the response is <strong>200</strong> with
+<li>If the score run gets to a terminal state in N seconds, the response is <strong>200</strong> with
   <code>ScoreCallResult{done: true, run, outputs: [ArtifactLink…]}</code>.</li>
-<li>Otherwise the response is <strong>202</strong> with <code>done: false</code> and the run. Follow the run with
-  <code>GET /v1/runs/{run_id}</code> or its event stream.</li>
-<li>The <code>Preference-Applied: wait=N</code> response header echoes the wait the server actually used.</li>
+<li>If not, the response is <strong>202</strong> with <code>done: false</code> and the run. Follow the run with
+  <code>GET /v1/runs/{run_id}</code> or with its event stream.</li>
+<li>The response header <code>Preference-Applied: wait=N</code> gives the wait time that the server used.</li>
+</ul>
+<h3 id="forecasts-with-actuals">Forecasts with actuals<a class="headerlink" href="#forecasts-with-actuals" title="Permanent link">&para;</a></h3>
+<p>A <code>forecast</code> request (on a model version or on an endpoint) can send <strong>actuals</strong>. Actuals are
+target values for periods after the fit, or new values for the last periods of the fit. The
+request can also send the <strong>periods to forecast</strong>, with an empty target. The model uses its
+fitted parameters to update its state with the actuals. Then it forecasts from the last
+actual. The model does not estimate its parameters again.
+<a href="../../concepts/forecasting-with-actuals/">Forecasts with actuals</a> gives the rules, the plugin
+hook and examples.</p>
+<ul>
+<li>The model forecasts exactly the periods after the last actual that have an empty target.
+  When the payload ends with an actual, the model adds <code>horizon.periods</code> periods after it.</li>
+<li><code>ScoreCallResult.summary.conditioning</code> (<code>ForecastConditioning</code>) tells what the model used
+  to condition each forecast. It has <code>fit_end</code>, <code>conditioned</code>, <code>n_actuals</code>,
+  <code>actuals_through</code>, <code>revised</code>, <code>horizon_source</code> (<code>rows</code> or <code>horizon</code>), details for each
+  series and a plain <code>message</code>.</li>
+<li>A model without <code>capabilities.conditions_on_actuals</code> refuses actuals with
+  <strong>422 <code>ACTUALS_NOT_SUPPORTED</code></strong>. The suggested action is to fit again with the new data, or
+  to keep the target empty.</li>
+<li>Gaps that the model cannot filter, and actuals without their drivers, give
+  <strong>422 <code>ACTUALS_INVALID</code></strong>.</li>
+<li><code>EndpointSchema.actuals_example</code> is a forecast call that you can use immediately. It has
+  inline data for the periods after the fit, and all values are empty. Endpoints have this
+  example only when their model conditions on actuals.</li>
 </ul>
 <h2 id="run-events-server-sent-events">Run events (server-sent events)<a class="headerlink" href="#run-events-server-sent-events" title="Permanent link">&para;</a></h2>
 <p><code>GET /v1/runs/{run_id}/events</code> has two representations:</p>
 <ul>
 <li><strong><code>Accept: text/event-stream</code></strong>: a live SSE stream.</li>
-<li><strong>Any other <code>Accept</code></strong>: a JSON <code>Page[RunEventView]</code> of persisted events. Pass <code>?after=&lt;id&gt;</code>
-  to read events after a given id.</li>
+<li><strong>All other <code>Accept</code> values</strong>: a JSON <code>Page[RunEventView]</code> of the persisted events. To read
+  the events after a given id, send <code>?after=&lt;id&gt;</code>.</li>
 </ul>
 <p>The stream sends these frames, in this order:</p>
 <ol>
-<li><code>event: snapshot</code> with the full <code>Run</code> JSON. It is the first frame on every connection and
+<li><code>event: snapshot</code> with the full <code>Run</code> JSON. It is the first frame on each connection. It
    has no <code>id:</code>.</li>
-<li>A replay of the persisted events whose <code>id</code> is greater than the <code>Last-Event-ID</code> request
-   header. Without the header the replay starts from the beginning. Every replayed frame
-   carries <code>id: &lt;RunEventView.id&gt;</code>. The ids increase per run, so a reconnecting client
-   resumes exactly where it stopped, including across the 60-minute request cut on Cloud
-   Run.</li>
-<li>Live frames as events arrive: <code>state</code>, <code>progress</code>, <code>log</code>, <code>diagnostic</code>, <code>warning</code>,
+<li>A replay of the persisted events that have an <code>id</code> greater than the request header
+   <code>Last-Event-ID</code>. If the request has no header, the replay starts from the start. Each
+   replayed frame has <code>id: &lt;RunEventView.id&gt;</code>. The ids increase for each run. Thus, a client
+   that connects again continues exactly where it stopped. This is also true after the
+   60-minute request limit on Cloud Run.</li>
+<li>Live frames when the events occur: <code>state</code>, <code>progress</code>, <code>log</code>, <code>diagnostic</code>, <code>warning</code>,
    <code>checkpoint</code>, <code>metric</code>, <code>complete</code> and <code>error</code>. The <code>data:</code> of each frame is one line of
    compact JSON (<code>RunEventView</code>).</li>
-<li><code>event: end</code> once the run is terminal (data: the final <code>Run</code>). The server then closes the
-   stream. A client that sees <code>end</code> must not reconnect.</li>
+<li><code>event: end</code> when the run is terminal (data: the final <code>Run</code>). Then the server closes the
+   stream. A client that gets <code>end</code> must not connect again.</li>
 </ol>
-<p>The server also sends a fresh <code>event: snapshot</code> (no <code>id:</code>) whenever the run's state changes,
-so a client can re-render from the latest <code>Run</code> without reassembling it from events. <code>progress</code>
-and <code>log</code> frames are <em>not</em> persisted: they are sent live without an <code>id:</code> (data: <code>{run_id,
-attempt, seq, ts, type, payload}</code>) and are never replayed; <code>Last-Event-ID</code> only covers
+<p>When the state of the run changes, the server also sends a new <code>event: snapshot</code> (no <code>id:</code>).
+Thus, a client can show the latest <code>Run</code> again and does not have to assemble it from events.
+The server does <em>not</em> persist <code>progress</code> and <code>log</code> frames. It sends them live without an
+<code>id:</code> (data: <code>{run_id,
+attempt, seq, ts, type, payload}</code>) and does not replay them. <code>Last-Event-ID</code> applies only to
 persisted events.</p>
-<p>Between events the server writes a heartbeat comment (<code>: keepalive</code>) every 15 seconds. The
-first frame also carries <code>retry: 3000</code>.</p>
-<p>An open stream checks its caller's credential again every minute (<code>MAPI_SSE_REAUTH_S</code>). Once
-the token is revoked or expired, the session has ended, or the caller has lost access to the
-project, the server closes the stream without <code>end</code>. The reconnect then answers <code>401</code> or
-<code>403</code>, and clients should stop there rather than retry.</p>
-<p>Progress frames are coalesced to at most one every 2–5 seconds. Only state changes,
-warnings, diagnostics, checkpoints, metrics and terminal events are persisted and replayable.
-A reconnecting client gets the latest progress from the <code>snapshot</code> frame. Log lines are paged
-from <code>GET /v1/runs/{run_id}/logs</code>.</p>
+<p>Between events, the server writes a heartbeat comment (<code>: keepalive</code>) each 15 seconds. The
+first frame also has <code>retry: 3000</code>.</p>
+<p>An open stream does a check of the credential of its caller again each minute
+(<code>MAPI_SSE_REAUTH_S</code>). The server closes the stream without <code>end</code> in these conditions:</p>
+<ul>
+<li>The token is revoked or expired.</li>
+<li>The session has ended.</li>
+<li>The caller does not have access to the project now.</li>
+</ul>
+<p>Then the new connection gets <code>401</code> or <code>403</code>. Clients must stop at that point and not try
+again.</p>
+<p>The server combines progress frames into a maximum of one frame each 2–5 seconds. The server
+persists only state changes, warnings, diagnostics, checkpoints, metrics and terminal events.
+Only these events can replay. A client that connects again gets the latest progress from the
+<code>snapshot</code> frame. To get the log lines in pages, use <code>GET /v1/runs/{run_id}/logs</code>.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>retry: 3000
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>event: snapshot
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>data: {"id":"run_01jaf3q2x8m9v7k5h4g3f2e1d0","state":"running", …}
@@ -5939,9 +6051,9 @@ from <code>GET /v1/runs/{run_id}/logs</code>.</p>
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>: keepalive
 </span></code></pre></div>
 <h2 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">&para;</a></h2>
-<p>Columns: <strong>Request</strong> and <strong>Response</strong> are DTO names in <code>mapi_spec.api</code>, unless they are
-catalog or plot models from <code>mapi_spec</code>. <strong>Errors</strong> lists the endpoint-specific codes. The
-common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
+<p>The columns: <strong>Request</strong> and <strong>Response</strong> are DTO names in <code>mapi_spec.api</code>, but some are
+catalog or plot models from <code>mapi_spec</code>. <strong>Errors</strong> lists the codes that are special to the
+endpoint. This table does not show the common codes from the <a href="#errors">Errors</a> section again.</p>
 <h3 id="health">Health<a class="headerlink" href="#health" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5957,7 +6069,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 <tbody>
 <tr>
 <td><code>GET /healthz</code></td>
-<td>Process liveness</td>
+<td>The process is live</td>
 <td>—</td>
 <td><code>Health</code></td>
 <td>200</td>
@@ -5965,7 +6077,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /readyz</code></td>
-<td>Postgres and the object store are reachable (503 with the same body if not)</td>
+<td>The API can connect to Postgres and the object store. If not, it sends 503 with the same body</td>
 <td>—</td>
 <td><code>Health</code></td>
 <td>200</td>
@@ -5988,7 +6100,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 <tbody>
 <tr>
 <td><code>GET /v1/projects</code></td>
-<td>List projects</td>
+<td>List the projects</td>
 <td>—</td>
 <td><code>Page[Project]</code></td>
 <td>200</td>
@@ -6004,7 +6116,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /v1/catalog</code></td>
-<td>The whole catalog with its digest</td>
+<td>The full catalog with its digest</td>
 <td>—</td>
 <td><code>CatalogResponse</code></td>
 <td>200</td>
@@ -6044,7 +6156,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /v1/schemas/{name}</code></td>
-<td>An exported JSON Schema, for example <code>modelspec.json</code> (drives Monaco and JSON Forms)</td>
+<td>An exported JSON Schema, for example <code>modelspec.json</code>. Monaco and JSON Forms use it</td>
 <td>—</td>
 <td>JSON Schema</td>
 <td>200</td>
@@ -6053,13 +6165,13 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tbody>
 </table>
 <h3 id="datasets">Datasets<a class="headerlink" href="#datasets" title="Permanent link">&para;</a></h3>
-<p>Data reaches the platform in three steps:</p>
+<p>Data goes into the platform in three steps:</p>
 <ol>
 <li>Create the dataset.</li>
 <li><code>PUT</code> the file to the signed URL from an upload session. The URL points into the
-   quarantine bucket and the API never sees the bytes.</li>
-<li>Create a version. A <strong>sandboxed ingest run</strong> parses the upload, validates it, and writes
-   the content-addressed <code>data.zarr.zip</code> with its schema, profile and preview.</li>
+   quarantine bucket. The API does not see the bytes.</li>
+<li>Create a version. A <strong>sandboxed ingest run</strong> parses the upload and validates it. Then it
+   writes the content-addressed <code>data.zarr.zip</code> with its schema, profile and preview.</li>
 </ol>
 <table>
 <thead>
@@ -6079,11 +6191,11 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 <td><code>DatasetCreate</code></td>
 <td><code>Dataset</code></td>
 <td>201</td>
-<td><code>CONFLICT</code> (name taken)</td>
+<td><code>CONFLICT</code> (the name is in use)</td>
 </tr>
 <tr>
 <td><code>GET /v1/datasets</code></td>
-<td>List datasets</td>
+<td>List the datasets</td>
 <td>—</td>
 <td><code>Page[Dataset]</code></td>
 <td>200</td>
@@ -6099,7 +6211,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>POST /v1/datasets/{dataset_id}/uploads</code></td>
-<td>Signed PUT URL into quarantine</td>
+<td>Get a signed PUT URL into quarantine</td>
 <td><code>UploadCreate</code></td>
 <td><code>UploadSession</code></td>
 <td>201</td>
@@ -6107,15 +6219,15 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>POST /v1/datasets/{dataset_id}/versions</code></td>
-<td>Ingest an upload as a new version; starts an <code>ingest</code> run. Accepts <code>Idempotency-Key</code>.</td>
+<td>Ingest an upload as a new version. This starts an <code>ingest</code> run. Accepts <code>Idempotency-Key</code>.</td>
 <td><code>DatasetVersionCreate</code></td>
 <td><code>DatasetVersion</code> (status <code>ingesting</code>)</td>
 <td>202</td>
-<td><code>NOT_FOUND</code>, <code>CONFLICT</code> (upload not finished or already consumed)</td>
+<td><code>NOT_FOUND</code>, <code>CONFLICT</code> (the upload is not complete, or a version already uses it)</td>
 </tr>
 <tr>
 <td><code>GET /v1/datasets/{dataset_id}/versions</code></td>
-<td>List versions</td>
+<td>List the versions</td>
 <td>—</td>
 <td><code>Page[DatasetVersion]</code></td>
 <td>200</td>
@@ -6123,7 +6235,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /v1/datasets/{dataset_id}/versions/{version}</code></td>
-<td>Schema, summary, profile and preview refs</td>
+<td>Schema, summary, and references to the profile and the preview</td>
 <td>—</td>
 <td><code>DatasetVersion</code></td>
 <td>200</td>
@@ -6154,7 +6266,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 <tbody>
 <tr>
 <td><code>POST /v1/specs:validate</code></td>
-<td>Synchronous static validation. Returns every issue at once with JSON pointers, plus the schema at each pipeline stage.</td>
+<td>Synchronous static validation. It returns all issues at one time with JSON pointers. It also returns the schema at each pipeline stage.</td>
 <td><code>ValidateRequest</code></td>
 <td><code>ValidateResponse</code></td>
 <td>200</td>
@@ -6170,7 +6282,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /v1/specs</code></td>
-<td>List specs</td>
+<td>List the specs</td>
 <td>—</td>
 <td><code>Page[SpecDoc]</code></td>
 <td>200</td>
@@ -6190,11 +6302,11 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 <td><code>SpecRevisionCreate</code></td>
 <td><code>SpecRevision</code></td>
 <td>201</td>
-<td><code>NOT_FOUND</code>, <code>SPEC_PARSE_ERROR</code>, <code>PAYLOAD_TOO_LARGE</code>, <code>SCHEMA_INVALID</code>, <code>CONFLICT</code> (stale <code>parent_revision</code>)</td>
+<td><code>NOT_FOUND</code>, <code>SPEC_PARSE_ERROR</code>, <code>PAYLOAD_TOO_LARGE</code>, <code>SCHEMA_INVALID</code>, <code>CONFLICT</code> (the <code>parent_revision</code> is not the latest)</td>
 </tr>
 <tr>
 <td><code>GET /v1/specs/{spec_id}/revisions</code></td>
-<td>List revisions</td>
+<td>List the revisions</td>
 <td>—</td>
 <td><code>Page[SpecRevision]</code></td>
 <td>200</td>
@@ -6210,7 +6322,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>POST /v1/specs/{spec_id}/revisions/{revision}:dry-run</code></td>
-<td>Explicit sandboxed dry-run, the same as <code>POST /v1/runs</code> with <code>kind: validate</code>. Accepts <code>Idempotency-Key</code>.</td>
+<td>An explicit sandboxed dry run. It is the same as <code>POST /v1/runs</code> with <code>kind: validate</code>. Accepts <code>Idempotency-Key</code>.</td>
 <td>—</td>
 <td><code>Run</code></td>
 <td>202</td>
@@ -6218,16 +6330,17 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 </tbody>
 </table>
-<p>How validation reports results:</p>
+<p>How validation gives its results:</p>
 <ul>
-<li><code>POST /v1/specs:validate</code> returns <strong>200 even when the document is invalid</strong>. The verdict is
-  in <code>ValidateResponse.valid</code> and <code>issues</code>.</li>
-<li>The non-2xx statuses are kept for requests that cannot be validated at all: unparseable
-  YAML, an oversized document, or a malformed request body.</li>
-<li>Creating a spec or a revision stores invalid revisions too, with <code>valid: false</code> and their
-  <code>issues</code>, so the editor can save work in progress.</li>
-<li><code>POST /v1/runs</code> refuses invalid revisions with the first error's code. Examples:
-  <code>LEAKAGE_RISK</code>, <code>UNSEEN_LEVELS</code>.</li>
+<li><code>POST /v1/specs:validate</code> returns <strong>200 also when the document is not valid</strong>. The result
+  is in <code>ValidateResponse.valid</code> and <code>issues</code>.</li>
+<li>The API uses the statuses that are not 2xx only for requests that it cannot validate. These
+  are YAML that it cannot parse, a document that is too large, and a request body that is not
+  correct.</li>
+<li>When you create a spec or a revision, the API also stores revisions that are not valid. They
+  have <code>valid: false</code> and their <code>issues</code>. Thus, the editor can save work that is not complete.</li>
+<li><code>POST /v1/runs</code> refuses revisions that are not valid. It uses the code of the first error.
+  Examples: <code>LEAKAGE_RISK</code>, <code>UNSEEN_LEVELS</code>.</li>
 </ul>
 <h3 id="runs">Runs<a class="headerlink" href="#runs" title="Permanent link">&para;</a></h3>
 <table>
@@ -6244,7 +6357,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 <tbody>
 <tr>
 <td><code>POST /v1/runs</code></td>
-<td>Submit a run (200 on an idempotent replay). Accepts <code>Idempotency-Key</code>.</td>
+<td>Submit a run. It returns 200 on an idempotent replay. Accepts <code>Idempotency-Key</code>.</td>
 <td><code>RunCreate</code></td>
 <td><code>Run</code></td>
 <td>201</td>
@@ -6252,7 +6365,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /v1/runs</code></td>
-<td>List runs (filters: <code>kind</code>, <code>state</code>, <code>spec_id</code>)</td>
+<td>List the runs (filters: <code>kind</code>, <code>state</code>, <code>spec_id</code>)</td>
 <td>—</td>
 <td><code>Page[Run]</code></td>
 <td>200</td>
@@ -6260,7 +6373,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /v1/runs/{run_id}</code></td>
-<td>Get a run (state, failure class and problem, attempt, progress snapshot, cost: placeholders in v0.2, metered from v0.3)</td>
+<td>Get a run: state, failure class and problem, attempt, progress snapshot and cost. The cost has placeholders in v0.2. From v0.3, the platform meters it</td>
 <td>—</td>
 <td><code>Run</code></td>
 <td>200</td>
@@ -6268,7 +6381,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /v1/runs/{run_id}/events</code></td>
-<td>SSE stream or JSON page of persisted events (see <a href="#run-events-server-sent-events">Run events</a>). Accepts <code>Last-Event-ID</code>.</td>
+<td>An SSE stream or a JSON page of the persisted events (see <a href="#run-events-server-sent-events">Run events</a>). Accepts <code>Last-Event-ID</code>.</td>
 <td>—</td>
 <td><code>Page[RunEventView]</code></td>
 <td>200</td>
@@ -6276,7 +6389,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /v1/runs/{run_id}/logs</code></td>
-<td>Captured log lines; filters <code>attempt</code>, <code>stream</code></td>
+<td>The captured log lines. Filters: <code>attempt</code>, <code>stream</code></td>
 <td>—</td>
 <td><code>Page[LogLine]</code></td>
 <td>200</td>
@@ -6284,7 +6397,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>GET /v1/runs/{run_id}/plots</code></td>
-<td>Plots a succeeded run rendered (<code>plots.json</code>: forecast fans, counterfactual bands), passed through the plot sanitizer on every read; rejected plots are left out. Empty until the run succeeds.</td>
+<td>The plots that a succeeded run rendered (<code>plots.json</code>: forecast fans, counterfactual bands). The plot sanitizer does a check of them at each read. The response does not include rejected plots. The list is empty until the run succeeds.</td>
 <td>—</td>
 <td><code>Page[PlotSpec]</code></td>
 <td>200</td>
@@ -6292,7 +6405,7 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>POST /v1/runs/{run_id}:cancel</code></td>
-<td>Request cancellation. Idempotent: it returns the run in <code>cancelling</code>, or in its terminal state if the run had already finished. A <code>finalizing</code> run is left alone and returned as it is: its execution is already over.</td>
+<td>Request cancellation. It is idempotent. It returns the run in <code>cancelling</code>, or in its terminal state if the run is already complete. The API does not change a <code>finalizing</code> run and returns it as it is, because its execution is already complete.</td>
 <td>—</td>
 <td><code>Run</code></td>
 <td>202</td>
@@ -6304,30 +6417,30 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 <td>—</td>
 <td><code>Run</code></td>
 <td>202</td>
-<td><code>NOT_FOUND</code>, <code>CONFLICT</code> (not <code>partial</code>)</td>
+<td><code>NOT_FOUND</code>, <code>CONFLICT</code> (the run is not <code>partial</code>)</td>
 </tr>
 <tr>
 <td><code>POST /v1/runs/{run_id}:retry</code></td>
-<td>Start a <strong>new</strong> run from a failed one, for example one resource class up after <code>RESOURCE_EXHAUSTED</code>. Accepts <code>Idempotency-Key</code>.</td>
+<td>Start a <strong>new</strong> run from a failed run. For example, use the next larger resource class after <code>RESOURCE_EXHAUSTED</code>. Accepts <code>Idempotency-Key</code>.</td>
 <td><code>RunRetry</code></td>
 <td><code>Run</code></td>
 <td>201</td>
-<td><code>NOT_FOUND</code>, <code>CONFLICT</code> (not failed; a workflow, workflow node or governance run - start the workflow again or resubmit the validation)</td>
+<td><code>NOT_FOUND</code>, <code>CONFLICT</code> (the run did not fail, or it is a workflow, workflow node or governance run. For these, start the workflow again or submit the validation again)</td>
 </tr>
 </tbody>
 </table>
-<p>What <code>RunCreate</code> needs depends on <code>kind</code>:</p>
+<p>The fields that <code>RunCreate</code> needs change with <code>kind</code>:</p>
 <table>
 <thead>
 <tr>
 <th><code>kind</code></th>
 <th>Required</th>
-<th>Not allowed</th>
+<th>Not permitted</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>fit</code>, <code>validate</code> (sandboxed dry-run)</td>
+<td><code>fit</code>, <code>validate</code> (sandboxed dry run)</td>
 <td><code>spec_id</code>, <code>revision</code></td>
 <td><code>model_version_id</code>, <code>request</code></td>
 </tr>
@@ -6338,15 +6451,15 @@ common ones from the <a href="#errors">Errors</a> section are not repeated.</p>
 </tr>
 <tr>
 <td><code>evaluate</code>, <code>derive</code>, <code>render</code></td>
-<td><code>model_version_id</code> (optional <code>params</code>)</td>
+<td><code>model_version_id</code> (<code>params</code> is optional)</td>
 <td><code>spec_id</code>, <code>revision</code>, <code>request</code></td>
 </tr>
 </tbody>
 </table>
-<p><code>ingest</code> runs are created by <code>POST /v1/datasets/{dataset_id}/versions</code>. <code>describe</code>,
-<code>optimize</code> and the fan-out parents (<code>sweep</code>, <code>backtest</code>, <code>sbc</code>, <code>campaign</code>) cannot be created
-in v0.2. Run states and the transitions between them are listed in
-<a href="../run-protocol/#run-states">Run protocol</a>.</p>
+<p><code>POST /v1/datasets/{dataset_id}/versions</code> creates the <code>ingest</code> runs. In v0.2, you cannot
+create <code>describe</code> runs, <code>optimize</code> runs or the fan-out parents (<code>sweep</code>, <code>backtest</code>, <code>sbc</code>,
+<code>campaign</code>). <a href="../run-protocol/#run-states">Run protocol</a> lists the run states and the
+transitions between them.</p>
 <h3 id="models-and-scoring">Models and scoring<a class="headerlink" href="#models-and-scoring" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -6362,7 +6475,7 @@ in v0.2. Run states and the transitions between them are listed in
 <tbody>
 <tr>
 <td><code>GET /v1/models</code></td>
-<td>List models</td>
+<td>List the models</td>
 <td>—</td>
 <td><code>Page[Model]</code></td>
 <td>200</td>
@@ -6378,7 +6491,7 @@ in v0.2. Run states and the transitions between them are listed in
 </tr>
 <tr>
 <td><code>GET /v1/models/{model_id}/versions</code></td>
-<td>List versions</td>
+<td>List the versions</td>
 <td>—</td>
 <td><code>Page[ModelVersion]</code></td>
 <td>200</td>
@@ -6394,7 +6507,7 @@ in v0.2. Run states and the transitions between them are listed in
 </tr>
 <tr>
 <td><code>GET /v1/models/{model_id}/versions/{version}/artifacts/{name}</code></td>
-<td>Signed URL for a bundle object or a <code>ui/…</code> view; <code>name</code> may contain <code>/</code></td>
+<td>Signed URL for a bundle object or a <code>ui/…</code> view. <code>name</code> can contain <code>/</code></td>
 <td>—</td>
 <td><code>ArtifactLink</code></td>
 <td>200</td>
@@ -6402,22 +6515,30 @@ in v0.2. Run states and the transitions between them are listed in
 </tr>
 <tr>
 <td><code>POST /v1/models/{model_id}/versions/{version}:score</code></td>
-<td>Score with replayed preprocessing. Accepts <code>Prefer: wait=N</code> (200 if done, else 202) and <code>Idempotency-Key</code>.</td>
+<td>Score with replayed preprocessing. Accepts <code>Prefer: wait=N</code> (200 if the run is complete, if not 202) and <code>Idempotency-Key</code>. <code>inline</code> holds <code>data</code>/<code>scenario</code> that you type in (XrJSON, maximum 5 MB each). The API does a check of them against the inputs of the version.</td>
 <td><code>ScoreCall</code></td>
 <td><code>ScoreCallResult</code></td>
 <td>200</td>
-<td><code>NOT_FOUND</code>, <code>MODE_NOT_SUPPORTED</code>, <code>UNSEEN_LEVELS</code>, <code>COORD_NOT_ALLOWED</code>, <code>HORIZON_EXCEEDS_FIT</code>, <code>MISSING_FUTURE_COVARIATE</code>, <code>NON_CONTIGUOUS_EXTENSION</code>, <code>CAPABILITY_UNSUPPORTED</code>, <code>RECURSIVE_UNSUPPORTED</code>, <code>QUOTA_EXCEEDED</code></td>
+<td><code>NOT_FOUND</code>, <code>MODE_NOT_SUPPORTED</code>, <code>UNSEEN_LEVELS</code>, <code>COORD_NOT_ALLOWED</code>, <code>HORIZON_EXCEEDS_FIT</code>, <code>MISSING_FUTURE_COVARIATE</code>, <code>NON_CONTIGUOUS_EXTENSION</code>, <code>CAPABILITY_UNSUPPORTED</code>, <code>RECURSIVE_UNSUPPORTED</code>, <code>QUOTA_EXCEEDED</code>, <code>ACTUALS_NOT_SUPPORTED</code>, <code>ACTUALS_INVALID</code>, <code>PAYLOAD_TOO_LARGE</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/models/{model_id}/versions/{version}/inputs</code></td>
+<td>The data that a score call can send. This is the input contract (canonical names, variables that the future needs, fitted coordinates) and the input table. Use <code>?periods=N</code> (1-200) for the number of periods after the fit</td>
+<td>—</td>
+<td><code>ModelInputSchema</code></td>
+<td>200</td>
+<td><code>NOT_FOUND</code>, <code>CAPABILITY_UNSUPPORTED</code></td>
 </tr>
 </tbody>
 </table>
-<p>Artifact links are minted only after two checks pass:</p>
+<p>The API makes artifact links only after two checks are satisfactory:</p>
 <ol>
 <li>The authorization check.</li>
-<li>Verification of the model version's <strong>signed bundle manifest</strong>: tenant, model version,
-   digests and object generations must all match.</li>
+<li>The verification of the <strong>signed bundle manifest</strong> of the model version. The tenant, model
+   version, digests and object generations must all agree.</li>
 </ol>
-<p>If the second check fails, the response is <code>INTEGRITY_FAILURE</code> and no URL is issued. Each
-link is pinned to an object generation, expires after 15 minutes, and supports HTTP <code>Range</code>
+<p>If the second check fails, the response is <code>INTEGRITY_FAILURE</code> and the API gives no URL. Each
+link is pinned to an object generation. It expires after 15 minutes. It supports HTTP <code>Range</code>
 requests.</p>
 <h3 id="plots">Plots<a class="headerlink" href="#plots" title="Permanent link">&para;</a></h3>
 <table>
@@ -6434,7 +6555,7 @@ requests.</p>
 <tbody>
 <tr>
 <td><code>GET /v1/models/{model_id}/versions/{version}/plots</code></td>
-<td>Plots of a model version</td>
+<td>The plots of a model version</td>
 <td>—</td>
 <td><code>Page[PlotListItem]</code></td>
 <td>200</td>
@@ -6442,7 +6563,7 @@ requests.</p>
 </tr>
 <tr>
 <td><code>GET /v1/models/{model_id}/versions/{version}/plots/{plot_id}</code></td>
-<td>A sanitized <code>PlotSpec</code>. Render it only inside the plot-sandbox iframe, which has its own origin.</td>
+<td>A sanitized <code>PlotSpec</code>. Render it only in the plot-sandbox iframe, which has its own origin.</td>
 <td>—</td>
 <td><code>PlotSpec</code></td>
 <td>200</td>
@@ -6450,7 +6571,7 @@ requests.</p>
 </tr>
 <tr>
 <td><code>POST /v1/plots:validate</code></td>
-<td>Run the server-side plot sanitizer on a user-authored spec</td>
+<td>Run the server-side plot sanitizer on a spec that a user wrote</td>
 <td><code>PlotSpec</code></td>
 <td><code>PlotValidateResponse</code></td>
 <td>200</td>
@@ -6460,13 +6581,22 @@ requests.</p>
 </table>
 <h2 id="multi-tenant-api">Multi-tenant API <span class="mapi-badge">v0.3</span><a class="headerlink" href="#multi-tenant-api" title="Permanent link">&para;</a></h2>
 <p>v0.3 (milestone M2) adds tenants, projects, members, API tokens, quotas, cost and an operator
-console. The models are in <code>mapi_spec.api</code>, <code>mapi_spec.tenancy</code>, <code>mapi_spec.tokens</code>,
-<code>mapi_spec.quotas</code>, <code>mapi_spec.cost</code>, <code>mapi_spec.audit</code>, <code>mapi_spec.admin</code> and
-<code>mapi_spec.auth</code>. The endpoint table below matches <code>mapi_spec.api.M2_ENDPOINTS</code>, and
-<code>mapi_spec.api.ROUTE_ACCESS</code> gives every operation (v0.2 ones included) its scope and the
-permission it checks. Tests fail if the code, this page and the server drift apart. Roles,
-tokens and scopes are explained in <a href="../../concepts/tenancy-and-auth/">Tenancy and authentication</a>,
-limits and prices in <a href="../../concepts/quotas-and-cost/">Quotas and cost</a>.</p>
+console. The models are in these modules:</p>
+<ul>
+<li><code>mapi_spec.api</code></li>
+<li><code>mapi_spec.tenancy</code></li>
+<li><code>mapi_spec.tokens</code></li>
+<li><code>mapi_spec.quotas</code></li>
+<li><code>mapi_spec.cost</code></li>
+<li><code>mapi_spec.audit</code></li>
+<li><code>mapi_spec.admin</code></li>
+<li><code>mapi_spec.auth</code></li>
+</ul>
+<p>The endpoint table below agrees with <code>mapi_spec.api.M2_ENDPOINTS</code>. <code>mapi_spec.api.ROUTE_ACCESS</code>
+gives each operation its scope and the permission that it checks. This includes the v0.2
+operations. If the code, this page and the server are different, tests fail.
+<a href="../../concepts/tenancy-and-auth/">Tenancy and authentication</a> explains roles, tokens and
+scopes. <a href="../../concepts/quotas-and-cost/">Quotas and cost</a> explains limits and prices.</p>
 <h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -6479,18 +6609,18 @@ limits and prices in <a href="../../concepts/quotas-and-cost/">Quotas and cost</
 <tbody>
 <tr>
 <td>Browser (the web app)</td>
-<td>Session cookie <code>__Host-mapi_session</code> (<code>HttpOnly; Secure; SameSite=Strict; Path=/</code>), set by <code>GET /auth/callback</code></td>
-<td>OpenID Connect Authorization Code flow with PKCE (S256) and a <code>nonce</code>, run by the API as a backend-for-frontend. The browser never holds an OAuth token.</td>
+<td>Session cookie <code>__Host-mapi_session</code> (<code>HttpOnly; Secure; SameSite=Strict; Path=/</code>). <code>GET /auth/callback</code> sets it</td>
+<td>OpenID Connect Authorization Code flow with PKCE (S256) and a <code>nonce</code>. The API runs the flow as a backend-for-frontend. The browser does not hold an OAuth token.</td>
 </tr>
 <tr>
 <td>Programs, SDKs, CLI</td>
 <td><code>Authorization: Bearer mapi_&lt;prefix&gt;_&lt;secret&gt;&lt;checksum&gt;</code></td>
-<td>An API token. It acts as its owner, narrowed by its scopes, in the one project it is bound to.</td>
+<td>An API token. It acts as its owner, with only its scopes, in the one project that it is bound to.</td>
 </tr>
 <tr>
 <td>Google Pub/Sub</td>
 <td>A Google-signed OIDC ID token on <code>POST /internal/events</code></td>
-<td>Audience, issuer and the push service account are checked. Nothing in the body authenticates.</td>
+<td>The API does a check of the audience, the issuer and the push service account. No data in the body gives authentication.</td>
 </tr>
 </tbody>
 </table>
@@ -6504,51 +6634,54 @@ limits and prices in <a href="../../concepts/quotas-and-cost/">Quotas and cost</
 </thead>
 <tbody>
 <tr>
-<td>No credential, or an expired session, on a non-public route</td>
+<td>No credential, or an expired session, on a route that is not public</td>
 <td><code>401 UNAUTHENTICATED</code></td>
 </tr>
 <tr>
-<td>A malformed token, or one whose checksum fails</td>
-<td><code>401 UNAUTHENTICATED</code>. The presented value is never echoed.</td>
+<td>A token that is not correctly formed, or a token with a bad checksum</td>
+<td><code>401 UNAUTHENTICATED</code>. The API does not show the value in the response.</td>
 </tr>
 <tr>
 <td>A revoked or expired token</td>
 <td><code>401 UNAUTHENTICATED</code></td>
 </tr>
 <tr>
-<td>A resource in a project or tenant the caller cannot see</td>
-<td><code>404 NOT_FOUND</code>, the same as a missing one, so ids cannot be probed</td>
+<td>A resource in a project or tenant that the caller cannot see</td>
+<td><code>404 NOT_FOUND</code>, the same as for a resource that does not exist. Thus, callers cannot find ids by tests</td>
 </tr>
 <tr>
-<td>A visible resource, but the role or the token's scopes do not allow the action</td>
+<td>The caller can see the resource, but the role or the token scopes do not permit the action</td>
 <td><code>403 FORBIDDEN</code></td>
 </tr>
 <tr>
-<td>A token used outside the project it is bound to</td>
+<td>A token used outside the project that it is bound to</td>
 <td><code>403 FORBIDDEN</code></td>
 </tr>
 <tr>
 <td>The tenant is <code>suspended</code></td>
-<td>Reads work. Everything else returns <code>403 FORBIDDEN</code>.</td>
+<td>Reads work. All other requests return <code>403 FORBIDDEN</code>.</td>
 </tr>
 </tbody>
 </table>
 <h3 id="selecting-the-project">Selecting the project<a class="headerlink" href="#selecting-the-project" title="Permanent link">&para;</a></h3>
-<p>Every v0.2 resource (datasets, specs, runs, models, plots) belongs to a project. From v0.3 a
-request names its project in one of these ways, in this order of precedence:</p>
+<p>Each v0.2 resource (datasets, specs, runs, models, plots) is part of a project. From v0.3, a
+request identifies its project in one of these ways. The list order is the order of
+precedence:</p>
 <ol>
 <li><strong>Path parameters</strong>, on routes under <code>/v1/tenants/{tenant_id}/projects/{project_id}</code>.</li>
 <li><strong>The <code>X-Mapi-Project</code> header</strong>: <code>X-Mapi-Project: &lt;tenant_id&gt;/&lt;project_id&gt;</code>, for example
-   <code>X-Mapi-Project: acme/growth</code>. A bare <code>X-Mapi-Project: growth</code> is accepted when the tenant
-   is unambiguous: the caller belongs to one tenant, or uses a token.</li>
-<li><strong>The token's binding.</strong> A token always acts in its own project, so token clients may omit
-   the header. A header that names another project returns <code>403 FORBIDDEN</code>.</li>
-<li><strong>The deployment default</strong>, in the single-tenant local profile only (<code>default/default</code>, as
+   <code>X-Mapi-Project: acme/growth</code>. The API also accepts only the project, for example
+   <code>X-Mapi-Project: growth</code>, when the tenant is clear. This is when the caller is a member of
+   one tenant, or uses a token.</li>
+<li><strong>The token binding.</strong> A token always acts in its own project. Thus, token clients do not
+   have to send the header. A header that identifies a different project returns
+   <code>403 FORBIDDEN</code>.</li>
+<li><strong>The deployment default</strong>, only in the single-tenant local profile (<code>default/default</code>, as
    in v0.2).</li>
 </ol>
-<p>If none applies, or path and header disagree, the request fails with <code>422 SCHEMA_INVALID</code>.
-<code>mapi_spec.tenancy.resolve_project_scope</code> implements these rules.</p>
-<p>The scope of each v0.2 endpoint (by operation id) and the permission checked:</p>
+<p>If no rule applies, or the path and the header are different, the request fails with
+<code>422 SCHEMA_INVALID</code>. <code>mapi_spec.tenancy.resolve_project_scope</code> implements these rules.</p>
+<p>The scope of each v0.2 endpoint (by operation id) and the permission that the API checks:</p>
 <table>
 <thead>
 <tr>
@@ -6566,7 +6699,7 @@ request names its project in one of these ways, in this order of precedence:</p>
 <tr>
 <td>Authenticated</td>
 <td><code>list_projects</code>, <code>get_catalog</code>, <code>list_catalog_models</code>, <code>get_catalog_model</code>, <code>list_catalog_steps</code>, <code>list_catalog_plots</code></td>
-<td>Any signed-in caller. Lists are filtered to what the caller can see.</td>
+<td>All signed-in callers. The lists show only what the caller can see.</td>
 </tr>
 <tr>
 <td>Project</td>
@@ -6625,9 +6758,9 @@ request names its project in one of these ways, in this order of precedence:</p>
 </tr>
 </tbody>
 </table>
-<p>Storage keys and rows were already tenant- and project-qualified in v0.2 (<code>t/{tenant}/…</code>), so
-the switch needs no data migration. Postgres enforces the boundary with row-level security
-on <code>tenant_id</code> in every table.</p>
+<p>In v0.2, the storage keys and rows already had the tenant and the project (<code>t/{tenant}/…</code>).
+Thus, the change needs no data migration. Postgres enforces the boundary with row-level
+security on <code>tenant_id</code> in all tables.</p>
 <h3 id="endpoints_1">Endpoints<a class="headerlink" href="#endpoints_1" title="Permanent link">&para;</a></h3>
 <h4 id="identity-tenants-and-projects">Identity, tenants and projects<a class="headerlink" href="#identity-tenants-and-projects" title="Permanent link">&para;</a></h4>
 <table>
@@ -6644,7 +6777,7 @@ on <code>tenant_id</code> in every table.</p>
 <tbody>
 <tr>
 <td><code>GET /v1/me</code></td>
-<td>The caller (<code>Principal</code>), their tenants, projects and roles; for a token, the token too</td>
+<td>The caller (<code>Principal</code>), with their tenants, projects and roles. For a token, the response also includes the token</td>
 <td>—</td>
 <td><code>Me</code></td>
 <td>200</td>
@@ -6652,7 +6785,7 @@ on <code>tenant_id</code> in every table.</p>
 </tr>
 <tr>
 <td><code>GET /v1/tenants</code></td>
-<td>Tenants the caller belongs to</td>
+<td>The tenants that the caller is a member of</td>
 <td>—</td>
 <td><code>Page[Tenant]</code></td>
 <td>200</td>
@@ -6668,7 +6801,7 @@ on <code>tenant_id</code> in every table.</p>
 </tr>
 <tr>
 <td><code>PATCH /v1/tenants/{tenant_id}</code></td>
-<td>Rename a tenant (tenant admin)</td>
+<td>Change the name of a tenant (tenant admin)</td>
 <td><code>TenantUpdate</code></td>
 <td><code>Tenant</code></td>
 <td>200</td>
@@ -6676,7 +6809,7 @@ on <code>tenant_id</code> in every table.</p>
 </tr>
 <tr>
 <td><code>GET /v1/tenants/{tenant_id}/projects</code></td>
-<td>Projects of the tenant that the caller can see</td>
+<td>The projects of the tenant that the caller can see</td>
 <td>—</td>
 <td><code>Page[Project]</code></td>
 <td>200</td>
@@ -6688,11 +6821,11 @@ on <code>tenant_id</code> in every table.</p>
 <td><code>ProjectCreate</code></td>
 <td><code>Project</code></td>
 <td>201</td>
-<td><code>NOT_FOUND</code>, <code>FORBIDDEN</code>, <code>CONFLICT</code> (id taken)</td>
+<td><code>NOT_FOUND</code>, <code>FORBIDDEN</code>, <code>CONFLICT</code> (the id is in use)</td>
 </tr>
 <tr>
 <td><code>PATCH /v1/tenants/{tenant_id}/projects/{project_id}</code></td>
-<td>Rename or describe a project (project admin)</td>
+<td>Change the name or the description of a project (project admin)</td>
 <td><code>ProjectUpdate</code></td>
 <td><code>Project</code></td>
 <td>200</td>
@@ -6704,16 +6837,17 @@ on <code>tenant_id</code> in every table.</p>
 <td>—</td>
 <td>—</td>
 <td>204</td>
-<td><code>NOT_FOUND</code>, <code>FORBIDDEN</code>, <code>CONFLICT</code> (it still holds data)</td>
+<td><code>NOT_FOUND</code>, <code>FORBIDDEN</code>, <code>CONFLICT</code> (the project still has data)</td>
 </tr>
 </tbody>
 </table>
 <h4 id="members">Members<a class="headerlink" href="#members" title="Permanent link">&para;</a></h4>
-<p>A membership grants one role. A tenant-wide membership grants it on the tenant and on every
-project in it; a project membership grants it on that project only. The effective role in a
-project is the higher of the two. Add a member by <code>principal_id</code>, or by <code>email</code> to invite
-someone who has not signed in yet (the invitation is claimed at first sign-in with that
-verified e-mail). Removing or demoting the last admin returns <code>409 CONFLICT</code>.</p>
+<p>A membership gives one role. A tenant-wide membership gives the role on the tenant and on all
+projects in it. A project membership gives the role only on that project. The effective role
+in a project is the higher of the two. Add a member by <code>principal_id</code>. To invite a person who
+did not sign in before, add the member by <code>email</code>. At the first sign-in with that verified
+e-mail, the person gets the invitation. If you remove or demote the last admin, the API
+returns <code>409 CONFLICT</code>.</p>
 <table>
 <thead>
 <tr>
@@ -6736,7 +6870,7 @@ verified e-mail). Removing or demoting the last admin returns <code>409 CONFLICT
 </tr>
 <tr>
 <td><code>POST /v1/tenants/{tenant_id}/members</code></td>
-<td>Grant a tenant-wide role (tenant admin)</td>
+<td>Give a tenant-wide role (tenant admin)</td>
 <td><code>MembershipCreate</code></td>
 <td><code>Membership</code></td>
 <td>201</td>
@@ -6760,7 +6894,7 @@ verified e-mail). Removing or demoting the last admin returns <code>409 CONFLICT
 </tr>
 <tr>
 <td><code>GET /v1/tenants/{tenant_id}/projects/{project_id}/members</code></td>
-<td>Project members, tenant-wide grants included</td>
+<td>Project members, with the tenant-wide grants</td>
 <td>—</td>
 <td><code>Page[Membership]</code></td>
 <td>200</td>
@@ -6768,7 +6902,7 @@ verified e-mail). Removing or demoting the last admin returns <code>409 CONFLICT
 </tr>
 <tr>
 <td><code>POST /v1/tenants/{tenant_id}/projects/{project_id}/members</code></td>
-<td>Grant a project role (project admin)</td>
+<td>Give a project role (project admin)</td>
 <td><code>MembershipCreate</code></td>
 <td><code>Membership</code></td>
 <td>201</td>
@@ -6793,11 +6927,11 @@ verified e-mail). Removing or demoting the last admin returns <code>409 CONFLICT
 </tbody>
 </table>
 <h4 id="api-tokens">API tokens<a class="headerlink" href="#api-tokens" title="Permanent link">&para;</a></h4>
-<p>Tokens belong to the project selected by <code>X-Mapi-Project</code>. <code>POST /v1/tokens</code> returns the full
-token <strong>once</strong>, in <code>TokenCreated.secret</code>; it cannot be shown again. Listings show the redacted
-form <code>mapi_&lt;prefix&gt;_…</code>. Any member may mint, list and revoke their own tokens; listing
-everyone's tokens (<code>?all=true</code>) or revoking someone else's needs <code>manage</code> on <code>token</code> (project
-admin).</p>
+<p>Tokens are part of the project that <code>X-Mapi-Project</code> selects. <code>POST /v1/tokens</code> returns the
+full token <strong>one time</strong>, in <code>TokenCreated.secret</code>. The API cannot show it again. Lists show
+the redacted form <code>mapi_&lt;prefix&gt;_…</code>. Each member can mint, list and revoke their own tokens.
+To list the tokens of all members (<code>?all=true</code>) or to revoke the token of a different person,
+you need <code>manage</code> on <code>token</code> (project admin).</p>
 <table>
 <thead>
 <tr>
@@ -6812,7 +6946,7 @@ admin).</p>
 <tbody>
 <tr>
 <td><code>GET /v1/tokens</code></td>
-<td>The caller's tokens; filters <code>all</code>, <code>status</code></td>
+<td>The tokens of the caller. Filters: <code>all</code>, <code>status</code></td>
 <td>—</td>
 <td><code>Page[ApiToken]</code></td>
 <td>200</td>
@@ -6820,7 +6954,7 @@ admin).</p>
 </tr>
 <tr>
 <td><code>POST /v1/tokens</code></td>
-<td>Mint a token with scopes, an expiry, and an optional rate limit and vCPU-second budget</td>
+<td>Mint a token with scopes and an expiry. A rate limit and a vCPU-second budget are optional</td>
 <td><code>TokenCreate</code></td>
 <td><code>TokenCreated</code></td>
 <td>201</td>
@@ -6828,7 +6962,7 @@ admin).</p>
 </tr>
 <tr>
 <td><code>GET /v1/tokens/{token_id}</code></td>
-<td>Get a token (never its secret)</td>
+<td>Get a token (the response never includes its secret)</td>
 <td>—</td>
 <td><code>ApiToken</code></td>
 <td>200</td>
@@ -6836,7 +6970,7 @@ admin).</p>
 </tr>
 <tr>
 <td><code>DELETE /v1/tokens/{token_id}</code></td>
-<td>Revoke a token. Idempotent.</td>
+<td>Revoke a token. It is idempotent.</td>
 <td>—</td>
 <td>—</td>
 <td>204</td>
@@ -6859,7 +6993,7 @@ admin).</p>
 <tbody>
 <tr>
 <td><code>GET /v1/usage</code></td>
-<td>Cost and quota of the selected project for a UTC <code>period</code> (<code>day</code> or <code>month</code>), optionally grouped (<code>group_by</code>: <code>resource_class</code>, <code>project</code>, <code>day</code>, <code>token</code>, <code>run</code>)</td>
+<td>The cost and the quota of the selected project for a UTC <code>period</code> (<code>day</code> or <code>month</code>). You can also put them in groups (<code>group_by</code>: <code>resource_class</code>, <code>project</code>, <code>day</code>, <code>token</code>, <code>run</code>)</td>
 <td>—</td>
 <td><code>UsageReport</code></td>
 <td>200</td>
@@ -6867,7 +7001,7 @@ admin).</p>
 </tr>
 <tr>
 <td><code>GET /v1/tenants/{tenant_id}/usage</code></td>
-<td>The same for the whole tenant (tenant admin)</td>
+<td>The same data for the full tenant (tenant admin)</td>
 <td>—</td>
 <td><code>UsageReport</code></td>
 <td>200</td>
@@ -6875,7 +7009,7 @@ admin).</p>
 </tr>
 <tr>
 <td><code>GET /v1/tenants/{tenant_id}/audit</code></td>
-<td>The tenant's audit log (tenant admin); filters <code>project_id</code>, <code>actor_id</code>, <code>action</code>, <code>outcome</code>, <code>since</code>, <code>until</code></td>
+<td>The audit log of the tenant (tenant admin). Filters: <code>project_id</code>, <code>actor_id</code>, <code>action</code>, <code>outcome</code>, <code>since</code>, <code>until</code></td>
 <td>—</td>
 <td><code>Page[AuditEvent]</code></td>
 <td>200</td>
@@ -6883,14 +7017,17 @@ admin).</p>
 </tr>
 </tbody>
 </table>
-<p>Every <code>Run</code> now carries a filled-in <code>cost</code> (<code>RunCost</code>): <code>estimated</code> is <code>true</code> until the run's
-first attempt has been metered, <code>amount_micros</code> is in <code>currency</code> (1 USD = 1,000,000 micros) and
-<code>price_version</code> names the price table used. The v0.2 fields <code>vcpu_seconds</code>, <code>gib_seconds</code> and
-<code>usd</code> keep their meaning.</p>
+<p>Each <code>Run</code> now has a <code>cost</code> with values (<code>RunCost</code>):</p>
+<ul>
+<li><code>estimated</code> is <code>true</code> until the platform meters the first attempt of the run.</li>
+<li><code>amount_micros</code> is in <code>currency</code> (1 USD = 1,000,000 micros).</li>
+<li><code>price_version</code> identifies the price table that the platform used.</li>
+</ul>
+<p>The v0.2 fields <code>vcpu_seconds</code>, <code>gib_seconds</code> and <code>usd</code> keep their meaning.</p>
 <h4 id="operators">Operators<a class="headerlink" href="#operators" title="Permanent link">&para;</a></h4>
 <p>Operator endpoints need a platform operator. Tenant admins get <code>403 FORBIDDEN</code>. Operators see
-tenant metadata, usage and audit logs, but no tenant content (datasets, specs, models, plots).
-Every change is written to the audit log.</p>
+tenant metadata, usage and audit logs. They do not see tenant content (datasets, specs,
+models, plots). The API writes each change to the audit log.</p>
 <table>
 <thead>
 <tr>
@@ -6905,7 +7042,7 @@ Every change is written to the audit log.</p>
 <tbody>
 <tr>
 <td><code>GET /v1/admin/tenants</code></td>
-<td>All tenants; filters <code>status</code>, <code>trust_tier</code></td>
+<td>All tenants. Filters: <code>status</code>, <code>trust_tier</code></td>
 <td>—</td>
 <td><code>Page[Tenant]</code></td>
 <td>200</td>
@@ -6913,7 +7050,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>POST /v1/admin/tenants</code></td>
-<td>Create a tenant, optionally inviting its first admin</td>
+<td>Create a tenant. You can also invite its first admin</td>
 <td><code>TenantCreate</code></td>
 <td><code>Tenant</code></td>
 <td>201</td>
@@ -6921,7 +7058,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>GET /v1/admin/tenants/{tenant_id}</code></td>
-<td>Get any tenant</td>
+<td>Get a tenant</td>
 <td>—</td>
 <td><code>Tenant</code></td>
 <td>200</td>
@@ -6929,7 +7066,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>PATCH /v1/admin/tenants/{tenant_id}</code></td>
-<td>Change trust tier, status (<code>suspended</code> and <code>deleting</code> need a reason) or data residency</td>
+<td>Change the trust tier, the status or the data residency. The statuses <code>suspended</code> and <code>deleting</code> need a reason</td>
 <td><code>TenantAdminUpdate</code></td>
 <td><code>Tenant</code></td>
 <td>200</td>
@@ -6937,7 +7074,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>GET /v1/admin/quotas</code></td>
-<td>Quota policies; filters <code>scope</code>, <code>subject_id</code></td>
+<td>Quota policies. Filters: <code>scope</code>, <code>subject_id</code></td>
 <td>—</td>
 <td><code>Page[QuotaPolicy]</code></td>
 <td>200</td>
@@ -6953,7 +7090,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>DELETE /v1/admin/quotas/{scope}/{subject_id}</code></td>
-<td>Remove a policy; the tier default applies again (<code>subject_id</code> is <code>*</code> for the global policy)</td>
+<td>Remove a policy. The tier default then applies again. For the global policy, <code>subject_id</code> is <code>*</code></td>
 <td>—</td>
 <td>—</td>
 <td>204</td>
@@ -6969,7 +7106,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>PUT /v1/admin/kill-switches</code></td>
-<td>Change them; omitted fields keep their value, <code>reason</code> is required. <code>cancel_untrusted_runs</code> (with <code>untrusted_execution_enabled=false</code>) also cancels every unfinished run of uploaded code; without it in-flight runs continue</td>
+<td>Change the kill switches. Fields that you do not send keep their value. <code>reason</code> is necessary. <code>cancel_untrusted_runs</code> (with <code>untrusted_execution_enabled=false</code>) also cancels all runs of uploaded code that are not complete. Without it, the runs that are in progress continue</td>
 <td><code>KillSwitchUpdate</code></td>
 <td><code>KillSwitches</code></td>
 <td>200</td>
@@ -6977,7 +7114,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>GET /v1/admin/executors</code></td>
-<td>Every executor: caps, health, submit rate, 429s, conformance report</td>
+<td>All executors: caps, health, submit rate, 429s, conformance report</td>
 <td>—</td>
 <td><code>Page[ExecutorHealth]</code></td>
 <td>200</td>
@@ -6993,7 +7130,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>GET /v1/admin/executors/{name}/evidence</code></td>
-<td>The conformance and security-suite reports recorded for an executor</td>
+<td>The reports of the conformance suite and the security suite for an executor</td>
 <td>—</td>
 <td><code>ExecutorEvidence</code></td>
 <td>200</td>
@@ -7001,7 +7138,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>PUT /v1/admin/executors/{name}/evidence</code></td>
-<td>Record suite results (audited); shared tiers need both, passing, for the current caps</td>
+<td>Record the suite results (audited). Shared tiers need the two reports, with a pass, for the current caps</td>
 <td><code>ExecutorEvidenceUpdate</code></td>
 <td><code>ExecutorEvidence</code></td>
 <td>200</td>
@@ -7009,7 +7146,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>GET /v1/admin/usage</code></td>
-<td>Cost by tenant for a UTC <code>period</code> (<code>day</code> or <code>month</code>, <code>start</code> inside it), biggest spender first, and the current spend against the global spend cap (<code>spend_cap</code>: always the cap's current window, with <code>fraction</code> = spent / cap)</td>
+<td>The cost for each tenant for a UTC <code>period</code> (<code>day</code> or <code>month</code>, with <code>start</code> in it). The tenant that spends most is first. The response also has the current spend against the global spend cap (<code>spend_cap</code>). This is always the current window of the cap, with <code>fraction</code> = spent / cap</td>
 <td>—</td>
 <td><code>AdminUsageReport</code></td>
 <td>200</td>
@@ -7017,7 +7154,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>PUT /v1/admin/executors/{name}</code></td>
-<td>Enable or disable an executor (audited, <code>reason</code> required). Nothing new is leased onto a disabled one; orchestrator reports never re-enable it</td>
+<td>Enable or disable an executor (audited, <code>reason</code> is necessary). The platform does not lease new work to a disabled executor. Orchestrator reports never enable it again</td>
 <td><code>ExecutorUpdate</code></td>
 <td><code>ExecutorHealth</code></td>
 <td>200</td>
@@ -7025,7 +7162,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>GET /v1/admin/audit</code></td>
-<td>The platform audit log; filters <code>tenant_id</code>, <code>project_id</code>, <code>actor_id</code>, <code>action</code>, <code>outcome</code>, <code>since</code>, <code>until</code></td>
+<td>The platform audit log. Filters: <code>tenant_id</code>, <code>project_id</code>, <code>actor_id</code>, <code>action</code>, <code>outcome</code>, <code>since</code>, <code>until</code></td>
 <td>—</td>
 <td><code>Page[AuditEvent]</code></td>
 <td>200</td>
@@ -7034,7 +7171,7 @@ Every change is written to the audit log.</p>
 </tbody>
 </table>
 <h4 id="browser-session-backend-for-frontend">Browser session (backend-for-frontend)<a class="headerlink" href="#browser-session-backend-for-frontend" title="Permanent link">&para;</a></h4>
-<p>These routes are not versioned and live at the root, next to the web app.</p>
+<p>These routes have no version. They are at the root, next to the web app.</p>
 <table>
 <thead>
 <tr>
@@ -7049,7 +7186,7 @@ Every change is written to the audit log.</p>
 <tbody>
 <tr>
 <td><code>GET /auth/login</code></td>
-<td>Start sign-in. Redirects to the identity provider with <code>response_type=code</code>, a PKCE <code>code_challenge</code> (S256), <code>state</code> and <code>nonce</code>. <code>?return_to=</code> must be a same-origin path; anything else becomes <code>/</code>.</td>
+<td>Start the sign-in. It redirects to the identity provider with <code>response_type=code</code>, a PKCE <code>code_challenge</code> (S256), <code>state</code> and <code>nonce</code>. <code>?return_to=</code> must be a path on the same origin. If it is not, the API uses <code>/</code>.</td>
 <td>—</td>
 <td>—</td>
 <td>302</td>
@@ -7057,7 +7194,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>GET /auth/callback</code></td>
-<td>Check <code>state</code>, exchange the code with the PKCE verifier, verify the ID token (issuer, audience, <code>nonce</code>, expiry), set the session cookie and redirect to <code>return_to</code></td>
+<td>Do a check of <code>state</code>. Exchange the code with the PKCE verifier. Verify the ID token (issuer, audience, <code>nonce</code>, expiry). Set the session cookie and redirect to <code>return_to</code></td>
 <td>—</td>
 <td>—</td>
 <td>302</td>
@@ -7065,7 +7202,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>POST /auth/logout</code></td>
-<td>End the session and clear the cookies. Works without a valid session; with one it needs <code>X-CSRF-Token</code>.</td>
+<td>End the session and clear the cookies. It works without a valid session. With a valid session, it needs <code>X-CSRF-Token</code>.</td>
 <td>—</td>
 <td>—</td>
 <td>204</td>
@@ -7073,7 +7210,7 @@ Every change is written to the audit log.</p>
 </tr>
 <tr>
 <td><code>GET /auth/session</code></td>
-<td>Whether the browser is signed in, as whom and until when. <code>authenticated: false</code> is a 200, not a 401.</td>
+<td>Tells if the browser is signed in, the identity, and the expiry time. <code>authenticated: false</code> is a 200, not a 401.</td>
 <td>—</td>
 <td><code>SessionInfo</code></td>
 <td>200</td>
@@ -7081,18 +7218,23 @@ Every change is written to the audit log.</p>
 </tr>
 </tbody>
 </table>
-<p>The login transaction (state, nonce, PKCE verifier) is held by the server for 10 minutes and
-referenced by a <code>__Host-mapi_login</code> cookie with <code>SameSite=Lax</code>, because the identity
-provider's redirect back is a cross-site navigation that would drop a <code>Strict</code> cookie. Sessions
-expire after 2 hours idle or 12 hours in total. Every state-changing API route takes JSON,
-which a cross-site form cannot send without a CORS preflight, and the session cookie is
-<code>SameSite=Strict</code>, so cross-site requests never carry it.</p>
-<p>On top of that, every <strong>cookie-authenticated</strong> <code>POST</code>, <code>PUT</code>, <code>PATCH</code> and <code>DELETE</code> (including
-<code>POST /auth/logout</code> when a session is live) must echo the session's CSRF token in an
-<code>X-CSRF-Token</code> header, and is refused (<code>403 FORBIDDEN</code>) when its <code>Origin</code> is neither the web
-app nor the API or it says <code>Sec-Fetch-Site: cross-site</code>. The web app reads the token from the
-<code>__Host-mapi_csrf</code> cookie (readable, <code>SameSite=Strict</code>) or from the <code>X-CSRF-Token</code> header of
-<code>GET /auth/session</code>. Requests with an API token need no CSRF token.</p>
+<p>The server keeps the login transaction (state, nonce, PKCE verifier) for 10 minutes. A
+<code>__Host-mapi_login</code> cookie with <code>SameSite=Lax</code> refers to it. The cookie uses this setting because the
+redirect back from the identity provider is a cross-site navigation, and that navigation does
+not send a <code>Strict</code> cookie. Sessions expire after 2 hours with no activity or after 12 hours
+in total. Each API route that changes state accepts only JSON. A cross-site form cannot send
+JSON without a CORS preflight. The session cookie is <code>SameSite=Strict</code>, thus cross-site
+requests never send it.</p>
+<p>Also, each <strong>cookie-authenticated</strong> <code>POST</code>, <code>PUT</code>, <code>PATCH</code> and <code>DELETE</code> must send the CSRF
+token of the session in an <code>X-CSRF-Token</code> header. This includes <code>POST /auth/logout</code> when a
+session is live. The API refuses the request (<code>403 FORBIDDEN</code>) in these conditions:</p>
+<ul>
+<li>Its <code>Origin</code> is not the web app or the API.</li>
+<li>It has <code>Sec-Fetch-Site: cross-site</code>.</li>
+</ul>
+<p>The web app reads the token from the <code>__Host-mapi_csrf</code> cookie (readable, <code>SameSite=Strict</code>)
+or from the <code>X-CSRF-Token</code> header of <code>GET /auth/session</code>. Requests with an API token do not
+need a CSRF token.</p>
 <h4 id="internal">Internal<a class="headerlink" href="#internal" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -7117,58 +7259,80 @@ app nor the API or it says <code>Sec-Fetch-Site: cross-site</code>. The web app 
 </tbody>
 </table>
 <p>The push envelope is <code>{message: {data, attributes, messageId, publishTime}, subscription,
-deliveryAttempt}</code>. <code>message.data</code> is a base64 Cloud Logging entry whose <code>jsonPayload.mapi_event</code>
-is one HMAC-signed run event (see <a href="../run-protocol/">Run protocol</a>). The request must carry
-<code>Authorization: Bearer &lt;Google-signed ID token&gt;</code>; after verifying the signature, the server
-checks the claims with <code>mapi_spec.auth.check_push_claims</code>: issuer <code>https://accounts.google.com</code>,
-the configured audience, the push service account's verified e-mail, and expiry. Events that
-fail their HMAC are acknowledged with 200 (redelivery would not help) and audited as
-<code>event.rejected</code>.</p>
-<h3 id="quotas-and-rate-limits-on-every-endpoint">Quotas and rate limits on every endpoint<a class="headerlink" href="#quotas-and-rate-limits-on-every-endpoint" title="Permanent link">&para;</a></h3>
-<p>Requests and submissions are checked against three levels of quota: token, tenant and global
-(see <a href="../../concepts/quotas-and-cost/">Quotas and cost</a>).</p>
+deliveryAttempt}</code>. <code>message.data</code> is a base64 Cloud Logging entry. Its <code>jsonPayload.mapi_event</code>
+is one HMAC-signed run event (see <a href="../run-protocol/">Run protocol</a>). The request must have
+<code>Authorization: Bearer &lt;Google-signed ID token&gt;</code>. After the server verifies the signature, it
+does a check of the claims with <code>mapi_spec.auth.check_push_claims</code>:</p>
 <ul>
-<li>A request over a requests-per-minute limit returns <strong><code>429 RATE_LIMITED</code></strong> with a
-  <code>Retry-After</code> header. Retry after that many seconds.</li>
-<li>A submission that would exceed a compute, concurrency, fan-out, resource-class, storage or
-  egress limit returns <strong><code>429 QUOTA_EXCEEDED</code></strong>. <code>Retry-After</code> is set when the limit resets with
-  a window (the UTC day or month). The problem's <code>detail</code> names the level and the limit.</li>
+<li>The issuer is <code>https://accounts.google.com</code>.</li>
+<li>The audience is the configured audience.</li>
+<li>The verified e-mail is the e-mail of the push service account.</li>
+<li>The token is not expired.</li>
+</ul>
+<p>If an event fails its HMAC, the server acknowledges it with 200, because a new delivery
+cannot help. The server records it in the audit log as <code>event.rejected</code>.</p>
+<h3 id="quotas-and-rate-limits-on-every-endpoint">Quotas and rate limits on every endpoint<a class="headerlink" href="#quotas-and-rate-limits-on-every-endpoint" title="Permanent link">&para;</a></h3>
+<p>The platform does a check of requests and submissions against three levels of quota: token,
+tenant and global (see <a href="../../concepts/quotas-and-cost/">Quotas and cost</a>).</p>
+<ul>
+<li>If a request goes above a requests-per-minute limit, the API returns
+  <strong><code>429 RATE_LIMITED</code></strong> with a <code>Retry-After</code> header. Try again after that number of seconds.</li>
+<li>If a submission goes above a compute, concurrency, fan-out, resource-class, storage or
+  egress limit, the API returns <strong><code>429 QUOTA_EXCEEDED</code></strong>. The API sets <code>Retry-After</code> when the
+  limit resets with a window (the UTC day or month). The <code>detail</code> of the problem gives the
+  level and the limit.</li>
 <li>The platform kill switches (uploaded code paused, global spend cap reached) also return
   <code>QUOTA_EXCEEDED</code>, at the global level.</li>
 </ul>
 <h2 id="guided-and-integrations">Guided mode and integrations <span class="mapi-badge">v0.4</span><a class="headerlink" href="#guided-and-integrations" title="Permanent link">&para;</a></h2>
-<p>v0.4 (milestone M3) adds the contracts for Guided mode and for connecting other applications:
-guided templates and drafts, business priors and lift tests, what-if scenarios, endpoints and
-aliases, code snippets, webhooks, saved and rendered plots with embed links, and the trust
-lifecycle (sign-up, verification, tenant deletion and export). The endpoint table matches
-<code>mapi_spec.api.M3_ENDPOINTS</code>; <code>mapi_spec.api.ROUTE_ACCESS</code> gives each operation its scope and
-permission, and <code>mapi_spec.api.ENDPOINTS</code> is the whole v0.4 surface (M1, M2 and M3; the
-server's route-table test checks that it serves every row). The ideas behind them are
-explained in <a href="../../concepts/guided-mode/">Guided mode</a> and
-<a href="../../concepts/integrations/">Integrations</a>.</p>
-<p>Project-scoped M3 routes take the project from <code>X-Mapi-Project</code>, like every v0.3 route.</p>
+<p>v0.4 (milestone M3) adds the contracts for Guided mode and for the connection of other
+applications. These contracts are:</p>
+<ul>
+<li>Guided templates and drafts.</li>
+<li>Business priors and lift tests.</li>
+<li>What-if scenarios.</li>
+<li>Endpoints and aliases.</li>
+<li>Code snippets.</li>
+<li>Webhooks.</li>
+<li>Saved and rendered plots, with embed links.</li>
+<li>The trust lifecycle (sign-up, verification, tenant deletion and export).</li>
+</ul>
+<p>The endpoint table agrees with <code>mapi_spec.api.M3_ENDPOINTS</code>. <code>mapi_spec.api.ROUTE_ACCESS</code>
+gives the scope and the permission of each operation. <code>mapi_spec.api.ENDPOINTS</code> is the full
+v0.4 surface (M1, M2 and M3). The route-table test of the server makes sure that the server
+serves each row. <a href="../../concepts/guided-mode/">Guided mode</a> and
+<a href="../../concepts/integrations/">Integrations</a> explain the ideas.</p>
+<p>Project-scoped M3 routes get the project from <code>X-Mapi-Project</code>, as all v0.3 routes do.</p>
 <h3 id="guided-mode">Guided mode<a class="headerlink" href="#guided-mode" title="Permanent link">&para;</a></h3>
-<p><code>GET /v1/guided/templates</code> lists the built-in templates (<code>GuidedTemplate</code>): plain-language
-questions, the built-in plugin they target, a <code>ModelSpec</code> template with <code>{{placeholder}}</code>
-strings, default settings, the scorecard checks that apply and <code>x-ui-level</code> hints. Role
-detection (<code>POST /v1/guided/detect-roles</code>) ranks the columns of an upload for every question
-from <code>ColumnProfile</code>s computed in the browser (or from a stored dataset version: its ingest's
-<code>columns.json</code>, else its schema and summary) and returns <code>RoleSuggestions</code>, each candidate
-with a confidence and a <code>reason_plain</code>. A draft (<code>POST /v1/guided/drafts</code>) turns
-<code>GuidedAnswers</code> into an <code>IngestMapping</code> for the upload, a <code>ModelSpec</code> document and its YAML
-("View as YAML") without storing anything, with the static validator's findings in <code>issues</code>;
-save it with <code>POST /v1/specs</code>.
-Business priors become
-model-space priors in a sandboxed <code>translate_priors</code> run (<code>PriorTranslationRequest</code> →
-<code>PriorTranslation</code>, whose <code>result</code> is a <code>PriorTranslationResult</code> with a prior-predictive
-preview in business units). <code>POST /v1/guided/requests:compile</code> turns a what-if scenario, a
-forecast or an intervention preset (<code>GuidedCompile</code>) into the <code>ScoreRequest</code> it stands for, so
-"Run exact" submits a real score run. The persona lock is <code>Project.guided_locked</code>, changed
-with <code>PATCH /v1/tenants/{tenant_id}/projects/{project_id}</code> (<code>ProjectUpdate.guided_locked</code>);
-in a locked project, <code>POST /v1/specs</code> and <code>POST /v1/specs/{spec_id}/revisions</code> by members
-below admin answer <code>403 FORBIDDEN</code> for anything but Guided specs that keep their template's
-advanced and hidden fields. Served in this release: the templates, role detection, drafts
-and the lock (see
+<p><code>GET /v1/guided/templates</code> lists the built-in templates (<code>GuidedTemplate</code>). Each template has
+these items:</p>
+<ul>
+<li>Questions in plain language.</li>
+<li>The built-in plugin that the questions are for.</li>
+<li>A <code>ModelSpec</code> template with <code>{{placeholder}}</code> strings.</li>
+<li>Default settings.</li>
+<li>The scorecard checks that apply.</li>
+<li><code>x-ui-level</code> hints.</li>
+</ul>
+<p>Role detection (<code>POST /v1/guided/detect-roles</code>) ranks the columns of an upload for each
+question. It uses <code>ColumnProfile</code>s that the browser calculates. It can also use a stored
+dataset version: the <code>columns.json</code> of its ingest, or else its schema and summary. It returns
+<code>RoleSuggestions</code>. Each candidate has a confidence and a <code>reason_plain</code>.</p>
+<p>A draft (<code>POST /v1/guided/drafts</code>) changes <code>GuidedAnswers</code> into an <code>IngestMapping</code> for the
+upload, a <code>ModelSpec</code> document and its YAML ("View as YAML"). It does not store anything. The
+findings of the static validator are in <code>issues</code>. To save the draft, use <code>POST /v1/specs</code>.</p>
+<p>A sandboxed <code>translate_priors</code> run changes business priors into model-space priors
+(<code>PriorTranslationRequest</code> → <code>PriorTranslation</code>). The <code>result</code> of the translation is a
+<code>PriorTranslationResult</code>, with a prior-predictive preview in business units.</p>
+<p><code>POST /v1/guided/requests:compile</code> changes a what-if scenario, a forecast or an intervention
+preset (<code>GuidedCompile</code>) into the equivalent <code>ScoreRequest</code>. Thus, "Run exact" sends a real
+score run.</p>
+<p>The persona lock is <code>Project.guided_locked</code>. To change it, use
+<code>PATCH /v1/tenants/{tenant_id}/projects/{project_id}</code> (<code>ProjectUpdate.guided_locked</code>). In a
+locked project, members below admin get <code>403 FORBIDDEN</code> from <code>POST /v1/specs</code> and
+<code>POST /v1/specs/{spec_id}/revisions</code>. The only exception is Guided specs that keep the
+advanced and hidden fields of their template.</p>
+<p>This release serves the templates, role detection, drafts and the lock (see
 <a href="../../guides/guided-data/">From a spreadsheet to a Guided draft</a>).</p>
 <table>
 <thead>
@@ -7200,7 +7364,7 @@ and the lock (see
 </tr>
 <tr>
 <td><code>POST /v1/guided/detect-roles</code></td>
-<td>Suggest a column for every question from column profiles</td>
+<td>Suggest a column for each question from column profiles</td>
 <td><code>DetectRolesRequest</code></td>
 <td><code>RoleSuggestions</code></td>
 <td>200</td>
@@ -7208,7 +7372,7 @@ and the lock (see
 </tr>
 <tr>
 <td><code>POST /v1/guided/drafts</code></td>
-<td>Answers → ingest mapping + ModelSpec draft (+ YAML); stores nothing</td>
+<td>Answers → ingest mapping + ModelSpec draft (+ YAML). It stores nothing</td>
 <td><code>GuidedAnswers</code></td>
 <td><code>GuidedDraft</code></td>
 <td>200</td>
@@ -7216,7 +7380,7 @@ and the lock (see
 </tr>
 <tr>
 <td><code>POST /v1/guided/requests:compile</code></td>
-<td>What-if scenario, forecast or preset → the ScoreRequest it stands for ('Run exact')</td>
+<td>What-if scenario, forecast or preset → the equivalent ScoreRequest ('Run exact')</td>
 <td><code>GuidedCompile</code></td>
 <td><code>ScoreRequest</code></td>
 <td>200</td>
@@ -7232,7 +7396,7 @@ and the lock (see
 </tr>
 <tr>
 <td><code>GET /v1/guided/prior-translations/{run_id}</code></td>
-<td>The translation run and, once done, its priors and preview</td>
+<td>The translation run. When it is done, also its priors and preview</td>
 <td>—</td>
 <td><code>PriorTranslation</code></td>
 <td>200</td>
@@ -7242,17 +7406,23 @@ and the lock (see
 </table>
 <h3 id="endpoints-and-aliases">Endpoints and aliases<a class="headerlink" href="#endpoints-and-aliases" title="Permanent link">&para;</a></h3>
 <p>An endpoint is a stable alias (<code>endpoint://&lt;project&gt;/&lt;alias&gt;</code>) for one model version. <code>PUT</code>
-promotes a version: the promotion gate (<code>PromotionGateDecision</code>) allows a passing scorecard,
-asks for <code>override: true</code> with a <code>reason</code> from a signed-in project admin when it warns
-(<code>409 OVERRIDE_REQUIRED</code>; the override is audited as <code>endpoint.promote_override</code>), and blocks
-a failing one (<code>409 PROMOTION_BLOCKED</code>). The endpoint's <code>EvaluationPolicy</code> requires
-<code>evaluate_then_refit</code> fits by default and blocks input-schema changes that would break callers.
-<code>POST …/score</code> takes an <code>EndpointScoreCall</code> (a score request without <code>model</code>, whose <code>data</code> and
-<code>scenario</code> may be inline XrJSON datasets up to 5 MB) and answers like <code>…:score</code> on a model
-version: <code>Prefer: wait=60</code> gives <code>200</code> with the result when it is done in time, otherwise
-<code>202</code> with the run. A <code>score:&lt;alias&gt;</code> token may read the endpoint, its schema, history and
-snippets, and score it; <code>endpoints:promote</code> tokens may promote and roll back but never
-override the gate.</p>
+promotes a version. The promotion gate (<code>PromotionGateDecision</code>) does a check of the
+scorecard:</p>
+<ul>
+<li>If the scorecard passes, the gate permits the promotion.</li>
+<li>If the scorecard has a warning, the gate asks for <code>override: true</code> with a <code>reason</code> from a
+  signed-in project admin (<code>409 OVERRIDE_REQUIRED</code>). The audit log records the override as
+  <code>endpoint.promote_override</code>.</li>
+<li>If the scorecard fails, the gate blocks the promotion (<code>409 PROMOTION_BLOCKED</code>).</li>
+</ul>
+<p>By default, the <code>EvaluationPolicy</code> of the endpoint needs <code>evaluate_then_refit</code> fits. It also
+blocks changes to the input schema that would break callers.</p>
+<p><code>POST …/score</code> takes an <code>EndpointScoreCall</code>. This is a score request without <code>model</code>. Its
+<code>data</code> and <code>scenario</code> can be inline XrJSON datasets of up to 5 MB. The answer is the same as
+for <code>…:score</code> on a model version. With <code>Prefer: wait=60</code>, you get <code>200</code> with the result if the
+run completes in time. If not, you get <code>202</code> with the run.</p>
+<p>A <code>score:&lt;alias&gt;</code> token can read the endpoint, its schema, history and snippets, and can score
+it. <code>endpoints:promote</code> tokens can promote and roll back, but they cannot override the gate.</p>
 <table>
 <thead>
 <tr>
@@ -7275,7 +7445,7 @@ override the gate.</p>
 </tr>
 <tr>
 <td><code>GET /v1/endpoints/{alias}</code></td>
-<td>An endpoint and the version it serves</td>
+<td>An endpoint and the version that it serves</td>
 <td>—</td>
 <td><code>Endpoint</code></td>
 <td>200</td>
@@ -7283,7 +7453,7 @@ override the gate.</p>
 </tr>
 <tr>
 <td><code>PUT /v1/endpoints/{alias}</code></td>
-<td>Create or promote (gated on the scorecard; override = admin + reason, audited)</td>
+<td>Create or promote. The scorecard is the gate. An override needs an admin and a reason, and goes into the audit log</td>
 <td><code>EndpointPromote</code></td>
 <td><code>Endpoint</code></td>
 <td>200</td>
@@ -7291,7 +7461,7 @@ override the gate.</p>
 </tr>
 <tr>
 <td><code>DELETE /v1/endpoints/{alias}</code></td>
-<td>Delete the alias (model versions stay)</td>
+<td>Delete the alias (the model versions stay)</td>
 <td>—</td>
 <td>—</td>
 <td>204</td>
@@ -7311,7 +7481,7 @@ override the gate.</p>
 <td><code>EndpointScoreCall</code></td>
 <td><code>ScoreCallResult</code></td>
 <td>200</td>
-<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>MODE_NOT_SUPPORTED</code>, <code>UNSEEN_LEVELS</code>, <code>COORD_NOT_ALLOWED</code>, <code>HORIZON_EXCEEDS_FIT</code>, <code>MISSING_FUTURE_COVARIATE</code>, <code>NON_CONTIGUOUS_EXTENSION</code>, <code>CAPABILITY_UNSUPPORTED</code>, <code>RECURSIVE_UNSUPPORTED</code>, <code>QUOTA_EXCEEDED</code>, <code>PAYLOAD_TOO_LARGE</code></td>
+<td><code>SCHEMA_INVALID</code>, <code>NOT_FOUND</code>, <code>MODE_NOT_SUPPORTED</code>, <code>UNSEEN_LEVELS</code>, <code>COORD_NOT_ALLOWED</code>, <code>HORIZON_EXCEEDS_FIT</code>, <code>MISSING_FUTURE_COVARIATE</code>, <code>NON_CONTIGUOUS_EXTENSION</code>, <code>CAPABILITY_UNSUPPORTED</code>, <code>RECURSIVE_UNSUPPORTED</code>, <code>QUOTA_EXCEEDED</code>, <code>PAYLOAD_TOO_LARGE</code>, <code>ACTUALS_NOT_SUPPORTED</code>, <code>ACTUALS_INVALID</code></td>
 </tr>
 <tr>
 <td><code>GET /v1/endpoints/{alias}/schema</code></td>
@@ -7323,7 +7493,7 @@ override the gate.</p>
 </tr>
 <tr>
 <td><code>POST /v1/endpoints/{alias}/validate</code></td>
-<td>Static checks of a score call without running it</td>
+<td>Static checks of a score call. It does not run the call</td>
 <td><code>EndpointScoreCall</code></td>
 <td><code>EndpointValidation</code></td>
 <td>200</td>
@@ -7331,7 +7501,7 @@ override the gate.</p>
 </tr>
 <tr>
 <td><code>POST /v1/endpoints/{alias}/rollback</code></td>
-<td>Point the alias back at an earlier revision's version (audited)</td>
+<td>Set the alias back to the version of an earlier revision (audited)</td>
 <td><code>EndpointRollback</code></td>
 <td><code>Endpoint</code></td>
 <td>200</td>
@@ -7348,10 +7518,10 @@ override the gate.</p>
 </tbody>
 </table>
 <h3 id="webhooks">Webhooks<a class="headerlink" href="#webhooks" title="Permanent link">&para;</a></h3>
-<p><code>POST /v1/webhooks</code> returns the signing secret once (<code>WebhookCreated</code>). Deliveries carry a
-<code>WebhookEnvelope</code> and the header <code>Mapi-Signature: t=&lt;unix&gt;,v1=&lt;hex&gt;</code>; see
-<a href="../../concepts/integrations/#webhooks">Integrations</a> for verification and the SSRF policy.
-Managing webhooks needs a project admin or a <code>webhooks:manage</code> token.</p>
+<p><code>POST /v1/webhooks</code> returns the signing secret one time only (<code>WebhookCreated</code>). Each delivery
+has a <code>WebhookEnvelope</code> and the header <code>Mapi-Signature: t=&lt;unix&gt;,v1=&lt;hex&gt;</code>. For verification
+and the SSRF policy, see <a href="../../concepts/integrations/#webhooks">Integrations</a>. To manage
+webhooks, you must be a project admin or have a <code>webhooks:manage</code> token.</p>
 <table>
 <thead>
 <tr>
@@ -7374,7 +7544,7 @@ Managing webhooks needs a project admin or a <code>webhooks:manage</code> token.
 </tr>
 <tr>
 <td><code>POST /v1/webhooks</code></td>
-<td>Add a webhook (the secret is shown once)</td>
+<td>Add a webhook (the API shows the secret one time only)</td>
 <td><code>WebhookCreate</code></td>
 <td><code>WebhookCreated</code></td>
 <td>201</td>
@@ -7406,7 +7576,7 @@ Managing webhooks needs a project admin or a <code>webhooks:manage</code> token.
 </tr>
 <tr>
 <td><code>POST /v1/webhooks/{webhook_id}:rotate-secret</code></td>
-<td>New secret (shown once); the old one signs too for 24 h</td>
+<td>New secret (shown one time only). The old secret also signs for 24 h</td>
 <td>—</td>
 <td><code>WebhookCreated</code></td>
 <td>200</td>
@@ -7422,7 +7592,7 @@ Managing webhooks needs a project admin or a <code>webhooks:manage</code> token.
 </tr>
 <tr>
 <td><code>POST /v1/webhooks/{webhook_id}/deliveries/{delivery_id}:replay</code></td>
-<td>Send an event again (a new delivery, replay_of set)</td>
+<td>Send an event again (a new delivery, with replay_of set)</td>
 <td>—</td>
 <td><code>WebhookDelivery</code></td>
 <td>202</td>
@@ -7431,13 +7601,13 @@ Managing webhooks needs a project admin or a <code>webhooks:manage</code> token.
 </tbody>
 </table>
 <h3 id="saved-plots-rendering-and-embeds">Saved plots, rendering and embeds<a class="headerlink" href="#saved-plots-rendering-and-embeds" title="Permanent link">&para;</a></h3>
-<p>A <code>SavedPlot</code> keeps a model version's plot or a user-authored <code>PlotSpec</code>. Rendering
-(<code>PlotRenderRequest</code> → <code>PlotRender</code>) produces PNG, SVG or PDF in the sandbox. Embed links
-(<code>PlotEmbedCreate</code> → <code>PlotEmbedCreated</code>, listed as <code>PlotEmbed</code>) are tokenised, read-only and
-expire; only plots of platform recipes can be embedded (<code>422 EMBED_NOT_ALLOWED</code>). The public
-<code>GET /v1/embeds/{embed_token}</code> returns an <code>EmbedView</code> with every dataset inline, or
-<code>410 LINK_EXPIRED</code>; it reads no credential and answers cross-origin reads from the plot
-sandbox origin only. See <a href="../../guides/sharing-plots/">Sharing plots</a>.</p>
+<p>A <code>SavedPlot</code> keeps a plot of a model version or a <code>PlotSpec</code> that a user wrote. Rendering
+(<code>PlotRenderRequest</code> → <code>PlotRender</code>) makes PNG, SVG or PDF in the sandbox. Embed links
+(<code>PlotEmbedCreate</code> → <code>PlotEmbedCreated</code>, listed as <code>PlotEmbed</code>) have tokens, are read-only and
+expire. You can embed only plots of platform recipes (<code>422 EMBED_NOT_ALLOWED</code>).</p>
+<p>The public <code>GET /v1/embeds/{embed_token}</code> returns an <code>EmbedView</code> with all datasets inline, or
+<code>410 LINK_EXPIRED</code>. It does not read credentials. It answers cross-origin reads only from the
+plot sandbox origin. See <a href="../../guides/sharing-plots/">Sharing plots</a>.</p>
 <table>
 <thead>
 <tr>
@@ -7452,7 +7622,7 @@ sandbox origin only. See <a href="../../guides/sharing-plots/">Sharing plots</a>
 <tbody>
 <tr>
 <td><code>POST /v1/plots</code></td>
-<td>Save a model version's plot or a user-authored PlotSpec</td>
+<td>Save a plot of a model version or a PlotSpec that a user wrote</td>
 <td><code>SavedPlotCreate</code></td>
 <td><code>SavedPlot</code></td>
 <td>201</td>
@@ -7476,7 +7646,7 @@ sandbox origin only. See <a href="../../guides/sharing-plots/">Sharing plots</a>
 </tr>
 <tr>
 <td><code>DELETE /v1/plots/{plot_id}</code></td>
-<td>Delete a saved plot (revokes its embeds)</td>
+<td>Delete a saved plot (this revokes its embeds)</td>
 <td>—</td>
 <td>—</td>
 <td>204</td>
@@ -7500,7 +7670,7 @@ sandbox origin only. See <a href="../../guides/sharing-plots/">Sharing plots</a>
 </tr>
 <tr>
 <td><code>POST /v1/plots/{plot_id}/embeds</code></td>
-<td>Tokenised read-only link (platform recipes only; shown once)</td>
+<td>Read-only link with a token (platform recipes only, shown one time only)</td>
 <td><code>PlotEmbedCreate</code></td>
 <td><code>PlotEmbedCreated</code></td>
 <td>201</td>
@@ -7533,14 +7703,16 @@ sandbox origin only. See <a href="../../guides/sharing-plots/">Sharing plots</a>
 </tbody>
 </table>
 <h3 id="sign-up-verification-deletion-and-export">Sign-up, verification, deletion and export<a class="headerlink" href="#sign-up-verification-deletion-and-export" title="Permanent link">&para;</a></h3>
-<p>Self-service sign-up (<code>SignupRequest</code> → <code>SignupAccepted</code>) answers the same for new and known
-addresses. Verifying the e-mail (<code>EmailVerify</code> → <code>VerificationResult</code>) creates a
-<code>public</code>-tier tenant. <code>VerificationStatus</code> says whether the tenant may upload code: never for
-public tenants before cut line B, and only after identity verification (operators record it
-with <code>VerificationUpdate</code>). Deletion is scheduled with a grace period during which the tenant
-is suspended and can cancel (<code>TenantDeletionRequest</code> → <code>TenantDeletion</code>, with progress per
-store); a GDPR export (<code>GdprExportRequest</code> → <code>GdprExport</code>) packages everything the tenant
-stored.</p>
+<p>Self-service sign-up (<code>SignupRequest</code> → <code>SignupAccepted</code>) gives the same answer for new and
+known addresses. Verification of the e-mail (<code>EmailVerify</code> → <code>VerificationResult</code>) creates a
+<code>public</code>-tier tenant.</p>
+<p><code>VerificationStatus</code> tells if the tenant can upload code. Public tenants cannot upload code
+before cut line B. After cut line B, they can upload code only after identity verification.
+Operators record the identity verification with <code>VerificationUpdate</code>.</p>
+<p>Deletion starts after a grace period (<code>TenantDeletionRequest</code> → <code>TenantDeletion</code>, with the
+progress for each store). During the grace period, the tenant is suspended and can cancel the
+deletion. A GDPR export (<code>GdprExportRequest</code> → <code>GdprExport</code>) puts all the data that the tenant
+stored into a package.</p>
 <table>
 <thead>
 <tr>
@@ -7563,7 +7735,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>POST /auth/verify-email</code></td>
-<td>Verify the address; creates a public-tier tenant</td>
+<td>Verify the address. This creates a public-tier tenant</td>
 <td><code>EmailVerify</code></td>
 <td><code>VerificationResult</code></td>
 <td>200</td>
@@ -7571,7 +7743,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>GET /v1/tenants/{tenant_id}/verification</code></td>
-<td>E-mail and identity verification, and whether code upload is allowed</td>
+<td>E-mail and identity verification, and if code upload is permitted</td>
 <td>—</td>
 <td><code>VerificationStatus</code></td>
 <td>200</td>
@@ -7579,7 +7751,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>PUT /v1/admin/tenants/{tenant_id}/verification</code></td>
-<td>Record identity verification (operators; audited)</td>
+<td>Record identity verification (operators, audited)</td>
 <td><code>VerificationUpdate</code></td>
 <td><code>VerificationStatus</code></td>
 <td>200</td>
@@ -7587,7 +7759,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>POST /v1/tenants/{tenant_id}/deletion</code></td>
-<td>Schedule deletion of the whole tenant (grace period, then purge)</td>
+<td>Schedule deletion of the full tenant (grace period, then purge)</td>
 <td><code>TenantDeletionRequest</code></td>
 <td><code>TenantDeletion</code></td>
 <td>202</td>
@@ -7595,7 +7767,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>GET /v1/tenants/{tenant_id}/deletion</code></td>
-<td>Deletion state and progress per store</td>
+<td>Deletion state and progress for each store</td>
 <td>—</td>
 <td><code>TenantDeletion</code></td>
 <td>200</td>
@@ -7603,7 +7775,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>DELETE /v1/tenants/{tenant_id}/deletion</code></td>
-<td>Cancel a scheduled deletion (within the grace period)</td>
+<td>Cancel a scheduled deletion (during the grace period)</td>
 <td>—</td>
 <td><code>TenantDeletion</code></td>
 <td>200</td>
@@ -7611,7 +7783,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>POST /v1/tenants/{tenant_id}/exports</code></td>
-<td>GDPR export of everything the tenant stored</td>
+<td>GDPR export of all the data that the tenant stored</td>
 <td><code>GdprExportRequest</code></td>
 <td><code>GdprExport</code></td>
 <td>202</td>
@@ -7619,7 +7791,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>GET /v1/tenants/{tenant_id}/exports</code></td>
-<td>The tenant's GDPR exports, newest first (<code>GET</code> one for its download link)</td>
+<td>The GDPR exports of the tenant, newest first (<code>GET</code> one export to get its download link)</td>
 <td>—</td>
 <td><code>Page[GdprExport]</code></td>
 <td>200</td>
@@ -7627,7 +7799,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>GET /v1/tenants/{tenant_id}/exports/{export_id}</code></td>
-<td>An export and, once ready, its download link</td>
+<td>An export. When it is ready, also its download link</td>
 <td>—</td>
 <td><code>GdprExport</code></td>
 <td>200</td>
@@ -7635,7 +7807,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>GET /v1/admin/signups</code></td>
-<td>Sign-ups, newest first; filter by <code>review</code> state (the Sybil review queue) or <code>tenant_id</code></td>
+<td>Sign-ups, newest first. Filter by <code>review</code> state (the Sybil review queue) or <code>tenant_id</code></td>
 <td>—</td>
 <td><code>Page[SignupReview]</code></td>
 <td>200</td>
@@ -7643,7 +7815,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>POST /v1/admin/signups/{signup_id}/review</code></td>
-<td>Approve or reject a sign-up (a rejection suspends its tenant; audited)</td>
+<td>Approve or reject a sign-up (a rejection suspends its tenant, audited)</td>
 <td><code>SignupReviewDecision</code></td>
 <td><code>SignupReview</code></td>
 <td>200</td>
@@ -7651,7 +7823,7 @@ stored.</p>
 </tr>
 <tr>
 <td><code>POST /v1/admin/tenants/{tenant_id}/deletion/retry</code></td>
-<td>Restart a failed tenant purge (operators; audited)</td>
+<td>Start a failed tenant purge again (operators, audited)</td>
 <td>—</td>
 <td><code>TenantDeletion</code></td>
 <td>202</td>
@@ -7660,36 +7832,49 @@ stored.</p>
 </tbody>
 </table>
 <h2 id="m35">Workflows, governance, explorers and About cards <span class="mapi-badge">v0.5</span><a class="headerlink" href="#m35" title="Permanent link">&para;</a></h2>
-<p>v0.5 (milestone M3.5) adds the contracts for automated <strong>workflows</strong> (statistical tests, data
-processing, splits, searches and models nested in one versioned DAG), model <strong>governance</strong>
-(policies, checks with evidence, validation and approval), the <strong>Data Explorer</strong> and
-<strong>Model Explorer</strong>, <strong>budget optimisation</strong> with mmm-framework, and the plain-language
-<strong>About cards</strong> with the <strong>Help me choose</strong> chooser. The endpoint table matches
-<code>mapi_spec.api.M35_ENDPOINTS</code>; <code>mapi_spec.api.ENDPOINTS</code> is the whole v0.5 surface
-(<code>V04_ENDPOINTS</code> + <code>M35_ENDPOINTS</code>) and <code>ROUTE_ACCESS</code> gives each operation its scope and
-permission. The ideas are explained in <a href="../../concepts/workflows/">Workflows</a>,
+<p>v0.5 (milestone M3.5) adds the contracts for these items:</p>
+<ul>
+<li>Automated <strong>workflows</strong>: statistical tests, data processing, splits, searches and models in
+  one versioned DAG.</li>
+<li>Model <strong>governance</strong>: policies, checks with evidence, validation and approval.</li>
+<li>The <strong>Data Explorer</strong> and the <strong>Model Explorer</strong>.</li>
+<li><strong>Budget optimisation</strong> with mmm-framework.</li>
+<li>The plain-language <strong>About cards</strong>, with the <strong>Help me choose</strong> chooser.</li>
+</ul>
+<p>The endpoint table agrees with <code>mapi_spec.api.M35_ENDPOINTS</code>. <code>mapi_spec.api.ENDPOINTS</code> is the
+full v0.5 surface (<code>V04_ENDPOINTS</code> + <code>M35_ENDPOINTS</code>). <code>ROUTE_ACCESS</code> gives the scope and the
+permission of each operation. <a href="../../concepts/workflows/">Workflows</a>,
 <a href="../../concepts/governance/">Governance</a> and
-<a href="../../concepts/about-and-choosing/">About cards and choosing</a>.</p>
+<a href="../../concepts/about-and-choosing/">About cards and choosing</a> explain the ideas.</p>
 <p>v0.5 also <strong>removes</strong> an importer route of v0.4, its ingest preset and one snippet language
-(see the CHANGELOG): mmm-framework is the only MMM engine. The contract version is <code>0.2</code>.</p>
-<p><strong>Permissions.</strong> Workflows are read by viewers, written by editors, run (and scheduled) by
-runners and deleted by admins. Project policies are managed by project admins, tenant-wide
-policies by tenant admins; everyone in the project reads them. Submitting a model version for
-validation needs <code>run</code> rights (<code>validate</code> on <code>model</code>); approving or rejecting needs the
-<strong>reviewer</strong> capability (<code>Membership.capabilities</code>, granted with <code>MembershipUpdate</code>; project
-admins hold it implicitly) and is refused to the person who submitted it
-(<code>403 SELF_APPROVAL_FORBIDDEN</code>). No API token can approve. New token scopes:
-<code>workflows:write</code>, <code>workflows:run</code>, <code>models:validate</code> and <code>policies:manage</code>.</p>
-<p><strong>Long-running work.</strong> A workflow run, an explore run and an optimize run are runs like any
-other (<code>Idempotency-Key</code>, the quota checks, cost). <code>POST …:optimize</code> honours
+(see the CHANGELOG). Thus, mmm-framework is the only MMM engine. The contract version is <code>0.2</code>.</p>
+<p><strong>Permissions.</strong> These rules apply:</p>
+<ul>
+<li>Viewers read workflows. Editors write them. Runners run and schedule them. Admins delete
+  them.</li>
+<li>Project admins manage project policies. Tenant admins manage tenant-wide policies. All
+  members of the project can read the policies.</li>
+<li>To submit a model version for validation, you need <code>run</code> rights (<code>validate</code> on <code>model</code>).</li>
+<li>To approve or reject, you need the <strong>reviewer</strong> capability (<code>Membership.capabilities</code>, given
+  with <code>MembershipUpdate</code>). Project admins have this capability automatically.</li>
+<li>The person who submitted a model version cannot approve or reject it
+  (<code>403 SELF_APPROVAL_FORBIDDEN</code>).</li>
+<li>No API token can approve.</li>
+</ul>
+<p>The new token scopes are <code>workflows:write</code>, <code>workflows:run</code>, <code>models:validate</code> and
+<code>policies:manage</code>.</p>
+<p><strong>Long-running work.</strong> A workflow run, an explore run and an optimize run are the same as
+other runs (<code>Idempotency-Key</code>, the quota checks, cost). <code>POST …:optimize</code> obeys
 <code>Prefer: wait=N</code>. Workflow runs stream their node events on
 <code>GET /v1/workflow-runs/{run_id}/events</code> (SSE with <code>Last-Event-ID</code>, event types in
-<code>WorkflowEventType</code>), and the terminal ones also go to webhooks (<code>workflow.run.succeeded</code>,
-<code>workflow.run.failed</code>), as do validation transitions (<code>model.validated</code>, <code>model.rejected</code>,
-...), <code>dataset.version.created</code> and <code>optimize.completed</code>.</p>
-<p><strong>Promotion.</strong> When a governance policy that applies to a model says
-<code>require_validated_for_promotion</code>, <code>PUT /v1/endpoints/{alias}</code> refuses a version whose
-validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</code> (no override can pass it).</p>
+<code>WorkflowEventType</code>). The terminal events also go to webhooks (<code>workflow.run.succeeded</code>,
+<code>workflow.run.failed</code>). These events also go to webhooks: validation transitions
+(<code>model.validated</code>, <code>model.rejected</code>, ...), <code>dataset.version.created</code> and
+<code>optimize.completed</code>.</p>
+<p><strong>Promotion.</strong> A governance policy that applies to a model can set
+<code>require_validated_for_promotion</code>. In this case, <code>PUT /v1/endpoints/{alias}</code> refuses a version
+if its validation status is not <code>validated</code> (<code>409 NOT_VALIDATED</code>). No override can pass this
+check.</p>
 <h3 id="m35-endpoints">Endpoints<a class="headerlink" href="#m35-endpoints" title="Permanent link">&para;</a></h3>
 <h4 id="about-cards-and-the-chooser">About cards and the chooser<a class="headerlink" href="#about-cards-and-the-chooser" title="Permanent link">&para;</a></h4>
 <table>
@@ -7722,7 +7907,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/catalog/recommendations</code></td>
-<td>Ranked recommendations for chooser answers (query: one parameter per question)</td>
+<td>Ranked recommendations for chooser answers (query: one parameter for each question)</td>
 <td>—</td>
 <td><code>ChooserResult</code></td>
 <td>200</td>
@@ -7769,7 +7954,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 <tbody>
 <tr>
 <td><code>GET /v1/datasets/{dataset_id}/about</code></td>
-<td>The owner's description and the generated summary of the latest version</td>
+<td>The description of the owner and the generated summary of the latest version</td>
 <td>—</td>
 <td><code>DatasetAbout</code></td>
 <td>200</td>
@@ -7777,7 +7962,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>PATCH /v1/datasets/{dataset_id}/about</code></td>
-<td>Change the owner's description</td>
+<td>Change the description of the owner</td>
 <td><code>DatasetAboutUpdate</code></td>
 <td><code>DatasetAbout</code></td>
 <td>200</td>
@@ -7785,7 +7970,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>POST /v1/datasets/{dataset_id}/versions/{version}/explore</code></td>
-<td>Compute Data Explorer sections (an explore run)</td>
+<td>Calculate Data Explorer sections (an explore run)</td>
 <td><code>DataExploreRequest</code></td>
 <td><code>Exploration</code></td>
 <td>202</td>
@@ -7793,7 +7978,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/explorations/{run_id}</code></td>
-<td>An explore run and, once done, links to its views</td>
+<td>An explore run. When it is done, also links to its views</td>
 <td>—</td>
 <td><code>Exploration</code></td>
 <td>200</td>
@@ -7816,7 +8001,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 <tbody>
 <tr>
 <td><code>POST /v1/models/{model_id}/versions/{version}/explore</code></td>
-<td>Compute Model Explorer sections (an explore run)</td>
+<td>Calculate Model Explorer sections (an explore run)</td>
 <td><code>ModelExploreRequest</code></td>
 <td><code>Exploration</code></td>
 <td>202</td>
@@ -7824,7 +8009,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>POST /v1/models:compare</code></td>
-<td>Compare several model versions side by side (an explore run: metrics, ranking, Diebold-Mariano tests)</td>
+<td>Compare two or more model versions side by side (an explore run: metrics, ranking, Diebold-Mariano tests)</td>
 <td><code>ModelCompareRequest</code></td>
 <td><code>Exploration</code></td>
 <td>202</td>
@@ -7840,7 +8025,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/optimizations/{run_id}</code></td>
-<td>An optimize run and, once done, its plan</td>
+<td>An optimize run. When it is done, also its plan</td>
 <td>—</td>
 <td><code>Optimization</code></td>
 <td>200</td>
@@ -7879,7 +8064,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>POST /v1/workflows:validate</code></td>
-<td>Static checks of a workflow document (JSON pointers); stores nothing</td>
+<td>Static checks of a workflow document (JSON pointers). It stores nothing</td>
 <td><code>WorkflowValidateRequest</code></td>
 <td><code>WorkflowValidation</code></td>
 <td>200</td>
@@ -7895,7 +8080,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>PATCH /v1/workflows/{workflow_id}</code></td>
-<td>Change the description or archive it</td>
+<td>Change the description or archive the workflow</td>
 <td><code>WorkflowUpdate</code></td>
 <td><code>Workflow</code></td>
 <td>200</td>
@@ -7903,7 +8088,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>DELETE /v1/workflows/{workflow_id}</code></td>
-<td>Delete a workflow (its runs, schedules and triggers go with it)</td>
+<td>Delete a workflow (this also deletes its runs, schedules and triggers)</td>
 <td>—</td>
 <td>—</td>
 <td>204</td>
@@ -7919,7 +8104,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>POST /v1/workflows/{workflow_id}/revisions</code></td>
-<td>Save a new revision (validated; errors make it unrunnable)</td>
+<td>Save a new revision (validated. If it has errors, you cannot run it)</td>
 <td><code>WorkflowRevisionCreate</code></td>
 <td><code>WorkflowRevision</code></td>
 <td>201</td>
@@ -7951,7 +8136,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/workflow-runs/{run_id}</code></td>
-<td>A workflow run with every node, decision and output</td>
+<td>A workflow run with all its nodes, decisions and outputs</td>
 <td>—</td>
 <td><code>WorkflowRun</code></td>
 <td>200</td>
@@ -7959,7 +8144,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>POST /v1/workflow-runs/{run_id}:cancel</code></td>
-<td>Cancel a workflow run and its running children</td>
+<td>Cancel a workflow run and its child runs that are in progress</td>
 <td>—</td>
 <td><code>WorkflowRun</code></td>
 <td>202</td>
@@ -7983,7 +8168,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/workflow-runs/{run_id}/nodes/{node_id}</code></td>
-<td>One node's status, result and outputs</td>
+<td>The status, result and outputs of one node</td>
 <td>—</td>
 <td><code>NodeRun</code></td>
 <td>200</td>
@@ -7991,7 +8176,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}</code></td>
-<td>A signed link to a node output's object</td>
+<td>A signed link to the object of a node output</td>
 <td>—</td>
 <td><code>ArtifactLink</code></td>
 <td>200</td>
@@ -8086,7 +8271,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 <tbody>
 <tr>
 <td><code>GET /v1/governance/policies</code></td>
-<td>Policies in force in the project (its own and the tenant's)</td>
+<td>Policies that apply in the project (its own policies and the policies of the tenant)</td>
 <td>—</td>
 <td><code>Page[GovernancePolicy]</code></td>
 <td>200</td>
@@ -8110,7 +8295,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>PUT /v1/governance/policies/{policy_id}</code></td>
-<td>Save a new version (expected_version guards concurrent edits)</td>
+<td>Save a new version (expected_version prevents conflicts between concurrent edits)</td>
 <td><code>GovernancePolicyUpdate</code></td>
 <td><code>GovernancePolicy</code></td>
 <td>200</td>
@@ -8126,7 +8311,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/governance/policies/{policy_id}/versions</code></td>
-<td>Every version of a policy, newest first</td>
+<td>All versions of a policy, newest first</td>
 <td>—</td>
 <td><code>Page[GovernancePolicy]</code></td>
 <td>200</td>
@@ -8134,7 +8319,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/tenants/{tenant_id}/governance/policies</code></td>
-<td>Tenant-wide policies (every project's floor)</td>
+<td>Tenant-wide policies (the minimum for each project)</td>
 <td>—</td>
 <td><code>Page[GovernancePolicy]</code></td>
 <td>200</td>
@@ -8189,7 +8374,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 <tbody>
 <tr>
 <td><code>POST /v1/models/{model_id}/versions/{version}/validations</code></td>
-<td>Submit a model version: runs the policy checks as a governance workflow</td>
+<td>Submit a model version. This runs the policy checks as a governance workflow</td>
 <td><code>ValidationRequest</code></td>
 <td><code>ModelValidation</code></td>
 <td>202</td>
@@ -8205,7 +8390,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/validations</code></td>
-<td>Validations of the project (filter: status, e.g. the reviewers' queue)</td>
+<td>Validations of the project (filter: status, for example the queue of the reviewers)</td>
 <td>—</td>
 <td><code>Page[ModelValidation]</code></td>
 <td>200</td>
@@ -8221,7 +8406,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>GET /v1/validations/{validation_id}/evidence</code></td>
-<td>Every check result with its evidence</td>
+<td>All check results with their evidence</td>
 <td>—</td>
 <td><code>Page[CheckResult]</code></td>
 <td>200</td>
@@ -8229,7 +8414,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>POST /v1/validations/{validation_id}:cancel</code></td>
-<td>Stop running checks (back to draft)</td>
+<td>Stop the checks that are in progress (back to draft)</td>
 <td><code>ValidationNote</code></td>
 <td><code>ModelValidation</code></td>
 <td>200</td>
@@ -8245,7 +8430,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>POST /v1/validations/{validation_id}/approvals</code></td>
-<td>A reviewer approves or rejects (never the submitter; audited)</td>
+<td>A reviewer approves or rejects (never the submitter, audited)</td>
 <td><code>ApprovalCreate</code></td>
 <td><code>ModelValidation</code></td>
 <td>200</td>
@@ -8261,7 +8446,7 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tr>
 <tr>
 <td><code>POST /v1/validations/{validation_id}/evidence-pack</code></td>
-<td>The audit export (JSON, and a signed link to the HTML rendering)</td>
+<td>The audit export (JSON, and a signed link to the HTML version)</td>
 <td><code>EvidencePackRequest</code></td>
 <td><code>EvidencePack</code></td>
 <td>200</td>
@@ -8270,8 +8455,8 @@ validation status is not <code>validated</code> with <code>409 NOT_VALIDATED</co
 </tbody>
 </table>
 <h2 id="dto-index">DTO index<a class="headerlink" href="#dto-index" title="Permanent link">&para;</a></h2>
-<p>All of these models live in <code>mapi_spec.api</code> unless noted. Each one has a schema in the
-OpenAPI document and in <code>export_schemas()</code> as <code>api-&lt;Name&gt;.json</code>.</p>
+<p>All of these models are in <code>mapi_spec.api</code>, unless the table gives a different module. Each
+model has a schema in the OpenAPI document and in <code>export_schemas()</code> as <code>api-&lt;Name&gt;.json</code>.</p>
 <table>
 <thead>
 <tr>
@@ -8302,7 +8487,7 @@ OpenAPI document and in <code>export_schemas()</code> as <code>api-&lt;Name&gt;.
 </tr>
 <tr>
 <td>Models</td>
-<td><code>Model</code>, <code>ModelVersion</code>, <code>Scorecard</code>, <code>ScorecardItem</code>, <code>Lineage</code>, <code>ScoreCall</code>, <code>ScoreCallResult</code>, <code>BundleManifest</code> (<code>mapi_spec.run</code>)</td>
+<td><code>Model</code>, <code>ModelVersion</code>, <code>Scorecard</code>, <code>ScorecardItem</code>, <code>Lineage</code>, <code>ScoreCall</code>, <code>ScoreInline</code>, <code>ScoreCallResult</code>, <code>ModelInputSchema</code>, <code>BundleManifest</code> (<code>mapi_spec.run</code>)</td>
 </tr>
 <tr>
 <td>Plots and catalog</td>

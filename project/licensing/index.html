@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4516,6 +4546,8 @@
       
         
       
+        
+      
     
     
     
@@ -4707,6 +4739,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../changelog/" class="md-nav__link">
         
   
@@ -4812,8 +4872,8 @@
 
 
 <h1 id="licensing">Licensing<a class="headerlink" href="#licensing" title="Permanent link">&para;</a></h1>
-<p>modeling-api uses a <strong>split licence</strong>. People who write models and integrations are never
-pulled into copyleft; the hosted platform itself is protected.</p>
+<p>modeling-api uses a <strong>split licence</strong>. The copyleft licence does not apply to persons who
+write models and integrations. The copyleft licence protects the hosted platform.</p>
 <table>
 <thead>
 <tr>
@@ -4850,46 +4910,49 @@ pulled into copyleft; the hosted platform itself is protected.</p>
 </tr>
 </tbody>
 </table>
-<p>Each package declares its SPDX expression in its <code>pyproject.toml</code> (<code>Apache-2.0</code>, or
-<code>AGPL-3.0-only OR LicenseRef-mapi-commercial</code>) and carries its own <code>LICENSE</code> file. The full
-texts are in the repository root: <code>LICENSE.md</code>, <code>LICENSE-APACHE.txt</code>, <code>LICENSE-AGPL.txt</code> and
-<code>COMMERCIAL-LICENSE.md</code>.</p>
+<p>Each package gives its SPDX expression in its <code>pyproject.toml</code> (<code>Apache-2.0</code>, or
+<code>AGPL-3.0-only OR LicenseRef-mapi-commercial</code>). Each package also has its own <code>LICENSE</code> file.
+The full texts are in the repository root: <code>LICENSE.md</code>, <code>LICENSE-APACHE.txt</code>,
+<code>LICENSE-AGPL.txt</code> and <code>COMMERCIAL-LICENSE.md</code>.</p>
 <h2 id="what-this-means-in-practice">What this means in practice<a class="headerlink" href="#what-this-means-in-practice" title="Permanent link">&para;</a></h2>
 <div class="admonition success">
 <p class="admonition-title">Plugins you write are yours</p>
-<p>A step, model or plot recipe written against <code>mapi-sdk</code>, <code>mapi-pymc</code> or <code>mapi-sklearn</code> uses
-Apache-2.0 libraries. License it however you like, including proprietary.</p>
+<p>A step, model or plot recipe that you write with <code>mapi-sdk</code>, <code>mapi-pymc</code> or
+<code>mapi-sklearn</code> uses Apache-2.0 libraries. You can use the licence that you want for it,
+and a proprietary licence is also possible.</p>
 </div>
 <div class="admonition success">
 <p class="admonition-title">Applications that call the platform are not derivative works</p>
-<p>Calling the platform over HTTP, with the Python or TypeScript client, through webhooks or
-MCP, does not make your application subject to the AGPL.</p>
+<p>Your application can call the platform over HTTP, with the Python or TypeScript client,
+through webhooks or through MCP. These calls do not make your application subject to the
+AGPL.</p>
 </div>
 <div class="admonition warning">
-<p class="admonition-title">Modifying and hosting the platform</p>
+<p class="admonition-title">If you modify and host the platform</p>
 <p>If you modify the platform components (server, runner, apps) and offer them as a network
-service, the AGPLv3 requires you to publish your modifications, unless you hold a
-commercial licence. Contact mattreda@mattreda.pro for commercial terms.</p>
+service, the AGPLv3 says that you must publish your modifications. This does not apply if you
+hold a commercial licence. For commercial terms, send an email to mattreda@mattreda.pro.</p>
 </div>
 <h2 id="third-party-libraries">Third-party libraries<a class="headerlink" href="#third-party-libraries" title="Permanent link">&para;</a></h2>
-<p>The SDK builds on xarray, numpy, pandas, zarr and Pydantic; the model packages on PyMC,
-ArviZ, scikit-learn, xgboost and skops. The marketing-mix models run on mmm-framework
-(Apache-2.0), which brings NumPyro and JAX (Apache-2.0) and nutpie (MIT). The time-series
-models (<code>ts.sarimax</code>, <code>ts.var</code>, <code>ts.ets</code> and the rest) run on statsmodels (BSD-3-Clause).
-The plot recipes use Altair and Plotly, and the visual workflow builder in the web app uses
-@xyflow/react (MIT). The API server talks to PostgreSQL through psycopg (LGPL-3.0, used
-unmodified as a separately installed library). Each library keeps its own licence.</p>
-<p><code>THIRD-PARTY-NOTICES.md</code> in the repository root is the full list: every Python and
-JavaScript package the container images ship, with its version and SPDX licence. It also
-reproduces the NOTICE files of Apache-2.0 packages, and the licence texts of the JavaScript
-packages compiled into the web app and the plot sandbox. The file is generated from <code>uv.lock</code>
-and <code>pnpm-lock.yaml</code>: run <code>make notices</code> after changing a lock file. <code>make release-check</code>
-and the test suite fail when it is out of date. Every image carries it, with the licence
-files above, in <code>/usr/share/doc/mapi/</code>.</p>
+<p>The SDK uses xarray, numpy, pandas, zarr and Pydantic. The model packages use PyMC, ArviZ,
+scikit-learn, xgboost and skops. The marketing-mix models run on mmm-framework (Apache-2.0).
+mmm-framework adds NumPyro and JAX (Apache-2.0) and nutpie (MIT). The time-series models
+(<code>ts.sarimax</code>, <code>ts.var</code>, <code>ts.ets</code> and the other time-series models) run on statsmodels
+(BSD-3-Clause). The plot recipes use Altair and Plotly.</p>
+<p>The visual workflow builder in the web app uses @xyflow/react (MIT). The API server connects
+to PostgreSQL through psycopg (LGPL-3.0). The server uses psycopg without modification, as a
+library that you install separately. Each library keeps its own licence.</p>
+<p><code>THIRD-PARTY-NOTICES.md</code> in the repository root is the full list. It gives each Python and
+JavaScript package in the container images, with its version and SPDX licence. It also
+contains the NOTICE files of Apache-2.0 packages. It also contains the licence texts of the
+JavaScript packages that the build compiles into the web app and the plot sandbox.</p>
+<p>A script makes this file from <code>uv.lock</code> and <code>pnpm-lock.yaml</code>. After you change a lock file,
+run <code>make notices</code>. If the file is not current, <code>make release-check</code> and the test suite fail.
+Each image contains this file and the licence files above, in <code>/usr/share/doc/mapi/</code>.</p>
 <h2 id="contributions">Contributions<a class="headerlink" href="#contributions" title="Permanent link">&para;</a></h2>
-<p>Contributions are accepted under the Contributor Licence Agreement (<code>CONTRIBUTOR-LICENSE.md</code>),
-which lets the project keep offering the platform under both licences. See
-<a href="../contributing/">Contributing</a>.</p>
+<p>The project accepts contributions under the Contributor Licence Agreement
+(<code>CONTRIBUTOR-LICENSE.md</code>). With this agreement, the project can continue to offer the
+platform under the two licences. Refer to <a href="../contributing/">Contributing</a>.</p>
 
 
 

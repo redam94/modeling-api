@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4708,6 +4738,8 @@
       
         
       
+        
+      
     
     
     
@@ -4796,6 +4828,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5027,18 +5087,18 @@
 
 
 <h1 id="run-protocol-v02">Run protocol <span class="mapi-badge">v0.2</span><a class="headerlink" href="#run-protocol-v02" title="Permanent link">&para;</a></h1>
-<p>This page specifies how a run moves from the API to a sandbox and back. It covers:</p>
+<p>This page tells how a run moves from the API to a sandbox and back. It gives:</p>
 <ul>
-<li>the run state machine;</li>
-<li>the bootstrap object and the environment an execution receives;</li>
-<li>the event stream the runner writes;</li>
-<li>the output manifest, its verification at finalisation, and the signed bundle manifest;</li>
-<li>the storage layout;</li>
-<li>the ports and environment variables of a local install.</li>
+<li>the state machine of the run</li>
+<li>the bootstrap object and the environment that an execution gets</li>
+<li>the event stream that the runner writes</li>
+<li>the output manifest, the checks on it at finalisation, and the signed bundle manifest</li>
+<li>the storage layout</li>
+<li>the ports and the environment variables of a local installation.</li>
 </ul>
-<p>Every shape on this page is a Pydantic model or a constant in <code>mapi_spec.run</code>,
+<p>Each shape on this page is a Pydantic model or a constant in <code>mapi_spec.run</code>,
 <code>mapi_spec.storage</code> or <code>mapi_spec.localdev</code>. The API server, the executors, the runner and
-the tests all import them from there.</p>
+the tests all import them from these modules.</p>
 <pre class="mermaid"><code>sequenceDiagram
     participant API
     participant D as Dispatcher
@@ -5060,7 +5120,7 @@ the tests all import them from there.</p>
     API-&gt;&gt;S: stat + list (metadata only), server-side copy → bundles
     API-&gt;&gt;API: FINALIZING → SUCCEEDED, signed BundleManifest</code></pre>
 <h2 id="run-states">Run states<a class="headerlink" href="#run-states" title="Permanent link">&para;</a></h2>
-<p><code>RunState</code> values are lower-case on the wire. This page writes them in upper case.</p>
+<p><code>RunState</code> values are in lower case on the wire. This page writes them in upper case.</p>
 <table>
 <thead>
 <tr>
@@ -5071,51 +5131,51 @@ the tests all import them from there.</p>
 <tbody>
 <tr>
 <td><code>CREATED</code></td>
-<td>Accepted by the API; static validation and quota not yet decided</td>
+<td>The API accepted the run. The static validation and the quota check are not complete yet.</td>
 </tr>
 <tr>
 <td><code>REJECTED</code></td>
-<td>Reserved for submissions refused by static validation or quota (terminal). The current server does not create such runs: see the note below the transition table.</td>
+<td>Terminal. This state is for submissions that the static validation or the quota refuses. The current server does not make such runs. Refer to the note below the transition table.</td>
 </tr>
 <tr>
 <td><code>QUEUED</code></td>
-<td>Waiting for the dispatcher</td>
+<td>The run waits for the dispatcher.</td>
 </tr>
 <tr>
 <td><code>DISPATCHING</code></td>
-<td>Leased; intent row written; executor call in progress</td>
+<td>The dispatcher has the lease and wrote the intent row. The call to the executor is in progress.</td>
 </tr>
 <tr>
 <td><code>PROVISIONING</code></td>
-<td>The executor accepted the execution; no event seen yet</td>
+<td>The executor accepted the execution. No event came yet.</td>
 </tr>
 <tr>
 <td><code>RUNNING</code></td>
-<td>At least one verified event arrived</td>
+<td>Minimum one verified event came.</td>
 </tr>
 <tr>
 <td><code>STALLED</code></td>
-<td>No event for K × the progress interval. This is a warning, not a failure: the executor's status API is the liveness source of truth.</td>
+<td>No event came for K × the progress interval. This is a warning, not a failure. The status API of the executor is the source of truth about the execution.</td>
 </tr>
 <tr>
 <td><code>FINALIZING</code></td>
-<td>Execution finished. Outputs are being verified and copied.</td>
+<td>The execution is complete. The control plane does a check of the outputs and copies them.</td>
 </tr>
 <tr>
 <td><code>SUCCEEDED</code></td>
-<td>A verified bundle exists (terminal)</td>
+<td>Terminal. A verified bundle exists.</td>
 </tr>
 <tr>
 <td><code>PARTIAL</code></td>
-<td>A verified <em>partial</em> bundle exists, written from checkpoints after a SIGTERM or deadline. Terminal, but can be resumed.</td>
+<td>Terminal, but you can resume the run. A verified <em>partial</em> bundle exists. The runner wrote it from checkpoints after a SIGTERM or at the deadline.</td>
 </tr>
 <tr>
 <td><code>FAILED</code></td>
-<td>Terminal, with a failure class: <code>user</code>, <code>resource_exhausted</code>, <code>infra</code>, <code>integrity</code>, <code>timeout</code> or <code>sandbox</code></td>
+<td>Terminal, with one of these failure classes: <code>user</code>, <code>resource_exhausted</code>, <code>infra</code>, <code>integrity</code>, <code>timeout</code> or <code>sandbox</code></td>
 </tr>
 <tr>
 <td><code>CANCELLING</code></td>
-<td>The user asked to cancel; waiting for the executor to confirm</td>
+<td>The user asked to cancel the run. The run waits for the executor to confirm.</td>
 </tr>
 <tr>
 <td><code>CANCELLED</code></td>
@@ -5124,11 +5184,11 @@ the tests all import them from there.</p>
 </tbody>
 </table>
 <h3 id="transitions">Transitions<a class="headerlink" href="#transitions" title="Permanent link">&para;</a></h3>
-<p><code>mapi_spec.run.transition(state, trigger, actor=...)</code> is a pure function. It returns the
-matching rule, or raises <code>IllegalTransition</code>, which maps to 409 <code>CONFLICT</code>. Callers persist
-<code>rule.target</code> with a compare-and-set on the old state. When <code>rule.new_attempt</code> is set they
-also increment <code>attempt</code> and generate a fresh nonce. A test checks the table below against
-the code exhaustively, all 13 × 19 state and trigger pairs.</p>
+<p><code>mapi_spec.run.transition(state, trigger, actor=...)</code> is a pure function. It returns the rule
+that matches, or it raises <code>IllegalTransition</code>. <code>IllegalTransition</code> maps to 409 <code>CONFLICT</code>.
+Callers save <code>rule.target</code> with a compare-and-set on the old state. If <code>rule.new_attempt</code> is
+set, callers also increase <code>attempt</code> and make a new nonce. A test compares the table below with
+the code for all 13 × 19 pairs of state and trigger.</p>
 <table>
 <thead>
 <tr>
@@ -5319,46 +5379,47 @@ the code exhaustively, all 13 × 19 state and trigger pairs.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Invalid submissions create no run.</strong> <code>POST /v1/runs</code> and the model <code>:score</code> action run
-static validation <em>before</em> a run row exists. When it finds an error, the
-request is refused with a 4xx problem whose <code>code</code> is the first error's and whose <code>errors</code>
-list every issue with its JSON pointer, and nothing is stored, so there is no <code>REJECTED</code> run
-and no run history for it. <code>CREATED → reject → REJECTED</code> stays in the table for a later
-server that records refused submissions.</p>
-<p>Rules that every component follows:</p>
+<p><strong>A submission that is not valid makes no run.</strong> <code>POST /v1/runs</code> and the model <code>:score</code>
+action do the static validation <em>before</em> a run row exists. If the validation finds an error,
+the server refuses the request with a 4xx problem. The <code>code</code> of the problem is the code of the
+first error. The <code>errors</code> list gives each issue with its JSON pointer. The server keeps
+nothing, thus there is no <code>REJECTED</code> run and no run history for the request.</p>
+<p><code>CREATED → reject → REJECTED</code> stays in the table for a later server that records refused
+submissions.</p>
+<p>All components obey these rules:</p>
 <ul>
-<li><strong>Events only move a run to <code>RUNNING</code>.</strong> All other execution-time transitions come from the
-  reconciler. The reconciler is level-triggered and reads the executor's status.</li>
-<li><strong><code>complete</code></strong> fires when the executor reports exit code <code>0</code> or <code>16</code> and the <code>complete</code>
-  event has been received. The finalizer then reads <code>OutputManifest.status</code> and fires
-  <code>verified</code> or <code>verified_partial</code>.</li>
-<li><strong><code>infra_retry</code></strong> is applied only after the old execution is confirmed gone. Automatic
-  retries are capped by cost (<code>MAPI_AUTO_RETRY_COST_FACTOR</code> times the estimate) and by count
-  (<code>MAPI_MAX_INFRA_RETRIES</code>), and there is no automatic retry once a run has spent more than
-  30 minutes without user consent.</li>
-<li><strong>Late events.</strong> The events service drops verified events for runs that are already
-  terminal. Every terminal state rejects <code>event</code>.</li>
-<li><strong>Cancelling a <code>FINALIZING</code> run is a no-op at the API.</strong> The table allows the edge, but
-  <code>POST /v1/runs/{id}:cancel</code> returns the run unchanged: the execution has already finished,
-  and the finalizer may already have reserved a version number and copied write-once bundle
-  objects.</li>
+<li><strong>Events only move a run to <code>RUNNING</code>.</strong> All other transitions during the execution come
+  from the reconciler. The reconciler is level-triggered and reads the status of the executor.</li>
+<li><strong><code>complete</code></strong> occurs when the executor reports exit code <code>0</code> or <code>16</code> and the <code>complete</code>
+  event came. Then the finalizer reads <code>OutputManifest.status</code> and starts <code>verified</code> or
+  <code>verified_partial</code>.</li>
+<li><strong><code>infra_retry</code></strong> occurs only after the control plane confirms that the old execution
+  stopped. The cost limits the automatic retries (<code>MAPI_AUTO_RETRY_COST_FACTOR</code> times the
+  estimate). A count also limits them (<code>MAPI_MAX_INFRA_RETRIES</code>). If a run used more than
+  30 minutes, there is no automatic retry without the consent of the user.</li>
+<li><strong>Late events.</strong> The events service ignores verified events for runs that are already
+  terminal. All terminal states reject <code>event</code>.</li>
+<li><strong>A cancel of a <code>FINALIZING</code> run has no effect at the API.</strong> The table permits the
+  transition, but <code>POST /v1/runs/{id}:cancel</code> returns the run with no change. The execution is
+  already complete. The finalizer can possibly have a version number already. It can also have
+  copied write-once bundle objects.</li>
 </ul>
 <h2 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h2>
-<p>The executor passes no credentials, URLs or keys through argv or the environment. The only
-per-execution values are <code>MAPI_RUN_ID</code> and <code>MAPI_NONCE</code>.</p>
+<p>The executor does not send credentials, URLs or keys through argv or the environment. The only
+values for each execution are <code>MAPI_RUN_ID</code> and <code>MAPI_NONCE</code>.</p>
 <ol>
-<li>The dispatcher writes an intent row <code>(run, attempt, nonce)</code>. The nonce is 256 random bits
+<li>The dispatcher writes an intent row <code>(run, attempt, nonce)</code>. The nonce is 256 random bits,
    written as 64 lowercase hex characters (<code>new_nonce()</code>).</li>
 <li>The dispatcher writes a <strong><code>RunSpec</code></strong> to <code>gs://mapi-{env}-bootstrap/{nonce}</code>
    (<code>mapi_spec.run.RunSpec</code>, schema <code>runspec.json</code>).</li>
-<li>The dispatcher calls <code>Executor.submit(RunSubmit, nonce)</code>. For every out-of-process
-   executor, <code>RunSubmit.payload</code> stays empty: the executor sees only the run id, attempt,
-   kind, resource class, timeout and labels. Everything secret travels in the <code>RunSpec</code>.</li>
+<li>The dispatcher calls <code>Executor.submit(RunSubmit, nonce)</code>. For all out-of-process
+   executors, <code>RunSubmit.payload</code> stays empty. The executor sees only the run id, the attempt,
+   the kind, the resource class, the timeout and the labels. All secret values go in the
+   <code>RunSpec</code>.</li>
 <li>The supervisor resolves <code>MAPI_BOOTSTRAP_URL</code>, GETs the object, and <strong>deletes it
-   immediately</strong>. It then validates the object as a <code>RunSpec</code> and starts the worker with
-   <code>worker_environ()</code>, an allow-listed environment in which every <code>MAPI_*</code> variable is
-   removed. If the object is missing or invalid, the supervisor exits with code
-   <code>2 CONFIG_ERROR</code>.</li>
+   immediately</strong>. Then it validates the object as a <code>RunSpec</code>. It starts the worker with
+   <code>worker_environ()</code>, an allow-listed environment that has no <code>MAPI_*</code> variable. If the
+   object is missing or not valid, the supervisor exits with code <code>2 CONFIG_ERROR</code>.</li>
 </ol>
 <table>
 <thead>
@@ -5374,7 +5435,7 @@ per-execution values are <code>MAPI_RUN_ID</code> and <code>MAPI_NONCE</code>.</
 </tr>
 <tr>
 <td><code>run_id</code>, <code>attempt</code>, <code>nonce</code>, <code>kind</code></td>
-<td>Run identity. Parent kinds (<code>sweep</code>, <code>backtest</code>, <code>sbc</code>, <code>campaign</code>) never execute.</td>
+<td>The identity of the run. Parent kinds (<code>sweep</code>, <code>backtest</code>, <code>sbc</code>, <code>campaign</code>) never execute.</td>
 </tr>
 <tr>
 <td><code>tenant_id</code>, <code>project_id</code></td>
@@ -5382,19 +5443,19 @@ per-execution values are <code>MAPI_RUN_ID</code> and <code>MAPI_NONCE</code>.</
 </tr>
 <tr>
 <td><code>spec</code>, <code>spec_hash</code>, <code>catalog_digest</code></td>
-<td>The <em>resolved</em> spec JSON (<code>use:</code> ranges pinned), its canonical hash, and the catalog snapshot it was resolved against</td>
+<td>The <em>resolved</em> spec JSON (with pinned <code>use:</code> ranges), its canonical hash, and the catalog snapshot that the server used to resolve it</td>
 </tr>
 <tr>
 <td><code>inputs</code></td>
-<td><code>name → SignedGet{url, expires_at, generation, size, crc32c, md5_hash?}</code>. Well-known names are <code>dataset</code> and <code>bundle</code>. URLs are pinned to a generation and support HTTP <code>Range</code>. The runner checks size and CRC32C after download and exits <code>13 INTEGRITY_ERROR</code> on a mismatch.</td>
+<td><code>name → SignedGet{url, expires_at, generation, size, crc32c, md5_hash?}</code>. The well-known names are <code>dataset</code> and <code>bundle</code>. Each URL is pinned to a generation and supports HTTP <code>Range</code>. The runner does a check of the size and the CRC32C after the download. If they do not agree, it exits with <code>13 INTEGRITY_ERROR</code>.</td>
 </tr>
 <tr>
 <td><code>outputs</code></td>
-<td><code>name → SignedPut \| PostPolicy</code>. <code>manifest</code> is a required write-once <strong>signed PUT</strong> for <code>{prefix}manifest.json</code>. <code>artifacts</code> is a <strong>create-only V4 POST policy</strong> on the attempt prefix with a <code>content_length_range</code>: it cannot replace an existing object, so it can't overwrite the manifest or swap an output after it was written. <code>checkpoints</code> is a POST policy on <code>checkpoint_prefix</code>, present only for checkpointable runs.</td>
+<td><code>name → SignedPut \| PostPolicy</code>. <code>manifest</code> is a necessary write-once <strong>signed PUT</strong> for <code>{prefix}manifest.json</code>. <code>artifacts</code> is a <strong>create-only V4 POST policy</strong> on the attempt prefix with a <code>content_length_range</code>. It cannot replace an object that exists. Thus it cannot overwrite the manifest or replace an output after the runner wrote it. <code>checkpoints</code> is a POST policy on <code>checkpoint_prefix</code>. It is present only for runs that can write checkpoints.</td>
 </tr>
 <tr>
 <td><code>resume</code></td>
-<td>Checkpoint objects of the newest earlier attempt that wrote any (an attempt that died before its first checkpoint is skipped), as <code>SignedGet</code>s</td>
+<td>The checkpoint objects of the newest earlier attempt that wrote checkpoints, as <code>SignedGet</code>s. The server ignores an attempt that stopped before its first checkpoint.</td>
 </tr>
 <tr>
 <td><code>checkpoint_prefix</code></td>
@@ -5402,7 +5463,7 @@ per-execution values are <code>MAPI_RUN_ID</code> and <code>MAPI_NONCE</code>.</
 </tr>
 <tr>
 <td><code>hmac_key</code></td>
-<td>Base64 encoding of at least 32 random bytes; the per-run event HMAC key (<code>new_hmac_key()</code>). Never logged: <code>RunSpec.redacted()</code> blanks it, together with every URL.</td>
+<td>The event HMAC key of the run (<code>new_hmac_key()</code>), in base64. It has a minimum of 32 random bytes. The logs never show it: <code>RunSpec.redacted()</code> removes it and all URLs.</td>
 </tr>
 <tr>
 <td><code>limits</code></td>
@@ -5426,42 +5487,43 @@ per-execution values are <code>MAPI_RUN_ID</code> and <code>MAPI_NONCE</code>.</
 <tbody>
 <tr>
 <td><code>MAPI_RUN_ID</code></td>
-<td>executor, per execution</td>
+<td>executor, for each execution</td>
 <td>The run id</td>
 </tr>
 <tr>
 <td><code>MAPI_NONCE</code></td>
-<td>executor, per execution</td>
+<td>executor, for each execution</td>
 <td>64 hex characters</td>
 </tr>
 <tr>
 <td><code>MAPI_BOOTSTRAP_URL</code></td>
-<td>executor, static per Job or backend</td>
-<td>A template with exactly one <code>{nonce}</code>. Cloud: <code>gs://mapi-prod-bootstrap/{nonce}</code>, read with the execution service account, which may get and delete but not list. Local: <code>http://127.0.0.1:4443/storage/v1/b/mapi-local-bootstrap/o/{nonce}</code>.</td>
+<td>executor, static for each Job or backend</td>
+<td>A template with exactly one <code>{nonce}</code>. Cloud: <code>gs://mapi-prod-bootstrap/{nonce}</code>. The execution service account reads it. This account can get and delete, but it cannot list. Local: <code>http://127.0.0.1:4443/storage/v1/b/mapi-local-bootstrap/o/{nonce}</code>.</td>
 </tr>
 <tr>
 <td><code>MAPI_EXEC_TOKEN</code></td>
 <td>local executor only</td>
-<td>Bearer token of the GCS shim's <em>exec</em> principal, which may get and delete in the bootstrap bucket. <strong>Never set in the cloud.</strong></td>
+<td>The bearer token of the <em>exec</em> principal of the GCS shim. This principal can get and delete in the bootstrap bucket. <strong>Never set in the cloud.</strong></td>
 </tr>
 </tbody>
 </table>
-<p><code>RunnerEnv.from_environ()</code> parses these and names any missing variable.
-<code>RunnerEnv.resolved_bootstrap_url()</code> substitutes the nonce into the template.</p>
+<p><code>RunnerEnv.from_environ()</code> parses these variables and gives the name of each missing variable.
+<code>RunnerEnv.resolved_bootstrap_url()</code> puts the nonce into the template.</p>
 <h2 id="events">Events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h2>
-<p>The worker cannot write the real stdout. It reports to the supervisor over a socketpair. The
-supervisor captures the worker's stdout and stderr, strips ANSI and control sequences, and
-writes <strong>one JSON object per line</strong> to its own stdout:</p>
+<p>The worker cannot write to the real stdout. It sends reports to the supervisor through a
+socketpair. The supervisor captures the stdout and the stderr of the worker. It removes ANSI
+and control sequences. Then it writes <strong>one JSON object on each line</strong> to its own stdout:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span><span class="nt">"mapi_event"</span><span class="p">:{</span><span class="nt">"attempt"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">"hmac"</span><span class="p">:</span><span class="s2">"5f0c…"</span><span class="p">,</span><span class="nt">"payload"</span><span class="p">:{</span><span class="nt">"chains"</span><span class="p">:[],</span><span class="nt">"fraction"</span><span class="p">:</span><span class="mf">0.4</span><span class="p">,</span><span class="nt">"phase"</span><span class="p">:</span><span class="s2">"sample"</span><span class="p">},</span><span class="nt">"run_id"</span><span class="p">:</span><span class="s2">"run_01jaf3q2x8m9v7k5h4g3f2e1d0"</span><span class="p">,</span><span class="nt">"seq"</span><span class="p">:</span><span class="mi">12</span><span class="p">,</span><span class="nt">"ts"</span><span class="p">:</span><span class="s2">"2026-10-15T09:31:00.123456Z"</span><span class="p">,</span><span class="nt">"type"</span><span class="p">:</span><span class="s2">"progress"</span><span class="p">}}</span>
 </span></code></pre></div>
-<p>Cloud Logging stores each line as the <code>jsonPayload</code> of a log entry. The sink filter is
-<code>jsonPayload.mapi_event:*</code>, and the run identity is cross-checked against the execution
-label. The local executor reads the same lines from the supervisor's stdout pipe.
+<p>Cloud Logging keeps each line as the <code>jsonPayload</code> of a log entry. The sink filter is
+<code>jsonPayload.mapi_event:*</code>. The platform compares the identity of the run with the label of
+the execution. The local executor reads the same lines from the stdout pipe of the supervisor.
 <code>encode_event_line()</code> and <code>decode_event_line()</code> implement the wire format:</p>
 <ul>
-<li>lines that are not JSON, or JSON without <code>mapi_event</code>, are not events and are ignored;</li>
-<li>an invalid <code>mapi_event</code> object, or a line over 64 KiB, raises <code>InvalidEvent</code>, which is a
-  <code>SANDBOX_VIOLATION</code>.</li>
+<li>A line that is not JSON, or JSON without <code>mapi_event</code>, is not an event. The platform ignores
+  it.</li>
+<li>A <code>mapi_event</code> object that is not valid, or a line of more than 64 KiB, raises
+  <code>InvalidEvent</code>. This is a <code>SANDBOX_VIOLATION</code>.</li>
 </ul>
 <p>Each event has these fields:</p>
 <table>
@@ -5474,15 +5536,15 @@ label. The local executor reads the same lines from the supervisor's stdout pipe
 <tbody>
 <tr>
 <td><code>run_id</code>, <code>attempt</code></td>
-<td>Must match the run and its current attempt</td>
+<td>Must agree with the run and its current attempt</td>
 </tr>
 <tr>
 <td><code>seq</code></td>
-<td>Starts at 0 per attempt and increases by 1 per line. The receiver deduplicates on <code>(run_id, attempt, seq)</code>. Gaps are tolerated, because logging can drop entries.</td>
+<td>Starts at 0 for each attempt and increases by 1 for each line. The receiver removes duplicates on <code>(run_id, attempt, seq)</code>. Gaps are permitted, because the logs can lose entries.</td>
 </tr>
 <tr>
 <td><code>ts</code></td>
-<td>Timezone-aware and normalised to UTC</td>
+<td>Has a timezone and is normalised to UTC</td>
 </tr>
 <tr>
 <td><code>type</code></td>
@@ -5490,31 +5552,31 @@ label. The local executor reads the same lines from the supervisor's stdout pipe
 </tr>
 <tr>
 <td><code>payload</code></td>
-<td>Validated against the payload model for <code>type</code>; see below</td>
+<td>Validated against the payload model for <code>type</code>. Refer to the table below.</td>
 </tr>
 <tr>
 <td><code>hmac</code></td>
-<td>Lower-case hex HMAC-SHA256 under the run's <code>hmac_key</code></td>
+<td>Lower-case hex HMAC-SHA256 with the <code>hmac_key</code> of the run</td>
 </tr>
 </tbody>
 </table>
-<p><strong>What the HMAC covers:</strong></p>
+<p><strong>The data that the HMAC signs:</strong></p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>"mapi.run-event.v1" 0x00 ‖ canonical JSON of the event without "hmac"
 </span></code></pre></div>
-<p>Canonical JSON (<code>canonical_bytes()</code>) is defined as follows:</p>
+<p>Canonical JSON (<code>canonical_bytes()</code>) has these rules:</p>
 <ul>
-<li>the model is dumped in JSON mode <strong>with defaults included</strong>;</li>
-<li>keys are sorted;</li>
-<li>there is no whitespace;</li>
-<li>the text is UTF-8 with no ASCII escaping;</li>
-<li>integral floats are written as integers;</li>
-<li>NaN and Infinity are rejected.</li>
+<li>The model is dumped in JSON mode <strong>with the defaults</strong>.</li>
+<li>The keys are sorted.</li>
+<li>There is no whitespace.</li>
+<li>The text is UTF-8 with no ASCII escapes.</li>
+<li>Floats with integral values are written as integers.</li>
+<li>NaN and Infinity are not permitted.</li>
 </ul>
-<p>Verification uses a constant-time comparison (<code>verify_event()</code>). An event that fails
-verification is dropped and counted as a sandbox violation for that run. It never changes the
-run's state. Output manifests use the context tag <code>mapi.output-manifest.v1</code> and bundle
-manifests use <code>mapi.bundle-manifest.v1</code>, so a signature from one domain is never valid in
-another.</p>
+<p>The verification uses a constant-time comparison (<code>verify_event()</code>). If an event fails the
+verification, the platform ignores it and counts a sandbox violation for that run. Such an
+event never changes the state of the run. Output manifests use the context tag
+<code>mapi.output-manifest.v1</code>. Bundle manifests use <code>mapi.bundle-manifest.v1</code>. Thus a signature
+from one domain is never valid in a different domain.</p>
 <table>
 <thead>
 <tr>
@@ -5527,22 +5589,22 @@ another.</p>
 <tr>
 <td><code>state</code></td>
 <td><code>StatePayload{phase, message?}</code></td>
-<td>Runner phases: <code>bootstrap</code>, <code>load_inputs</code>, <code>validate</code>, <code>preprocess</code>, <code>fit</code>, <code>sample</code>, <code>score</code>, <code>evaluate</code>, <code>derive</code>, <code>plots</code>, <code>upload</code>, <code>done</code></td>
+<td>The runner phases: <code>bootstrap</code>, <code>load_inputs</code>, <code>validate</code>, <code>preprocess</code>, <code>fit</code>, <code>sample</code>, <code>score</code>, <code>evaluate</code>, <code>derive</code>, <code>plots</code>, <code>upload</code>, <code>done</code></td>
 </tr>
 <tr>
 <td><code>progress</code></td>
 <td><code>ProgressPayload{phase, fraction?, message?, eta_seconds?, chains[]}</code></td>
-<td>Coalesced to at most one every <code>limits.progress_interval_s</code>; upserted into one <code>run_progress</code> row</td>
+<td>Maximum one in each <code>limits.progress_interval_s</code>. The platform writes it into one <code>run_progress</code> row (upsert).</td>
 </tr>
 <tr>
 <td><code>log</code></td>
 <td><code>LogPayload{stream, line, truncated}</code></td>
-<td>One line, at most <code>log_line_bytes</code>. Beyond <code>log_total_bytes</code> the run fails with <code>SANDBOX_VIOLATION</code> (log flood).</td>
+<td>One line, maximum <code>log_line_bytes</code>. After <code>log_total_bytes</code>, the run fails with <code>SANDBOX_VIOLATION</code> (log flood).</td>
 </tr>
 <tr>
 <td><code>diagnostic</code></td>
 <td><code>Diagnostic</code> (<code>mapi_spec</code>)</td>
-<td>Rolls up into the scorecard</td>
+<td>Goes into the scorecard</td>
 </tr>
 <tr>
 <td><code>warning</code></td>
@@ -5562,21 +5624,21 @@ another.</p>
 <tr>
 <td><code>complete</code></td>
 <td><code>CompletePayload{status, manifest_name, manifest_crc32c, objects, total_bytes}</code></td>
-<td>The last event of a successful (<code>complete</code>) or checkpointed (<code>partial</code>) attempt</td>
+<td>The last event of a successful attempt (<code>complete</code>) or of an attempt with checkpoints (<code>partial</code>)</td>
 </tr>
 <tr>
 <td><code>error</code></td>
 <td><code>ErrorPayload{code, failure_class, message, untrusted_text?}</code></td>
-<td><code>code</code> must equal <code>failure_class.error_code</code></td>
+<td><code>code</code> must be equal to <code>failure_class.error_code</code></td>
 </tr>
 </tbody>
 </table>
-<p><code>make_event(run_id, attempt, seq, payload, key=...)</code> infers <code>type</code> from the payload model
-and signs the event.</p>
+<p><code>make_event(run_id, attempt, seq, payload, key=...)</code> gets <code>type</code> from the payload model and
+signs the event.</p>
 <h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
-<p>The supervisor exits with <code>0</code> only after it has uploaded the manifest and emitted the
-<code>complete</code> event. <code>failure_class_for_exit()</code> classifies the code. Any other non-zero code,
-for example <code>1</code> from a crashed supervisor, is <code>infra</code>.</p>
+<p>The supervisor exits with <code>0</code> only after it uploads the manifest and sends the <code>complete</code>
+event. <code>failure_class_for_exit()</code> gives the failure class of the code. All other non-zero
+codes are <code>infra</code>, for example <code>1</code> from a supervisor that crashed.</p>
 <table>
 <thead>
 <tr>
@@ -5594,65 +5656,66 @@ for example <code>1</code> from a crashed supervisor, is <code>infra</code>.</p>
 <tr>
 <td>2</td>
 <td><code>CONFIG_ERROR</code></td>
-<td>infra: bad environment, bootstrap missing or invalid</td>
+<td>infra: the environment is bad, or the bootstrap is missing or not valid</td>
 </tr>
 <tr>
 <td>10</td>
 <td><code>USER_ERROR</code></td>
-<td>user: plugin or user code raised, or produced invalid output</td>
+<td>user: plugin code or user code raised an exception, or made output that is not valid</td>
 </tr>
 <tr>
 <td>11</td>
 <td><code>RESOURCE_EXHAUSTED</code></td>
-<td>resource_exhausted: <code>MemoryError</code> or scratch budget exceeded</td>
+<td>resource_exhausted: <code>MemoryError</code>, or the run used more than the scratch budget</td>
 </tr>
 <tr>
 <td>12</td>
 <td><code>INFRA_ERROR</code></td>
-<td>infra: the supervisor's uploads or downloads failed after retries (a worker-reported <code>INFRA_ERROR</code> exits <code>10</code>)</td>
+<td>infra: the uploads or downloads of the supervisor failed after retries. (An <code>INFRA_ERROR</code> that the worker reports exits with <code>10</code>.)</td>
 </tr>
 <tr>
 <td>13</td>
 <td><code>INTEGRITY_ERROR</code></td>
-<td>integrity: an input did not match its size or CRC32C</td>
+<td>integrity: the size or the CRC32C of an input was not correct</td>
 </tr>
 <tr>
 <td>14</td>
 <td><code>TIMEOUT</code></td>
-<td>timeout: deadline reached with no checkpoint to flush</td>
+<td>timeout: the run got to the deadline with no checkpoint to flush</td>
 </tr>
 <tr>
 <td>15</td>
 <td><code>SANDBOX_VIOLATION</code></td>
-<td>sandbox: log flood, output caps exceeded, forged or oversized events</td>
+<td>sandbox: log flood, output caps exceeded, or forged or oversized events</td>
 </tr>
 <tr>
 <td>16</td>
 <td><code>PARTIAL</code></td>
-<td>— (SIGTERM or deadline; checkpoint flushed and a <code>partial</code> manifest uploaded)</td>
+<td>— (SIGTERM or deadline. The runner flushed a checkpoint and uploaded a <code>partial</code> manifest.)</td>
 </tr>
 <tr>
 <td>137</td>
 <td><code>KILLED</code></td>
-<td>resource_exhausted: SIGKILL, usually the OOM killer. The user is offered "retry at class + 1".</td>
+<td>resource_exhausted: SIGKILL, usually from the OOM killer. The platform offers "retry at class + 1" to the user.</td>
 </tr>
 <tr>
 <td>143</td>
 <td><code>TERMINATED</code></td>
-<td>timeout: SIGTERM not handled in time</td>
+<td>timeout: the runner did not stop in the permitted time after SIGTERM</td>
 </tr>
 </tbody>
 </table>
-<p>When the user cancels a run, the run is already in <code>CANCELLING</code>, so the exit code does not
-decide the outcome, with one exception. A checkpointing fit that receives the SIGTERM flushes
-its last checkpoint, uploads a <code>partial</code> manifest, sends a <code>partial</code> <code>complete</code> event and exits
-with <code>16</code>. The reconciler then fires <code>complete</code> from <code>CANCELLING</code>, and the finalizer verifies the
-partial bundle, so the run ends <code>PARTIAL</code> and can be resumed. Any other exit ends <code>CANCELLED</code>.</p>
+<p>When the user cancels a run, the run is already in <code>CANCELLING</code>. Thus the exit code does not
+set the result, with one exception. A fit that writes checkpoints can get the SIGTERM. Then it
+flushes its last checkpoint, uploads a <code>partial</code> manifest, sends a <code>partial</code> <code>complete</code> event
+and exits with <code>16</code>. The reconciler then starts <code>complete</code> from <code>CANCELLING</code>, and the
+finalizer verifies the partial bundle. Thus the run ends in <code>PARTIAL</code>, and you can resume it.
+All other exits end in <code>CANCELLED</code>.</p>
 <h2 id="outputs-and-finalisation">Outputs and finalisation<a class="headerlink" href="#outputs-and-finalisation" title="Permanent link">&para;</a></h2>
-<p>The runner uploads every output under its attempt prefix
-<code>t/{tenant}/runs/{run}/a{attempt}/</code> in the runs bucket, using the <code>artifacts</code> POST policy.
-It streams each object and computes CRC32C and MD5 as it goes. Last, it PUTs
-<strong><code>manifest.json</code></strong>, an <code>OutputManifest</code> signed with the run HMAC key:</p>
+<p>The runner uploads all outputs below its attempt prefix
+<code>t/{tenant}/runs/{run}/a{attempt}/</code> in the runs bucket. It uses the <code>artifacts</code> POST policy.
+It streams each object and calculates CRC32C and MD5 during the stream. Last, it PUTs
+<strong><code>manifest.json</code></strong>, an <code>OutputManifest</code> that it signs with the HMAC key of the run:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">"schema_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mapi.output-manifest/v1"</span><span class="p">,</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">"tenant_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"default"</span><span class="p">,</span><span class="w"> </span><span class="nt">"project_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"default"</span><span class="p">,</span>
@@ -5668,63 +5731,67 @@ It streams each object and computes CRC32C and MD5 as it goes. Last, it PUTs
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">  </span><span class="nt">"runner_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0.2.0"</span><span class="p">,</span><span class="w"> </span><span class="nt">"created_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-10-15T10:20:00Z"</span><span class="p">,</span><span class="w"> </span><span class="nt">"hmac"</span><span class="p">:</span><span class="w"> </span><span class="s2">"…"</span>
 </span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>Each object's <code>key</code> must equal <code>prefix + name</code>. Names must not contain empty, <code>.</code> or <code>..</code>
-segments, and the manifest must not list itself.</p>
-<p>Hashes follow GCS conventions:</p>
+<p>The <code>key</code> of each object must be equal to <code>prefix + name</code>. Names must not have empty, <code>.</code> or
+<code>..</code> segments. The manifest must not list itself.</p>
+<p>The hashes use the GCS conventions:</p>
 <ul>
-<li><strong>CRC32C</strong> is the base64 encoding of the 4-byte big-endian value (<code>crc32c_to_base64()</code>);</li>
+<li><strong>CRC32C</strong> is the base64 encoding of the 4-byte big-endian value (<code>crc32c_to_base64()</code>).</li>
 <li><strong>MD5</strong> is the base64 encoding of the 16-byte digest.</li>
 </ul>
-<p><strong>The manifest is a claim.</strong> The control plane verifies it in the <code>FINALIZING</code> state without
-reading any object content:</p>
+<p><strong>The manifest is a claim.</strong> The control plane verifies it in the <code>FINALIZING</code> state. It does
+not read the content of the objects:</p>
 <ol>
-<li><strong>Metadata only.</strong> List the attempt prefix and <code>stat</code> objects. This yields the
-   server-computed <code>size</code>, <code>crc32c</code>, <code>md5Hash</code> and <code>generation</code>.</li>
+<li><strong>Metadata only.</strong> The control plane lists the attempt prefix and does a <code>stat</code> of the
+   objects. This gives the <code>size</code>, <code>crc32c</code>, <code>md5Hash</code> and <code>generation</code> that the server
+   calculated.</li>
 <li>
-<p><strong>Compare.</strong> <code>verify_output_objects(manifest, listing, expected_prefix=…)</code> requires the
-   following:</p>
+<p><strong>Compare.</strong> <code>verify_output_objects(manifest, listing, expected_prefix=…)</code> needs these
+   conditions:</p>
 <ul>
-<li>every claimed object exists with identical size, CRC32C and MD5;</li>
-<li>no unexpected object exists under the prefix, except <code>manifest.json</code> and
-  <code>checkpoints/…</code>.</li>
+<li>Each object in the manifest exists with the same size, CRC32C and MD5.</li>
+<li>No unexpected object exists below the prefix. <code>manifest.json</code> and <code>checkpoints/…</code> are
+  permitted.</li>
 </ul>
-<p>Any discrepancy is an <code>INTEGRITY_FAILURE</code> issue. The run moves to <code>FAILED(integrity)</code> and
-a security alert is raised.
-3. <strong>Validate sidecars.</strong> JSON sidecars (<code>diagnostics.json</code>, <code>plots.json</code>, <code>metrics.json</code>,
-<code>coords.json</code>; <code>schema.json</code> and <code>summary.json</code> for ingest; <code>catalog.json</code> for describe)
-are read with size caps, validated with Pydantic, and plots are sanitized.
-4. <strong>Server-side copy.</strong> Each verified object is copied into the bundles bucket under
-<code>t/{tenant}/models/{model}/{version}/</code>. The copy pins <code>source_generation</code> to the verified
-generation and uses <code>if_generation_match=0</code>, so bundle objects are write-once. The
-execution service account has no access to this bucket.
-5. <strong>Sign.</strong> The platform writes a <strong><code>BundleManifest</code></strong> that binds the tenant, run, base
-image, overlay hash, spec hash, data hash, catalog digest and every <em>destination</em>
-generation, and signs it:
-- <strong>M1 (local):</strong> <code>KMS-EC-P256-SHA256</code> with a local P-256 key the server keeps under
-  <code>MAPI_DATA_DIR/keys/</code> (an emulation of the KMS signer, so a real KMS key can be swapped
-  in without changing the signing bytes). Bundles signed <code>HS256</code> are refused when URLs
-  are minted;
-- <strong>v0.3 (M2):</strong> a Cloud KMS asymmetric signature over the same bytes.</p>
-<p>URLs to the bundle are minted only after <code>verify_bundle_manifest()</code> succeeds.</p>
+<p>Each difference is an <code>INTEGRITY_FAILURE</code> issue. The run moves to <code>FAILED(integrity)</code>, and
+the platform raises a security alert.
+3. <strong>Validate sidecars.</strong> The control plane reads the JSON sidecars with size caps and
+validates them with Pydantic. The sidecars are <code>diagnostics.json</code>, <code>plots.json</code>,
+<code>metrics.json</code> and <code>coords.json</code>, <code>schema.json</code> and <code>summary.json</code> for ingest, and
+<code>catalog.json</code> for describe. It also sanitizes the plots.
+4. <strong>Server-side copy.</strong> The control plane copies each verified object into the bundles
+bucket below <code>t/{tenant}/models/{model}/{version}/</code>. The copy pins <code>source_generation</code> to
+the verified generation and uses <code>if_generation_match=0</code>. Thus bundle objects are
+write-once. The execution service account has no access to this bucket.
+5. <strong>Sign.</strong> The platform writes a <strong><code>BundleManifest</code></strong> and signs it. The manifest binds the
+tenant, the run, the base image, the overlay hash, the spec hash, the data hash, the
+catalog digest and each <em>destination</em> generation. The signature is:
+- <strong>M1 (local):</strong> <code>KMS-EC-P256-SHA256</code> with a local P-256 key. The server keeps the key
+  below <code>MAPI_DATA_DIR/keys/</code>. This is an emulation of the KMS signer. Thus you can
+  replace it with a real KMS key, and the signed bytes do not change. The server refuses
+  bundles with the <code>HS256</code> signature when it makes URLs.
+- <strong>v0.3 (M2):</strong> a Cloud KMS asymmetric signature on the same bytes.</p>
+<p>The control plane makes URLs to the bundle only after <code>verify_bundle_manifest()</code> is
+successful.</p>
 </li>
 </ol>
 <h2 id="job-payloads-and-object-names">Job payloads and object names<a class="headerlink" href="#job-payloads-and-object-names" title="Permanent link">&para;</a></h2>
-<p><code>mapi_spec.jobs</code> is the contract between the dispatcher, which writes <code>RunSpec.spec</code> and
-names the inputs, and the runner, which reads them and names the outputs. Both sides import
-it, so a renamed input or a changed payload fails type checks and tests on both sides.</p>
+<p><code>mapi_spec.jobs</code> is the contract between the dispatcher and the runner. The dispatcher writes
+<code>RunSpec.spec</code> and gives the names of the inputs. The runner reads them and gives the names
+of the outputs. The two sides import the module. Thus, if you change the name of an input or
+change a payload, the type checks and the tests fail on the two sides.</p>
 <table>
 <thead>
 <tr>
 <th>Kind</th>
 <th><code>RunSpec.spec</code></th>
 <th>Inputs</th>
-<th>Outputs the control plane reads</th>
+<th>Outputs that the control plane reads</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>ingest</code></td>
-<td><code>IngestJob</code> (a mapping or the MFF preset; <code>dataset</code> and <code>source</code> are informational)</td>
+<td><code>IngestJob</code> (a mapping or the MFF preset. <code>dataset</code> and <code>source</code> are only for information.)</td>
 <td><code>upload</code></td>
 <td><code>data.zarr.zip</code>, <code>schema.json</code> (<code>DataSchema</code>), <code>summary.json</code> (<code>DataSummary</code>), <code>profile.json</code>, <code>preview.json</code></td>
 </tr>
@@ -5742,39 +5809,44 @@ it, so a renamed input or a changed payload fails type checks and tests on both 
 </tr>
 <tr>
 <td><code>fit</code></td>
-<td>the resolved <code>ModelSpec</code> (<code>use:</code> and dataset refs pinned)</td>
+<td>the resolved <code>ModelSpec</code> (with pinned <code>use:</code> and dataset references)</td>
 <td><code>dataset</code>, <code>side.&lt;name&gt;</code></td>
 <td><code>bundle.zarr.zip</code>, <code>diagnostics.json</code>, <code>metrics.json</code> (<code>MetricsSidecar</code>), <code>plots.json</code>, <code>coords.json</code> (<code>ScoreMetadata.fit_coords</code>), <code>ui/…</code></td>
 </tr>
 <tr>
 <td><code>score</code></td>
 <td>the <code>ScoreRequest</code></td>
-<td><code>bundle</code>, <code>bundle.manifest</code>, <code>dataset</code> (the request's <code>data</code>), <code>scenario</code>, <code>side.&lt;name&gt;</code>, <code>history</code> (v0.4: the fit dataset, for forecasts whose <code>future_covariates</code> is <code>carry_last</code> or <code>seasonal_naive</code>), <code>inline.data</code> / <code>inline.scenario</code> (v0.4: an endpoint call's inline XrJSON, used when <code>dataset</code> / <code>scenario</code> is absent)</td>
-<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>plots.json</code>, <code>ui/summary.arrow</code>; <code>ui/guided/forecast.json</code> or <code>ui/guided/counterfactual.json</code> (v0.4)</td>
+<td><code>bundle</code>, <code>bundle.manifest</code>, <code>dataset</code> (the <code>data</code> of the request), <code>scenario</code>, <code>side.&lt;name&gt;</code>, <code>history</code> (v0.4: the fit dataset, for forecasts with <code>future_covariates</code> set to <code>carry_last</code> or <code>seasonal_naive</code>), <code>inline.data</code> / <code>inline.scenario</code> (v0.4: the inline XrJSON of an endpoint call, for use when <code>dataset</code> / <code>scenario</code> is not present)</td>
+<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>plots.json</code>, <code>ui/summary.arrow</code>. Also <code>ui/guided/forecast.json</code> or <code>ui/guided/counterfactual.json</code> (v0.4).</td>
 </tr>
 <tr>
 <td><code>evaluate</code> / <code>derive</code> / <code>render</code></td>
-<td><code>EvaluateJob</code> / <code>DeriveJob</code> / <code>RenderJob</code> from the run's <code>params</code></td>
-<td><code>bundle</code>, <code>dataset</code> (default: the fit dataset), <code>side.&lt;name&gt;</code>; <code>plots</code> for render</td>
-<td>as listed in the <a href="../runner/#what-runspecspec-holds-per-kind">runner reference</a></td>
+<td><code>EvaluateJob</code> / <code>DeriveJob</code> / <code>RenderJob</code> from the <code>params</code> of the run</td>
+<td><code>bundle</code>, <code>dataset</code> (default: the fit dataset), <code>side.&lt;name&gt;</code>. <code>plots</code> for render.</td>
+<td>as the <a href="../runner/#what-runspecspec-holds-per-kind">runner reference</a> shows</td>
 </tr>
 </tbody>
 </table>
-<p><code>side_table_input(name)</code> builds <code>side.&lt;name&gt;</code>; <code>SCORE_INPUTS</code> maps a <code>ScoreRequest</code>'s <code>data</code>
-and <code>scenario</code> fields to their input names. A <code>*.zarr.zip</code> dataset may carry its raw
-<code>DataSchema</code> as JSON in the root attribute <code>DATASET_SCHEMA_ATTR</code> (<code>mapi_schema</code>); ingest writes
-it, and an upload that carries it keeps its dim policies, roles and units instead of an
-inferred schema.</p>
+<p><code>side_table_input(name)</code> makes <code>side.&lt;name&gt;</code>. <code>SCORE_INPUTS</code> maps the <code>data</code> and <code>scenario</code>
+fields of a <code>ScoreRequest</code> to their input names. A <code>*.zarr.zip</code> dataset can contain its raw
+<code>DataSchema</code> as JSON in the root attribute <code>DATASET_SCHEMA_ATTR</code> (<code>mapi_schema</code>). Ingest
+writes this attribute. If an upload has this attribute, the upload keeps its dim policies,
+roles and units. The platform does not infer a schema for it.</p>
 <p><code>inline.data</code> and <code>inline.scenario</code> (<code>mapi_spec.endpoints.INPUT_INLINE_DATA</code> and
-<code>INPUT_INLINE_SCENARIO</code>) hold the <code>XrJsonDataset</code> JSON of an endpoint score call, stored by the
-API in the quarantine bucket. The worker decodes them with the wire format's caps (strict JSON,
-no <code>NaN</code> or <code>Infinity</code>, at most 5 MB) and gives each dim coordinate the type of the bundle's raw
-schema (dates from ISO strings, whole numbers for <code>integer</code> and <code>index</code> dims, text for
-categorical dims); anything it cannot read fails the run with <code>SCHEMA_INVALID</code>.</p>
+<code>INPUT_INLINE_SCENARIO</code>) contain the <code>XrJsonDataset</code> JSON of an endpoint score call. The API
+keeps them in the quarantine bucket. The worker decodes them with the caps of the wire format:
+strict JSON, no <code>NaN</code> or <code>Infinity</code>, and a maximum of 5 MB. The worker gives each dim
+coordinate the type from the raw schema of the bundle:</p>
+<ul>
+<li>dates from ISO strings</li>
+<li>whole numbers for <code>integer</code> and <code>index</code> dims</li>
+<li>text for categorical dims.</li>
+</ul>
+<p>If the worker cannot read a value, the run fails with <code>SCHEMA_INVALID</code>.</p>
 <h3 id="ui-views">UI views<a class="headerlink" href="#ui-views" title="Permanent link">&para;</a></h3>
-<p>Small JSON views go next to datasets and bundles for the browser (the control plane never
-decodes them; the web app fetches them through signed URLs). <code>mapi_spec.views</code> defines them
-and each carries a <code>format</code> tag:</p>
+<p>Small JSON views for the browser go next to datasets and bundles. The control plane never
+decodes them. The web app gets them through signed URLs. <code>mapi_spec.views</code> defines them, and
+each view has a <code>format</code> tag:</p>
 <table>
 <thead>
 <tr>
@@ -5787,27 +5859,27 @@ and each carries a <code>format</code> tag:</p>
 <tr>
 <td><code>preview.json</code></td>
 <td><code>mapi.preview/v1</code></td>
-<td><code>PreviewView</code>: dim columns then variable columns, the first rows, <code>total_rows</code></td>
+<td><code>PreviewView</code>: the dim columns, then the variable columns, the first rows, and <code>total_rows</code></td>
 </tr>
 <tr>
 <td><code>profile.json</code></td>
 <td><code>mapi.profile/v1</code></td>
-<td><code>ProfileView</code>: per-variable statistics and a missingness grid along the time-like dim (at most 1,000 binned columns)</td>
+<td><code>ProfileView</code>: the statistics for each variable, and a grid of missing values along the time-like dim (maximum 1,000 binned columns)</td>
 </tr>
 <tr>
 <td><code>ui/tree_index.json</code></td>
 <td><code>mapi.tree-index/v1</code></td>
-<td><code>TreeIndexView</code>: every DataTree node's dims, coordinates (values for small ones), variables and scalar attributes; no arrays</td>
+<td><code>TreeIndexView</code>: the dims, coordinates (with values for small coordinates), variables and scalar attributes of each DataTree node. It has no arrays.</td>
 </tr>
 <tr>
 <td><code>ui/preprocess.json</code></td>
 <td><code>mapi.preprocess/v1</code></td>
-<td><code>PreprocessView</code>: every pipeline step in order (<code>id</code>, resolved <code>use</code>, <code>kind</code>, <code>stateful</code>), its learned JSON (capped at 16 KB, <code>learned_truncated</code>) and its numeric state arrays of at most two dims and 10,000 cells with their labels; larger arrays are named in <code>omitted</code></td>
+<td><code>PreprocessView</code>: each pipeline step in sequence (<code>id</code>, resolved <code>use</code>, <code>kind</code>, <code>stateful</code>). For each step, it gives the learned JSON (maximum 16 KB, <code>learned_truncated</code>). It also gives the numeric state arrays with their labels, if they have a maximum of two dims and 10,000 cells. <code>omitted</code> gives the names of larger arrays.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="storage-layout">Storage layout<a class="headerlink" href="#storage-layout" title="Permanent link">&para;</a></h2>
-<p><code>mapi_spec.storage</code> builds every key on the server from validated ids (<code>check_segment</code>). User
+<p><code>mapi_spec.storage</code> makes each key on the server from validated ids (<code>check_segment</code>). User
 input never becomes a path.</p>
 <table>
 <thead>
@@ -5821,22 +5893,22 @@ input never becomes a path.</p>
 <tr>
 <td><code>mapi-{env}-quarantine</code></td>
 <td><code>t/{tenant}/uploads/{upload_id}</code></td>
-<td>Signed PUT from the browser; 7-day lifecycle</td>
+<td>Signed PUT from the browser. 7-day lifecycle.</td>
 </tr>
 <tr>
 <td><code>mapi-{env}-bootstrap</code></td>
 <td><code>{nonce}</code></td>
-<td>The execution identity may get and delete, but not list; 1-day lifecycle</td>
+<td>The execution identity can get and delete, but it cannot list. 1-day lifecycle.</td>
 </tr>
 <tr>
 <td><code>mapi-{env}-runs</code></td>
-<td><code>t/{tenant}/runs/{run}/a{n}/[tasks/{i}/]</code>, with <code>checkpoints/</code> inside</td>
+<td><code>t/{tenant}/runs/{run}/a{n}/[tasks/{i}/]</code>, with <code>checkpoints/</code> in it</td>
 <td>Written only through signed URLs</td>
 </tr>
 <tr>
 <td><code>mapi-{env}-bundles</code></td>
 <td><code>t/{tenant}/models/{model}/{version}/</code>: <code>bundle.zarr.zip</code>, <code>manifest.json</code>, <code>manifest.sig</code>, <code>diagnostics.json</code>, <code>plots.json</code>, <code>metrics.json</code>, <code>ui/…</code></td>
-<td>Control plane only; write-once</td>
+<td>Control plane only. Write-once.</td>
 </tr>
 <tr>
 <td><code>mapi-{env}-data</code></td>
@@ -5845,11 +5917,11 @@ input never becomes a path.</p>
 </tr>
 </tbody>
 </table>
-<p>The control plane accesses storage only through the async <code>ObjectStore</code> protocol:</p>
+<p>The control plane gets access to storage only through the async <code>ObjectStore</code> protocol:</p>
 <ul>
-<li>reads and writes: <code>put</code>, <code>get</code> (with byte ranges and a <code>max_bytes</code> cap), <code>stat</code> (metadata
-  only), <code>list</code>, <code>delete</code> and <code>copy</code>;</li>
-<li>signing: <code>sign_get</code> (pinned to a generation), <code>sign_put</code> (write-once by default) and
+<li>read and write: <code>put</code>, <code>get</code> (with byte ranges and a <code>max_bytes</code> cap), <code>stat</code> (metadata
+  only), <code>list</code>, <code>delete</code> and <code>copy</code></li>
+<li>sign: <code>sign_get</code> (pinned to a generation), <code>sign_put</code> (write-once by default) and
   <code>post_policy</code>.</li>
 </ul>
 <p><code>if_generation_match=0</code> means "only if the object does not exist yet". Failures raise
@@ -5886,22 +5958,23 @@ input never becomes a path.</p>
 </tr>
 <tr>
 <td>Postgres 16</td>
-<td>Embedded <code>pgserver</code>, with its data under <code>MAPI_DATA_DIR</code> (default <code>.local/</code>)</td>
+<td>Embedded <code>pgserver</code>, with its data in <code>MAPI_DATA_DIR</code> (default <code>.local/</code>)</td>
 <td><code>DATABASE_URL</code> (any <code>postgresql://</code> URL)</td>
 </tr>
 </tbody>
 </table>
-<p>The plot sandbox <strong>must</strong> be a different origin from the web app, because plots render in a
-<code>sandbox="allow-scripts"</code> iframe with no same-origin access. <code>LocalDev</code> refuses a
-configuration that puts both on the same origin.</p>
-<p>Other environment variables:</p>
+<p>The plot sandbox <strong>must</strong> have an origin that is different from the web app. The reason is
+that plots render in a <code>sandbox="allow-scripts"</code> iframe with no same-origin access. <code>LocalDev</code>
+refuses a configuration that puts the two on the same origin.</p>
+<p>Other environment variables and helpers:</p>
 <ul>
 <li><code>MAPI_ENV</code> (default <code>local</code>) selects the bucket names, for example <code>mapi-local-runs</code>.</li>
 <li><code>LocalDev.from_environ(os.environ)</code> resolves the full configuration.</li>
 <li><code>LocalDev.bootstrap_url_template()</code> gives the <code>MAPI_BOOTSTRAP_URL</code> value for the local
   executor.</li>
 </ul>
-<p>No Docker daemon is needed. Postgres comes from <code>pgserver</code> and storage from the GCS shim.</p>
+<p>You do not need a Docker daemon. Postgres comes from <code>pgserver</code>, and storage comes from the
+GCS shim.</p>
 
 
 

@@ -322,8 +322,8 @@
           "id": "weekly_forecast",
           "kind": "template",
           "reasons_plain": [
-            "Made for forecasting",
-            "Works on one series"
+            "Suits: forecast the future",
+            "Suits: one number over time"
           ],
           "score": 0.92,
           "summary_plain": "Forecasts one weekly number a few months ahead, with a range of likely values.",

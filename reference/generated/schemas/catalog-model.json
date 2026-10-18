@@ -221,6 +221,12 @@
           "title": "Checkpointable",
           "type": "boolean"
         },
+        "conditions_on_actuals": {
+          "default": false,
+          "description": "A forecast can be conditioned on actuals sent with the request (target values for periods after, or at the end of, the fitted history): the model updates its state with them without re-estimating its parameters and forecasts from the last actual (mapi_spec.actuals). Models without it refuse such requests with ACTUALS_NOT_SUPPORTED instead of ignoring the actuals",
+          "title": "Conditions On Actuals",
+          "type": "boolean"
+        },
         "contribution_scale": {
           "default": "none",
           "enum": [
@@ -444,6 +450,81 @@
       "title": "Difficulty",
       "type": "string"
     },
+    "GridDecl": {
+      "additionalProperties": false,
+      "description": "How to draw an output as a 2-D field (an image, a map, a vector field).\n\n``y`` and ``x`` are the dims of the raster rows and columns; ``y`` runs top to bottom\nunless ``origin`` is ``lower``. ``frame`` names a third dim with one raster per level\n(years, eras, times); ``component`` names a dim of length two that holds the ``(x, y)``\ncomponents of a vector field. Every other dim of the output is reduced over the\nposterior draws only, never over space.",
+      "properties": {
+        "colormap": {
+          "default": "viridis",
+          "enum": [
+            "viridis",
+            "magma",
+            "cividis",
+            "gray",
+            "diverging"
+          ],
+          "title": "Colormap",
+          "type": "string"
+        },
+        "component": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Component"
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame"
+        },
+        "log": {
+          "default": false,
+          "description": "Draw log10 of the value (for counts and intensities)",
+          "title": "Log",
+          "type": "boolean"
+        },
+        "origin": {
+          "default": "upper",
+          "enum": [
+            "upper",
+            "lower"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "x": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "X",
+          "type": "string"
+        },
+        "y": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Y",
+          "type": "string"
+        }
+      },
+      "required": [
+        "y",
+        "x"
+      ],
+      "title": "GridDecl",
+      "type": "object"
+    },
     "JsonValue": {},
     "ModelManifest": {
       "additionalProperties": false,
@@ -596,6 +677,18 @@
           "default": null,
           "description": "The output also carries every dim of this input variable (e.g. 'y' for models whose data dims come from settings, such as the sklearn row dims)",
           "title": "Dims Of"
+        },
+        "grid": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GridDecl"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Draw the output as a 2-D field (Model Explorer 'fields' section)"
         },
         "units": {
           "anyOf": [

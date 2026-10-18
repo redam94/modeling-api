@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -2592,6 +2622,17 @@
     <span class="md-ellipsis">
       
         Forecasts and the drivers' future
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#forecasting-from-new-actuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forecasting from new actuals
       
     </span>
   </a>
@@ -4816,6 +4857,8 @@
       
         
       
+        
+      
     
     
     
@@ -4904,6 +4947,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5016,6 +5087,17 @@
     <span class="md-ellipsis">
       
         Forecasts and the drivers' future
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#forecasting-from-new-actuals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forecasting from new actuals
       
     </span>
   </a>
@@ -5233,17 +5315,21 @@
 
 
 <h1 id="statsmodels-time-series-models">statsmodels time-series models<a class="headerlink" href="#statsmodels-time-series-models" title="Permanent link">&para;</a></h1>
-<p>The <code>mapi-plugin-statsmodels</code> package brings twelve classical time-series models from
-<a href="https://www.statsmodels.org/">statsmodels</a> (BSD-3-Clause) into the platform. They cover
-the everyday forecasting workhorses (ARIMA, exponential smoothing, theta), models with
-drivers (ARIMAX, ARDL, error correction), systems of series that drive each other (VAR,
-VECM, VARMAX, dynamic factors) and regime switching. All of them fit in seconds, run in the
-time-series runner image (<code>mapi/base-forecast</code>) and pass the same contract kit as every
-other plugin.</p>
+<p>The <code>mapi-plugin-statsmodels</code> package adds twelve classical time-series models from
+<a href="https://www.statsmodels.org/">statsmodels</a> (BSD-3-Clause) to the platform. These are the
+model groups:</p>
+<ul>
+<li>The usual forecast models (ARIMA, exponential smoothing, theta).</li>
+<li>Models with drivers (ARIMAX, ARDL, error correction).</li>
+<li>Systems of series that have an effect on each other (VAR, VECM, VARMAX, dynamic factors).</li>
+<li>Regime switching.</li>
+</ul>
+<p>All of these models fit in seconds. They run in the time-series runner image
+(<code>mapi/base-forecast</code>). They pass the same contract kit as all other plugins.</p>
 <h2 id="which-model-should-i-use">Which model should I use?<a class="headerlink" href="#which-model-should-i-use" title="Permanent link">&para;</a></h2>
-<p>Every model has an About card in the catalog: the web app's <em>Help me choose</em>, <code>mapi choose</code>
-and <code>api.catalog.recommend()</code> rank them for your goal and data (see
-<a href="../../guides/choosing-a-model/">Choosing a model</a>). In short:</p>
+<p>Each model has an About card in the catalog. <em>Help me choose</em> in the web app, <code>mapi choose</code>
+and <code>api.catalog.recommend()</code> rank the models for your goal and data (see
+<a href="../../guides/choosing-a-model/">Choosing a model</a>). This table gives a short summary:</p>
 <table>
 <thead>
 <tr>
@@ -5256,7 +5342,7 @@ and <code>api.catalog.recommend()</code> rank them for your goal and data (see
 <tr>
 <td><code>ts.sarimax</code></td>
 <td>Forecast with past values and drivers</td>
-<td>You forecast one series a few periods ahead and know future prices, promotions or holidays</td>
+<td>You forecast one series a few periods ahead and know the future prices, promotions or holidays</td>
 </tr>
 <tr>
 <td><code>ts.arima</code></td>
@@ -5271,7 +5357,7 @@ and <code>api.catalog.recommend()</code> rank them for your goal and data (see
 <tr>
 <td><code>ts.theta</code></td>
 <td>Simple strong baseline</td>
-<td>You want something simple that is hard to beat, to compare other models with</td>
+<td>You want a simple model that is difficult to beat, to compare other models with</td>
 </tr>
 <tr>
 <td><code>ts.unobserved_components</code></td>
@@ -5280,28 +5366,28 @@ and <code>api.catalog.recommend()</code> rank them for your goal and data (see
 </tr>
 <tr>
 <td><code>ts.ardl</code></td>
-<td>Effects that build up over time</td>
-<td>A driver's effect is spread over several periods</td>
+<td>Effects that increase over time</td>
+<td>The effect of a driver spreads over many periods</td>
 </tr>
 <tr>
 <td><code>ts.ecm</code></td>
 <td>Long-run and short-run effects</td>
-<td>The result and its drivers trend together; you want the immediate and the lasting effect</td>
+<td>The result and its drivers have the same trend. You want the immediate effect and the lasting effect.</td>
 </tr>
 <tr>
 <td><code>ts.var</code></td>
-<td>Series that drive each other</td>
-<td>Several series affect each other; you want shocks and Granger tests</td>
+<td>Series that have an effect on each other</td>
+<td>Many series have an effect on each other. You want shocks and Granger tests.</td>
 </tr>
 <tr>
 <td><code>ts.vecm</code></td>
-<td>Series tied together for good</td>
-<td>Trending series keep a stable long-run relationship</td>
+<td>Series that stay tied together</td>
+<td>Series with a trend keep a stable long-run relation</td>
 </tr>
 <tr>
 <td><code>ts.varmax</code></td>
-<td>Series that drive each other, with drivers</td>
-<td>Like VAR, with outside drivers known ahead</td>
+<td>Series that have an effect on each other, with drivers</td>
+<td>Like VAR, with outside drivers that you know ahead</td>
 </tr>
 <tr>
 <td><code>ts.dynamic_factor</code></td>
@@ -5310,16 +5396,22 @@ and <code>api.catalog.recommend()</code> rank them for your goal and data (see
 </tr>
 <tr>
 <td><code>ts.markov_switching</code></td>
-<td>Switching between regimes</td>
-<td>Behaviour jumps between distinct modes (normal / promotion-driven)</td>
+<td>Changes between regimes</td>
+<td>The behaviour jumps between different modes (normal / with promotions)</td>
 </tr>
 </tbody>
 </table>
-<p>Not sure the series is ready? The <strong>time-series readiness</strong> workflow template runs the
-unit-root tests, chooses the differencing and the AR/MA orders, backtests <code>ts.sarimax</code>
-against a naive forecast and only keeps it if it wins; see <a href="../../concepts/workflows/">Workflows</a>.</p>
+<p>Is the series ready? If you are not sure, use the <strong>time-series readiness</strong> workflow
+template. It does these steps:</p>
+<ol>
+<li>It runs the unit-root tests.</li>
+<li>It selects the differencing and the AR/MA orders.</li>
+<li>It does a backtest of <code>ts.sarimax</code> against a naive forecast.</li>
+<li>It keeps <code>ts.sarimax</code> only if it wins.</li>
+</ol>
+<p>See <a href="../../concepts/workflows/">Workflows</a>.</p>
 <h2 id="your-data-in-the-models-names">Your data, in the model's names<a class="headerlink" href="#your-data-in-the-models-names" title="Permanent link">&para;</a></h2>
-<p>The models use canonical names; bind your dataset's names onto them in <code>data.bind</code>:</p>
+<p>The models use canonical names. Bind the names of your dataset to them in <code>data.bind</code>:</p>
 <table>
 <thead>
 <tr>
@@ -5338,27 +5430,27 @@ against a naive forecast and only keeps it if it wins; see <a href="../../concep
 </tr>
 <tr>
 <td><code>variable</code></td>
-<td>Multivariate models only: the series modelled jointly (realgdp, realcons, ...).</td>
+<td>Multivariate models only: the series that the model uses together (realgdp, realcons, ...).</td>
 </tr>
 <tr>
 <td><code>&lt;series...&gt;</code></td>
-<td>Panel dims you name in <code>settings.series_dims</code> (<code>geo</code>, <code>product</code>). One model is fitted per series.</td>
+<td>Panel dims that you name in <code>settings.series_dims</code> (<code>geo</code>, <code>product</code>). The plugin fits one model for each series.</td>
 </tr>
 <tr>
 <td><code>&lt;exog...&gt;</code></td>
-<td>Drivers you name in <code>settings.exog</code>; <code>(&lt;series...&gt;, t)</code>; their future values are required for forecasts.</td>
+<td>Drivers that you name in <code>settings.exog</code>, as <code>(&lt;series...&gt;, t)</code>. Forecasts need their future values.</td>
 </tr>
 </tbody>
 </table>
-<p>A table with one column per series (realgdp, realcons, realinv) becomes <code>y(variable, t)</code>
-with the ingest mapping's <code>wide</code> variables; see <a href="../../guides/guided-data/">From a spreadsheet to a Guided
-draft</a>.</p>
+<p>A table with one column for each series (realgdp, realcons, realinv) becomes
+<code>y(variable, t)</code> with the <code>wide</code> variables of the ingest mapping. See <a href="../../guides/guided-data/">From a spreadsheet to
+a Guided draft</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Panels are a per-series loop</p>
-<p>With <code>series_dims: [geo]</code> every geo gets its own model (its own orders, parameters and
-residual checks). Geos are a <code>fixed</code> dim: a forecast for a geo the model never saw is
-refused with <code>UNSEEN_LEVELS</code>. Multivariate models loop the same way: one joint VAR per
-geo, for example.</p>
+<p>With <code>series_dims: [geo]</code>, each geo gets its own model, with its own orders, parameters
+and residual checks. Geos are a <code>fixed</code> dim. The platform refuses a forecast for a geo
+that the model did not see, with <code>UNSEEN_LEVELS</code>. Multivariate models do the same loop.
+For example, there is one joint VAR for each geo.</p>
 </div>
 <h2 id="an-arimax-per-geo">An ARIMAX per geo<a class="headerlink" href="#an-arimax-per-geo" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_statsmodels.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">sales_dataset</span><span class="p">,</span> <span class="n">sales_schema</span>
@@ -5392,8 +5484,8 @@ geo, for example.</p>
 </span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="nb">print</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">"estimate"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="p">[</span><span class="s2">"price"</span><span class="p">,</span> <span class="s2">"promo"</span><span class="p">])</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
 </span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="c1"># [[-7.96 11.62] [-7.32 12.18]] - per geo, close to the true -8 and +12</span>
 </span></code></pre></div>
-<p>The bundle's <code>params</code> group is the parameter table: estimate, standard error, z/t
-statistic, p-value and 95% interval for every parameter of every series.</p>
+<p>The <code>params</code> group of the bundle is the parameter table. For each parameter of each series,
+it gives the estimate, standard error, z/t statistic, p-value and 95% interval.</p>
 <h2 id="forecasts-and-the-drivers-future">Forecasts and the drivers' future<a class="headerlink" href="#forecasts-and-the-drivers-future" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">plan</span> <span class="o">=</span> <span class="n">sales_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">112</span><span class="p">,</span> <span class="n">geos</span><span class="o">=</span><span class="p">[</span><span class="s2">"north"</span><span class="p">,</span> <span class="s2">"south"</span><span class="p">],</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">104</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">request</span> <span class="o">=</span> <span class="n">load_score_request</span><span class="p">(</span><span class="s2">"""</span>
@@ -5408,106 +5500,183 @@ statistic, p-value and 95% interval for every parameter of every series.</p>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">forecast</span><span class="p">[</span><span class="s2">"summary"</span><span class="p">]</span><span class="o">.</span><span class="n">to_dataset</span><span class="p">()[</span><span class="s2">"y_hat"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">geo</span><span class="o">=</span><span class="s2">"north"</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
 </span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># rows median, q5, q95 - the 90% prediction interval around the median</span>
 </span></code></pre></div>
-<p>What a score returns, for every model:</p>
+<p>For all models, a score gives these results:</p>
 <ul>
-<li><strong>inside the fitted range</strong>: the model's one-step-ahead predictions from the fitted
-  history (the payload's targets and drivers are not used there);</li>
-<li><strong>after it</strong>: a multi-step forecast from the end of the fit, using the drivers in the
-  payload. A missing driver - or a missing value of one - fails with
-  <code>MISSING_FUTURE_COVARIATE</code> (422). With <code>future_covariates: carry_last</code>,
-  <code>seasonal_naive</code> or <code>zero</code> the platform extends drivers you leave out (see
+<li><strong>In the fitted range</strong>: the one-step-ahead predictions of the model from the fitted
+  history. The model does not use the targets and drivers of the payload there. The only
+  exception is a forecast with actuals (see below).</li>
+<li><strong>After the fitted range</strong>: a multi-step forecast from the end of the fit, with the drivers
+  in the payload. If a driver or a value of a driver is missing, the score fails with
+  <code>MISSING_FUTURE_COVARIATE</code> (422). With <code>future_covariates: carry_last</code>, <code>seasonal_naive</code>
+  or <code>zero</code>, the platform extends the drivers that you do not give (see
   <a href="../../guides/time-series/">Forecasting</a>).</li>
 </ul>
-<p>A what-if on the future is just another payload: change the planned drivers (a promotion
-every week, a 5% price rise) and forecast again.</p>
-<p>Outputs are <strong>quantiles</strong> (<code>y_hat(quantile, ..., t)</code>; the representation <code>quantiles</code>): by
-default 2.5%, 5%, 10%, 25%, 50%, 75%, 90%, 95% and 97.5%, so you get the median and the
-50/80/90/95% bands (<code>settings.quantiles</code> changes them; 5%, 50% and 95% are always
-included). They are <strong>prediction intervals</strong> - they include the noise of the next value -
-for both output kinds, because statsmodels has no separate interval for the expected
-value. Quantiles describe one cell each, so totals across geos or series are refused
-(<code>CAPABILITY_UNSUPPORTED</code>); sum the series in the pipeline and model the total instead.</p>
-<p><code>counterfactual</code>, <code>simulate</code> and <code>filter</code> score modes are not offered (<code>MODE_NOT_SUPPORTED</code>).</p>
+<p>A what-if on the future is another payload. Change the planned drivers, for example a
+promotion each week or a 5% price increase. Then forecast again.</p>
+<p>The outputs are <strong>quantiles</strong> (<code>y_hat(quantile, ..., t)</code>, with the representation
+<code>quantiles</code>). The default quantiles are 2.5%, 5%, 10%, 25%, 50%, 75%, 90%, 95% and 97.5%.
+Thus, you get the median and the 50/80/90/95% bands. <code>settings.quantiles</code> changes them, but
+the outputs always include 5%, 50% and 95%.</p>
+<p>The quantiles are <strong>prediction intervals</strong> for the two output kinds. They include the noise
+of the next value, because statsmodels has no separate interval for the expected value. Each
+quantile is for one cell. Thus, the platform refuses totals across geos or series
+(<code>CAPABILITY_UNSUPPORTED</code>). To get a total, add the series in the pipeline and model the
+total.</p>
+<p>The plugin does not give the score modes <code>counterfactual</code>, <code>simulate</code> and <code>filter</code>
+(<code>MODE_NOT_SUPPORTED</code>). To update a forecast with new data, use a <code>forecast</code> with actuals.</p>
+<h2 id="forecasting-from-new-actuals">Forecasting from new actuals<a class="headerlink" href="#forecasting-from-new-actuals" title="Permanent link">&para;</a></h2>
+<p>All statsmodels models can move their forecast origin forward without a new fit
+(<code>capabilities.conditions_on_actuals</code>). The rules are on
+<a href="../../concepts/forecasting-with-actuals/">Forecasts with actuals</a>. Send the periods that
+came after the fit, with their target values and drivers. Then send the periods to forecast,
+with an empty target:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># Weeks 105-108 arrived for north, 105-106 for south: send them with the weeks to forecast</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># (sales left empty) and the planned drivers. Nothing is refitted.</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">latest</span> <span class="o">=</span> <span class="n">sales_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">112</span><span class="p">,</span> <span class="n">geos</span><span class="o">=</span><span class="p">[</span><span class="s2">"north"</span><span class="p">,</span> <span class="s2">"south"</span><span class="p">],</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">104</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">weeks</span> <span class="o">=</span> <span class="n">latest</span><span class="p">[</span><span class="s2">"date"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">latest</span><span class="p">[</span><span class="s2">"sales"</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[{</span><span class="s2">"geo"</span><span class="p">:</span> <span class="s2">"north"</span><span class="p">,</span> <span class="s2">"date"</span><span class="p">:</span> <span class="n">weeks</span><span class="p">[</span><span class="mi">4</span><span class="p">:]}]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">latest</span><span class="p">[</span><span class="s2">"sales"</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[{</span><span class="s2">"geo"</span><span class="p">:</span> <span class="s2">"south"</span><span class="p">,</span> <span class="s2">"date"</span><span class="p">:</span> <span class="n">weeks</span><span class="p">[</span><span class="mi">2</span><span class="p">:]}]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">updated</span> <span class="o">=</span> <span class="n">score_bundle</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">latest</span><span class="p">)</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">updated</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"conditioning"</span><span class="p">])[</span><span class="s2">"message"</span><span class="p">])</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1"># Forecast updated with 6 actuals (2024-12-29 to 2025-01-19) across 2 of 2 series after the</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1"># fitted history, which ends 2024-12-22; the model's parameters were not re-estimated. ...</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="n">north</span> <span class="o">=</span> <span class="n">updated</span><span class="p">[</span><span class="s2">"summary"</span><span class="p">]</span><span class="o">.</span><span class="n">to_dataset</span><span class="p">()[</span><span class="s2">"y_hat"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">geo</span><span class="o">=</span><span class="s2">"north"</span><span class="p">)</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">north</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">weeks</span><span class="p">[</span><span class="mi">4</span><span class="p">:])</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>  <span class="c1"># the forecast from north's last actual</span>
+</span></code></pre></div>
+<p>A univariate model updates each series with its own actuals. Thus, the series of a panel can
+end at different dates. The answer includes all the periods that you sent. It gives
+one-step-ahead predictions on the actuals, and the forecast after the last actual of each
+series. Actuals for periods in the fitted range replace the fitted values (revised data).</p>
+<p>The fitted parameters never change. The fitted noise variance, and thus the width of the
+bands, also never changes. This table shows how each model uses the new data:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Updated with the actuals by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ts.sarimax</code>, <code>ts.arima</code>, <code>ts.unobserved_components</code>, <code>ts.varmax</code>, <code>ts.dynamic_factor</code></td>
+<td>the Kalman filter with the fitted parameters over the history and the actuals. This is statsmodels' <code>results.append(new, refit=False)</code>. Differencing and seasonal differencing are part of the model. Thus, actuals and forecasts are in the units of the data. The filter uses empty periods in the actuals as missing values (the univariate state-space models accept missing targets).</td>
+</tr>
+<tr>
+<td><code>ts.ets</code></td>
+<td>the exponential-smoothing recursions with the fitted smoothing weights and initial states</td>
+</tr>
+<tr>
+<td><code>ts.theta</code></td>
+<td>the fitted SES weight (or IMA(1,1) filter with <code>use_mle</code>), drift and seasonal indices</td>
+</tr>
+<tr>
+<td><code>ts.ardl</code>, <code>ts.ecm</code></td>
+<td>the fitted equation on the lags of the result and the drivers that you supply (<code>apply(refit=False)</code>; the ECM uses its levels ARDL)</td>
+</tr>
+<tr>
+<td><code>ts.var</code>, <code>ts.vecm</code></td>
+<td>the fitted equations on the lags that you supply (levels for the VECM). The deterministic trend continues.</td>
+</tr>
+<tr>
+<td><code>ts.markov_switching</code></td>
+<td>the Hamilton filter with the fitted parameters. The regime probabilities after the last actual start the forecast.</td>
+</tr>
+</tbody>
+</table>
+<p>Joint models of series (<code>ts.var</code>, <code>ts.vecm</code>, <code>ts.varmax</code>, <code>ts.dynamic_factor</code>) need a value
+of each series for each period with actuals after the fit. If not, the score fails with
+<code>ACTUALS_INVALID</code>. The platform applies the preprocessing steps of the spec (for example a
+<code>core.log1p</code> or a standardisation) to the actuals before the update. It reverses them on the
+forecast, as for all payloads.</p>
+<p>A <code>transform.log</code>, <code>transform.box_cox</code> or <code>transform.difference</code> of a workflow is not such a
+step. A model that you fit on its output refuses actuals (see
+<a href="../../concepts/forecasting-with-actuals/#which-models-can">Forecasts with actuals</a>). Use the
+differencing of the model (<code>order</code> <code>d</code>, seasonal <code>D</code>) instead. Fit the model again from time
+to time, so that the parameters learn from the new data.</p>
 <h2 id="the-models">The models<a class="headerlink" href="#the-models" title="Permanent link">&para;</a></h2>
-<p>Each section starts with the model's About card (what the web app, <code>mapi about</code> and
-<code>api.catalog.about()</code> show; a docs test keeps the quotes identical to the catalog), then a
-minimal spec and, for models with drivers, a forecast from planned drivers. The specs all use
-this small wrapper - the data binding, a holdout of the last 8 periods scored before the
-model is refitted on everything - and synthetic or public data from
-<code>mapi_plugin_statsmodels.datasets</code>; the documentation tests run every one of them
-(<code>docs/snippets/statsmodels_catalog.py</code>):</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_statsmodels.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">ECM_SCHEMA</span><span class="p">,</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">GROWTH_SCHEMA</span><span class="p">,</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">MACRO_SCHEMA</span><span class="p">,</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">REGIME_SCHEMA</span><span class="p">,</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">ecm_dataset</span><span class="p">,</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">macro_dataset</span><span class="p">,</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">macro_growth</span><span class="p">,</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">regime_dataset</span><span class="p">,</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">sales_dataset</span><span class="p">,</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="n">sales_schema</span><span class="p">,</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="p">)</span>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_spec</span><span class="p">,</span> <span class="n">score_bundle</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_score_request</span>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="k">def</span><span class="w"> </span><span class="nf">spec</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">bind</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"{dims: {t: date}, vars: {y: sales}}"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="sd">"""A complete ModelSpec around a ``model:`` block: the data binding and a holdout of the</span>
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="sd">    last 8 periods, scored before the model is refitted on everything."""</span>
-</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">"""</span>
-</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="s2">apiVersion: mapi/v1</span>
-</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="s2">kind: ModelSpec</span>
-</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="s2">metadata: </span><span class="se">{{</span><span class="s2">name: example, project: growth</span><span class="se">}}</span>
-</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="s2">data:</span>
-</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="s2">  dataset: dataset://growth/example@latest</span>
-</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="s2">  bind: </span><span class="si">{</span><span class="n">bind</span><span class="si">}</span>
-</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="s2">  split: </span><span class="se">{{</span><span class="s2">kind: time_holdout, dim: t, last: 8</span><span class="se">}}</span>
-</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="s2">model:</span>
-</span><span id="__span-2-29"><a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="si">{</span><span class="n">model</span><span class="si">}</span>
-</span><span id="__span-2-30"><a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="s2">  fit: </span><span class="se">{{</span><span class="s2">mode: evaluate_then_refit, seed: 1</span><span class="se">}}</span>
-</span><span id="__span-2-31"><a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="s2">evaluate: </span><span class="se">{{</span><span class="s2">metrics: [rmse, mape, coverage_90]</span><span class="se">}}</span>
-</span><span id="__span-2-32"><a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="s2">"""</span>
-</span><span id="__span-2-33"><a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>
-</span><span id="__span-2-34"><a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>
-</span><span id="__span-2-35"><a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="k">def</span><span class="w"> </span><span class="nf">forecast</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="n">future</span><span class="p">,</span> <span class="n">periods</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">):</span>  <span class="c1"># type: ignore[no-untyped-def]</span>
-</span><span id="__span-2-36"><a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">    </span><span class="sd">"""Forecast ``periods`` ahead from planned drivers (the future rows of ``future``)."""</span>
-</span><span id="__span-2-37"><a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>    <span class="n">request</span> <span class="o">=</span> <span class="n">load_score_request</span><span class="p">(</span><span class="sa">f</span><span class="s2">"""</span>
-</span><span id="__span-2-38"><a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="s2">apiVersion: mapi/v1</span>
-</span><span id="__span-2-39"><a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="s2">kind: ScoreRequest</span>
-</span><span id="__span-2-40"><a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="s2">model: endpoint://growth/example</span>
-</span><span id="__span-2-41"><a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="s2">mode: forecast</span>
-</span><span id="__span-2-42"><a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="s2">horizon: </span><span class="se">{{</span><span class="s2">dim: t, periods: </span><span class="si">{</span><span class="n">periods</span><span class="si">}</span><span class="se">}}</span>
-</span><span id="__span-2-43"><a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="s2">output: </span><span class="se">{{</span><span class="s2">summary: [median, q5, q95]</span><span class="se">}}</span>
-</span><span id="__span-2-44"><a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="s2">"""</span><span class="p">)</span>
-</span><span id="__span-2-45"><a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>    <span class="k">return</span> <span class="n">score_bundle</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">future</span><span class="p">)[</span><span class="s2">"summary"</span><span class="p">]</span><span class="o">.</span><span class="n">to_dataset</span><span class="p">()</span>
-</span><span id="__span-2-46"><a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>
-</span><span id="__span-2-47"><a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a>
-</span><span id="__span-2-48"><a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="n">weekly</span> <span class="o">=</span> <span class="n">sales_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">112</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># sales(date) with price and promo</span>
-</span><span id="__span-2-49"><a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="n">history</span><span class="p">,</span> <span class="n">plan</span> <span class="o">=</span> <span class="n">weekly</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">104</span><span class="p">)),</span> <span class="n">weekly</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">104</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
-</span><span id="__span-2-50"><a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="n">panel</span> <span class="o">=</span> <span class="n">sales_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">104</span><span class="p">,</span> <span class="n">geos</span><span class="o">=</span><span class="p">[</span><span class="s2">"north"</span><span class="p">,</span> <span class="s2">"south"</span><span class="p">],</span> <span class="n">seed</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># sales(geo, date)</span>
+<p>Each section starts with the About card of the model. The web app, <code>mapi about</code> and
+<code>api.catalog.about()</code> show this card. A docs test makes sure that the quotes are the same as
+the catalog. Then each section gives a minimal spec. For models with drivers, it also gives a
+forecast from planned drivers.</p>
+<p>All the specs use this small wrapper. The wrapper has the data binding and a holdout of the
+last 8 periods. The plugin scores the holdout before it fits the model again on all the data.
+The specs use synthetic or public data from <code>mapi_plugin_statsmodels.datasets</code>. The
+documentation tests run each spec (<code>docs/snippets/statsmodels_catalog.py</code>):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_statsmodels.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">ECM_SCHEMA</span><span class="p">,</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">GROWTH_SCHEMA</span><span class="p">,</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">MACRO_SCHEMA</span><span class="p">,</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">REGIME_SCHEMA</span><span class="p">,</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">ecm_dataset</span><span class="p">,</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">macro_dataset</span><span class="p">,</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">macro_growth</span><span class="p">,</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">regime_dataset</span><span class="p">,</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">sales_dataset</span><span class="p">,</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">sales_schema</span><span class="p">,</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="p">)</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_spec</span><span class="p">,</span> <span class="n">score_bundle</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_score_request</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="k">def</span><span class="w"> </span><span class="nf">spec</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">bind</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"{dims: {t: date}, vars: {y: sales}}"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">    </span><span class="sd">"""A complete ModelSpec around a ``model:`` block: the data binding and a holdout of the</span>
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="sd">    last 8 periods, scored before the model is refitted on everything."""</span>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">"""</span>
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="s2">apiVersion: mapi/v1</span>
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="s2">kind: ModelSpec</span>
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="s2">metadata: </span><span class="se">{{</span><span class="s2">name: example, project: growth</span><span class="se">}}</span>
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="s2">data:</span>
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="s2">  dataset: dataset://growth/example@latest</span>
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="s2">  bind: </span><span class="si">{</span><span class="n">bind</span><span class="si">}</span>
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="s2">  split: </span><span class="se">{{</span><span class="s2">kind: time_holdout, dim: t, last: 8</span><span class="se">}}</span>
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="s2">model:</span>
+</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a><span class="si">{</span><span class="n">model</span><span class="si">}</span>
+</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a><span class="s2">  fit: </span><span class="se">{{</span><span class="s2">mode: evaluate_then_refit, seed: 1</span><span class="se">}}</span>
+</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a><span class="s2">evaluate: </span><span class="se">{{</span><span class="s2">metrics: [rmse, mape, coverage_90]</span><span class="se">}}</span>
+</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a><span class="s2">"""</span>
+</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>
+</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>
+</span><span id="__span-3-35"><a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a><span class="k">def</span><span class="w"> </span><span class="nf">forecast</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="n">future</span><span class="p">,</span> <span class="n">periods</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">):</span>  <span class="c1"># type: ignore[no-untyped-def]</span>
+</span><span id="__span-3-36"><a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a><span class="w">    </span><span class="sd">"""Forecast ``periods`` ahead from planned drivers (the future rows of ``future``)."""</span>
+</span><span id="__span-3-37"><a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>    <span class="n">request</span> <span class="o">=</span> <span class="n">load_score_request</span><span class="p">(</span><span class="sa">f</span><span class="s2">"""</span>
+</span><span id="__span-3-38"><a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a><span class="s2">apiVersion: mapi/v1</span>
+</span><span id="__span-3-39"><a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a><span class="s2">kind: ScoreRequest</span>
+</span><span id="__span-3-40"><a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a><span class="s2">model: endpoint://growth/example</span>
+</span><span id="__span-3-41"><a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a><span class="s2">mode: forecast</span>
+</span><span id="__span-3-42"><a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a><span class="s2">horizon: </span><span class="se">{{</span><span class="s2">dim: t, periods: </span><span class="si">{</span><span class="n">periods</span><span class="si">}</span><span class="se">}}</span>
+</span><span id="__span-3-43"><a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a><span class="s2">output: </span><span class="se">{{</span><span class="s2">summary: [median, q5, q95]</span><span class="se">}}</span>
+</span><span id="__span-3-44"><a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a><span class="s2">"""</span><span class="p">)</span>
+</span><span id="__span-3-45"><a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>    <span class="k">return</span> <span class="n">score_bundle</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">future</span><span class="p">)[</span><span class="s2">"summary"</span><span class="p">]</span><span class="o">.</span><span class="n">to_dataset</span><span class="p">()</span>
+</span><span id="__span-3-46"><a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>
+</span><span id="__span-3-47"><a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a>
+</span><span id="__span-3-48"><a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a><span class="n">weekly</span> <span class="o">=</span> <span class="n">sales_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">112</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># sales(date) with price and promo</span>
+</span><span id="__span-3-49"><a id="__codelineno-3-49" name="__codelineno-3-49" href="#__codelineno-3-49"></a><span class="n">history</span><span class="p">,</span> <span class="n">plan</span> <span class="o">=</span> <span class="n">weekly</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">104</span><span class="p">)),</span> <span class="n">weekly</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">104</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+</span><span id="__span-3-50"><a id="__codelineno-3-50" name="__codelineno-3-50" href="#__codelineno-3-50"></a><span class="n">panel</span> <span class="o">=</span> <span class="n">sales_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">104</span><span class="p">,</span> <span class="n">geos</span><span class="o">=</span><span class="p">[</span><span class="s2">"north"</span><span class="p">,</span> <span class="s2">"south"</span><span class="p">],</span> <span class="n">seed</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># sales(geo, date)</span>
 </span></code></pre></div>
 <h3 id="tssarimax-forecast-with-past-values-and-drivers"><code>ts.sarimax</code> - forecast with past values and drivers<a class="headerlink" href="#tssarimax-forecast-with-past-values-and-drivers" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Forecasts a series from its own recent past, its seasonal pattern and outside drivers you know ahead, such as planned prices or holidays.</p>
+<p>Forecasts a series from its recent past, its seasonal pattern and outside drivers that you know in advance, such as planned prices or holidays.</p>
 </blockquote>
-<p><strong>Use it when</strong> you forecast one regular series a few periods ahead and known future drivers
-(prices, promotions, holidays) matter. <strong>Pick something else when</strong> you have less than about
-50 periods, or several series drive each other (use <code>ts.var</code>).</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">SARIMAX</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="s2">  use: ts.sarimax@^1</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="s2">  settings:</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="s2">    order: [1, 0, 0]          # AR(1) errors, no differencing, no MA term</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="s2">    exog: [price, promo]      # drivers you know ahead</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="s2">"""</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">sarimax</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">SARIMAX</span><span class="p">),</span> <span class="n">history</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">())</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">fan</span> <span class="o">=</span> <span class="n">forecast</span><span class="p">(</span><span class="n">sarimax</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"sales"</span><span class="p">))</span>  <span class="c1"># next 8 weeks from the planned price/promo</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">fan</span><span class="p">[</span><span class="s2">"y_hat"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"median"</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+<p><strong>Use it when</strong> you forecast one regular series a few periods ahead, and known future drivers
+(prices, promotions, holidays) are important. <strong>Use a different model when</strong> you have less
+than about 50 periods, or when many series have an effect on each other (use <code>ts.var</code>).</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">SARIMAX</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="s2">  use: ts.sarimax@^1</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="s2">  settings:</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="s2">    order: [1, 0, 0]          # AR(1) errors, no differencing, no MA term</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="s2">    exog: [price, promo]      # drivers you know ahead</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="s2">"""</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">sarimax</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">SARIMAX</span><span class="p">),</span> <span class="n">history</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">())</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">fan</span> <span class="o">=</span> <span class="n">forecast</span><span class="p">(</span><span class="n">sarimax</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"sales"</span><span class="p">))</span>  <span class="c1"># next 8 weeks from the planned price/promo</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">fan</span><span class="p">[</span><span class="s2">"y_hat"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"median"</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
 </span></code></pre></div>
-<p>Seasonal ARIMA with drivers - a regression with ARIMA errors - estimated by exact maximum
-likelihood with the Kalman filter. Missing target values are allowed (the filter skips them).
-The forecast needs the drivers' planned future values (here <code>plan</code> without <code>sales</code>); a missing
-one fails with <code>MISSING_FUTURE_COVARIATE</code> unless the request says how to extend it.</p>
+<p>This is seasonal ARIMA with drivers, that is, a regression with ARIMA errors. The Kalman
+filter estimates it by exact maximum likelihood. Missing target values are permitted (the
+filter skips them). The forecast needs the planned future values of the drivers (here <code>plan</code>
+without <code>sales</code>). If one is missing, the forecast fails with <code>MISSING_FUTURE_COVARIATE</code>. The
+exception is when the request tells how to extend the driver.</p>
 <table>
 <thead>
 <tr>
@@ -5525,12 +5694,12 @@ one fails with <code>MISSING_FUTURE_COVARIATE</code> unless the request says how
 <tr>
 <td><code>seasonal_order</code></td>
 <td><code>[0, 0, 0, 0]</code></td>
-<td><code>(P, D, Q, s)</code> for a pattern repeating every <code>s</code> periods</td>
+<td><code>(P, D, Q, s)</code> for a pattern that repeats each <code>s</code> periods</td>
 </tr>
 <tr>
 <td><code>trend</code></td>
 <td><code>auto</code></td>
-<td><code>n</code>, <code>c</code>, <code>t</code>, <code>ct</code>; <code>auto</code> is a constant unless the series is differenced</td>
+<td><code>n</code>, <code>c</code>, <code>t</code>, <code>ct</code>. <code>auto</code> is a constant, unless the series is differenced.</td>
 </tr>
 <tr>
 <td><code>exog</code></td>
@@ -5540,261 +5709,301 @@ one fails with <code>MISSING_FUTURE_COVARIATE</code> unless the request says how
 <tr>
 <td><code>series_dims</code></td>
 <td><code>[]</code></td>
-<td>panel dims: one model per series</td>
+<td>panel dims: one model for each series</td>
 </tr>
 </tbody>
 </table>
-<p>Not sure about <code>order</code>? The <a href="../../guides/workflow-cookbook/#readiness-to-arimax">readiness workflow</a>
-chooses it from unit-root tests and an information-criterion search, and keeps the model
-only if it beats a naive forecast.</p>
+<p>Are you not sure about <code>order</code>? The <a href="../../guides/workflow-cookbook/#readiness-to-arimax">readiness workflow</a>
+selects it from unit-root tests and a search on an information criterion. It keeps the model
+only if it is better than a naive forecast.</p>
 <h3 id="tsarima-forecast-from-past-values"><code>ts.arima</code> - forecast from past values<a class="headerlink" href="#tsarima-forecast-from-past-values" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Forecasts a series from its own recent past and trend, without outside drivers.</p>
+<p>Forecasts a series from its recent past and trend, without outside drivers.</p>
 </blockquote>
-<p><strong>Use it when</strong> you have only the series itself and want a solid, well-known method. <strong>Pick
-something else when</strong> outside drivers explain most of the movement (use <code>ts.sarimax</code>).</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">ARIMA</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="s2">  use: ts.arima@^1</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="s2">  settings: {order: [1, 1, 1], series_dims: [geo]}   # one ARIMA(1,1,1) per geo</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="s2">"""</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">arima</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">ARIMA</span><span class="p">),</span> <span class="n">panel</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">(</span><span class="n">geo</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+<p><strong>Use it when</strong> you have only the series itself and want a solid, well-known method. <strong>Use a
+different model when</strong> outside drivers explain most of the movement (use <code>ts.sarimax</code>).</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">ARIMA</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="s2">  use: ts.arima@^1</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="s2">  settings: {order: [1, 1, 1], series_dims: [geo]}   # one ARIMA(1,1,1) per geo</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="s2">"""</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">arima</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">ARIMA</span><span class="p">),</span> <span class="n">panel</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">(</span><span class="n">geo</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
 </span></code></pre></div>
-<p>The same estimator as <code>ts.sarimax</code> without drivers; here one ARIMA(1,1,1) per geo of a panel.
-<code>ts.arima</code> refuses a constant together with differencing (use <code>trend: t</code> for a drift).</p>
+<p>This is the same estimator as <code>ts.sarimax</code>, without drivers. Here, there is one
+ARIMA(1,1,1) for each geo of a panel. <code>ts.arima</code> refuses a constant together with
+differencing (use <code>trend: t</code> for a drift).</p>
 <h3 id="tsets-exponential-smoothing"><code>ts.ets</code> - exponential smoothing<a class="headerlink" href="#tsets-exponential-smoothing" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Forecasts a series by giving recent values more weight than older ones, with optional trend and seasonality, and is quick and robust.</p>
+<p>Forecasts a series and gives recent values more weight than older values. It has an optional trend and seasonality, and it is quick and robust.</p>
 </blockquote>
-<p><strong>Use it when</strong> you need a fast, reliable baseline and the level, trend and season shift
-slowly. <strong>Pick something else when</strong> outside drivers explain most of the movement.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">ETS</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="s2">  use: ts.ets@^1</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="s2">  settings: {trend: add, damped_trend: true}</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="s2">"""</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">ets</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">ETS</span><span class="p">),</span> <span class="n">history</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">())</span>  <span class="c1"># drivers are not used</span>
+<p><strong>Use it when</strong> you need a fast, reliable baseline, and the level, trend and season change
+slowly. <strong>Use a different model when</strong> outside drivers explain most of the movement.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">ETS</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="s2">  use: ts.ets@^1</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="s2">  settings: {trend: add, damped_trend: true}</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="s2">"""</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">ets</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">ETS</span><span class="p">),</span> <span class="n">history</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">())</span>  <span class="c1"># drivers are not used</span>
 </span></code></pre></div>
-<p>The error-trend-season model (<code>ETSModel</code>): <code>error</code>, <code>trend</code> (<code>add</code>/<code>mul</code>), <code>damped_trend</code>,
-<code>seasonal</code> with <code>seasonal_periods</code>. Additive models have closed-form intervals;
-multiplicative ones are simulated (<code>simulate_repetitions</code> paths, seeded by the request's
-seed, so the same request gives the same quantiles).</p>
+<p>This is the error-trend-season model (<code>ETSModel</code>): <code>error</code>, <code>trend</code> (<code>add</code>/<code>mul</code>),
+<code>damped_trend</code>, and <code>seasonal</code> with <code>seasonal_periods</code>. Additive models have closed-form
+intervals. The plugin simulates the intervals of multiplicative models
+(<code>simulate_repetitions</code> paths). The seed of the request sets the paths. Thus, the same
+request gives the same quantiles.</p>
 <h3 id="tstheta-a-simple-strong-baseline"><code>ts.theta</code> - a simple, strong baseline<a class="headerlink" href="#tstheta-a-simple-strong-baseline" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Forecasts a series by combining a straight-line trend with smoothed recent values, a simple method that is hard to beat.</p>
+<p>Forecasts a series with a combination of a straight-line trend and smoothed recent values. This simple method is hard to beat.</p>
 </blockquote>
-<p><strong>Use it when</strong> you want a strong, simple baseline to compare other models against. <strong>Pick
-something else when</strong> outside drivers matter a lot or you need detailed explanations.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">THETA</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="s2">  use: ts.theta@^1</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="s2">  settings: {series_dims: [geo]}</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="s2">"""</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">theta</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">THETA</span><span class="p">),</span> <span class="n">panel</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">(</span><span class="n">geo</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+<p><strong>Use it when</strong> you want a strong, simple baseline to compare other models against. <strong>Use a
+different model when</strong> outside drivers are very important, or when you need detailed
+explanations.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">THETA</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="s2">  use: ts.theta@^1</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="s2">  settings: {series_dims: [geo]}</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="s2">"""</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">theta</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">THETA</span><span class="p">),</span> <span class="n">panel</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">(</span><span class="n">geo</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
 </span></code></pre></div>
-<p>The theta method with optional seasonal adjustment (<code>period</code>, <code>deseasonalize</code>, <code>method</code>,
-<code>theta</code>). It is the benchmark to beat in a <a href="../../guides/workflow-cookbook/#forecast-bake-off">forecast bake-off</a>.</p>
+<p>This is the theta method with optional seasonal adjustment (<code>period</code>, <code>deseasonalize</code>,
+<code>method</code>, <code>theta</code>). It is the benchmark to beat in a <a href="../../guides/workflow-cookbook/#forecast-bake-off">forecast bake-off</a>.</p>
 <h3 id="tsunobserved_components-trend-season-and-noise"><code>ts.unobserved_components</code> - trend, season and noise<a class="headerlink" href="#tsunobserved_components-trend-season-and-noise" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Splits a series into a slowly changing level and trend, a seasonal pattern and noise, and forecasts it from those parts.</p>
+<p>Divides a series into a level and a trend that change slowly, a seasonal pattern and noise. It forecasts the series from these parts.</p>
 </blockquote>
 <p><strong>Use it when</strong> you want to see the underlying trend without the noise, and the trend and
-season change slowly. <strong>Pick something else when</strong> you only need a quick baseline.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">UC</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="s2">  use: ts.unobserved_components@^1</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="s2">  settings: {level: local linear trend, exog: [price]}</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="s2">"""</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">uc</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">UC</span><span class="p">),</span> <span class="n">history</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">())</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">uc</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"components"</span><span class="p">]</span><span class="o">.</span><span class="n">data_vars</span><span class="p">))</span>  <span class="c1"># the smoothed level, trend, ...</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">uc_fan</span> <span class="o">=</span> <span class="n">forecast</span><span class="p">(</span><span class="n">uc</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"sales"</span><span class="p">))</span>
+season change slowly. <strong>Use a different model when</strong> you only need a quick baseline.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">UC</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="s2">  use: ts.unobserved_components@^1</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="s2">  settings: {level: local linear trend, exog: [price]}</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="s2">"""</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">uc</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">UC</span><span class="p">),</span> <span class="n">history</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">())</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">uc</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"components"</span><span class="p">]</span><span class="o">.</span><span class="n">data_vars</span><span class="p">))</span>  <span class="c1"># the smoothed level, trend, ...</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">uc_fan</span> <span class="o">=</span> <span class="n">forecast</span><span class="p">(</span><span class="n">uc</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"sales"</span><span class="p">))</span>
 </span></code></pre></div>
-<p>A structural model: <code>level</code> (<code>local level</code>, <code>local linear trend</code>, <code>smooth trend</code>, ...),
-optional stochastic <code>seasonal</code>, <code>cycle</code>, <code>autoregressive</code> noise and drivers. The smoothed
-level, trend and season are stored in the bundle's <code>components</code> group and shown in the Model
-Explorer's decomposition; with drivers, forecasts need their planned values.</p>
+<p>This is a structural model. It has a <code>level</code> (<code>local level</code>, <code>local linear trend</code>,
+<code>smooth trend</code>, ...), and optional stochastic <code>seasonal</code>, <code>cycle</code>, <code>autoregressive</code> noise
+and drivers. The <code>components</code> group of the bundle keeps the smoothed level, trend and season.
+The decomposition of the Model Explorer shows them. With drivers, forecasts need the planned
+values of the drivers.</p>
 <h3 id="tsardl-effects-that-build-up-over-time"><code>ts.ardl</code> - effects that build up over time<a class="headerlink" href="#tsardl-effects-that-build-up-over-time" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Explains a series from its own past and the current and past values of drivers, so you can see how an effect builds up over several periods.</p>
+<p>Explains a series from its past and from the current and past values of drivers. You can see how an effect increases over several periods.</p>
 </blockquote>
-<p><strong>Use it when</strong> a driver's effect is spread over several periods. <strong>Pick something else when</strong>
-effects are immediate only (a simple regression is enough).</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">ARDL</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="s2">  use: ts.ardl@^1</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="s2">  settings: {lags: 2, order: 2, exog: [price, promo]}   # or auto: true to choose them</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="s2">"""</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">ardl</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">ARDL</span><span class="p">),</span> <span class="n">history</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">())</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">ardl_fan</span> <span class="o">=</span> <span class="n">forecast</span><span class="p">(</span><span class="n">ardl</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"sales"</span><span class="p">))</span>
+<p><strong>Use it when</strong> the effect of a driver spreads over many periods. <strong>Use a different model
+when</strong> the effects are only immediate (a simple regression is sufficient).</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">ARDL</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="s2">  use: ts.ardl@^1</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="s2">  settings: {lags: 2, order: 2, exog: [price, promo]}   # or auto: true to choose them</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="s2">"""</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">ardl</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">ARDL</span><span class="p">),</span> <span class="n">history</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">sales_schema</span><span class="p">())</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">ardl_fan</span> <span class="o">=</span> <span class="n">forecast</span><span class="p">(</span><span class="n">ardl</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"sales"</span><span class="p">))</span>
 </span></code></pre></div>
-<p>Least squares on <code>lags</code> of the result and <code>order</code> lags of each driver; <code>auto: true</code> chooses
-them per series by <code>ic</code> up to those maxima. The parameter table shows each lag's effect, so
-you can read how a price change works through over the following weeks.</p>
+<p>This model uses least squares on <code>lags</code> of the result and on <code>order</code> lags of each driver.
+With <code>auto: true</code>, the plugin selects them for each series by <code>ic</code>, up to those maximum
+values. The parameter table shows the effect of each lag. Thus, you can see how a price
+change has an effect over the subsequent weeks.</p>
 <h3 id="tsecm-long-run-and-short-run-effects"><code>ts.ecm</code> - long-run and short-run effects<a class="headerlink" href="#tsecm-long-run-and-short-run-effects" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Separates the short-term effect of a driver from its long-term effect on one series, and tests whether a long-run relationship exists at all.</p>
+<p>Separates the short-term effect of a driver from its long-term effect on one series. It also tests if a long-run relationship exists.</p>
 </blockquote>
-<p><strong>Use it when</strong> one result and a few drivers trend together, and you want both the immediate
-and the lasting effect of a driver. <strong>Pick something else when</strong> neither the result nor the
-drivers trend.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">ECM</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="s2">  use: ts.ecm@^1</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="s2">  settings: {lags: 1, order: 1, exog: [income]}</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="s2">"""</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">monthly</span> <span class="o">=</span> <span class="n">ecm_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">126</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>  <span class="c1"># sales tied to income in the long run</span>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">ecm</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">spec</span><span class="p">(</span><span class="n">ECM</span><span class="p">,</span> <span class="s2">"{dims: {t: month}, vars: {y: sales}}"</span><span class="p">),</span>
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="n">monthly</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">month</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">120</span><span class="p">)),</span>
-</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="n">raw_schema</span><span class="o">=</span><span class="n">ECM_SCHEMA</span><span class="p">,</span>
-</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="p">)</span>
-</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="n">group</span> <span class="o">=</span> <span class="n">ecm</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"ecm"</span><span class="p">]</span>  <span class="c1"># speed of adjustment, half-life, the bounds test</span>
-</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="nb">print</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="s2">"half_life"</span><span class="p">]),</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="s2">"bounds_p_upper"</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">)</span>
-</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="n">ecm_fan</span> <span class="o">=</span> <span class="n">forecast</span><span class="p">(</span><span class="n">ecm</span><span class="p">,</span> <span class="n">monthly</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">month</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">120</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"sales"</span><span class="p">),</span> <span class="n">periods</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<p><strong>Use it when</strong> one result and some drivers have the same trend, and you want the immediate
+effect and the lasting effect of a driver. <strong>Use a different model when</strong> the result and the
+drivers have no trend.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">ECM</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="s2">  use: ts.ecm@^1</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="s2">  settings: {lags: 1, order: 1, exog: [income]}</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="s2">"""</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">monthly</span> <span class="o">=</span> <span class="n">ecm_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">126</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>  <span class="c1"># sales tied to income in the long run</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="n">ecm</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">spec</span><span class="p">(</span><span class="n">ECM</span><span class="p">,</span> <span class="s2">"{dims: {t: month}, vars: {y: sales}}"</span><span class="p">),</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    <span class="n">monthly</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">month</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">120</span><span class="p">)),</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    <span class="n">raw_schema</span><span class="o">=</span><span class="n">ECM_SCHEMA</span><span class="p">,</span>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="p">)</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="n">group</span> <span class="o">=</span> <span class="n">ecm</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"ecm"</span><span class="p">]</span>  <span class="c1"># speed of adjustment, half-life, the bounds test</span>
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="nb">print</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="s2">"half_life"</span><span class="p">]),</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="s2">"bounds_p_upper"</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">)</span>
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="n">ecm_fan</span> <span class="o">=</span> <span class="n">forecast</span><span class="p">(</span><span class="n">ecm</span><span class="p">,</span> <span class="n">monthly</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">month</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">120</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"sales"</span><span class="p">),</span> <span class="n">periods</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
 </span></code></pre></div>
-<p>The same model in error-correction form (statsmodels <code>UECM</code>): the coefficient on <code>y.L1</code> is
-the <strong>speed of adjustment</strong> (its half-life is in the <code>ecm</code> group), the <code>long_run.*</code> rows of
-the parameter table are the long-run effects with delta-method standard errors, and the
-Pesaran-Shin-Smith <strong>bounds test</strong> (the case from the trend: <code>c</code> is case 3) says whether a
-long-run relationship exists - <code>levels_relationship</code>, <code>none</code> or <code>inconclusive</code>, also raised as a
-scorecard diagnostic (<code>ECM_BOUNDS_TEST</code>).</p>
+<p>This is the same model in error-correction form (statsmodels <code>UECM</code>):</p>
+<ul>
+<li>The coefficient on <code>y.L1</code> is the <strong>speed of adjustment</strong>. Its half-life is in the <code>ecm</code>
+  group.</li>
+<li>The <code>long_run.*</code> rows of the parameter table are the long-run effects, with delta-method
+  standard errors.</li>
+<li>The Pesaran-Shin-Smith <strong>bounds test</strong> tells if a long-run relation exists. The trend sets
+  the case (<code>c</code> is case 3). The result is <code>levels_relationship</code>, <code>none</code> or <code>inconclusive</code>.
+  The scorecard also shows it as a diagnostic (<code>ECM_BOUNDS_TEST</code>).</li>
+</ul>
 <h3 id="tsvar-series-that-drive-each-other"><code>ts.var</code> - series that drive each other<a class="headerlink" href="#tsvar-series-that-drive-each-other" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Models several series that influence each other over time, such as prices and sales of two brands, and forecasts them together.</p>
+<p>Models two or more series that change each other over time, such as the prices and sales of two brands. It forecasts them together.</p>
 </blockquote>
-<p><strong>Use it when</strong> several series move together and affect each other, and you want to see how a
-shock to one spreads to the others. <strong>Pick something else when</strong> you have one series, or the
-series trend together for good (use <code>ts.vecm</code>).</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">VAR</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="s2">  use: ts.var@^1</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="s2">  settings: {max_lags: 4, ic: aic}     # the lag order chosen by AIC</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="s2">"""</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">MACRO_BIND</span> <span class="o">=</span> <span class="s2">"{dims: {t: quarter, variable: series}, vars: {y: value}}"</span>
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="n">var</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">VAR</span><span class="p">,</span> <span class="n">MACRO_BIND</span><span class="p">),</span> <span class="n">macro_growth</span><span class="p">(</span><span class="n">quarters</span><span class="o">=</span><span class="mi">120</span><span class="p">),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">GROWTH_SCHEMA</span><span class="p">)</span>
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">))</span>  <span class="c1"># ... fevd, granger, irf, params, residuals ...</span>
+<p><strong>Use it when</strong> many series move together and have an effect on each other, and you want to
+see how a shock to one series spreads to the others. <strong>Use a different model when</strong> you have
+one series, or when the series stay tied together in the long run (use <code>ts.vecm</code>).</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">VAR</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="s2">  use: ts.var@^1</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="s2">  settings: {max_lags: 4, ic: aic}     # the lag order chosen by AIC</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="s2">"""</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">MACRO_BIND</span> <span class="o">=</span> <span class="s2">"{dims: {t: quarter, variable: series}, vars: {y: value}}"</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="n">var</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">VAR</span><span class="p">,</span> <span class="n">MACRO_BIND</span><span class="p">),</span> <span class="n">macro_growth</span><span class="p">(</span><span class="n">quarters</span><span class="o">=</span><span class="mi">120</span><span class="p">),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">GROWTH_SCHEMA</span><span class="p">)</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">))</span>  <span class="c1"># ... fevd, granger, irf, params, residuals ...</span>
 </span></code></pre></div>
-<p>Least squares; leave <code>lags</code> empty to choose the order by <code>ic</code> up to <code>max_lags</code>. The data holds
-the series along one dimension (<code>y(variable, t)</code>). The bundle carries orthogonalised impulse
-responses with asymptotic 95% bands (<code>irf</code>), the forecast-error variance decomposition
-(<code>fevd</code>) and pairwise Granger causality tests (<code>granger</code>).</p>
+<p>This model uses least squares. To select the order by <code>ic</code> up to <code>max_lags</code>, do not give a
+value for <code>lags</code>. The data has the series along one dimension (<code>y(variable, t)</code>). The bundle
+contains these items:</p>
+<ul>
+<li>Orthogonalised impulse responses with asymptotic 95% bands (<code>irf</code>).</li>
+<li>The forecast-error variance decomposition (<code>fevd</code>).</li>
+<li>Granger causality tests for each pair of series (<code>granger</code>).</li>
+</ul>
 <h3 id="tsvecm-series-tied-together-for-good"><code>ts.vecm</code> - series tied together for good<a class="headerlink" href="#tsvecm-series-tied-together-for-good" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Models series that wander but stay tied together in the long run, such as prices of close substitutes, and shows how fast they snap back after a gap opens.</p>
+<p>Models series that wander but stay tied together in the long run, such as the prices of close substitutes. It shows how fast they go back after a gap opens.</p>
 </blockquote>
-<p><strong>Use it when</strong> series trend but keep a stable long-run relationship. <strong>Pick something else
-when</strong> the series do not trend, or the long-run tie is not plausible.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">VECM</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="s2">  use: ts.vecm@^1</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="s2">  settings: {k_ar_diff: 2, deterministic: ci}   # the rank from the Johansen test</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="s2">"""</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">vecm</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">VECM</span><span class="p">,</span> <span class="n">MACRO_BIND</span><span class="p">),</span> <span class="n">macro_dataset</span><span class="p">(</span><span class="n">quarters</span><span class="o">=</span><span class="mi">160</span><span class="p">),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">MACRO_SCHEMA</span><span class="p">)</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="nb">print</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">vecm</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"cointegration"</span><span class="p">][</span><span class="s2">"rank"</span><span class="p">]))</span>
+<p><strong>Use it when</strong> the series have a trend but keep a stable long-run relation. <strong>Use a
+different model when</strong> the series have no trend, or when a long-run relation is not
+plausible.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">VECM</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="s2">  use: ts.vecm@^1</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="s2">  settings: {k_ar_diff: 2, deterministic: ci}   # the rank from the Johansen test</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="s2">"""</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">vecm</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">VECM</span><span class="p">,</span> <span class="n">MACRO_BIND</span><span class="p">),</span> <span class="n">macro_dataset</span><span class="p">(</span><span class="n">quarters</span><span class="o">=</span><span class="mi">160</span><span class="p">),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">MACRO_SCHEMA</span><span class="p">)</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="nb">print</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">vecm</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"cointegration"</span><span class="p">][</span><span class="s2">"rank"</span><span class="p">]))</span>
 </span></code></pre></div>
-<p>A Johansen VECM; leave <code>coint_rank</code> empty and the Johansen <code>rank_test</code> (trace or
-max-eigenvalue) at <code>rank_signif</code> chooses it. A rank of 0 (no long-run relationship: model the
-changes with <code>ts.var</code>) or of the number of series (they are stationary: use <code>ts.var</code> on the
-levels) is refused with a plain-language <code>SETTINGS_INVALID</code>. The <code>cointegration</code> group holds
-the Johansen table, the rank, <code>alpha</code> (speed of adjustment) and <code>beta</code> (the long-run
-relations, normalised on the first series). The
-<a href="../../guides/workflow-cookbook/#varvecm-cointegration">VAR/VECM recipe</a> chooses between the two
-for you.</p>
+<p>This is a Johansen VECM. If you do not give a value for <code>coint_rank</code>, the Johansen
+<code>rank_test</code> (trace or max-eigenvalue) at <code>rank_signif</code> selects it. The plugin refuses some
+ranks with a <code>SETTINGS_INVALID</code> in plain language:</p>
+<ul>
+<li>A rank of 0. There is no long-run relation. Model the changes with <code>ts.var</code>.</li>
+<li>A rank that is equal to the number of series. The series are stationary. Use <code>ts.var</code> on
+  the levels.</li>
+</ul>
+<p>The <code>cointegration</code> group has the Johansen table, the rank, <code>alpha</code> (speed of adjustment) and
+<code>beta</code> (the long-run relations, normalised on the first series). The
+<a href="../../guides/workflow-cookbook/#varvecm-cointegration">VAR/VECM recipe</a> selects one of the two
+models for you.</p>
 <h3 id="tsvarmax-series-that-drive-each-other-with-drivers"><code>ts.varmax</code> - series that drive each other, with drivers<a class="headerlink" href="#tsvarmax-series-that-drive-each-other-with-drivers" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Models several series that influence each other and also respond to outside drivers you know ahead, and forecasts them together.</p>
+<p>Models two or more series that change each other and also respond to outside drivers that you know in advance. It forecasts them together.</p>
 </blockquote>
-<p><strong>Use it when</strong> several series affect each other and outside drivers matter too. <strong>Pick
-something else when</strong> you have one series, or many series and little history.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">VARMAX</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="s2">  use: ts.varmax@^1</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="s2">  settings: {order: [1, 0]}            # VARX(1): q = 0</span>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="s2">"""</span>
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">varmax</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">VARMAX</span><span class="p">,</span> <span class="n">MACRO_BIND</span><span class="p">),</span> <span class="n">macro_growth</span><span class="p">(</span><span class="n">quarters</span><span class="o">=</span><span class="mi">90</span><span class="p">),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">GROWTH_SCHEMA</span><span class="p">)</span>
+<p><strong>Use it when</strong> many series have an effect on each other, and outside drivers are also
+important. <strong>Use a different model when</strong> you have one series, or many series and a short
+history.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">VARMAX</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="s2">  use: ts.varmax@^1</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="s2">  settings: {order: [1, 0]}            # VARX(1): q = 0</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="s2">"""</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">varmax</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">VARMAX</span><span class="p">,</span> <span class="n">MACRO_BIND</span><span class="p">),</span> <span class="n">macro_growth</span><span class="p">(</span><span class="n">quarters</span><span class="o">=</span><span class="mi">90</span><span class="p">),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">GROWTH_SCHEMA</span><span class="p">)</span>
 </span></code></pre></div>
-<p>VARMA(p, q) with drivers in state-space form (VARX when <code>q = 0</code>); <code>exog</code> drivers need their
-planned values to forecast, as with <code>ts.sarimax</code>.</p>
+<p>This is VARMA(p, q) with drivers in state-space form (VARX when <code>q = 0</code>). As with
+<code>ts.sarimax</code>, the <code>exog</code> drivers need their planned values for a forecast.</p>
 <h3 id="tsdynamic_factor-common-movements-across-many-series"><code>ts.dynamic_factor</code> - common movements across many series<a class="headerlink" href="#tsdynamic_factor-common-movements-across-many-series" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Finds a few hidden forces that move many series together, such as the overall economy behind sales in many categories.</p>
+<p>Finds a few hidden forces that move many series together, such as the general economy behind the sales in many categories.</p>
 </blockquote>
-<p><strong>Use it when</strong> you have many related series and want their shared drivers. <strong>Pick something
-else when</strong> you have one or two series.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">DFM</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="s2">  use: ts.dynamic_factor@^1</span>
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="s2">  settings: </span><span class="si">{k_factors: 1}</span>
-</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="s2">"""</span>
-</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">dfm</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">DFM</span><span class="p">,</span> <span class="n">MACRO_BIND</span><span class="p">),</span> <span class="n">macro_growth</span><span class="p">(</span><span class="n">quarters</span><span class="o">=</span><span class="mi">90</span><span class="p">),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">GROWTH_SCHEMA</span><span class="p">)</span>
-</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">dfm</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"factors"</span><span class="p">]</span><span class="o">.</span><span class="n">data_vars</span><span class="p">))</span>
+<p><strong>Use it when</strong> you have many related series and want their shared drivers. <strong>Use a
+different model when</strong> you have one or two series.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">DFM</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="s2">  use: ts.dynamic_factor@^1</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="s2">  settings: </span><span class="si">{k_factors: 1}</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="s2">"""</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">dfm</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">(</span><span class="n">DFM</span><span class="p">,</span> <span class="n">MACRO_BIND</span><span class="p">),</span> <span class="n">macro_growth</span><span class="p">(</span><span class="n">quarters</span><span class="o">=</span><span class="mi">90</span><span class="p">),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">GROWTH_SCHEMA</span><span class="p">)</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">dfm</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"factors"</span><span class="p">]</span><span class="o">.</span><span class="n">data_vars</span><span class="p">))</span>
 </span></code></pre></div>
-<p>A few hidden factors following a VAR drive many series (state space). The smoothed factors and
-loadings are in the <code>factors</code> group. Standardise the series first (<code>core.standardize</code>), as
-factor models assume comparable scales.</p>
+<p>In this state-space model, some hidden factors follow a VAR and drive many series. The
+<code>factors</code> group has the smoothed factors and loadings. Standardise the series first
+(<code>core.standardize</code>), because factor models assume comparable scales.</p>
 <h3 id="tsmarkov_switching-switching-between-regimes"><code>ts.markov_switching</code> - switching between regimes<a class="headerlink" href="#tsmarkov_switching-switching-between-regimes" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Detects whether a series switches between regimes, such as high-growth and low-growth periods, and estimates the behaviour in each.</p>
+<p>Finds if a series changes between regimes, such as periods of high growth and low growth. It estimates the behaviour in each regime.</p>
 </blockquote>
-<p><strong>Use it when</strong> behaviour seems to jump between distinct modes and you want the probability of
-being in each mode now. <strong>Pick something else when</strong> changes are gradual or you have little
-history.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">MARKOV</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="s2">  use: ts.markov_switching@^1</span>
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="s2">  settings: {k_regimes: 2, time_kind: integer}   # weeks numbered 0, 1, 2, ...</span>
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="s2">"""</span>
-</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">regimes</span> <span class="o">=</span> <span class="n">regime_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"regime"</span><span class="p">)</span>
-</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="n">markov</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span>
-</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="n">spec</span><span class="p">(</span><span class="n">MARKOV</span><span class="p">,</span> <span class="s2">"{dims: {t: week}, vars: {y: demand}}"</span><span class="p">),</span> <span class="n">regimes</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">REGIME_SCHEMA</span>
-</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="p">)</span>
-</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">markov</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"regimes"</span><span class="p">][</span><span class="s2">"mean_level"</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>  <span class="c1"># about 10 and 16</span>
+<p><strong>Use it when</strong> the behaviour jumps between different modes, and you want the probability of
+each mode now. <strong>Use a different model when</strong> the changes are gradual, or when you have a
+short history.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">MARKOV</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="s2">  use: ts.markov_switching@^1</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="s2">  settings: {k_regimes: 2, time_kind: integer}   # weeks numbered 0, 1, 2, ...</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="s2">"""</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="n">regimes</span> <span class="o">=</span> <span class="n">regime_dataset</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"regime"</span><span class="p">)</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="n">markov</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="n">spec</span><span class="p">(</span><span class="n">MARKOV</span><span class="p">,</span> <span class="s2">"{dims: {t: week}, vars: {y: demand}}"</span><span class="p">),</span> <span class="n">regimes</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">REGIME_SCHEMA</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="p">)</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">markov</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="s2">"regimes"</span><span class="p">][</span><span class="s2">"mean_level"</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>  <span class="c1"># about 10 and 16</span>
 </span></code></pre></div>
-<p>Hamilton's regime-switching regression (<code>order: 0</code>) or autoregression (<code>order &gt; 0</code>): the level,
-driver effects and noise can switch between <code>k_regimes</code> hidden regimes. The <code>regimes</code> group
-holds the smoothed and filtered probability of each regime per period, the transition matrix,
-expected durations and each regime's mean level. Forecasts are regime mixtures: analytic for
-regressions, simulated (<code>simulations</code> seeded paths) for autoregressions. Start values come from
-a fit on the standardised series, which avoids the failures of statsmodels' default start
-values on series far from zero.</p>
+<p>This is the regime-switching regression of Hamilton (<code>order: 0</code>) or autoregression
+(<code>order &gt; 0</code>). The level, the driver effects and the noise can change between <code>k_regimes</code>
+hidden regimes. The <code>regimes</code> group has these items:</p>
+<ul>
+<li>The smoothed and filtered probability of each regime for each period.</li>
+<li>The transition matrix.</li>
+<li>The expected durations.</li>
+<li>The mean level of each regime.</li>
+</ul>
+<p>Forecasts are mixtures of regimes. They are analytic for regressions. For autoregressions,
+they are simulated (<code>simulations</code> seeded paths). The start values come from a fit on the
+standardised series. This prevents the failures of the default start values of statsmodels
+on series that are far from zero.</p>
 <h3 id="forecasting-through-an-endpoint-the-client-and-the-cli">Forecasting through an endpoint, the client and the CLI<a class="headerlink" href="#forecasting-through-an-endpoint-the-client-and-the-cli" title="Permanent link">&para;</a></h3>
-<p>Once a version is promoted, the same forecast comes from the endpoint, with the drivers' plan
-sent inline (an <code>xr.Dataset</code> with the future rows):</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="n">api</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>
-</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">fan</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">endpoint</span><span class="p">(</span><span class="s2">"weekly-sales"</span><span class="p">)</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">plan_ds</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"forecast"</span><span class="p">,</span> <span class="n">horizon</span><span class="o">=</span><span class="p">{</span><span class="s2">"dim"</span><span class="p">:</span> <span class="s2">"t"</span><span class="p">,</span> <span class="s2">"periods"</span><span class="p">:</span> <span class="mi">8</span><span class="p">})</span>
-</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">fan</span><span class="p">[</span><span class="s2">"y_hat"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"median"</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+<p>After you promote a version, you can get the same forecast from the endpoint. Send the plan
+of the drivers inline (an <code>xr.Dataset</code> with the future rows):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">api</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">fan</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">endpoint</span><span class="p">(</span><span class="s2">"weekly-sales"</span><span class="p">)</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">plan_ds</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"forecast"</span><span class="p">,</span> <span class="n">horizon</span><span class="o">=</span><span class="p">{</span><span class="s2">"dim"</span><span class="p">:</span> <span class="s2">"t"</span><span class="p">,</span> <span class="s2">"periods"</span><span class="p">:</span> <span class="mi">8</span><span class="p">})</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">fan</span><span class="p">[</span><span class="s2">"y_hat"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"median"</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
 </span></code></pre></div>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>score<span class="w"> </span>weekly-sales<span class="w"> </span>--data<span class="w"> </span>plan.json<span class="w"> </span>--periods<span class="w"> </span><span class="m">8</span><span class="w"> </span>-o<span class="w"> </span>forecast.zarr.zip
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>mapi<span class="w"> </span>explore<span class="w"> </span>model<span class="w"> </span>model://growth/weekly-sales@v3<span class="w"> </span>-s<span class="w"> </span>forecast<span class="w"> </span>-s<span class="w"> </span>residuals<span class="w"> </span>--horizon<span class="w"> </span><span class="m">8</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>score<span class="w"> </span>weekly-sales<span class="w"> </span>--data<span class="w"> </span>plan.json<span class="w"> </span>--periods<span class="w"> </span><span class="m">8</span><span class="w"> </span>-o<span class="w"> </span>forecast.zarr.zip
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>mapi<span class="w"> </span>explore<span class="w"> </span>model<span class="w"> </span>model://growth/weekly-sales@v3<span class="w"> </span>-s<span class="w"> </span>forecast<span class="w"> </span>-s<span class="w"> </span>residuals<span class="w"> </span>--horizon<span class="w"> </span><span class="m">8</span>
 </span></code></pre></div>
 <h2 id="what-is-stored-and-why-there-is-no-pickle">What is stored, and why there is no pickle<a class="headerlink" href="#what-is-stored-and-why-there-is-no-pickle" title="Permanent link">&para;</a></h2>
-<p>A statsmodels results object is never stored: pickles are not allowed across the sandbox
-boundary. A bundle keeps</p>
+<p>The plugin never keeps a statsmodels results object, because pickles cannot cross the
+sandbox boundary. A bundle keeps these items:</p>
 <ul>
-<li>the model-stage training data (<code>observed_data</code>, and the drivers in <code>constant_data</code>);</li>
-<li>every estimated parameter (<code>params</code>), with the order the model needs in <code>learned</code>;</li>
-<li>fit statistics (<code>fit_stats</code>: AIC, BIC, HQIC, log-likelihood, observations, noise variance,
-  whether the optimiser converged), residuals and residual tests (Ljung-Box, Jarque-Bera,
-  ARCH-LM);</li>
-<li>the model-specific groups above.</li>
+<li>The training data at the model stage (<code>observed_data</code>, and the drivers in
+  <code>constant_data</code>).</li>
+<li>All estimated parameters (<code>params</code>), with the order that the model needs in <code>learned</code>.</li>
+<li>Fit statistics (<code>fit_stats</code>: AIC, BIC, HQIC, log-likelihood, observations, noise
+  variance, and if the optimiser converged), residuals and residual tests (Ljung-Box,
+  Jarque-Bera, ARCH-LM).</li>
+<li>The groups for each model that the sections above give.</li>
 </ul>
-<p>Scoring rebuilds the results: state-space models (SARIMAX, ARIMA, UnobservedComponents,
-VARMAX, DynamicFactor) and the ETS and Markov-switching models apply the stored parameters
-to the stored data with their own filter (<code>model.filter(params)</code>, <code>smooth(params)</code>);
-least-squares and closed-form models (VAR, VECM, ARDL/ECM, Theta) are re-estimated on the
-stored data with the stored orders and checked against the stored parameters - a mismatch
-fails with <code>INTEGRITY_FAILURE</code>.</p>
+<p>When you score, the plugin makes the results again:</p>
+<ul>
+<li>State-space models (SARIMAX, ARIMA, UnobservedComponents, VARMAX, DynamicFactor) and the
+  ETS and Markov-switching models apply the stored parameters to the stored data. They use
+  their own filter (<code>model.filter(params)</code>, <code>smooth(params)</code>).</li>
+<li>Least-squares and closed-form models (VAR, VECM, ARDL/ECM, Theta) estimate again on the
+  stored data with the stored orders. The plugin compares the result with the stored
+  parameters. If they are different, the score fails with <code>INTEGRITY_FAILURE</code>.</li>
+</ul>
 <h2 id="the-model-explorer">The Model Explorer<a class="headerlink" href="#the-model-explorer" title="Permanent link">&para;</a></h2>
-<p><code>StatsmodelsModel.explorer_views(fitted)</code> turns a bundle into Model Explorer sections
-(<code>mapi_spec.views</code> DTOs): <code>params</code> (the table with 95% intervals and p-values),
-<code>diagnostics</code> (fit statistics, Granger, Johansen and bounds tests), <code>residuals</code> (residuals
-over time, their autocorrelation, Q-Q points and the residual tests per series), <code>irf</code>,
-<code>fevd</code> and <code>decomposition</code>. Panels appear as facets. <code>views.forecast_view(predictions,
-observed=...)</code> turns a forecast score run's quantiles into the <code>forecast</code> section: one fan
-per series (with the recent history), because quantiles of different series cannot be
-added into one fan.</p>
+<p><code>StatsmodelsModel.explorer_views(fitted)</code> changes a bundle into sections of the Model
+Explorer (<code>mapi_spec.views</code> DTOs):</p>
+<ul>
+<li><code>params</code>: the table with 95% intervals and p-values.</li>
+<li><code>diagnostics</code>: fit statistics, and Granger, Johansen and bounds tests.</li>
+<li><code>residuals</code>: the residuals over time, their autocorrelation, Q-Q points and the residual
+  tests for each series.</li>
+<li><code>irf</code>, <code>fevd</code> and <code>decomposition</code>.</li>
+</ul>
+<p>Panels show as facets. <code>views.forecast_view(predictions, observed=...)</code> changes the
+quantiles of a forecast score run into the <code>forecast</code> section. There is one fan for each
+series (with the recent history), because you cannot add quantiles of different series into
+one fan.</p>
 <h2 id="how-it-is-tested">How it is tested<a class="headerlink" href="#how-it-is-tested" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The contract kit (<code>check_model</code>) passes for every plugin with About cards required.</li>
-<li>Parameters, in-sample predictions and forecast intervals equal direct statsmodels calls
-  on the same data (SARIMAX, ARIMA, UnobservedComponents, ETS, Theta, ARDL, UECM, VAR,
-  VECM, VARMAX, DynamicFactor, Markov switching); the UECM is also checked on Johansen and
-  Juselius' Danish money-demand data, and the VAR(2) on US macro growth reproduces the
-  coefficient table of the statsmodels documentation.</li>
-<li>Conformance fixtures <code>sm_arimax</code> (an ARIMAX panel with drivers) and <code>sm_vecm_macro</code>
-  (a VECM on statsmodels' public-domain <code>macrodata</code>) run the whole fit, score and evaluate
-  path; see <a href="../../guides/conformance/">Conformance corpus</a>.</li>
+<li>The contract kit (<code>check_model</code>) passes for each plugin, with About cards necessary.</li>
+<li>Parameters, in-sample predictions and forecast intervals are equal to direct statsmodels
+  calls on the same data. This is true for SARIMAX, ARIMA, UnobservedComponents, ETS, Theta,
+  ARDL, UECM, VAR, VECM, VARMAX, DynamicFactor and Markov switching. A test also does a check
+  of the UECM on the Danish money-demand data of Johansen and Juselius. The VAR(2) on US
+  macro growth gives the same coefficient table as the statsmodels documentation.</li>
+<li>Forecasts with actuals are equal to statsmodels with the fitted parameters on the extended
+  data. The tests use <code>results.append(new, refit=False)</code> for the state-space models and ARDL.
+  They also use the VAR/VECM forecast on the supplied lags, the fixed-parameter ETS smoother,
+  theta and the Hamilton filter. For each model, the last values of the fit as actuals give
+  the plain forecast again. A jump in these values changes the forecast. A model from the
+  <code>ts_readiness_arimax</code> workflow forecasts from new monthly actuals in the original units.</li>
+<li>The conformance fixtures <code>sm_arimax</code> (an ARIMAX panel with drivers) and <code>sm_vecm_macro</code>
+  (a VECM on the public-domain <code>macrodata</code> of statsmodels) run the full path: fit, score and
+  evaluate. See <a href="../../guides/conformance/">Conformance corpus</a>.</li>
 </ul>
 
 

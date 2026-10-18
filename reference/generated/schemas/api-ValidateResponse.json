@@ -53,6 +53,12 @@
           "title": "Checkpointable",
           "type": "boolean"
         },
+        "conditions_on_actuals": {
+          "default": false,
+          "description": "A forecast can be conditioned on actuals sent with the request (target values for periods after, or at the end of, the fitted history): the model updates its state with them without re-estimating its parameters and forecasts from the last actual (mapi_spec.actuals). Models without it refuse such requests with ACTUALS_NOT_SUPPORTED instead of ignoring the actuals",
+          "title": "Conditions On Actuals",
+          "type": "boolean"
+        },
         "contribution_scale": {
           "default": "none",
           "enum": [
@@ -422,7 +428,9 @@
         "SELF_APPROVAL_FORBIDDEN",
         "NOT_VALIDATED",
         "EXPLORE_INVALID",
-        "OPTIMIZE_INFEASIBLE"
+        "OPTIMIZE_INFEASIBLE",
+        "ACTUALS_NOT_SUPPORTED",
+        "ACTUALS_INVALID"
       ],
       "title": "ErrorCode",
       "type": "string"

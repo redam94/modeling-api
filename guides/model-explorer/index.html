@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1288,6 +1290,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4656,6 +4686,8 @@
       
         
       
+        
+      
     
     
     
@@ -4744,6 +4776,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4913,17 +4973,21 @@
 
 
 <h1 id="explore-a-model-v05">Explore a model <span class="mapi-badge">v0.5</span><a class="headerlink" href="#explore-a-model-v05" title="Permanent link">&para;</a></h1>
-<p>The <strong>Model Explorer</strong> shows what a fitted model learned and how well it works, for every
-model family: Bayesian (posterior means with highest-density intervals, R-hat), frequentist
-(estimates with confidence intervals and p-values, information criteria) and machine learning
-(coefficients or importances). Views are computed in the sandbox from the bundle and the data
-it was fitted on, and come with Vega-Lite plots. The <a href="#in-the-web-app">web app</a> shows every
-section with governance evidence and lineage, compares versions and optimises budgets; the
-rest of this guide uses the HTTP API it calls.</p>
+<p>The <strong>Model Explorer</strong> shows what a fitted model learned and how well it works. It does this
+for all model families:</p>
+<ul>
+<li>Bayesian: posterior means with highest-density intervals, and R-hat.</li>
+<li>Frequentist: estimates with confidence intervals and p-values, and information criteria.</li>
+<li>Machine learning: coefficients or importances.</li>
+</ul>
+<p>The sandbox calculates the views from the bundle and the data that the fit used. The views
+come with Vega-Lite plots. The <a href="#in-the-web-app">web app</a> shows each section with governance
+evidence and lineage. It also compares versions and optimises budgets. The rest of this guide
+uses the HTTP API that the web app calls.</p>
 <h2 id="in-the-web-app">In the web app<a class="headerlink" href="#in-the-web-app" title="Permanent link">&para;</a></h2>
-<p>A model version's page has <strong>Explore</strong>, <strong>Compare</strong> and, for marketing-mix models,
-<strong>Optimise budget</strong>. The Model Explorer (<code>/models/&lt;model&gt;/versions/&lt;n&gt;/explore</code>) groups its
-sections by the question they answer:</p>
+<p>The page of a model version has <strong>Explore</strong> and <strong>Compare</strong>. For marketing-mix models, it also
+has <strong>Optimise budget</strong>. The Model Explorer (<code>/models/&lt;model&gt;/versions/&lt;n&gt;/explore</code>) puts its
+sections into groups by the question that they answer:</p>
 <table>
 <thead>
 <tr>
@@ -4934,66 +4998,97 @@ sections by the question they answer:</p>
 <tbody>
 <tr>
 <td>Overview</td>
-<td><em>At a glance</em>: the plain readings of the diagnostics and the fit, the holdout metrics and the model's <a href="../../concepts/about-and-choosing/">About card</a></td>
+<td><em>At a glance</em>: the plain readings of the diagnostics and the fit, the holdout metrics and the <a href="../../concepts/about-and-choosing/">About card</a> of the model</td>
 </tr>
 <tr>
 <td>What it learned</td>
-<td>Parameters (a sortable, filterable table with intervals, p-values, R-hat and ESS, and a forest plot per parameter), contributions, response curves, impulse responses and variance decomposition</td>
+<td>Parameters (a table that you can sort and filter, with intervals, p-values, R-hat and ESS, and a forest plot for each parameter), contributions, response curves, impulse responses and variance decomposition</td>
 </tr>
 <tr>
 <td>Can you trust it?</td>
-<td>Diagnostics (convergence, fit statistics per series, the model's own tests), fit vs actual (with the band's coverage in plain words), residuals (over time, ACF, histogram, QQ plot, Ljung-Box, Jarque-Bera, Breusch-Pagan and ARCH-LM), backtest</td>
+<td>Diagnostics (convergence, fit statistics for each series, the tests of the model), fit vs actual (with the coverage of the band in plain words), residuals (over time, ACF, histogram, QQ plot, Ljung-Box, Jarque-Bera, Breusch-Pagan and ARCH-LM), backtest</td>
 </tr>
 <tr>
 <td>Looking ahead</td>
-<td>Forecast (a fan per series)</td>
+<td>Forecast (a fan for each series)</td>
 </tr>
 <tr>
 <td>Trust and origin</td>
-<td>Governance (the latest validation's status badge, every check with its evidence, the status history) and lineage (dataset, spec revision, fit run and workflow run, plus plugin, image, seed and libraries)</td>
+<td>Governance (the status badge of the latest validation, each check with its evidence, the status history) and lineage (dataset, spec revision, fit run and workflow run, and also plugin, image, seed and libraries)</td>
 </tr>
 </tbody>
 </table>
-<p>Sections that do not apply to the model (an MMM has no impulse responses) are listed last
-with the reason. Forecasts and backtests are computed on demand (<strong>Compute forecast and
-backtest</strong>, or <strong>Explore with options</strong> for the horizon, the interval and the backtest plan:
-expanding window or rolling origin, horizons, folds, minimum training periods and gap). As
-in the Data Explorer, Guided mode puts the plain reading first and Expert mode every number.</p>
+<p>The explorer lists the sections that do not apply to the model last, with the reason. For
+example, an MMM has no impulse responses. The explorer calculates forecasts and backtests only
+when you ask:</p>
+<ul>
+<li>Click <strong>Compute forecast and backtest</strong>.</li>
+<li>Or click <strong>Explore with options</strong>. Then set the horizon, the interval and the backtest plan.
+  The plan has these items: expanding window or rolling origin, horizons, folds, minimum
+  training periods and gap.</li>
+</ul>
+<p>As in the Data Explorer, Guided mode shows the plain reading first. Expert mode shows all the
+numbers.</p>
 <p><img alt="At a glance: the plain readings, the holdout metrics and the model's About card" class="mapi-shot" src="../../assets/screenshots/explorer-model-summary.png" /></p>
 <p><img alt="Parameters: estimates with their 90% intervals, R-hat and ESS" class="mapi-shot" src="../../assets/screenshots/explorer-model-params.png" /></p>
 <p><img alt="Residuals: over time, their ACF, histogram and QQ plot, and the tests per series" class="mapi-shot" src="../../assets/screenshots/explorer-model-residuals.png" /></p>
 <p><img alt="Impulse responses of a VECM: pick the shock and the response" class="mapi-shot" src="../../assets/screenshots/explorer-model-irf.png" /></p>
 <p><img alt="Governance evidence: each check's result, measured value, limit and evidence" class="mapi-shot" src="../../assets/screenshots/explorer-model-governance.png" /></p>
-<p>The header shows the version's validation status; it links to the version's validations,
-where a new validation is requested. Under <em>Governance evidence</em>, <strong>Open this validation</strong>
-leads to the latest one (its status path, the reviewers' decisions and the evidence pack) and
-<strong>Policies</strong> to the governance policies (see <a href="../governance/#in-the-web-app">Validate models with governance
-policies</a>). When a workflow fitted the version, <em>Lineage</em> links
-the workflow run's monitor.</p>
-<p><strong>Compare</strong> (<code>/models/compare</code>) puts two to eleven versions side by side: pick each model
-and version (the first is the one the tests use as reference), then <strong>Compare</strong>. The page
-shows the holdout metrics with the best value of each metric marked, the Diebold-Mariano
-tests in plain words ("about equally accurate", or an edge that is more than chance), the
-ranking per metric and every version's own fit statistics. Time-series forecasters
-(statsmodels and the other <code>ts</code> models) forecast the whole held-out period from one origin,
-so their errors form a single path on which no test of equal accuracy is valid: for them
-the page shows the metrics and rankings and says to compare their backtests instead (or run
-a <code>compare.diebold_mariano</code> workflow node on rolling-origin backtest errors).</p>
+<p>The header shows the validation status of the version. It has a link to the validations of the
+version, where you can request a new validation. Under <em>Governance evidence</em>, these links
+show:</p>
+<ul>
+<li><strong>Open this validation</strong> goes to the latest validation: its status path, the decisions of the
+  reviewers and the evidence pack.</li>
+<li><strong>Policies</strong> goes to the governance policies. See <a href="../governance/#in-the-web-app">Validate models with governance
+  policies</a>.</li>
+</ul>
+<p>If a workflow fitted the version, <em>Lineage</em> has a link to the monitor of the workflow run.</p>
+<p><strong>Compare</strong> (<code>/models/compare</code>) shows two to eleven versions side by side. To use it:</p>
+<ol>
+<li>Select each model and version. The tests use the first version as the reference.</li>
+<li>Click <strong>Compare</strong>.</li>
+</ol>
+<p>The page shows these items:</p>
+<ul>
+<li>The holdout metrics, with a mark on the best value of each metric.</li>
+<li>The Diebold-Mariano tests in plain words. For example, "about equally accurate", or an
+  advantage that is more than chance.</li>
+<li>The ranking for each metric.</li>
+<li>The fit statistics of each version.</li>
+</ul>
+<p>Time-series forecasters (statsmodels and the other <code>ts</code> models) forecast the full held-out
+period from one origin. Thus their errors make a single path, and no test of equal accuracy is
+valid on it. For these models, the page shows the metrics and rankings. It tells you to
+compare their backtests. You can also run a <code>compare.diebold_mariano</code> workflow node on
+rolling-origin backtest errors.</p>
 <p><img alt="Three versions side by side with Diebold-Mariano tests" class="mapi-shot" src="../../assets/screenshots/explorer-model-compare.png" /></p>
-<p><strong>Optimise budget</strong> (<code>/models/&lt;model&gt;/versions/&lt;n&gt;/optimize</code>, marketing-mix models only)
-asks how much to spend (today's total, a new total, a change in percent, or - in Expert mode
-- the total the model would choose), how cautious to be (the expected result, the 25th or
-10th percentile, or the average of the worst 10%), limits per channel (multiples of today's
-spend or money, or kept as is), portfolio groups and the frontier. Bounds that cannot be met
-are explained before anything runs. The plan reads "Move money from tv (−7,491) to search
-(+7,491). That adds about +3,063 to revenue (90% likely between +674 and +6,030)…", with
-the allocation per channel (and market), the expected result today and with the plan, the
-chance the plan beats today's, the return of the next unit per channel and the efficient
-frontier. The expected results show as many digits as it takes for each range's two ends to
-differ ("1.305M – 1.312M", not "1.3M – 1.3M"). In Guided mode the <em>What if…</em> step leads here
-with <strong>Optimise my budget</strong>; the goal and the optimiser's notes are put in plain words ("Goal:
-the most likely revenue"), and the optimiser's own wording sits under <em>For experts: how the
-plan was found</em>. The request and result are those of
+<p><strong>Optimise budget</strong> (<code>/models/&lt;model&gt;/versions/&lt;n&gt;/optimize</code>) is only for marketing-mix
+models. It asks for these items:</p>
+<ul>
+<li>How much to spend: the current total, a new total, a change in percent, or the total that
+  the model would select. The last option is only in Expert mode.</li>
+<li>How careful to be: the expected result, the 25th or 10th percentile, or the average of the
+  worst 10%.</li>
+<li>Limits for each channel: multiples of the current spend, an amount of money, or no change.</li>
+<li>Portfolio groups and the frontier.</li>
+</ul>
+<p>If the page cannot meet a bound, it tells you why before anything runs. The plan reads like
+this: "Move money from tv (−7,491) to search (+7,491). That adds about +3,063 to revenue (90%
+likely between +674 and +6,030)…". The plan also shows these items:</p>
+<ul>
+<li>The allocation for each channel (and market).</li>
+<li>The expected result now and with the plan.</li>
+<li>The probability that the plan is better than the current allocation.</li>
+<li>The return of the next unit for each channel.</li>
+<li>The efficient frontier.</li>
+</ul>
+<p>The expected results show the number of digits that is necessary to make the two ends of each
+range different. For example, "1.305M – 1.312M", not "1.3M – 1.3M". In Guided mode, the <em>What
+if…</em> step goes to this page with <strong>Optimise my budget</strong>. The page gives the goal and the notes
+of the optimiser in plain words, for example "Goal: the most likely revenue". The text of the
+optimiser itself is under <em>For experts: how the plan was found</em>. The request and the result
+are the request and result of
 <a href="../../models/mmm-framework/#budget-optimisation"><code>POST …:optimize</code></a>.</p>
 <p><img alt="A budget plan: the allocation, the expected result and the efficient frontier" class="mapi-shot" src="../../assets/screenshots/explorer-optimize.png" /></p>
 <h2 id="from-python-and-the-command-line">From Python and the command line<a class="headerlink" href="#from-python-and-the-command-line" title="Permanent link">&para;</a></h2>
@@ -5012,10 +5107,10 @@ plan was found</em>. The request and result are those of
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mapi<span class="w"> </span>explore<span class="w"> </span>compare<span class="w"> </span>model://growth/sales-arimax@v2<span class="w"> </span>model://growth/sales-ets@v1<span class="w"> </span>--horizon<span class="w"> </span><span class="m">4</span>
 </span></code></pre></div>
 <h2 id="views-written-at-fit">Views written at fit<a class="headerlink" href="#views-written-at-fit" title="Permanent link">&para;</a></h2>
-<p>Every fit writes <code>params</code>, <code>diagnostics</code>, <code>fit</code>, <code>residuals</code>, <code>decomposition</code>,
-<code>response_curves</code>, <code>irf</code> and <code>fevd</code> (sections that do not apply to the model are listed as
-<code>skipped</code> with the reason). Read the index and the views through the model version's UI
-route:</p>
+<p>Each fit writes <code>params</code>, <code>diagnostics</code>, <code>fit</code>, <code>residuals</code>, <code>decomposition</code>,
+<code>response_curves</code>, <code>irf</code>, <code>fevd</code> and <code>fields</code>. The fit lists the sections that do not apply to the model
+as <code>skipped</code>, with the reason. Read the index and the views through the UI route of the model
+version:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models/</span><span class="nv">$MODEL_ID</span><span class="s2">/versions/3/artifacts/ui/explore/index.json"</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>api<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models/</span><span class="nv">$MODEL_ID</span><span class="s2">/versions/3/artifacts/ui/explore/residuals.json"</span>
 </span></code></pre></div>
@@ -5027,21 +5122,27 @@ route:</p>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="s1">               "min_train": 104}</span>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="s1">}'</span>
 </span></code></pre></div>
-<p>The answer (<code>202</code>) is an <code>Exploration</code>; poll <code>GET /v1/explorations/{run_id}</code> for the index and
-signed view links. The same request again answers <code>200</code> from the last run.</p>
+<p>The answer (<code>202</code>) is an <code>Exploration</code>. Poll <code>GET /v1/explorations/{run_id}</code> to get the index
+and the signed view links. If you send the same request again, the answer is <code>200</code> from the
+last run.</p>
 <h2 id="compare-model-versions">Compare model versions<a class="headerlink" href="#compare-model-versions" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models:compare"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="s1">  "models": ["model://growth/sales-arimax@v3", "model://growth/sales-ets@v1",</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="s1">             "model://growth/sales-mmm@v2"]</span>
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="s1">}'</span>
 </span></code></pre></div>
-<p>This explores the first version with the others as <code>compare_with</code> and writes the <code>comparison</code>
-view: every version's holdout metrics side by side, a ranking per error metric (lower is
-better), and pairwise <strong>Diebold-Mariano</strong> tests (with the Harvey-Leybourne-Newbold small-
-sample correction and a Newey-West number of autocovariances) on the first version's
-held-out periods - "is the difference in accuracy more than chance?". The tests are left out,
-with a warning, when a version forecasts the held-out periods from one origin (time-series
-forecasters). Add <code>"sections": ["comparison", "params"]</code> for more.</p>
+<p>This call explores the first version with the other versions as <code>compare_with</code>. It writes the
+<code>comparison</code> view, which has these items:</p>
+<ul>
+<li>The holdout metrics of each version, side by side.</li>
+<li>A ranking for each error metric. A lower value is better.</li>
+<li>Pairwise <strong>Diebold-Mariano</strong> tests on the held-out periods of the first version. The tests
+  use the Harvey-Leybourne-Newbold small-sample correction and a Newey-West number of
+  autocovariances. They answer the question "is the difference in accuracy more than chance?".</li>
+</ul>
+<p>If a version forecasts the held-out periods from one origin (time-series forecasters), the
+view does not include the tests. It gives a warning. For more sections, add
+<code>"sections": ["comparison", "params"]</code>.</p>
 <h2 id="the-sections">The sections<a class="headerlink" href="#the-sections" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5054,17 +5155,17 @@ forecasters). Add <code>"sections": ["comparison", "params"]</code> for more.</p
 <tbody>
 <tr>
 <td><code>params</code></td>
-<td>One row per parameter cell: mean, sd, interval (<code>hdi_90</code> Bayesian, <code>ci_90</code> otherwise), p-value, R-hat, bulk ESS</td>
+<td>One row for each parameter cell: mean, sd, interval (<code>hdi_90</code> for Bayesian, <code>ci_90</code> for other models), p-value, R-hat, bulk ESS</td>
 <td>all with parameters</td>
 </tr>
 <tr>
 <td><code>diagnostics</code></td>
-<td>R-hat max, ESS min, divergences, optimiser status, AIC/BIC, holdout metrics, the plugin's diagnostics, warnings in plain words</td>
+<td>R-hat max, ESS min, divergences, optimiser status, AIC/BIC, holdout metrics, the diagnostics of the plugin, warnings in plain words</td>
 <td>all</td>
 </tr>
 <tr>
 <td><code>fit</code></td>
-<td>Actual against fitted with a 90% band, the split line at the first held-out period</td>
+<td>Actual against fitted with a 90% band, and the split line at the first held-out period</td>
 <td>models over time</td>
 </tr>
 <tr>
@@ -5074,12 +5175,12 @@ forecasters). Add <code>"sections": ["comparison", "params"]</code> for more.</p
 </tr>
 <tr>
 <td><code>decomposition</code></td>
-<td>The model's contributions over time (summed over markets) and each part's share</td>
+<td>The contributions of the model over time (added over markets) and the share of each part</td>
 <td>models with a <code>component</code> output (MMMs, linear models)</td>
 </tr>
 <tr>
 <td><code>response_curves</code></td>
-<td>Mean contribution per channel at each spend level with a 90% band</td>
+<td>Mean contribution for each channel at each spend level, with a 90% band</td>
 <td>MMMs with a response grid</td>
 </tr>
 <tr>
@@ -5093,43 +5194,57 @@ forecasters). Add <code>"sections": ["comparison", "params"]</code> for more.</p
 <td>VAR, VARMAX, VECM</td>
 </tr>
 <tr>
+<td><code>fields</code></td>
+<td>Each output on a 2-D grid as an image: the mean, the sd, the mean÷sd, the 5% and 95% quantiles and some posterior draws for each frame, with arrows for a vector field. Play the draws to see some possible fields that agree with the data</td>
+<td>models with an output that has a <code>grid</code> (maps, images, space-time fields)</td>
+</tr>
+<tr>
 <td><code>forecast</code></td>
-<td>A forecast fan over <code>horizon</code> periods after the history, drivers held at their last values</td>
+<td>A forecast fan over <code>horizon</code> periods after the history. The drivers stay at their last values</td>
 <td>models that forecast</td>
 </tr>
 <tr>
 <td><code>backtest</code></td>
-<td>Refits on a rolling-origin or expanding-window plan: metrics per fold and horizon, against "same as last period" and "same as last season"</td>
+<td>New fits on a rolling-origin or expanding-window plan: metrics for each fold and horizon, against "same as last period" and "same as last season"</td>
 <td>models over time</td>
 </tr>
 <tr>
 <td><code>comparison</code></td>
-<td>Several versions side by side (above)</td>
+<td>More than one version side by side (above)</td>
 <td>all</td>
 </tr>
 </tbody>
 </table>
 <h2 id="for-plugin-authors-what-the-explorer-reads">For plugin authors: what the explorer reads<a class="headerlink" href="#for-plugin-authors-what-the-explorer-reads" title="Permanent link">&para;</a></h2>
-<p>The explorer is model-agnostic; plugins get these views by following a few conventions:</p>
+<p>The explorer does not depend on the model. Plugins get these views if they follow some
+conventions:</p>
 <ul>
-<li><strong>Predictions</strong> come from the score path (<code>predict</code>, expected values), so every plugin has
-  <code>fit</code> and <code>residuals</code> for free.</li>
-<li><strong>Parameters</strong> are read from, in order: the <code>posterior</code> group (chain, draw); a <code>params</code> or
-  <code>coefficients</code> group - either a <em>table</em> (variables <code>estimate</code>, optional <code>std_err</code>,
-  <code>p_value</code>, <code>ci_lower</code>, <code>ci_upper</code> along one parameter dim) or one variable per parameter;
-  or <code>learned["params"]</code> as <code>{name: number}</code> or <code>{name: {estimate, std_err, p_value,
-  ci_lower, ci_upper}}</code>. Confidence intervals without explicit bounds are <code>estimate ± z ·
-  std_err</code>.</li>
-<li><strong>Convergence</strong>: diagnostics coded <code>RHAT</code>/<code>ESS_BULK</code>, <code>sample_stats.diverging</code>,
+<li><strong>Predictions</strong> come from the score path (<code>predict</code>, expected values). Thus each plugin gets
+  <code>fit</code> and <code>residuals</code> automatically.</li>
+<li>
+<p><strong>Parameters</strong>: The explorer reads them from these sources, in this sequence:</p>
+<ol>
+<li>The <code>posterior</code> group (chain, draw).</li>
+<li>A <code>params</code> or <code>coefficients</code> group. This group is a <em>table</em> (variables <code>estimate</code>, and
+   optionally <code>std_err</code>, <code>p_value</code>, <code>ci_lower</code>, <code>ci_upper</code> along one parameter dim). Or it
+   has one variable for each parameter.</li>
+<li><code>learned["params"]</code> as <code>{name: number}</code> or <code>{name: {estimate, std_err, p_value,
+   ci_lower, ci_upper}}</code>.</li>
+</ol>
+<p>Confidence intervals without explicit bounds are <code>estimate ± z · std_err</code>.</p>
+</li>
+<li>
+<p><strong>Convergence</strong>: Diagnostics with the code <code>RHAT</code>/<code>ESS_BULK</code>, <code>sample_stats.diverging</code>,
   <code>learned["converged"]</code> (a bool) or a <code>NOT_CONVERGED</code> diagnostic, and
-  <code>learned["aic"|"bic"|"llf"]</code>.</li>
-<li><strong>Decomposition</strong>: an output with a <code>component</code> dim (contributions).</li>
-<li><strong>Impulse responses</strong>: a group or derived quantity <code>irf</code> with variable <code>irf</code> over
+  <code>learned["aic"|"bic"|"llf"]</code>.</p>
+</li>
+<li><strong>Decomposition</strong>: An output with a <code>component</code> dim (contributions).</li>
+<li><strong>Impulse responses</strong>: A group or derived quantity <code>irf</code> with the variable <code>irf</code> over
   <code>(response, shock, horizon)</code> (optional <code>lower</code>/<code>upper</code>), and <code>fevd</code> over
   <code>(variable, horizon, shock)</code>.</li>
-<li><strong>Response curves</strong>: the <code>response_curves</code> derived quantity used by the what-if sliders.</li>
+<li><strong>Response curves</strong>: The <code>response_curves</code> derived quantity that the what-if sliders use.</li>
 </ul>
-<p>The same reads power the governance checks (see
+<p>The governance checks use the same reads (see
 <a href="../governance/">Validate models with governance policies</a>).</p>
 
 

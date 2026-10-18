@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4610,6 +4640,8 @@
       
         
       
+        
+      
     
     
     
@@ -4698,6 +4730,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4836,17 +4896,18 @@
 <h1 id="expert-plugins-and-mcp-next-v06">Expert plugins and MCP <span class="mapi-badge mapi-badge--soon">next: v0.6</span><a class="headerlink" href="#expert-plugins-and-mcp-next-v06" title="Permanent link">&para;</a></h1>
 <div class="admonition abstract">
 <p class="admonition-title">Status: next (milestone M4)</p>
-<p>v0.4 opened the hosted platform to declarative specs and built-in models; v0.5 added
-workflows, governance, the explorers and in-sandbox budget optimisation
-(<a href="../../whats-new-0.5/">what's new</a>). v0.6 lets <strong>allow-listed experts upload their own
-model plugins</strong> and gives AI assistants and agents a curated <strong>MCP server</strong>; sweeps and
-simulation-based calibration become single parent runs. Public code upload for everyone
-comes after it, behind its own controls (see the <a href="../#after-v06">roadmap</a>).</p>
+<p>v0.4 opened the hosted platform to declarative specs and built-in models. v0.5 added
+workflows, governance, the explorers and budget optimisation in the sandbox
+(<a href="../../whats-new-0.5/">what's new</a>). In v0.6, <strong>allow-listed experts can upload their own
+model plugins</strong>. v0.6 also gives AI assistants and agents a curated <strong>MCP server</strong>.
+Sweeps and simulation-based calibration become single parent runs. Public code upload
+for all users comes after v0.6, with its own controls (see the <a href="../#after-v06">roadmap</a>).</p>
 </div>
 <h2 id="plugin-upload-for-allow-listed-experts">Plugin upload for allow-listed experts<a class="headerlink" href="#plugin-upload-for-allow-listed-experts" title="Permanent link">&para;</a></h2>
-<p>Today a data scientist's own <code>PyMCModel</code> or <code>SklearnModel</code> runs on a deployment they control,
-installed into the runner's environment. v0.6 makes it a product feature of a shared
-deployment, for tenants an operator has allow-listed:</p>
+<p>Now, a data scientist can run their own <code>PyMCModel</code> or <code>SklearnModel</code> only on a deployment
+that they control. They install it into the environment of the runner. v0.6 makes this a
+product feature of a shared deployment. It is available to tenants that an operator put on
+the allow list:</p>
 <pre class="mermaid"><code>flowchart LR
     A["mapi plugin push&lt;br/&gt;(your package)"] --&gt; B["Overlay build&lt;br/&gt;source + pre-resolved wheels,&lt;br/&gt;pinned by hash"]
     B --&gt; C["Describe run&lt;br/&gt;catalog entry, schema sanitizer,&lt;br/&gt;contract kit report"]
@@ -4854,42 +4915,43 @@ deployment, for tenants an operator has allow-listed:</p>
     D --&gt;|yes| E["Runnable in your project&lt;br/&gt;on the pinned base image"]
     D --&gt;|no| F["Readable report&lt;br/&gt;of what to fix"]</code></pre>
 <ul>
-<li><strong>Overlays, not images.</strong> A plugin is built into a hash-pinned overlay (its source plus
-  wheels resolved in advance, including native wheels from a curated mirror) on top of one
-  base-image version. Runs never install anything.</li>
-<li><strong>The contract kit runs on upload.</strong> The same checks you run locally with
-  <code>mapi plugin test</code> decide whether a version becomes runnable, and its report is kept with
-  the version, next to its SBOM.</li>
-<li><strong>Schema sanitizer.</strong> A plugin's settings schemas are sanitized before the web app renders
-  forms from them.</li>
-<li><strong>Dev overlays</strong> for fast iteration: the target is under five minutes from <code>push</code> to a
-  runnable version.</li>
-<li><strong>A vetted tier</strong>: the sibling marketing-mix and HMM models ported as plugins, as the proof
-  that real models fit the contract.</li>
+<li><strong>Overlays, not images.</strong> The platform builds a plugin into a hash-pinned overlay on top
+  of one base-image version. The overlay has the source and wheels that were resolved
+  before, including native wheels from a curated mirror. Runs never install software.</li>
+<li><strong>The contract kit runs on upload.</strong> The kit does the same checks as <code>mapi plugin test</code>
+  on your computer. These checks decide if a version becomes runnable. The platform keeps
+  the report with the version, next to its SBOM.</li>
+<li><strong>Schema sanitizer.</strong> The platform sanitizes the settings schemas of a plugin before the
+  web app makes forms from them.</li>
+<li><strong>Dev overlays</strong> for fast iteration. The target is less than five minutes from <code>push</code> to
+  a runnable version.</li>
+<li><strong>A vetted tier.</strong> We ported the sibling marketing-mix and HMM models as plugins. They
+  are the proof that real models agree with the contract.</li>
 </ul>
 <h2 id="an-mcp-server-for-agents">An MCP server for agents<a class="headerlink" href="#an-mcp-server-for-agents" title="Permanent link">&para;</a></h2>
-<p>A curated set of tools, such as listing and describing models, scoring an endpoint, reading a
-run and fetching a plot, for AI assistants and agents. Every string that came from a user or
-a plugin is returned as clearly delimited untrusted text, so a model name cannot smuggle
-instructions into an agent. Tokens and scopes work as for any other client.</p>
+<p>The MCP server gives a curated set of tools to AI assistants and agents. For example, the
+tools list and describe models, score an endpoint, read a run and get a plot. The server
+returns each string from a user or a plugin as clearly delimited untrusted text. Thus a model
+name cannot put hidden instructions into an agent. Tokens and scopes work the same as for
+other clients.</p>
 <h2 id="sweeps-as-jobs-and-what-v05-already-delivered">Sweeps as jobs, and what v0.5 already delivered<a class="headerlink" href="#sweeps-as-jobs-and-what-v05-already-delivered" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><code>optimize</code> runs</strong> (delivered in v0.5). Budgets are optimised <em>next to the model</em> in the
-  sandbox with mmm-framework's planning module, from the posterior's response curves
-  (<a href="../../tutorials/optimise-a-budget/">Optimise a budget</a>).</li>
+<li><strong><code>optimize</code> runs</strong> (delivered in v0.5). The sandbox optimises budgets <em>next to the
+  model</em> with the planning module of mmm-framework. It uses the response curves of the
+  posterior (<a href="../../tutorials/optimise-a-budget/">Optimise a budget</a>).</li>
 <li><strong>Backtests</strong> (delivered in v0.5) run as workflow nodes on rolling-origin and
   expanding-window plans (<a href="../../guides/workflow-cookbook/">cookbook</a>).</li>
-<li><strong><code>Sweep</code> and <code>SBC</code></strong> as one parent run that fans out and aggregates: a sensitivity sweep
-  over a prior, simulation-based calibration of a new plugin (v0.5's governance has a
-  parametric-bootstrap version, <code>recovery.simulated</code>).</li>
+<li><strong><code>Sweep</code> and <code>SBC</code></strong> as one parent run that fans out and aggregates the results. For
+  example, a sensitivity sweep over a prior, or simulation-based calibration of a new
+  plugin. (The governance of v0.5 has a parametric-bootstrap version, <code>recovery.simulated</code>.)</li>
 </ul>
 <h2 id="exit-criteria">Exit criteria<a class="headerlink" href="#exit-criteria" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Three sibling models packaged as plugins and passing the contract kit.</li>
-<li>A dev overlay pushed and runnable in under five minutes.</li>
+<li>Three sibling models are packaged as plugins and pass the contract kit.</li>
+<li>A dev overlay is pushed and becomes runnable in less than five minutes.</li>
 <li>An as-of backtest and a sensitivity sweep each run as a single parent.</li>
 </ul>
-<p>Releases are cut when their exit criteria pass; follow the
+<p>We cut a release when it passes its exit criteria. Read the
 <a href="../../project/changelog/">changelog</a>.</p>
 
 

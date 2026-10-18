@@ -1049,6 +1049,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1288,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4787,6 +4817,8 @@
       
         
       
+        
+      
     
     
     
@@ -4875,6 +4907,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -5190,23 +5250,24 @@
 <h1 id="m2-verification-v03">M2 verification <span class="mapi-badge">v0.3</span><a class="headerlink" href="#m2-verification-v03" title="Permanent link">&para;</a></h1>
 <p>Milestone M2 (cloud and multi-tenant core) has five exit criteria:</p>
 <ol>
-<li>100 concurrent fits without loss;</li>
-<li>chaos and executor conformance green;</li>
-<li>the security suite green nightly;</li>
-<li>p95 time-to-RUNNING under 90 s;</li>
-<li>per-run cost shown in the UI.</li>
+<li>100 concurrent fits without loss.</li>
+<li>Chaos and executor conformance green.</li>
+<li>The security suite green each night.</li>
+<li>p95 time-to-RUNNING below 90 s.</li>
+<li>The cost of each run shown in the UI.</li>
 </ol>
-<p>This page records how far each one was verified <strong>locally</strong> and what still needs a real Google
-Cloud project. The local run had no Docker daemon and no cloud credentials:</p>
+<p>This page records how much of each criterion we verified <strong>locally</strong>. It also tells what
+still needs a real Google Cloud project. The local run had no Docker daemon and no cloud
+credentials:</p>
 <ul>
-<li>Cloud Storage was the GCS shim;</li>
-<li>Postgres was the embedded <code>pgserver</code>;</li>
-<li>the Cloud Run Jobs executor ran against its in-memory fake Admin API (<code>FakeCloudRun</code>);</li>
-<li>Pub/Sub pushes were simulated with locally signed OIDC tokens;</li>
-<li>Terraform was validated, never applied.</li>
+<li>Cloud Storage was the GCS shim.</li>
+<li>Postgres was the embedded <code>pgserver</code>.</li>
+<li>The Cloud Run Jobs executor ran against its in-memory fake Admin API (<code>FakeCloudRun</code>).</li>
+<li>Locally signed OIDC tokens simulated the Pub/Sub pushes.</li>
+<li>We validated the Terraform, but we did not apply it.</li>
 </ul>
-<p>Verified on 2026-10-15 at commit <code>feat/m2-e2e</code> (v0.3 development), on an Apple-silicon laptop
-(8 cores, 16 GB, macOS).</p>
+<p>We did the verification on 2026-10-15 at commit <code>feat/m2-e2e</code> (v0.3 development), on an
+Apple-silicon laptop (8 cores, 16 GB, macOS).</p>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5220,62 +5281,63 @@ Cloud project. The local run had no Docker daemon and no cloud credentials:</p>
 <tbody>
 <tr>
 <td>100 concurrent fits without loss</td>
-<td><code>make load-test</code>: 100 fits through the real dispatcher, reconciler, finalizer and events path on the Cloud Run executor (fake Admin API) and the GCS shim. A second mode keeps all 100 executions live at once. A burst of 32 <em>real</em> fits ran on the live dev stack.</td>
-<td>100/100 succeeded, one execution and one attempt per run. 32/32 real fits succeeded, with one attempt, ledger entry and model version per run.</td>
+<td><code>make load-test</code>: 100 fits through the real dispatcher, reconciler, finalizer and events path on the Cloud Run executor (fake Admin API) and the GCS shim. A second mode keeps all 100 executions live at the same time. A burst of 32 <em>real</em> fits ran on the live dev stack.</td>
+<td>100/100 succeeded, with one execution and one attempt for each run. 32/32 real fits succeeded, with one attempt, ledger entry and model version for each run.</td>
 <td>The same burst on Cloud Run Jobs (real cold starts, real <code>jobs.run</code> quota)</td>
 </tr>
 <tr>
 <td>Chaos green</td>
 <td><code>make chaos</code></td>
 <td>5/5 passed</td>
-<td>Cloud SQL failover; Pub/Sub redelivery from the real subscription</td>
+<td>Cloud SQL failover. Pub/Sub redelivery from the real subscription</td>
 </tr>
 <tr>
 <td>Executor conformance green</td>
-<td>12 cases on <code>fake-cloudrun</code> and on <code>local-process</code>, plus the gate</td>
-<td>24 passed, 3 skipped (documented capabilities <code>local-process</code> lacks), 0 failed</td>
-<td>The 12 cases against the real Cloud Run Admin API (no live target exists yet, see below)</td>
+<td>12 cases on <code>fake-cloudrun</code> and on <code>local-process</code>, and the gate</td>
+<td>24 passed, 3 skipped (documented capabilities that <code>local-process</code> does not have), 0 failed</td>
+<td>The 12 cases against the real Cloud Run Admin API (there is no live target yet, refer to the text below)</td>
 </tr>
 <tr>
 <td>Security suite nightly green</td>
 <td><code>make security-suite EXECUTOR=local-process</code>. The nightly workflow is written.</td>
-<td>PASS: all 17 outcomes acceptable for <code>PROCESS</code></td>
-<td>Probes inside a gVisor container (needs Docker) and inside a Cloud Run Jobs execution (<code>MICROVM</code>)</td>
+<td>PASS: all 17 outcomes are acceptable for <code>PROCESS</code></td>
+<td>Probes in a gVisor container (needs Docker) and in a Cloud Run Jobs execution (<code>MICROVM</code>)</td>
 </tr>
 <tr>
 <td>p95 time-to-RUNNING &lt; 90 s</td>
 <td>Measured in the load test, and on the live stack</td>
 <td>Fake Cloud Run: p95 <strong>45.9–46.5 s</strong> (100 fits). Live local stack: p95 <strong>3.0 s</strong> (16 real fits) and <strong>8.9 s</strong> (32)</td>
-<td>Real cold start of a ~2.5 GB base image <strong>[verify M0]</strong> comes on top (see the warning below)</td>
+<td>The real cold start of a base image of about 2.5 GB <strong>[verify M0]</strong> adds more time (refer to the warning below)</td>
 </tr>
 <tr>
 <td>Per-run cost shown in the UI</td>
 <td>Playwright against the live stack: the run page, the runs list and the usage page show the metered cost</td>
-<td><code>$0.0003</code> metered on the run page and in the list; usage totals match the ledger</td>
+<td><code>$0.0003</code> metered on the run page and in the list. The usage totals agree with the ledger</td>
 <td>The price table against real Cloud Run billing</td>
 </tr>
 </tbody>
 </table>
-<p>Multi-tenancy, which the M2 scope adds, was also verified end to end on the live stack:</p>
+<p>M2 also adds multi-tenancy. We verified these items from end to end on the live stack:</p>
 <ul>
-<li>two users in two tenants, signed in through the development identity provider;</li>
-<li>cross-tenant access refused at the API and by row-level security;</li>
-<li>token scopes;</li>
-<li>quotas;</li>
-<li>the spend-cap kill switch, held at dispatch;</li>
-<li>per-run cost;</li>
-<li>the audit trail.</li>
+<li>Two users in two tenants, signed in through the development identity provider.</li>
+<li>The API and row-level security refuse cross-tenant access.</li>
+<li>Token scopes.</li>
+<li>Quotas.</li>
+<li>The spend-cap kill switch, which holds runs at dispatch.</li>
+<li>The cost of each run.</li>
+<li>The audit trail.</li>
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">p95 time-to-RUNNING on real Cloud Run</p>
-<p>For a burst of 100 fits, the 46 s p95 comes almost entirely from the submit rate:
-<code>MAPI_CLOUDRUN_SUBMITS_PER_MINUTE=150</code> (the regional <code>jobs.run</code> quota is 180 a minute,
-<strong>[verify M0]</strong>) spreads 100 submissions over about 40 s. The fake provisions in
-0.3–1.5 s. On Cloud Run, every execution's cold start adds to that. If the p95 cold start
-of a base image is over about 40 s, a cold 100-fit burst misses the 90 s budget even
-though every single fit starts quickly. Measure the cold start first (see
-<a href="#what-remains-for-real-gcp">What remains for real GCP</a>). Homogeneous fan-out (sweeps,
-SBC) avoids the limit by using one execution with <code>taskCount</code>; independent fits cannot.</p>
+<p>For a burst of 100 fits, almost all of the 46 s p95 comes from the submit rate.
+<code>MAPI_CLOUDRUN_SUBMITS_PER_MINUTE=150</code> divides 100 submissions over about 40 s. The
+regional <code>jobs.run</code> quota is 180 a minute (<strong>[verify M0]</strong>). The fake provisions in
+0.3–1.5 s. On Cloud Run, the cold start of each execution adds to that time.</p>
+<p>The p95 cold start of a base image can be more than about 40 s. Then a cold burst of 100
+fits is longer than the 90 s budget. This is true also when each fit starts quickly. Measure
+the cold start first (refer to <a href="#what-remains-for-real-gcp">What remains for real GCP</a>).
+Homogeneous fan-out (sweeps, SBC) uses one execution with <code>taskCount</code>, and thus it does
+not have this limit. Independent fits cannot do this.</p>
 </div>
 <h2 id="how-each-item-was-verified">How each item was verified<a class="headerlink" href="#how-each-item-was-verified" title="Permanent link">&para;</a></h2>
 <h3 id="load-100-concurrent-fits">Load: 100 concurrent fits<a class="headerlink" href="#load-100-concurrent-fits" title="Permanent link">&para;</a></h3>
@@ -5283,15 +5345,15 @@ SBC) avoids the limit by using one execution with <code>taskCount</code>; indepe
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">LOAD_TEST_FIT_MS</span><span class="o">=</span><span class="m">40000</span>-60000<span class="w"> </span>make<span class="w"> </span>load-test<span class="w">       </span><span class="c1"># 40–60 s fits: all 100 live at once</span>
 </span></code></pre></div>
 <p><code>packages/server/tests/test_load_cloudrun.py</code> submits 100 fits. They go through the
-production rate limits: the dispatcher's token bucket and the executor's 150 a minute. The
-backend misbehaves on purpose:</p>
+production rate limits: the token bucket of the dispatcher and the 150 a minute of the
+executor. The backend makes errors on purpose:</p>
 <ul>
-<li>it answers the first <code>jobs.run</code> calls with 429;</li>
-<li>it loses two responses, which leaves orphans the executor must adopt instead of
-  resubmitting.</li>
+<li>It answers the first <code>jobs.run</code> calls with 429.</li>
+<li>It loses two responses. This makes orphans that the executor must adopt. The executor must
+  not submit them again.</li>
 </ul>
-<p>A synthetic supervisor reads its bootstrap object and writes its outputs through signed URLs
-on the real GCS shim. Its events arrive as OIDC-authenticated Pub/Sub pushes, with random lag
+<p>A synthetic supervisor reads its bootstrap object. It writes its outputs through signed URLs
+on the real GCS shim. Its events come as OIDC-authenticated Pub/Sub pushes, with random lag
 and 5 % duplicates.</p>
 <table>
 <thead>
@@ -5299,7 +5361,7 @@ and 5 % duplicates.</p>
 <th>Mode</th>
 <th>Runs</th>
 <th>p50 / p95 / max time-to-RUNNING</th>
-<th>Most executions live at once</th>
+<th>Most executions live at the same time</th>
 <th>Pushes (duplicates)</th>
 <th>Wall</th>
 </tr>
@@ -5323,10 +5385,10 @@ and 5 % duplicates.</p>
 </tr>
 </tbody>
 </table>
-<p>Both modes asserted exactly one execution and one attempt per run (no double dispatch), and
-that every run succeeded (no loss).</p>
-<p><strong>Real fits on the live stack.</strong> This is opt-in, because each fit is a pair of processes on
-the host:</p>
+<p>The two modes asserted exactly one execution and one attempt for each run (no double
+dispatch). They also asserted that each run succeeded (no loss).</p>
+<p><strong>Real fits on the live stack.</strong> This test is opt-in, because each fit is a pair of processes
+on the host:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>dev<span class="w">   </span><span class="c1"># with the MAPI_* ports below</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">MAPI_E2E_BURST_RUNS</span><span class="o">=</span><span class="m">32</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q<span class="w"> </span>-s<span class="w"> </span>-m<span class="w"> </span>e2e<span class="w"> </span>tests/e2e/test_m2_burst_stack.py
 </span></code></pre></div>
@@ -5354,52 +5416,53 @@ the host:</p>
 </tr>
 </tbody>
 </table>
-<p>For each run, the test checked that it has exactly one row in each of <code>run_attempts</code>,
-<code>cost_ledger</code> and <code>model_versions</code> (counted straight in Postgres), and that it registered a
-distinct model version.</p>
+<p>For each run, the test made sure of two things. The run has exactly one row in each of
+<code>run_attempts</code>, <code>cost_ledger</code> and <code>model_versions</code> (counted directly in Postgres). The run
+registered a different model version.</p>
 <h3 id="chaos">Chaos<a class="headerlink" href="#chaos" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>make<span class="w"> </span>chaos
 </span></code></pre></div>
 <p>5/5 passed:</p>
 <ul>
-<li>the worker killed during PROVISIONING;</li>
-<li>the worker killed during RUNNING;</li>
-<li>event redelivery and reordering;</li>
-<li>a redelivered event with a bad HMAC that never advances the run;</li>
-<li>a Postgres restart mid-run.</li>
+<li>The test stopped the worker during PROVISIONING.</li>
+<li>The test stopped the worker during RUNNING.</li>
+<li>Event redelivery and a changed sequence of events.</li>
+<li>A redelivered event with a bad HMAC. This event never moves the run forward.</li>
+<li>A Postgres restart during a run.</li>
 </ul>
-<p>Each converged to the correct terminal state with no lost or duplicated attempt.</p>
+<p>Each case came to the correct terminal state, with no lost or duplicated attempt.</p>
 <h3 id="executor-conformance">Executor conformance<a class="headerlink" href="#executor-conformance" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q<span class="w"> </span>-rs<span class="w"> </span>packages/server/tests/test_executor_conformance.py
 </span></code></pre></div>
 <p>24 passed, 3 skipped. The 12 cases are:</p>
 <ul>
-<li>submit;</li>
-<li>orphan adoption after a dispatcher crash;</li>
-<li>duplicate-submit safety;</li>
-<li>cancel mid-run;</li>
-<li>timeout;</li>
-<li>STALLED without a false LOST;</li>
-<li>confirmed cancel before retry;</li>
-<li>checkpoint resume;</li>
-<li>OOM classification;</li>
-<li>fan-out with <code>taskCount</code>;</li>
-<li>generation verification;</li>
+<li>Submit.</li>
+<li>Orphan adoption after a dispatcher crash.</li>
+<li>Safety of a duplicate submit.</li>
+<li>Cancel during a run.</li>
+<li>Timeout.</li>
+<li>STALLED without a false LOST.</li>
+<li>Confirmed cancel before retry.</li>
+<li>Checkpoint resume.</li>
+<li>OOM classification.</li>
+<li>Fan-out with <code>taskCount</code>.</li>
+<li>Generation verification.</li>
 <li>429 back-off.</li>
 </ul>
-<p>Every case passed on <code>fake-cloudrun</code>. The gate test (<code>test_conformance_report_gates_the_executor</code>)
-passed for both backends.</p>
-<p>On <code>local-process</code>, three cases were skipped. They need capabilities that executor does not
-declare: <code>memory_limit</code>, <code>fanout</code> and <code>remote_control_api</code>. The gate requires exactly those
-skips.</p>
-<p>The 12 cases of the <code>docker</code> backend were deselected, because there is no Docker daemon.</p>
+<p>All cases passed on <code>fake-cloudrun</code>. The gate test
+(<code>test_conformance_report_gates_the_executor</code>) passed for the two backends.</p>
+<p>On <code>local-process</code>, the suite skipped three cases. They need capabilities that this executor
+does not declare: <code>memory_limit</code>, <code>fanout</code> and <code>remote_control_api</code>. The gate needs exactly
+those skips.</p>
+<p>The suite did not select the 12 cases of the <code>docker</code> backend, because there is no Docker
+daemon.</p>
 <h3 id="security-suite">Security suite<a class="headerlink" href="#security-suite" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>security-suite<span class="w"> </span><span class="nv">EXECUTOR</span><span class="o">=</span>local-process
 </span></code></pre></div>
-<p>Result: <code>PASS: all 17 probe outcomes acceptable for this executor</code>, and the suite's own
-tests passed (9). The outcomes match the <a href="../security-suite/">expected matrix</a> for <code>PROCESS</code>
-isolation, where either outcome is accepted for the isolation probes but every platform probe
-must be blocked:</p>
+<p>Result: <code>PASS: all 17 probe outcomes acceptable for this executor</code>. The tests of the suite
+also passed (9). The outcomes agree with the <a href="../security-suite/">expected matrix</a> for
+<code>PROCESS</code> isolation. For this isolation, the suite accepts the two outcomes for the isolation
+probes. But the executor must stop all platform probes:</p>
 <table>
 <thead>
 <tr>
@@ -5431,94 +5494,97 @@ must be blocked:</p>
 </tr>
 </tbody>
 </table>
-<p>The probes clean up after themselves: the <code>.pth</code> file and the file written outside scratch
-were removed.</p>
-<p>Two defects in the suite were fixed along the way:</p>
+<p>The probes remove what they make. The suite removed the <code>.pth</code> file and the file that it
+wrote outside scratch.</p>
+<p>We repaired two defects in the suite:</p>
 <ul>
-<li>The docker and gVisor runner ran <code>python -m mapi_security</code> in the runner image, which never
-  contains the suite. The suite is now mounted read-only into the probe container.</li>
-<li><code>--executor cloud</code> used to probe whatever host ran it. It now refuses to run outside a
-  Cloud Run Jobs execution.</li>
+<li>The docker and gVisor runner ran <code>python -m mapi_security</code> in the runner image, but the
+  runner image never contains the suite. Now the suite is mounted read-only into the probe
+  container.</li>
+<li><code>--executor cloud</code> probed the host where it ran. Now it does not run outside a Cloud Run
+  Jobs execution.</li>
 </ul>
-<p><code>.github/workflows/nightly.yml</code> schedules the following jobs every night:</p>
+<p><code>.github/workflows/nightly.yml</code> schedules these jobs each night:</p>
 <ul>
-<li>chaos;</li>
-<li>executor conformance;</li>
-<li>both load-test modes;</li>
-<li>the security suite on <code>local-process</code>;</li>
-<li>the security suite inside gVisor (it installs <code>runsc</code> and builds the worker image).</li>
+<li>Chaos.</li>
+<li>Executor conformance.</li>
+<li>The two load-test modes.</li>
+<li>The security suite on <code>local-process</code>.</li>
+<li>The security suite in gVisor (it installs <code>runsc</code> and builds the worker image).</li>
 </ul>
-<p>The workflow was checked as YAML here; it has not run on GitHub yet.</p>
+<p>We did a check of the workflow as YAML here. It has not run on GitHub yet.</p>
 <h3 id="multi-tenancy-through-the-live-stack">Multi-tenancy through the live stack<a class="headerlink" href="#multi-tenancy-through-the-live-stack" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>e2e<span class="w">    </span><span class="c1"># API suites (M1 + M2), then the browser @e2e suites</span>
 </span></code></pre></div>
-<p>The M2 API suite, <code>tests/e2e/test_m2_tenancy_stack.py</code> (11 tests, about 2 minutes), runs
-the following steps:</p>
+<p>The M2 API suite, <code>tests/e2e/test_m2_tenancy_stack.py</code> (11 tests, about 2 minutes), does
+these steps:</p>
 <ol>
-<li>The platform operator creates two <code>internal</code> tenants. Each has an invited admin, the dev
-   accounts <code>analyst@dev.local</code> and <code>viewer@dev.local</code>.</li>
-<li>Each admin signs in, which claims the invitation, and creates project <code>growth</code>.</li>
-<li>Each admin uploads data under the same dataset names, fits the corpus's scikit-learn
-   store-demand model and scores it.</li>
+<li>The platform operator makes two <code>internal</code> tenants. Each tenant has an invited admin, the
+   dev accounts <code>analyst@dev.local</code> and <code>viewer@dev.local</code>.</li>
+<li>Each admin signs in, which accepts the invitation, and makes project <code>growth</code>.</li>
+<li>Each admin uploads data under the same dataset names. Each admin fits the scikit-learn
+   store-demand model of the corpus and scores it.</li>
 </ol>
-<p>On that state, the suite proves the following.</p>
+<p>On that state, the suite proves these items.</p>
 <p><strong>Sign-in</strong></p>
 <ul>
 <li>The BFF flow works: <code>/auth/login</code>, the IdP, then <code>/auth/callback</code>, with PKCE S256.</li>
 <li>A replayed callback gets 401.</li>
 <li>A cookie mutation without <code>X-CSRF-Token</code>, or from a foreign origin, gets 403.</li>
-<li>Logout ends the session.</li>
+<li>Logout stops the session.</li>
 <li>ID-token bearers work.</li>
-<li>API tokens work, are bound to their project, and are dead (401) after revocation.</li>
+<li>API tokens work and are bound to their project. After revocation, they do not work (401).</li>
 </ul>
 <p><strong>API isolation.</strong> The other tenant always gets 404 or 403, never a 2xx or a 5xx:</p>
 <ul>
-<li>on 18 project-scoped reads: datasets and versions, the preview, the data artifact, specs,
-  runs, logs, run plots, models, versions, artifacts, <code>ui/</code> views and plots;</li>
-<li>on the SSE stream;</li>
-<li>on 10 writes: cancel, retry, resume, spec revision, dry-run, score, evaluate, fit, upload
-  and new version;</li>
-<li>on tenant routes: tenant, projects, members, audit and usage;</li>
-<li>when the caller names the other tenant's project explicitly.</li>
+<li>On 18 project-scoped reads: datasets and versions, the preview, the data artifact, specs,
+  runs, logs, run plots, models, versions, artifacts, <code>ui/</code> views and plots.</li>
+<li>On the SSE stream.</li>
+<li>On 10 writes: cancel, retry, resume, spec revision, dry-run, score, evaluate, fit, upload
+  and new version.</li>
+<li>On tenant routes: tenant, projects, members, audit and usage.</li>
+<li>When the caller names the project of the other tenant explicitly.</li>
 </ul>
-<p>Lists never show the other tenant's rows. The same <code>dataset://growth/...</code> ref resolves to
-each tenant's own data: the lineage dataset hashes differ.</p>
-<p><strong>Row-level security, straight in Postgres</strong> (as <code>mapi_app</code>)</p>
+<p>Lists never show the rows of the other tenant. The same <code>dataset://growth/...</code> ref resolves
+to the data of each tenant. The lineage dataset hashes are different.</p>
+<p><strong>Row-level security, directly in Postgres</strong> (as <code>mapi_app</code>)</p>
 <ul>
-<li><code>FORCE ROW LEVEL SECURITY</code> is on for every table checked.</li>
-<li>A fresh connection without a tenant fails closed.</li>
-<li>With <code>app.tenant_id</code> set, each table shows the caller's own rows and none of the other
-  tenant's.</li>
-<li>The other tenant's run is neither visible nor updatable by id.</li>
-<li>Moving a row to another tenant violates the policy.</li>
-<li>The setting is transaction-local: after commit, a pooled connection sees nothing.</li>
+<li><code>FORCE ROW LEVEL SECURITY</code> is on for each table that we examined.</li>
+<li>A new connection without a tenant fails closed.</li>
+<li>With <code>app.tenant_id</code> set, each table shows the rows of the caller and none of the rows of
+  the other tenant.</li>
+<li>The caller cannot see or update the run of the other tenant by id.</li>
+<li>If you move a row to a different tenant, this violates the policy.</li>
+<li>The setting is local to the transaction. After commit, a pooled connection sees nothing.</li>
 </ul>
 <p><strong>Scopes</strong></p>
 <ul>
-<li>A <code>models:read</code> token can read but gets 403 on fit, score and token minting, and on another
-  tenant's project.</li>
-<li>A <code>runs:create</code> token fits, and the audit log attributes the run to that token.</li>
+<li>A <code>models:read</code> token can read. It gets 403 on fit, score and token minting, and on the
+  project of a different tenant.</li>
+<li>A <code>runs:create</code> token can fit. The audit log shows that token as the source of the run.</li>
 </ul>
-<p><strong>Quotas.</strong> Both answer 429 <code>QUOTA_EXCEEDED</code>, and the other tenant is unaffected:</p>
+<p><strong>Quotas.</strong> These two limits answer 429 <code>QUOTA_EXCEEDED</code>. They have no effect on the other
+tenant:</p>
 <ul>
-<li>a tenant cap of <code>vcpu_seconds_per_day=1</code>;</li>
-<li>a token's <code>vcpu_seconds_budget=1</code>.</li>
+<li>A tenant cap of <code>vcpu_seconds_per_day=1</code>.</li>
+<li>A token <code>vcpu_seconds_budget=1</code>.</li>
 </ul>
-<p><strong>Kill switch.</strong> This test briefly pauses the worker (<code>SIGSTOP</code>) so a run is
-deterministically queued first. Then:</p>
+<p><strong>Kill switch.</strong> This test pauses the worker for a short time (<code>SIGSTOP</code>). Thus a run is
+always first in the queue. Then:</p>
 <ul>
-<li>the operator makes the tenant <code>verified</code> and sets <code>global_spend_cap_micros=1</code>;</li>
-<li>the queued run stays <code>queued</code> across several dispatcher polls, so it is held at dispatch;</li>
-<li>new runs of that tenant get 429 with the spend-cap message;</li>
-<li>an <code>internal</code> tenant keeps being admitted and dispatched;</li>
-<li>once the tenant is <code>internal</code> again, the held run is leased and succeeds.</li>
+<li>The operator makes the tenant <code>verified</code> and sets <code>global_spend_cap_micros=1</code>.</li>
+<li>The queued run stays <code>queued</code> across many dispatcher polls. Thus the dispatcher holds it.</li>
+<li>New runs of that tenant get 429 with the spend-cap message.</li>
+<li>The dispatcher continues to admit and dispatch an <code>internal</code> tenant.</li>
+<li>When the tenant is <code>internal</code> again, the dispatcher leases the held run, and the run
+  succeeds.</li>
 </ul>
-<p><strong>Cost.</strong> For every fit and score:</p>
+<p><strong>Cost.</strong> For each fit and score:</p>
 <ul>
 <li><code>Run.cost</code> is metered (<code>estimated=false</code>, one attempt billed, <code>amount_micros &gt; 0</code>, a price
-  version, and vCPU- and GiB-seconds);</li>
-<li>there is one <code>actual</code> ledger row per attempt, in the right tenant;</li>
-<li><code>GET /v1/usage</code> and the tenant usage add up to at least the ledger.</li>
+  version, and vCPU- and GiB-seconds).</li>
+<li>There is one <code>actual</code> ledger row for each attempt, in the correct tenant.</li>
+<li><code>GET /v1/usage</code> and the tenant usage are equal to the ledger or more.</li>
 </ul>
 <p><strong>Audit</strong></p>
 <ul>
@@ -5532,50 +5598,50 @@ deterministically queued first. Then:</p>
 </span></code></pre></div>
 <p>Chromium runs the M2 browser flow, <code>apps/web/e2e/m2-flow.e2e.spec.ts</code> (4 tests):</p>
 <ol>
-<li>Sign-in through the IdP's account chooser.</li>
-<li>The tenant switcher: switch to the seeded tenant; the choice survives a reload.</li>
+<li>Sign in through the account chooser of the IdP.</li>
+<li>Use the tenant switcher. Change to the seeded tenant. The selection stays after a reload.</li>
 <li>Fit from the spec editor and wait for <code>succeeded</code>. The run page shows
-   <code>Metered · price table … · 1 attempt billed</code> and <code>cost $0.0003</code>; the runs list and the
-   usage page show the cost too.</li>
-<li>Mint a <code>models:read</code> token, then revoke it. Before revocation, the API refuses it a fit
-   (403); after revocation, the token gets 401.</li>
-<li>Admin console:<ol>
-<li>make the tenant <code>verified</code>;</li>
-<li>set a spend cap;</li>
-<li>the tenant admin's next fit is refused with the spend-cap message;</li>
-<li>remove the cap (typing <code>REMOVE</code>);</li>
-<li>find <code>kill_switch.update</code> and <code>tenant.update</code> in the audit log.</li>
+   <code>Metered · price table … · 1 attempt billed</code> and <code>cost $0.0003</code>. The runs list and the
+   usage page also show the cost.</li>
+<li>Mint a <code>models:read</code> token, then revoke it. Before revocation, the API refuses a fit with
+   it (403). After revocation, the token gets 401.</li>
+<li>In the admin console, do these steps:<ol>
+<li>Make the tenant <code>verified</code>.</li>
+<li>Set a spend cap.</li>
+<li>The next fit of the tenant admin gets the spend-cap message.</li>
+<li>Remove the cap (type <code>REMOVE</code>).</li>
+<li>Find <code>kill_switch.update</code> and <code>tenant.update</code> in the audit log.</li>
 </ol>
 </li>
 </ol>
-<p><code>tests/e2e/m2_browser_seed.py</code> seeds the tenant and puts the stack back afterwards. The
-screenshots in <code>apps/web/e2e/screenshots/m2-*.png</code> (git-ignored) were reviewed. They led to
-these fixes:</p>
+<p><code>tests/e2e/m2_browser_seed.py</code> seeds the tenant, and puts the stack back after the test. We
+examined the screenshots in <code>apps/web/e2e/screenshots/m2-*.png</code> (git ignores them). They
+caused these fixes:</p>
 <ul>
-<li><strong>Sub-cent costs showed as <code>$0.00</code>.</strong> A 3 s ingest cost $0.000047, and the spend-cap badge
-  for a 1-micro cap read "$0.00 per day". Amounts below $0.0001 now keep two significant
-  digits.</li>
-<li><strong>Session usage was listed as "-" in "By token".</strong> The server's group key is <code>-</code>; the page
-  now labels it "Signed-in users".</li>
-<li><strong>Memory showed "0 GiB·h".</strong> It is now in GiB-seconds under an hour.</li>
-<li><strong>A finished run without output said "No output captured yet".</strong></li>
-<li><strong>The project switcher truncated tenant and project names</strong> even on wide screens.</li>
+<li><strong>Costs below one cent showed as <code>$0.00</code>.</strong> A 3 s ingest cost $0.000047. The spend-cap
+  badge for a 1-micro cap showed "$0.00 per day". Now amounts below $0.0001 keep two
+  significant digits.</li>
+<li><strong>Session usage showed as "-" in "By token".</strong> The group key of the server is <code>-</code>. Now the
+  page shows the label "Signed-in users".</li>
+<li><strong>Memory showed "0 GiB·h".</strong> Now it shows GiB-seconds below one hour.</li>
+<li><strong>A finished run without output showed "No output captured yet".</strong></li>
+<li><strong>The project switcher cut tenant and project names short</strong>, also on wide screens.</li>
 </ul>
 <h3 id="infrastructure">Infrastructure<a class="headerlink" href="#infrastructure" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>make<span class="w"> </span>tf-validate
 </span></code></pre></div>
-<p>87 passed, 1 skipped: <code>shellcheck</code> is not installed. This covers:</p>
+<p>87 passed, 1 skipped: <code>shellcheck</code> is not installed. The tests include:</p>
 <ul>
-<li><code>terraform fmt</code>;</li>
-<li><code>validate</code> of every environment, with <code>-backend=false</code>;</li>
-<li>module tests with mocked providers;</li>
-<li>the HCL invariants (for example digest-pinned images, the deny-all egress, the env-only
-  overrides);</li>
-<li>the deploy scripts and the deploy workflow.</li>
+<li><code>terraform fmt</code>.</li>
+<li><code>validate</code> of each environment, with <code>-backend=false</code>.</li>
+<li>Module tests with mocked providers.</li>
+<li>The HCL invariants (for example digest-pinned images, the deny-all egress, the env-only
+  overrides).</li>
+<li>The deploy scripts and the deploy workflow.</li>
 </ul>
 <h2 id="local-stack-used">Local stack used<a class="headerlink" href="#local-stack-used" title="Permanent link">&para;</a></h2>
-<p>The API's default port was taken, so the stack ran on other ports, with a fresh data
-directory and two extra dev accounts:</p>
+<p>A different process used the default port of the API. Thus the stack ran on other ports,
+with a new data directory and two more dev accounts:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:18000<span class="w"> </span><span class="nv">MAPI_GCS_ENDPOINT</span><span class="o">=</span>http://127.0.0.1:14443<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">       </span><span class="nv">MAPI_WEB_ORIGIN</span><span class="o">=</span>http://127.0.0.1:15173<span class="w"> </span><span class="nv">MAPI_PLOTS_ORIGIN</span><span class="o">=</span>http://127.0.0.1:15174<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">       </span><span class="nv">MAPI_DATA_DIR</span><span class="o">=</span><span class="nv">$PWD</span>/.local/m2e2e<span class="w"> </span><span class="nv">VITE_API_BASE</span><span class="o">=</span>http://127.0.0.1:18000
@@ -5583,9 +5649,9 @@ directory and two extra dev accounts:</p>
 </span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>make<span class="w"> </span>e2e<span class="w">                     </span><span class="c1"># in another shell, with the same exports</span>
 </span></code></pre></div>
 <p><code>MAPI_E2E_ACCOUNTS</code> selects the two tenant admins of the API suite (default
-<code>analyst@dev.local,viewer@dev.local</code>). <code>MAPI_E2E_UI_ACCOUNT</code> selects the browser flow's
-tenant admin (default <code>analyst@dev.local</code>). Both suites need a stack in the <code>dev</code> profile,
-and skip otherwise.</p>
+<code>analyst@dev.local,viewer@dev.local</code>). <code>MAPI_E2E_UI_ACCOUNT</code> selects the tenant admin of the
+browser flow (default <code>analyst@dev.local</code>). The two suites need a stack in the <code>dev</code> profile.
+If not, they skip.</p>
 <h2 id="full-verification-set">Full verification set<a class="headerlink" href="#full-verification-set" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5604,12 +5670,12 @@ and skip otherwise.</p>
 <tr>
 <td>Lint and import contracts</td>
 <td><code>make lint</code></td>
-<td>ruff and format clean (569 files); import contracts 4 kept, 0 broken</td>
+<td>ruff and format clean (569 files). Import contracts: 4 kept, 0 broken</td>
 </tr>
 <tr>
 <td>Type checks</td>
 <td><code>make typecheck</code></td>
-<td>mypy clean on every package (<code>--strict</code> for spec, gcs-shim, runner, server, client and cli)</td>
+<td>mypy clean on each package (<code>--strict</code> for spec, gcs-shim, runner, server, client and cli)</td>
 </tr>
 <tr>
 <td>Conformance corpus (tiny)</td>
@@ -5619,7 +5685,7 @@ and skip otherwise.</p>
 <tr>
 <td>Web: lint, typecheck, unit, smoke, build</td>
 <td><code>make web-check</code></td>
-<td>web: 146 Vitest tests; plot sandbox: 60; Playwright smoke: 26; both production builds OK</td>
+<td>web: 146 Vitest tests. Plot sandbox: 60. Playwright smoke: 26. The two production builds are OK</td>
 </tr>
 <tr>
 <td>Docs</td>
@@ -5629,23 +5695,22 @@ and skip otherwise.</p>
 <tr>
 <td>End to end, M1 and M2, API and browser</td>
 <td><code>make e2e</code></td>
-<td>API suites 28 passed, 1 skipped (the opt-in burst): M1 E33 stack, corpus on the stack, the docs walkthroughs, M2 tenancy. Browser <code>@e2e</code> suites 14 passed: the stack smoke tests, the M1 flow and the M2 flow</td>
+<td>API suites: 28 passed, 1 skipped (the opt-in burst): M1 E33 stack, corpus on the stack, the docs walkthroughs, M2 tenancy. Browser <code>@e2e</code> suites: 14 passed: the stack smoke tests, the M1 flow and the M2 flow</td>
 </tr>
 </tbody>
 </table>
 <h2 id="known-gaps-not-cloud-specific">Known gaps (not cloud-specific)<a class="headerlink" href="#known-gaps-not-cloud-specific" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Executor evidence is recorded by hand.</strong> Shared tiers are gated on stored conformance and
-  security-suite reports (<a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>), but no
-  job posts the nightly results to <code>PUT /v1/admin/executors/{name}/evidence</code> yet: an operator
-  records them.</li>
-<li><strong>The nightly workflow has not run yet.</strong> <code>.github/workflows/nightly.yml</code> has no remote
-  to run on here, and its gVisor job (installing <code>runsc</code> on the runner) is untested.</li>
+<li><strong>An operator records executor evidence manually.</strong> Shared tiers need stored conformance
+  and security-suite reports (<a href="../cloud-run/#the-shared-tier-gate">the shared-tier gate</a>). But
+  no job sends the nightly results to <code>PUT /v1/admin/executors/{name}/evidence</code> yet.</li>
+<li><strong>The nightly workflow has not run yet.</strong> <code>.github/workflows/nightly.yml</code> has no remote to
+  run on here. Its gVisor job (which installs <code>runsc</code> on the runner) is not tested.</li>
 </ul>
 <h2 id="what-remains-for-real-gcp">What remains for real GCP<a class="headerlink" href="#what-remains-for-real-gcp" title="Permanent link">&para;</a></h2>
-<p>Everything below needs a Google Cloud project. Use a throw-away <code>dev</code> environment, built as
-described in <a href="../gcp-deployment/">Google Cloud deployment</a>. The values below are placeholders
-taken from <code>infra/terraform/envs/dev/terraform.tfvars.example</code>:</p>
+<p>All items below need a Google Cloud project. Use a temporary <code>dev</code> environment. Build it as
+<a href="../gcp-deployment/">Google Cloud deployment</a> tells. The values below are placeholders from
+<code>infra/terraform/envs/dev/terraform.tfvars.example</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ENV</span><span class="o">=</span>dev<span class="w"> </span><span class="nv">REGION</span><span class="o">=</span>europe-west4
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CONTROL</span><span class="o">=</span>acme-mapi-dev-control<span class="w"> </span><span class="nv">EXEC</span><span class="o">=</span>acme-mapi-dev-exec<span class="w"> </span><span class="nv">DATA</span><span class="o">=</span>acme-mapi-dev-data
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">EXEC_SA</span><span class="o">=</span>mapi-<span class="nv">$ENV</span>-exec@<span class="nv">$EXEC</span>.iam.gserviceaccount.com
@@ -5660,29 +5725,29 @@ taken from <code>infra/terraform/envs/dev/terraform.tfvars.example</code>:</p>
 </span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>deploy/gcp/deploy.sh<span class="w"> </span>--env<span class="w"> </span><span class="nv">$ENV</span><span class="w">            </span><span class="c1"># migrations, apply, smoke test</span>
 </span></code></pre></div>
 <h3 id="2-work-through-the-m0-checklist">2. Work through the M0 checklist<a class="headerlink" href="#2-work-through-the-m0-checklist" title="Permanent link">&para;</a></h3>
-<p>Every <strong>[verify M0]</strong> item is listed, with its pass condition, in the
-<a href="../security-hardening/#m0-verification-checklist">M0 verification checklist</a>. The checklist
-covers four areas:</p>
+<p>The <a href="../security-hardening/#m0-verification-checklist">M0 verification checklist</a> lists each
+<strong>[verify M0]</strong> item, with its pass condition. The checklist has four areas:</p>
 <ul>
-<li><strong>DNS response policy:</strong> honoured by the Direct VPC resolver, with root wildcard and
-  bypass rules.</li>
-<li><strong>Network:</strong> egress really denied, VPC-SC on Jobs.</li>
-<li><strong>Sandbox:</strong> gen2 uid split with seccomp, <code>no_new_privs</code> and ptrace denial; env-only
-  overrides; ephemeral disk and the in-memory filesystem limits; bootstrap read-then-delete.</li>
+<li><strong>DNS response policy:</strong> the Direct VPC resolver obeys it, with root wildcard and bypass
+  rules.</li>
+<li><strong>Network:</strong> egress is really denied, and VPC-SC applies on Jobs.</li>
+<li><strong>Sandbox:</strong> gen2 uid split with seccomp, <code>no_new_privs</code> and ptrace denial. Env-only
+  overrides. Ephemeral disk and the in-memory filesystem limits. Bootstrap read-then-delete.</li>
 <li><strong>Platform:</strong><ul>
-<li>quotas: 1,000 Jobs and 1,000 running executions per region, 180 <code>jobs.run</code> a minute;</li>
-<li>the Logging → Pub/Sub path and its labels;</li>
-<li>push to an internal service;</li>
-<li>pooled connections;</li>
-<li><code>BYPASSRLS</code> on Cloud SQL;</li>
-<li><code>runWithOverrides</code> without <code>actAs</code>;</li>
-<li>image indexes.</li>
+<li>Quotas: 1,000 Jobs and 1,000 running executions in each region, 180 <code>jobs.run</code> a
+  minute.</li>
+<li>The Logging → Pub/Sub path and its labels.</li>
+<li>Push to an internal service.</li>
+<li>Pooled connections.</li>
+<li><code>BYPASSRLS</code> on Cloud SQL.</li>
+<li><code>runWithOverrides</code> without <code>actAs</code>.</li>
+<li>Image indexes.</li>
 </ul>
 </li>
 </ul>
 <h3 id="3-cold-start-and-p95-time-to-running">3. Cold start and p95 time-to-RUNNING<a class="headerlink" href="#3-cold-start-and-p95-time-to-running" title="Permanent link">&para;</a></h3>
-<p>Measure one cold execution per base image. Overrides only change env, so this measures exactly
-what the dispatcher does:</p>
+<p>Measure one cold execution for each base image. Overrides change only env. Thus this
+measures exactly what the dispatcher does:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">for</span><span class="w"> </span>base<span class="w"> </span><span class="k">in</span><span class="w"> </span>base-bayes<span class="w"> </span>base-ml<span class="w"> </span>base-forecast<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>gcloud<span class="w"> </span>run<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>execute<span class="w"> </span>mapi-<span class="nv">$ENV</span>-<span class="nv">$base</span>-s<span class="w"> </span>--project<span class="w"> </span><span class="nv">$EXEC</span><span class="w"> </span>--region<span class="w"> </span><span class="nv">$REGION</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span>--update-env-vars<span class="w"> </span><span class="nv">MAPI_RUN_ID</span><span class="o">=</span>coldstart,MAPI_NONCE<span class="o">=</span>none<span class="w"> </span>--wait<span class="w"> </span>--format<span class="o">=</span><span class="s1">'value(name)'</span>
@@ -5690,17 +5755,17 @@ what the dispatcher does:</p>
 </span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>gcloud<span class="w"> </span>logging<span class="w"> </span><span class="nb">read</span><span class="w"> </span><span class="s2">"resource.type=cloud_run_job AND resource.labels.job_name:mapi-</span><span class="nv">$ENV</span><span class="s2">-"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">  </span>--project<span class="w"> </span><span class="nv">$EXEC</span><span class="w"> </span>--freshness<span class="w"> </span>1h<span class="w"> </span>--format<span class="o">=</span><span class="s1">'table(timestamp,resource.labels.job_name,textPayload)'</span>
 </span></code></pre></div>
-<p>The supervisor exits at once (it finds no bootstrap object); the time from the execution's
-<code>createTime</code> to its first log line is the cold start. Then run the burst through the
-deployed API with a token that has the <code>admin</code> scope:</p>
+<p>The supervisor stops immediately, because it finds no bootstrap object. The cold start is the
+time from the <code>createTime</code> of the execution to its first log line. Then run the burst
+through the deployed API with a token that has the <code>admin</code> scope:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">MAPI_API_URL</span><span class="o">=</span>https://api.<span class="nv">$ENV</span>.example.com<span class="w"> </span><span class="nv">MAPI_TOKEN</span><span class="o">=</span>&lt;token&gt;<span class="w"> </span><span class="nv">MAPI_PROJECT</span><span class="o">=</span>&lt;tenant&gt;/&lt;project&gt;<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="nv">MAPI_E2E_BURST_RUNS</span><span class="o">=</span><span class="m">100</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q<span class="w"> </span>-s<span class="w"> </span>-m<span class="w"> </span>e2e<span class="w"> </span>tests/e2e/test_m2_burst_stack.py
 </span></code></pre></div>
-<p>It asserts no loss or duplication (through the API) and p95 time-to-RUNNING under 90 s, and
-prints the percentiles.</p>
+<p>The test asserts no loss or duplication (through the API) and a p95 time-to-RUNNING below
+90 s. It prints the percentiles.</p>
 <h3 id="4-security-suite-inside-a-cloud-run-jobs-execution">4. Security suite inside a Cloud Run Jobs execution<a class="headerlink" href="#4-security-suite-inside-a-cloud-run-jobs-execution" title="Permanent link">&para;</a></h3>
-<p><code>--executor cloud</code> only runs inside a Job execution. The runner images do not ship the suite,
-so build a probe image on top of the deployed base and run it as its own Job, with the same
+<p><code>--executor cloud</code> runs only in a Job execution. The runner images do not contain the suite.
+Thus build a probe image on the deployed base, and run it as its own Job. Use the same
 network and identity as the inventory Jobs:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nv">REPO</span><span class="o">=</span><span class="k">$(</span>terraform<span class="w"> </span>-chdir<span class="o">=</span>infra/terraform/envs/<span class="nv">$ENV</span><span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>image_repository<span class="k">)</span><span class="w">   </span><span class="c1"># …/mapi-$ENV-images</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nv">IMAGE</span><span class="o">=</span><span class="nv">$REPO</span>/base-bayes@sha256:&lt;digest<span class="w"> </span>from<span class="w"> </span>deploy/gcp/.out/<span class="nv">$ENV</span>/images.tfvars.json&gt;
@@ -5715,24 +5780,25 @@ network and identity as the inventory Jobs:</p>
 </span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>gcloud<span class="w"> </span>logging<span class="w"> </span><span class="nb">read</span><span class="w"> </span><span class="s2">"resource.type=cloud_run_job AND resource.labels.job_name=mapi-</span><span class="nv">$ENV</span><span class="s2">-security-probe"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-13-12"><a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="w">  </span>--project<span class="w"> </span><span class="nv">$EXEC</span><span class="w"> </span>--freshness<span class="w"> </span>1h<span class="w"> </span>--format<span class="o">=</span><span class="s1">'value(textPayload)'</span>
 </span></code></pre></div>
-<p>Pass: <code>PASS: all 17 probe outcomes acceptable for this executor</code>. On <code>MICROVM</code>, every
-isolation probe must be BLOCKED or SKIPPED. The DNS probe passes only if the zone's
-authoritative query log also never sees the probe's name (checklist, network section).
-Delete the probe Job afterwards. Making this nightly means adding the probe image to
-<code>build-push.sh</code> and the Job to <code>infra/terraform/modules/exec</code>. That is not done yet.</p>
+<p>Pass: <code>PASS: all 17 probe outcomes acceptable for this executor</code>. On <code>MICROVM</code>, each
+isolation probe must be BLOCKED or SKIPPED. The DNS probe passes only if the authoritative
+query log of the zone also never sees the name of the probe (checklist, network section).
+After the test, delete the probe Job. To run this each night, add the probe image to
+<code>build-push.sh</code> and the Job to <code>infra/terraform/modules/exec</code>. We have not done this yet.</p>
 <h3 id="5-executor-conformance-against-the-real-admin-api">5. Executor conformance against the real Admin API<a class="headerlink" href="#5-executor-conformance-against-the-real-admin-api" title="Permanent link">&para;</a></h3>
-<p>There is no live conformance target yet. <code>packages/server/tests/mapi_server_testkit/conformance.py</code>
-drives <code>fake-cloudrun</code>, <code>local-process</code> and <code>docker</code> only. A <code>cloudrun-live</code> target needs a
-harness that:</p>
+<p>There is no live conformance target yet.
+<code>packages/server/tests/mapi_server_testkit/conformance.py</code> operates only <code>fake-cloudrun</code>,
+<code>local-process</code> and <code>docker</code>. A <code>cloudrun-live</code> target needs a harness that does these
+actions:</p>
 <ul>
-<li>builds <code>CloudRunJobsExecutor</code> from settings (<code>MAPI_CLOUDRUN_PROJECT=$EXEC</code>, the dev
-  inventory);</li>
-<li>injects the faults through real means: kill an execution with
-  <code>gcloud run jobs executions cancel</code>; an OOM with a run that exceeds class S; a 429 by
-  lowering <code>MAPI_CLOUDRUN_SUBMITS_PER_MINUTE</code> above the quota;</li>
-<li>marks itself <code>cloud</code>.</li>
+<li>It builds <code>CloudRunJobsExecutor</code> from settings (<code>MAPI_CLOUDRUN_PROJECT=$EXEC</code>, the dev
+  inventory).</li>
+<li>It causes the faults through real means. It stops an execution with
+  <code>gcloud run jobs executions cancel</code>. It causes an OOM with a run that is larger than class
+  S. It causes a 429 when it sets <code>MAPI_CLOUDRUN_SUBMITS_PER_MINUTE</code> above the quota.</li>
+<li>It marks itself <code>cloud</code>.</li>
 </ul>
-<p>Until then, run the chaos cases by hand against the deployed stack:</p>
+<p>Until then, run the chaos cases manually against the deployed stack:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># orphan adoption: scale the orchestrator worker pool (manual scaling) to 0 right after a</span>
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1"># submit, then back (`gcloud beta run worker-pools update --help` names the flag of your gcloud)</span>
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>gcloud<span class="w"> </span>beta<span class="w"> </span>run<span class="w"> </span>worker-pools<span class="w"> </span>update<span class="w"> </span>mapi-<span class="nv">$ENV</span>-orchestrator<span class="w"> </span>--project<span class="w"> </span><span class="nv">$CONTROL</span><span class="w"> </span>--region<span class="w"> </span><span class="nv">$REGION</span><span class="w"> </span>--scaling<span class="w"> </span><span class="m">0</span>
@@ -5740,11 +5806,11 @@ harness that:</p>
 </span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1"># Cloud SQL failover (regional/HA instance)</span>
 </span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>gcloud<span class="w"> </span>sql<span class="w"> </span>instances<span class="w"> </span>failover<span class="w"> </span>mapi-<span class="nv">$ENV</span>-pg<span class="w"> </span>--project<span class="w"> </span><span class="nv">$CONTROL</span>
 </span></code></pre></div>
-<p>After each one, every affected run must reach a terminal state with exactly one attempt per
-execution.</p>
+<p>After each case, each run that the case affects must come to a terminal state, with exactly
+one attempt for each execution.</p>
 <h3 id="6-cost">6. Cost<a class="headerlink" href="#6-cost" title="Permanent link">&para;</a></h3>
-<p>Compare a day's <code>cost_ledger</code> with the billing export for the exec project. Then adjust the
-price table (<code>MAPI_PRICE_TABLE_PATH</code>) if list prices or discounts differ.</p>
+<p>Compare the <code>cost_ledger</code> of one day with the billing export for the exec project. If list
+prices or discounts are different, adjust the price table (<code>MAPI_PRICE_TABLE_PATH</code>).</p>
 
 
 

@@ -1051,6 +1051,8 @@
       
         
       
+        
+      
     
     
     
@@ -1393,6 +1395,34 @@
     
   
     Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
   
 
     
@@ -4621,6 +4651,8 @@
       
         
       
+        
+      
     
     
     
@@ -4709,6 +4741,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
   
 
     
@@ -4856,10 +4916,10 @@
 
 
 <h1 id="representations-and-summaries">Representations and summaries<a class="headerlink" href="#representations-and-summaries" title="Permanent link">&para;</a></h1>
-<p>"One output shape for every model" sounds tidy and is quietly wrong. A conformal interval is
-not a distribution; per-cell quantiles cannot be added up; a point prediction has no
-uncertainty to summarise. So every model declares its <strong>representation</strong>, and the platform
-uses it to decide which summaries and aggregations it will compute.</p>
+<p>Each model declares its <strong>representation</strong>. The platform uses the representation to decide
+which summaries and aggregations it will calculate. One output shape for all models is not
+correct. A conformal interval is not a distribution. You cannot add per-cell quantiles. A point
+prediction has no uncertainty to summarise.</p>
 <table>
 <thead>
 <tr>
@@ -4909,12 +4969,14 @@ uses it to decide which summaries and aggregations it will compute.</p>
 </tbody>
 </table>
 <h2 id="why-aggregation-depends-on-it">Why aggregation depends on it<a class="headerlink" href="#why-aggregation-depends-on-it" title="Permanent link">&para;</a></h2>
-<p>With <strong>joint draws</strong> the total over 40 stores is easy and exact: add the stores within each
-draw, then summarise. With <strong>quantiles</strong> you cannot do that: the sum of 40 90% quantiles is
-not the 90% quantile of the sum (it overstates it, often badly), and the quantiles say nothing
-about how stores co-vary. <strong>Conformal intervals</strong> guarantee per-cell coverage only; a "summed
-interval" would claim a coverage nobody measured.</p>
-<p>The rules are data, in <code>mapi_spec</code>, and the summariser and the API both use them:</p>
+<p>The representation controls which aggregations are correct. With <strong>joint draws</strong>, the total
+over 40 stores is easy and exact. Add the stores in each draw, then summarise. With
+<strong>quantiles</strong>, you cannot do this. The sum of 40 90% quantiles is not the 90% quantile of the
+sum. The sum is too large, frequently by a large quantity. Also, the quantiles do not tell how
+the stores change together.</p>
+<p><strong>Conformal intervals</strong> guarantee the coverage of each cell only. A "summed interval" would
+claim a coverage that nobody measured.</p>
+<p>The rules are data in <code>mapi_spec</code>. The summariser and the API both use these rules:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">Representation</span><span class="p">,</span> <span class="n">can_aggregate</span><span class="p">,</span> <span class="n">default_summary</span><span class="p">,</span> <span class="n">summary_allowed</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="n">Representation</span><span class="p">:</span>
@@ -4932,12 +4994,13 @@ interval" would claim a coverage nobody measured.</p>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="nb">print</span><span class="p">(</span><span class="n">summary_allowed</span><span class="p">(</span><span class="n">Representation</span><span class="o">.</span><span class="n">QUANTILES</span><span class="p">,</span> <span class="s2">"hdi_90"</span><span class="p">))</span>  <span class="c1"># False: no draws to find an HDI</span>
 </span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="nb">print</span><span class="p">(</span><span class="n">summary_allowed</span><span class="p">(</span><span class="n">Representation</span><span class="o">.</span><span class="n">DRAWS</span><span class="p">,</span> <span class="s2">"q97_5"</span><span class="p">))</span>  <span class="c1"># True</span>
 </span></code></pre></div>
-<p>Asking for something the representation cannot support fails before any compute:</p>
+<p>If you ask for an output that the representation cannot supply, the request fails before
+the platform starts compute:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>CAPABILITY_UNSUPPORTED - cannot aggregate 'quantiles' output: Quantiles are marginal per
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>cell; summing quantiles is not a quantile of the sum.
 </span></code></pre></div>
 <h2 id="asking-for-outputs">Asking for outputs<a class="headerlink" href="#asking-for-outputs" title="Permanent link">&para;</a></h2>
-<p>A score request's <code>output</code> block is an <code>OutputSelector</code>:</p>
+<p>The <code>output</code> block of a score request is an <code>OutputSelector</code>:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">output</span><span class="p">:</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">expected</span><span class="w">              </span><span class="c1"># expected (the mean response) or predictive (with noise)</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mean</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">hdi_90</span><span class="p p-Indicator">]</span><span class="w">     </span><span class="c1"># default depends on the representation</span>
@@ -4946,26 +5009,28 @@ interval" would claim a coverage nobody measured.</p>
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">units</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">original</span><span class="w">             </span><span class="c1"># or: model (skip inverse transforms)</span>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset</span><span class="w">              </span><span class="c1"># or: canonical (skip reverse binding)</span>
 </span></code></pre></div>
-<p>Summary names are parsed, not looked up: <code>hdi_90</code>, <code>eti_80</code>, <code>q5</code>, <code>q97_5</code>, <code>median</code>, <code>sd</code>.
-When you leave <code>summary</code> unset you get the representation's default (<code>mean, hdi_90</code> for draws,
-<code>median, q5, q95</code> for quantiles, adapted to the fitted quantile grid).</p>
+<p>The platform parses the summary names. It does not look them up in a list. Examples are
+<code>hdi_90</code>, <code>eti_80</code>, <code>q5</code>, <code>q97_5</code>, <code>median</code> and <code>sd</code>. If you do not set <code>summary</code>, you get the
+default of the representation. For draws, the default is <code>mean, hdi_90</code>. For quantiles, the
+default is <code>median, q5, q95</code>, adapted to the fitted quantile grid.</p>
 <h2 id="expected-vs-predictive">Expected vs predictive<a class="headerlink" href="#expected-vs-predictive" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>expected</code> returns the model's mean response (for PyMC models, a <code>Deterministic</code> the plugin
-  names), without observation noise. Use it for "what is the effect of the plan?".</li>
-<li><code>predictive</code> returns draws of the observed variable, with noise. Use it for "what range of
-  sales should we plan for?".</li>
+<li><code>expected</code> returns the mean response of the model, without observation noise. For PyMC
+  models, this is a <code>Deterministic</code> that the plugin names. Use it for the question "what is
+  the effect of the plan?".</li>
+<li><code>predictive</code> returns draws of the observed variable, with noise. Use it for the question
+  "what range of sales must we plan for?".</li>
 </ul>
 <h2 id="draws-are-thinned-once-for-the-whole-bundle">Draws are thinned once, for the whole bundle<a class="headerlink" href="#draws-are-thinned-once-for-the-whole-bundle" title="Permanent link">&para;</a></h2>
-<p>When a request asks for draws, they come from a <strong>bundle-wide thinning index</strong>: the same
-<code>(chain, draw)</code> pairs for every output and every derived quantity. Contributions, response
-curves and predictions taken from the same draws stay jointly consistent, so a Guided-mode
-slider that combines them keeps honest uncertainty bands.</p>
+<p>When a request asks for draws, the draws come from a <strong>bundle-wide thinning index</strong>. This
+index uses the same <code>(chain, draw)</code> pairs for all outputs and all derived quantities.
+Contributions, response curves and predictions from the same draws stay jointly consistent.
+Thus, a Guided-mode slider that combines them keeps correct uncertainty bands.</p>
 <h2 id="counterfactuals-share-their-noise">Counterfactuals share their noise<a class="headerlink" href="#counterfactuals-share-their-noise" title="Permanent link">&para;</a></h2>
-<p>In <code>mode: counterfactual</code> the platform scores a baseline and a scenario and returns <code>baseline/</code>
-and <code>delta/</code> groups. Bayesian plugins use <strong>common random numbers</strong>: the predictive noise of the
-two runs is the same draw, so the delta reflects the intervention, not two independent noise
-samples.</p>
+<p>In <code>mode: counterfactual</code>, the platform scores a baseline and a scenario. It returns the
+<code>baseline/</code> and <code>delta/</code> groups. Bayesian plugins use <strong>common random numbers</strong>. The
+predictive noise of the two runs is the same draw. Thus, the delta shows the effect of the
+intervention, not the difference between two independent noise samples.</p>
 <p>Next: <a href="../bundles/">Bundles</a>.</p>
 
 
