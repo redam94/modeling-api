@@ -959,7 +959,7 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
             "draw": np.asarray(sub["draw"].values),
             OBS_DIM: np.asarray(ds[OBS_DIM].values),
         }
-        out = self._summaries(s, data, draws)
+        out = self._summaries(s, data, self._fit_rows(fitted, s), draws)
         if noisy:
             sim = self._simulate(s, data, draws, _rng(ctx.seed, "score"))
             direction = _wrap_units(sim, period)
@@ -998,6 +998,20 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
         return xr.DataTree.from_dict({PREDICTIONS: result})
 
     @staticmethod
+    def _fit_rows(fitted: Fitted, s: CircularRegressionSettings) -> _Data | None:
+        """The hour and day of every fit row (regression kinds), from ``constant_data``."""
+        if s.kind == "activity":
+            return None
+        const = fitted.groups.get("constant_data")
+        if const is None or HOUR not in const or DAY not in const:
+            raise MapiError(
+                f"the bundle of 'sci.circular_regression' has no constant_data/{HOUR}; refit "
+                "the model",
+                code=ErrorCode.INTEGRITY_FAILURE,
+            )
+        return _read(xr.Dataset({HOUR: const[HOUR], DAY: const[DAY]}), s, score=True)
+
+    @staticmethod
     def _simulate(
         s: CircularRegressionSettings, data: _Data, draws: _Draws, rng: np.random.Generator
     ) -> np.ndarray:
@@ -1033,9 +1047,16 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
         return out
 
     def _summaries(
-        self, s: CircularRegressionSettings, data: _Data, draws: _Draws
+        self,
+        s: CircularRegressionSettings,
+        data: _Data,
+        frame_data: _Data | None,
+        draws: _Draws,
     ) -> dict[str, Any]:
-        """Row and frame summaries for every draw (densities per radian)."""
+        """Row summaries of the scored rows ``data`` and frame summaries for every draw
+        (densities per radian). Regression frames average over the fit rows
+        ``frame_data`` (kept in ``constant_data``), so they do not depend on which rows a
+        request scores."""
         n = data.theta.size
         angles = np.arange(s.angle_points) * TWO_PI / s.angle_points
         if s.kind == "activity":
@@ -1064,28 +1085,33 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
                 "overlap": ov,
                 "frame_labels": np.asarray(data.groups),
             }
-        assert data.hour is not None
+        assert frame_data is not None and frame_data.hour is not None
         width = 24.0 / s.frames
-        block = np.minimum((data.hour // width).astype(np.int64), s.frames - 1)
+        block = np.minimum((frame_data.hour // width).astype(np.int64), s.frames - 1)
         rows_vec = np.empty((draws.size, n), dtype=complex)
         dens = np.full((draws.size, s.frames, s.angle_points), np.nan)
         frame_vec = np.full((draws.size, s.frames), np.nan, dtype=complex)
+        members = [np.flatnonzero(block == f_i) for f_i in range(s.frames)]
         picks = []
-        for f_i in range(s.frames):
-            members = np.flatnonzero(block == f_i)
-            if members.size > s.rows_per_frame:
-                keep = np.linspace(0, members.size - 1, s.rows_per_frame).round().astype(int)
-                members = members[np.unique(keep)]
-            picks.append(members)
+        for rows in members:
+            if rows.size > s.rows_per_frame:
+                keep = np.linspace(0, rows.size - 1, s.rows_per_frame).round().astype(int)
+                rows = rows[np.unique(keep)]
+            picks.append(rows)
         for lo in range(0, draws.size, _CHUNK):
             d = draws.take(slice(lo, lo + _CHUNK))
-            comp = _components(s.kind, d, data)
             m = next(iter(d.values())).shape[0]
-            rows_vec[lo : lo + m] = _row_resultant(s.kind, comp)
-            for f_i, members in enumerate(picks):
-                if not members.size:
+            if n:
+                rows_vec[lo : lo + m] = _row_resultant(s.kind, _components(s.kind, d, data))
+            comp = _components(s.kind, d, frame_data)
+            fit_vec = _row_resultant(s.kind, comp)
+            for f_i, rows in enumerate(members):
+                if rows.size:
+                    frame_vec[lo : lo + m, f_i] = fit_vec[:, rows].mean(axis=1)
+            for f_i, rows in enumerate(picks):
+                if not rows.size:
                     continue
-                sub = {k: v[:, members] for k, v in comp.items()}
+                sub = {k: v[:, rows] for k, v in comp.items()}
                 if s.kind == "regime_mixture":
                     lp = _mixture_grid(sub, angles)
                 else:
@@ -1093,10 +1119,6 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
                     fn = vm_logpdf if s.kind == "von_mises" else pn_logpdf
                     lp = fn(angles, e[..., 0], e[..., 1])
                 dens[lo : lo + m, f_i] = np.exp(lp).mean(axis=1)
-        for f_i in range(s.frames):
-            members = np.flatnonzero(block == f_i)
-            if members.size:
-                frame_vec[:, f_i] = rows_vec[:, members].mean(axis=1)
         return {
             "row_vector": rows_vec,
             "frame_vector": frame_vec,
