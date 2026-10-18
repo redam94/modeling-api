@@ -41,6 +41,7 @@ each lift likelihood.
 | `sci.colour_naming@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e77_colour_naming` |
 | `sci.cmb_field@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e79_cmb` |
 | `sci.areal_bym2@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e18_areal` |
+| `sci.network_latent_space@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e21_network` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -309,6 +310,12 @@ fields on a regular grid, or the areas of a map. Their outputs have a range for 
 area. Each output that is a field declares a `grid` (`OutputDecl.grid`: the row dim `y`, the
 column dim `x`, an optional `frame` dim and an optional `component` dim for a vector field). The
 platform then shows the output in two places:
+[pymc-challenges](https://github.com/redam94/pymc-challenges). Most of their data are maps,
+images and fields on a regular grid (`sci.network_latent_space` reads a graph). Their outputs
+are fields with a range for each cell. Each output that is a field declares a `grid`
+(`OutputDecl.grid`: the row dim `y`, the column dim `x`, an optional `frame` dim and an
+optional `component` dim for a vector field). The platform then shows the output in two
+places:
 
 - The **Fields** section of the Model Explorer. It shows the mean, the sd, mean ÷ sd, the 5% and
   95% maps and single draws, with a frame slider and a draw player.
@@ -365,6 +372,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e31` | `sci.ibp_features` | `optdigits_train.csv`, `optdigits_test.csv` | `vision/optdigits_e31` |
 | `e77` | `sci.colour_naming` | `wcs_naming.npz`, `wcs_terms.csv`, `wcs_chips.csv`, `wcs_languages.csv` | `linguistics/wcs_nafaanra` |
 | `e79` | `sci.cmb_field` | `planck_smica_patches.npz`, `planck_theory_tt.txt` | `astronomy/planck_smica_lmc` |
+| `e21` | `sci.network_latent_space` | `lazega_cowork.txt`, `lazega_attributes.txt` | `sociology/lazega_coworkers` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -994,3 +1002,79 @@ burn-in). It takes approximately one minute. On this patch, the log amplitude is
 −0.017 ± 0.022 and the tilt is −0.001 ± 0.028 (the notebook: −0.014 ± 0.023 and −0.009 ± 0.030).
 The pixel sd is 2.5 µK where there are data, 32 µK in the small holes and 89 µK in the hole of
 the LMC.
+
+### `sci.network_latent_space` — who works with whom (E21)
+
+A model of an undirected graph. Each pair of nodes `i < j` has a tie or not
+(`Bernoulli`, logit link). The log odds have three parts:
+
+- `alpha + x_ij beta`: the pair covariates (homophily), for example the same office.
+- `s_i + s_j`: the sociality of the two nodes (how many ties each node has).
+- `-||z_i - z_j||`: the distance between the latent positions of the two nodes.
+
+The `kind` setting selects the parts: `covariates` (the first part), `sociality` (the first
+two) or `latent_space` (all three). With `covariates: false`, the model has no pair covariates.
+`kind: covariates` with `covariates: false` is the Erdős-Rényi graph.
+
+The distances do not change when the positions turn, flip or move together. Thus the raw
+positions `z_raw` do not converge, but each distance does. After the fit, the model aligns each
+draw to one reference with Procrustes analysis. The aligned draws are the posterior variable
+`position`. The reference is `constant_data/position_ref`. The fit then drops the raw draws
+`z_raw` and `s_raw` from the posterior (`position` and `sociality` hold them, with the same
+distances). Thus the convergence diagnostics and the plots `core.convergence` and
+`core.posterior_forest` use only identified quantities: `alpha`, `beta`, `sigma_s`, `sigma_z`,
+`sociality`, `position` and `tie_prob`, in that order.
+
+**Inputs.** `node` and `node_` (the same labels, fixed) and the target `tie(node, node_)`: 1
+for a tie, 0 for no tie, and a missing value when you do not know. The matrix must be
+symmetric. The likelihood uses a pair only when its two cells are not missing. With
+`covariates: true`, the data has `dyad_cov(node, node_, cov)` (`cov` is categorical, fixed).
+With `node_groups: true`, the data has `node_group(node)`, an integer code for the colours of
+the plots.
+
+**Outputs.**
+
+- `tie_prob(node, node_)`: the probability of a tie (a field, 0 on the diagonal).
+- `tie(node, node_)`: the probability, or a simulated graph with `kind: predictive` and in
+  `simulate` mode. The graphs are symmetric. The random numbers belong to the pair, so a
+  subset of the nodes gets the same ties.
+- `degree(node)`: the ties of each node with the scored nodes (the `node_` labels of the
+  score data), expected or in a simulated graph. Score all the nodes for the degree in the
+  graph: on a subset, `degree` counts only the ties inside the subset.
+- `sociality(node)` and `position(node, latent_dim)`, when the kind has them.
+- `graph_stat(statistic)`: statistics of each simulated graph (`density`, `sd_degree`,
+  `max_degree`, `isolates`, `triangles`, `transitivity`, `esp0`, `mean_geodesic`,
+  `unreachable`). `esp0` is the number of ties whose two nodes have no shared neighbour.
+  Compare them with the statistics of the data (posterior predictive checks). The statistics
+  need simulated graphs of all the nodes of the fit. A request that names `graph_stat` in
+  `output.vars` for a subset of the nodes, or for expected probabilities, fails with
+  `CAPABILITY_UNSUPPORTED`.
+
+The posterior also keeps `tie_prob` (float32) for the plots of the fit, and
+`constant_data/adjacency` keeps the observed matrix. The fit always keeps the log-likelihood of
+each observed pair (dim `dyad`; the pairs are in `constant_data/dyad_i` and `dyad_j`). Thus `elpd_loo` is leave-one-pair-out, and the kinds of a
+workflow ladder use the same pairs in the same order. A `mask_block` split over `[node, node_]`
+holds out random cells. A pair is out of the fit when one of its two cells is held out.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kind` | `latent_space` | `covariates`, `sociality` or `latent_space` |
+| `covariates` | true | Use `dyad_cov` |
+| `node_groups` | false | The data has `node_group` |
+| `latent_dims` | 2 | Dimensions of the latent space (1 to 3) |
+| `alpha_mu`, `alpha_sigma` | -2, 2 | Normal prior of the intercept |
+| `beta_sigma` | 1 | Normal prior sd of each covariate effect |
+| `sociality_scale`, `latent_scale` | 1, 2 | Half-normal priors of `sigma_s` and `sigma_z` |
+| `procrustes_iters` | 10 | Passes of the Procrustes alignment |
+
+`from_challenges` reads the coworker network of the 71 lawyers of the Lazega firm (378 ties)
+and makes the six pair covariates of the notebook: same office, practice, status, gender and
+law school, and the gap in years with the firm ÷ 10. `office` is the node group. With 4 chains
+of 1000 draws, the fit takes approximately 15 s (`sociality`) to 45 s (`latent_space`).
+`elpd_loo` is -1060 (Erdős-Rényi), -894 (`covariates`), -764 (`sociality`), -795
+(`latent_space` without covariates) and -761 (`latent_space`), as in the notebook.
+
+A score with fewer covariates than the fit stops with `MISSING_FUTURE_COVARIATE`. A node that
+the fit did not see stops with `UNSEEN_LEVELS`. The model has no `forecast` and no
+`counterfactual` mode. The mixed-membership block models of the notebook are not part of the
+model.

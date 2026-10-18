@@ -17,6 +17,7 @@ Their data are maps, images and fields on a regular grid.
 | `sci.colour_naming@1` | Colour naming of one language (World Color Survey): softmax over quadratic CIELAB logits, pooled or with speaker effects (E77) | draws | predict, simulate, evaluate |
 | `sci.cmb_field@1` | Field-level inference of a masked CMB map with a Wandelt-Eriksen Gibbs sampler: sky draws behind the mask and bandpowers (E79) | draws | predict, simulate, evaluate |
 | `sci.areal_bym2@1` | Disease mapping on a graph of areas: iid, ICAR, proper CAR or BYM2 area effects, polygons kept for the maps (E18) | draws | predict, simulate, evaluate |
+| `sci.network_latent_space@1` | Ties between the nodes of a graph: pair covariates, sociality and Procrustes-aligned latent positions (E21) | draws | predict, simulate, evaluate |
 
 Outputs that are fields declare a `grid` (`OutputDecl.grid`). The Model Explorer shows them in
 its **Fields** section, and the `sci.*` plot recipes draw them.

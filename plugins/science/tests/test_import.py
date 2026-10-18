@@ -14,6 +14,7 @@ EXPECTED_IDS = {
     "sci.colour_naming",
     "sci.cmb_field",
     "sci.areal_bym2",
+    "sci.network_latent_space",
 }
 
 

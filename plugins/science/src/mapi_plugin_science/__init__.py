@@ -26,7 +26,9 @@ Ported from the pymc-challenges case studies:
 * ``sci.cmb_field`` - field-level inference of a masked CMB map: sky draws behind the mask
   and bandpowers from a Wandelt-Eriksen Gibbs sampler (E79);
 * ``sci.areal_bym2`` - disease counts in areas on a graph of neighbours, with iid, ICAR,
-  proper CAR or BYM2 area effects; the polygons go into the bundle for the maps (E18).
+  proper CAR or BYM2 area effects; the polygons go into the bundle for the maps (E18);
+* ``sci.network_latent_space`` - an undirected graph as Bernoulli ties between pairs of
+  nodes: pair covariates, sociality and Procrustes-aligned latent positions (E21).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -43,6 +45,7 @@ from mapi_plugin_science.ibp import IBPFeaturesModel, IBPFeaturesSettings
 from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
 from mapi_plugin_science.lens import StrongLensModel, StrongLensSettings
 from mapi_plugin_science.lgcp import LGCPGridModel, LGCPGridSettings
+from mapi_plugin_science.network import NetworkLatentSpaceModel, NetworkLatentSpaceSettings
 from mapi_plugin_science.storm import StormLocalisationModel, StormLocalisationSettings
 from mapi_plugin_science.traction import TractionForceModel, TractionForceSettings
 from mapi_plugin_science.turing import TuringPatternModel, TuringPatternSettings
@@ -64,6 +67,7 @@ PLUGINS = (
     ColourNamingModel,
     CMBFieldModel,
     ArealBYM2Model,
+    NetworkLatentSpaceModel,
 )
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
@@ -83,6 +87,8 @@ __all__ = [
     "IBPFeaturesSettings",
     "LGCPGridModel",
     "LGCPGridSettings",
+    "NetworkLatentSpaceModel",
+    "NetworkLatentSpaceSettings",
     "StormLocalisationModel",
     "StormLocalisationSettings",
     "StrongLensModel",

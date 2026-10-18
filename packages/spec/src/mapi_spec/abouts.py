@@ -1559,6 +1559,79 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "speed": ["minutes", "can_wait"],
         },
     ),
+    "sci.network_latent_space": _a(
+        "Who works with whom in a network",
+        "Explains which pairs of people (or other nodes) have a tie, from what they have in "
+        "common, how active each one is and a hidden map of the group. It gives the chance "
+        "of a tie for every pair, with a range.",
+        [
+            "You have a table of ties between pairs, for example who worked with whom",
+            "You want to know how much a shared office or team adds to the chance of a tie",
+            "You want the chance of a tie for pairs that you did not observe",
+            "You want a map that puts nodes with many shared ties near each other",
+        ],
+        [
+            "The ties have a direction (A chose B, but B did not choose A)",
+            "The ties are counts or weights, not yes or no",
+            "You need ties for a new node that was not in the fit",
+            "The network has many thousands of nodes (the model looks at every pair)",
+        ],
+        [
+            "A square table with 1 for a tie, 0 for no tie and an empty cell when you do not know",
+            "Optional: values for each pair, for example 1 when the two are in the same office",
+            "Optional: a group code for each node, for colors in the plots",
+        ],
+        [
+            "Each pair has a tie or not, and the two directions are the same",
+            "When the model knows the pair values, the activity of the two nodes and their "
+            "places on the map, the pairs are independent",
+            "Nodes near each other on the hidden map have more ties",
+        ],
+        [
+            "The chance of a tie for each pair, with a range (a square map)",
+            "The change in the log odds of a tie for each pair value",
+            "The activity of each node and its place on the hidden map, with a range",
+            "Simulated networks and their statistics, to compare with the data",
+        ],
+        _X,
+        _MIN,
+        "Use the coworker network of the 71 lawyers of a law firm. A shared office adds about "
+        "2.5 to the log odds of a tie, and the hidden map puts the offices and the two types "
+        "of law in different places.",
+        related=["sci.lgcp_grid"],
+        expert="Undirected dyad logistic model (pymc-challenges E21): tie_ij ~ Bernoulli(logit^-1"
+        "(alpha + x_ij beta + s_i + s_j - ||z_i - z_j||)) over the observed pairs i < j. kind "
+        "covariates drops s and z, kind sociality drops z; covariates: false drops x. Priors: "
+        "alpha ~ N(-2, 2), beta ~ N(0, 1), s = sigma_s s_raw with sigma_s ~ HalfNormal(1), "
+        "z = sigma_z z_raw (latent_dims, default 2) with sigma_z ~ HalfNormal(2), all "
+        "non-centred. The likelihood is invariant to rotation, reflection and translation of "
+        "z, so the raw draws do not mix (r_hat of about 1.5 without covariates); every draw is "
+        "aligned by generalised Procrustes analysis to a reference kept in the bundle, and "
+        "convergence is judged on the aligned positions. The pointwise log-likelihood is "
+        "stored per dyad (leave-one-dyad-out PSIS-LOO), so a workflow can compare the kinds. "
+        "Mixed-membership block models of the notebook are not ported. On Lazega: elpd_loo "
+        "-1060 (Erdos-Renyi), -894 (covariates), -764 (sociality), -761 (latent space).",
+        refs=[
+            (
+                "Hoff, Raftery and Handcock (2002), Latent space approaches to social network "
+                "analysis, Journal of the American Statistical Association",
+                "https://doi.org/10.1198/016214502388618906",
+            ),
+            (
+                "Lazega (2001), The Collegial Phenomenon: The Social Mechanisms of Cooperation "
+                "among Peers in a Corporate Law Partnership, Oxford University Press",
+                None,
+            ),
+        ],
+        fits={
+            "goal": ["explain_drivers", "predict_values"],
+            "data_shape": ["table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
     "sci.traction_force": _a(
         "Cell forces from gel movement",
         "Calculates the forces that cells apply to a soft gel from the measured movement of the "
@@ -2275,6 +2348,7 @@ SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
         "sci.colour_naming",
         "sci.cmb_field",
         "sci.areal_bym2",
+        "sci.network_latent_space",
     }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse

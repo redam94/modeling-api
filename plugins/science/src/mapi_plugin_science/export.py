@@ -71,6 +71,7 @@ from mapi_plugin_science import (
     kpp_data,
     lens_data,
     lgcp_data,
+    network_data,
     storm_data,
     traction_data,
     turing_data,
@@ -558,6 +559,22 @@ _register(
         project="epidemiology",
         dataset="scotland_lip_cancer",
         spec=areal_data.SCOTLAND_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e21",
+        title="Coworkers of the 71 lawyers of a law firm (Lazega)",
+        notebook="E21_network_models.py",
+        model="sci.network_latent_space",
+        files=(network_data.CHALLENGES_FILE, network_data.ATTRIBUTES_FILE),
+        loader=lambda d: network_data.from_challenges(d / network_data.CHALLENGES_FILE),
+        synthetic=lambda: network_data.network_dataset(),
+        schema=network_data.NETWORK_SCHEMA,
+        project="sociology",
+        dataset="lazega_coworkers",
+        spec=network_data.LAZEGA_SPEC_YAML,
     )
 )
 
