@@ -90,6 +90,19 @@ export function nodesWithVars(nodes: Record<string, DataSchema>): string[] {
     .map(([p]) => p);
 }
 
+/**
+ * The node an explorer shows for `?node=`: the requested node when it has variables (the
+ * nodes the picker lists), else the default node. `note` says why the request was not used.
+ */
+export function explorerNode(nodes: Record<string, DataSchema>, requested: string | undefined): { node: string; note: string | null } {
+  const fallback = defaultNode(nodes);
+  if (!requested || nodesWithVars(nodes).includes(requested)) return { node: requested ?? fallback, note: null };
+  return {
+    node: fallback,
+    note: nodes[requested] ? `The node ${requested} has no variables to explore. The page shows ${fallback}.` : `This dataset has no node ${requested}. The page shows ${fallback}.`,
+  };
+}
+
 export function isTree(version: DatasetVersion | null | undefined): version is DatasetVersion & { tree_schema: { nodes: Record<string, DataSchema> } } {
   return version?.layout === "tree" && Boolean(version.tree_schema?.nodes);
 }

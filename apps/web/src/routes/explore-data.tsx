@@ -12,7 +12,7 @@ import { ErrorNotice, LoadingRows, Mono, PageHeader } from "@/components/common"
 import { Button } from "@/components/ui/button";
 import { Badge, Field, NativeSelect } from "@/components/ui/primitives";
 import { DatasetAboutCard } from "@/features/about/dataset-about";
-import { defaultNode, isTree, nodesWithVars } from "@/features/datasets/tree";
+import { explorerNode, isTree, nodesWithVars } from "@/features/datasets/tree";
 import { DataExplorer } from "@/features/explore/data-explorer";
 import { useEffectivePersona } from "@/features/guided/persona";
 
@@ -37,7 +37,10 @@ export function DataExplorerPage() {
   const expert = persona === "expert";
   const tree = isTree(dv.data) ? dv.data.tree_schema.nodes : null;
   const nodeOptions = tree ? nodesWithVars(tree) : [];
-  const node = tree ? (search.node && tree[search.node] ? search.node : defaultNode(tree)) : null;
+  // Only a node with variables can be explored (the picker lists only those): a group node or
+  // an unknown one in `?node=` falls back to the default node, with a note.
+  const picked = tree ? explorerNode(tree, search.node) : null;
+  const node = picked?.node ?? null;
   const schema = tree && node ? tree[node] : dv.data?.data_schema;
   if (!valid) return <ErrorNotice error={new Error("The version must be a positive integer.")} />;
   if (dataset.isError) return <ErrorNotice error={dataset.error} title="The app could not load this dataset" />;
@@ -95,12 +98,16 @@ export function DataExplorerPage() {
               >
                 {nodeOptions.map((p) => (
                   <option key={p} value={p}>
-                    {p} ({Object.keys(tree[p]?.vars ?? {}).length} variables)
+                    {p} ({Object.keys(tree[p]?.vars ?? {}).length} {Object.keys(tree[p]?.vars ?? {}).length === 1 ? "variable" : "variables"})
                   </option>
                 ))}
               </NativeSelect>
             </Field>
-            {search.node && !tree[search.node] ? <p className="text-xs text-warning">This dataset has no node {search.node}. The page shows {node}.</p> : null}
+            {picked?.note ? (
+              <p role="status" className="text-xs text-warning">
+                {picked.note}
+              </p>
+            ) : null}
           </div>
         ) : null}
         <DataExplorer
