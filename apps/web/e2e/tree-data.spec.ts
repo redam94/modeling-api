@@ -61,11 +61,21 @@ test("two yearly files stack along a dim and a third file becomes a node of the 
   await page.getByRole("textbox", { name: "Label of sales_2025.nc" }).fill("2025");
   await expect(problems).toBeHidden();
 
-  // A third file goes to its own node.
+  // A third file goes to its own node. Its own problem shows once, under its fields, linked to
+  // the input and in a live region; the list of the files' shared problems does not repeat it.
   await page.locator('input[type="file"]').setInputFiles([file("instrument.nc")]);
-  await page.getByRole("textbox", { name: "Node for instrument.nc" }).fill("instrument");
-  await expect(problems).toContainText('instrument.nc: The node "instrument" must start with /');
-  await page.getByRole("textbox", { name: "Node for instrument.nc" }).fill("/instrument");
+  const nodeInput = page.getByRole("textbox", { name: "Node for instrument.nc" });
+  await nodeInput.fill("instrument");
+  const own = page.getByRole("list", { name: "Problems with the place of instrument.nc" });
+  await expect(own).toContainText('instrument.nc: The node "instrument" must start with /');
+  await expect(page.getByText('instrument.nc: The node "instrument" must start with /')).toHaveCount(1);
+  await expect(problems).toBeHidden();
+  await expect(nodeInput).toHaveAttribute("aria-invalid", "true");
+  await expect(nodeInput).toHaveAccessibleDescription(/The node "instrument" must start with \//);
+  await expect(own.locator("xpath=ancestor::*[@aria-live='polite']")).toHaveCount(1);
+  await expect(upload).toHaveAccessibleDescription("Correct the problem above to upload.");
+  await nodeInput.fill("/instrument");
+  await expect(nodeInput).toHaveAttribute("aria-invalid", "false");
   const nodes = page.getByRole("list", { name: "Nodes of the version" });
   await expect(nodes).toContainText("/← stacked along year:");
   await expect(nodes).toContainText("sales_2025.nc = 2025");
@@ -109,8 +119,15 @@ test("a raw HDF5 upload is inspected, its arrays are mapped and it becomes a ver
 
   await page.getByRole("checkbox", { name: "Map /observations/image" }).click();
   await page.getByRole("checkbox", { name: "Map /psf/kernel" }).click();
-  await page.getByRole("textbox", { name: "Dims for /observations/image" }).fill("row");
+  const dimsInput = page.getByRole("textbox", { name: "Dims for /observations/image" });
+  await dimsInput.fill("row");
   await expect(mappingProblems).toContainText("/observations/image has 2 axes (shape 4 × 5). Type 2 dim names, not 1.");
+  // The problem marks the Dims input (not the variable name) and describes it.
+  await expect(dimsInput).toHaveAttribute("aria-invalid", "true");
+  await expect(dimsInput).toHaveAccessibleDescription(/has 2 axes/);
+  await expect(page.getByRole("textbox", { name: "Variable name for /observations/image" })).toHaveAttribute("aria-invalid", "false");
+  await expect(page.getByRole("textbox", { name: "Units for /observations/image" })).toHaveAttribute("maxlength", "64");
+  await expect(page.getByRole("combobox", { name: "Missing values of /observations/image" })).toHaveValue("forbid");
   await page.getByRole("textbox", { name: "Dims for /observations/image" }).fill("row, col");
   await page.getByRole("combobox", { name: "Role for /observations/image" }).selectOption("target");
   await expect(page.getByRole("textbox", { name: "Units for /observations/image" })).toHaveValue("counts");
@@ -148,6 +165,97 @@ test("a raw HDF5 upload is inspected, its arrays are mapped and it becomes a ver
   });
 });
 
+test("an unsupported file and files of one node with different rules say what is wrong", async ({ page }) => {
+  await page.goto(`/datasets/${DATASET}?upload=true`);
+  await page.locator('input[type="file"]').setInputFiles([file("sales_2024.nc"), file("sales_2025.nc")]);
+  for (const [name, label] of [
+    ["sales_2024.nc", "2024"],
+    ["sales_2025.nc", "2025"],
+  ] as const) {
+    await page.getByRole("combobox", { name: `Combine rule for ${name}` }).selectOption("concat");
+    await page.getByRole("textbox", { name: `Stack dim for ${name}` }).fill("year");
+    await page.getByRole("textbox", { name: `Label of ${name}` }).fill(label);
+  }
+  await page.locator('input[type="file"]').setInputFiles([file("weird.bin")]);
+  // The unknown type is a listed problem, linked to the format select.
+  const format = page.getByRole("combobox", { name: "Format of weird.bin" });
+  await expect(format).toHaveAttribute("aria-invalid", "true");
+  await expect(format).toHaveAccessibleDescription(/weird\.bin: the app cannot tell the format of this file/);
+  // weird.bin is in node / with the default rule: the summary does not list it as stacked.
+  const nodes = page.getByRole("list", { name: "Nodes of the version" });
+  await expect(nodes).toContainText("/← the files combine in different ways:");
+  await expect(nodes).toContainText("sales_2024.nc = 2024 (stacked along year)");
+  await expect(nodes).toContainText("weird.bin (the only file of the node)");
+  await expect(page.getByRole("list", { name: "Problems with the files" })).toContainText("combine in different ways");
+  const upload = page.getByRole("button", { name: "Upload and ingest" });
+  await expect(upload).toBeDisabled();
+  await expect(upload).toHaveAccessibleDescription("Correct the 2 problems above to upload.");
+
+  await format.selectOption("netcdf");
+  await page.getByRole("combobox", { name: "Combine rule for weird.bin" }).selectOption("concat");
+  await page.getByRole("textbox", { name: "Stack dim for weird.bin" }).fill("year");
+  await page.getByRole("textbox", { name: "Label of weird.bin" }).fill("2026");
+  await expect(nodes).toContainText("/← stacked along year:");
+  await expect(nodes).not.toContainText("(stacked along year)");
+  await expect(upload).toBeEnabled();
+});
+
+test("several files fit a 375 px wide screen", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto(`/datasets/${DATASET}?upload=true`);
+  await page.locator('input[type="file"]').setInputFiles([file("sales_2024.nc"), file("sales_2025.nc")]);
+  await page.getByRole("combobox", { name: "Combine rule for sales_2024.nc" }).selectOption("concat");
+  await expect(page.getByRole("button", { name: "Preview structure" }).first()).toBeVisible();
+  const width = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(width).toBeLessThanOrEqual(375);
+  for (const name of ["File sales_2024.nc", "File sales_2025.nc"]) {
+    const box = await page.getByRole("region", { name }).boundingBox();
+    expect(box!.x + box!.width).toBeLessThanOrEqual(375);
+  }
+});
+
+test("each file's inspect button is busy only while its own request is pending", async ({ page }) => {
+  await page.goto(`/datasets/${DATASET}?upload=true`);
+  await page.locator('input[type="file"]').setInputFiles([file("slow_a.h5"), file("b.h5")]);
+  const a = page.getByRole("region", { name: "File slow_a.h5" }).getByRole("button", { name: /list the arrays/i });
+  const b = page.getByRole("region", { name: "File b.h5" }).getByRole("button", { name: /list the arrays/i });
+  await a.click();
+  await expect(a).toBeDisabled();
+  // Read at once (no retry): the request of slow_a.h5 takes 1.5 s, and b.h5 must not wait for it.
+  expect(await b.isEnabled()).toBe(true);
+  expect(await a.isDisabled()).toBe(true);
+  await expect(page.getByRole("table", { name: "Arrays of slow_a.h5" })).toBeVisible();
+});
+
+test("the same dim in two sibling nodes gets two coordinates with different names", async ({ page }) => {
+  await page.goto(`/datasets/${DATASET}?upload=true`);
+  await page.locator('input[type="file"]').setInputFiles([file("lens_raw.h5", 2048)]);
+  await page.getByRole("button", { name: "Upload and list the arrays" }).click();
+  await page.getByRole("checkbox", { name: "Map /psf/kernel" }).click();
+  await page.getByRole("checkbox", { name: "Map /cube/flux" }).click();
+  await page.getByRole("textbox", { name: "Node for /psf/kernel" }).fill("/a");
+  await page.getByRole("textbox", { name: "Dims for /psf/kernel" }).fill("x, y");
+  await page.getByRole("textbox", { name: "Node for /cube/flux" }).fill("/b");
+  await page.getByRole("textbox", { name: "Dims for /cube/flux" }).fill("x, z");
+  await expect(page.getByRole("combobox", { name: "Labels of x (node /a)", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("combobox", { name: "Labels of x (node /b)", exact: true })).toHaveCount(1);
+  // A node problem marks the Node input.
+  await page.getByRole("textbox", { name: "Node for /cube/flux" }).fill("b");
+  await expect(page.getByRole("textbox", { name: "Node for /cube/flux" })).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("textbox", { name: "Variable name for /cube/flux" })).toHaveAttribute("aria-invalid", "false");
+});
+
+test("listing the arrays again after a failed inspect run shows the new run's arrays", async ({ page }) => {
+  await page.goto(`/datasets/${DATASET}?upload=true`);
+  await page.locator('input[type="file"]').setInputFiles([file("flaky.h5")]);
+  await page.getByRole("button", { name: "Upload and list the arrays" }).click();
+  const alert = page.getByRole("alert").filter({ hasText: "The sandbox could not list the arrays of flaky.h5" });
+  await expect(alert).toBeVisible();
+  await page.getByRole("button", { name: "List the arrays" }).click();
+  await expect(page.getByRole("table", { name: "Arrays of flaky.h5" })).toBeVisible();
+  await expect(alert).toBeHidden();
+});
+
 test("an unsafe HDF5 file shows the inspect run's problem and is not ingested", async ({ page }) => {
   await page.goto(`/datasets/${DATASET}?upload=true`);
   await page.locator('input[type="file"]').setInputFiles([file("unsafe_links.h5")]);
@@ -176,6 +284,29 @@ test("a tree version shows its nodes and the Data Explorer explores one node at 
   await expect(page.getByRole("heading", { name: "lens_cubes" })).toBeVisible();
   const tree = page.getByRole("tree", { name: "Tree of nodes" });
   await expect(tree.getByRole("treeitem")).toHaveText([/^\/\s*2 vars$/, /^instrument\s*1 var$/, /^psf\s*1 var$/]);
+  // The About card describes this tree, not another dataset.
+  await expect(page.getByLabel("Highlights").getByText("3 nodes", { exact: true })).toBeVisible();
+  await expect(page.getByText("156 weeks of history")).toHaveCount(0);
+
+  // The tree keyboard: one tab stop, arrows move (and select), parents are expanded.
+  const items = tree.getByRole("treeitem");
+  await expect(items.nth(0)).toHaveAttribute("tabindex", "0");
+  await expect(items.nth(1)).toHaveAttribute("tabindex", "-1");
+  await expect(items.nth(0)).toHaveAttribute("aria-expanded", "true");
+  await expect(items.nth(1)).toHaveAttribute("aria-expanded", "true");
+  await expect(items.nth(2)).not.toHaveAttribute("aria-expanded");
+  await items.nth(0).focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(items.nth(1)).toBeFocused();
+  await expect(page.getByRole("region", { name: "Node /instrument" })).toBeVisible();
+  await page.keyboard.press("End");
+  await expect(items.nth(2)).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(items.nth(1)).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(items.nth(0)).toBeFocused();
+  await expect(items.nth(0)).toHaveAttribute("tabindex", "0");
+  await expect(items.nth(1)).toHaveAttribute("tabindex", "-1");
   const node = page.getByRole("region", { name: "Node /" });
   await expect(node.getByText("default node")).toBeVisible();
   await expect(node.getByRole("cell", { name: "sales", exact: true })).toBeVisible();
@@ -193,6 +324,7 @@ test("a tree version shows its nodes and the Data Explorer explores one node at 
   await expect(page).toHaveURL(/\/explore\?node=%2Finstrument%2Fpsf/);
   const picker = page.getByRole("combobox", { name: "Node" });
   await expect(picker).toHaveValue("/instrument/psf");
+  await expect(picker.locator("option")).toHaveText(["/ (2 variables)", "/instrument (1 variable)", "/instrument/psf (1 variable)"]);
   const overview = page.locator("#section-overview");
   await expect(overview).toContainText("kernel");
   await expect(overview).not.toContainText("sales");

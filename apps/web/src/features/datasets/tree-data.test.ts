@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { DataSchema, InspectedArray } from "@/api/types";
 import { enrichSpecSchema, inputColumns, specShape, type HintSources } from "@/features/editor/spec-hints";
 import editorGen from "@/mocks/editor.gen.json";
-import { TREE } from "@/mocks/tree";
+import { TREE, treeAbout, treeSpecIssues } from "@/mocks/tree";
 
 import { nodeIndexName } from "@/features/explore/api";
 
-import { inspectBackoff } from "./api";
+import { inspectBackoff, inspectionKey } from "./api";
 import {
+  combineFileText,
+  combineSummaryText,
   coordDrafts,
   DEFAULT_PLACEMENT,
   formatFromFilename,
@@ -23,7 +25,8 @@ import {
   type Hdf5VarDraft,
   type Placement,
 } from "./mapping";
-import { defaultNode, flatSchema, isNodePath, nodeKey, nodeParent, nodePathProblem, nodesWithVars, treeRows } from "./tree";
+import { defaultNode, explorerNode, flatSchema, isNodePath, nodeKey, nodeParent, nodePathProblem, nodesWithVars, treeRows } from "./tree";
+import { treeKeyTarget } from "./tree-view";
 
 const place = (file: string, p: Partial<Placement> = {}): Placement => ({ file, ...DEFAULT_PLACEMENT, ...p });
 
@@ -91,6 +94,17 @@ describe("formats", () => {
     expect(parseCoordValue("north")).toBe("north");
     expect(parseCoordValue("2024-01-01")).toBe("2024-01-01");
   });
+
+  it("keeps a label with a leading zero as text", () => {
+    expect(parseCoordValue("007")).toBe("007");
+    expect(parseCoordValue("-01")).toBe("-01");
+    expect(parseCoordValue("0")).toBe(0);
+    expect(parseCoordValue("0.25")).toBe(0.25);
+    const sources = toAssembly(
+      ["007", "008"].map((label, i) => ({ uploadId: `upl_${i}`, mapping: { format: "netcdf" }, placement: place(`f${i}.nc`, { combine: "concat", concatDim: "run", concatLabel: label }) })),
+    ).sources;
+    expect(sources.map((x) => x.concat_label)).toEqual(["007", "008"]);
+  });
 });
 
 describe("assembly placements (IngestAssembly rules)", () => {
@@ -136,12 +150,41 @@ describe("assembly placements (IngestAssembly rules)", () => {
         expect.stringMatching(/^d\.nc: type the label/),
         expect.stringMatching(/^Node \/m: the files d\.nc, e\.nc combine in different ways/),
         expect.stringMatching(/^Node \/k: the files f\.nc, g\.nc must stack along the same dim/),
-        expect.stringMatching(/^Node \/k: two files have the label 1\./),
+        expect.stringMatching(/^Node \/k: two files have the label 1 \(1 and 1\.0 are the same number\)\./),
         expect.stringMatching(/^Node \/k: the files f\.nc, g\.nc must align their coordinates/),
         expect.stringMatching(/^Node \/t: the labels mix numbers and text/),
       ]),
     );
     expect(messages).toHaveLength(9);
+  });
+
+  it("says which labels are text, and a zero-padded label no longer collides with a number", () => {
+    const mixed = validatePlacements([
+      place("a.nc", { combine: "concat", concatDim: "run", concatLabel: "007" }),
+      place("b.nc", { combine: "concat", concatDim: "run", concatLabel: "7" }),
+    ]).map((p) => p.message);
+    expect(mixed).toEqual([expect.stringMatching(/^Node \/: the labels mix numbers and text \(007 is text\)\. .* leading zero, such as 007, is text\./)]);
+    const same = validatePlacements([
+      place("a.nc", { combine: "concat", concatDim: "year", concatLabel: "2024" }),
+      place("b.nc", { combine: "concat", concatDim: "year", concatLabel: "2024" }),
+    ]).map((p) => p.message);
+    expect(same).toEqual(["Node /: two files have the label 2024. Give each file a different label."]);
+  });
+
+  it("summarises each node's files under their own rule when the rules differ", () => {
+    const stacked = [
+      { ...DEFAULT_PLACEMENT, combine: "concat" as const, concatDim: "year", concatLabel: "2024" },
+      { ...DEFAULT_PLACEMENT, combine: "concat" as const, concatDim: "year", concatLabel: "2025" },
+    ];
+    expect(combineSummaryText(stacked)).toBe("← stacked along year:");
+    expect(combineFileText("a.nc", stacked[0]!, false)).toBe("a.nc = 2024");
+    const mixed = [...stacked, { ...DEFAULT_PLACEMENT }];
+    expect(combineSummaryText(mixed)).toBe("← the files combine in different ways:");
+    expect(combineFileText("a.nc", stacked[0]!, true)).toBe("a.nc = 2024 (stacked along year)");
+    expect(combineFileText("weird.bin", DEFAULT_PLACEMENT, true)).toBe("weird.bin (the only file of the node)");
+    expect(combineSummaryText([{ ...DEFAULT_PLACEMENT }])).toBe("←");
+    expect(combineSummaryText([{ ...DEFAULT_PLACEMENT }, { ...DEFAULT_PLACEMENT }])).toBe("← select how these files combine:");
+    expect(combineSummaryText([{ ...DEFAULT_PLACEMENT, combine: "merge", join: "outer" }])).toBe("← merged (outer):");
   });
 
   it("refuses more than 64 files", () => {
@@ -212,6 +255,39 @@ describe("raw HDF5 mapping (Hdf5Mapping rules)", () => {
     );
   });
 
+  it("points each problem at the input it is about", () => {
+    let vars = pick(drafts(), "/cube/flux", { dims: "x" });
+    vars = pick(vars, "/psf/kernel", { node: "psf", dims: "a, b" });
+    vars = pick(vars, "/observations/image", { name: "1x", dims: "r, c", units: "u".repeat(80) });
+    const coords: Hdf5CoordDraft[] = [
+      { dim: "a", node: "psf", source: "path", path: "", start: "", step: "" },
+      { dim: "r", node: "/", source: "range", path: "", start: "", step: "" },
+      { dim: "c", node: "/", source: "range", path: "", start: "1", step: "0" },
+    ];
+    const at = (key: string) =>
+      validateHdf5(vars, coords, arrays)
+        .filter((p) => p.key === key)
+        .map((p) => p.field)
+        .sort();
+    expect(at("/cube/flux")).toEqual(["dims"]);
+    expect(at("/psf/kernel")).toEqual(["node"]);
+    expect(at("/observations/image")).toEqual(["name", "units"]);
+    expect(at("coord:psf:a")).toEqual(["path"]);
+    expect(at("coord:/:r")).toEqual(["start"]);
+    expect(at("coord:/:c")).toEqual(["step"]);
+  });
+
+  it("refuses units longer than Hdf5Var.units allows and sends missing values when not forbid", () => {
+    let vars = pick(drafts(), "/observations/image", { dims: "r, c", units: "u".repeat(65) });
+    expect(validateHdf5(vars, [], arrays).map((p) => p.message)).toEqual(["/observations/image: the units have 65 characters. The maximum is 64."]);
+    vars = pick(vars, "/observations/image", { units: "u".repeat(64), missing: "allow" });
+    vars = pick(vars, "/psf/kernel", { dims: "p, q" });
+    expect(validateHdf5(vars, [], arrays)).toEqual([]);
+    const out = toHdf5Mapping(vars, []).hdf5!.vars;
+    expect(out.find((v) => v.path === "/observations/image")).toMatchObject({ units: "u".repeat(64), missing: "allow" });
+    expect(out.find((v) => v.path === "/psf/kernel")).not.toHaveProperty("missing");
+  });
+
   it("asks for an array when nothing is mapped, and checks label lengths", () => {
     expect(validateHdf5(drafts(), [], arrays).map((p) => p.message)).toEqual(["Select one or more arrays to make variables."]);
     const vars = pick(drafts(), "/psf/kernel", { dims: "a, b" });
@@ -223,6 +299,35 @@ describe("raw HDF5 mapping (Hdf5Mapping rules)", () => {
 describe("inspection polling and explorer node indexes", () => {
   it("backs off from 0.5 s to at most 5 s", () => {
     expect([1, 2, 3, 4, 10, 50].map(inspectBackoff)).toEqual([500, 750, 1125, 1688, 5000, 5000]);
+  });
+
+  it("keys the inspection query by its run, so a retry after a failed run fetches again", () => {
+    expect(inspectionKey("p1", "ds", "upl", "run_a")).not.toEqual(inspectionKey("p1", "ds", "upl", "run_b"));
+    expect(inspectionKey("p1", "ds", "upl", "run_a").at(-1)).toBe("run_a");
+  });
+
+  it("explores only a node with variables, and says why another node is not shown", () => {
+    const nodes: Record<string, DataSchema> = { "/": {}, "/a": { vars: { x: { dims: [], dtype: "float64" } } }, "/a/g": {} };
+    expect(explorerNode(nodes, "/a")).toEqual({ node: "/a", note: null });
+    expect(explorerNode(nodes, undefined)).toEqual({ node: "/a", note: null });
+    expect(explorerNode(nodes, "/")).toEqual({ node: "/a", note: "The node / has no variables to explore. The page shows /a." });
+    expect(explorerNode(nodes, "/a/g").node).toBe("/a");
+    expect(explorerNode(nodes, "/nope").note).toBe("This dataset has no node /nope. The page shows /a.");
+  });
+
+  it("moves through the nodes with the tree keys", () => {
+    const rows = treeRows(TREE.version.tree_schema!.nodes);
+    expect(rows.map((r) => r.path)).toEqual(["/", "/instrument", "/instrument/psf"]);
+    expect(treeKeyTarget(rows, 0, "ArrowDown")).toBe(1);
+    expect(treeKeyTarget(rows, 2, "ArrowDown")).toBe(2);
+    expect(treeKeyTarget(rows, 1, "ArrowUp")).toBe(0);
+    expect(treeKeyTarget(rows, 2, "Home")).toBe(0);
+    expect(treeKeyTarget(rows, 0, "End")).toBe(2);
+    expect(treeKeyTarget(rows, 1, "ArrowRight")).toBe(2);
+    expect(treeKeyTarget(rows, 2, "ArrowRight")).toBe(-1);
+    expect(treeKeyTarget(rows, 2, "ArrowLeft")).toBe(1);
+    expect(treeKeyTarget(rows, 0, "ArrowLeft")).toBe(-1);
+    expect(treeKeyTarget(rows, 0, "a")).toBeNull();
   });
 
   it("finds a node's explorer index only under ui/explore/nodes/", () => {
@@ -259,5 +364,30 @@ describe("spec editor data.nodes hints", () => {
     expect(Object.keys(inputColumns(shape, plain)?.vars ?? {})).toEqual(["y"]);
     const schema = enrichSpecSchema(editorGen.modelspec_schema, shape, plain) as { $defs: Record<string, { properties: Record<string, unknown> }> };
     expect((schema.$defs.NodeSelect!.properties.path as { defaultSnippets?: unknown }).defaultSnippets).toBeUndefined();
+  });
+});
+
+describe("the tree dataset mock", () => {
+  const spec = (data: string) => `apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: x, project: default}\ndata:\n${data}\nmodel: {use: mmm.bayesian@^1}\n`;
+
+  it("describes the tree dataset in its own About card", () => {
+    const about = treeAbout("mine");
+    expect(about.description_user).toBe("mine");
+    expect(about.highlights).toEqual(["3 nodes", "6 weeks", "2 geos", "2 years"]);
+    expect(about.summary_generated).toContain("/instrument/psf (kernel over prow, pcol)");
+    expect(about.summary_generated).not.toMatch(/channel|156 weeks/);
+  });
+
+  it("checks data.bind against the selected nodes", () => {
+    const stale = spec("  dataset: dataset://default/lens_cubes@latest\n  nodes: {root: {path: /}}\n  bind: {dims: {geo: market, time: date}, vars: {y: revenue_local}}");
+    expect(treeSpecIssues(stale).map((i) => [i.code, i.pointer, i.message])).toEqual([
+      ["BINDING_INVALID", "/data/bind/dims/geo", "the dataset has no dim with the name 'market'"],
+      ["BINDING_INVALID", "/data/bind/dims/time", "the dataset has no dim with the name 'date'"],
+      ["BINDING_INVALID", "/data/bind/vars/y", "the dataset has no variable with the name 'revenue_local'"],
+    ]);
+    const ok = spec("  dataset: dataset://default/lens_cubes@latest\n  nodes: {root: {path: /}, psf: {path: /instrument/psf, prefix: p_}}\n  bind: {dims: {geo: geo, time: time}, vars: {y: sales, k: p_kernel}}");
+    expect(treeSpecIssues(ok)).toEqual([]);
+    // without data.nodes the root node is read
+    expect(treeSpecIssues(spec("  dataset: dataset://default/lens_cubes@latest\n  bind: {vars: {y: kernel}}")).map((i) => i.pointer)).toEqual(["/data/bind/vars/y"]);
   });
 });
