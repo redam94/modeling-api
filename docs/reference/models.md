@@ -34,6 +34,7 @@ each lift likelihood.
 | `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
 | `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
 | `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
+| `sci.turing_pattern@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e61_turing` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -351,6 +352,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
 | `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
 | `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
+| `e61` | `sci.turing_pattern` | none (the notebook simulates its images) | `biology/e61_turing_early_images` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -475,4 +477,67 @@ caustic and the cut of each posterior draw as the derived group `critical_curves
 The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F814W image of
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
+
+### `sci.turing_pattern` — Turing patterns from early images (E61)
+
+The Schnakenberg activator-substrate system makes spots or stripes (a Turing pattern). The
+model gets its rates from images of the activator that you take while the pattern starts to
+grow. In this phase the growth is linear. Thus each Fourier mode of the images is a complex
+Gaussian, and the modes are independent. The model groups the modes by their integer `|k|²`
+and uses a Woodbury identity. Thus the likelihood needs only 2 × 2 algebra for each
+wavenumber, and it is exact for the linear dynamics. The model finds the mode first, and NUTS
+samples near that mode with a Laplace preconditioner.
+
+The units have no dimensions. Lengths are in units where the activator diffuses at a rate of 1.
+The parameters are the supply `s = a + b`, the activator share `rho = a / s`, the diffusion
+ratio `d`, the reaction scale `g`, the initial noise `s0` and the camera noise `sigma`. The
+priors are those of the notebook.
+
+**Inputs.** `t` (float, extend: the time since the start of the pattern, `t > 0`), `y` and `x`
+(integer, fixed) and the target `activator(t, y, x)`. The raster must be square, with an even
+number of pixels on each side, and must have no missing pixels. The model treats the square as
+periodic.
+
+**Outputs.**
+
+- `pattern(t, y, x)`: a field with a frame for each time. In `predict` and `evaluate`, it is a
+  draw of the activator at the requested times, given the fitted images. In `simulate`, it is a
+  new pattern from the nonlinear spectral solver, with camera noise.
+- `settled(y, x)`: only in `simulate`. The pattern of each run at `settle_time`.
+- `growth(wavenumber)`: the dispersion relation (the growth rate of each wavenumber).
+- `p_turing`: 1 when the draw meets the Turing conditions, else 0. Its mean is the probability.
+- `wavelength`: the wavelength `2π / k_m` of the fastest-growing mode.
+- `turing_space(b_supply, a_supply)`: a field. Its mean is P(Turing) for each pair of supply
+  rates.
+
+The posterior also has `a`, `b`, `wavelength`, `max_growth` and `p_turing`. With
+`fit.keep.log_likelihood: true`, the bundle keeps the log-likelihood of each Fourier mode
+(`log_likelihood/activator(chain, draw, mode)`). The modes are independent, thus `elpd_loo`
+over the modes is valid.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `box_length` | 100 | The side of the square in the length unit of the model |
+| `k2_max` | 1.5 | Use only the Fourier modes with a squared wavenumber less than this value |
+| `max_extension` | 2 | Image times after the fit that a prediction can go to |
+| `d_median`, `d_log_sd` | 10, 1 | Log-normal prior of the diffusion ratio |
+| `initial_noise_median`, `camera_noise_median` | 0.001, 0.001 | Prior medians of `s0` and `sigma` |
+| `field_draws` | 40 | Posterior draws for each score |
+| `simulate_draws` | 4 | Nonlinear runs for each `simulate` score |
+| `simulate_dt` | auto | Time step of the spectral solver (default `min(0.025, 0.1 / (g (1 + s²)))`) |
+| `settle_time` | 300 | Time of the settled pattern in `simulate` |
+| `precondition` | true | Sample near the mode with a Laplace preconditioner (the model does not change) |
+
+E61 part A has no data file: the notebook simulates its four 128 × 128 images (t = 4, 8, 12,
+16). `from_challenges` and `notebook_dataset()` do the same simulation, and
+`NOTEBOOK_SPEC_YAML` fits it with the sampler settings of the notebook. The 89% intervals are
+d 17.7–24.6, g 0.90–1.07, b 0.85–1.04 and a 0.057–0.130 (the notebook gives 17.7–25.2,
+0.90–1.08, 0.84–1.04 and 0.054–0.133). The truth is 20, 1, 0.9 and 0.1.
+
+Typed errors: `SCHEMA_INVALID` for missing pixels, a raster that is not square or times that
+are not after the start. `SETTINGS_INVALID` when no mode has `|k|²` less than `k2_max`, or when
+the spectral solver diverges in `simulate` (set a smaller `simulate_dt`). `forecast` and
+`counterfactual` give `MODE_NOT_SUPPORTED`. To predict later images, use `predict` with the
+next times. The `NONLINEAR_REGIME` diagnostic shows when the images are more than 10% from
+their mean, because then the linear likelihood is not correct.
 

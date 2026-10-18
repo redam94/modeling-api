@@ -10,6 +10,7 @@ Their data are maps, images and fields on a regular grid.
 | `sci.fisher_kpp@1` | Fisher-KPP reaction-diffusion PDE solved in the model graph (E50) | draws | predict, forecast, evaluate |
 | `sci.traction_force@1` | Traction force microscopy as a Gaussian inverse problem in Fourier space (E60) | draws | predict, evaluate |
 | `sci.strong_lens@1` | Pixel forward model of a galaxy-scale strong lens in an HST image (E80) | draws | predict, simulate, evaluate |
+| `sci.turing_pattern@1` | Schnakenberg kinetics from early images of a growing Turing pattern, exact Fourier-mode likelihood (E61 part A) | draws | predict, simulate, evaluate |
 
 Outputs that are fields declare a `grid` (`OutputDecl.grid`). The Model Explorer shows them in
 its **Fields** section, and the `sci.*` plot recipes draw them.
