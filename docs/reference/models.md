@@ -34,6 +34,7 @@ each lift likelihood.
 | `sci.fisher_kpp@1` | `mapi-plugin-science` | draws | predict, forecast, evaluate | `e50_kpp` |
 | `sci.traction_force@1` | `mapi-plugin-science` | draws | predict, evaluate | `e60_traction` |
 | `sci.strong_lens@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e80_lens` |
+| `sci.heat_plate@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e51_heat_plate` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -333,7 +334,7 @@ python -m mapi_plugin_science.export e50 --synthetic --out assay.nc
 ```
 
 `--challenges` is the `data/` directory of pymc-challenges. If you do not give it, the command
-uses `MAPI_PYMC_CHALLENGES_DATA`. The suffix of `--out` sets the format:
+uses `MAPI_PYMC_CHALLENGES_DATA`. A case without a data file (`e51`) needs neither. The suffix of `--out` sets the format:
 
 | Suffix | Format |
 |---|---|
@@ -351,6 +352,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e50` | `sci.fisher_kpp` | `scratch_assay_pc3.csv` | `biology/scratch_assay_pc3` |
 | `e60` | `sci.traction_force` | `pytfm_colony_ko04.npz` | `biophysics/pytfm_colony_ko04` |
 | `e80` | `sci.strong_lens` | `slacs_j1627_f814w.npz` | `astronomy/slacs_j1627_f814w` |
+| `e51` | `sci.heat_plate` | none (the notebook simulates the data) | `engineering/heat_plate_e51` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -476,3 +478,52 @@ The model has no LOO (`loo_valid` is false). `from_challenges` reads the HST F81
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
 
+### `sci.heat_plate` — temperature of a heated plate (E51)
+
+The 2-D steady heat equation of a thin plate. Heat moves in the plane of the plate
+(conductivity `k`) and goes out through the two faces (`h`) and the outer edges (`h_edge`). A
+part `eta` of the heater power goes into the plate. The model divides the plate into square
+cells (finite volumes). This gives a linear system `A(θ) u = eta q` for the rise `u` above the
+room. The model solves the system for each run in the model graph
+(`pytensor.tensor.linalg.solve`). The readings are Normal around `T_room + u` with the noise
+`sigma`.
+
+The field is linear in the heater powers. Thus one fit predicts the field of any new heater
+layout. To do this, score a payload with new `run` labels and their `heater_power`.
+
+**Inputs.** `run` (categorical, policy `new_levels`), `y` and `x` (float cell centres in cm,
+equal steps, square cells, fixed), the input `heater_power(run, y, x)` in W and the target
+`temperature(run, y, x)` in °C. Cells without a sensor have no value (NaN). The fit uses only
+the cells with a value. With `use_insulation: true`, the data also has a bool
+`insulation(y, x)`: `True` where the back face of the cell has insulation.
+
+**Outputs.** `field(run, y, x)` (a field with a frame for each run, in °C) and the scalar
+`spread_length` (`sqrt(k δ / 2h)`, cm). `predict` gives the steady field. `simulate` gives
+simulated sensor readings in all cells (the field plus the noise). The pointwise
+log-likelihood has one value for each reading. Thus `elpd_loo` works when the spec keeps it
+(`keep: {log_likelihood: true}`).
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `thickness_mm` | 5 | Thickness of the plate (mm) |
+| `room_temperature` | 20 | Temperature of the room (°C) |
+| `use_insulation` | false | The data has `insulation(y, x)` |
+| `insulated_back_loss` | 0.1 | Back-face loss under insulation, as a part of the loss without insulation |
+| `k_median`, `k_log_sd` | 50, 0.5 | Log-normal prior of the conductivity `k` (W/m/K) |
+| `h_median`, `h_log_sd` | 10, 0.5 | Log-normal prior of the face coefficient `h` (W/m²/K) |
+| `h_edge_median`, `h_edge_log_sd` | 10, 0.7 | Log-normal prior of the edge coefficient `h_edge` |
+| `eta_alpha`, `eta_beta` | 40, 4 | Beta prior of the heater efficiency `eta` |
+| `sigma_scale` | 0.5 | Half-normal scale of the sensor noise sd (°C) |
+
+The notebook simulates its data, so E51 has no data file. `from_challenges()` makes the
+calibration experiment of the notebook again with the same generator and seed: a 40 × 20 cm
+plate on 24 × 12 cells, three runs with one 10 W heater each and twelve sensors. The readings
+are the same as in the notebook. On these data, `E51_SPEC_YAML` (4 × 1000 draws, nutpie)
+gives `k` = 59.1 ± 2.7, `h` = 9.05 ± 0.42, `eta` = 0.910 ± 0.040 and a spread length of
+12.8 cm in approximately 45 s. These values are the same as in the notebook. `h_edge` stays
+near its prior (6.9 ± 3.7; the true value is 15): few sensors are near an edge.
+
+The model stops with `SCHEMA_INVALID` when the cells are not square, when the positions do not
+have equal steps, when the fit data has no reading or when `use_insulation` is set and the
+data has no `insulation`. A new layout without `heater_power` gives
+`MISSING_FUTURE_COVARIATE`. Cells that are not on the fitted plate give `UNSEEN_LEVELS`.

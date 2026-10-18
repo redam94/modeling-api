@@ -10,12 +10,14 @@ Their data are maps, images and fields on a regular grid.
 | `sci.fisher_kpp@1` | Fisher-KPP reaction-diffusion PDE solved in the model graph (E50) | draws | predict, forecast, evaluate |
 | `sci.traction_force@1` | Traction force microscopy as a Gaussian inverse problem in Fourier space (E60) | draws | predict, evaluate |
 | `sci.strong_lens@1` | Pixel forward model of a galaxy-scale strong lens in an HST image (E80) | draws | predict, simulate, evaluate |
+| `sci.heat_plate@1` | 2-D steady heat equation of a heated plate, a finite-volume system solved in the model graph (E51) | draws | predict, simulate, evaluate |
 
 Outputs that are fields declare a `grid` (`OutputDecl.grid`). The Model Explorer shows them in
 its **Fields** section, and the `sci.*` plot recipes draw them.
 
 Each `*_data` module has the raw schema, a small example spec, a synthetic generator with the
-known truth and `from_challenges(path)`, which reads the real data file of the case study. Set
+known truth and `from_challenges(path)`, which reads the real data file of the case study (E51
+simulates its data in the notebook: its loader rebuilds that experiment and reads no file). Set
 `MAPI_PYMC_CHALLENGES_DATA` to the `data/` directory of a local copy of pymc-challenges to run
 the tests that use the real files.
 

@@ -4,6 +4,7 @@ layout is hotter next to its heaters and simulated readings carry the sensor noi
 from __future__ import annotations
 
 import json
+from typing import cast
 
 import numpy as np
 import xarray as xr
@@ -36,7 +37,8 @@ def check_fit(bundle: Bundle, data: xr.Dataset) -> None:
     spread = float(spread_length_cm(HEAT_TRUTH["k"], HEAT_TRUTH["h"], 0.005))
     got = float(post["spread_length"].mean())
     assert abs(got - spread) < 0.05 * spread, f"spread length {got:.2f} vs {spread:.2f} cm"
-    assert bundle.model.learned["posterior_correlations"]["k-eta"] > 0.5
+    corr = cast(dict[str, float], bundle.model.learned["posterior_correlations"])
+    assert corr["k-eta"] > 0.5, f"k-eta correlation {corr['k-eta']:.2f}"
 
 
 def check_score(name: str, tree: xr.DataTree, bundle: Bundle, data: xr.Dataset) -> None:

@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -41,13 +42,14 @@ from mapi_sdk.schema import validate_dataset
 from mapi_sdk.testing import ModelFixture, check_model
 from mapi_spec import load_model_spec, load_score_request, validate_spec
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.spec import ScoreRequest
 
 HEADER = "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://sci/heat\n"
 CANON = {"y_cm": "y", "x_cm": "x", "heater_w": "heater_power", "reading_c": "temperature"}
 DELTA = 0.005
 
 
-def _req(body: str) -> object:
+def _req(body: str) -> ScoreRequest:
     return load_score_request(HEADER + body)
 
 
@@ -132,14 +134,21 @@ def test_laplacian_and_edges_of_a_small_grid() -> None:
 def test_field_is_linear_in_heater_powers() -> None:
     rng = np.random.default_rng(3)
     p1, p2 = rng.uniform(0, 5, (2, 6, 12))
-    kw = {"k": 55.0, "h": 8.0, "h_edge": 12.0, "eta": 0.9, "dx_m": 0.02, "thickness_m": DELTA}
+    kw: dict[str, Any] = {
+        "k": 55.0,
+        "h": 8.0,
+        "h_edge": 12.0,
+        "eta": 0.9,
+        "dx_m": 0.02,
+        "thickness_m": DELTA,
+    }
     np.testing.assert_allclose(
         steady_rise(2 * p1 + 3 * p2, **kw),
         2 * steady_rise(p1, **kw) + 3 * steady_rise(p2, **kw),
         rtol=1e-10,
     )
     # all the power leaves through the faces and the edges at steady state
-    lap, n_edge = grid_laplacian(6, 12)
+    _, n_edge = grid_laplacian(6, 12)
     u = steady_rise(p1, **kw).reshape(-1)
     loss = 2 * 8.0 * 0.02**2 * u + 12.0 * DELTA * 0.02 * n_edge * u
     assert loss.sum() == pytest.approx(0.9 * p1.sum(), rel=1e-10)
@@ -241,17 +250,16 @@ def test_fit_recovers_the_plate(bundle: Bundle, plate: xr.Dataset) -> None:
     spread = spread_length_cm(HEAT_TRUTH["k"], HEAT_TRUTH["h"], DELTA)
     assert abs(float(post["spread_length"].mean()) - spread) < 0.05 * spread
     assert post[FIELD].dims == ("chain", "draw", "run", "y", "x")
-    corr = bundle.model.learned["posterior_correlations"]
+    corr = cast(dict[str, float], bundle.model.learned["posterior_correlations"])
     assert corr["k-eta"] > 0.5  # rises depend on eta / k: the two are tied
     # the held-out run (a heater the fit never saw) is predicted within the noise
-    assert bundle.metrics.values["rmse"] < 3 * HEAT_TRUTH["sigma"]
+    rmse = bundle.metrics.values["rmse"]
+    assert rmse is not None and rmse < 3 * HEAT_TRUTH["sigma"]
     assert bundle.evaluation is not None
 
 
 @pytest.mark.slow
-def test_predict_a_new_heater_layout(
-    bundle: Bundle, plate: xr.Dataset, registry: Registry
-) -> None:
+def test_predict_a_new_heater_layout(bundle: Bundle, plate: xr.Dataset, registry: Registry) -> None:
     layout = _layout(plate, "design", [(1, 10, 8.0), (4, 10, 8.0), (3, 2, 3.0)])
     out = score_bundle(bundle, _req("mode: predict\n"), layout, registry=registry, return_full=True)
     pred = out["predictions"].to_dataset()
@@ -337,9 +345,11 @@ def test_unsupported_modes_and_unseen_cells_are_typed(
 
 @pytest.mark.slow
 def test_log_likelihood_gives_elpd_loo(registry: Registry, plate: xr.Dataset) -> None:
-    text = HEAT_SPEC_YAML.replace("mode: evaluate_then_refit", "mode: train_only").replace(
-        "engine: pymc}", "engine: pymc, keep: {log_likelihood: true}}"
-    ).replace("[rmse, mae, coverage_90]", "[elpd_loo]")
+    text = (
+        HEAT_SPEC_YAML.replace("mode: evaluate_then_refit", "mode: train_only")
+        .replace("engine: pymc}", "engine: pymc, keep: {log_likelihood: true}}")
+        .replace("[rmse, mae, coverage_90]", "[elpd_loo]")
+    )
     b = fit_spec(text, plate, registry=registry, raw_schema=HEAT_SCHEMA)
     ll = b.model.groups["log_likelihood"]["temperature"]
     assert ll.dims == ("chain", "draw", OBS_DIM) and ll.sizes[OBS_DIM] == 24  # 2 runs x 12
@@ -350,7 +360,9 @@ def test_log_likelihood_gives_elpd_loo(registry: Registry, plate: xr.Dataset) ->
 @pytest.mark.slow
 @pytest.mark.mapi_contract
 def test_heat_plate_passes_the_contract_kit(registry: Registry, plate: xr.Dataset) -> None:
-    fixture = ModelFixture(spec=HEAT_SPEC_YAML, data=plate, raw_schema=HEAT_SCHEMA, registry=registry)
+    fixture = ModelFixture(
+        spec=HEAT_SPEC_YAML, data=plate, raw_schema=HEAT_SCHEMA, registry=registry
+    )
     report = check_model(HeatPlateModel, fixture, raise_on_failure=False)
     assert report.ok, report.summary()
     ran = {r.name for r in report.results if not r.skipped}
@@ -414,5 +426,6 @@ def test_e51_calibration_matches_the_notebook(registry: Registry) -> None:
     he = post["h_edge"].values.ravel()
     assert he.std() > 2.0 and float(np.quantile(he, 0.945)) < 20.0
     assert float(post["spread_length"].mean()) == pytest.approx(12.9, abs=0.5)
-    assert b.model.learned["posterior_correlations"]["k-eta"] > 0.85
+    corr = cast(dict[str, float], b.model.learned["posterior_correlations"])
+    assert corr["k-eta"] > 0.85
     assert b.metrics.values["elpd_loo"] is not None

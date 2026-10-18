@@ -407,7 +407,7 @@ class HeatPlateModel(PyMCModel[HeatPlateSettings]):
         out = super().fit(ds, s, cfg, ctx)
         post = out.groups["posterior"]
         flat = {p: np.asarray(post[p].values, dtype=float).ravel() for p in _PARAMS}
-        corr: dict[str, float] = {}
+        corr: dict[str, Any] = {}
         for a, b in (("k", "h"), ("k", "eta"), ("h", "eta")):
             c = float(np.corrcoef(flat[a], flat[b])[0, 1]) if flat[a].size > 1 else float("nan")
             corr[f"{a}-{b}"] = round(c, 4) if math.isfinite(c) else 0.0
