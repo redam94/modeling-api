@@ -312,7 +312,8 @@ def plots_page() -> str:
         "in a spec's `outputs.plots`. See [Plots](../../guides/plots.md) for how to use them.",
         "Each picture is the recipe drawn on synthetic example data, as the app's catalog shows",
         "it.\n",
-        "| Recipe | Version | Title | What it shows | Persona | Needs groups | Needs representation |",
+        "| Recipe | Version | Title | What it shows | Persona | Needs groups "
+        "| Needs representation |",
         "|---|---|---|---|---|---|---|",
     ]
     for p in entries:
