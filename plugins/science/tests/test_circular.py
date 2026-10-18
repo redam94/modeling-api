@@ -5,10 +5,14 @@ typed errors, recovery on synthetic data and the real Santa Barbara and Barro Co
 from __future__ import annotations
 
 import math
+import re
+from pathlib import Path
 
 import numpy as np
+import pymc as pm
 import pytest
 import xarray as xr
+from mapi_plots.recipes import render_plots
 from mapi_plugin_science.challenges import challenges_file
 from mapi_plugin_science.circular import (
     _KEEP_VARS,
@@ -214,6 +218,35 @@ def test_the_fit_potential_equals_the_pointwise_log_density(kind: str) -> None:
     assert float(graph) == pytest.approx(float(ll.sum()), rel=1e-9)
 
 
+def test_the_mixture_priors_are_the_documented_ones() -> None:
+    """regime_mixture ignores intercept_sd: regime intercepts have sd 1 around
+    regime_strength (cos mu, sin mu), the gate intercept gate_intercept_sd."""
+    ds = _canon(wind_dataset(n=30, seed=3))
+    s = CircularRegressionSettings(
+        kind="regime_mixture", intercept_sd=7.0, regime_strength=3.0, gate_intercept_sd=0.5
+    )
+    model = build_model(_read(ds, s, score=False), s)
+    b0 = model["B0"].owner.inputs
+    mu, sd = (np.asarray(pm.draw(x)) for x in b0[-2:])
+    mu_r = np.deg2rad(s.regime_directions_deg)
+    np.testing.assert_allclose(mu, 3.0 * np.column_stack([np.cos(mu_r), np.sin(mu_r)]))
+    np.testing.assert_allclose(sd, 1.0)
+    g_sd = np.asarray(pm.draw(model["g"].owner.inputs[-1]))
+    assert g_sd[0] == 0.5 and (g_sd[1:] == s.coef_sd).all()
+
+
+def test_the_docs_table_lists_every_setting() -> None:
+    root = Path(__file__).resolve().parents[3]
+    text = (root / "docs/reference/models.md").read_text()
+    section = text[text.index("### `sci.circular_regression`") :]
+    end = section.find("\n#", 1)
+    section = section if end < 0 else section[:end]
+    rows = [ln for ln in section.splitlines() if ln.startswith("| `")]
+    named = {m for ln in rows for m in re.findall(r"`([a-z_]+)`", ln.split("|")[1])}
+    missing = set(CircularRegressionSettings.model_fields) - named
+    assert not missing, missing
+
+
 # ------------------------------------------------------------------------------- typed errors
 
 
@@ -373,6 +406,71 @@ def test_circular_regression_passes_the_contract_kit(registry: Registry, winds: 
     } <= ran
 
 
+# ------------------------------------------------------------------------------- plots
+
+
+def _render(tree: xr.DataTree, rid: str, registry: Registry, opts: dict | None = None) -> dict:
+    out = render_plots(tree, [rid], registry=registry, options={rid: opts or {}})
+    assert not out.issues, [i.message for i in out.issues]
+    (plot,) = out.plots
+    return dict(plot.model_dump(mode="json"))
+
+
+def test_the_fit_stores_the_density_grid_for_the_field_map(
+    wind_bundle: Bundle, winds: xr.Dataset, registry: Registry
+) -> None:
+    post = wind_bundle.model.posterior
+    assert post["density"].dims == ("chain", "draw", "frame", "angle")
+    # angles are not stored: sci.rose would read them as radians
+    assert "mean_direction" not in post and "resultant_length" not in post
+    mass = post["density"].sum("angle") * float(np.diff(post["angle"].values)[0])
+    np.testing.assert_allclose(mass.values, 1.0, atol=1e-6)
+    out = score_bundle(
+        wind_bundle, _req("mode: predict\n"), winds.drop_vars("wind_from"), registry=registry,
+        return_full=True,
+    )  # fmt: skip
+    pred = out["predictions"].to_dataset()["density"]
+    same = post["density"].sel(chain=pred["chain"], draw=pred["draw"])
+    np.testing.assert_allclose(same.values, pred.values, rtol=1e-10)
+    plot = _render(wind_bundle.to_tree(), "sci.field_map", registry)
+    assert plot["title"].endswith("density"), plot["title"]
+
+
+def test_the_activity_fit_maps_densities_and_overlaps(
+    activity_bundle: Bundle, registry: Registry
+) -> None:
+    post = activity_bundle.model.posterior
+    assert post["density"].dims == ("chain", "draw", "frame", "angle")
+    assert post["overlap"].dims == ("chain", "draw", "frame", "frame_")
+    np.testing.assert_allclose(
+        np.diagonal(post["overlap"].values, axis1=-2, axis2=-1), 1.0, atol=1e-9
+    )
+    assert "activity_level" not in post and "mean_direction" not in post
+    tree = activity_bundle.to_tree()
+    assert _render(tree, "sci.field_map", registry)["title"].endswith("density")
+    assert _render(tree, "sci.profile_bands", registry)["title"].endswith("density")
+    ov = _render(tree, "sci.field_map", registry, {"var": "overlap"})
+    assert ov["title"].endswith("overlap")
+    # the per-species density rose of the bundle, on the 24-hour clock
+    rose = _render(tree, "sci.rose", registry, {"var": "density", "frame": "frame",
+                                                "units": "hours"})  # fmt: skip
+    axis = rose["spec"]["layout"]["polar"]["angularaxis"]
+    assert axis["direction"] == "clockwise" and axis["rotation"] == 90
+
+
+def test_the_rose_settings_in_the_docs_draw_a_compass(
+    wind_bundle: Bundle, registry: Registry
+) -> None:
+    tree = wind_bundle.to_tree()
+    plain = _render(tree, "sci.rose", registry)["spec"]["layout"]["polar"]["angularaxis"]
+    # the default rose draws theta in the maths orientation (0 at the east, anticlockwise)
+    assert plain["direction"] == "counterclockwise" and plain["rotation"] == 0
+    compass = _render(tree, "sci.rose", registry, {"clockwise": True})
+    axis = compass["spec"]["layout"]["polar"]["angularaxis"]
+    assert axis["direction"] == "clockwise" and axis["rotation"] == 90
+    assert compass["title"].endswith("theta")
+
+
 # ------------------------------------------------------------------------------- activity
 
 
@@ -436,10 +534,10 @@ def test_the_variants_fit_and_store_pointwise_log_densities(
     b = fit_spec(spec, winds, registry=registry, raw_schema=WIND_SCHEMA)
     post = b.model.groups["posterior"]
     if kind == "regime_mixture":
-        assert set(post.data_vars) == {"B0", "Bh", "g"}
+        assert set(post.data_vars) == {"B0", "Bh", "g", "density"}
         assert list(post["regime"].values) == ["easterly", "westerly"]
     else:
-        assert set(post.data_vars) == {"B"}
+        assert set(post.data_vars) == {"B", "density"}
     elpd = b.metrics.elpd["elpd_loo"]
     assert elpd.n == winds.sizes["report"] - 60  # train_only: the holdout is not fitted
     out = score_bundle(b, _req("mode: predict\n"), winds.drop_vars("wind_from"), registry=registry,
@@ -512,3 +610,6 @@ def test_real_camera_traps_give_the_notebook_overlaps(registry: Registry) -> Non
     assert float(ov.sel(frame_="brocket")) == pytest.approx(0.750, abs=0.03)
     act = pred["activity_level"].median(("chain", "draw"))
     assert float(act.sel(frame="agouti")) == pytest.approx(0.262, abs=0.02)
+    # the fit stores the same overlaps in the posterior (sci.field_map of a fit run)
+    stored = b.model.posterior["overlap"].sel(frame="ocelot", frame_="agouti")
+    assert float(stored.median()) == pytest.approx(0.303, abs=0.03)

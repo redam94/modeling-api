@@ -34,8 +34,10 @@ with the season). The E81 defaults (3, 2, 2) give 19 features ``F`` with the int
   ``regime_directions_deg``, which anchors the labels. The probability of the second regime
   follows all features through a logistic gate.
 
-Priors: normal(0, ``intercept_sd``) on intercepts, normal(0, ``coef_sd``) on the other
-coefficients, as in E81.
+Priors (as in E81): normal(0, ``intercept_sd``) on intercepts and normal(0, ``coef_sd``) on
+the other coefficients. ``regime_mixture`` does not use ``intercept_sd``: regime ``r``'s
+intercept is normal(``regime_strength (cos mu_r, sin mu_r)``, 1), the gate intercept
+normal(0, ``gate_intercept_sd``) and every other coefficient normal(0, ``coef_sd``).
 
 **Kind activity** (camera-trap times): a label-free log-Fourier density per group,
 ``log f(theta) = sum_k a_k cos k theta + b_k sin k theta - log Z``, with ``harmonics`` terms,
@@ -49,7 +51,10 @@ and the overlap ``Delta = int min(f_i, f_j)`` of each pair of groups.
 (per radian, as in the notebook), so ``elpd_loo`` compares the kinds on the same rows. With
 ``fit.keep.posterior_predictive`` it stores replicated angles ``theta`` (radians, from 0 to
 2 pi) next to the observed ``theta`` in ``observed_data``: ``sci.rose`` then draws the
-observed rose with the model's band in its default settings.
+observed rose with the model's band in its default settings, in the maths orientation (0 at
+the east, anticlockwise); ``clockwise: true`` draws it as a compass or a clock. The fit also
+stores the gridded outputs ``density`` (and, for kind activity, ``overlap``) in the
+posterior, so ``sci.field_map`` and ``sci.profile_bands`` draw them from the bundle.
 
 **Outputs** (draws; ``score_draws`` evenly spaced posterior draws):
 
@@ -75,7 +80,7 @@ import math
 import warnings
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, ClassVar, Literal
 
 import numpy as np
@@ -177,7 +182,9 @@ class CircularRegressionSettings(ModelSettings):
         description="Daily harmonics multiplied by the first annual harmonic (the daily cycle "
         "changes with the season)",
     )
-    intercept_sd: float = Field(2.0, gt=0, description="Prior sd of the intercepts")
+    intercept_sd: float = Field(
+        2.0, gt=0, description="Prior sd of the intercepts (not used by regime_mixture)"
+    )
     coef_sd: float = Field(1.0, gt=0, description="Prior sd of the other coefficients")
     regime_directions_deg: list[float] = Field(
         default_factory=lambda: [90.0, 250.0],
@@ -598,6 +605,8 @@ FREE_VARS: dict[str, tuple[str, ...]] = {
     "regime_mixture": ("B0", "Bh", "g"),
     "activity": ("tau", "za", "zb"),
 }
+GRID_OUTPUTS = ("density", "overlap")
+"""Outputs with a ``grid``; the fit also stores them in the posterior."""
 _KEEP_VARS: dict[str, tuple[str, ...]] = {**FREE_VARS, "activity": ("tau", "za", "zb", "a", "b")}
 
 
@@ -848,6 +857,9 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
         groups["constant_data"] = _clean(xr.Dataset(const, coords=obs_coord), engine)
         ctx.progress(0.9, "posterior ready")
         draws = _Draws.of(posterior, _KEEP_VARS[s.kind])
+        groups["posterior"] = _clean(
+            xr.merge([posterior, self._posterior_fields(s, data, draws, posterior)]), engine
+        )
         if cfg.keep.log_likelihood:
             ll = self._pointwise(s, data, draws)
             shape = (posterior.sizes["chain"], posterior.sizes["draw"], ll.shape[-1])
@@ -894,6 +906,38 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
             "groups": data.groups,
         }
         return FitOutput(groups=groups, learned=learned, diagnostics=diagnostics)
+
+    def _posterior_fields(
+        self, s: CircularRegressionSettings, data: _Data, draws: _Draws, posterior: xr.Dataset
+    ) -> xr.Dataset:
+        """The gridded outputs as posterior variables: ``density`` and, for kind activity,
+        ``overlap``, the same values a score returns, so that ``sci.field_map`` and
+        ``sci.profile_bands`` draw them from the bundle of a fit run. The other frame
+        outputs stay in the score: an angle such as ``mean_direction`` in the posterior
+        would be the default variable of ``sci.rose``, which reads angles as radians."""
+        none = replace(
+            data,
+            theta=data.theta[:0],
+            hour=None if data.hour is None else data.hour[:0],
+            features=None if data.features is None else data.features[:0],
+            small=None if data.small is None else data.small[:0],
+            group_idx=None if data.group_idx is None else data.group_idx[:0],
+        )
+        out = self._summaries(s, none, None if s.kind == "activity" else data, draws)
+        fields, coords = _field_arrays(s, out)
+        n_c, n_d = posterior.sizes["chain"], posterior.sizes["draw"]
+        return xr.Dataset(
+            {
+                name: (("chain", "draw", *dims), arr.reshape(n_c, n_d, *arr.shape[1:]))
+                for name, (dims, arr) in fields.items()
+                if name in GRID_OUTPUTS
+            },
+            coords={
+                "chain": posterior["chain"].values,
+                "draw": posterior["draw"].values,
+                **coords,
+            },
+        )
 
     @staticmethod
     def _pointwise(s: CircularRegressionSettings, data: _Data, draws: _Draws) -> np.ndarray:
@@ -979,28 +1023,14 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
         def dr(arr: np.ndarray, dims: tuple[str, ...]) -> tuple[tuple[str, ...], np.ndarray]:
             return ("chain", "draw", *dims), arr.reshape(n_c, n_d, *arr.shape[1:])
 
-        frame_vec = out["frame_vector"]
         pred: dict[str, xr.DataArray] = {
             "direction_hat": _da(dr(direction, (OBS_DIM,)), {"kind": how, "noise": noise}),
             "resultant": _da(dr(np.abs(out["row_vector"]), (OBS_DIM,)), {"kind": "expected"}),
-            "density": _da(
-                dr(out["density"] * TWO_PI / period, (FRAME_DIM, ANGLE_DIM)),
-                {"kind": "posterior"},
-            ),
-            "mean_direction": _da(
-                dr(_wrap_units(np.angle(frame_vec), period), (FRAME_DIM,)),
-                {"kind": "posterior"},
-            ),
-            "resultant_length": _da(dr(np.abs(frame_vec), (FRAME_DIM,)), {"kind": "posterior"}),
         }
-        coords[FRAME_DIM] = out["frame_labels"]
-        coords[ANGLE_DIM] = np.arange(s.angle_points) * period / s.angle_points
-        if s.kind == "activity":
-            pred["activity_level"] = _da(dr(out["activity"], (FRAME_DIM,)), {"kind": "posterior"})
-            pred["overlap"] = _da(
-                dr(out["overlap"], (FRAME_DIM, FRAME2_DIM)), {"kind": "posterior"}
-            )
-            coords[FRAME2_DIM] = out["frame_labels"]
+        fields, field_coords = _field_arrays(s, out)
+        for name, (dims, arr) in fields.items():
+            pred[name] = _da(dr(arr, dims), {"kind": "posterior"})
+        coords.update(field_coords)
         result = xr.Dataset(pred, coords=coords)
         return xr.DataTree.from_dict({PREDICTIONS: result})
 
@@ -1144,6 +1174,29 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
         draws = _Draws.of(fitted.posterior, _KEEP_VARS[s.kind])
         ll = self._pointwise(s, data, draws)
         return np.asarray(special.logsumexp(ll, axis=0) - math.log(draws.size))
+
+
+def _field_arrays(
+    s: CircularRegressionSettings, out: dict[str, Any]
+) -> tuple[dict[str, tuple[tuple[str, ...], np.ndarray]], dict[str, np.ndarray]]:
+    """The frame outputs of :meth:`CircularRegressionModel._summaries` in ``units``:
+    ``({name: (dims, (S, ...) array)}, coords)``."""
+    period = _period(s)
+    frame_vec = out["frame_vector"]
+    fields: dict[str, tuple[tuple[str, ...], np.ndarray]] = {
+        "density": ((FRAME_DIM, ANGLE_DIM), out["density"] * TWO_PI / period),
+        "mean_direction": ((FRAME_DIM,), _wrap_units(np.angle(frame_vec), period)),
+        "resultant_length": ((FRAME_DIM,), np.abs(frame_vec)),
+    }
+    coords: dict[str, np.ndarray] = {
+        FRAME_DIM: np.asarray(out["frame_labels"]),
+        ANGLE_DIM: np.arange(s.angle_points) * period / s.angle_points,
+    }
+    if s.kind == "activity":
+        fields["activity_level"] = ((FRAME_DIM,), out["activity"])
+        fields["overlap"] = ((FRAME_DIM, FRAME2_DIM), out["overlap"])
+        coords[FRAME2_DIM] = np.asarray(out["frame_labels"])
+    return fields, coords
 
 
 def _mixture_grid(comp: dict[str, np.ndarray], angles: np.ndarray) -> np.ndarray:
