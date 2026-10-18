@@ -188,6 +188,7 @@ snapshots: ## Regenerate the contract snapshot (mapi_spec), the server's Guided 
 	$(UV) run python apps/web/scripts/gen_explorer_fixtures.py
 	$(UV) run python apps/web/scripts/gen_workflow_fixtures.py
 	$(UV) run python apps/web/scripts/gen_editor_fixtures.py
+	$(UV) run python apps/web/scripts/gen_tree_fixtures.py
 
 .PHONY: web-check
 web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
@@ -197,6 +198,7 @@ web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_explorer_fixtures.py --check
 	$(UV) run python apps/web/scripts/gen_workflow_fixtures.py --check
 	$(UV) run python apps/web/scripts/gen_editor_fixtures.py --check
+	$(UV) run python apps/web/scripts/gen_tree_fixtures.py --check
 	$(PNPM) -r lint
 	$(PNPM) -r typecheck
 	$(PNPM) -r test

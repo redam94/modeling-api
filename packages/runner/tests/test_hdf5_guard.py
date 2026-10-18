@@ -255,3 +255,60 @@ def test_plugins_are_disabled_in_process() -> None:
     assert Path(plugin_dir).is_dir() and not any(Path(plugin_dir).iterdir())
     assert os.environ["HDF5_USE_FILE_LOCKING"] == "FALSE"
     assert [h5pl.get(i) for i in range(h5pl.size())] == [plugin_dir.encode()]
+
+
+def _text_attr(n: int) -> Writer:
+    def fill(f: h5py.File, _tmp: Path) -> None:
+        d = f.create_dataset("x", data=np.arange(4.0))
+        texts = np.array([f"label {i}" for i in range(n)], dtype=object)
+        d.attrs.create("names", texts if n > 1 else texts[0], dtype=h5py.string_dtype())
+
+    return fill
+
+
+def test_a_text_attribute_is_bounded_before_it_is_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_runner.worker import hdf5_guard
+
+    # a budget of exactly the file's size: elements x file size cannot fit it
+    tight = IngestLimits(max_decompression_ratio=1.0, ratio_floor_bytes=0)
+    path = _make(tmp_path, "many.h5", _text_attr(40))
+
+    def never(_attr: Any) -> list[Any]:
+        raise AssertionError("the attribute was read before its worst case was bounded")
+
+    with monkeypatch.context() as m:
+        m.setattr(hdf5_guard, "_read_attr", never)
+        with pytest.raises(UnsafeUpload) as exc:
+            check_hdf5(path, tight)
+    assert "40 elements, which could decode to" in str(exc.value)
+    assert exc.value.untrusted_text == "/x @names"
+    # the same file passes the default budget; one text element is bounded by the file
+    check_hdf5(path, IngestLimits())
+    check_hdf5(_make(tmp_path, "one.h5", _text_attr(1)), tight)
+
+
+def test_netcdf3_with_the_hdf5_signature_in_its_data_is_read_as_netcdf3(tmp_path: Path) -> None:
+    import xarray as xr
+
+    path = tmp_path / "classic.nc"
+    xr.Dataset({"v": ("t", np.zeros(2048, dtype="u1"))}).to_netcdf(
+        path, engine="scipy", format="NETCDF3_CLASSIC"
+    )
+    raw = bytearray(path.read_bytes())
+    raw[512:520] = b"\x89HDF\r\n\x1a\n"  # inside v's values (the header is ~100 bytes)
+    path.write_bytes(bytes(raw))
+    assert int(xr.open_dataset(path, engine="scipy")["v"].sum()) > 0
+
+    upload = build_upload(path, IngestMapping(format="netcdf"), IngestLimits())
+    assert upload.data["v"].shape == (2048,)
+    listed = inspect_upload(path, InspectJob())
+    assert [a.path for a in listed.arrays] == ["/v"]
+    # never handed to libhdf5: as raw HDF5 it is not an HDF5 file
+    hdf5 = IngestMapping.model_validate(
+        {"format": "hdf5", "hdf5": {"vars": [{"path": "/v", "name": "v", "dims": ["t"]}]}}
+    )
+    with pytest.raises(MapiError) as exc:
+        build_upload(path, hdf5, IngestLimits())
+    assert exc.value.code is ErrorCode.SCHEMA_INVALID

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { useCatalog, useDatasets, useDatasetVersion } from "@/api/queries";
 import type { StageSchema } from "@/api/types";
+import { isTree } from "@/features/datasets/tree";
 
 import { setSpecSchema } from "./monaco-setup";
 import { enrichSpecSchema, hintKey, parseDatasetRef, specShape, type HintSources, type SpecShape } from "./spec-hints";
@@ -33,6 +34,8 @@ export function useHintSources(document: unknown, stages: StageSchema[] | undefi
       datasets: datasets.data?.items ?? [],
       columns: columns.data?.data_schema ?? null,
       stages: stages ?? NO_STAGES,
+      // M4: the nodes of a tree version (data.nodes hints).
+      tree: isTree(columns.data) ? columns.data.tree_schema.nodes : null,
     }),
     [catalog.data, datasets.data, columns.data, stages],
   );

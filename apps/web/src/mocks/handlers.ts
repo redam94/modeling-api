@@ -15,6 +15,7 @@ import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } 
 import { createGuidedHandlers } from "./guided";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
+import { createTreeHandlers, createTreeState, TREE, treeSpecIssues } from "./tree";
 import { createTrustHandlers, createTrustState } from "./trust";
 import { createWorkflowHandlers, createWorkflowsState } from "./workflows";
 
@@ -38,6 +39,8 @@ interface MockState {
   explore: ReturnType<typeof createExploreState>;
   workflows: ReturnType<typeof createWorkflowsState>;
   governance: ReturnType<typeof createGovernanceState>;
+  /** M4: upload records (names, inspections) and the tree dataset. */
+  tree: ReturnType<typeof createTreeState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -60,6 +63,7 @@ export function createState(): MockState {
     explore: createExploreState(),
     workflows: createWorkflowsState(),
     governance: seedGovernance(createGovernanceState()),
+    tree: createTreeState(),
     runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -144,6 +148,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
   return [
     // v0.3: session, tenancy and the per-request checks (first, so they guard every /v1 route).
     ...createTenancyHandlers(state.tenancy),
+    // M4: the tree dataset and upload inspection (before the generic dataset routes).
+    ...createTreeHandlers(state.tree, { artifacts: state.artifacts, runs: state.runs }),
     ...explore.early,
     // M3 Guided mode: answers for the resources a Guided session creates, falls through otherwise.
     ...createGuidedHandlers(state),
@@ -176,7 +182,7 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ),
 
     // datasets
-    http.get(`${API}/v1/datasets`, () => page([fx.dataset])),
+    http.get(`${API}/v1/datasets`, () => page([fx.dataset, TREE.dataset])),
     http.get(`${API}/v1/datasets/:id`, ({ params }) => (params.id === fx.DS_ID ? HttpResponse.json(fx.dataset) : problem(404, "NOT_FOUND", "Not found", "no such dataset"))),
     http.post(`${API}/v1/datasets`, async ({ request }) => {
       const body = (await request.json()) as { name: string; description?: string };
@@ -190,7 +196,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     }),
     http.post(`${API}/v1/datasets/:id/uploads`, async ({ request, params }) => {
       const body = (await request.json()) as { filename: string; content_type: string; size_bytes: number };
-      const id = "upl_01jaf3d1e2f3g4h5j6k7m8n9p0";
+      // Each upload gets its own id (M4: several files make one version).
+      const id = `upl_01jaf3d1e2f3g4h5j6k7m8n9p${state.tree.uploads.size}`;
+      state.tree.uploads.set(id, { filename: body.filename, bytes: null, inspectRunId: null, polls: 0, attempts: 0 });
       const session: UploadSession = {
         ...fx.dataset,
         id,
@@ -214,12 +222,19 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     }),
     http.put("http://127.0.0.1:4443/mock-upload/:id", async ({ request, params }) => {
       if (request.headers.get("x-goog-if-generation-match") !== "0") return new HttpResponse(null, { status: 412 });
-      state.uploads.set(String(params.id), (await request.arrayBuffer()).byteLength);
+      const size = (await request.arrayBuffer()).byteLength;
+      state.uploads.set(String(params.id), size);
+      const rec = state.tree.uploads.get(String(params.id));
+      if (rec) rec.bytes = size;
       return HttpResponse.json({ generation: "1" });
     }),
     http.post(`${API}/v1/datasets/:id/versions`, async ({ request }) => {
-      const body = (await request.json()) as { upload_id: string; message?: string };
-      if (!state.uploads.has(body.upload_id)) return problem(409, "CONFLICT", "Conflict", "the upload is not finished");
+      const body = (await request.json()) as { upload_id?: string; assembly?: { sources: { upload_id: string }[] }; message?: string };
+      // M4: one upload, or an assembly of several (every one must have arrived, each used once).
+      const ids = body.assembly ? body.assembly.sources.map((s) => s.upload_id) : body.upload_id ? [body.upload_id] : [];
+      if (!ids.length || (body.assembly && body.upload_id)) return problem(422, "SCHEMA_INVALID", "Invalid request", "give upload_id and mapping, or assembly");
+      if (new Set(ids).size !== ids.length) return problem(422, "SCHEMA_INVALID", "Invalid request", "an upload may be used once");
+      if (ids.some((id) => !state.uploads.has(id))) return problem(409, "CONFLICT", "Conflict", "the upload is not finished");
       const version = state.versions.length + 1;
       const v: DatasetVersion = {
         ...fx.datasetVersion,
@@ -229,6 +244,7 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
         ingest_run_id: fx.RUN_RUNNING,
         message: body.message ?? null,
         ready_at: null,
+        sources: ids,
       };
       state.versions.push(v);
       return HttpResponse.json(v, { status: 202 });
@@ -248,7 +264,10 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
         );
       }
       await delay(60);
-      return HttpResponse.json(fx.validateResponseFor(body.yaml));
+      const res = fx.validateResponseFor(body.yaml);
+      // M4: data.nodes of a tree dataset.
+      const nodeIssues = treeSpecIssues(body.yaml);
+      return HttpResponse.json(nodeIssues.length ? { ...res, valid: false, issues: [...(res.issues ?? []), ...nodeIssues] } : res);
     }),
     http.get(`${API}/v1/specs`, () => page([{ ...fx.specDoc, latest_revision: state.revisions.length, latest: state.revisions.at(-1) ?? null }])),
     http.get(`${API}/v1/specs/:id`, ({ params }) =>

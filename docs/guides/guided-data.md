@@ -145,7 +145,10 @@ curl -s -X POST localhost:8000/v1/specs -H 'content-type: application/json' \
 
 A sandboxed ingest run parses each upload. Tabular uploads are CSV or Parquet. A CSV file can
 use comma, semicolon, tab or `|` separators. It must be UTF-8, and it can be gzip-compressed.
-`zarr_zip` and `netcdf` files have their own descriptions.
+`zarr_zip` and `netcdf` files have their own descriptions. From v0.8, NetCDF-4 and zarr files
+with groups become tree datasets, a raw HDF5 file (`hdf5`) needs a mapping of its arrays, and
+one version can come from several files. Refer to
+[Tree datasets, HDF5 and multi-file versions](tree-data.md).
 
 | Mapping | What the ingest does |
 |---|---|
@@ -167,6 +170,11 @@ server.
 | decompression ratio | 50 × the stored size | gzip CSV (streamed), Parquet, zip archives, netCDF (decoded bytes). The ingest never refuses files that decode to less than 64 MiB because of their ratio |
 | uncompressed size | The scratch budget of the ingest run: 3 GiB (class S), 6 GiB (M), 12 GiB (L) | The same, as an absolute size. The class is the smallest class with a dataset cap that holds the upload |
 | dataset size | 250 million values, and 8 bytes for each value in the scratch budget | The dense dataset that a table pivots to (each combination of the dim labels, multiplied by the variables). The ingest checks it before it builds the dataset (`PAYLOAD_TOO_LARGE`) |
+| nodes of a tree dataset (v0.8) | 256, 8 levels below the root | NetCDF-4 and HDF5 groups, zarr groups and the nodes of a multi-file version |
+| files in one version (v0.8) | 64, and 5 GB together | `assembly.sources`. The server adds the sizes of the uploads before it starts the ingest |
+| HDF5 objects (v0.8) | 10,000 links and 10,000 attributes, 32 group levels | The HDF5 guard, before a reader opens the file |
+| dims of one array (v0.8) | 32 | HDF5, NetCDF-4 and zarr arrays |
+| bytes of one attribute value (v0.8) | 64 KiB. Self-describing NetCDF: the file size | The HDF5 guard (`INGEST_UNSAFE_FILE`) |
 
 Some dates have a UTC offset or a time zone, for example `2024-01-07T00:00:00+01:00` or a
 tz-aware Parquet timestamp. The ingest reads them as the local date and time that they give,

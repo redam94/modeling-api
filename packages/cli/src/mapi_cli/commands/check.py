@@ -1,6 +1,7 @@
 """``mapi check spec.yaml [--data file]``: static validation without running anything.
 
-With ``--data`` (a ``.zarr.zip``) or ``--schema`` (a DataSchema JSON/YAML) the full static
+With ``--data`` (a ``.zarr.zip``, or a ``.tree.zip`` tree dataset whose tree schema then
+resolves ``data.nodes``) or ``--schema`` (a DataSchema JSON/YAML) the full static
 validation of the control plane runs locally (binding, schema propagation through every
 step, split placement and leakage, model schema and capabilities) against the catalog of
 the locally installed plugins. Without data only the data-independent checks run
@@ -142,7 +143,11 @@ def check(
         Path, typer.Argument(help="ModelSpec YAML/JSON", exists=True, dir_okay=False)
     ],
     data: Annotated[
-        Path | None, typer.Option("--data", help="Dataset (.zarr.zip) giving the raw schema")
+        Path | None,
+        typer.Option(
+            "--data",
+            help="Dataset (.zarr.zip, or a .tree.zip tree dataset) giving the raw schema",
+        ),
     ] = None,
     schema: Annotated[
         Path | None, typer.Option("--schema", help="Raw DataSchema (JSON/YAML) instead of data")
@@ -182,17 +187,28 @@ def check(
         _report(out, spec_file, "parse", exc.issues or [exc.to_issue()], [], False)
         raise typer.Exit(EXIT_FAILURE) from None
 
-    from mapi_cli.local import load_registry, raw_schema, read_dataset, read_schema_file
+    from mapi_cli.local import (
+        is_tree_zip,
+        load_registry,
+        raw_schema,
+        read_dataset,
+        read_schema_file,
+        read_tree_schemas,
+    )
 
     registry, load_errors = load_registry()
     for err in load_errors:
         out.warn(f"plugin failed to load: {err}")
     catalog = registry.catalog()
     if data is not None or schema is not None:
-        raw = (
-            raw_schema(read_dataset(data), schema) if data is not None else read_schema_file(schema)  # type: ignore[arg-type]
-        )
-        result = validate_spec(spec, catalog, raw)
+        tree_schema = None
+        if data is not None and is_tree_zip(data):
+            raw, tree_schema = read_tree_schemas(data, schema)
+        elif data is not None:
+            raw = raw_schema(read_dataset(data), schema)
+        else:
+            raw = read_schema_file(schema)  # type: ignore[arg-type]
+        result = validate_spec(spec, catalog, raw, tree_schema=tree_schema)
         split = result.resolved.split_stage if result.resolved is not None else None
         stage_rows = [
             {

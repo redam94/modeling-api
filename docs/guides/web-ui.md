@@ -76,6 +76,28 @@ The app then opens the upload panel.
 
     You map Parquet files in the same way, but without the local preview.
 
+- A **NetCDF-4** or **HDF5** file with groups (`.nc`, `.h5`, `.hdf5`, `.he5`) becomes a
+  [tree dataset](tree-data.md): one node for each group. A raw HDF5 file has no dim names.
+  The app inspects the file first and shows its arrays (path, shape, dtype and dim hints).
+  Then you map each array to a variable with its dims, role, units, missing-value rule and
+  coords.
+
+**Several files in one version** <span class="mapi-badge">v0.8</span>. You can select more
+than one file. For each file, give the node of the tree where it goes and how it joins the
+other files of that node: alone, stacked along a new dim (one label for each file), or merged
+on shared coords. A label is a number (`2024`) or text (`NL`); a label with a leading zero
+(`007`) stays text. The app checks the node paths, the combine rules and the HDF5 mapping
+before it uploads, and shows every problem at once, next to the field it is about (a screen
+reader announces it). The **Nodes** tree also works with the keyboard: the arrow keys, Home
+and End. For NetCDF and Zarr files, **Preview
+structure** inspects the file and shows its groups and arrays.
+
+The version page of a tree dataset has a **Nodes** tab: the tree of nodes, with the schema and
+the coords of each node, and the preview of the default node. **Explore this node** opens the
+Data Explorer, which has a node picker. In the spec editor, the completions and the **Insert**
+panel offer the nodes of the dataset for `data.nodes` and their variables for `vars`. Refer to
+[Tree datasets, HDF5 and multi-file versions](tree-data.md).
+
 **Upload and ingest** sends the file directly to object storage through a signed PUT URL. The
 API never sees the bytes. Then the app starts an *ingest* run in the sandbox. The page
 refreshes until the version is `ready`. If the ingest finds issues, the page shows them in

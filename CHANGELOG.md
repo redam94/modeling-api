@@ -6,6 +6,61 @@ milestone releases are tagged on `main`.
 ## [Unreleased]
 
 ### Added
+- **Tree datasets** (M4). A dataset version can hold an `xr.DataTree` (layout `tree`): one
+  node for each group, with node paths such as `/` and `/instrument/psf`. A `TreeSchema`
+  describes it (one `DataSchema` for each node; `mapi_spec.tree`). `DatasetVersion` has
+  `layout`, `tree_schema` and `sources`. The version stores `data.tree.zip` and
+  `tree_schema.json`, and its `schema.json` is the schema of the root node. Migration
+  `0014_tree_datasets` adds the columns. Refer to the new guide
+  *Tree datasets, HDF5 and multi-file versions* (`docs/guides/tree-data.md`).
+- **NetCDF-4 and HDF5 groups.** The ingest opens a NetCDF-4 (or xarray-written HDF5) file with
+  groups as a tree, and a `.zarr.zip` with nested groups too. Empty groups stay as nodes.
+- **Raw HDF5 files** (format `hdf5`, `.h5`/`.hdf5`/`.he5`). `IngestMapping.hdf5`
+  (`Hdf5Mapping`) tells which arrays become which variables of which node, with their dims
+  (`Hdf5Var`) and coords (`Hdf5Coord`: an array of the file, a range of numbers or dates, or an
+  integer index). One warning lists the arrays that the mapping does not name.
+- **Upload inspection.** `POST /v1/datasets/{dataset_id}/uploads/{upload_id}/inspect` starts
+  an `inspect` run, and `GET …/inspection` gives the `UploadInspection`: the groups and arrays
+  (path, shape, dtype, chunks, filters, dims hint, small attributes) from the metadata only.
+  `409 NOT_READY` while the run is not complete. `MAPI_INSPECT_TIMEOUT_S` sets its time limit.
+- **Versions made from several files.** `DatasetVersionCreate.assembly` (`IngestAssembly`)
+  combines a maximum of 64 uploads in one ingest run. Each source goes to a node and joins the
+  other sources of that node by `node`, `concat` (along a new dim, one label for each file) or
+  `merge` (on shared coords, with `join` `exact`, `inner` or `outer`).
+- **`data.nodes` and `data.join` in specs.** A spec selects nodes of a tree (`NodeSelect`:
+  `path`, `vars`, `prefix`). The platform merges them into the one flat dataset that the
+  pipeline reads. Static validation resolves the merge from the `tree_schema` of the version.
+  A side table that is a tree reads one node (`side_tables.<name>.node`).
+- **Tree-input models.** `Capabilities.input = "tree"` gives a model the whole bound tree in
+  `ctx.tree` (fit, score, evaluate, the Model Explorer, governance checks and workflow
+  scoring), next to the flat input. `mapi_sdk.tree` has `select_nodes`, `infer_tree_schema`,
+  `validate_tree` and `read_tree_zip`/`write_tree_zip`. The contract kit has
+  `check_tree_model`, `TreeModelFixture`, `tree_dataset` and the reference model
+  `toy.tree_linear`. `fit_spec` and `score_bundle` accept tree datasets.
+- The Data Explorer shows one node of a tree at a time. Ingest writes the views of each node
+  under `ui/explore/nodes/`, and a `DataExploreRequest` takes a `node`.
+- **Python client:** `datasets.upload` takes an `xr.DataTree` and raw HDF5 files;
+  `datasets.upload_files` (with `AssemblyFile`), `stage_upload`, `inspect_upload`,
+  `upload_inspection`, `inspect` and `inspect_file`.
+- **CLI:** `mapi datasets upload` takes several files with `--node`, `--concat DIM=LABEL`,
+  `--merge` and `--join`. New commands `mapi datasets inspect` and `mapi datasets ingest`.
+- **Web app:** the upload page takes several files for one version. Each file has a format
+  (from its extension; `.h5`/`.hdf5`/`.he5` give `hdf5`), a node path and a combine rule
+  (node, concat with a dim and a label, or merge with a join). The page checks the assembly
+  and shows every problem before the upload. A raw HDF5 file is inspected first; an array
+  browser (path, shape, dtype, dims, filters, warnings) lets you map arrays to variables,
+  with dims, roles, units, a missing-value rule and a coord for each dim (an array of the
+  file, a start and step, or an index). Each problem shows next to the input it is about, in
+  a live region that a screen reader announces. NetCDF and Zarr files can be inspected to preview their groups.
+- **Web app:** the version page of a tree dataset has a Nodes tab (the node tree, the schema
+  and coords of each node, and the preview of the default node). The Data Explorer takes
+  `?node=` and has a node picker. The spec editor completes `data.nodes` (node keys, paths and
+  `vars`) from the tree schema, and the Insert panel has a *Tree nodes* group.
+- **`sci.strong_lens`** declares `capabilities.input = "tree"`. When the tree has a `/psf`
+  node, the fit uses its PSF; otherwise the flat `psf`, as before. The new setting
+  `psf_source` (`auto`, the default, or `tree`) lets a spec select only the image node: with
+  `tree`, the flat input needs no `psf` and the fit requires the `/psf` node.
+  `mapi_plugin_science.lens_data.to_tree` builds the tree form of the lens data.
 - **Plot cards with examples.** The catalog's Plots tab shows each plot recipe as a card with
   a picture of the plot, a plain-language summary and what the plot needs. A card opens the
   plot's full About card (when to use it, how to read it, notes for experts) with a larger,
@@ -22,14 +77,42 @@ milestone releases are tagged on `main`.
   `render_gallery.py` now draws every recipe (Plotly through kaleido).
 
 ### Changed
+- `h5py` and `h5netcdf` are explicit dependencies of `mapi-runner`. Before, only the MMM
+  plugin brought them. Each runner image now reads NetCDF-4 and HDF5 uploads.
+- Format `netcdf` now means a self-describing NetCDF-3 or NetCDF-4 file, or an HDF5 file that
+  xarray or h5netcdf wrote. A NetCDF file that has only a root group still gives a plain
+  `dataset` version, as before.
+- The ingest run of a multi-file version uses the resource class of the sum of the upload
+  sizes. The uploads of one version are a maximum of 5 GB together.
 - `make dev` describes the catalog again after a code change. In a source checkout (no
   `MAPI_UV_LOCK_PATH`), the image digest that keys the catalog also hashes `packages/*/src`
   and `plugins/*/src`. Before, a change that left `uv.lock` alone (a new recipe or About
   card) kept the old catalog. The images still use the hash of their baked `uv.lock`.
 
 ### Fixed
+- The ingest ignored the groups of a NetCDF-4 file without a warning. Now each group becomes a
+  node of a tree dataset, and the ingest never drops a group.
+- A local `mapi check spec.yaml --data lens.tree.zip` validates `data.nodes` against the tree
+  schema of the local tree dataset. Before, it read only the root and refused `data.nodes`.
 - The plot sandbox refused every `sci.*` plot: its client-side check did not allow Plotly's
   `<extra>` tag in hover templates, which the server's sanitizer keeps.
+
+### Security
+- **HDF5 guard.** Before xarray or h5py opens an HDF5 or NetCDF-4 upload, the runner walks it
+  with the low-level API of h5py, without a link followed. It refuses with
+  `INGEST_UNSAFE_FILE` (422): external and user-defined links, soft links that do not resolve,
+  loop or point to a group, hard-link loops, external raw storage, virtual datasets, filters
+  other than deflate, shuffle, fletcher32, scaleoffset, nbit and lzf, user blocks larger than
+  64 KiB, too many objects or dims, deep groups, large attributes, arrays that declare more
+  bytes than the run budget, and data types whose size has no limit. The worker runs with an
+  empty `HDF5_PLUGIN_PATH`. The guard finds the HDF5 superblock behind a user block at each
+  offset that libhdf5 uses. A file that starts with the NetCDF-3 magic goes only to the
+  NetCDF-3 reader of scipy, which never calls libhdf5. Thus a fake NetCDF-3 header cannot take
+  an HDF5 file past the guard, and a NetCDF-3 file whose values hold the HDF5 signature still
+  ingests. Before the guard reads a variable-length text attribute, the worst case of the read
+  (elements × file size) must fit the budget of the run.
+- The worker returns the typed refusals of the guard as the error of the run, with the names
+  from the file only in `untrusted_text`.
 
 ## [0.7.0] — Scientific models — 2026-10-17
 

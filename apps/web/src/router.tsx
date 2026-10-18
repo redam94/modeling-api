@@ -4,6 +4,7 @@ import { createRootRouteWithContext, createRoute, createRouter, lazyRouteCompone
 import type { RunKind, RunState } from "@/api/types";
 import { EmptyState } from "@/components/common";
 import { AppShell } from "@/components/shell/app-shell";
+import { isNodePath } from "@/features/datasets/tree";
 import { RUN_KINDS, RUN_STATES } from "@/lib/run-state";
 import { HomePage } from "@/routes/home";
 
@@ -168,9 +169,11 @@ const exploreDataRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/datasets/$datasetId/versions/$version/explore",
   component: lazyRouteComponent(page.exploreData, "DataExplorerPage"),
-  validateSearch: (s: Record<string, unknown>): { section?: (typeof DATA_EXPLORER_TABS)[number] | undefined; run?: string | undefined } => ({
+  // M4: `node` picks the node of a tree dataset.
+  validateSearch: (s: Record<string, unknown>): { section?: (typeof DATA_EXPLORER_TABS)[number] | undefined; run?: string | undefined; node?: string | undefined } => ({
     section: oneOf(s.section, DATA_EXPLORER_TABS),
     run: idParam(s.run),
+    node: typeof s.node === "string" && isNodePath(s.node) ? s.node : undefined,
   }),
 });
 

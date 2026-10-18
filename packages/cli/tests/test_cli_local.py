@@ -399,3 +399,47 @@ def test_info_lines_do_not_interpret_markup() -> None:
     rendered = buf.getvalue()
     assert "\x1b]8;" not in rendered
     assert "[link=https://evil.example/]r1[/link] [/]" in strip_control(rendered)
+
+
+TREE_SPEC = """\
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: sales-tree, project: growth}
+data:
+  dataset: dataset://growth/sales_tree@latest
+  nodes:
+    sales: {path: /sales}
+    media: {path: /media, vars: [spend]}
+  bind:
+    dims: {geo: market, time: date}
+    vars: {y: revenue}
+  split: {kind: time_holdout, dim: time, last: 2}
+pipeline: []
+model:
+  use: toy.tree_linear@^1
+"""
+
+
+def test_check_with_a_tree_dataset_resolves_data_nodes(
+    mapi: Invoke, tmp_path: Path, as_json: AsJson
+) -> None:
+    from mapi_sdk.testing import toy
+    from mapi_sdk.tree import write_tree_zip
+
+    data = tmp_path / "sales.tree.zip"
+    write_tree_zip(toy.tree_dataset(weeks=8), data)
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(TREE_SPEC)
+    doc = as_json(mapi("--json", "check", str(spec), "--data", str(data)))
+    assert doc["mode"] == "full"
+    pointers = {(i["code"], i["pointer"]) for i in doc["issues"]}
+    # the nodes resolve against the tree schema: no "not a tree", no missing 'revenue'
+    assert not any(p.startswith("/data") for _, p in pointers), pointers
+    raw = doc["stages"][0]["data_schema"]
+    assert set(raw["vars"]) == {"y", "spend"}  # after the binding
+    assert set(raw["dims"]) >= {"geo", "channel", "time"}
+    # a node the tree does not have is reported
+    spec.write_text(TREE_SPEC.replace("path: /media,", "path: /nope,"))
+    res = mapi("--json", "check", str(spec), "--data", str(data))
+    assert res.exit_code == 1
+    assert any("/nope" in i["message"] for i in as_json(res)["issues"])

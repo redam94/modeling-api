@@ -7,6 +7,9 @@
 * :func:`lens_dataset` - a mock observation simulated from the model's own forward process
   (SIE + shear lens, Sersic lens light and source, a Gaussian PSF, sky and photon noise)
   with known truth :data:`LENS_TRUTH`;
+* :func:`to_tree` - the same observation as a tree dataset (M4): ``/image`` holds
+  ``image``/``weight`` (and ``mask``), ``/psf`` the kernel (:data:`LENS_TREE_SCHEMA`);
+  :data:`LENS_TREE_SPEC_YAML` fits it, reading the PSF from the tree;
 * :func:`from_challenges` - the pymc-challenges HST image of SDSS J1627-0053
   (``data/slacs_j1627_f814w.npz``) prepared like the E80 notebook: the 81 x 81 cutout, a
   noise map from the blank sky and the exposure map, the median PSF of the unsaturated
@@ -21,6 +24,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from mapi_spec.schema import DataSchema
+from mapi_spec.tree import TreeSchema
 from scipy import ndimage
 
 from mapi_plugin_science import lens_math as lm
@@ -29,12 +33,15 @@ __all__ = [
     "CHALLENGES_NPZ",
     "LENS_SCHEMA",
     "LENS_SPEC_YAML",
+    "LENS_TREE_SCHEMA",
+    "LENS_TREE_SPEC_YAML",
     "LENS_TRUTH",
     "SLACS_SPEC_YAML",
     "from_challenges",
     "gaussian_psf",
     "lens_dataset",
     "render_lens",
+    "to_tree",
 ]
 
 CHALLENGES_NPZ = "slacs_j1627_f814w.npz"
@@ -94,6 +101,37 @@ model:
 evaluate: {metrics: [rmse, mae, coverage_90]}
 outputs: {plots: [core.convergence, core.posterior_forest, sci.field_map]}
 """
+
+LENS_TREE_SCHEMA = TreeSchema.model_validate(
+    {
+        "nodes": {
+            "/": {},
+            "/image": {
+                "dims": {k: LENS_SCHEMA.dims[k] for k in ("row", "col")},
+                "vars": {k: LENS_SCHEMA.vars[k] for k in ("image", "weight")},
+            },
+            "/psf": {
+                "dims": {k: LENS_SCHEMA.dims[k] for k in ("psf_row", "psf_col")},
+                "vars": {"psf": LENS_SCHEMA.vars["psf"]},
+            },
+        }
+    }
+)
+"""Schema of :func:`to_tree` (without a mask): the image node and the PSF node."""
+
+LENS_TREE_SPEC_YAML = (
+    LENS_SPEC_YAML.replace(
+        "metadata: {name: mock-strong-lens, project: astronomy}",
+        "metadata: {name: mock-strong-lens-tree, project: astronomy}",
+    )
+    .replace(
+        "  dataset: dataset://astronomy/mock_lens@latest\n",
+        "  dataset: dataset://astronomy/mock_lens_tree@latest\n  nodes: {image: {path: /image}}\n",
+    )
+    .replace("    pixel_scale: 0.1\n", "    pixel_scale: 0.1\n    psf_source: tree\n")
+)
+""":data:`LENS_SPEC_YAML` for :func:`to_tree`: the flat input is the ``/image`` node and the
+PSF comes from the tree's ``/psf`` node (``psf_source: tree``)."""
 
 SLACS_SPEC_YAML = """
 apiVersion: mapi/v1
@@ -228,6 +266,25 @@ def lens_dataset(
             "psf_col": np.arange(-h, h + 1),
         },
         attrs={"pixel_scale": pixel_scale, "truth": "LENS_TRUTH"},
+    )
+
+
+def to_tree(ds: xr.Dataset) -> xr.DataTree:
+    """A lens dataset (:data:`LENS_SCHEMA`) as a tree dataset with the PSF in its own node.
+
+    ``/`` keeps the dataset's attrs, ``/image`` holds ``image`` and ``weight`` (and ``mask``
+    when present) on ``row``/``col``, ``/psf`` holds ``psf`` on ``psf_row``/``psf_col`` - the
+    layout of an HDF5 or NetCDF file with one group per product (:data:`LENS_TREE_SCHEMA`).
+    """
+    image_vars = [v for v in ("image", "weight", "mask") if v in ds]
+    image = ds[image_vars].drop_dims(["psf_row", "psf_col"], errors="ignore")
+    psf = ds[["psf"]].drop_dims(["row", "col"], errors="ignore")
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs=dict(ds.attrs)),
+            "/image": image.drop_attrs(deep=False),
+            "/psf": psf.drop_attrs(deep=False),
+        }
     )
 
 
