@@ -218,6 +218,18 @@ async def test_a_multi_file_tree_version_is_fitted_with_the_real_runner(
                 assert r.status_code == 200, r.text
                 body = await http.get(r.json()["url"])
                 assert body.status_code == 200 and body.content.startswith(magic), name
+        # the ingest explored every node with variables
+        r = await client.get(f"{base}/versions/1/artifacts/ui/explore/nodes/index.json")
+        assert r.status_code == 200, r.text
+        # the Data Explorer on one node of the tree
+        r = await client.post(
+            f"{base}/versions/1/explore", json={"sections": ["overview"], "node": "/promo"}
+        )
+        assert r.status_code == 202, r.text
+        explored = await _wait(client, r.json()["run"]["id"], 300)
+        assert explored["state"] == "succeeded", explored
+        done = (await client.get(f"/v1/explorations/{explored['id']}")).json()
+        assert done["done"] and done["index"]["node"] == "/promo", done
         # the inspection outlives the upload it described
         assert (await client.get(f"{base}/uploads/{u2}/inspection")).status_code == 200
 
