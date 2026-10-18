@@ -1577,8 +1577,7 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "The network has many thousands of nodes (the model looks at every pair)",
         ],
         [
-            "A square table with 1 for a tie, 0 for no tie and an empty cell when you do not "
-            "know",
+            "A square table with 1 for a tie, 0 for no tie and an empty cell when you do not know",
             "Optional: values for each pair, for example 1 when the two are in the same office",
             "Optional: a group code for each node, for colors in the plots",
         ],

@@ -67,7 +67,7 @@ def check_score(name: str, tree: xr.DataTree, bundle: Bundle, data: xr.Dataset) 
     if name == "predict_ties":
         p = summary["tie_prob"].sel(stat="mean").values
         np.testing.assert_allclose(p, p.T, atol=1e-12)
-        assert np.diag(p).max() == 0.0 and 0.0 <= p.min() and p.max() <= 1.0
+        assert np.diag(p).max() == 0.0 and p.min() >= 0.0 and p.max() <= 1.0
     if name == "simulate_graphs":
         a = data["cowork"].values
         observed = float(a[np.triu_indices(a.shape[0], 1)].mean())

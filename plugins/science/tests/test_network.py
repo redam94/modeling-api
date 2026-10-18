@@ -259,6 +259,9 @@ def test_fit_keeps_dyads_positions_and_loglik(bundle: Bundle, graph: xr.Dataset)
     s, d = z.shape[0] * z.shape[1], z.shape[-1]
     again = align_to(z.reshape(s, n, d), const[POSITION_REF].values)
     np.testing.assert_allclose(again, pos.values.reshape(s, n, d), atol=1e-10)
+    tp = post["tie_prob"]  # the field that plots and the Explorer read from the bundle
+    assert tp.dims == ("chain", "draw", "node", "node_") and tp.dtype == np.float32
+    np.testing.assert_allclose(tp.values, np.swapaxes(tp.values, -1, -2), atol=1e-6)
     diag_vars = {dg.var for dg in bundle.diagnostics if dg.code == "RHAT"}
     assert "z_raw" not in diag_vars  # convergence is judged on identified quantities
     assert bundle.model.learned["kind"] == "latent_space"

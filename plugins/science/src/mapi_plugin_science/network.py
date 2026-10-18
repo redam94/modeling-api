@@ -86,6 +86,7 @@ __all__ = [
     "dyad_eta",
     "dyads",
     "graph_stats",
+    "pair_probabilities",
     "procrustes",
     "simulate_graph",
 ]
@@ -272,6 +273,44 @@ def dyad_eta(
     if z is not None:
         eta = eta - np.sqrt(((z[:, i] - z[:, j]) ** 2).sum(-1) + _EPS)
     return eta
+
+
+def pair_probabilities(
+    alpha: np.ndarray,
+    ia: np.ndarray,
+    ib: np.ndarray,
+    *,
+    x: np.ndarray | None = None,
+    beta: np.ndarray | None = None,
+    sociality: np.ndarray | None = None,
+    z: np.ndarray | None = None,
+    dtype: Any = np.float64,
+    check: Any = None,
+) -> np.ndarray:
+    """Tie probabilities ``(samples, len(ia), len(ib))`` of every pair of the rows ``ia``
+    and the columns ``ib`` (node positions), from :func:`dyad_eta` in blocks of draws.
+    ``x`` is ``(len(ia), len(ib), K)``; the diagonal is not set to 0 here."""
+    na, nb = len(ia), len(ib)
+    ii, jj = np.meshgrid(ia, ib, indexing="ij")
+    n_s = len(alpha)
+    prob = np.empty((n_s, na, nb), dtype=dtype)
+    xf = None if x is None else np.asarray(x, dtype=float).reshape(na * nb, -1)
+    block = max(1, 2_000_000 // max(1, na * nb))
+    for a in range(0, n_s, block):
+        sl = slice(a, a + block)
+        eta = dyad_eta(
+            alpha[sl],
+            ii.ravel(),
+            jj.ravel(),
+            x=xf,
+            beta=None if beta is None else beta[sl],
+            sociality=None if sociality is None else sociality[sl],
+            z=None if z is None else z[sl],
+        )
+        prob[sl] = expit(eta).reshape(-1, na, nb)
+        if check is not None:
+            check()
+    return prob
 
 
 def align_to(z: np.ndarray, ref: np.ndarray) -> np.ndarray:
@@ -597,6 +636,7 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
                                             coords={NODE_DIM: nodes, LATENT_DIM: labels})}
             )  # fmt: skip
             free = [v for v in free if v != "z_raw"] + ["position"]
+        post = post.assign(tie_prob=self._fit_probabilities(ds, s, nodes, post))
         groups["posterior"] = post
         groups["constant_data"] = const
         if "log_likelihood" not in groups:
@@ -619,6 +659,33 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
             }
         )
         return out
+
+    def _fit_probabilities(
+        self, ds: xr.Dataset, s: NetworkLatentSpaceSettings, nodes: np.ndarray, post: xr.Dataset
+    ) -> xr.DataArray:
+        """``tie_prob(chain, draw, node, node_)`` of every pair (float32, 0 on the diagonal):
+        the field that the plots and the Model Explorer read from the bundle."""
+        n = len(nodes)
+        idx = np.arange(n)
+        x = beta = None
+        if s.covariates:
+            x = self.covariates(ds, nodes)[0]
+            beta = _flat(post, "beta", COV_DIM)
+        soc = _flat(post, "sociality", NODE_DIM) if "sociality" in post else None
+        z = None
+        if "z_raw" in post:
+            z = _flat(post, "z_raw", NODE_DIM, Z_DIM) * _flat(post, "sigma_z")[:, None, None]
+        prob = pair_probabilities(
+            _flat(post, "alpha"), idx, idx, x=x, beta=beta, sociality=soc, z=z,
+            dtype=np.float32,
+        )  # fmt: skip
+        prob[:, idx, idx] = 0.0
+        chains, draws = post.sizes["chain"], post.sizes["draw"]
+        return xr.DataArray(
+            prob.reshape(chains, draws, n, n),
+            dims=("chain", "draw", NODE_DIM, PAIR_DIM),
+            coords={NODE_DIM: nodes, PAIR_DIM: nodes},
+        )
 
     def _log_likelihood(
         self,
@@ -695,21 +762,9 @@ class NetworkLatentSpaceModel(PyMCModel[NetworkLatentSpaceSettings]):
         na, nb = rows.size, cols.size
         same = rows[:, None] == cols[None, :]
         ii, jj = np.meshgrid(ia, ib, indexing="ij")
-        prob = np.empty((n_s, na, nb))
-        block = max(1, 2_000_000 // max(1, na * nb))
-        for a in range(0, n_s, block):
-            sl = slice(a, a + block)
-            eta = dyad_eta(
-                alpha[sl],
-                ii.ravel(),
-                jj.ravel(),
-                x=None if x is None else x.reshape(na * nb, -1),
-                beta=None if beta is None else beta[sl],
-                sociality=None if soc is None else soc[sl],
-                z=None if z is None else z[sl],
-            )
-            prob[sl] = expit(eta).reshape(-1, na, nb)
-            ctx.check_cancelled()
+        prob = pair_probabilities(
+            alpha, ia, ib, x=x, beta=beta, sociality=soc, z=z, check=ctx.check_cancelled
+        )
         prob[:, same] = 0.0
         noisy = ctx.mode == "simulate" or ctx.kind == "predictive"
         shape = (chain.size, draw.size)
