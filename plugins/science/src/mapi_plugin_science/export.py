@@ -62,7 +62,7 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.schema import DataSchema
 from mapi_spec.tree import TreeSchema
 
-from mapi_plugin_science import kpp_data, lens_data, lgcp_data, traction_data
+from mapi_plugin_science import kpp_data, lens_data, lgcp_data, phylo_data, traction_data
 from mapi_plugin_science.challenges import CHALLENGES_ENV
 
 __all__ = [
@@ -422,6 +422,22 @@ _register(
         project="astronomy",
         dataset="slacs_j1627_f814w",
         spec=lens_data.SLACS_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e23",
+        title="Brain size of primates on their phylogeny",
+        notebook="E23_phylogenetic_regression.py",
+        model="sci.phylo_regression",
+        files=(phylo_data.CHALLENGES_FILE, phylo_data.CHALLENGES_TREE),
+        loader=lambda d: phylo_data.from_challenges(d / phylo_data.CHALLENGES_FILE),
+        synthetic=lambda: phylo_data.phylo_dataset(),
+        schema=phylo_data.PHYLO_SCHEMA,
+        project="biology",
+        dataset="primates301",
+        spec=phylo_data.PRIMATES_SPEC_YAML,
     )
 )
 
