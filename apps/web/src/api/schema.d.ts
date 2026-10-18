@@ -773,6 +773,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List the groups and arrays of an upload (an inspect run)
+         * @description List the groups and arrays of an upload (an ``inspect`` run reading metadata only;
+         *     M4). Idempotent per upload: while an inspection runs, or once one succeeded, that run
+         *     is returned instead of starting another (a failed one is started again).
+         */
+        post: operations["inspect_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}/inspection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The groups and arrays an inspect run found
+         * @description What the upload's inspect run found (``409 NOT_READY`` while it runs, ``404`` when
+         *     no inspection was requested; a failed inspection answers with its problem's code).
+         */
+        get: operations["get_upload_inspection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/datasets/{dataset_id}/versions": {
         parameters: {
             query?: never;
@@ -2908,9 +2951,9 @@ export interface paths {
         };
         /**
          * A signed link to a node output's object
-         * @description A dataset output links to its ``data.zarr.zip``, a model output to its bundle; JSON
-         *     outputs (test results, metrics, tables, reports) are inline in the node and have no
-         *     object (``404``).
+         * @description A dataset output links to its ``data.zarr.zip`` (``data.tree.zip`` for a tree), a
+         *     model output to its bundle; JSON outputs (test results, metrics, tables, reports) are
+         *     inline in the node and have no object (``404``).
          */
         get: operations["get_workflow_node_output"];
         put?: never;
@@ -8955,6 +8998,50 @@ export interface components {
              * @enum {string}
              */
             role: "coord" | "target" | "driver" | "input";
+        };
+        /**
+         * InspectedArray
+         * @description One array of an inspected upload (from its metadata only; no data is read).
+         *
+         *     ``dims_hint`` comes from the file's own dim metadata where there is some (HDF5
+         *     ``DIMENSION_LIST``, zarr ``_ARRAY_DIMENSIONS``, NetCDF dims).
+         * @example {
+         *       "attrs": {
+         *         "units": "counts"
+         *       },
+         *       "chunks": [
+         *         64,
+         *         64
+         *       ],
+         *       "dtype": "float32",
+         *       "filters": [
+         *         "deflate",
+         *         "shuffle"
+         *       ],
+         *       "path": "/observations/image",
+         *       "shape": [
+         *         64,
+         *         64
+         *       ]
+         *     }
+         */
+        InspectedArray: {
+            /** Attrs */
+            attrs?: {
+                [key: string]: string | number | boolean | null;
+            };
+            /** Chunks */
+            chunks?: number[] | null;
+            /** Dims Hint */
+            dims_hint?: string[] | null;
+            /** Dtype */
+            dtype: string;
+            /** Filters */
+            filters?: string[];
+            /** Path */
+            path: string;
+            /** Shape */
+            shape?: number[];
         };
         /**
          * InternalService
@@ -15437,6 +15524,72 @@ export interface components {
             size_bytes: number;
         };
         /**
+         * UploadInspection
+         * @description What an ``inspect`` run found in an upload (``inspection.json``; M4): its groups and
+         *     arrays, so a raw HDF5 file can be mapped (:class:`Hdf5Mapping`) and a NetCDF/zarr file's
+         *     groups previewed before ingest.
+         * @example {
+         *       "arrays": [
+         *         {
+         *           "attrs": {
+         *             "units": "counts"
+         *           },
+         *           "chunks": [
+         *             64,
+         *             64
+         *           ],
+         *           "dtype": "float32",
+         *           "filters": [
+         *             "deflate",
+         *             "shuffle"
+         *           ],
+         *           "path": "/observations/image",
+         *           "shape": [
+         *             64,
+         *             64
+         *           ]
+         *         },
+         *         {
+         *           "dtype": "float64",
+         *           "path": "/psf/kernel",
+         *           "shape": [
+         *             9,
+         *             9
+         *           ]
+         *         }
+         *       ],
+         *       "format": "hdf5",
+         *       "groups": [
+         *         "/",
+         *         "/observations",
+         *         "/psf"
+         *       ],
+         *       "size_bytes": 2097152,
+         *       "truncated": false,
+         *       "warnings": []
+         *     }
+         */
+        UploadInspection: {
+            /** Arrays */
+            arrays?: components["schemas"]["InspectedArray"][];
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5";
+            /** Groups */
+            groups?: string[];
+            /** Size Bytes */
+            size_bytes: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated?: boolean;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /**
          * UploadSession
          * @description Where to PUT the file. ``upload.headers`` must be sent verbatim; the URL expires.
          * @example {
@@ -19037,6 +19190,162 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inspect_upload: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                dataset_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_upload_inspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadInspection"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_READY */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

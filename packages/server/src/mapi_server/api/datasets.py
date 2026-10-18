@@ -401,6 +401,7 @@ async def _ready_uploads(
     response_model=Run,
     status_code=status.HTTP_202_ACCEPTED,
     operation_id="inspect_upload",
+    summary="List the groups and arrays of an upload (an inspect run)",
     responses=responses_for("inspect_upload"),
 )
 async def inspect_upload(
@@ -457,6 +458,7 @@ async def _current_inspect_run(session: Session, upload: m.Upload) -> m.Run | No
     "/{dataset_id}/uploads/{upload_id}/inspection",
     response_model=UploadInspection,
     operation_id="get_upload_inspection",
+    summary="The groups and arrays an inspect run found",
     responses=responses_for("get_upload_inspection"),
 )
 async def get_upload_inspection(
