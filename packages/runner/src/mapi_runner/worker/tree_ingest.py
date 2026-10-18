@@ -14,6 +14,7 @@ node (``node`` mount, ``concat`` along a new dim, ``merge`` of variables); the i
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import zipfile
@@ -25,7 +26,13 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from mapi_sdk.errors import PayloadLimitError, SchemaValidationError, WireFormatError
-from mapi_sdk.tree import TREE_LIMITS, infer_tree_schema, read_tree_zip
+from mapi_sdk.tree import (
+    TREE_LIMITS,
+    TREE_SCHEMA_ATTR,
+    infer_tree_schema,
+    read_tree_zip,
+    stored_tree_schema,
+)
 from mapi_spec.errors import ErrorCode, Issue, MapiError
 from mapi_spec.guided import ColumnProfile
 from mapi_spec.ingest import AssemblySource, IngestAssembly, IngestMapping
@@ -57,10 +64,6 @@ __all__ = [
     "tree_from_nodes",
     "zarr_has_groups",
 ]
-
-TREE_SCHEMA_ATTR = "mapi_tree_schema"
-"""Root attribute of a ``data.tree.zip`` holding its TreeSchema (JSON), as ``mapi_schema``
-holds a plain dataset's."""
 
 VarMeta = Callable[[str, str], Mapping[str, Any] | None]
 """``(node, variable) ->`` role/units/missing/description a mapping declares, or None."""
@@ -107,10 +110,22 @@ def _too_large(message: str, pointer: str = "", action: str | None = None) -> Ma
     return problem(ErrorCode.PAYLOAD_TOO_LARGE, message, pointer=pointer, action=action)
 
 
+MAX_EXPLORE_SLUG = 64
+"""Longest readable slug; a longer node path gets a hashed one (the server serves explorer
+views whose whole object name has at most 256 characters)."""
+
+
 def explore_slug(path: str) -> str:
     """The directory of a node's explorer views under ``ui/explore/nodes/`` (``~root`` for
-    the root, else the path with ``~`` for ``/``: node names never contain ``~``)."""
-    return "~root" if path == ROOT else path[1:].replace("/", "~")
+    the root, else the path with ``~`` for ``/``: node names never contain ``~``). A path
+    whose slug would be longer than :data:`MAX_EXPLORE_SLUG` gets ``~h`` + a hash of it
+    (node names never start with ``~``, so no readable slug collides with it)."""
+    if path == ROOT:
+        return "~root"
+    slug = path[1:].replace("/", "~")
+    if len(slug) <= MAX_EXPLORE_SLUG:
+        return slug
+    return "~h" + hashlib.sha256(path.encode()).hexdigest()[:40]
 
 
 # ------------------------------------------------------------------------------- limits
@@ -237,16 +252,23 @@ def read_netcdf_tree(path: Path, limits: IngestLimits) -> xr.DataTree:
 
 
 def tree_from_nodes(nodes: Mapping[str, xr.Dataset], pointer: str = "") -> xr.DataTree:
-    """Build a tree from node datasets (ancestors are created as needed). A coord a node
-    repeats from an ancestor with the same values is left to inheritance."""
+    """Build a tree from node datasets (ancestors are created as needed). An indexed coord
+    a node repeats from an ancestor with the same values is left to inheritance; any other
+    coord stays on the node (xarray only inherits indexed coords)."""
     cleaned: dict[str, xr.Dataset] = {}
     for path in sorted(nodes, key=node_depth):
         ds = nodes[path]
         drop: list[str] = []
         for name in [str(c) for c in ds.coords]:
+            if name not in ds.xindexes:
+                continue
             for anc in node_ancestors(path):
                 above = cleaned.get(anc)
-                if above is not None and name in above.coords and above[name].equals(ds[name]):
+                if (
+                    above is not None
+                    and name in above.xindexes
+                    and above[name].equals(ds[name])
+                ):
                     drop.append(name)
                     break
         cleaned[path] = ds.drop_vars(drop) if drop else ds
@@ -262,11 +284,13 @@ def tree_from_nodes(nodes: Mapping[str, xr.Dataset], pointer: str = "") -> xr.Da
         ) from None
 
 
-def node_parts(data: xr.Dataset | xr.DataTree) -> dict[str, xr.Dataset]:
-    """Every node's own dataset (``{"/": ds}`` for a plain dataset)."""
+def node_parts(data: xr.Dataset | xr.DataTree, *, inherit: bool = False) -> dict[str, xr.Dataset]:
+    """Every node's own dataset (``{"/": ds}`` for a plain dataset); ``inherit`` adds the
+    indexed coords it inherits, so its dims are labelled (an assembly aligns nodes by
+    label, never by position)."""
     if isinstance(data, xr.Dataset):
         return {ROOT: data}
-    return {node.path: node.to_dataset(inherit=False) for node in data.subtree}
+    return {node.path: node.to_dataset(inherit=inherit) for node in data.subtree}
 
 
 def map_tree(
@@ -325,18 +349,6 @@ def map_tree(
     return tree_from_nodes(out, "/mapping"), var_meta, dim_meta
 
 
-def _stored_tree_schema(tree: xr.DataTree) -> TreeSchema | None:
-    raw = tree.attrs.get(TREE_SCHEMA_ATTR)
-    if not isinstance(raw, str):
-        return None
-    try:
-        schema = TreeSchema.model_validate_json(raw)
-    except ValueError:
-        return None
-    paths = {node.path for node in tree.subtree}
-    return schema if set(schema.nodes) == paths else None
-
-
 def schema_for_nodes(
     tree: xr.DataTree,
     *,
@@ -345,11 +357,13 @@ def schema_for_nodes(
     layout: str = "dense",
     allow_missing: Sequence[str] = (),
     use_stored: bool = True,
+    layouts: Mapping[str, str] | None = None,
 ) -> TreeSchema:
     """The TreeSchema of ``tree``: the stored one (a ``data.tree.zip`` written by the
     platform), else inferred per node and overlaid with what the mapping declares.
-    ``allow_missing`` lists nodes whose values an outer join may have left missing."""
-    if use_stored and (stored := _stored_tree_schema(tree)) is not None:
+    ``allow_missing`` lists nodes whose values an outer join may have left missing;
+    ``layouts`` gives nodes their own layout (else ``layout``)."""
+    if use_stored and (stored := stored_tree_schema(tree)) is not None:
         return stored
     try:
         base = infer_tree_schema(tree)
@@ -379,8 +393,9 @@ def schema_for_nodes(
                 meta["missing"] = "allow"
             vars_[n] = vs.model_copy(update=meta) if meta else vs
         try:
+            own = (layouts or {}).get(path, layout)
             nodes[path] = DataSchema(
-                layout=layout if vars_ else "dense", dims=dims, vars=vars_, ragged=s.ragged
+                layout=own if vars_ else "dense", dims=dims, vars=vars_, ragged=s.ragged
             )
         except ValidationError as exc:
             msg = "; ".join(str(e["msg"]) for e in exc.errors()[:3])
@@ -529,6 +544,59 @@ def _source_meta(
     return var_meta, dim_meta
 
 
+def _node_layouts(
+    uploads: Sequence[Upload], contributors: Mapping[str, list[tuple[int, str]]]
+) -> dict[str, str]:
+    """Each final node's layout: ``long`` when every source node it combines (that holds
+    variables) is long, else ``dense`` - per node, so a long table next to a dense one keeps
+    its layout (and a selection mixing them is refused)."""
+    out: dict[str, str] = {}
+    for path, contrib in contributors.items():
+        seen: set[str] = set()
+        for i, sub in contrib:
+            schema = uploads[i].schema
+            node = schema.nodes.get(sub) if isinstance(schema, TreeSchema) else schema
+            if node is not None and node.vars:
+                seen.add(node.layout)
+        out[path] = "long" if seen == {"long"} else "dense"
+    return out
+
+
+def _joined_size(indexes: list[Any], join: str) -> int:
+    out = indexes[0]
+    for idx in indexes[1:]:
+        if join == "outer":
+            out = out.union(idx)
+        elif join == "inner":
+            out = out.intersection(idx)
+    return len(out)
+
+
+def _combined_bytes(parts: list[tuple[int, xr.Dataset]], src: AssemblySource) -> int:
+    """The bytes ``_concat``/``_merge`` of ``parts`` would produce, from their labels."""
+    if src.combine == "node" or (src.combine == "merge" and len(parts) == 1):
+        return sum(int(ds.nbytes) for _, ds in parts)
+    sizes: dict[str, int] = {}
+    dims = {str(d) for _, ds in parts for d in ds.dims}
+    for dim in dims:
+        having = [ds for _, ds in parts if dim in ds.dims]
+        if all(dim in ds.indexes for ds in having):
+            sizes[dim] = _joined_size([ds.indexes[dim] for ds in having], src.join)
+        else:
+            sizes[dim] = max(int(ds.sizes[dim]) for ds in having)
+    stacked = src.combine == "concat"
+    per_var: dict[str, int] = {}
+    for _, ds in parts:
+        for name, var in ds.variables.items():
+            n = 1
+            for d in var.dims:
+                n *= sizes.get(str(d), int(ds.sizes[d]))
+            if stacked and name in ds.data_vars:
+                n *= len(parts)
+            per_var[str(name)] = max(per_var.get(str(name), 0), n * int(var.dtype.itemsize))
+    return sum(per_var.values())
+
+
 def assemble(assembly: IngestAssembly, uploads: Sequence[Upload], limits: IngestLimits) -> Upload:
     """Combine the parsed sources of ``assembly`` (``uploads[i]`` is source ``i``) per node.
 
@@ -540,7 +608,10 @@ def assemble(assembly: IngestAssembly, uploads: Sequence[Upload], limits: Ingest
     owner: dict[str, str] = {}
     subpaths: dict[int, set[str]] = {}
     for i, (src, up) in enumerate(zip(sources, uploads, strict=True)):
-        parts = node_parts(up.data)
+        # inherited coords included: a child node's dims carry its file's labels, so the
+        # sources align by label (a file with the same labels in another order must not
+        # put the child's values on the wrong labels)
+        parts = node_parts(up.data, inherit=True)
         subpaths[i] = set(parts)
         for sub, ds in parts.items():
             try:
@@ -570,6 +641,20 @@ def assemble(assembly: IngestAssembly, uploads: Sequence[Upload], limits: Ingest
                     f"/assembly/sources/{idx[0]}",
                     action="Concatenate files with the same groups.",
                 )
+    # the combined size from the coordinate labels, before any array is allocated (an outer
+    # join of sources with disjoint labels grows multiplicatively)
+    budget = limits.expansion_budget(sum(u.size for u in uploads))
+    estimate = sum(
+        _combined_bytes(contrib, sources[contrib[0][0]]) for contrib in contributions.values()
+    )
+    if estimate > budget:
+        raise _too_large(
+            f"the combined dataset would hold about {estimate:,} bytes; the maximum is "
+            f"{budget:,}",
+            "/assembly",
+            action="Combine fewer files, align their labels (join 'inner'), or split the "
+            "dataset.",
+        )
     nodes: dict[str, xr.Dataset] = {}
     outer: list[str] = []
     for final, contrib in contributions.items():
@@ -591,7 +676,6 @@ def assemble(assembly: IngestAssembly, uploads: Sequence[Upload], limits: Ingest
                 "/assembly",
             )
         total += int(ds.nbytes)
-    budget = limits.expansion_budget(sum(u.size for u in uploads))
     if total > budget:
         raise _too_large(
             f"the combined dataset holds {total:,} bytes; the maximum is {budget:,}",
@@ -607,12 +691,11 @@ def assemble(assembly: IngestAssembly, uploads: Sequence[Upload], limits: Ingest
             "/assembly",
         )
     var_meta, dim_meta = _source_meta(uploads, contributors)
-    layouts = {(u.schema.layout if isinstance(u.schema, DataSchema) else "dense") for u in uploads}
     schema = schema_for_nodes(
         tree,
         var_meta=var_meta,
         dim_meta=dim_meta,
-        layout="long" if layouts == {"long"} else "dense",
+        layouts=_node_layouts(uploads, contributors),
         allow_missing=outer,
         use_stored=False,
     )
