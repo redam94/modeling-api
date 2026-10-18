@@ -26,7 +26,7 @@ from mapi_plugin_science.traction import TractionForceModel, TractionForceSettin
 try:
     __version__ = _metadata.version("mapi-plugin-science")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.6.0"
+    __version__ = "0.7.0"
 
 PLUGINS = (LGCPGridModel, FisherKPPModel, TractionForceModel, StrongLensModel)
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
