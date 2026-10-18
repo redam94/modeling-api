@@ -264,11 +264,7 @@ def tree_from_nodes(nodes: Mapping[str, xr.Dataset], pointer: str = "") -> xr.Da
                 continue
             for anc in node_ancestors(path):
                 above = cleaned.get(anc)
-                if (
-                    above is not None
-                    and name in above.xindexes
-                    and above[name].equals(ds[name])
-                ):
+                if above is not None and name in above.xindexes and above[name].equals(ds[name]):
                     drop.append(name)
                     break
         cleaned[path] = ds.drop_vars(drop) if drop else ds
@@ -649,11 +645,9 @@ def assemble(assembly: IngestAssembly, uploads: Sequence[Upload], limits: Ingest
     )
     if estimate > budget:
         raise _too_large(
-            f"the combined dataset would hold about {estimate:,} bytes; the maximum is "
-            f"{budget:,}",
+            f"the combined dataset would hold about {estimate:,} bytes; the maximum is {budget:,}",
             "/assembly",
-            action="Combine fewer files, align their labels (join 'inner'), or split the "
-            "dataset.",
+            action="Combine fewer files, align their labels (join 'inner'), or split the dataset.",
         )
     nodes: dict[str, xr.Dataset] = {}
     outer: list[str] = []

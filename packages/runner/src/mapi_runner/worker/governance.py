@@ -257,9 +257,7 @@ class GovernanceEnv:
 
     def predict(self, bundle: Bundle, data: xr.Dataset) -> list[Prediction]:
         """:func:`predict` with this run's registry, side tables and tree."""
-        return predict(
-            bundle, data, self.registry, side_tables=self.side_tables, tree=self.tree
-        )
+        return predict(bundle, data, self.registry, side_tables=self.side_tables, tree=self.tree)
 
     def trained(self) -> Bundle:
         """The model fitted on the training data only (refitted if the fit kept none)."""
@@ -879,9 +877,7 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if not env.targets:
         return _skip(check, "the model has no target")
     b = env.refitter.fit(placebo.data, placebo.spec, raw_schema=placebo.schema)
-    full = _first(
-        env.predict(b, placebo.data), env.targets[0]
-    )
+    full = _first(env.predict(b, placebo.data), env.targets[0])
     warn_at = check.thresholds.warn if check.thresholds else GOVERNANCE_CHECKS[check.check].warn
     # the share is taken of the real drivers' total effect (so the limit does not depend on
     # how large the baseline is); of the whole result when the drivers' effect is unknown
@@ -1469,9 +1465,7 @@ def _signs(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
                 )
             effects = [(v, _ablate(env, env.data, v)) for v in media]
         for name, off in effects[:30]:
-            abl = _first(
-                env.predict(env.bundle, off), env.targets[0]
-            )
+            abl = _first(env.predict(env.bundle, off), env.targets[0])
             num_signed = float(
                 np.nansum(np.asarray(full.point.values) - np.asarray(abl.point.values))
             )

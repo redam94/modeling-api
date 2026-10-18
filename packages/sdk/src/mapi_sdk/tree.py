@@ -403,7 +403,7 @@ def _with_aux_coords(merged: xr.Dataset, aux: list[xr.DataArray]) -> xr.Dataset:
             added.pop(name, None)
             continue
         if name in added:
-            if not added[name].equals(var):
+            if not xr.DataArray(added[name]).equals(xr.DataArray(var)):
                 dropped.add(name)
                 del added[name]
             continue
