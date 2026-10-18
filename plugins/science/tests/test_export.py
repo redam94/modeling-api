@@ -45,7 +45,7 @@ def synthetic() -> dict[str, xr.Dataset | xr.DataTree]:
     return {c: EXPORTS[c].synthetic() for c in CASES}
 
 
-def test_the_ported_cases_are_registered() -> None:
+def test_the_ported_cases_are_registered(tmp_path: Path) -> None:
     assert {
         "e07",
         "e18",
@@ -69,8 +69,8 @@ def test_the_ported_cases_are_registered() -> None:
         assert case.model in models
         assert case.notebook.startswith(f"E{cid[1:]}_")
         # a notebook that simulates its data (E51, E61 part A) has no file: its loader
-        # needs none
-        assert case.files or case.load(Path("/nonexistent")) is not None
+        # builds the data from an empty directory
+        assert case.files or case.load(tmp_path) is not None
 
 
 @pytest.mark.parametrize("cid", CASES)

@@ -184,9 +184,14 @@ test("spec editor suggests catalog models, dataset columns and step settings", a
   // model.use: every model in the catalog.
   await cursorAfter(page, "use: mmm.bayesian@^1", "mmm.bayesian@^1".length);
   await page.keyboard.press("Control+Space");
-  await expect(suggest).toContainText("tabular.hierarchical_glm@^1");
+  await expect(suggest).toContainText("mmm.frequentist@^1");
   await page.keyboard.press("Escape");
   // The list is longer than the widget: a prefix filters it down to the later models.
+  await page.keyboard.type("tabular.h");
+  await page.keyboard.press("Control+Space");
+  await expect(suggest).toContainText("tabular.hierarchical_glm@^1");
+  await page.keyboard.press("Escape");
+  for (let i = 0; i < "tabular.h".length; i++) await page.keyboard.press("Backspace");
   await page.keyboard.type("ts.ar");
   await page.keyboard.press("Control+Space");
   await expect(suggest).toContainText("ts.arima@^1");

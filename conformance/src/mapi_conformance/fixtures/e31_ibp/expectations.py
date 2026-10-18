@@ -36,7 +36,8 @@ def check_fit(bundle: Bundle, data: xr.Dataset) -> None:
     assert ll.dims == ("chain", "draw", "digit") and ll.sizes["digit"] == data.sizes["digit"]
     assert bundle.evaluation is not None, "evaluate_then_refit keeps the evaluation bundle"
     assert bundle.model.learned["start"] == "digits"
-    pi_first = np.exp(post["logpi"].isel(feature=0)).mean("draw").values
+    logpi = post["logpi"].isel(feature=0).transpose("chain", "draw").values
+    pi_first = np.exp(logpi).mean(axis=1)
     assert (pi_first > 0.1).all(), f"a chain switched the features off: {pi_first}"
 
 

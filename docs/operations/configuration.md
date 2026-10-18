@@ -471,6 +471,7 @@ variables that Terraform sets on the Cloud Run services (the deployment contract
 | `MAPI_UPDATE_SNAPSHOTS` | `1` makes the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests again (`make snapshots`) |
 | `MAPI_HYPOTHESIS_EXAMPLES` | The examples for each property in the wire-format round-trip tests (default 60) |
 | `MAPI_PYMC_CHALLENGES_DATA` | The `data/` directory of a local copy of pymc-challenges. The `from_challenges` loaders of `mapi-plugin-science` read the real data files there, and the tests that use them run. If it is not set, these tests are skipped |
+| `MAPI_E21_DRAWS` | The draws for each chain in the real-data sociality fit of `sci.network_latent_space` (`plugins/science/tests/test_network.py`, default 300) |
 
 ## Documentation
 
