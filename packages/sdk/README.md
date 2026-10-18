@@ -45,7 +45,8 @@ See `docs/reference/sdk.md` and `docs/guides/plugins.md` for the full tour.
 | `split` | `time_holdout`, `as_of`, `leave_group_out`, `last_per_group`, `mask_block` |
 | `pipeline` | `Pipeline`: stages, fit, replay, inverse chain with output-space attrs and retransformation |
 | `coords` | `CoordPlan` typed errors, `canonicalise_coords`, horizon coordinates |
-| `models` | `ModelPlugin` protocol, `CustomModel`, `FitOutput`, `Fitted`, `FitContext`, `ScoreContext` |
+| `models` | `ModelPlugin` protocol, `CustomModel`, `FitOutput`, `Fitted`, `FitContext`, `ScoreContext` (`ctx.tree` for tree-input models) |
+| `tree` | v0.8 tree datasets: `select_nodes` (the `data.nodes` merge), `infer_tree_schema`, `validate_tree`, `read_tree_zip`/`write_tree_zip` |
 | `summarise` | summaries per representation, aggregation legality, bundle-wide draw thinning |
 | `metrics` | holdout metrics, `elpd_loo` via ArviZ |
 | `bundle` | `Bundle` write/read with content hashes, pickle rejection |

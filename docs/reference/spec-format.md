@@ -40,7 +40,9 @@ execution: {resource_class: M, timeout: 45m}
 |---|---|
 | `metadata` | `name` and `project` (lowercase slugs). Optional: `labels` and `description` |
 | `data.dataset` | `dataset://<project>/<name>@latest|vN|sha256:<hex>` — The API pins it to an exact version when you submit |
-| `data.side_tables` | Small constant datasets (FX, holidays). `score_policy` is `pinned`, `latest` or `supplied` |
+| `data.side_tables` | Small constant datasets (FX, holidays). `score_policy` is `pinned`, `latest` or `supplied`. A side table that is a tree dataset reads one node: `node: /fx` (v0.8) |
+| `data.nodes` | v0.8, tree datasets only. The nodes whose variables make the flat input of the pipeline: `{key: {path, vars?, prefix?}}`, a maximum of 64 entries. Refer to [Tree datasets in a spec](#tree-datasets-in-a-spec) |
+| `data.join` | v0.8, only with `data.nodes`. How the labels of the selected nodes align: `exact` (the default), `inner` or `outer` |
 | `data.bind` | Maps **canonical** names (the names that plugins and steps use) to **dataset** names. By default, the outputs get the dataset names again |
 | `data.split` | `time_holdout`, `last_per_group`, `as_of`, `leave_group_out` or `mask_block`. The split occurs at `after_step` |
 | `pipeline` | Steps in sequence: `{id, use: <id>@<semver range>, with: {...}}` |
@@ -48,6 +50,34 @@ execution: {resource_class: M, timeout: 45m}
 | `outputs` | Derived quantities, plot recipes and the number of draws that the UI keeps |
 | `evaluate` | Holdout metrics (`elpd_loo`, `coverage_90`, `mape`, `rmse`, ...) |
 | `execution` | The resource class (`S`, `M`, `L`, `XL`) and the timeout (`45m`, `1h30m`). Each class has a limit for the input data that a run reads (dataset plus side tables): S 0.5 GB, M 2 GB, L 5 GB, XL 50 GB. If the data is larger, validation reports `PAYLOAD_TOO_LARGE` at `/execution/resource_class`. The message gives the class that fits. Ingest runs select the smallest class that holds the upload. |
+
+## Tree datasets in a spec <span class="mapi-badge">v0.8</span> { #tree-datasets-in-a-spec }
+
+A [tree dataset](../guides/tree-data.md) has nodes, for example `/sales` and `/media`. Steps
+and most models read one flat dataset. `data.nodes` selects the nodes, and the platform
+merges their variables before the pipeline:
+
+```yaml
+--8<-- "tree_spec.yaml"
+```
+
+| Field of an entry | Meaning |
+|---|---|
+| `path` | The node path (`/` is the root) |
+| `vars` | The variables to read from the node. Default: all |
+| `prefix` | Text before each variable name of the node (1 to 32 characters, starts with a letter or `_`). Use it when two nodes have variables with the same name |
+
+- Dims keep their names. A dim that two selected nodes use must have the same `DimSpec`.
+- A variable name can come from one entry only. Validation reports a clash and tells you to
+  add a `prefix`.
+- `data.bind` and the pipeline use the merged names (for example `plan_spend`).
+- Without `data.nodes`, a spec on a tree dataset reads the root node. If the root has no
+  variables, validation reports `SCHEMA_INVALID` ("this dataset is a tree: pick nodes in
+  data.nodes").
+- `data.nodes` on a plain dataset, and `data.join` without `data.nodes`, are errors.
+
+Static validation uses the `tree_schema` of the dataset version. Thus it finds these problems
+before a run starts.
 
 ## Versions in `use:`
 

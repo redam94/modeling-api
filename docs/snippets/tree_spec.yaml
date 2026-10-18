@@ -1,0 +1,19 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: sales-tree, project: growth}
+data:
+  dataset: dataset://growth/sales_tree@latest
+  nodes:                                  # these nodes make the flat input of the pipeline
+    sales: {path: /sales}                 # all the variables of /sales
+    media: {path: /media, vars: [spend]}  # only 'spend' from /media
+    plan: {path: /plan, prefix: plan_}    # /plan 'spend' becomes 'plan_spend'
+  join: exact                             # the default: the labels must be equal
+  bind:
+    dims: {geo: market, time: date}
+    vars: {y: revenue}
+  split: {kind: time_holdout, dim: time, last: 4}
+pipeline: []
+model:
+  use: toy.tree_linear@^1
+  fit: {mode: evaluate_then_refit, seed: 3}
+evaluate: {metrics: [rmse]}

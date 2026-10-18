@@ -34,6 +34,11 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / MAPI_PROJECT / ~/.config/mapi/c
   every transfer is checked against the storage-computed CRC32C.
 - `pip install 'mapi-client[xarray]'` enables `xr.Dataset` uploads and `xr.DataTree`
   score results (via `mapi-sdk`'s validated zarr-zip reader/writer).
+- Tree datasets (v0.8): `datasets.upload` takes an `xr.DataTree` (`data.tree.zip`) or a raw
+  HDF5 file with an `hdf5` mapping; `datasets.upload_files([...], concat="market",
+  labels=[...])` / `merge=True` / `AssemblyFile(..., node="/media")` make one version from
+  several files; `datasets.inspect_file(path, dataset=...)` lists an upload's groups and
+  arrays before it is ingested (`docs/guides/tree-data.md`).
 
 **Multi-tenant APIs (v0.3).**
 

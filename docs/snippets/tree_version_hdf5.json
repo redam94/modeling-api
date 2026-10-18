@@ -1,0 +1,24 @@
+{
+  "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+  "message": "lens observation of 2026-10-01, mapped from raw HDF5",
+  "mapping": {
+    "format": "hdf5",
+    "hdf5": {
+      "vars": [
+        {"path": "/observations/image", "name": "image", "dims": ["row", "col"],
+         "role": "target", "units": "counts"},
+        {"path": "/observations/noise", "name": "noise", "dims": ["row", "col"],
+         "units": "counts"},
+        {"path": "/psf/kernel", "node": "/psf", "name": "psf", "dims": ["prow", "pcol"]}
+      ],
+      "coords": [
+        {"dim": "row", "start": -1.6, "step": 0.05,
+         "spec": {"kind": "float", "ordered": true}},
+        {"dim": "col", "path": "/axes/col_arcsec",
+         "spec": {"kind": "float", "ordered": true}},
+        {"dim": "prow", "node": "/psf"},
+        {"dim": "pcol", "node": "/psf"}
+      ]
+    }
+  }
+}

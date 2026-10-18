@@ -46,6 +46,7 @@ behaviour against a real Cloud Run Jobs execution (see
 | Send your data out over the network | Deny-all egress, only the address of the Google restricted APIs, and a VPC Service Controls perimeter | Terraform is written and tested offline. **[verify M0]** |
 | Send your data out over DNS | A DNS response policy that answers nothing outside Google APIs | **[verify M0]**. Until it passes, the platform does not put `verified` and `public` tenants on Cloud Run. |
 | Crash or take control of the API with a crafted file | The API parses only JSON and YAML. A sandbox opens all other files. | **Enforced** |
+| Make the sandbox read other files or load code with a crafted HDF5 file (v0.8) | The [HDF5 guard](#uploads-and-the-hdf5-guard) refuses links to other files, external storage, virtual datasets and filter plugins before a reader opens the file. | **Enforced** |
 | Replace or replay the files of a model | The control plane compares the outputs with the hashes and generations of the store. It copies them to a location where runs cannot write, and signs them. It checks the signature before each download link. | **Enforced**. We tested Cloud KMS signing against a fake. |
 | Fake progress or results | Only the supervisor writes events. It signs and numbers each event. The status from the executor decides if a run is alive. | **Enforced** |
 | Read the work of another organisation | Row-level security on all tables, which fails closed. The server checks ids against the tenant of the caller. A test uses the same pooled connections for two tenants. | **Enforced** |
@@ -120,6 +121,32 @@ On a laptop, the supervisor is not root. Thus, the worker runs as you, and the r
 environment, signed events, limits and output verification. But the boundary between your
 account and the model code is only as strong as the process separation of Python. Think of a
 local run as the same as a run of the plugin in a notebook.
+
+### Uploads and the HDF5 guard <span class="mapi-badge">v0.8</span> { #uploads-and-the-hdf5-guard }
+
+Only an ingest or inspect run in the sandbox opens an upload. The API never parses it. HDF5
+(and NetCDF-4, which is HDF5) has features that can make a reader open other files, load
+code or do work without a limit. Thus, before xarray or h5py opens an HDF5 file, the runner
+walks the file with the low-level API of h5py. The walk never follows a link. It refuses the
+file with `INGEST_UNSAFE_FILE` when the file has:
+
+- external links, user-defined links, or soft links that do not resolve, make a loop, use
+  `..` or point to a group;
+- groups in a loop of hard links;
+- datasets with external raw storage, or virtual datasets (their bytes are in other files);
+- filters other than deflate, shuffle, fletcher32, scaleoffset, nbit and lzf (no szip, no
+  plugins);
+- a user block larger than 64 KiB. The guard looks for the HDF5 superblock at each offset
+  where libhdf5 looks for it. Thus a file that starts with other bytes is still checked;
+- too many objects or attributes, groups deeper than 32 levels, arrays with too many dims or
+  attribute values that are too large;
+- arrays that declare more bytes than the budget of the run;
+- data types whose size has no limit (variable-length sequences, compound, array, reference
+  and opaque types).
+
+The supervisor also points `HDF5_PLUGIN_PATH` at an empty directory in the environment of the
+worker. The inspect run uses the same guard and reads only metadata. Refer to
+[Tree datasets, HDF5 and multi-file versions](../guides/tree-data.md#security-the-hdf5-guard).
 
 ### Outputs are claims
 
