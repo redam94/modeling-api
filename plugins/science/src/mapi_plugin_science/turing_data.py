@@ -1,7 +1,6 @@
 """Data for ``sci.turing_pattern`` (E61 part A): schema, a tiny spec, synthetic images.
 
-* :data:`TURING_SCHEMA` - the raw schema: ``concentration(time, row, col)`` (bind it to the
-  canonical ``activator(t, y, x)``);
+* :data:`TURING_SCHEMA` - the raw schema: ``activator(t, y, x)`` (the canonical names);
 * :data:`TURING_SPEC_YAML` - a tiny fit (32 x 32 raster, the last image held out);
 * :func:`simulate_turing` / :func:`turing_dataset` - early images of a pattern grown by the
   model's own forward process (the semi-implicit spectral solver from the uniform state plus
@@ -45,7 +44,8 @@ __all__ = [
     "turing_dataset",
 ]
 
-RAW_TIME, RAW_ROW, RAW_COL, RAW_VAR = "time", "row", "col", "concentration"
+RAW_TIME, RAW_ROW, RAW_COL, RAW_VAR = "t", "y", "x", "activator"
+"""Dataset names: the same as the canonical names, so no ``data.bind`` is needed."""
 
 CHALLENGES_FILE: Final[str | None] = None
 """E61 part A reads no file from the pymc-challenges ``data/`` directory: the notebook
@@ -93,9 +93,6 @@ kind: ModelSpec
 metadata: {name: turing-synthetic, project: science}
 data:
   dataset: dataset://science/turing_synthetic@latest
-  bind:
-    dims: {t: time, y: row, x: col}
-    vars: {activator: concentration}
   split: {kind: time_holdout, dim: t, last: 1}
 model:
   use: sci.turing_pattern@^1
@@ -121,9 +118,6 @@ kind: ModelSpec
 metadata: {name: e61-turing-mode-growth, project: biology}
 data:
   dataset: dataset://biology/e61_turing_early_images@latest
-  bind:
-    dims: {t: time, y: row, x: col}
-    vars: {activator: concentration}
 model:
   use: sci.turing_pattern@^1
   settings: {box_length: 100.0, k2_max: 1.5}
@@ -239,7 +233,7 @@ def from_challenges(path: str | Path | None = None) -> xr.Dataset:
     pymc-challenges ``data/`` directory) this is :func:`notebook_dataset`. With a file
     (``.nc``, for example written by ``python -m mapi_plugin_science.export e61``) it reads
     that file and checks the variables. Raises ``ValueError`` when the file has no
-    ``concentration(time, row, col)``.
+    ``activator(t, y, x)``.
     """
     if path is None or Path(path).is_dir():
         return notebook_dataset()

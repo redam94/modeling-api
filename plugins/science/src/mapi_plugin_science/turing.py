@@ -64,6 +64,7 @@ the fitted images only.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import math
 import warnings
@@ -917,17 +918,18 @@ class TuringPatternModel(CustomModel[TuringPatternSettings]):
         aa, bb = np.meshgrid(a_grid, b_grid)  # (B, A)
         space = is_turing(aa + bb, aa / (aa + bb), sub["d"][..., None, None]).astype(np.float32)
         kind = "predictive" if noisy else "expected"
+        # growth first: without a manifest, curve recipes take the first variable with draws
         arrays: dict[str, xr.DataArray] = {
-            "pattern": xr.DataArray(
-                pattern,
-                dims=("chain", "draw", *FIELD_DIMS),
-                attrs={"kind": kind, "noise": "seeded_white" if noisy else "none"},
-            ),
             "growth": xr.DataArray(
                 lam,
                 dims=("chain", "draw", WAVENUMBER_DIM),
                 coords={WAVENUMBER_DIM: kq},
                 attrs={"kind": "posterior", "units": "1/time"},
+            ),
+            "pattern": xr.DataArray(
+                pattern,
+                dims=("chain", "draw", *FIELD_DIMS),
+                attrs={"kind": kind, "noise": "seeded_white" if noisy else "none"},
             ),
             "p_turing": xr.DataArray(
                 is_turing(sub["s"], sub["rho"], sub["d"]).astype(np.float64),
@@ -952,6 +954,11 @@ class TuringPatternModel(CustomModel[TuringPatternSettings]):
                 dims=("chain", "draw", Y_DIM, X_DIM),
                 attrs={"kind": "simulated", "noise": "none", "time": s.settle_time},
             )
+        for name, da in arrays.items():
+            # the grid travels with the array: score trees carry no manifest to look it up
+            grid_decl = self.outputs[name].get("grid")
+            if grid_decl is not None:
+                da.attrs["grid"] = json.dumps(grid_decl)
         pred = xr.Dataset(arrays, coords=coords)
         sel = {d: np.asarray(ds[d].values) for d in (Y_DIM, X_DIM) if d in ds.coords}
         if sel:

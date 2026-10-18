@@ -70,10 +70,6 @@ def bundle(registry: Registry, synthetic: tuple[xr.Dataset, dict[str, float]]) -
     return fit_spec(TURING_SPEC_YAML, data, registry=registry, raw_schema=TURING_SCHEMA)
 
 
-def _canonical(ds: xr.Dataset) -> xr.Dataset:
-    return ds.rename(time="t", row="y", col="x", concentration="activator")
-
-
 def _score(bundle: Bundle, registry: Registry, body: str, data: xr.Dataset | None) -> xr.DataTree:
     req = load_score_request(HEADER + body)
     return score_bundle(bundle, req, data, registry=registry, return_full=True)
@@ -142,7 +138,7 @@ def test_potential_matches_the_numpy_twin_and_the_pointwise_sum(
     synthetic: tuple[xr.Dataset, dict[str, float]],
 ) -> None:
     data, truth = synthetic
-    d = _Data.from_dataset(_canonical(data))
+    d = _Data.from_dataset(data)
     s = TuringPatternSettings()
     stats = d.statistics(s)
     point = {k: truth[k] for k in PARAMETERS}
@@ -179,7 +175,7 @@ def test_linear_theory_predicts_a_held_out_image(
     synthetic: tuple[xr.Dataset, dict[str, float]],
 ) -> None:
     data, truth = synthetic
-    d = _Data.from_dataset(_canonical(data))
+    d = _Data.from_dataset(data)
     grid = SpectralGrid.of(d.n, TURING_TRUTH["box_length"])
     p = {k: truth[k] for k in PARAMETERS}
     pred = conditional_pattern(d.images[:3], d.times[:3], [16.0], grid, p, np.random.default_rng(0))
@@ -193,7 +189,7 @@ def test_linear_theory_predicts_a_held_out_image(
 
 def test_typed_refusals(synthetic: tuple[xr.Dataset, dict[str, float]]) -> None:
     data, _ = synthetic
-    ds = _canonical(data)
+    ds = data
     holed = ds.copy(deep=True)
     holed["activator"][1, 3, 4] = np.nan
     with pytest.raises(MapiError) as exc:
@@ -213,20 +209,20 @@ def test_typed_refusals(synthetic: tuple[xr.Dataset, dict[str, float]]) -> None:
 
 def test_score_refusals(bundle: Bundle, registry: Registry) -> None:
     data = bundle_data(bundle)
-    last = float(data["time"].max())
-    gap = data.isel(time=[0]).assign_coords(time=[last + 8.0]).drop_vars("concentration")
+    last = float(data["t"].max())
+    gap = data.isel(t=[0]).assign_coords(t=[last + 8.0]).drop_vars("activator")
     with pytest.raises(MapiError) as exc:
         _score(bundle, registry, "mode: predict\n", gap)
     assert exc.value.code is ErrorCode.NON_CONTIGUOUS_EXTENSION
-    far = data.isel(time=[0, 0, 0]).assign_coords(time=last + 4.0 * np.arange(1, 4))
+    far = data.isel(t=[0, 0, 0]).assign_coords(t=last + 4.0 * np.arange(1, 4))
     with pytest.raises(MapiError) as exc:
-        _score(bundle, registry, "mode: predict\n", far.drop_vars("concentration"))
+        _score(bundle, registry, "mode: predict\n", far.drop_vars("activator"))
     assert exc.value.code is ErrorCode.HORIZON_EXCEEDS_FIT
     with pytest.raises(MapiError) as exc:
         _score(
             bundle,
             registry,
-            "mode: counterfactual\ninterventions: [{var: concentration, multiply: 1.1}]\n",
+            "mode: counterfactual\ninterventions: [{var: activator, multiply: 1.1}]\n",
             data,
         )
     assert exc.value.code is ErrorCode.MODE_NOT_SUPPORTED
@@ -274,15 +270,15 @@ def test_predict_draws_shapes_and_seed(bundle: Bundle, registry: Registry) -> No
     xr.testing.assert_identical(a, b)
     assert not np.allclose(a["pattern"].values, c["pattern"].values)
     # field_draws 8 over 2 chains -> 4 evenly spaced draws per chain
-    assert dict(a["pattern"].sizes) == {"chain": 2, "draw": 4, "time": 4, "row": 32, "col": 32}
+    assert dict(a["pattern"].sizes) == {"chain": 2, "draw": 4, "t": 4, "y": 32, "x": 32}
     assert a["pattern"].dtype == np.float32
     assert a["growth"].dims == ("chain", "draw", "wavenumber")
     assert a["turing_space"].dims == ("chain", "draw", "b_supply", "a_supply")
     assert "settled" not in a
     # a pixel subset selects the same draws (the field is drawn on the whole raster)
-    sub = data.isel(row=slice(2, 7), col=[0, 9, 31])
+    sub = data.isel(y=slice(2, 7), x=[0, 9, 31])
     s = _predictions(_score(bundle, registry, "mode: predict\nseed: 4\n", sub))
-    want = a["pattern"].sel(row=sub["row"].values, col=sub["col"].values)
+    want = a["pattern"].sel(y=sub["y"].values, x=sub["x"].values)
     np.testing.assert_array_equal(s["pattern"].values, want.values)
 
 
@@ -294,7 +290,7 @@ def test_predictions_track_the_images_and_predictive_adds_noise(
     pre = _predictions(
         _score(bundle, registry, "mode: predict\nseed: 2\noutput: {kind: predictive}\n", data)
     )
-    obs = data["concentration"]
+    obs = data["activator"]
     err = exp["pattern"].astype(float).mean(("chain", "draw")) - obs
     assert float(np.sqrt((err**2).mean())) < 2 * truth["sigma"]
     noise = (pre["pattern"] - exp["pattern"]).astype(float)
@@ -322,18 +318,18 @@ def test_simulate_grows_new_patterns(
     data, _ = synthetic
     pred = _predictions(_score(bundle, registry, "mode: simulate\nseed: 7\n", data))
     # simulate_draws 2 over 2 chains -> one run per chain
-    assert dict(pred["pattern"].sizes) == {"chain": 2, "draw": 1, "time": 4, "row": 32, "col": 32}
+    assert dict(pred["pattern"].sizes) == {"chain": 2, "draw": 1, "t": 4, "y": 32, "x": 32}
     assert pred["pattern"].attrs["kind"] == "predictive"
     sim = pred["pattern"].astype(float)
-    obs = data["concentration"]
+    obs = data["activator"]
     # a new pattern: same statistics as the data, other spots
-    ratio = float(sim.isel(time=-1).std(("row", "col")).mean() / obs.isel(time=-1).std())
+    ratio = float(sim.isel(t=-1).std(("y", "x")).mean() / obs.isel(t=-1).std())
     assert 0.3 < ratio < 3.0
-    r = np.corrcoef(sim.isel(chain=0, draw=0, time=-1).values.ravel(), obs[-1].values.ravel())
+    r = np.corrcoef(sim.isel(chain=0, draw=0, t=-1).values.ravel(), obs[-1].values.ravel())
     assert abs(r[0, 1]) < 0.5
     settled = pred["settled"].astype(float)
-    assert settled.dims == ("chain", "draw", "row", "col")
-    assert float(settled.std(("row", "col")).min()) > 5 * float(obs.isel(time=-1).std())
+    assert settled.dims == ("chain", "draw", "y", "x")
+    assert float(settled.std(("y", "x")).min()) > 5 * float(obs.isel(t=-1).std())
     again = _predictions(_score(bundle, registry, "mode: simulate\nseed: 7\n", data))
     xr.testing.assert_identical(pred, again)
 
@@ -365,7 +361,7 @@ def test_contract_kit(registry: Registry, synthetic: tuple[xr.Dataset, dict[str,
 
 def test_part_a_reads_no_data_file() -> None:
     assert CHALLENGES_FILE is None
-    with pytest.raises(ValueError, match="concentration"):
+    with pytest.raises(ValueError, match="activator"):
         from_challenges(_write_bad())
 
 
@@ -373,14 +369,14 @@ def test_part_a_reads_no_data_file() -> None:
 def test_from_challenges_repeats_the_notebook_simulation() -> None:
     assert REAL is not None
     ds = from_challenges(REAL)
-    assert dict(ds["concentration"].sizes) == {"time": 4, "row": 128, "col": 128}
-    np.testing.assert_array_equal(ds["time"].values, [4.0, 8.0, 12.0, 16.0])
-    d = _Data.from_dataset(_canonical(ds))
+    assert dict(ds["activator"].sizes) == {"t": 4, "y": 128, "x": 128}
+    np.testing.assert_array_equal(ds["t"].values, [4.0, 8.0, 12.0, 16.0])
+    d = _Data.from_dataset(ds)
     # the notebook: the field stays within about +-2% of the uniform state
     assert d.max_relative_deviation < 0.05
     stats = d.statistics(TuringPatternSettings())
     assert 400 < stats.n_modes < 700
-    sd = ds["concentration"].std(("row", "col")).values
+    sd = ds["activator"].std(("y", "x")).values
     assert np.all(np.diff(sd) > 0), "the pattern grows"
 
 
@@ -412,16 +408,12 @@ def test_notebook_fit_recovers_the_kinetics(registry: Registry) -> None:
 def bundle_data(bundle: Bundle) -> xr.Dataset:
     """The fit data back from the bundle, under the raw names of the spec."""
     obs = bundle.model.groups["observed_data"]["activator"]
-    return _raw(obs.to_dataset(name="activator"))
-
-
-def _raw(ds: xr.Dataset) -> xr.Dataset:
-    return ds.rename(t="time", y="row", x="col", activator="concentration")
+    return obs.to_dataset(name="activator")
 
 
 def _write_bad() -> str:
     import tempfile
 
     path = os.path.join(tempfile.mkdtemp(), "bad.nc")
-    xr.Dataset({"other": ("time", np.arange(3.0))}).to_netcdf(path, engine="h5netcdf")
+    xr.Dataset({"other": ("t", np.arange(3.0))}).to_netcdf(path, engine="h5netcdf")
     return path
