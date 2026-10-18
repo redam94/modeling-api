@@ -40,6 +40,7 @@ from mapi_client._http import Call, RetryPolicy, RetryState
 from mapi_client._m3 import RemoteEndpoint
 from mapi_client._m3_async import AsyncRemoteEndpoint
 from mapi_client._m3_common import forecast_call
+from mapi_client._m4_common import AssemblyFile, InspectedUpload
 from mapi_client._sync import Client
 from mapi_client._version import __version__
 from mapi_client.auth import BearerAuth, TokenProvider, default_auth
@@ -68,6 +69,7 @@ from mapi_client.sse import (
 )
 
 __all__ = [
+    "AssemblyFile",
     "AsyncClient",
     "AsyncPaginator",
     "AsyncRemoteEndpoint",
@@ -77,6 +79,7 @@ __all__ = [
     "ClientConfig",
     "ConfigError",
     "CredentialStore",
+    "InspectedUpload",
     "OidcError",
     "OidcSession",
     "OidcTokenProvider",

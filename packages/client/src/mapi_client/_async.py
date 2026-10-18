@@ -83,12 +83,14 @@ from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
+from mapi_spec.ingest import CoordValue
 from mapi_spec.quotas import QuotaLimits, QuotaScope
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 from mapi_spec.spec import ScoreRequest
 from mapi_spec.tenancy import Capability, ProjectRole, TenantStatus, TrustTier
 from mapi_spec.tokens import DEFAULT_TOKEN_TTL_DAYS, BudgetPeriod, TokenStatus
+from mapi_spec.tree import TreeJoin
 from pydantic import JsonValue
 
 from mapi_client import _calls as calls
@@ -121,6 +123,13 @@ from mapi_client._m3_async import (
 )
 from mapi_client._m3_async import signup as _signup
 from mapi_client._m3_async import verify_email as _verify_email
+from mapi_client._m4_common import (
+    AssemblyFile,
+    InspectedUpload,
+    assembly_for,
+    is_not_ready,
+    plan_assembly,
+)
 from mapi_client._m35_async import (
     AsyncCatalogAboutMixin,
     AsyncDatasetAboutMixin,
@@ -508,7 +517,7 @@ class AsyncDatasets(_Resource, AsyncDatasetAboutMixin):
 
     async def upload(
         self,
-        source: str | os.PathLike[str] | xr.Dataset | bytes,
+        source: str | os.PathLike[str] | xr.Dataset | xr.DataTree | bytes,
         *,
         dataset: str | None = None,
         dataset_id: str | None = None,
@@ -541,6 +550,123 @@ class AsyncDatasets(_Resource, AsyncDatasetAboutMixin):
         if not wait:
             return created
         return await self.wait_version(ds_id, created.version, timeout=timeout)
+
+    async def ensure_id(self, dataset: str | None, dataset_id: str | None) -> str:
+        """The id of ``dataset_id``, or of the dataset named ``dataset`` (created when
+        missing) - exactly one of the two."""
+        if (dataset is None) == (dataset_id is None):
+            raise ValueError("give exactly one of dataset (a name) or dataset_id")
+        return dataset_id or (await self.ensure(str(dataset))).id
+
+    async def stage_upload(
+        self,
+        source: str | os.PathLike[str] | xr.Dataset | xr.DataTree | bytes,
+        *,
+        dataset_id: str,
+        filename: str | None = None,
+    ) -> UploadSession:
+        """Upload a file to the dataset's quarantine *without* ingesting it (M4): to
+        :meth:`inspect` it, or to ingest it later with :meth:`create_version`."""
+        return await self._stage(dataset_id, upload_source(source, filename=filename))
+
+    async def _stage(self, dataset_id: str, src: UploadSource) -> UploadSession:
+        session = await self.create_upload(
+            dataset_id, filename=src.filename, size_bytes=src.size, content_type=src.content_type
+        )
+        await self._c.put_signed(session, src)
+        return session
+
+    async def upload_files(
+        self,
+        files: Sequence[AssemblyFile | str | os.PathLike[str] | xr.Dataset | xr.DataTree | bytes],
+        *,
+        dataset: str | None = None,
+        dataset_id: str | None = None,
+        mapping: IngestMapping | None = None,
+        node: str = "/",
+        concat: str | None = None,
+        labels: Sequence[CoordValue] | None = None,
+        merge: bool = False,
+        join: TreeJoin = "exact",
+        message: str | None = None,
+        wait: bool = True,
+        timeout: float | None = None,
+        idempotency_key: str | None = None,
+    ) -> DatasetVersion:
+        """Upload several files as ONE dataset version (M4, an ``IngestAssembly``).
+
+        Plain items (paths, ``xr.Dataset``/``xr.DataTree``) all go to ``node`` and are
+        combined there: ``concat="year", labels=[2024, 2025]`` stacks them along a dim (one
+        label per file), ``merge=True`` merges their variables on shared coords (``join``
+        ``exact``/``inner``/``outer``). Items given as :class:`~mapi_client.AssemblyFile`
+        carry their own node, mapping and combine rule, e.g. a PSF file at ``/instrument``.
+        ``mapping`` applies to every file whose format it reads (self-describing formats
+        default to an empty one). The assembly is checked before anything is uploaded.
+        """
+        plan = plan_assembly(
+            files, mapping=mapping, node=node, concat=concat, labels=labels, merge=merge,
+            join=join,
+        )  # fmt: skip
+        ds_id = await self.ensure_id(dataset, dataset_id)
+        upload_ids = [(await self._stage(ds_id, p.upload)).id for p in plan]
+        created = await self.create_version(
+            ds_id,
+            assembly=assembly_for(plan, upload_ids),
+            message=message,
+            idempotency_key=idempotency_key or str(uuid.uuid4()),
+        )
+        if not wait:
+            return created
+        return await self.wait_version(ds_id, created.version, timeout=timeout)
+
+    async def inspect(
+        self,
+        dataset_id: str,
+        upload_id: str,
+        *,
+        timeout: float | None = 300.0,
+        poll_interval: float = 1.0,
+        max_poll_interval: float = 10.0,
+    ) -> UploadInspection:
+        """Inspect an upload (M4): start (or find) its ``inspect`` run, then poll the
+        inspection until it is ready (``NOT_READY`` means "still running"). Raises the run's
+        error when the inspection failed and ``TimeoutError`` after ``timeout`` seconds."""
+        run = await self.inspect_upload(dataset_id, upload_id)
+        deadline = None if timeout is None else time.monotonic() + timeout
+        delay = poll_interval
+        while True:
+            err = run_error(run)
+            if err is not None:
+                raise err
+            try:
+                return await self.upload_inspection(dataset_id, upload_id)
+            except MapiError as exc:
+                if not is_not_ready(exc):
+                    raise
+            if deadline is not None and time.monotonic() + delay > deadline:
+                raise TimeoutError(
+                    f"inspection of upload {upload_id} is not ready after {timeout} s"
+                )
+            await self._c._sleep(delay)
+            delay = min(delay * 1.5, max_poll_interval)
+            run = await self._c.runs.get(run.id)
+
+    async def inspect_file(
+        self,
+        source: str | os.PathLike[str] | xr.Dataset | xr.DataTree | bytes,
+        *,
+        dataset: str | None = None,
+        dataset_id: str | None = None,
+        filename: str | None = None,
+        timeout: float | None = 300.0,
+    ) -> InspectedUpload:
+        """Stage a file (:meth:`stage_upload`) and :meth:`inspect` it: the groups and arrays
+        (path, shape, dtype, dims hint) needed to write a raw-HDF5 mapping. Ingest it later
+        with ``create_version(dataset_id, upload_id=found.upload_id, mapping=...)``."""
+        ds_id = await self.ensure_id(dataset, dataset_id)
+        session = await self.stage_upload(source, dataset_id=ds_id, filename=filename)
+        found = await self.inspect(ds_id, session.id, timeout=timeout)
+        return InspectedUpload(session, found)
 
     async def artifact(self, dataset_id: str, version: int, name: str) -> ArtifactLink:
         return await self._c.send(calls.get_dataset_artifact(dataset_id, version, name))
