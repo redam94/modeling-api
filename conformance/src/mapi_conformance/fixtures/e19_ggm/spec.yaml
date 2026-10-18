@@ -1,0 +1,22 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: protein-network-ggm, project: biology, labels: {corpus: e19}}
+data:
+  dataset: dataset://biology/protein_network@latest
+  bind:
+    dims: {var: protein, var_: protein_}
+    vars: {value: level, reference: consensus}
+  split: {kind: leave_group_out, dim: cell, n: 120, seed: 19}
+model:
+  use: sci.graphical_model@^1
+  settings: {kind: dense, threshold: 0.1, lkj_eta: 2.0, reference: true}
+  fit:
+    mode: evaluate_then_refit
+    seed: 19
+    tune: 1000
+    draws: 1000
+    chains: 4
+    engine: pymc
+    keep: {log_likelihood: true}
+evaluate: {metrics: [rmse, crps, coverage_90, elpd_loo]}
+outputs: {plots: [core.convergence, core.posterior_forest, net.graph, sci.field_map]}

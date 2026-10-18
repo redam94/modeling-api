@@ -48,6 +48,7 @@ FIXTURES: list[str] = [
     "e77_colour_naming",
     "e79_cmb",
     "e21_network",
+    "e19_ggm",
 ]
 
 DEFERRED: dict[str, str] = {

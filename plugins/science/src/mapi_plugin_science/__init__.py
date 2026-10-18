@@ -28,7 +28,10 @@ Ported from the pymc-challenges case studies:
 * ``sci.areal_bym2`` - disease counts in areas on a graph of neighbours, with iid, ICAR,
   proper CAR or BYM2 area effects; the polygons go into the bundle for the maps (E18);
 * ``sci.network_latent_space`` - an undirected graph as Bernoulli ties between pairs of
-  nodes: pair covariates, sociality and Procrustes-aligned latent positions (E21).
+  nodes: pair covariates, sociality and Procrustes-aligned latent positions (E21);
+* ``sci.graphical_model`` - a Gaussian graphical model: partial correlations and edge
+  probabilities from a dense LKJ model or horseshoe neighbourhood regressions (E19, Sachs
+  protein signalling).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -40,6 +43,7 @@ from importlib import metadata as _metadata
 from mapi_plugin_science.areal import ArealBYM2Model, ArealBYM2Settings
 from mapi_plugin_science.cmb import CMBFieldModel, CMBFieldSettings
 from mapi_plugin_science.colour_naming import ColourNamingModel, ColourNamingSettings
+from mapi_plugin_science.ggm import GraphicalModel, GraphicalModelSettings
 from mapi_plugin_science.heat_plate import HeatPlateModel, HeatPlateSettings
 from mapi_plugin_science.ibp import IBPFeaturesModel, IBPFeaturesSettings
 from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
@@ -68,6 +72,7 @@ PLUGINS = (
     CMBFieldModel,
     ArealBYM2Model,
     NetworkLatentSpaceModel,
+    GraphicalModel,
 )
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
@@ -81,6 +86,8 @@ __all__ = [
     "ColourNamingSettings",
     "FisherKPPModel",
     "FisherKPPSettings",
+    "GraphicalModel",
+    "GraphicalModelSettings",
     "HeatPlateModel",
     "HeatPlateSettings",
     "IBPFeaturesModel",

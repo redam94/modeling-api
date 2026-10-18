@@ -66,6 +66,7 @@ from mapi_plugin_science import (
     areal_data,
     cmb_data,
     colour_naming_data,
+    ggm_data,
     heat_plate_data,
     ibp_data,
     kpp_data,
@@ -578,6 +579,21 @@ _register(
     )
 )
 
+_register(
+    ExportCase(
+        case="e19",
+        title="Protein signalling network of T cells (Sachs et al. 2005)",
+        notebook="E19_graphical_models.py",
+        model="sci.graphical_model",
+        files=(ggm_data.CHALLENGES_FILE, ggm_data.CONSENSUS_FILE),
+        loader=lambda d: ggm_data.from_challenges(d / ggm_data.CHALLENGES_FILE),
+        synthetic=lambda: ggm_data.ggm_dataset(),
+        schema=ggm_data.GGM_SCHEMA,
+        project="biology",
+        dataset="sachs_cd3cd28",
+        spec=ggm_data.SACHS_SPEC_YAML,
+    )
+)
 
 if __name__ == "__main__":  # pragma: no cover - the CLI
     raise SystemExit(main())

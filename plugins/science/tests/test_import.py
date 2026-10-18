@@ -15,6 +15,7 @@ EXPECTED_IDS = {
     "sci.cmb_field",
     "sci.areal_bym2",
     "sci.network_latent_space",
+    "sci.graphical_model",
 }
 
 
