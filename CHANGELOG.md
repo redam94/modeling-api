@@ -44,8 +44,22 @@ milestone releases are tagged on `main`.
   `upload_inspection`, `inspect` and `inspect_file`.
 - **CLI:** `mapi datasets upload` takes several files with `--node`, `--concat DIM=LABEL`,
   `--merge` and `--join`. New commands `mapi datasets inspect` and `mapi datasets ingest`.
-- The web app and the scientific plugins get tree datasets: a multi-file upload with an HDF5
-  array browser, a node view of tree versions, and a node picker in the Data Explorer.
+- **Web app:** the upload page takes several files for one version. Each file has a format
+  (from its extension; `.h5`/`.hdf5`/`.he5` give `hdf5`), a node path and a combine rule
+  (node, concat with a dim and a label, or merge with a join). The page checks the assembly
+  and shows every problem before the upload. A raw HDF5 file is inspected first; an array
+  browser (path, shape, dtype, dims, filters, warnings) lets you map arrays to variables,
+  with dims, roles, units and a coord for each dim (an array of the file, a start and step,
+  or an index). NetCDF and Zarr files can be inspected to preview their groups.
+- **Web app:** the version page of a tree dataset has a Nodes tab (the node tree, the schema
+  and coords of each node, and the preview of the default node). The Data Explorer takes
+  `?node=` and has a node picker. The spec editor completes `data.nodes` (node keys, paths and
+  `vars`) from the tree schema, and the Insert panel has a *Tree nodes* group.
+- **`sci.strong_lens`** declares `capabilities.input = "tree"`. When the tree has a `/psf`
+  node, the fit uses its PSF; otherwise the flat `psf`, as before. The new setting
+  `psf_source` (`auto`, the default, or `tree`) lets a spec select only the image node: with
+  `tree`, the flat input needs no `psf` and the fit requires the `/psf` node.
+  `mapi_plugin_science.lens_data.to_tree` builds the tree form of the lens data.
 - **Plot cards with examples.** The catalog's Plots tab shows each plot recipe as a card with
   a picture of the plot, a plain-language summary and what the plot needs. A card opens the
   plot's full About card (when to use it, how to read it, notes for experts) with a larger,

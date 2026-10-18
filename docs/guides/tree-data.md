@@ -390,6 +390,11 @@ The platform gives the tree to tree-input models in fit, score, evaluate, the Mo
 governance checks and workflow scoring. With a `data.split`, the evaluation fit and the
 holdout score see only their part of the tree.
 
+`sci.strong_lens` is a built-in tree-input model. When the tree has a `/psf` node with `psf`
+over `psf_row` and `psf_col`, the fit uses that PSF. Otherwise it uses the flat `psf`, as
+before. With the setting `psf_source: tree`, a spec can select only the image node in
+`data.nodes`. Refer to the model's section in the [model reference](../reference/models.md).
+
 ## Limits
 
 | Limit | Value | Where |

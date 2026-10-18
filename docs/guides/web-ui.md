@@ -84,8 +84,15 @@ The app then opens the upload panel.
 **Several files in one version** <span class="mapi-badge">v0.8</span>. You can select more
 than one file. For each file, give the node of the tree where it goes and how it joins the
 other files of that node: alone, stacked along a new dim (one label for each file), or merged
-on shared coords. The version page of a tree dataset shows each node with its schema and
-preview. Refer to [Tree datasets, HDF5 and multi-file versions](tree-data.md).
+on shared coords. The app checks the node paths, the combine rules and the HDF5 mapping
+before it uploads, and shows every problem at once. For NetCDF and Zarr files, **Preview
+structure** inspects the file and shows its groups and arrays.
+
+The version page of a tree dataset has a **Nodes** tab: the tree of nodes, with the schema and
+the coords of each node, and the preview of the default node. **Explore this node** opens the
+Data Explorer, which has a node picker. In the spec editor, the completions and the **Insert**
+panel offer the nodes of the dataset for `data.nodes` and their variables for `vars`. Refer to
+[Tree datasets, HDF5 and multi-file versions](tree-data.md).
 
 **Upload and ingest** sends the file directly to object storage through a signed PUT URL. The
 API never sees the bytes. Then the app starts an *ingest* run in the sandbox. The page
