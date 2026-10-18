@@ -73,6 +73,7 @@ from mapi_plugin_science import (
     lens_data,
     lgcp_data,
     network_data,
+    phylo_data,
     storm_data,
     traction_data,
     turing_data,
@@ -594,6 +595,22 @@ _register(
         spec=ggm_data.SACHS_SPEC_YAML,
     )
 )
+_register(
+    ExportCase(
+        case="e23",
+        title="Brain size of primates on their phylogeny",
+        notebook="E23_phylogenetic_regression.py",
+        model="sci.phylo_regression",
+        files=(phylo_data.CHALLENGES_FILE, phylo_data.CHALLENGES_TREE),
+        loader=lambda d: phylo_data.from_challenges(d / phylo_data.CHALLENGES_FILE),
+        synthetic=lambda: phylo_data.phylo_dataset(),
+        schema=phylo_data.PHYLO_SCHEMA,
+        project="biology",
+        dataset="primates301",
+        spec=phylo_data.PRIMATES_SPEC_YAML,
+    )
+)
+
 
 if __name__ == "__main__":  # pragma: no cover - the CLI
     raise SystemExit(main())

@@ -19,6 +19,7 @@ Their data are maps, images, fields on a regular grid and networks of variables.
 | `sci.areal_bym2@1` | Disease mapping on a graph of areas: iid, ICAR, proper CAR or BYM2 area effects, polygons kept for the maps (E18) | draws | predict, simulate, evaluate |
 | `sci.network_latent_space@1` | Ties between the nodes of a graph: pair covariates, sociality and Procrustes-aligned latent positions (E21) | draws | predict, simulate, evaluate |
 | `sci.graphical_model@1` | Gaussian graphical model: partial correlations and edge probabilities, dense LKJ or horseshoe neighbourhood selection (E19) | draws | predict, simulate, evaluate |
+| `sci.phylo_regression@1` | Regression across species with residuals correlated by a phylogeny: iid, Brownian, Pagel's lambda or OU (E23) | draws | predict, simulate, evaluate |
 
 Outputs that are fields declare a `grid` (`OutputDecl.grid`). The Model Explorer shows them in
 its **Fields** section, and the `sci.*` plot recipes draw them.

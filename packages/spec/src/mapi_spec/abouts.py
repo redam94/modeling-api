@@ -2402,6 +2402,88 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "speed": ["minutes", "can_wait"],
         },
     ),
+    "sci.phylo_regression": _a(
+        "Traits of related species",
+        "Measures how one trait of species changes with other traits when related species are "
+        "alike because they share ancestors. It also predicts a missing trait of a species "
+        "from its relatives.",
+        [
+            "You have one value of a trait for each species and a family tree of the species",
+            "You want a slope across species that does not count shared ancestry many times",
+            "You want to fill in a trait that some species do not have, from their relatives",
+            "You want to compare models of how traits change along the tree",
+        ],
+        [
+            "You do not have a tree with branch lengths for the species",
+            "You have many measurements of each species and the spread inside a species is "
+            "important (the model uses one value for each species)",
+            "Some species do not have a value of a predictor (remove them first)",
+            "You have more than about 2000 species (each step uses a dense matrix)",
+        ],
+        [
+            "One value of the trait for each species (it can be missing for some species)",
+            "One value of each predictor for each species, with no missing values",
+            "The tree as one row for each node: the parent node, the branch length and the "
+            "label of each tip, with tip labels equal to the species names",
+        ],
+        [
+            "The traits change at random along the branches of the tree (Brownian motion), "
+            "with a species part (lambda) or a pull to an optimum (ou)",
+            "The slopes are the same in all parts of the tree",
+            "The trait and the predictors are positive when the log is taken",
+        ],
+        [
+            "The slope of each predictor, with a range",
+            "The trait of each species predicted from its relatives, with a range",
+            "The part of the variation that follows the tree (lambda)",
+            "A score for each species that lets you compare the kinds of model (elpd_loo)",
+        ],
+        _X,
+        _SEC,
+        "Use the brain volume, body mass and group size of 186 primates on a tree of 73 "
+        "million years. With the tree, the slope of group size drops from 0.12 to about 0.03.",
+        related=["sci.lgcp_grid"],
+        expert="Phylogenetic generalised least squares in PyMC (pymc-challenges E23): trait ~ "
+        "MvNormal(a + X b, K) on log, standardised values; a ~ N(0, 1), b ~ N(0, 0.5). K from "
+        "the shared branch length C = A diag(l) A^T, R = C / T: iid sigma^2 I; brownian "
+        "sigma^2 R; lambda sigma^2 (lam R + (1 - lam) I), lam ~ Beta(1, 1); ou eta2 "
+        "exp(-rho D / 2T), with the prior on the identified Brownian rate eta2 rho by default. "
+        "Missing traits are predicted by Gaussian conditioning on the observed species. "
+        "log_likelihood holds the leave-one-out conditional density from Q = K^-1 (one "
+        "inverse for each draw), so elpd_loo compares the kinds; the marginal density gives "
+        "the opposite ranking. Sampled with NUTS on dense O(N^3) factorisations.",
+        refs=[
+            (
+                "Felsenstein (1985), Phylogenies and the comparative method, The American "
+                "Naturalist",
+                None,
+            ),
+            (
+                "Pagel (1999), Inferring the historical patterns of biological evolution, Nature",
+                None,
+            ),
+            (
+                "Street, Navarrete, Reader and Laland (2017), Coevolution of cultural "
+                "intelligence, extended life history, sociality, and brain size in primates, "
+                "PNAS",
+                None,
+            ),
+            (
+                "Burkner, Gabry and Vehtari (2021), Efficient leave-one-out cross-validation "
+                "for Bayesian non-factorized normal and Student-t models, Computational "
+                "Statistics",
+                "https://arxiv.org/abs/1810.10559",
+            ),
+        ],
+        fits={
+            "goal": ["explain_drivers", "predict_values"],
+            "data_shape": ["table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["seconds", "minutes"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -2430,6 +2512,7 @@ SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
         "sci.areal_bym2",
         "sci.network_latent_space",
         "sci.graphical_model",
+        "sci.phylo_regression",
     }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse

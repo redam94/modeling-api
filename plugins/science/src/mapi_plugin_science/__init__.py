@@ -31,7 +31,10 @@ Ported from the pymc-challenges case studies:
   nodes: pair covariates, sociality and Procrustes-aligned latent positions (E21);
 * ``sci.graphical_model`` - a Gaussian graphical model: partial correlations and edge
   probabilities from a dense LKJ model or horseshoe neighbourhood regressions (E19, Sachs
-  protein signalling).
+  protein signalling);
+* ``sci.phylo_regression`` - a regression across species whose residuals are correlated by
+  a phylogeny (i.i.d., Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck), with traits
+  predicted from relatives (E23, primate brains).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -50,6 +53,7 @@ from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
 from mapi_plugin_science.lens import StrongLensModel, StrongLensSettings
 from mapi_plugin_science.lgcp import LGCPGridModel, LGCPGridSettings
 from mapi_plugin_science.network import NetworkLatentSpaceModel, NetworkLatentSpaceSettings
+from mapi_plugin_science.phylo import PhyloRegressionModel, PhyloRegressionSettings
 from mapi_plugin_science.storm import StormLocalisationModel, StormLocalisationSettings
 from mapi_plugin_science.traction import TractionForceModel, TractionForceSettings
 from mapi_plugin_science.turing import TuringPatternModel, TuringPatternSettings
@@ -73,6 +77,7 @@ PLUGINS = (
     ArealBYM2Model,
     NetworkLatentSpaceModel,
     GraphicalModel,
+    PhyloRegressionModel,
 )
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
@@ -96,6 +101,8 @@ __all__ = [
     "LGCPGridSettings",
     "NetworkLatentSpaceModel",
     "NetworkLatentSpaceSettings",
+    "PhyloRegressionModel",
+    "PhyloRegressionSettings",
     "StormLocalisationModel",
     "StormLocalisationSettings",
     "StrongLensModel",

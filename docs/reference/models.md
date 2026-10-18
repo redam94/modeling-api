@@ -43,6 +43,7 @@ each lift likelihood.
 | `sci.areal_bym2@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e18_areal` |
 | `sci.network_latent_space@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e21_network` |
 | `sci.graphical_model@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e19_ggm` |
+| `sci.phylo_regression@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e23_phylo` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
@@ -381,6 +382,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e79` | `sci.cmb_field` | `planck_smica_patches.npz`, `planck_theory_tt.txt` | `astronomy/planck_smica_lmc` |
 | `e21` | `sci.network_latent_space` | `lazega_cowork.txt`, `lazega_attributes.txt` | `sociology/lazega_coworkers` |
 | `e19` | `sci.graphical_model` | `sachs2005.txt`, `sachs2005_consensus.txt` | `biology/sachs_cd3cd28` |
+| `e23` | `sci.phylo_regression` | `primates301.csv`, `primates301_tree.rda` | `biology/primates301` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -1152,3 +1154,74 @@ you must not pool them). On the 853 cells, the dense model finds 8 edges with a 
 above 0.5. Seven of them are in the consensus network. The fit takes approximately 40 seconds
 with nutpie. The neighbourhood model finds 6 edges, all in the consensus network, in
 approximately 2 minutes.
+
+### `sci.phylo_regression` — traits of related species on a tree (E23)
+
+A regression of one trait of species on other traits. Related species are alike because
+they share ancestors, so the residuals are correlated by a phylogeny (a tree with branch
+lengths). The model reads the correlation from the shared branch length of two species. On
+standardised log values it is `trait ~ MvNormal(intercept + X slope, K)`. The `kind` setting
+selects `K`:
+
+| `kind` | Residual correlation |
+|---|---|
+| `iid` | None: `sigma² I` (the tree is not used) |
+| `brownian` | Brownian motion along the branches: `sigma² R` (`R` = shared length ÷ tree depth) |
+| `lambda` | Pagel's lambda: `sigma² (lam R + (1 - lam) I)`, a tree part and a species part |
+| `ou` | Ornstein-Uhlenbeck: `eta2 exp(-rho D / 2T)` on the distance `D` through the tree (`T` = tree depth) |
+
+For `ou`, the data identify only the Brownian rate `rate = eta2 rho`. Thus the default prior
+is on `rate` (`ou_parameterisation: rate`). This removes the ridge of the `(eta2, rho)`
+posterior.
+
+**Inputs.** `species` (categorical, fixed) and `node` (integer, fixed). The target is
+`trait(species)`; missing values are permitted. Each name in `predictors` is a variable on
+`species` with no missing values. The tree is four variables on `node`: `parent` (the
+position of the parent node, -1 at the root), `branch_length` (the branch above the node),
+`is_tip` and `tip_label` (the species name of each tip). Each species label must be a tip
+label. The tree can have unary nodes.
+
+**Outputs.** `trait(species)`: the trait of each species, predicted from the other species
+by Gaussian conditioning, in the units of the target. For a fitted species, the prediction
+leaves that species out. For a species without a trait value, it uses all fitted species.
+With `log_target`, the expected value is the conditional median. `slope(predictor)`: the
+slopes. If the score data changes a fitted species' predictors, its prediction moves by the
+change in its regression mean. The fit also keeps `posterior_predictive/trait(species)` (the
+same predictions as conditional means, beside `observed_data/trait` for the `sci.phylogeny`
+plot) and the tree in `constant_data`.
+
+**Score modes.** `predict` and `evaluate` predict each requested species from its relatives.
+`simulate` draws new traits for the requested species from the fitted parameters, without
+the observed traits. Use a `mask_block` split on `species` to hold out species: the model
+predicts them from the species that remain.
+
+**LOO.** `log_likelihood/trait` holds the leave-one-out conditional density of each observed
+species, `log p(y_i | y_-i)`, from `Q = K⁻¹`. Thus `elpd_loo` compares the four kinds
+correctly (a workflow can fit each `kind` and compare them). The marginal density of each
+species gives the opposite ranking.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `kind` | `lambda` | `iid`, `brownian`, `lambda` or `ou` |
+| `predictors` | `[body, group_size]` | The predictor variables on `species` |
+| `log_target`, `log_predictors` | true, true | Take the log first (the values must be positive) |
+| `standardise` | true | Centre and scale by the fitted species |
+| `intercept_sd`, `slope_sd` | 1, 0.5 | Normal prior sd of the intercept and of each slope |
+| `sigma_rate` | 1 | Rate of the exponential prior of `sigma` |
+| `lambda_alpha`, `lambda_beta` | 1, 1 | Beta prior of `lam` |
+| `ou_parameterisation` | `rate` | `rate`: prior on `eta2 rho`; `variance`: priors on `eta2` and `rho` |
+| `rate_sd`, `rho_sd`, `eta2_sd` | 1, 5, 5 | Half-normal prior sd for the `ou` parameters |
+| `jitter` | 1e-6 | `ou`: added to the diagonal of `K` |
+
+`from_challenges` reads `primates301.csv` and the tree `primates301_tree.rda` (an R
+`ape::phylo` object). It reads the R file without R. `read_tree` also reads Newick files. The
+dataset has the 186 species with a body mass and a group size; 151 of them have a brain
+volume. The tree is pruned to these species. With the notebook settings (4 chains of 1000
+draws), the `lambda` fit gives a group-size slope of 0.027 ± 0.020 and `lam` = 0.954. The
+`iid` fit gives 0.123. `elpd_loo` is about 130 for `lambda`, 91 for `brownian` and `ou`, and
+15 for `iid`.
+
+**Typed errors.** `SCHEMA_INVALID` when a species has no tip of the same label, the tree has
+no single root or has a cycle, a predictor has missing values, a value is not positive for a
+log, or fewer than 3 species have a trait value. `UNSEEN_LEVELS` when a score requests a
+species that the fit did not see.

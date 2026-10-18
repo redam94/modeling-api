@@ -16,6 +16,7 @@ EXPECTED_IDS = {
     "sci.areal_bym2",
     "sci.network_latent_space",
     "sci.graphical_model",
+    "sci.phylo_regression",
 }
 
 

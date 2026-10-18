@@ -49,6 +49,7 @@ def test_the_ported_cases_are_registered() -> None:
     assert {"e07", "e50", "e60", "e77", "e80"} <= set(EXPORTS)
     assert {"e07", "e18", "e50", "e60", "e80"} <= set(EXPORTS)
     assert {"e07", "e19", "e50", "e60", "e80"} <= set(EXPORTS)
+    assert {"e07", "e23", "e50", "e60", "e80"} <= set(EXPORTS)
     models = {p.id for p in PLUGINS}
     for cid, case in EXPORTS.items():
         assert case.case == cid and cid[0] == "e" and cid[1:].isdigit()
