@@ -1636,7 +1636,8 @@ _node("model.summary", NodeKind.MODEL, _a(
     expert="Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari "
     "et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives "
     "the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of "
-    "several dims joined by ', '), at most 200 values; read them with "
+    "several dims joined by ', '), at most 200 values; max_rhat and min_ess check all the "
+    "values (up to 20 000). Read the values with "
     "nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no "
     "sample_stats.",
     refs=[("Vehtari, Gelman, Simpson, Carpenter & Bürkner (2021), Rank-normalization, "
@@ -1647,8 +1648,11 @@ _node("model.summary", NodeKind.MODEL, _a(
    outputs={"table": PortType.TABLE},
    fields={"params": _f("object", "For each parameter: mean, sd, hdi_low, hdi_high, rhat "
                                   "and ess_bulk"),
-           "max_rhat": _f("number", "The largest R-hat (null if it cannot be measured)"),
-           "min_ess": _f("number", "The smallest bulk effective sample size"),
+           "max_rhat": _f("number", "The largest R-hat of all the values, also the ones "
+                                    "the table does not keep (null if it cannot be "
+                                    "measured)"),
+           "min_ess": _f("number", "The smallest bulk effective sample size of all the "
+                                   "values"),
            "n_divergent": _f("integer", "The number of divergent transitions (null if "
                                         "unknown)"),
            "n_params": _f("integer", "The number of summarised values"),

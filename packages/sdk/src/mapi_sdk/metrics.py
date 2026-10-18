@@ -388,8 +388,9 @@ def elpd(
         except Exception as exc:  # report, never fail the run on a diagnostic
             skipped[n] = f"ArviZ could not compute it: {type(exc).__name__}"
             continue
-        values[n] = float(res.elpd)
-        if detail is not None:
+        values[n] = _finite(res.elpd)
+        if detail is not None and values[n] is not None:
+            # a -inf log-likelihood gives NaN: no detail (a null elpd would not load)
             detail[n] = _elpd_detail(res)
         k = getattr(res, "pareto_k", None)
         if n == "elpd_loo" and k is not None:

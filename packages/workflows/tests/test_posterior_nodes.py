@@ -173,6 +173,34 @@ def test_evaluate_ppc_node_passes_a_well_specified_model() -> None:
     assert strict["ok"] is False
 
 
+def test_summary_gate_sees_values_the_table_drops(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mapi_workflows.runtime import posterior
+
+    rng = np.random.default_rng(5)
+    bad = rng.normal(size=(2, 200)) + np.array([[0.0], [5.0]])  # chains 5 sd apart
+    post = xr.Dataset(
+        {
+            "field": (("chain", "draw", "cell"), rng.normal(size=(2, 200, 250))),
+            "z": (("chain", "draw"), bad),
+        }
+    )
+    table, truncated = posterior_summary(post)
+    assert truncated and "z" not in table
+    max_rhat, min_ess, complete = posterior.convergence(post)
+    assert min_ess is not None and min_ess < 50
+    assert complete and max_rhat is not None and max_rhat > 1.5
+    assert posterior.convergence(post, max_entries=10)[2] is False
+
+    mv = _fit(["x"]).outputs["model"]
+    monkeypatch.setattr(posterior, "_posterior", lambda *_: post)
+    out = run_node("model.summary", model=mv)
+    assert out.result["truncated"] is True
+    assert out.result["max_rhat"] == pytest.approx(max_rhat)
+    monkeypatch.setattr(posterior, "convergence", lambda p, n: (None, None, False))
+    capped = run_node("model.summary", model=mv)
+    assert any("check only the first" in w for w in capped.warnings_plain)
+
+
 def test_evaluate_ppc_refuses_models_without_draws() -> None:
     mv = _fit(["x"], model="toy.linear@^1").outputs["model"]
     with pytest.raises(MapiError) as exc:
@@ -220,12 +248,40 @@ def test_compare_stacking_node_weighs_candidates() -> None:
     assert "Stacking was not possible" in str(fb.result["note_plain"])
     assert fb.warnings_plain
 
+    # pointwise values of different lengths (different data): pseudo-BMA, and the note says why
+    for c, keep in zip(cands, (80, 60), strict=True):
+        loo = c["candidates"][0]["elpd"]["elpd_loo"]
+        loo["pointwise"] = [loo["elpd"] / keep] * keep
+    diff = run_node("compare.stacking", candidates=cands).result
+    assert diff["method"] == "pseudo_bma_se" and "different lengths" in str(diff["note_plain"])
+
+    # metric: elpd_waic reads the waic estimates, not the loo ones
+    waic = [named(with_x, "with_x"), named(without, "without")]
+    for c, val in zip(waic, (-10.0, -500.0), strict=True):
+        cand = c["candidates"][0]
+        loo = dict(cand["elpd"]["elpd_loo"])
+        cand["elpd"] = {"elpd_waic": {**loo, "elpd": val, "pointwise": None, "se": None}}
+        cand["metrics"] = {"elpd_waic": val}
+    wr = run_node("compare.stacking", {"metric": "elpd_waic"}, candidates=waic).result
+    assert wr["method"] == "pseudo_bma" and wr["best"] == "with_x"
+    with pytest.raises(MapiError, match="no elpd_loo"):
+        run_node("compare.stacking", candidates=waic)
+
     # a candidate without elpd: a plain error that names it
     bare = named(without, "bare")
     bare["candidates"][0].pop("elpd")
     bare["candidates"][0]["metrics"] = {"rmse": 1.0}
     with pytest.raises(MapiError, match="bare"):
         run_node("compare.stacking", candidates=[cands[0], bare])
+
+
+def test_pseudo_bma_blocks_do_not_change_the_weights(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mapi_workflows.runtime import posterior
+
+    lpd = np.random.default_rng(2).normal(-1, 0.3, size=(500, 3))
+    whole = pseudo_bma_weights(lpd, n_bootstrap=300, seed=4)
+    monkeypatch.setattr(posterior, "_PBMA_BLOCK_VALUES", 7 * 500)  # blocks of 7 draws
+    np.testing.assert_allclose(pseudo_bma_weights(lpd, n_bootstrap=300, seed=4), whole)
 
 
 _LADDER = """

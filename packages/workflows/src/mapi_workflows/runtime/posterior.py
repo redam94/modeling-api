@@ -43,8 +43,10 @@ from mapi_workflows.runtime.values import ModelValue, NodeContext, NodeOutcome
 from pydantic import JsonValue, ValidationError
 
 __all__ = [
+    "MAX_CONVERGENCE_ENTRIES",
     "MAX_SUMMARY_ENTRIES",
     "POSTERIOR_NODES",
+    "convergence",
     "posterior_summary",
     "ppc_checks",
     "pseudo_bma_weights",
@@ -52,6 +54,9 @@ __all__ = [
 ]
 
 MAX_SUMMARY_ENTRIES: Final = 200
+MAX_CONVERGENCE_ENTRIES: Final = 20_000
+"""Values ``max_rhat``/``min_ess`` of ``model.summary`` check (all of the selected
+variables up to this many; the table keeps only :data:`MAX_SUMMARY_ENTRIES`)."""
 """The most parameter entries (vector elements included) ``model.summary`` reports."""
 _DRAW_DIMS: Final = ("chain", "draw")
 
@@ -154,6 +159,43 @@ def posterior_summary(
     return out, truncated
 
 
+def convergence(
+    posterior: xr.Dataset,
+    names: Sequence[str] | None = None,
+    *,
+    max_entries: int = MAX_CONVERGENCE_ENTRIES,
+) -> tuple[float | None, float | None, bool]:
+    """``(max R-hat, min bulk ESS, complete)`` over every value of ``names`` (default: all
+    variables), not only the ones a truncated summary table shows. ``complete`` is False
+    when more than ``max_entries`` values exist and only the first ones were checked."""
+    st = _stats()
+    wanted = list(names) if names else [str(v) for v in posterior.data_vars]
+    rhats: list[float] = []
+    esss: list[float] = []
+    seen = 0
+    for var in wanted:
+        da = posterior[var]
+        if not set(_DRAW_DIMS) <= set(map(str, da.dims)) or not np.issubdtype(da.dtype, np.number):
+            continue
+        for _, x in _entries(var, da):
+            if seen >= max_entries:
+                return _max(rhats), _min(esss), False
+            seen += 1
+            if x.shape[0] > 1 and (r := _num(st.rhat(x))) is not None:
+                rhats.append(r)
+            if (e := _num(st.ess_bulk(x))) is not None:
+                esss.append(e)
+    return _max(rhats), _min(esss), True
+
+
+def _max(v: list[float]) -> float | None:
+    return max(v) if v else None
+
+
+def _min(v: list[float]) -> float | None:
+    return min(v) if v else None
+
+
 def _divergences(bundle: Bundle) -> int | None:
     stats = bundle.model.groups.get("sample_stats")
     if stats is None or "diverging" not in stats:
@@ -182,8 +224,13 @@ def _summary_node(ctx: NodeContext) -> NodeOutcome:
     params, truncated = posterior_summary(post, names, hdi_prob=prob)
     if not params:
         raise data_error("the posterior has no numeric variables with draws to summarise")
-    rhats = [v["rhat"] for v in params.values() if v["rhat"] is not None]
-    esss = [v["ess_bulk"] for v in params.values() if v["ess_bulk"] is not None]
+    if truncated:
+        # the gate must see every value, not only the ones the table keeps
+        max_rhat, min_ess, complete = convergence(post, names)
+    else:
+        rhats = [v["rhat"] for v in params.values() if v["rhat"] is not None]
+        esss = [v["ess_bulk"] for v in params.values() if v["ess_bulk"] is not None]
+        max_rhat, min_ess, complete = _max(rhats), _min(esss), True
     n_div = _divergences(mv.bundle)
     cols = ["param", "mean", "sd", "hdi_low", "hdi_high", "rhat", "ess_bulk"]
     rows: list[dict[str, JsonValue]] = [{"param": k, **v} for k, v in params.items()]
@@ -206,10 +253,15 @@ def _summary_node(ctx: NodeContext) -> NodeOutcome:
             f"the summary shows only the first {MAX_SUMMARY_ENTRIES} values. Select fewer "
             "variables in vars."
         )
+    if not complete:
+        warns.append(
+            f"max_rhat and min_ess check only the first {MAX_CONVERGENCE_ENTRIES} values. "
+            "Select fewer variables in vars."
+        )
     result: dict[str, JsonValue] = {
         "params": {k: dict(v) for k, v in params.items()},
-        "max_rhat": max(rhats) if rhats else None,
-        "min_ess": min(esss) if esss else None,
+        "max_rhat": max_rhat,
+        "min_ess": min_ess,
         "n_divergent": n_div,
         "hdi_prob": prob,
         "n_params": len(params),
@@ -421,15 +473,23 @@ def stacking_weights(lpd: np.ndarray) -> np.ndarray:
     return w / w.sum() if w.sum() > 0 else np.full(k, 1.0 / k)
 
 
+_PBMA_BLOCK_VALUES = 262_144
+"""Dirichlet weights one block of the pseudo-BMA+ bootstrap holds (2 MB of float64)."""
+
+
 def pseudo_bma_weights(lpd: np.ndarray, *, n_bootstrap: int = 1000, seed: int = 0) -> np.ndarray:
     """Pseudo-BMA+ weights: Akaike-type weights ``softmax(elpd)`` averaged over a Bayesian
     bootstrap (Dirichlet(1) weights on the ``N`` points) of the ``(N, K)`` pointwise elpd."""
     x = np.asarray(lpd, dtype=float)
     n = x.shape[0]
     rng = np.random.default_rng(seed)
-    alpha = rng.dirichlet(np.ones(n), size=n_bootstrap)  # (B, N)
-    z = n * (alpha @ x)  # (B, K)
-    out: np.ndarray = _softmax(z, axis=1).mean(axis=0)
+    # the (B, N) Dirichlet weights in blocks of about 2 MB: B = N = 10 000 would be 800 MB
+    block = max(1, _PBMA_BLOCK_VALUES // max(n, 1))
+    total = np.zeros(x.shape[1])
+    for start in range(0, n_bootstrap, block):
+        alpha = rng.dirichlet(np.ones(n), size=min(block, n_bootstrap - start))  # (b, N)
+        total += _softmax(n * (alpha @ x), axis=1).sum(axis=0)
+    out: np.ndarray = total / n_bootstrap
     return out
 
 

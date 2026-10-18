@@ -235,6 +235,39 @@ def test_elpd_paths() -> None:
     assert d2 and d2[0].code == "PARETO_K_HIGH"
 
 
+def test_elpd_detail_pointwise_cap_and_non_finite() -> None:
+    from mapi_sdk.bundle import MetricsReport
+    from mapi_sdk.metrics import MAX_POINTWISE_ELPD
+
+    post = xr.Dataset({"mu": (("chain", "draw"), RNG.normal(size=(2, 50)))})
+    ll = xr.Dataset({"y": (("chain", "draw", "obs"), RNG.normal(-1, 0.05, (2, 50, 8)))})
+    detail: dict[str, dict[str, object]] = {}
+    values, _, _ = elpd({"posterior": post, "log_likelihood": ll}, ["elpd_loo"], detail=detail)
+    d = detail["elpd_loo"]
+    assert d["n"] == 8 and isinstance(d["pointwise"], list) and len(d["pointwise"]) == 8
+    assert sum(d["pointwise"]) == pytest.approx(values["elpd_loo"], rel=1e-4)
+    # above the cap: n is kept, the pointwise values are not
+    big = xr.Dataset(
+        {"y": (("chain", "draw", "obs"), RNG.normal(-1, 0.05, (2, 20, MAX_POINTWISE_ELPD + 1)))}
+    )
+    detail = {}
+    elpd({"posterior": post.isel(draw=slice(20)), "log_likelihood": big},
+         ["elpd_loo"], detail=detail)  # fmt: skip
+    assert detail["elpd_loo"]["pointwise"] is None
+    assert detail["elpd_loo"]["n"] == MAX_POINTWISE_ELPD + 1
+    # a zero likelihood (-inf): no value and no detail, and the report still round-trips
+    dead = ll.copy(deep=True)
+    dead["y"][..., 0] = -np.inf
+    detail = {}
+    values, _, _ = elpd({"posterior": post, "log_likelihood": dead}, ["elpd_loo"], detail=detail)
+    assert values["elpd_loo"] is None and "elpd_loo" not in detail
+    report = MetricsReport(values=values, elpd={})
+    assert MetricsReport.model_validate_json(report.model_dump_json()) == report
+    # a bundle written before this fix (a null elpd) loads without the entry
+    old = '{"values": {"elpd_loo": null}, "elpd": {"elpd_loo": {"elpd": null, "n": 8}}}'
+    assert MetricsReport.model_validate_json(old).elpd == {}
+
+
 def test_default_summaries_fit_the_stored_quantile_grid() -> None:
     """Defaults never ask for quantiles the grid cannot reach; explicit requests still fail."""
     from mapi_sdk.summarise import default_summary_names
