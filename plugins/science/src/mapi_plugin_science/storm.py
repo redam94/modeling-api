@@ -936,9 +936,9 @@ class _Geometry:
         return {
             "x": ((c0 + post["x_px"]) * self.pixel_nm).assign_attrs(units="nm"),
             "y": ((r0 + post["y_px"]) * self.pixel_nm).assign_attrs(units="nm"),
-            "photons": np.exp(post["logN"]).assign_attrs(units="photons"),
-            "background": np.exp(post["logb"]).assign_attrs(units="photons/px"),
-            "psf_sd": (np.exp(post["logs"]) * self.pixel_nm).assign_attrs(units="nm"),
+            "photons": xr.ufuncs.exp(post["logN"]).assign_attrs(units="photons"),
+            "background": xr.ufuncs.exp(post["logb"]).assign_attrs(units="photons/px"),
+            "psf_sd": (xr.ufuncs.exp(post["logs"]) * self.pixel_nm).assign_attrs(units="nm"),
         }
 
     def observed_patches(self) -> xr.DataArray:
@@ -999,11 +999,11 @@ class _Geometry:
                     out[i, j, f] = self.offset + self.scale * img
         P = self.P
         for k in range(self.n_spots):
-            f = where.get(int(self.frames[k]))
-            if f is None:
+            pos = where.get(int(self.frames[k]))
+            if pos is None:
                 continue
             r0, c0 = int(self.origin[k, 1]), int(self.origin[k, 2])
-            out[:, :, f, r0 : r0 + P, c0 : c0 + P] = self.offset + self.scale * patch[:, :, k]
+            out[:, :, pos, r0 : r0 + P, c0 : c0 + P] = self.offset + self.scale * patch[:, :, k]
         return out
 
 
