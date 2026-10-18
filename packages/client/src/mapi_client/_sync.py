@@ -30,6 +30,7 @@ from mapi_spec.api import (
     ExecutorHealth,
     ExecutorUpdate,
     Health,
+    IngestAssembly,
     IngestMapping,
     KillSwitches,
     KillSwitchUpdate,
@@ -68,6 +69,7 @@ from mapi_spec.api import (
     TokenCreate,
     TokenCreated,
     UploadCreate,
+    UploadInspection,
     UploadSession,
     UsageGroupBy,
     UsagePeriod,
@@ -89,6 +91,7 @@ from mapi_spec.tokens import DEFAULT_TOKEN_TTL_DAYS, BudgetPeriod, TokenStatus
 from pydantic import JsonValue
 
 from mapi_client import _calls as calls
+from mapi_client import _calls_m4 as m4calls
 from mapi_client._common import (
     USER_AGENT,
     ScoreResult,
@@ -461,13 +464,29 @@ class Datasets(_Resource, DatasetAboutMixin):
         self,
         dataset_id: str,
         *,
-        upload_id: str,
-        mapping: IngestMapping,
+        upload_id: str | None = None,
+        mapping: IngestMapping | None = None,
+        assembly: IngestAssembly | None = None,
         message: str | None = None,
         idempotency_key: str | None = None,
     ) -> DatasetVersion:
-        body = DatasetVersionCreate(upload_id=upload_id, mapping=mapping, message=message)
+        """Ingest one upload (``upload_id`` + ``mapping``) or, from M4, several combined into
+        one version (``assembly``) - exactly one of the two."""
+        body = DatasetVersionCreate(
+            upload_id=upload_id, mapping=mapping, assembly=assembly, message=message
+        )
         return self._c.send(calls.create_dataset_version(dataset_id, body, idempotency_key))
+
+    def inspect_upload(
+        self, dataset_id: str, upload_id: str, *, idempotency_key: str | None = None
+    ) -> Run:
+        """Start (or find) the ``inspect`` run listing the groups and arrays of an upload
+        (M4). Read the result with :meth:`upload_inspection` once the run has finished."""
+        return self._c.send(m4calls.inspect_upload(dataset_id, upload_id, idempotency_key))
+
+    def upload_inspection(self, dataset_id: str, upload_id: str) -> UploadInspection:
+        """What the inspect run found (M4); ``NOT_READY`` (409) while it is running."""
+        return self._c.send(m4calls.get_upload_inspection(dataset_id, upload_id))
 
     def versions(self, dataset_id: str, *, limit: int | None = None) -> Paginator[DatasetVersion]:
         return self._c.page_iter(lambda cur: calls.list_dataset_versions(dataset_id, limit, cur))
