@@ -9,7 +9,10 @@ Ported from the pymc-challenges case studies:
 * ``sci.traction_force`` - a Gaussian inverse problem in Fourier space that recovers a 2-D
   traction field from a displacement field, with exact posterior draws (E60);
 * ``sci.strong_lens`` - a pixel forward model of a galaxy-scale strong lens, with a
-  pixelated source and critical curves per draw (E80).
+  pixelated source and critical curves per draw (E80);
+* ``sci.storm_localisation`` - single-molecule localisation in raw EMCCD STORM frames: spot
+  detection and camera calibration in NumPy, then a batched pixel-integrated Gaussian PSF
+  fit with Poisson counts, and a super-resolved render (E58).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -21,6 +24,7 @@ from importlib import metadata as _metadata
 from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
 from mapi_plugin_science.lens import StrongLensModel, StrongLensSettings
 from mapi_plugin_science.lgcp import LGCPGridModel, LGCPGridSettings
+from mapi_plugin_science.storm import StormLocalisationModel, StormLocalisationSettings
 from mapi_plugin_science.traction import TractionForceModel, TractionForceSettings
 
 try:
@@ -28,7 +32,13 @@ try:
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
     __version__ = "0.8.0"
 
-PLUGINS = (LGCPGridModel, FisherKPPModel, TractionForceModel, StrongLensModel)
+PLUGINS = (
+    LGCPGridModel,
+    FisherKPPModel,
+    TractionForceModel,
+    StrongLensModel,
+    StormLocalisationModel,
+)
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
 __all__ = [
@@ -37,6 +47,8 @@ __all__ = [
     "FisherKPPSettings",
     "LGCPGridModel",
     "LGCPGridSettings",
+    "StormLocalisationModel",
+    "StormLocalisationSettings",
     "StrongLensModel",
     "StrongLensSettings",
     "TractionForceModel",
