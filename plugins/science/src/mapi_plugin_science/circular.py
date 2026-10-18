@@ -504,9 +504,16 @@ def _read(
 # ============================================================================ PyTensor
 
 
+def _log_i0(k: Any) -> Any:
+    """``log I0(k)`` as E81 writes it (``pt.i0`` is fast in every backend; ``pt.ive`` is
+    slow under numba), with the large-``k`` expansion where ``I0`` would overflow."""
+    big = k - 0.5 * pt.log(TWO_PI * k) + 1.0 / (8.0 * k) + 1.0 / (16.0 * k**2)
+    return pt.switch(k < 300.0, pt.log(pt.i0(pt.minimum(k, 300.0))), big)
+
+
 def _vm_lp(theta: np.ndarray, e1: Any, e2: Any) -> Any:
     k = pt.sqrt(e1**2 + e2**2 + _EPS)
-    return e1 * np.cos(theta) + e2 * np.sin(theta) - math.log(TWO_PI) - (pt.log(pt.ive(0, k)) + k)
+    return e1 * np.cos(theta) + e2 * np.sin(theta) - math.log(TWO_PI) - _log_i0(k)
 
 
 def _pn_lp(theta: np.ndarray, m1: Any, m2: Any) -> Any:
