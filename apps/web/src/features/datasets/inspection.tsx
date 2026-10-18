@@ -11,7 +11,8 @@ import { Checkbox } from "@/components/ui/overlays";
 import { Badge, Input, NativeSelect } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
 
-import { ROLES, splitDims, type CoordSource, type Hdf5CoordDraft, type Hdf5Problem, type Hdf5VarDraft } from "./mapping";
+import { MAX_UNITS_CHARS, ROLES, splitDims, type CoordSource, type Hdf5CoordDraft, type Hdf5Field, type Hdf5Problem, type Hdf5VarDraft, type Missing } from "./mapping";
+import { describedBy, indexesOf } from "./problem-list";
 import { ROOT } from "./tree";
 
 function shapeText(shape: number[] | undefined): string {
@@ -104,7 +105,9 @@ function labelArrays(arrays: InspectedArray[]): InspectedArray[] {
 
 /**
  * The raw HDF5 mapper: each selected array becomes a variable (name, node, one dim name per
- * axis, role, units); each dim gets a coordinate (an index, a 1-D array of labels or a range).
+ * axis, role, units, missing values); each dim gets a coordinate (an index, a 1-D array of
+ * labels or a range). Each input is marked invalid, and described by, only the problems about
+ * it: `problems` are the items of the list `problemsId` (rendered by the caller).
  */
 export function Hdf5Mapper({
   inspection,
@@ -113,6 +116,7 @@ export function Hdf5Mapper({
   onVar,
   onCoord,
   problems,
+  problemsId,
   expert,
 }: {
   inspection: UploadInspection;
@@ -121,11 +125,16 @@ export function Hdf5Mapper({
   onVar: (path: string, patch: Partial<Hdf5VarDraft>) => void;
   onCoord: (dim: string, node: string, patch: Partial<Hdf5CoordDraft>) => void;
   problems: Hdf5Problem[];
+  problemsId: string;
   expert: boolean;
 }) {
   const mapped = vars.filter((v) => v.include);
   const labels = labelArrays(inspection.arrays ?? []);
-  const flagged = new Set(problems.map((p) => p.key));
+  /** `aria-invalid` and `aria-describedby` of the input `field` of the row `key`. */
+  const aria = (key: string, field: Hdf5Field) => {
+    const idx = indexesOf(problems, (p) => p.key === key && p.field === field);
+    return { "aria-invalid": idx.length > 0, "aria-describedby": describedBy(problemsId, idx) };
+  };
   return (
     <div className="grid gap-4">
       {mapped.length ? (
@@ -144,7 +153,7 @@ export function Hdf5Mapper({
                   <th className="px-2 py-2 text-left font-medium">Variable</th>
                   <th className="px-2 py-2 text-left font-medium">Node</th>
                   <th className="px-2 py-2 text-left font-medium">Dims</th>
-                  <th className="px-2 py-2 text-left font-medium">Role and units</th>
+                  <th className="px-2 py-2 text-left font-medium">Role, units and missing values</th>
                 </tr>
               </thead>
               <tbody>
@@ -155,13 +164,13 @@ export function Hdf5Mapper({
                       <span className="block text-xs text-muted-foreground tabular">{shapeText(v.shape)}</span>
                     </td>
                     <td className="px-2 py-1.5">
-                      <Input aria-label={`Variable name for ${v.path}`} value={v.name} onChange={(e) => onVar(v.path, { name: e.target.value })} aria-invalid={flagged.has(v.path)} className="h-8 w-36 font-mono" />
+                      <Input aria-label={`Variable name for ${v.path}`} value={v.name} onChange={(e) => onVar(v.path, { name: e.target.value })} {...aria(v.path, "name")} className="h-8 w-36 font-mono" />
                     </td>
                     <td className="px-2 py-1.5">
-                      <Input aria-label={`Node for ${v.path}`} value={v.node} onChange={(e) => onVar(v.path, { node: e.target.value })} className="h-8 w-32 font-mono" placeholder="/" />
+                      <Input aria-label={`Node for ${v.path}`} value={v.node} onChange={(e) => onVar(v.path, { node: e.target.value })} {...aria(v.path, "node")} className="h-8 w-32 font-mono" placeholder="/" />
                     </td>
                     <td className="px-2 py-1.5">
-                      <Input aria-label={`Dims for ${v.path}`} value={v.dims} onChange={(e) => onVar(v.path, { dims: e.target.value })} className="h-8 w-40 font-mono" placeholder={v.shape.map((_, i) => `dim_${i}`).join(", ")} />
+                      <Input aria-label={`Dims for ${v.path}`} value={v.dims} onChange={(e) => onVar(v.path, { dims: e.target.value })} {...aria(v.path, "dims")} className="h-8 w-40 font-mono" placeholder={v.shape.map((_, i) => `dim_${i}`).join(", ")} />
                       <span className="block text-xs text-muted-foreground">
                         {splitDims(v.dims).length} of {v.shape.length} {v.shape.length === 1 ? "axis" : "axes"}
                       </span>
@@ -171,7 +180,12 @@ export function Hdf5Mapper({
                         <NativeSelect aria-label={`Role for ${v.path}`} value={v.role} onChange={(e) => onVar(v.path, { role: e.target.value as Role })} className="h-8 w-32">
                           {ROLES.map((r) => <option key={r}>{r}</option>)}
                         </NativeSelect>
-                        <Input aria-label={`Units for ${v.path}`} placeholder="units" value={v.units} onChange={(e) => onVar(v.path, { units: e.target.value })} className="h-8 w-24" />
+                        <Input aria-label={`Units for ${v.path}`} placeholder="units" value={v.units} maxLength={MAX_UNITS_CHARS} onChange={(e) => onVar(v.path, { units: e.target.value })} {...aria(v.path, "units")} className="h-8 w-24" />
+                        <NativeSelect aria-label={`Missing values of ${v.path}`} value={v.missing} onChange={(e) => onVar(v.path, { missing: e.target.value as Missing })} className="h-8 w-auto max-w-full">
+                          <option value="forbid">forbid NaN</option>
+                          <option value="allow">allow NaN</option>
+                          <option value="mask">mask NaN</option>
+                        </NativeSelect>
                       </div>
                     </td>
                   </tr>
@@ -199,14 +213,18 @@ export function Hdf5Mapper({
                 </tr>
               </thead>
               <tbody>
-                {coords.map((c) => (
-                  <tr key={`${c.node}:${c.dim}`} className="border-b align-top last:border-0">
+                {coords.map((c) => {
+                  const key = `coord:${c.node}:${c.dim}`;
+                  // The same dim can have a coordinate in two sibling nodes: name the node too.
+                  const of = c.node === ROOT ? c.dim : `${c.dim} (node ${c.node})`;
+                  return (
+                  <tr key={key} className="border-b align-top last:border-0">
                     <td className="px-2 py-1.5">
                       <Mono>{c.dim}</Mono>
                       {c.node !== ROOT ? <span className="block text-xs text-muted-foreground">node <Mono>{c.node}</Mono></span> : null}
                     </td>
                     <td className="px-2 py-1.5">
-                      <NativeSelect aria-label={`Labels of ${c.dim}`} value={c.source} onChange={(e) => onCoord(c.dim, c.node, { source: e.target.value as CoordSource })} className="h-8 w-40" aria-invalid={flagged.has(`coord:${c.node}:${c.dim}`)}>
+                      <NativeSelect aria-label={`Labels of ${of}`} value={c.source} onChange={(e) => onCoord(c.dim, c.node, { source: e.target.value as CoordSource })} className="h-8 w-auto max-w-full" {...aria(key, "source")}>
                         <option value="index">index (0, 1, 2…)</option>
                         <option value="path">an array of the file</option>
                         <option value="range">a range</option>
@@ -214,7 +232,7 @@ export function Hdf5Mapper({
                     </td>
                     <td className="px-2 py-1.5">
                       {c.source === "path" ? (
-                        <NativeSelect aria-label={`Label array for ${c.dim}`} value={c.path} onChange={(e) => onCoord(c.dim, c.node, { path: e.target.value })} className="h-8 w-56">
+                        <NativeSelect aria-label={`Label array for ${of}`} value={c.path} onChange={(e) => onCoord(c.dim, c.node, { path: e.target.value })} className="h-8 w-auto max-w-full" {...aria(key, "path")}>
                           <option value="">Select a 1-D array</option>
                           {labels.map((a) => (
                             <option key={a.path} value={a.path}>
@@ -224,15 +242,16 @@ export function Hdf5Mapper({
                         </NativeSelect>
                       ) : c.source === "range" ? (
                         <div className="flex flex-wrap gap-1.5">
-                          <Input aria-label={`Range start for ${c.dim}`} placeholder="start: 0 or 2024-01-01" value={c.start} onChange={(e) => onCoord(c.dim, c.node, { start: e.target.value })} className="h-8 w-40 font-mono" />
-                          <Input aria-label={`Range step for ${c.dim}`} placeholder="step: 1 or W-MON" value={c.step} onChange={(e) => onCoord(c.dim, c.node, { step: e.target.value })} className="h-8 w-32 font-mono" />
+                          <Input aria-label={`Range start for ${of}`} placeholder="start: 0 or 2024-01-01" value={c.start} onChange={(e) => onCoord(c.dim, c.node, { start: e.target.value })} {...aria(key, "start")} className="h-8 w-56 font-mono" />
+                          <Input aria-label={`Range step for ${of}`} placeholder="step: 1 or W-MON" value={c.step} onChange={(e) => onCoord(c.dim, c.node, { step: e.target.value })} {...aria(key, "step")} className="h-8 w-44 font-mono" />
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">positions 0, 1, 2…</span>
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

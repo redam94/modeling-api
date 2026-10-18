@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { useStartInspect, useUploadInspection } from "./api";
 import { ArrayBrowser, Hdf5Mapper } from "./inspection";
 import {
+  combineFileText,
+  combineSummaryText,
   coordDrafts,
   DEFAULT_PLACEMENT,
   formatFromFilename,
@@ -43,7 +45,9 @@ import {
   type Hdf5CoordDraft,
   type Hdf5VarDraft,
   type Placement,
+  type PlacementProblem,
 } from "./mapping";
+import { describedBy, indexesOf, ProblemList } from "./problem-list";
 
 const SAMPLE_BYTES = 256 * 1024;
 const ACCEPT = ".csv,.tsv,.txt,.parquet,.pq,.zip,.nc,.nc4,.h5,.hdf5,.he5";
@@ -141,7 +145,9 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
       new Map(
         sources.map((s) => [
           s.key,
-          tabularFormat(s.format)
+          !s.format
+            ? [`${s.file.name}: the app cannot tell the format of this file from its name. Select its format, or remove the file.`]
+            : tabularFormat(s.format)
             ? validateMappings(s.mappings).map((p) => p.message)
             : s.format === "hdf5"
               ? s.inspection
@@ -152,11 +158,11 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
       ),
     [sources],
   );
-  const blocking =
-    !sources.length ||
-    sources.some((s) => !s.format) ||
-    placementProblems.length > 0 ||
-    [...problemsBySource.values()].some((p) => p.length > 0);
+  const problemCount = placementProblems.length + [...problemsBySource.values()].reduce((n, p) => n + p.length, 0);
+  const blocking = !sources.length || sources.some((s) => !s.format) || problemCount > 0;
+  // Problems of several files show once, in "How the files combine"; a file's own problems
+  // show under its fields.
+  const sharedProblems = placementProblems.filter((p) => p.index === null).map((p) => p.message);
 
   /** Create the upload session of a file and put its bytes (once). */
   const ensureUploaded = async (s: Source, index: number): Promise<string> => {
@@ -217,7 +223,7 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
   const single = sources.length === 1;
 
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
       {phase === "pick" || !sources.length ? (
         <div
           onDragOver={(e) => {
@@ -261,8 +267,9 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
               editable={editable}
               expert={expert}
               problems={problemsBySource.get(s.key) ?? []}
-              placementProblems={placementProblems.filter((p) => p.index === i).map((p) => p.message)}
-              inspecting={startInspect.isPending || (progress?.index === i && phase === "map")}
+              placementProblems={placementProblems.filter((p) => p.index === i)}
+              // Only the file whose inspect request is pending (or that uploads for it) is busy.
+              inspecting={(startInspect.isPending && Boolean(s.upload) && startInspect.variables === s.upload?.session.id) || (progress?.index === i && phase === "map")}
               onPatch={(p) => patch(s.key, p)}
               onFormat={(f) => void setFormat(s, f)}
               onInspect={() => void inspect(s, i)}
@@ -301,16 +308,10 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
               : "Each file goes to a node of the tree (/ is the top). Two or more files in the same node must stack along a dim, for example one file per year, or merge, for example sales in one file and spend in another."}
           </p>
           <CombineSummary sources={sources} />
-          {placementProblems.length ? (
-            <ul aria-label="Problems with the files" className="grid gap-0.5 text-xs text-destructive">
-              {placementProblems.map((p, i) => <li key={i}>{p.message}</li>)}
-            </ul>
-          ) : null}
+          <ProblemList id="placement-problems" label="Problems with the files" messages={sharedProblems} />
         </section>
-      ) : single && placementProblems.length ? (
-        <ul aria-label="Problems with the files" className="grid gap-0.5 text-xs text-destructive">
-          {placementProblems.map((p, i) => <li key={i}>{p.message}</li>)}
-        </ul>
+      ) : single && editable ? (
+        <ProblemList id="placement-problems" label="Problems with the files" messages={sharedProblems} />
       ) : null}
 
       {sources.length && editable ? (
@@ -318,9 +319,16 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
           <Field label="Version message (optional)" htmlFor="version-msg" className="min-w-64 flex-1">
             <Input id="version-msg" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Q3 refresh" />
           </Field>
-          <Button onClick={() => void start()} disabled={blocking}>
+          <Button onClick={() => void start()} disabled={blocking} aria-describedby="upload-blocked">
             <UploadCloud /> Upload and ingest
           </Button>
+          <p id="upload-blocked" role="status" className={cn("basis-full text-xs text-muted-foreground", !blocking && "sr-only")}>
+            {blocking
+              ? problemCount
+                ? `Correct ${problemCount === 1 ? "the problem" : `the ${problemCount} problems`} above to upload.`
+                : "Add a file to upload."
+              : ""}
+          </p>
         </div>
       ) : null}
 
@@ -336,6 +344,8 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
   );
 }
 
+const mixed = (group: Source[]) => new Set(group.map((s) => s.placement.combine)).size > 1;
+
 /** Node → files, as the version will hold them. */
 function CombineSummary({ sources }: { sources: Source[] }) {
   const byNode = new Map<string, Source[]>();
@@ -347,19 +357,10 @@ function CombineSummary({ sources }: { sources: Source[] }) {
         .map(([node, group]) => (
           <li key={node} className="flex flex-wrap items-baseline gap-1.5">
             <Mono className="font-semibold">{node}</Mono>
-            <span className="text-muted-foreground">
-              {group[0]!.placement.combine === "node"
-                ? group.length === 1
-                  ? "←"
-                  : "← select how these files combine:"
-                : group[0]!.placement.combine === "concat"
-                  ? `← stacked along ${group[0]!.placement.concatDim || "?"}:`
-                  : `← merged (${group[0]!.placement.join}):`}
-            </span>
+            <span className="text-muted-foreground">{combineSummaryText(group.map((s) => s.placement))}</span>
             {group.map((s) => (
-              <Badge key={s.key} variant="outline">
-                {s.file.name}
-                {s.placement.combine === "concat" ? ` = ${s.placement.concatLabel || "?"}` : ""}
+              <Badge key={s.key} variant={mixed(group) ? "warning" : "outline"} className="max-w-full break-all whitespace-normal">
+                {combineFileText(s.file.name, s.placement, mixed(group))}
               </Badge>
             ))}
           </li>
@@ -376,7 +377,7 @@ interface SourceCardProps {
   editable: boolean;
   expert: boolean;
   problems: string[];
-  placementProblems: string[];
+  placementProblems: PlacementProblem[];
   inspecting: boolean;
   onPatch: (p: Partial<Source> | ((s: Source) => Partial<Source>)) => void;
   onFormat: (f: Format) => void;
@@ -391,13 +392,20 @@ function SourceCard({ datasetId, source: s, single, editable, expert, problems, 
   const canInspect = s.format === "hdf5" || s.format === "netcdf" || s.format === "zarr_zip";
   const showPlacement = !single;
   return (
-    <section aria-label={`File ${name}`} className={cn("grid gap-4", !single && "rounded-lg border p-3")}>
+    <section aria-label={`File ${name}`} className={cn("grid grid-cols-[minmax(0,1fr)] gap-4", !single && "rounded-lg border p-3")}>
       <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
         <FileUp className="size-4 text-muted-foreground" />
-        <Mono>{name}</Mono>
+        <Mono className="min-w-0 break-all">{name}</Mono>
         <span className="text-xs text-muted-foreground">{formatBytes(s.file.size)}</span>
         {editable ? (
-          <NativeSelect aria-label={`Format of ${name}`} value={s.format ?? ""} onChange={(e) => e.target.value && onFormat(e.target.value as Format)} className="h-8 w-auto">
+          <NativeSelect
+            aria-label={`Format of ${name}`}
+            value={s.format ?? ""}
+            onChange={(e) => e.target.value && onFormat(e.target.value as Format)}
+            className="h-8 w-auto max-w-full"
+            aria-invalid={!s.format}
+            aria-describedby={!s.format ? describedBy(`${s.key}-format`, [0]) : undefined}
+          >
             {s.format ? null : <option value="">Select a format</option>}
             {FORMATS.map((f) => (
               <option key={f.value} value={f.value}>
@@ -423,9 +431,10 @@ function SourceCard({ datasetId, source: s, single, editable, expert, problems, 
         ) : null}
       </div>
 
+      {!s.format && editable ? <ProblemList id={`${s.key}-format`} label={`Problems with ${name}`} messages={problems} /> : null}
       {showPlacement && editable ? <PlacementFields source={s} expert={expert} problems={placementProblems} onPatch={onPatch} /> : null}
       {single && editable ? (
-        <details className="rounded-lg border px-3 py-2" open={s.placement.node !== "/" || s.placement.combine !== "node"}>
+        <details className="rounded-lg border px-3 py-2" open={s.placement.node !== "/" || s.placement.combine !== "node" || placementProblems.length > 0}>
           <summary className="cursor-pointer text-[13px] font-medium">Put this file in a node of a tree (optional)</summary>
           <div className="pt-3">
             <PlacementFields source={s} expert={expert} problems={placementProblems} onPatch={onPatch} />
@@ -437,9 +446,9 @@ function SourceCard({ datasetId, source: s, single, editable, expert, problems, 
 
       {tabular && editable ? (
         <ColumnMappingTable
+          id={`${s.key}-mapping`}
           format={s.format!}
           mappings={s.mappings}
-          problems={problems}
           onMappings={(f) => onPatch((cur) => ({ mappings: f(cur.mappings) }))}
         />
       ) : null}
@@ -450,7 +459,6 @@ function SourceCard({ datasetId, source: s, single, editable, expert, problems, 
           source={s}
           expert={expert}
           inspecting={inspecting}
-          problems={s.format === "hdf5" && s.inspection ? problems : []}
           onInspect={onInspect}
           onPatch={onPatch}
         />
@@ -459,18 +467,24 @@ function SourceCard({ datasetId, source: s, single, editable, expert, problems, 
   );
 }
 
-function PlacementFields({ source: s, expert, problems, onPatch }: { source: Source; expert: boolean; problems: string[]; onPatch: SourceCardProps["onPatch"] }) {
+function PlacementFields({ source: s, expert, problems, onPatch }: { source: Source; expert: boolean; problems: PlacementProblem[]; onPatch: SourceCardProps["onPatch"] }) {
   const name = s.file.name;
   const p = s.placement;
   const set = (patch: Partial<Source["placement"]>) => onPatch((cur) => ({ placement: { ...cur.placement, ...patch } }));
+  const listId = `${s.key}-placement`;
+  /** `aria-invalid` and `aria-describedby` of one input (plus its Field hint, which an explicit describedby replaces). */
+  const aria = (field: PlacementProblem["field"], hint?: string) => {
+    const idx = indexesOf(problems, (x) => x.field === field);
+    return { "aria-invalid": idx.length > 0, "aria-describedby": describedBy(listId, idx, hint) };
+  };
   return (
     <div className="grid gap-2">
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Node" htmlFor={`node-${s.key}`} hint={expert ? undefined : "/ is the top of the tree. A file with groups puts them below this node."}>
-          <Input id={`node-${s.key}`} aria-label={`Node for ${name}`} value={p.node} onChange={(e) => set({ node: e.target.value })} className="h-8 w-44 font-mono" aria-invalid={problems.some((m) => m.includes("node") || m.includes("Node"))} />
+          <Input id={`node-${s.key}`} aria-label={`Node for ${name}`} value={p.node} onChange={(e) => set({ node: e.target.value })} className="h-8 w-44 font-mono" {...aria("node", expert ? undefined : `node-${s.key}-hint`)} />
         </Field>
-        <Field label="Combine with the other files of the node" htmlFor={`combine-${s.key}`}>
-          <NativeSelect id={`combine-${s.key}`} aria-label={`Combine rule for ${name}`} value={p.combine} onChange={(e) => set({ combine: e.target.value as Placement["combine"] })} className="h-8 w-60">
+        <Field label="Combine with the other files of the node" htmlFor={`combine-${s.key}`} className="min-w-0 max-w-full">
+          <NativeSelect id={`combine-${s.key}`} aria-label={`Combine rule for ${name}`} value={p.combine} onChange={(e) => set({ combine: e.target.value as Placement["combine"] })} className="h-8 w-auto max-w-full">
             <option value="node">the only file of the node</option>
             <option value="concat">stack along a dim (concatenate)</option>
             <option value="merge">merge the variables</option>
@@ -479,16 +493,16 @@ function PlacementFields({ source: s, expert, problems, onPatch }: { source: Sou
         {p.combine === "concat" ? (
           <>
             <Field label="Dim to stack along" htmlFor={`cdim-${s.key}`}>
-              <Input id={`cdim-${s.key}`} aria-label={`Stack dim for ${name}`} value={p.concatDim} onChange={(e) => set({ concatDim: e.target.value })} placeholder="year" className="h-8 w-28 font-mono" />
+              <Input id={`cdim-${s.key}`} aria-label={`Stack dim for ${name}`} value={p.concatDim} onChange={(e) => set({ concatDim: e.target.value })} placeholder="year" className="h-8 w-28 font-mono" {...aria("concat_dim")} />
             </Field>
-            <Field label="Label of this file" htmlFor={`clabel-${s.key}`}>
-              <Input id={`clabel-${s.key}`} aria-label={`Label of ${name}`} value={p.concatLabel} onChange={(e) => set({ concatLabel: e.target.value })} placeholder="2024" className="h-8 w-28 font-mono" />
+            <Field label="Label of this file" htmlFor={`clabel-${s.key}`} hint={expert ? undefined : "A number, such as 2024, or text, such as NL. A label with a leading zero, such as 007, stays text."}>
+              <Input id={`clabel-${s.key}`} aria-label={`Label of ${name}`} value={p.concatLabel} onChange={(e) => set({ concatLabel: e.target.value })} placeholder="2024" className="h-8 w-28 font-mono" {...aria("concat_label", expert ? undefined : `clabel-${s.key}-hint`)} />
             </Field>
           </>
         ) : null}
         {p.combine !== "node" ? (
-          <Field label="Align the coordinates" htmlFor={`join-${s.key}`}>
-            <NativeSelect id={`join-${s.key}`} aria-label={`Coordinate alignment for ${name}`} value={p.join} onChange={(e) => set({ join: e.target.value as Placement["join"] })} className="h-8 w-56">
+          <Field label="Align the coordinates" htmlFor={`join-${s.key}`} className="min-w-0 max-w-full">
+            <NativeSelect id={`join-${s.key}`} aria-label={`Coordinate alignment for ${name}`} value={p.join} onChange={(e) => set({ join: e.target.value as Placement["join"] })} className="h-8 w-auto max-w-full">
               <option value="exact">exact (the same labels)</option>
               <option value="inner">inner (the shared labels)</option>
               <option value="outer">outer (all labels, gaps are missing)</option>
@@ -496,11 +510,7 @@ function PlacementFields({ source: s, expert, problems, onPatch }: { source: Sou
           </Field>
         ) : null}
       </div>
-      {problems.length ? (
-        <ul className="grid gap-0.5 text-xs text-destructive">
-          {problems.map((m, i) => <li key={i}>{m}</li>)}
-        </ul>
-      ) : null}
+      <ProblemList id={listId} label={`Problems with the place of ${name}`} messages={problems.map((x) => x.message)} />
     </div>
   );
 }
@@ -510,7 +520,6 @@ function InspectSection({
   source: s,
   expert,
   inspecting,
-  problems,
   onInspect,
   onPatch,
 }: {
@@ -518,7 +527,6 @@ function InspectSection({
   source: Source;
   expert: boolean;
   inspecting: boolean;
-  problems: string[];
   onInspect: () => void;
   onPatch: SourceCardProps["onPatch"];
 }) {
@@ -540,6 +548,8 @@ function InspectSection({
     });
 
   const polling = Boolean(s.inspectRunId) && (inspection.isPending || inspection.data?.status === "pending");
+  const problems = ready && raw ? validateHdf5(s.hdf5Vars, s.hdf5Coords, ready.arrays ?? []) : [];
+  const problemsId = `${s.key}-hdf5`;
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -587,16 +597,13 @@ function InspectSection({
           vars={s.hdf5Vars}
           coords={s.hdf5Coords}
           expert={expert}
-          problems={validateHdf5(s.hdf5Vars, s.hdf5Coords, ready.arrays ?? [])}
+          problems={problems}
+          problemsId={problemsId}
           onVar={(path, p) => updateVars((vars) => vars.map((v) => (v.path === path ? { ...v, ...p } : v)))}
           onCoord={(dim, node, p) => onPatch((cur) => ({ hdf5Coords: cur.hdf5Coords.map((c) => (c.dim === dim && c.node === node ? { ...c, ...p } : c)) }))}
         />
       ) : null}
-      {problems.length ? (
-        <ul aria-label={`Problems with the mapping of ${name}`} className="grid gap-0.5 text-xs text-destructive">
-          {problems.map((m, i) => <li key={i}>{m}</li>)}
-        </ul>
-      ) : null}
+      {raw ? <ProblemList id={problemsId} label={`Problems with the mapping of ${name}`} messages={problems.map((p) => p.message)} /> : null}
     </div>
   );
 }
@@ -632,16 +639,21 @@ function CsvPreviewTable({ preview }: { preview: CsvPreview }) {
 }
 
 function ColumnMappingTable({
+  id,
   format,
   mappings,
-  problems,
   onMappings,
 }: {
+  id: string;
   format: Format;
   mappings: ColumnMapping[];
-  problems: string[];
   onMappings: (f: (ms: ColumnMapping[]) => ColumnMapping[]) => void;
 }) {
+  const problems = validateMappings(mappings);
+  const nameAria = (column: string) => {
+    const idx = indexesOf(problems, (p) => p.column === column);
+    return { "aria-invalid": idx.length > 0, "aria-describedby": describedBy(id, idx) };
+  };
   const update = (i: number, patch: Partial<ColumnMapping>) => onMappings((ms) => ms.map((m, j) => (j === i ? { ...m, ...patch } : m)));
   return (
     <div className="grid gap-2">
@@ -683,7 +695,7 @@ function ColumnMappingTable({
                   </NativeSelect>
                 </td>
                 <td className="px-2 py-1.5">
-                  <Input aria-label={`Name for ${m.column}`} value={m.name} disabled={m.as === "ignore"} onChange={(e) => update(i, { name: e.target.value })} className="h-8 w-40 font-mono" />
+                  <Input aria-label={`Name for ${m.column}`} value={m.name} disabled={m.as === "ignore"} onChange={(e) => update(i, { name: e.target.value })} className="h-8 w-40 font-mono" {...(m.as === "ignore" ? {} : nameAria(m.column))} />
                 </td>
                 <td className="px-2 py-1.5">
                   {m.as === "dim" ? (
@@ -726,11 +738,7 @@ function ColumnMappingTable({
           </tbody>
         </table>
       </div>
-      {problems.length ? (
-        <ul className="grid gap-0.5 text-xs text-destructive">
-          {problems.map((p, i) => <li key={i}>{p}</li>)}
-        </ul>
-      ) : null}
+      <ProblemList id={id} label="Problems with the column mapping" messages={problems.map((p) => p.message)} />
     </div>
   );
 }

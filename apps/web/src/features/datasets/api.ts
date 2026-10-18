@@ -32,6 +32,15 @@ export function inspectBackoff(n: number): number {
   return Math.min(5000, Math.round(500 * 1.5 ** Math.max(0, n - 1)));
 }
 
+/**
+ * The query of one inspect run of an upload. The run is part of the key: after a failed run,
+ * "List the arrays" starts a new run, and its key starts a new query (the old one keeps its
+ * error and never polls again).
+ */
+export function inspectionKey(scope: string, datasetId: string, uploadId: string | null, runId: string | null) {
+  return ["p", scope, "datasets", datasetId, "uploads", uploadId ?? "", "inspection", runId ?? ""] as const;
+}
+
 /** Why an inspect run ended without an inspection: the run's own problem when it has one. */
 export class InspectFailed extends Error {
   override name = "InspectFailed";
@@ -61,7 +70,7 @@ async function runProblem(runId: string, headers: Record<string, string>): Promi
 export function useUploadInspection(datasetId: string, uploadId: string | null, runId: string | null) {
   const s = useProjectScope();
   return useQuery({
-    queryKey: ["p", s.key, "datasets", datasetId, "uploads", uploadId ?? "", "inspection"],
+    queryKey: inspectionKey(s.key, datasetId, uploadId, runId),
     enabled: Boolean(uploadId && runId),
     staleTime: Infinity,
     retry: false,
