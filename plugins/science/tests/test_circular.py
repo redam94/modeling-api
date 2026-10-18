@@ -127,7 +127,9 @@ def test_the_schema_template_follows_the_kind(kind: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("spec", "schema"), [(WIND_SPEC_YAML, WIND_SCHEMA), (ACTIVITY_SPEC_YAML, ACTIVITY_SCHEMA)]
+    ("spec", "schema"),
+    [(WIND_SPEC_YAML, WIND_SCHEMA), (ACTIVITY_SPEC_YAML, ACTIVITY_SCHEMA)],
+    ids=["wind", "activity"],
 )
 def test_static_validation_resolves_the_specs(
     registry: Registry, spec: str, schema: object
