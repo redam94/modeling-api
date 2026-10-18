@@ -19,6 +19,7 @@ import pandas as pd
 import xarray as xr
 
 __all__ = [
+    "area_map_tree",
     "bundle_tree",
     "calibration_tree",
     "contributions",
@@ -30,11 +31,13 @@ __all__ = [
     "field_tree",
     "group_effects_tree",
     "panel_data",
+    "phylogeny_tree",
     "plans_dataset",
     "prior_beliefs_dataset",
     "profile_tree",
     "regime_tree",
     "response_curves",
+    "rose_tree",
     "score_tree",
     "vector_tree",
 ]
@@ -447,6 +450,121 @@ def regime_tree() -> xr.DataTree:
     )
 
 
+def area_map_tree() -> xr.DataTree:
+    """``posterior.rr(chain, draw, area)``: relative risk of a disease in 30 districts (a
+    6 x 5 grid; the last district also owns an island), the observed ratio ``smr`` and the
+    expected counts in ``observed_data``, polygons and neighbours in ``constant_data``. The
+    risk is high in the north-east; small districts have extreme observed ratios."""
+    rng = _rng(15)
+    nx, ny = 6, 5
+    names = [f"D{i + 1:02d}" for i in range(nx * ny)]
+    ring_x = np.full((nx * ny, 11), np.nan)
+    ring_y = np.full((nx * ny, 11), np.nan)
+    adjacency = np.zeros((nx * ny, nx * ny), dtype=np.int8)
+    for a in range(nx * ny):
+        r, c = divmod(a, nx)
+        ring_x[a, :5] = [c, c + 1, c + 1, c, c]
+        ring_y[a, :5] = [r, r, r + 1, r + 1, r]
+        for rr, cc in ((r + 1, c), (r, c + 1)):
+            if rr < ny and cc < nx:
+                adjacency[a, rr * nx + cc] = adjacency[rr * nx + cc, a] = 1
+    ring_x[-1, 6:10] = [6.3, 6.8, 6.6, 6.3]  # an island after the NaN gap
+    ring_y[-1, 6:10] = [5.2, 5.3, 5.8, 5.2]
+    col, row = np.arange(nx * ny) % nx, np.arange(nx * ny) // nx
+    log_rr = 0.5 * (col / nx + row / ny) - 0.5
+    expected = rng.uniform(2.0, 40.0, nx * ny)
+    cases = rng.poisson(expected * np.exp(log_rr))
+    sd = 1 / np.sqrt(expected + 4)
+    draws = np.exp(log_rr + rng.normal(size=(CHAINS, 60, nx * ny)) * sd)
+    area = {"area": names}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior": xr.Dataset({"rr": (("chain", "draw", "area"), draws)}, area),
+            "/observed_data": xr.Dataset(
+                {"smr": (("area",), cases / expected), "expected": (("area",), expected)}, area
+            ),
+            "/constant_data": xr.Dataset(
+                {
+                    "ring_x": (("area", "vertex"), ring_x),
+                    "ring_y": (("area", "vertex"), ring_y),
+                    "adjacency": (("area", "area_"), adjacency),
+                },
+                {"area": names, "area_": names},
+            ),
+        }
+    )
+
+
+def phylogeny_tree() -> xr.DataTree:
+    """``posterior_predictive.body_mass(chain, draw, species)`` on a tree of 16 species
+    (``parent``, ``branch_length``, ``is_tip`` and ``tip_label`` in ``constant_data``) and the
+    observed trait with three species missing. Close relatives have close values."""
+    rng = _rng(16)
+    # a balanced tree: node 0 is the root; nodes 1..14 are internal, 15..30 are tips
+    parent = np.array([-1] + [(i - 1) // 2 for i in range(1, 31)])
+    length = np.concatenate([[0.0], rng.uniform(0.3, 1.2, 30)])
+    is_tip = np.arange(31) >= 15
+    species = [f"sp_{chr(97 + i)}" for i in range(16)]
+    labels = [""] * 15 + species
+    trait = np.zeros(31)
+    for v in range(1, 31):
+        trait[v] = trait[parent[v]] + rng.normal(0, np.sqrt(length[v]))
+    truth = trait[15:] + 3.0
+    draws = truth + rng.normal(size=(CHAINS, 80, 16)) * rng.uniform(0.2, 0.6, 16)
+    observed = truth + rng.normal(0, 0.2, 16)
+    observed[[2, 9, 13]] = np.nan
+    node = {"node": np.arange(31)}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior_predictive": xr.Dataset(
+                {"body_mass": (("chain", "draw", "species"), draws)}, {"species": species}
+            ),
+            "/observed_data": xr.Dataset(
+                {"body_mass": (("species",), observed)}, {"species": species}
+            ),
+            "/constant_data": xr.Dataset(
+                {
+                    "parent": (("node",), parent),
+                    "branch_length": (("node",), length),
+                    "is_tip": (("node",), is_tip),
+                    "tip_label": (("node",), labels),
+                },
+                node,
+            ),
+        }
+    )
+
+
+def rose_tree() -> xr.DataTree:
+    """``posterior_predictive.wind_dir(chain, draw, report)`` and ``observed_data.wind_dir``:
+    400 wind directions in degrees. Most winds come from the south-west, some from the
+    north-east; the model has the south-west peak but too few north-east winds."""
+    rng = _rng(17)
+    n = 400
+    obs = np.where(
+        rng.random(n) < 0.7, rng.vonmises(np.radians(225), 3.0, n), rng.vonmises(0.8, 4.0, n)
+    )
+    pred = np.where(
+        rng.random((CHAINS, 50, n)) < 0.82,
+        rng.vonmises(np.radians(225), 2.5, (CHAINS, 50, n)),
+        rng.vonmises(0.8, 3.0, (CHAINS, 50, n)),
+    )
+    report = {"report": np.arange(n)}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior_predictive": xr.Dataset(
+                {"wind_dir": (("chain", "draw", "report"), np.degrees(pred) % 360)}, report
+            ),
+            "/observed_data": xr.Dataset(
+                {"wind_dir": (("report",), np.degrees(obs) % 360)}, report
+            ),
+        }
+    )
+
+
 def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     """``{recipe id: (input data, render options)}`` for every bundled recipe."""
     bundle = bundle_tree()
@@ -479,4 +597,7 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "core.rank_matrix": (group_effects_tree(), {}),
         "core.calibration": (calibration_tree(), {}),
         "core.state_sequence": (regime_tree(), {}),
+        "sci.area_map": (area_map_tree(), {"observed": "smr", "show_edges": True}),
+        "sci.phylogeny": (phylogeny_tree(), {}),
+        "sci.rose": (rose_tree(), {"units": "degrees", "bins": 16}),
     }

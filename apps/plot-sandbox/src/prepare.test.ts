@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { compile } from "vega-lite";
 
-import { deepMerge, preparePlotly, prepareVegaLite, resolvePlotlyRefs, SpecError } from "./prepare";
-import type { JsonObject } from "./protocol";
+import { deepMerge, polarSubplots, preparePlotly, prepareVegaLite, resolvePlotlyRefs, SpecError } from "./prepare";
+import { findUnsafeConstructs, type JsonObject } from "./protocol";
 import { contrast, DARK_VARIANTS, NON_TEXT_FILLS } from "./recipe-palette";
 
 const datasets = {
@@ -170,5 +170,55 @@ describe("preparePlotly", () => {
 describe("deepMerge", () => {
   it("merges objects recursively and replaces arrays", () => {
     expect(deepMerge({ a: { b: 1, c: [1] } }, { a: { c: [2], d: 3 } })).toEqual({ a: { b: 1, c: [2], d: 3 } });
+  });
+});
+
+describe("polar plots", () => {
+  const rose: JsonObject = {
+    data: [
+      { type: "barpolar", theta: { $ref: "bars.theta" }, r: { $ref: "bars.r" }, width: 90, marker: { color: "#1b2333" } },
+      { type: "scatterpolar", mode: "lines", theta: { $ref: "bars.theta" }, r: { $ref: "bars.r" }, line: { color: "#3366cc" } },
+      { type: "scatterpolar", subplot: "polar2", theta: [0, 90], r: [1, 2] },
+    ],
+    layout: {
+      polar: { angularaxis: { direction: "clockwise", rotation: 90, tickvals: [0, 90], ticktext: ["0 h", "6 h"] } },
+    },
+    frames: [{ name: "DJF", data: [{ type: "barpolar", r: { $ref: "bars.r" } }] }],
+  };
+  const bars = {
+    bars: [
+      { theta: 45, r: 3 },
+      { theta: 135, r: 5 },
+    ],
+  };
+
+  it("passes the safety check", () => {
+    expect(findUnsafeConstructs("plotly", rose)).toEqual([]);
+  });
+
+  it("resolves theta and r and themes every polar subplot", () => {
+    const out = preparePlotly(rose, bars, "dark");
+    const [bar, line] = out.data as JsonObject[];
+    expect(bar?.theta).toEqual([45, 135]);
+    expect(bar?.r).toEqual([3, 5]);
+    expect((bar?.marker as JsonObject).color).toBe(DARK_VARIANTS["#1b2333"]);
+    expect((line?.line as JsonObject).color).toBe(DARK_VARIANTS["#3366cc"]);
+    const polar = out.layout.polar as Record<string, Record<string, unknown>>;
+    expect(polar.bgcolor).toBe("rgba(0,0,0,0)");
+    // the spec's own settings win over the theme
+    expect(polar.angularaxis).toMatchObject({ direction: "clockwise", rotation: 90, ticktext: ["0 h", "6 h"] });
+    expect(polar.angularaxis?.gridcolor).toBe("#2A3140");
+    expect(polar.radialaxis?.color).toBe("#9AA3B2");
+    expect((out.layout.polar2 as Record<string, unknown>).bgcolor).toBe("rgba(0,0,0,0)");
+    expect((out.frames[0] as JsonObject).data).toEqual([{ type: "barpolar", r: [3, 5] }]);
+  });
+
+  it("adds no polar subplot to a cartesian plot", () => {
+    const out = preparePlotly({ data: [{ type: "scatter", x: [1], y: [2] }], layout: {} }, {}, "light");
+    expect(out.layout.polar).toBeUndefined();
+    expect(polarSubplots([{ type: "barpolar" }, { type: "scatterpolar", subplot: "polar3" }], {})).toEqual([
+      "polar",
+      "polar3",
+    ]);
   });
 });
