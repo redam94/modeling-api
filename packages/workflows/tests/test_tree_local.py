@@ -123,6 +123,8 @@ def test_local_runner_fits_and_backtests_a_tree_dataset() -> None:
     assert mv.data is not None and set(mv.data.data_vars) == {"revenue", "spend"}
     metrics = res.values["metrics"]
     assert isinstance(metrics, dict) and res.node("bt").result["n_folds"] == 2  # type: ignore[index]
+    bt = res.node("bt").result
+    assert bt is not None and any("full tree dataset" in w for w in bt["warnings_plain"])  # type: ignore[union-attr]
 
 
 def test_nodes_on_a_plain_dataset_fail_the_node() -> None:

@@ -528,7 +528,9 @@ separate entry, with the labels of its dimensions in brackets (`beta[north]`, or
 `nodes.s.params.sigma.mean`. The result also gives `max_rhat`, `min_ess` and `n_divergent`
 (`null` if the model does not record divergences). Thus you can stop a workflow when the
 sampler did not converge. The node gives a maximum of 200 entries. If there are more, it
-sets `truncated` and shows a warning.
+sets `truncated` and shows a warning. `max_rhat` and `min_ess` always check all the values
+of the variables in `vars` (a maximum of 20 000), also the values that the table does not
+keep. Above 20 000 values, the node shows a warning.
 
 **`evaluate.ppc`** simulates new data from the model on its fit data (the `predict` score
 mode with predictive draws) and compares the simulated data with the observed target:
@@ -570,17 +572,17 @@ same order. The node cannot find a difference in order.
   label: Fit and forecast
   inputs: {data: sims.scores}
   with: {recipe: core.ppc_fan, settings: {levels: [0.5, 0.9]}}
-- id: fields
+- id: fitted
   use: plot.render
   inputs: {model: fit0.model}
-  with: {recipe: sci.field_map, source: auto}
+  with: {recipe: core.fit_vs_actual, source: predictions}
 - id: fc
   use: model.forecast
   inputs: {model: fit0.model}
   with: {horizon: 8}
 - id: report
   use: report.summary
-  inputs: {tests: [adf.result], plots: [fan.plot, fields.plot, fc.plot]}
+  inputs: {tests: [adf.result], plots: [fan.plot, fitted.plot, fc.plot]}
 ```
 
 `model.score` runs a score mode of the model, the same as a score run. `request` gives the
@@ -604,8 +606,9 @@ input, or both. With `source: auto` (the default), it tries these inputs in this
 Set `source` to `data`, `model` or `predictions` to use only one of them. The result fields
 are `recipe` (the id and version that drew the plot), `kind` (`vega-lite` or `plotly`),
 `source` and `bytes`. If no input has the data that the recipe needs, the node fails with
-`SCHEMA_INVALID`, and the reason of each input is in the error. An unknown recipe id fails
-with `REF_UNRESOLVED`. A plot that is larger than 1 MiB fails with `PAYLOAD_TOO_LARGE`: use
+`SCHEMA_INVALID`, and the reason of each input is in the error. The validation of the
+workflow finds an unknown recipe id (`REF_UNRESOLVED` on `/nodes/<i>/with/recipe`). The
+recipe checks its `settings` only when the node runs. A plot that is larger than 1 MiB fails with `PAYLOAD_TOO_LARGE`: use
 fewer draws, panels or frames in the settings of the recipe.
 
 `model.forecast` also draws its fan chart (`core.ppc_fan`) on its `plot` output.
@@ -614,7 +617,8 @@ cannot be drawn, the node gives a warning and has no `plot` output. Its other ou
 change.
 
 `report.summary` adds a `plot` section for each plot on its `plots` port. The section
-contains the plot (`plot`) and its caption (`text`). A plot that is larger than 256 KB, or
+contains the plot (`plot`) and its caption (`text`). Only the JSON report and the web run
+view show these sections. The HTML report does not show them. A plot that is larger than 256 KB, or
 plots after the first 1 MiB of plots, stay in the node output. Then the section tells which
 node has the plot. The run view in the web app shows the plots of the nodes and of the
 report.
@@ -622,6 +626,36 @@ report.
 A plot output is a `PlotSpec` document with its datasets in the document (`inline_arrow`).
 The sandbox puts a plot of up to 256 KB in the node result. It writes a larger plot to
 `out/<port>.json`, and the server reads it back (up to `MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES`).
+The server puts each plot output through the plot sanitizer before it keeps it, and again
+each time it sends it. A plot that the sanitizer refuses fails its node with `PLOT_UNSAFE`.
+
+### Tree datasets
+
+A workflow input can be a tree dataset (a dataset version with groups, or an `xr.DataTree`
+in the local runner). `model.fit` and `model.backtest` take `nodes` and `join`, as a spec's
+`data` block does:
+
+```yaml
+- id: fit
+  use: model.fit
+  inputs: {data: inputs.data}
+  with:
+    model: toy.tree_linear@^1
+    nodes: {sales: {path: /sales}, media: {path: /media}}
+    join: inner                       # exact (default), inner or outer
+```
+
+The model reads the merged variables of the selected nodes. A tree-input model also gets the
+whole tree. `model.score`, `model.forecast` and `plot.render` (`source: predictions`) select
+the same nodes from a tree on their `data` input, and give a tree-input model the tree of that
+input, not the tree of its fit. With `source: data`, `plot.render` reads all the groups of a
+tree input (for example `geometry` for `sci.area_map` or `tree` for `sci.phylogeny`).
+
+Limits:
+
+- A backtest of a tree dataset gives the full tree to each fold. A tree-input model that
+  reads its target from the tree can see the test window. The node shows a warning.
+- `search.grid` has no `nodes` parameter.
 
 ### Failures, retries and time limits
 
@@ -774,6 +808,11 @@ Workflows, revisions, runs, node runs, events, schedules and triggers are tenant
 row-level security, as all other data are.
 
 ## Known limitations in v0.5
+
+- A backtest of a tree dataset gives the full tree to each fold (see
+  [Tree datasets](#tree-datasets)). `search.grid` has no `nodes` parameter.
+- The HTML report does not show `plot` sections. The JSON report and the web run view show
+  them.
 
 - Detrending, STL adjustment and lag/lead features are not separate nodes. Use
   `transform.steps` with the preprocessing steps of the catalog.

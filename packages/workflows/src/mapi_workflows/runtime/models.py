@@ -668,6 +668,11 @@ def backtest_model(
         season = 1
     kind = _scored_kind(plan)
     folds = plan_fold_list(plan)
+    if base.tree is not None and _reads_tree(ctx, str(spec.model.use)):
+        warns.append(
+            "each fold gives the model the full tree dataset: a model that reads the target "
+            "from the tree can see the test periods."
+        )
     out: list[FoldForecast] = []
     for i, f in enumerate(folds):
         ctx.check()
@@ -687,6 +692,13 @@ def backtest_model(
         "dim": tdim,
     }
     return out, info, warns
+
+
+def _reads_tree(ctx: NodeContext, ref: str) -> bool:
+    try:
+        return _registry(ctx).model(ref).manifest().capabilities.input == "tree"
+    except (MapiError, KeyError, ValueError):
+        return False
 
 
 def _scored_kind(plan: Mapping[str, Any]) -> str:

@@ -326,3 +326,34 @@ def test_the_sandbox_writes_score_datasets(fitted: tuple[Any, ModelValue]) -> No
     side, files = output_files(_job("model.score@1.0.0"), out)
     assert side.outputs["scores"].object == "out/scores/data.zarr.zip"
     assert "out/scores/schema.json" in {f.name for f in files}
+
+
+def test_validation_resolves_the_recipe_of_plot_render() -> None:
+    from mapi_workflows.testing import test_registry
+
+    def doc(recipe: str) -> dict[str, Any]:
+        return {
+            "apiVersion": "mapi/v1",
+            "kind": "Workflow",
+            "metadata": {"name": "p", "project": "demo"},
+            "inputs": {"data": {"type": "dataset"}},
+            "nodes": [
+                {
+                    "id": "p",
+                    "use": "plot.render",
+                    "with": {"recipe": recipe},
+                    "inputs": {"data": "inputs.data"},
+                }
+            ],
+        }
+
+    catalog = test_registry().catalog()
+    for good in ("core.ppc_fan", "sci.field_map@^1"):
+        assert validate_workflow(doc(good), catalog=catalog).valid
+    for bad in ("core.no_such_recipe", "ts.nope@^1"):
+        res = validate_workflow(doc(bad), catalog=catalog)
+        assert not res.valid
+        assert [(i.code, i.pointer) for i in res.issues] == [
+            (ErrorCode.REF_UNRESOLVED, "/nodes/0/with/recipe")
+        ]
+    assert validate_workflow(doc("core.no_such_recipe")).valid  # no catalog: no check
