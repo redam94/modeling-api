@@ -110,7 +110,8 @@ def _range(coord: Hdf5Coord, n: int, pointer: str) -> np.ndarray:
                 pointer,
             )
         try:
-            return pd.date_range(start=start, periods=n, freq=step).values.astype("datetime64[ns]")
+            dates = pd.date_range(start=start, periods=n, freq=step)
+            return np.asarray(dates, dtype="datetime64[ns]")
         except (ValueError, TypeError, OverflowError) as exc:
             raise _bad(
                 "the date range cannot be built from this start and frequency",
