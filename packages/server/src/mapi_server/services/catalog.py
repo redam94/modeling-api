@@ -2,9 +2,10 @@
 
 Catalog JSON is produced *outside* the control plane — by ``mapi-runner describe`` at image
 build time (``MAPI_CATALOG_PATH``) or by a sandboxed ``describe`` run — and cached in the
-``catalogs`` table per **image digest** (locally: ``sha256`` of ``uv.lock``). The server
-only ever parses it as JSON with :class:`mapi_spec.catalog.Catalog`; it never imports step,
-model or plot code.
+``catalogs`` table per **image digest** (``sha256`` of the image's ``uv.lock``; in a source
+checkout also of the workspace sources, :func:`mapi_server.settings.checkout_image_digest`).
+The server only ever parses it as JSON with :class:`mapi_spec.catalog.Catalog`; it never
+imports step, model or plot code.
 """
 
 from __future__ import annotations

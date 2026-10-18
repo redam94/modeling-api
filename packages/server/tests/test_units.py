@@ -16,7 +16,7 @@ from mapi_server.db import models as m
 from mapi_server.executors.docker import LABEL_NONCE, DockerExecutor
 from mapi_server.services.runs import Scope, apply_transition, create_run
 from mapi_server.services.signing import SIGNATURE_ALG, BundleSigner
-from mapi_server.settings import Settings, local_image_digest
+from mapi_server.settings import Settings, checkout_image_digest, local_image_digest
 from mapi_server.storage import MemoryObjectStore, list_all
 from mapi_spec._types import Duration
 from mapi_spec.executor import PLUGIN_LABEL, ExecState, Isolation, RunKind, RunSubmit
@@ -62,6 +62,36 @@ def test_settings_from_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     lock.write_text("lock")
     assert Settings(uv_lock_path=lock).resolve_image_digest() == local_image_digest(lock)
     assert Settings(image_digest="sha256:" + "1" * 64).resolve_image_digest().endswith("1" * 64)
+
+
+def test_a_source_checkout_digest_follows_the_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``make dev`` (no MAPI_UV_LOCK_PATH): a code change without a lock change still gives
+    a new digest, so the catalog is described again; an explicit lock (the images) does not
+    look at sources, so api and worker images agree."""
+    lock = tmp_path / "uv.lock"
+    lock.write_text("lock")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("MAPI_IMAGE_DIGEST", raising=False)
+    monkeypatch.delenv("MAPI_UV_LOCK_PATH", raising=False)
+    assert Settings().resolve_image_digest() == local_image_digest(lock)  # no sources
+    recipe = tmp_path / "packages" / "plots-core" / "src" / "mapi_plots" / "recipes.py"
+    recipe.parent.mkdir(parents=True)
+    recipe.write_text("TITLE = 'Fan'")
+    first = Settings().resolve_image_digest()
+    assert first == checkout_image_digest(lock) != local_image_digest(lock)
+    cache = recipe.parent / "__pycache__" / "recipes.cpython-312.pyc"
+    cache.parent.mkdir()
+    cache.write_bytes(b"\0")
+    assert Settings().resolve_image_digest() == first  # bytecode is not source
+    recipe.write_text("TITLE = 'Fit and forecast'")
+    assert Settings().resolve_image_digest() != first
+    plugin = tmp_path / "plugins" / "science" / "src" / "mapi_science" / "lens.py"
+    plugin.parent.mkdir(parents=True)
+    plugin.write_text("")
+    assert Settings().resolve_image_digest() not in (first, local_image_digest(lock))
+    assert Settings(uv_lock_path=lock).resolve_image_digest() == local_image_digest(lock)
 
 
 def test_database_url_forms() -> None:
