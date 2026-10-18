@@ -35,6 +35,7 @@ from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.scorecard import CheckThresholds
 from mapi_spec.webhooks import WebhookEventType
 from mapi_spec.workflow import WorkflowRunStatus
+from mapi_spec.workflow_nodes import NODE_IMPLEMENTATIONS
 from mapi_spec.workflow_templates import TS_READINESS_ARIMAX
 from mapi_workflows.testing import weekly_series
 from sqlalchemy import func, select
@@ -95,7 +96,7 @@ async def _start(client: httpx.AsyncClient, wf_id: str, **body: Any) -> dict[str
 async def test_node_catalog_and_template_gallery(client: httpx.AsyncClient) -> None:
     page = (await client.get("/v1/catalog/workflow-nodes", params={"limit": 200})).json()
     ids = [n["id"] for n in page["items"]]
-    assert "test.adf" in ids and "model.fit" in ids and len(ids) == 51
+    assert "test.adf" in ids and "model.fit" in ids and len(ids) == len(NODE_IMPLEMENTATIONS)
     tests = (await client.get("/v1/catalog/workflow-nodes", params={"kind": "test"})).json()
     assert all(n["kind"] == "test" for n in tests["items"])
     adf = (await client.get("/v1/catalog/workflow-nodes/test.adf")).json()

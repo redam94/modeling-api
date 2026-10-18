@@ -47,6 +47,19 @@ CONTEXT: list[dict[str, Any]] = [
         "inputs": {"table": "cmp0.table", "models": ["fit0.model"]},
     },
     {"id": "report", "use": "report.summary", "inputs": {"tests": ["adf.result"]}},
+    *(
+        {
+            "id": nid,
+            "use": "model.fit",
+            "inputs": {"data": "inputs.data"},
+            "with": {
+                "model": "toy.bayes_linear@^1",
+                "settings": {"features": feats},
+                "evaluate": {"metrics": ["elpd_loo"]},
+            },
+        }
+        for nid, feats in (("fit_a", []), ("fit_b", ["x"]))
+    ),
 ]
 
 

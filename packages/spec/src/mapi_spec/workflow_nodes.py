@@ -1560,7 +1560,7 @@ _node("evaluate.ppc", NodeKind.EVALUATE, _a(
     ["The coverage of the 50% and 90% ranges, the PIT distance, a p-value and a verdict"],
     _I, _SEC, "88% of the values are in the 90% range and p = 0.41 for the mean: the "
     "check passes.",
-    related=["model.fit", "model.summary", "core.ppc"],
+    related=["model.fit", "model.summary", "evaluate.metrics"],
     fits={"goal": ["validate_model"]},
     expert="Posterior predictive draws come from the score path (predict, output kind "
     "predictive) on the fit data. coverage_p is the share of observations inside the "
