@@ -543,7 +543,11 @@ class Reconciler:
             if up is not None:
                 detail = f"{detail}; retry at class {up.value}"
         return Problem.from_code(
-            error_code, detail[:2000], untrusted_text=payload.untrusted_text if payload else None
+            error_code,
+            detail[:2000],
+            # M4: the typed issues the run failed with (INGEST_UNSAFE_FILE, ...)
+            errors=payload.errors if payload else (),
+            untrusted_text=payload.untrusted_text if payload else None,
         )
 
     async def _finalizing(self, run: m.Run) -> None:

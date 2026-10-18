@@ -303,8 +303,11 @@ async def test_a_multi_file_tree_version_is_fitted_with_the_real_runner(
         # the worker's code travels in the detail; its text only as untrusted text
         assert "INGEST_UNSAFE_FILE" in refused["problem"]["detail"], refused
         assert "external link" in refused["problem"]["untrusted_text"]
+        # the typed refusal is the run's error and the failed version's issue
+        assert [e["code"] for e in refused["problem"]["errors"]] == ["INGEST_UNSAFE_FILE"]
         version = (await client.get(f"{base}/versions/2")).json()
         assert version["status"] == "failed", version
+        assert [i["code"] for i in version["issues"]] == ["INGEST_UNSAFE_FILE"], version
     finally:
         orch.stop.set()
         await asyncio.wait_for(task, 60)

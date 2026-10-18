@@ -184,6 +184,11 @@ def test_an_unsafe_upload_fails_with_ingest_unsafe_file(gcs: ShimGcs, tmp_path: 
     # the worker is untrusted: its code is recorded, its text travels as untrusted text
     assert ErrorCode.INGEST_UNSAFE_FILE.value in payload.message
     assert "external link" in (payload.untrusted_text or "")
+    # ... and its typed issue is the run's error, for clients to branch on
+    assert [e.code for e in payload.errors] == [ErrorCode.INGEST_UNSAFE_FILE]
+    assert payload.errors[0].pointer == "/upload"
+    assert "external link" in (payload.errors[0].untrusted_text or "")
+    assert "external link" not in payload.errors[0].message
     [diag] = [
         d.payload
         for d in result.of("diagnostic")

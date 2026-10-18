@@ -43,10 +43,11 @@ from typing import Final
 
 import httpx
 from mapi_spec.capabilities import Diagnostic
-from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.errors import ERROR_INFO, ErrorCode, Issue, MapiError
 from mapi_spec.run import (
     ENV_REQUIRE_ISOLATION,
     MANIFEST_OBJECT_NAME,
+    MAX_ERROR_ISSUES,
     OUTPUT_ARTIFACTS,
     OUTPUT_CHECKPOINTS,
     OUTPUT_MANIFEST,
@@ -174,6 +175,8 @@ class _Failure:
     failure_class: FailureClass
     message: str
     untrusted_text: str | None = None
+    errors: list[Issue] = field(default_factory=list)
+    """Typed issues the worker reported (their text is untrusted)."""
 
 
 @dataclass(slots=True)
@@ -187,6 +190,32 @@ class _Pending:
 
 class _ConfigError(Exception):
     """Unusable environment or bootstrap object (exit ``CONFIG_ERROR``)."""
+
+
+_POINTER_MAX = 512
+
+
+def _typed_issues(err: ErrorMessage) -> list[Issue]:
+    """The worker's issues as typed errors of the run (``ErrorPayload.errors``): the code
+    and pointer are kept (clients branch on the code, e.g. ``INGEST_UNSAFE_FILE``), the
+    message is the code's platform title and the worker's text goes to ``untrusted_text``."""
+    out: list[Issue] = []
+    for issue in [i for i in err.issues if i.severity.value == "error"][:MAX_ERROR_ISSUES]:
+        text = issue.message
+        if issue.untrusted_text:
+            text = f"{text}\n{issue.untrusted_text}"
+        pointer = issue.pointer
+        if not pointer.startswith("/") or len(pointer) > _POINTER_MAX:
+            pointer = ""
+        out.append(
+            Issue(
+                code=issue.code,
+                pointer=clean_text(pointer),
+                message=ERROR_INFO[issue.code].title,
+                untrusted_text=clean_text(text, multiline=True)[:8000] or None,
+            )
+        )
+    return out
 
 
 class Supervisor:
@@ -727,6 +756,7 @@ class Supervisor:
             fc,
             f"the run failed with {err.code.value} (as reported by the worker)",
             untrusted_text=detail[:65536],
+            errors=_typed_issues(err),
         )
 
     def _partial_or_timeout(self, why: Termination) -> RunnerExit:
@@ -860,6 +890,7 @@ class Supervisor:
                 untrusted_text=None
                 if failure.untrusted_text is None
                 else clean_text(failure.untrusted_text, multiline=True)[:65536],
+                errors=failure.errors[:MAX_ERROR_ISSUES],
             )
         )
 

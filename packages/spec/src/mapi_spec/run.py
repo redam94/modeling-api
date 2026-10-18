@@ -89,6 +89,7 @@ __all__ = [
     "INPUT_DATASET",
     "LOGGING_FILTER",
     "MANIFEST_OBJECT_NAME",
+    "MAX_ERROR_ISSUES",
     "MAX_EVENT_LINE_BYTES",
     "OUTPUT_ARTIFACTS",
     "OUTPUT_CHECKPOINTS",
@@ -592,6 +593,10 @@ class CompletePayload(_Payload):
     total_bytes: int = Field(..., ge=0)
 
 
+MAX_ERROR_ISSUES: Final = 20
+"""Typed issues one ``error`` event carries (:attr:`ErrorPayload.errors`)."""
+
+
 class ErrorPayload(_Payload):
     """``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted."""
 
@@ -599,6 +604,13 @@ class ErrorPayload(_Payload):
     failure_class: FailureClass
     message: str = Field(..., max_length=2000)
     untrusted_text: str | None = Field(None, max_length=65536)
+    errors: list[Issue] = Field(
+        default_factory=list,
+        max_length=MAX_ERROR_ISSUES,
+        description="The typed issues the run failed with (M4), e.g. an INGEST_UNSAFE_FILE "
+        "refusal: their codes are what clients branch on; text the worker reported is "
+        "untrusted_text",
+    )
 
     @model_validator(mode="after")
     def _consistent(self) -> ErrorPayload:
