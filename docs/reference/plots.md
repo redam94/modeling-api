@@ -246,6 +246,10 @@ the string columns of these DataFrames.
 | `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
 | `sci.profile_bands` | `var`, `group`, `observed_var`, `along`, `by`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_curves` (12), `max_draws` (1 000), `colormap` (viridis), `log` (false), `width` (640), `height` (360) |
 | `sci.ensemble` | `var`, `group`, `observed_var`, `along`, `select`, `n_draws` (40), `levels` ([0.9]), `point` (median \| mean \| none), `max_draws` (2 000), `seed` (0), `log` (false), `width` (640), `height` (320) |
+| `sci.image_residuals` | the same as `sci.field_map` (no `stats`, `n_draws`), + `observed_var`, `sigma` (a variable or a number), `sigma_kind` (sd \| variance \| inverse_variance), `columns` (2), `hist_height` (200; 0: no histogram). `group` auto reads posterior_predictive, predictions, posterior |
+| `sci.ppc_image_grid` | the same as `sci.field_map` (no `stats`), + `observed_var`, `n_draws` (5, at most 11), `shuffle` (false), `seed` (0). `group` auto reads posterior_predictive, predictions, posterior |
+| `sci.swatches` | `var`, `group`, `observed_var`, `channel` (rgb), `item`, `row` (row), `col` (col), `arrange` (auto \| list \| map), `prob`, `prob_as` (border \| opacity), `select`, `n_draws` (3), `max_draws` (400), `max_items` (60, list only), `tile` (20 px), `columns` (2), `seed` (0), `width` (640) |
+| `sci.power_spectrum` | `var`, `group`, `observed_var`, `error_var` (default `<observed>_sd`), `theory`, `along`, `x_coord`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_draws` (2 000), `log_x`, `log_y` (false), `width` (640), `height` (360) |
 
 ### Scientific-model pack (`sci.*`)
 
@@ -260,6 +264,21 @@ profiles and trajectories. They read draws (`chain`/`draw` or `sample` dims) fro
 | `sci.vector_field` | The length of a vector as colours, arrows of the mean vector, and the sd of the length. |
 | `sci.profile_bands` | The median and the 50% and 90% bands along `along`, one curve for each level of `by`, and the actual values. A slider shows one level with its bands. |
 | `sci.ensemble` | Some draws as thin lines, the 90% band of all draws, the median and the actual values. |
+| `sci.image_residuals` | The observed image, the model mean, the residual and the normalised residual `(obs - mean) / sqrt(sd² + σ²)`, with a histogram of the normalised residuals against N(0, 1). |
+| `sci.ppc_image_grid` | The observed image next to `n_draws` images from the model on one colour scale. With `shuffle`, the panels are in a random order and the caption names the real one. |
+| `sci.swatches` | Squares in the colours of an sRGB output `(…, item, rgb)` in [0, 1]: observed, mean and some draws. A map when the item dim has `row` and `col` coords. |
+| `sci.power_spectrum` | A binned spectrum `(…, bin)` against a coord such as `ell`: median, 50% and 90% bands, a theory curve and the observed values with error bars. |
+
+Notes on the image and spectrum recipes (`mapi_plots.packs.sci_images`):
+
+- `sci.image_residuals` and `sci.ppc_image_grid` need the observed image in `observed_data`,
+  with the grid dims of the output. The recipe uses the variable with the same name, the
+  `observed_var` setting or the only observed variable.
+- Draws from `posterior_predictive` already hold the noise of the data, so
+  `sci.image_residuals` adds no σ to them. For a noise-free output (`posterior` or
+  `predictions`), it uses `sigma` or a variable named `sigma`.
+- `sci.swatches` writes the colours as `#rrggbb` text in the dataset. The plot sandbox does
+  not change these colours in dark mode, because they are data.
 
 Statistics of `sci.field_map`:
 
