@@ -9,7 +9,9 @@ Ported from the pymc-challenges case studies:
 * ``sci.traction_force`` - a Gaussian inverse problem in Fourier space that recovers a 2-D
   traction field from a displacement field, with exact posterior draws (E60);
 * ``sci.strong_lens`` - a pixel forward model of a galaxy-scale strong lens, with a
-  pixelated source and critical curves per draw (E80).
+  pixelated source and critical curves per draw (E80);
+* ``sci.network_latent_space`` - an undirected graph as Bernoulli ties between pairs of
+  nodes: pair covariates, sociality and Procrustes-aligned latent positions (E21).
 
 Every plugin registers through the ``mapi.models`` entry point
 (``science = mapi_plugin_science:PLUGINS``). Outputs that are 2-D fields declare a
@@ -21,6 +23,7 @@ from importlib import metadata as _metadata
 from mapi_plugin_science.kpp import FisherKPPModel, FisherKPPSettings
 from mapi_plugin_science.lens import StrongLensModel, StrongLensSettings
 from mapi_plugin_science.lgcp import LGCPGridModel, LGCPGridSettings
+from mapi_plugin_science.network import NetworkLatentSpaceModel, NetworkLatentSpaceSettings
 from mapi_plugin_science.traction import TractionForceModel, TractionForceSettings
 
 try:
@@ -28,7 +31,13 @@ try:
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
     __version__ = "0.8.0"
 
-PLUGINS = (LGCPGridModel, FisherKPPModel, TractionForceModel, StrongLensModel)
+PLUGINS = (
+    LGCPGridModel,
+    FisherKPPModel,
+    TractionForceModel,
+    StrongLensModel,
+    NetworkLatentSpaceModel,
+)
 """Every ``sci.*`` model plugin (loaded by the ``mapi.models`` entry point)."""
 
 __all__ = [
@@ -37,6 +46,8 @@ __all__ = [
     "FisherKPPSettings",
     "LGCPGridModel",
     "LGCPGridSettings",
+    "NetworkLatentSpaceModel",
+    "NetworkLatentSpaceSettings",
     "StrongLensModel",
     "StrongLensSettings",
     "TractionForceModel",
