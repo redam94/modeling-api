@@ -238,6 +238,9 @@ def test_scoring_a_digit_that_was_not_fitted_is_refused(
     ("body", "code"),
     [
         ("mode: forecast\nhorizon: {dim: y, periods: 2}\n", ErrorCode.MODE_NOT_SUPPORTED),
+        # text labels along the horizon dim once crashed the horizon (an untyped
+        # UFuncTypeError) before the mode was checked
+        ("mode: forecast\nhorizon: {dim: digit, periods: 2}\n", ErrorCode.MODE_NOT_SUPPORTED),
         ("mode: simulate\n", ErrorCode.MODE_NOT_SUPPORTED),
     ],
 )

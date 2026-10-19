@@ -100,7 +100,7 @@ from mapi_sdk.coords import (
     horizon_frame,
     next_label,
 )
-from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error
+from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error, raise_for_issues
 from mapi_sdk.future import fill_future_covariates, fill_future_rows
 from mapi_sdk.metrics import categorical_dim, compute_metrics, elpd
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
@@ -538,6 +538,9 @@ def fit_spec(
             given.tree, BindingMap(resolved.binding), manifest.capabilities.input == "tree"
         ),
     )
+    # the model's own settings checks (cross-field rules the JSON schema cannot state) refuse
+    # the spec before any data is transformed, split or fitted
+    plugin.parse_settings(env.settings)
     raw = BindingMap(resolved.binding).apply(data)
 
     split = spec.data.split
@@ -1225,9 +1228,15 @@ def _horizon_payload(bundle: Bundle, req: ScoreRequest) -> xr.Dataset:
         )
     model_schema = rs.model.input_schema or rs.stages.get(rs.model_stage)
     mfreq = model_schema.dims[hdim].freq if model_schema and hdim in model_schema.dims else None
-    fit_end = np.asarray(model_coords[hdim].values).max()
-    step = 1
     vals = np.asarray(model_coords[hdim].values)
+    if vals.dtype.kind not in "iufMm":
+        raise MapiError(
+            f"cannot build a horizon along {hdim!r}: its labels are not ordered numbers or dates",
+            code=ErrorCode.COORD_NOT_ALLOWED,
+            pointer="/horizon/dim",
+        )
+    fit_end = vals.max()
+    step = 1
     if vals.dtype.kind in "iu" and vals.size > 1:
         step = int(np.diff(np.sort(vals)).min())
     end = next_label(fit_end, freq=mfreq, step=step, k=req.horizon.periods)
@@ -1487,6 +1496,20 @@ def score_bundle(
     binding = bundle.binding
     plugin_cls = registry.model(f"{bundle.model.manifest.id}@{bundle.model.manifest.version}")
     plugin = plugin_cls()
+    fitted_modes = rs.model.capabilities.score_modes
+    if req.mode not in fitted_modes:
+        # refuse before any mode-specific work (a forecast's horizon and actuals assume a
+        # model that forecasts); CoordPlan.check raises the same for the API path
+        raise_for_issues(
+            [
+                Issue(
+                    code=ErrorCode.MODE_NOT_SUPPORTED,
+                    pointer="/mode",
+                    message=f"model {rs.model.resolved!r} does not support mode {req.mode!r}",
+                    context={"supported": sorted(fitted_modes)},
+                )
+            ]
+        )
     pipeline = bundle.pipeline(registry)
     pipeline.index(req.inputs_stage)
     block = bundle.spec.data
