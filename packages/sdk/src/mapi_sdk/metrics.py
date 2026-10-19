@@ -27,6 +27,11 @@ of non-alphanumerics to ``_`` (``Coke Zero`` matches ``coke_zero``); a label mat
 category counts as a miss with probability 0. Cells whose probabilities are all zero (no
 choice set, such as a trip that never happened) and empty labels do not count. Numeric
 metrics (``rmse``, ``mape``, ...) are skipped for categorical targets.
+
+**Circular outputs** (M5, ``OutputDecl.circular``): angles that wrap at ``period`` (one
+turn). The point is the circular mean of the draws, errors are wrapped to half a turn,
+intervals are central intervals of the draws around the circular mean, ``crps`` uses the arc
+distance, and ``mape``/``smape``/``wape``/``r2`` are skipped (:func:`_circular_metrics`).
 """
 
 from __future__ import annotations
@@ -226,14 +231,18 @@ def compute_metrics(
     names: Sequence[str],
     *,
     mask: xr.DataArray | None = None,
+    period: float | None = None,
 ) -> MetricResult:
     """Holdout metrics of ``pred`` (representation-shaped) against ``observed``.
 
     ``mask`` (bool, broadcastable to ``observed``) restricts the cells that count.
     Returns ``(values, skipped)`` where ``skipped`` maps metric -> reason. A probability
     prediction for a categorical target (:func:`categorical_dim`) gets the categorical
-    metrics (see the module doc).
+    metrics (see the module doc). ``period`` (one turn, for a circular output such as a
+    direction) switches to the circular metrics (:func:`_circular_metrics`).
     """
+    if period is not None:
+        return _circular_metrics(pred, observed, rep, names, float(period), mask)
     cat = categorical_dim(pred, observed)
     if cat is not None:
         return _categorical_metrics(pred, observed, rep, names, cat, mask)
@@ -306,6 +315,106 @@ def compute_metrics(
         if v is not None and not math.isfinite(v):
             values[k] = None
     return values, skipped
+
+
+def _wrap(x: Any, period: float) -> Any:
+    """Signed difference wrapped to ``[-period/2, period/2)``."""
+    return (x + period / 2) % period - period / 2
+
+
+def _circular_mean(da: xr.DataArray, period: float) -> xr.DataArray:
+    """Circular mean over ``chain``/``draw``, in ``[0, period)``."""
+    t = da * (2 * np.pi / period)
+    c = xr.DataArray(np.cos(t)).mean(["chain", "draw"])
+    s = xr.DataArray(np.sin(t)).mean(["chain", "draw"])
+    out: xr.DataArray = (xr.apply_ufunc(np.arctan2, s, c) * (period / (2 * np.pi))) % period
+    return out
+
+
+def _circular_metrics(
+    pred: xr.DataArray,
+    observed: xr.DataArray,
+    rep: Representation,
+    names: Sequence[str],
+    period: float,
+    mask: xr.DataArray | None,
+) -> MetricResult:
+    """Metrics of a circular output (angles that wrap at ``period``).
+
+    The point estimate is the circular mean of the draws; errors are wrapped to
+    ``[-period/2, period/2)`` (359 degrees against 1 degree is an error of -2, not 358);
+    intervals are central intervals of the draws' wrapped deviations from the circular
+    mean, so an interval may straddle the seam; ``crps`` uses the arc distance. Metrics
+    relative to the target's size (``mape``, ``smape``, ``wape``, ``r2``) have no meaning on
+    a circle and are skipped.
+    """
+    values: dict[str, float | None] = {}
+    skipped: dict[str, str] = {}
+    wanted = [n for n in dict.fromkeys(names) if not n.startswith("elpd_")]
+    if not (math.isfinite(period) and period > 0):
+        return values, dict.fromkeys(wanted, f"the circular output's period {period} is invalid")
+    if rep is not Representation.DRAWS:
+        reason = f"circular metrics need posterior draws, not {rep.value}"
+        return values, dict.fromkeys(wanted, reason)
+    valid = observed.notnull()
+    if mask is not None:
+        valid = valid & mask.broadcast_like(observed).astype(bool)
+    point = _circular_mean(pred, period)
+    point, obs_a, valid_a = xr.align(point, observed, valid, join="inner")
+    err = _wrap(point - obs_a, period).where(valid_a)
+    n = int(valid_a.sum())
+    for name in wanted:
+        if n == 0:
+            skipped[name] = "no holdout observations"
+            continue
+        m = _COVERAGE.match(name)
+        match name:
+            case "rmse":
+                values[name] = float(np.sqrt((err**2).mean()))
+            case "mae":
+                values[name] = float(abs(err).mean())
+            case "bias":
+                values[name] = float(err.mean())
+            case "crps":
+                values[name] = _crps_circular(pred, obs_a.where(valid_a), period)
+            case _ if m is not None:
+                level = int(m.group(2)) / 100
+                a = (1 - level) / 2
+                dev = _wrap(pred - point, period)
+                q = dev.quantile([a, 1 - a], dim=["chain", "draw"])
+                lo, hi = q.isel(quantile=0, drop=True), q.isel(quantile=1, drop=True)
+                lo, hi, oe, vv = xr.align(lo, hi, _wrap(obs_a - point, period), valid_a)
+                if m.group(1) == "coverage":
+                    values[name] = float(((oe >= lo) & (oe <= hi)).where(vv).mean())
+                else:
+                    values[name] = float((hi - lo).broadcast_like(oe).where(vv).mean())
+            case _:
+                skipped[name] = "not defined for a circular output (use mae, rmse, coverage_90)"
+    for k, v in list(values.items()):
+        if v is not None and not math.isfinite(v):
+            values[k] = None
+    return values, skipped
+
+
+def _crps_circular(da: xr.DataArray, obs: xr.DataArray, period: float) -> float:
+    """CRPS with the arc distance: ``E d(X, y) - E d(X, X') / 2`` (Grimit et al. 2006)."""
+    aligned, ob = xr.align(da, obs, join="inner")
+    samples = aligned.stack(__s__=["chain", "draw"]).transpose(..., "__s__")
+    x = samples.values
+    y = ob.broadcast_like(samples.isel(__s__=0, drop=True)).values[..., None]
+    term1 = np.abs(_wrap(x - y, period)).mean(axis=-1)
+    m = x.shape[-1]
+    # E d(X, X') from the draws paired with shifted copies of themselves (memory O(m))
+    shifts = range(1, min(m, 33))
+    term2 = (
+        np.mean(
+            [np.abs(_wrap(x - np.roll(x, k, axis=-1), period)).mean(axis=-1) for k in shifts],
+            axis=0,
+        )
+        if m > 1
+        else np.zeros(term1.shape)
+    )
+    return float(np.nanmean(np.where(np.isnan(y[..., 0]), np.nan, term1 - term2 / 2)))
 
 
 def _finite(v: object) -> float | None:

@@ -11110,6 +11110,12 @@ export interface components {
          * @description An output variable the model writes (e.g. ``y_hat``).
          */
         OutputDecl: {
+            /**
+             * Circular
+             * @description The output is an angle on a circle (a direction, a time of day). The model sets a 'period' attr (one turn, in the output's units) on the scored array; holdout metrics then use the circular mean and wrapped errors
+             * @default false
+             */
+            circular?: boolean;
             /** Description */
             description?: string | null;
             /** Dims */

@@ -347,3 +347,34 @@ def test_unknown_labels_are_misses_and_other_shapes_are_skipped() -> None:
     numeric = obs.isel(trip=0).copy(data=[1.0, 2.0])
     _, why3 = compute_metrics(pred.isel(trip=0), numeric, R.DRAWS, ["accuracy"])
     assert "categorical" in why3["accuracy"]
+
+
+def test_circular_metrics_wrap_at_the_seam() -> None:
+    """Draws around north (350..10 degrees) against observations near 0: the circular mean,
+    wrapped errors and seam-straddling intervals (a linear mean would put them near 180)."""
+    rng = np.random.default_rng(0)
+    draws = (rng.normal(0.0, 5.0, (2, 400, 3))) % 360
+    pred = xr.DataArray(draws, dims=("chain", "draw", "obs"))
+    obs = xr.DataArray([359.0, 1.0, 180.0], dims=("obs",))
+    names = ["mae", "rmse", "bias", "coverage_90", "interval_width_90", "crps", "mape"]
+    linear, _ = compute_metrics(pred, obs, Representation.DRAWS, names)
+    assert linear["mae"] is not None and linear["mae"] > 100  # the defect this guards
+    values, skipped = compute_metrics(pred, obs, Representation.DRAWS, names, period=360.0)
+    # point near 0: errors of about +1, -1 and 180
+    assert values["mae"] == pytest.approx((1 + 1 + 180) / 3, abs=1.5)
+    assert values["coverage_90"] == pytest.approx(2 / 3)
+    assert values["interval_width_90"] == pytest.approx(2 * 1.645 * 5, rel=0.15)
+    crps = values["crps"]
+    assert crps is not None and 0 < crps < values["mae"]
+    assert "mape" in skipped and "mape" not in values
+    # in hours the same wrap applies (23:30 against 00:30 is one hour)
+    hours = xr.DataArray(np.full((1, 4, 1), 0.5), dims=("chain", "draw", "obs"))
+    v, _ = compute_metrics(
+        hours, xr.DataArray([23.5], dims=("obs",)), Representation.DRAWS, ["mae"], period=24.0
+    )
+    assert v["mae"] == pytest.approx(1.0)
+    # a summarised prediction or a bad period is skipped with a reason, never linear numbers
+    _, why = compute_metrics(pred, obs, Representation.QUANTILES, ["mae"], period=360.0)
+    assert "draws" in why["mae"]
+    _, why = compute_metrics(pred, obs, Representation.DRAWS, ["mae"], period=float("nan"))
+    assert "period" in why["mae"]

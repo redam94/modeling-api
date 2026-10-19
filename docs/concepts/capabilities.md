@@ -34,7 +34,7 @@ its forms from manifests. Neither of them imports the plugin.
 | `id`, `version` | `mmm.bayesian`, `1.0.0`. Specs select a version with a semver range: `use: mmm.bayesian@^1`. |
 | `schema_template` | The input data contract, in canonical names. It can change with the settings. Then it is a template with `params`, for example `{group_dim}`. The settings of the model give the values of these `params`. |
 | `settings_schema`, `fit_schema` | JSON Schemas of `model.settings` and `model.fit`. Each field can have `x-ui-level: basic` or `advanced`. Guided mode shows only `basic`. |
-| `outputs` | Output variables with dims and units (`units_of: y` means "in the units of the target") |
+| `outputs` | Output variables with dims and units (`units_of: y` means "in the units of the target"; `circular: true` marks an angle, whose holdout metrics wrap at the `period` attr of the scored array) |
 | `derived` | Derived quantities. It also tells if the fit caches them (`cache: fit`), or if the platform calculates them when necessary. |
 | `plots` | The plot recipes that the report of this model shows by default |
 | `resources` | Minimum and default resource class, estimated fit time, GPU |

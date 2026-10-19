@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -1956,7 +1957,17 @@ def _score_metrics(
     for var, src in pairs:
         if var not in pred_data or src not in observed:
             continue
-        values, skipped = compute_metrics(pred_data[var], observed[src], rep, names, mask=mask)
+        decl = bundle.model.manifest.outputs.get(var)
+        period: float | None = None
+        if decl is not None and decl.circular:
+            raw: Any = pred_data[var].attrs.get("period")
+            try:
+                period = float(raw)
+            except (TypeError, ValueError):
+                period = math.nan  # compute_metrics skips every metric with the reason
+        values, skipped = compute_metrics(
+            pred_data[var], observed[src], rep, names, mask=mask, period=period
+        )
         report.values.update(values)
         report.skipped.update(skipped)
         counted = observed[src].notnull()
