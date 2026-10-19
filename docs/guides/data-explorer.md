@@ -291,7 +291,8 @@ explorer finds the shapes of each node of a tree dataset separately.
 ### Correct the structure: hints { #correct-the-structure-hints }
 
 If the explorer reads a dim or a variable incorrectly, give hints. In the web app, open
-**Explore with options** (Expert mode) and set the structure hints. Through the API, give the
+**Explore with options** (Expert mode) and set the fields under **Shape of the data
+(hints)**. Through the API, give the
 field `hints` of the request:
 
 ```bash
