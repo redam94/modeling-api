@@ -45,11 +45,6 @@ the same points. Non-responses are missing at random and leave the likelihood.
 
 from __future__ import annotations
 
-import hashlib
-import logging
-import warnings
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 
@@ -73,7 +68,11 @@ from mapi_sdk.models import (
 from mapi_spec.capabilities import Capabilities, Diagnostic, Representation, ResourceHint
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.spec import FitConfig, ScoreRequest
-from pydantic import Field
+from pydantic import Field, model_validator
+
+from mapi_plugin_science._common import clean_attrs as _clean
+from mapi_plugin_science._common import quiet as _quiet
+from mapi_plugin_science._common import rng as _rng
 
 __all__ = [
     "CHIP_DIM",
@@ -275,6 +274,16 @@ class ColourNamingSettings(ModelSettings):
     score_draws: int = Field(
         200, ge=10, le=4000, description="Posterior draws used by one score request"
     )
+
+    @model_validator(mode="after")
+    def _check(self) -> ColourNamingSettings:
+        names = FEATURE_NAMES[self.features]
+        if self.n_random > len(names):
+            raise ValueError(
+                f"n_random is {self.n_random} but the {self.features!r} features have only "
+                f"{len(names)} columns"
+            )
+        return self
 
 
 _TEMPLATE: dict[str, Any] = {
@@ -759,13 +768,6 @@ class _Data:
                 pointer="/model/settings/kind",
             )
         names = FEATURE_NAMES[s.features]
-        if s.n_random > len(names):
-            raise MapiError(
-                f"n_random is {s.n_random} but the {s.features!r} features have only "
-                f"{len(names)} columns",
-                code=ErrorCode.SETTINGS_INVALID,
-                pointer="/model/settings/n_random",
-            )
         feats = chip_features(lab, row, col, s.features, hue_columns=s.hue_columns)
         return cls(speakers, chips, terms, codes, lab, row, col, feats, names)
 
@@ -918,33 +920,3 @@ def _at(da: xr.DataArray, chains: np.ndarray, draws: np.ndarray) -> np.ndarray:
     arr = np.asarray(da.transpose("chain", "draw", ...).values)
     out: np.ndarray = arr[chains, draws]
     return out
-
-
-def _rng(seed: int, name: str) -> np.random.Generator:
-    digest = hashlib.sha256(name.encode()).digest()
-    return np.random.default_rng([int(seed), int.from_bytes(digest[:8], "little")])
-
-
-def _clean(ds: xr.Dataset, engine: str) -> xr.Dataset:
-    out = ds.copy()
-    for v in out.variables:
-        out[v].attrs = {}
-    out.attrs = {
-        "inference_library": "pymc",
-        "inference_library_version": pm.__version__,
-        "engine": engine,
-    }
-    return out
-
-
-@contextmanager
-def _quiet() -> Iterator[None]:
-    logger = logging.getLogger("pymc")
-    level = logger.level
-    logger.setLevel(logging.ERROR)
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            yield
-    finally:
-        logger.setLevel(level)

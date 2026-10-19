@@ -62,13 +62,8 @@ used) and ``FEATURES_COLLAPSED`` when a chain switched every feature off.
 
 from __future__ import annotations
 
-import hashlib
 import itertools
 import json
-import logging
-import warnings
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from typing import Any, ClassVar, Literal
 
@@ -93,6 +88,19 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.spec import FitConfig, PosteriorPredictiveKeep, ScoreRequest
 from pydantic import Field
 from scipy.special import logsumexp
+
+from mapi_plugin_science._common import (
+    clean_attrs as _clean,
+)
+from mapi_plugin_science._common import (
+    draw_index as _draw_index,
+)
+from mapi_plugin_science._common import (
+    quiet as _quiet,
+)
+from mapi_plugin_science._common import (
+    rng as _rng,
+)
 
 __all__ = [
     "DIGIT_DIM",
@@ -870,41 +878,3 @@ def _draw_images(
     pick = np.minimum((w.cumsum(1) < u).sum(1), w.shape[1] - 1)
     noise = sx * rng.standard_normal(images.ink.shape)
     return means[pick] + noise + images.mean[None, :], own
-
-
-def _draw_index(post: xr.Dataset, n: int) -> tuple[np.ndarray, np.ndarray]:
-    """Every chain and ``n // chains`` evenly spaced draw positions (at least one)."""
-    chains, draws = int(post.sizes["chain"]), int(post.sizes["draw"])
-    per = min(draws, max(1, n // chains))
-    idx = np.unique(np.linspace(0, draws - 1, per).round().astype(np.int64))
-    return np.arange(chains), idx
-
-
-def _rng(seed: int, name: str) -> np.random.Generator:
-    digest = hashlib.sha256(name.encode()).digest()
-    return np.random.default_rng([int(seed), int.from_bytes(digest[:8], "little")])
-
-
-def _clean(ds: xr.Dataset, engine: str) -> xr.Dataset:
-    out = ds.copy()
-    for v in out.variables:
-        out[v].attrs = {}
-    out.attrs = {
-        "inference_library": "pymc",
-        "inference_library_version": pm.__version__,
-        "engine": engine,
-    }
-    return out
-
-
-@contextmanager
-def _quiet() -> Iterator[None]:
-    logger = logging.getLogger("pymc")
-    level = logger.level
-    logger.setLevel(logging.ERROR)
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            yield
-    finally:
-        logger.setLevel(level)

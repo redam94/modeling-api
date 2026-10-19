@@ -46,7 +46,6 @@ observed areas (dim ``area__obs``), and the holdout is predicted from the neighb
 
 from __future__ import annotations
 
-import hashlib
 import itertools
 import math
 from dataclasses import dataclass
@@ -65,6 +64,8 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.spec import FitConfig, ScoreRequest
 from pydantic import Field
 from scipy.sparse.csgraph import connected_components
+
+from mapi_plugin_science._common import rng as _rng
 
 __all__ = [
     "ADJACENCY",
@@ -752,7 +753,7 @@ class ArealBYM2Model(PyMCModel[ArealBYM2Settings]):
     ) -> np.ndarray:
         """``(n, areas)`` new area effects, one map for each posterior draw (simulate)."""
         n_area = w.shape[0]
-        rng = np.random.default_rng([int(seed), _hash("simulate-effects")])
+        rng = _rng(seed, "simulate-effects")
         if s.kind == "poisson":
             return np.zeros((n, n_area))
         if s.kind in ("icar", "bym2") and int(connected_components(w, directed=False)[0]) > 1:
@@ -778,10 +779,6 @@ class ArealBYM2Model(PyMCModel[ArealBYM2Settings]):
         )
 
 
-def _hash(name: str) -> int:
-    return int.from_bytes(hashlib.sha256(name.encode()).digest()[:8], "little")
-
-
 def _uniforms(seed: int, label: str, n: int) -> np.ndarray:
     """Frozen uniforms of one area (common random numbers keyed by its label)."""
-    return np.random.default_rng([int(seed), _hash(f"cases:{label}")]).uniform(size=n)
+    return _rng(seed, f"cases:{label}").uniform(size=n)

@@ -319,6 +319,12 @@ def test_simulate_gives_unconstrained_skies_with_the_posterior_spectrum(
     assert sim["temperature_hat"].attrs["kind"] == "predictive"
     ratio = float(sim["sky"].std() / truth["sky"].std())
     assert 0.5 < ratio < 2.0
+    # the patch mean of a simulated sky comes from the spectrum, not from the vague
+    # mean_prior_sd (100 uK) nuisance prior of the fitted patch's mean
+    means = (
+        sim["sky"].mean([d for d in sim["sky"].dims if d not in ("chain", "draw")]).values.ravel()
+    )
+    assert means.size > 1 and float(np.abs(means).max()) < 30, means
 
 
 def test_evaluate_compares_the_unmasked_pixels(

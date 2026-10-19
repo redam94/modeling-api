@@ -19,7 +19,8 @@ the ingest gives each variable its role.
 
 Registering a case
 ------------------
-:data:`EXPORTS` maps a case id (``e07``: the notebook number) to an :class:`ExportCase`.
+:data:`EXPORTS` maps a case id (``e07``: the notebook number; ``e81b``: a second dataset of
+notebook E81) to an :class:`ExportCase`.
 A new model module registers its case with ONE entry at the end of this file, next to the
 others::
 
@@ -107,7 +108,8 @@ class ExportCase:
     """One case study whose data can be exported (see the module docstring)."""
 
     case: str
-    """Case id: ``e`` + the notebook number (``e07``)."""
+    """Case id: ``e`` + the notebook number (``e07``), plus a letter for a second dataset of
+    the same notebook (``e81b``)."""
     title: str
     notebook: str
     """The pymc-challenges notebook (``notebook_src/examples/<notebook>``)."""
@@ -631,6 +633,21 @@ _register(
         project="meteorology",
         dataset="ksba_wind_2021_2023",
         spec=lambda data: circular_data.ksba_spec_yaml(_dataset(data)),
+    )
+)
+_register(
+    ExportCase(
+        case="e81b",
+        title="Camera-trap times of the ocelot and five prey at Barro Colorado (activity)",
+        notebook="E81_circular_data.py",
+        model="sci.circular_regression",
+        files=(circular_data.ACTIVITY_FILE,),
+        loader=lambda d: circular_data.from_challenges_activity(d / circular_data.ACTIVITY_FILE),
+        synthetic=lambda: circular_data.activity_dataset(),
+        schema=circular_data.ACTIVITY_SCHEMA,
+        project="ecology",
+        dataset="bci_camera_traps",
+        spec=circular_data.BCI_SPEC_YAML,
     )
 )
 

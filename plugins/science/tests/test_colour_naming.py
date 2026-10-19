@@ -196,8 +196,11 @@ def test_typed_refusals(naming: xr.Dataset) -> None:
     _fit_raw(naming.isel(speaker=[0]), kind="pooled")  # one speaker is fine when pooled
 
     with pytest.raises(MapiError) as err:
-        _fit_raw(naming, features="grid_line", n_random=8)
-    assert err.value.code is ErrorCode.SETTINGS_INVALID and "n_random" in str(err.value)
+        ColourNamingModel().parse_settings({"features": "grid_line", "n_random": 8})
+    assert err.value.code is ErrorCode.SETTINGS_INVALID
+    with pytest.raises(ValueError, match="n_random"):  # refused when the settings are parsed
+        ColourNamingSettings(features="grid_line", n_random=8)
+    ColourNamingSettings(features="grid_line", n_random=7)
 
     hole = naming.copy(deep=True)
     hole["cie_a"][3] = np.nan

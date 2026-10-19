@@ -62,7 +62,7 @@ from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelSet
 from mapi_spec.capabilities import Capabilities, Representation
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.spec import FitConfig, ScoreRequest
-from pydantic import Field
+from pydantic import Field, model_validator
 
 __all__ = [
     "CELL_DIM",
@@ -145,6 +145,15 @@ class GraphicalModelSettings(ModelSettings):
         description="neighbourhood: an edge when both coefficients pass the threshold (and), "
         "either one (or), or their symmetric combination (rho)",
     )
+
+    @model_validator(mode="after")
+    def _check(self) -> GraphicalModelSettings:
+        if self.kind == "neighbourhood" and self.log_likelihood == "joint":
+            raise ValueError(
+                "kind neighbourhood has no joint density: set log_likelihood to conditional "
+                "(or auto)"
+            )
+        return self
 
 
 _TEMPLATE: dict[str, Any] = {
@@ -308,19 +317,13 @@ class GraphicalModel(PyMCModel[GraphicalModelSettings]):
     # ------------------------------------------------------------------ checks
     @staticmethod
     def check_settings(s: GraphicalModelSettings, n_vars: int) -> None:
-        """Typed refusals that depend only on the settings and the number of variables."""
+        """Typed refusals of the settings against the number of variables (the settings
+        alone are checked when they are parsed)."""
         if n_vars < 2:
             raise MapiError(
                 f"{VAR_DIM!r} needs at least 2 variables for a graph",
                 code=ErrorCode.SCHEMA_INVALID,
                 pointer=f"/data/{VAR_DIM}",
-            )
-        if s.kind == "neighbourhood" and s.log_likelihood == "joint":
-            raise MapiError(
-                "kind neighbourhood has no joint density: set log_likelihood to conditional "
-                "(or auto)",
-                code=ErrorCode.SETTINGS_INVALID,
-                pointer="/model/settings/log_likelihood",
             )
         if s.kind == "neighbourhood" and not s.expected_neighbours < n_vars - 1:
             raise MapiError(
@@ -589,6 +592,13 @@ class GraphicalModel(PyMCModel[GraphicalModelSettings]):
             raise MapiError(
                 f"the bundle of {self.id!r} has no constant_data/{CENTER} and {SCALE}",
                 code=ErrorCode.INTERNAL_ERROR,
+            )
+        if CELL_DIM not in ds.dims:
+            raise MapiError(
+                f"the score data has no {CELL_DIM!r} dim: send the cells to predict or "
+                f"simulate (the values may be missing, one row per {CELL_DIM})",
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer="/data",
             )
         labels = ds[VAR_DIM].values if VAR_DIM in ds.coords else const[VAR_DIM].values
         extra = {

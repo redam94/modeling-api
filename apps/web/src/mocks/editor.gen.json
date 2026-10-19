@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:2a0611a5cb752b73f42bc638ab2e5e616003089516e9908987ac6bc84a26526a",
+  "digest": "sha256:20546f8d6957b49b79cee12d2f2093ea0e5cfb0826c5b464cde84ee26ce0c588",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -2264,6 +2264,7 @@
        "units": "1/unit"
       },
       "direction_hat": {
+       "circular": true,
        "description": "Mean direction of the row's predictive distribution (expected), or a simulated angle (predictive), from 0 to one turn",
        "dims": [
         "obs"
@@ -6056,8 +6057,8 @@
        },
        "render_px_nm": {
         "default": 16.0,
-        "description": "Pixel size of the super-resolved render (nm)",
-        "exclusiveMinimum": 0,
+        "description": "Pixel size of the super-resolved render (nm; the render of score_draws draws must stay within 50,000,000 values)",
+        "minimum": 1.0,
         "title": "Render Px Nm",
         "type": "number"
        },

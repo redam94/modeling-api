@@ -69,12 +69,9 @@ whitened noise couples neighbours (``loo_valid = False``).
 from __future__ import annotations
 
 import functools
-import hashlib
 import logging
 import time
-import warnings
-from collections.abc import Callable, Iterator, Sequence
-from contextlib import contextmanager
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 
@@ -105,6 +102,9 @@ from pytensor.tensor.linalg import cholesky, solve_triangular
 from scipy import ndimage, optimize
 
 from mapi_plugin_science import lens_math as lm
+from mapi_plugin_science._common import clean_attrs as _clean
+from mapi_plugin_science._common import quiet as _quiet
+from mapi_plugin_science._common import rng as _rng
 
 __all__ = [
     "CRITICAL_CURVES",
@@ -1504,33 +1504,3 @@ def _arrays(
             )
         mask = np.asarray(ds[MASK].transpose(ROW, COL).values, dtype=bool)
     return image, weight, psf, mask
-
-
-def _rng(seed: int, name: str) -> np.random.Generator:
-    digest = hashlib.sha256(name.encode()).digest()
-    return np.random.default_rng([int(seed), int.from_bytes(digest[:8], "little")])
-
-
-def _clean(ds: xr.Dataset, engine: str) -> xr.Dataset:
-    out = ds.copy()
-    for v in out.variables:
-        out[v].attrs = {}
-    out.attrs = {
-        "inference_library": "pymc",
-        "inference_library_version": pm.__version__,
-        "engine": engine,
-    }
-    return out
-
-
-@contextmanager
-def _quiet() -> Iterator[None]:
-    logger = logging.getLogger("pymc")
-    level = logger.level
-    logger.setLevel(logging.ERROR)
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            yield
-    finally:
-        logger.setLevel(level)

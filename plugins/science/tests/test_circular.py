@@ -388,6 +388,29 @@ def test_evaluate_scores_the_holdout(
     assert lpd.mean() > -math.log(TWO_PI)
 
 
+def test_evaluate_metrics_are_circular_at_the_seam(registry: Registry) -> None:
+    """Wind from the north (mean 0 degrees): the holdout errors wrap at 0/360. Linear metrics
+    put the mean of draws spread over 350 and 10 degrees near 180 and report an MAE of about
+    140 degrees; the circular MAE is close to that of the true mean direction."""
+    ds = wind_dataset(truth={"1": (2.0, 0.0)}, seed=0)
+    spec = WIND_SPEC_YAML.replace(
+        "evaluate: {metrics: [elpd_loo]}",
+        "evaluate: {metrics: [mae, rmse, bias, coverage_90, crps, r2]}",
+    )
+    bundle = fit_spec(spec, ds, registry=registry, raw_schema=WIND_SCHEMA)
+    assert bundle.metrics is not None
+    got, skipped = bundle.metrics.values, bundle.metrics.skipped
+    obs = ds["wind_from"].values[-60:]
+    oracle = float(np.rad2deg(np.abs(np.angle(np.exp(1j * np.deg2rad(obs))))).mean())
+    mae, rmse, bias, cov = got["mae"], got["rmse"], got["bias"], got["coverage_90"]
+    assert mae is not None and rmse is not None and bias is not None and cov is not None
+    assert mae < oracle + 15 and mae < 80, (mae, oracle)
+    assert rmse >= mae and abs(bias) < 30
+    assert 0.75 <= cov <= 1.0
+    assert "r2" in skipped
+    assert CircularRegressionModel.manifest().outputs["direction_hat"].circular
+
+
 @pytest.mark.mapi_contract
 def test_circular_regression_passes_the_contract_kit(registry: Registry, winds: xr.Dataset) -> None:
     fixture = ModelFixture(

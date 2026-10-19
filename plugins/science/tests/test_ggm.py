@@ -237,8 +237,6 @@ def _build(ds: xr.Dataset, **settings: object) -> None:
 def test_typed_refusals(cells: xr.Dataset) -> None:
     ds = _canon(cells)
     cases: list[tuple[xr.Dataset, dict[str, object], ErrorCode, str]] = [
-        (ds, {"kind": "neighbourhood", "log_likelihood": "joint"}, ErrorCode.SETTINGS_INVALID,
-         "log_likelihood"),
         (ds, {"kind": "neighbourhood", "expected_neighbours": 5.0}, ErrorCode.SETTINGS_INVALID,
          "expected_neighbours"),
         (ds.drop_vars(REFERENCE), {"reference": True}, ErrorCode.SCHEMA_INVALID, REFERENCE),
@@ -253,6 +251,12 @@ def test_typed_refusals(cells: xr.Dataset) -> None:
             _build(data, **settings)
         assert err.value.code is code, settings
         assert pointer in (err.value.pointer or ""), (settings, err.value.pointer)
+    # a rule of the settings alone fails when they are parsed (before any data is read)
+    with pytest.raises(ValueError, match="log_likelihood"):
+        GraphicalModelSettings(kind="neighbourhood", log_likelihood="joint")
+    with pytest.raises(MapiError) as err:
+        GraphicalModel().parse_settings({"kind": "neighbourhood", "log_likelihood": "joint"})
+    assert err.value.code is ErrorCode.SETTINGS_INVALID
 
 
 # ------------------------------------------------------------------------------- dense fit
@@ -363,6 +367,12 @@ def test_unsupported_modes_are_refused(bundle: Bundle, registry: Registry) -> No
         with pytest.raises(MapiError) as err:
             score_bundle(bundle, _req(body), _new_cells(), registry=registry)
         assert err.value.code is ErrorCode.MODE_NOT_SUPPORTED
+    # a payload without cells is a typed schema error, not a KeyError in the build
+    for body in ("mode: predict\n", "mode: simulate\n"):
+        with pytest.raises(MapiError) as err:
+            score_bundle(bundle, _req(body), xr.Dataset(), registry=registry)
+        assert err.value.code is ErrorCode.SCHEMA_INVALID, body
+        assert err.value.pointer == "/data"
 
 
 # ------------------------------------------------------------------------------- neighbourhood

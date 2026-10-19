@@ -44,14 +44,14 @@ Gibbs draw.
 realisation of the sky for each of ``field_draws`` posterior draws of ``q`` (an exact
 posterior draw of the sky); ``temperature_hat`` is the same plus white noise with
 ``noise_sd`` for ``kind: predictive``. ``simulate`` gives unconstrained skies with the
-spectrum of each posterior draw (another patch of the same sky), plus noise. Each field
+spectrum of each posterior draw (another patch of the same sky, its mean drawn from the
+spectrum, not from the vague ``mean_prior_sd`` prior), plus noise. Each field
 draw has its own generator seeded by ``(seed, chain, draw)``. Pointwise LOO is not offered:
 the pixels share one latent field.
 """
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from itertools import pairwise
@@ -74,6 +74,9 @@ from mapi_spec.capabilities import Capabilities, Diagnostic, Representation, Res
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.spec import FitConfig, ScoreRequest
 from pydantic import Field, field_validator
+
+from mapi_plugin_science._common import draw_index as _field_draw_index
+from mapi_plugin_science._common import rng as _rng
 
 __all__ = [
     "ARCMIN",
@@ -235,6 +238,9 @@ class FieldSampler:
         ky, kx = kgrid(ty, tx, inst.dx)
         self.ell = np.hypot(ky, kx) * stretch
         self.S0 = folded_power(ty, tx, inst, stretch, nalias) / (inst.dx**2 * ty * tx)
+        # the spectrum's own variance of the patch mean (only aliased power reaches k = 0);
+        # simulate draws the mean from it, not from the vague nuisance prior below
+        self.S0_mean = float(self.S0[0, 0])
         self.S0[0, 0] = mean_sd**2
         self.bin = np.digitize(self.ell, np.asarray(edges, dtype=float)) - 1
         self.nb = len(edges) - 1
@@ -282,9 +288,14 @@ class FieldSampler:
     def cut(self, a: np.ndarray) -> np.ndarray:
         return a[..., self.pad : self.pad + self.ny, self.pad : self.pad + self.nx]
 
-    def prior_var(self, q: np.ndarray) -> np.ndarray:
+    def prior_var(self, q: np.ndarray, *, spectral_mean: bool = False) -> np.ndarray:
+        """Prior variance of every mode at bandpowers ``q``. ``spectral_mean`` gives the
+        patch mean (``k = 0``) the spectrum's variance instead of the ``mean_sd`` prior."""
         scale = np.exp(q)[:, np.maximum(self.bin, 0)]
-        return np.asarray(self.S0[None] * np.where(self.bin < 0, 1.0, scale))
+        out = np.asarray(self.S0[None] * np.where(self.bin < 0, 1.0, scale))
+        if spectral_mean:
+            out[:, 0, 0] = self.S0_mean
+        return out
 
     def solve(
         self,
@@ -813,7 +824,9 @@ class CMBFieldModel(CustomModel[CMBFieldSettings]):
             w2 = np.stack([g.standard_normal((sampler.ty, sampler.tx)) for g in gens])
             qq = flat_q[start : start + len(part)]
             if simulate:
-                a = np.sqrt(sampler.prior_var(qq)) * w1
+                # another patch of the same sky: its mean varies as the spectrum says, not
+                # with the vague nuisance prior of the fitted patch's mean (sd mean_prior_sd)
+                a = np.sqrt(sampler.prior_var(qq, spectral_mean=True)) * w1
             else:
                 yy = np.broadcast_to(Y, (len(part), sampler.ty, sampler.tx))
                 a, _ = sampler.solve(qq, yy, (w1, w2), tol=s.cg_tol, maxit=s.cg_max_iter)
@@ -1095,19 +1108,6 @@ class _Data:
             )
         window = const.get(PIXEL_WINDOW)
         return cls.build(obs[TARGET], const[NOISE], const[REFERENCE], window, s)
-
-
-def _field_draw_index(post: xr.Dataset, n: int) -> tuple[np.ndarray, np.ndarray]:
-    """Every chain and ``n // chains`` evenly spaced draw positions (at least one)."""
-    chains, draws = int(post.sizes["chain"]), int(post.sizes["draw"])
-    per = min(draws, max(1, n // chains))
-    idx = np.unique(np.linspace(0, draws - 1, per).round().astype(np.int64))
-    return np.arange(chains), idx
-
-
-def _rng(seed: int, name: str) -> np.random.Generator:
-    digest = hashlib.sha256(name.encode()).digest()
-    return np.random.default_rng([int(seed), int.from_bytes(digest[:8], "little")])
 
 
 def _clean(ds: xr.Dataset) -> xr.Dataset:

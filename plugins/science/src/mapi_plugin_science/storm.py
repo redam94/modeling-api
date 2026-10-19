@@ -50,7 +50,9 @@ the same patches (``fit.keep.log_likelihood: true`` stores the pointwise values 
   median, plus Poisson noise for ``kind: predictive``). ``evaluate`` compares it with the
   observed frames; spots that were not fitted count as misfit. A score
   is refused (``PAYLOAD_TOO_LARGE``) above :data:`MAX_FRAME_VALUES` values: score a window of
-  frames, for example the frames with a fitted spot (``constant_data/spot_frame``).
+  frames, for example the frames with a fitted spot (``constant_data/spot_frame``). The fit
+  refuses (``SETTINGS_INVALID``) a ``render_px_nm`` and ``score_draws`` whose render is over
+  :data:`MAX_RENDER_VALUES` values.
 
 The bundle also keeps ``posterior_predictive/patch_fit`` (``ppc_draws`` Poisson draws) and
 ``observed_data/patch_fit`` so ``sci.image_residuals`` shows data, fit and residual per spot,
@@ -62,13 +64,8 @@ A score uses only the fitted spots: it cannot localise spots in frames it has no
 
 from __future__ import annotations
 
-import hashlib
 import json
-import logging
 import math
-import warnings
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 
@@ -91,9 +88,14 @@ from mapi_sdk.models import (
 from mapi_spec.capabilities import Capabilities, Diagnostic, Representation, ResourceHint
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.spec import FitConfig, ScoreRequest
-from pydantic import Field
+from pydantic import Field, model_validator
 from scipy import ndimage as ndi
 from scipy.special import erf, gammaln
+
+from mapi_plugin_science._common import clean_attrs
+from mapi_plugin_science._common import draw_index as _draw_index
+from mapi_plugin_science._common import quiet as _quiet
+from mapi_plugin_science._common import rng as _rng
 
 __all__ = [
     "COL_DIM",
@@ -135,6 +137,9 @@ SQ2 = math.sqrt(2.0)
 Kind = Literal["flat", "plane"]
 MAX_FRAME_VALUES = 50_000_000
 """Most values of ``frames_hat`` in one score (frames x rows x cols x draws)."""
+MAX_RENDER_VALUES = 50_000_000
+"""Most values of ``render`` (score_draws x render rows x render cols); the fit refuses
+settings (``render_px_nm``, ``score_draws``) whose render is larger."""
 #: the bundle group with ``render`` (``score_draws`` draws), found by the sci plots
 RENDER_GROUP = "predictions"
 
@@ -428,8 +433,27 @@ class StormLocalisationSettings(ModelSettings):
         20, ge=0, le=200, description="Predictive patch draws kept in the bundle (0: none)"
     )
     render_px_nm: float = Field(
-        16.0, gt=0, description="Pixel size of the super-resolved render (nm)"
+        16.0,
+        ge=1.0,
+        description="Pixel size of the super-resolved render (nm; the render of score_draws "
+        f"draws must stay within {MAX_RENDER_VALUES:,} values)",
     )
+
+    @model_validator(mode="after")
+    def _check(self) -> StormLocalisationSettings:
+        """Refusals that need no data (the frame size is checked at fit)."""
+        if (self.offset_adu is None) != (self.scale_adu is None):
+            raise ValueError(
+                "set offset_adu and scale_adu together (or neither, to calibrate from the frames)"
+            )
+        if self.patch_px % 2 == 0:
+            raise ValueError(f"patch_px must be odd, got {self.patch_px}")
+        if self.min_blob_px > self.max_blob_px:
+            raise ValueError("min_blob_px must not be larger than max_blob_px")
+        lo, hi = self.amplitude_band
+        if not 0.0 <= lo < hi <= 1.0:
+            raise ValueError("amplitude_band must be two quantiles 0 <= low < high <= 1")
+        return self
 
 
 _TEMPLATE: dict[str, Any] = {
@@ -566,40 +590,25 @@ class StormLocalisationModel(CustomModel[StormLocalisationSettings]):
         return da
 
     @staticmethod
-    def check_settings(s: StormLocalisationSettings, shape: tuple[int, int] | None = None) -> None:
-        """Typed refusals of settings that pydantic cannot check alone."""
-        if (s.offset_adu is None) != (s.scale_adu is None):
-            missing = "scale_adu" if s.scale_adu is None else "offset_adu"
-            raise MapiError(
-                "set offset_adu and scale_adu together (or neither, to calibrate from the frames)",
-                code=ErrorCode.SETTINGS_INVALID,
-                pointer=f"/model/settings/{missing}",
-            )
-        if s.patch_px % 2 == 0:
-            raise MapiError(
-                f"patch_px must be odd, got {s.patch_px}",
-                code=ErrorCode.SETTINGS_INVALID,
-                pointer="/model/settings/patch_px",
-            )
-        if s.min_blob_px > s.max_blob_px:
-            raise MapiError(
-                "min_blob_px must not be larger than max_blob_px",
-                code=ErrorCode.SETTINGS_INVALID,
-                pointer="/model/settings/min_blob_px",
-            )
-        lo, hi = s.amplitude_band
-        if not 0.0 <= lo < hi <= 1.0:
-            raise MapiError(
-                "amplitude_band must be two quantiles 0 <= low < high <= 1",
-                code=ErrorCode.SETTINGS_INVALID,
-                pointer="/model/settings/amplitude_band",
-            )
-        if shape is not None and min(shape) < s.patch_px:
+    def check_settings(s: StormLocalisationSettings, shape: tuple[int, int]) -> None:
+        """Typed refusals of settings against the frame size ``(rows, cols)`` (the checks
+        that need no data run when the settings are parsed)."""
+        if min(shape) < s.patch_px:
             raise MapiError(
                 f"the frames are {shape[0]} x {shape[1]} px, smaller than one patch "
                 f"({s.patch_px} px)",
                 code=ErrorCode.SCHEMA_INVALID,
                 pointer=f"/data/{TARGET}",
+            )
+        ny, nx = (_edges(np.arange(n), s.pixel_nm, s.render_px_nm).size - 1 for n in shape)
+        size = s.score_draws * ny * nx
+        if size > MAX_RENDER_VALUES:
+            raise MapiError(
+                f"the render of {s.score_draws} draws at {s.render_px_nm:g} nm per pixel would "
+                f"hold {size:,} values ({ny} x {nx} px each, more than {MAX_RENDER_VALUES:,}); "
+                "raise render_px_nm or lower score_draws",
+                code=ErrorCode.SETTINGS_INVALID,
+                pointer="/model/settings/render_px_nm",
             )
 
     # ================================================================== model
@@ -1160,39 +1169,5 @@ def _misfit_check(fitted: Fitted, s: StormLocalisationSettings) -> Diagnostic | 
     )
 
 
-def _draw_index(post: xr.Dataset, n: int) -> tuple[np.ndarray, np.ndarray]:
-    """Every chain and ``n // chains`` evenly spaced draw positions (at least one)."""
-    chains, draws = int(post.sizes["chain"]), int(post.sizes["draw"])
-    per = min(draws, max(1, n // chains))
-    idx = np.unique(np.linspace(0, draws - 1, per).round().astype(np.int64))
-    return np.arange(chains), idx
-
-
-def _rng(seed: int, name: str) -> np.random.Generator:
-    digest = hashlib.sha256(name.encode()).digest()
-    return np.random.default_rng([int(seed), int.from_bytes(digest[:8], "little")])
-
-
 def _clean(ds: xr.Dataset, engine: str) -> xr.Dataset:
-    out = ds.copy()
-    for v in out.variables:
-        out[v].attrs = {k: a for k, a in out[v].attrs.items() if k == "units"}
-    out.attrs = {
-        "inference_library": "pymc",
-        "inference_library_version": pm.__version__,
-        "engine": engine,
-    }
-    return out
-
-
-@contextmanager
-def _quiet() -> Iterator[None]:
-    logger = logging.getLogger("pymc")
-    level = logger.level
-    logger.setLevel(logging.ERROR)
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            yield
-    finally:
-        logger.setLevel(level)
+    return clean_attrs(ds, engine, keep=("units",))

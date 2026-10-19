@@ -62,12 +62,14 @@ def test_the_ported_cases_are_registered(tmp_path: Path) -> None:
         "e79",
         "e80",
         "e81",
+        "e81b",
     } == set(EXPORTS)
     models = {p.id for p in PLUGINS}
     for cid, case in EXPORTS.items():
-        assert case.case == cid and cid[0] == "e" and cid[1:].isdigit()
+        number = cid[1:].rstrip("bcd")  # e81b: a second dataset of notebook E81
+        assert case.case == cid and cid[0] == "e" and number.isdigit()
         assert case.model in models
-        assert case.notebook.startswith(f"E{cid[1:]}_")
+        assert case.notebook.startswith(f"E{number}_")
         # a notebook that simulates its data (E51, E61 part A) has no file: its loader
         # builds the data from an empty directory
         assert case.files or case.load(tmp_path) is not None

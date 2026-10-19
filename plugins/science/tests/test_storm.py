@@ -227,23 +227,52 @@ def test_detection_finds_isolated_spots_near_true_blinks(
 # ------------------------------------------------------------------------------ typed refusals
 
 
-def test_settings_refusals() -> None:
-    check = StormLocalisationModel.check_settings
+def test_settings_refusals(registry: Registry, synthetic: tuple[xr.Dataset, xr.Dataset]) -> None:
+    """Checks that need no data fail when the settings are parsed (so validate_spec
+    catches them); the frame size and the render size are checked at fit."""
     cases: list[tuple[dict[str, Any], str]] = [
         ({"offset_adu": 400.0}, "scale_adu"),
         ({"scale_adu": 13.0}, "offset_adu"),
         ({"patch_px": 10}, "patch_px"),
         ({"min_blob_px": 20, "max_blob_px": 10}, "min_blob_px"),
+        ({"min_blob_px": 40}, "min_blob_px"),
         ({"amplitude_band": (0.6, 0.4)}, "amplitude_band"),
+        ({"render_px_nm": 0.1}, "render_px_nm"),
     ]
     for update, field in cases:
+        with pytest.raises(ValueError, match=field):
+            StormLocalisationSettings(**update)
+    # validate_spec checks the JSON schema (render_px_nm >= 1); the cross-field rules refuse
+    # the fit when the settings are parsed, before any spot is detected
+    spec = load_model_spec(STORM_SPEC_YAML.replace("render_px_nm: 16", "render_px_nm: 0.1"))
+    res = validate_spec(spec, registry.catalog(), STORM_SCHEMA)
+    assert {i.code for i in res.errors} == {ErrorCode.SETTINGS_INVALID}
+    data, _ = synthetic
+    edits = [
+        ("    scale_adu: 13.8\n", ""),
+        ("    max_spots: 16\n", "    max_spots: 16\n    patch_px: 10\n"),
+        ("    max_spots: 16\n", "    max_spots: 16\n    min_blob_px: 40\n"),
+        ("    max_spots: 16\n", "    max_spots: 16\n    amplitude_band: [0.6, 0.4]\n"),
+    ]
+    for old, new in edits:
+        text = STORM_SPEC_YAML.replace(old, new)
+        assert validate_spec(load_model_spec(text), registry.catalog(), STORM_SCHEMA).ok
         with pytest.raises(MapiError) as exc:
-            check(StormLocalisationSettings(**update))
-        assert exc.value.code is ErrorCode.SETTINGS_INVALID
-        assert exc.value.pointer == f"/model/settings/{field}"
+            fit_spec(text, data, registry=registry, raw_schema=STORM_SCHEMA)
+        assert exc.value.code is ErrorCode.SETTINGS_INVALID, new or old
+        assert "failed during fit" not in str(exc.value)
+    check = StormLocalisationModel.check_settings
     with pytest.raises(MapiError) as exc:
         check(StormLocalisationSettings(), (8, 8))
     assert exc.value.code is ErrorCode.SCHEMA_INVALID
+    # 40 x 40 px of 127 nm at 1 nm per render pixel and 1000 draws: about 26e9 values
+    with pytest.raises(MapiError) as exc:
+        check(
+            StormLocalisationSettings(pixel_nm=127.0, render_px_nm=1.0, score_draws=1000), (40, 40)
+        )
+    assert exc.value.code is ErrorCode.SETTINGS_INVALID
+    assert exc.value.pointer == "/model/settings/render_px_nm"
+    check(StormLocalisationSettings(pixel_nm=127.0), (40, 40))  # the default render fits
 
 
 def test_data_refusals(synthetic: tuple[xr.Dataset, xr.Dataset]) -> None:

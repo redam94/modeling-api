@@ -74,12 +74,7 @@ posterior, so ``sci.field_map`` and ``sci.profile_bands`` draw them from the bun
 
 from __future__ import annotations
 
-import hashlib
-import logging
 import math
-import warnings
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from typing import Any, ClassVar, Literal
 
@@ -104,6 +99,19 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.spec import FitConfig, PosteriorPredictiveKeep, ScoreRequest
 from pydantic import Field, model_validator
 from scipy import special
+
+from mapi_plugin_science._common import (
+    clean_attrs as _clean,
+)
+from mapi_plugin_science._common import (
+    draw_index as _draw_index,
+)
+from mapi_plugin_science._common import (
+    quiet as _quiet,
+)
+from mapi_plugin_science._common import (
+    rng as _rng,
+)
 
 __all__ = [
     "ANGLE_DIM",
@@ -699,11 +707,6 @@ def _row_sample(kind: str, comp: dict[str, np.ndarray], rng: np.random.Generator
     return vm(e)
 
 
-def _rng(seed: int, name: str) -> np.random.Generator:
-    digest = hashlib.sha256(name.encode()).digest()
-    return np.random.default_rng([int(seed), int.from_bytes(digest[:8], "little")])
-
-
 def _wrap_units(theta: np.ndarray, period: float) -> np.ndarray:
     """Radians -> ``units`` in [0, period)."""
     return np.asarray(np.mod(np.asarray(theta) / TWO_PI * period, period))
@@ -740,6 +743,7 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
         "direction_hat": {
             "dims": [OBS_DIM],
             "units_of": TARGET,
+            "circular": True,
             "description": "Mean direction of the row's predictive distribution (expected), or "
             "a simulated angle (predictive), from 0 to one turn",
         },
@@ -1024,7 +1028,9 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
             return ("chain", "draw", *dims), arr.reshape(n_c, n_d, *arr.shape[1:])
 
         pred: dict[str, xr.DataArray] = {
-            "direction_hat": _da(dr(direction, (OBS_DIM,)), {"kind": how, "noise": noise}),
+            "direction_hat": _da(
+                dr(direction, (OBS_DIM,)), {"kind": how, "noise": noise, "period": period}
+            ),
             "resultant": _da(dr(np.abs(out["row_vector"]), (OBS_DIM,)), {"kind": "expected"}),
         }
         fields, field_coords = _field_arrays(s, out)
@@ -1215,36 +1221,3 @@ def _mixture_grid(comp: dict[str, np.ndarray], angles: np.ndarray) -> np.ndarray
 def _da(spec: tuple[tuple[str, ...], np.ndarray], attrs: dict[str, Any]) -> xr.DataArray:
     dims, arr = spec
     return xr.DataArray(arr, dims=dims, attrs=attrs)
-
-
-def _draw_index(post: xr.Dataset, n: int) -> tuple[np.ndarray, np.ndarray]:
-    """Every chain and ``n // chains`` evenly spaced draw positions (at least one)."""
-    chains, draws = int(post.sizes["chain"]), int(post.sizes["draw"])
-    per = min(draws, max(1, n // chains))
-    idx = np.unique(np.linspace(0, draws - 1, per).round().astype(np.int64))
-    return np.arange(chains), idx
-
-
-def _clean(ds: xr.Dataset, engine: str) -> xr.Dataset:
-    out = ds.copy()
-    for v in out.variables:
-        out[v].attrs = {}
-    out.attrs = {
-        "inference_library": "pymc",
-        "inference_library_version": pm.__version__,
-        "engine": engine,
-    }
-    return out
-
-
-@contextmanager
-def _quiet() -> Iterator[None]:
-    logger = logging.getLogger("pymc")
-    level = logger.level
-    logger.setLevel(logging.ERROR)
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            yield
-    finally:
-        logger.setLevel(level)

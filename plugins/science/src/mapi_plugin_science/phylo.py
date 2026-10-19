@@ -67,12 +67,8 @@ standardised predictors and the observed traits kept in the bundle (``constant_d
 
 from __future__ import annotations
 
-import hashlib
-import logging
 import math
-import warnings
 from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 
@@ -96,6 +92,10 @@ from mapi_spec.capabilities import Capabilities, Diagnostic, Representation, Res
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.spec import FitConfig, ScoreRequest
 from pydantic import Field, field_validator
+
+from mapi_plugin_science._common import clean_attrs as _clean
+from mapi_plugin_science._common import quiet as _quiet
+from mapi_plugin_science._common import rng as _rng
 
 __all__ = [
     "BRANCH_LENGTH",
@@ -1086,33 +1086,3 @@ def _chunks(n_draws: int, n: int) -> Iterator[slice]:
     per = max(1, int(_CHUNK_BYTES // (8 * max(n, 1) ** 2 * 3)))
     for start in range(0, n_draws, per):
         yield slice(start, min(n_draws, start + per))
-
-
-def _rng(seed: int, name: str) -> np.random.Generator:
-    digest = hashlib.sha256(name.encode()).digest()
-    return np.random.default_rng([int(seed), int.from_bytes(digest[:8], "little")])
-
-
-def _clean(ds: xr.Dataset, engine: str) -> xr.Dataset:
-    out = ds.copy()
-    for v in out.variables:
-        out[v].attrs = {}
-    out.attrs = {
-        "inference_library": "pymc",
-        "inference_library_version": pm.__version__,
-        "engine": engine,
-    }
-    return out
-
-
-@contextmanager
-def _quiet() -> Iterator[None]:
-    logger = logging.getLogger("pymc")
-    level = logger.level
-    logger.setLevel(logging.ERROR)
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            yield
-    finally:
-        logger.setLevel(level)
