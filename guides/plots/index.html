@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3278,6 +3308,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#find-a-recipe-in-the-web-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find a recipe in the web app
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plots-in-a-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plots in a workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#bring-your-own-chart" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5215,7 +5267,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5466,6 +5518,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#find-a-recipe-in-the-web-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find a recipe in the web app
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plots-in-a-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plots in a workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#bring-your-own-chart" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5672,6 +5746,8 @@ each recipe. It makes them with xarray only:</p>
 <li>The marginal cost (or the marginal ROI) for each channel</li>
 <li>A comparison of budget plans</li>
 <li>A channel decomposition</li>
+<li>Your beliefs and the priors (<code>mmm.prior_beliefs</code>): the range that you gave for each
+  channel, next to the values that the model allows before it sees your sales</li>
 </ul>
 <p>The <strong>tabular pack</strong> (<code>ml.*</code>) adds <code>ml.feature_importance</code>. This plot shows ranked tree
 importances, or signed coefficients for linear estimators. It reads them from the groups that
@@ -5693,6 +5769,29 @@ draws. A recipe never adds quantiles or intervals. If a summary has an extra dim
 tells you to request an aggregated output. The recipe shows summed means without a band.
 Predicted-vs-actual plots and residual plots never need a total. Thus they compare these
 summaries cell by cell (one dot or line for each <code>store × sku</code>, with the color of the facet dim).</p>
+<h2 id="find-a-recipe-in-the-web-app">Find a recipe in the web app<a class="headerlink" href="#find-a-recipe-in-the-web-app" title="Permanent link">&para;</a></h2>
+<p>The <strong>Plots</strong> tab of the <strong>Catalog</strong> shows a card for each recipe, with an example plot made
+from synthetic data. The buttons above the cards filter the recipes by pack:</p>
+<ul>
+<li><strong>All plots</strong></li>
+<li><strong>All models</strong> (<code>core.*</code>)</li>
+<li><strong>Marketing mix</strong> (<code>mmm.*</code>)</li>
+<li><strong>Machine learning</strong> (<code>ml.*</code>)</li>
+<li><strong>Science</strong> (<code>sci.*</code>)</li>
+<li><strong>Networks</strong> (<code>net.*</code>)</li>
+</ul>
+<p>A pack shows only when the catalog has a recipe of that pack. Type words in the search field to
+find a recipe by its id, title or About card. Click a card to see the About card and a larger
+example.</p>
+<h2 id="plots-in-a-workflow">Plots in a workflow<a class="headerlink" href="#plots-in-a-workflow" title="Permanent link">&para;</a></h2>
+<p>A workflow can draw a recipe with the node <code>plot.render</code>. Set <code>recipe</code> to the id (for example
+<code>sci.field_map</code>) and, if necessary, <code>settings</code> and <code>source</code> (<code>auto</code>, <code>data</code>, <code>model</code> or
+<code>predictions</code>, default <code>auto</code>). <code>model.forecast</code> and <code>evaluate.residuals</code> also give <code>plot</code>
+outputs. A <code>report.summary</code> can show the plots in its <code>plots</code> input. The server puts each plot
+through the sanitizer. A plot that is not safe fails its node with <code>PLOT_UNSAFE</code>. See
+<a href="../workflows/#score-a-model-and-draw-plots">Score a model and draw plots</a>.</p>
+<p>The plot sandbox applies the theme to polar plots (<code>barpolar</code> and <code>scatterpolar</code>), for example
+<code>sci.rose</code>.</p>
 <h2 id="bring-your-own-chart">Bring your own chart<a class="headerlink" href="#bring-your-own-chart" title="Permanent link">&para;</a></h2>
 <p>Make the chart with Altair or Plotly as usual. Then put it in an envelope:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">altair</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">alt</span>

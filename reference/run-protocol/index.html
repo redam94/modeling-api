@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5289,7 +5319,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -6404,7 +6434,7 @@ change a payload, the type checks and the tests fail on the two sides.</p>
 <td><code>score</code></td>
 <td>the <code>ScoreRequest</code></td>
 <td><code>bundle</code>, <code>bundle.manifest</code>, <code>dataset</code> (the <code>data</code> of the request), <code>scenario</code>, <code>side.&lt;name&gt;</code>, <code>history</code> (v0.4: the fit dataset, for forecasts with <code>future_covariates</code> set to <code>carry_last</code> or <code>seasonal_naive</code>), <code>inline.data</code> / <code>inline.scenario</code> (v0.4: the inline XrJSON of an endpoint call, for use when <code>dataset</code> / <code>scenario</code> is not present)</td>
-<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>plots.json</code>, <code>ui/summary.arrow</code>. Also <code>ui/guided/forecast.json</code> or <code>ui/guided/counterfactual.json</code> (v0.4).</td>
+<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>summary.json</code> (<code>ScoreSummary</code>, which the API puts in <code>ScoreCallResult.summary</code>), <code>plots.json</code>, <code>ui/summary.arrow</code>. Also <code>ui/guided/forecast.json</code> or <code>ui/guided/counterfactual.json</code> (v0.4).</td>
 </tr>
 <tr>
 <td><code>evaluate</code> / <code>derive</code> / <code>render</code></td>
@@ -6457,6 +6487,11 @@ each view has a <code>format</code> tag:</p>
 <td><code>ui/tree_index.json</code></td>
 <td><code>mapi.tree-index/v1</code></td>
 <td><code>TreeIndexView</code>: the dims, coordinates (with values for small coordinates), variables and scalar attributes of each DataTree node. It has no arrays.</td>
+</tr>
+<tr>
+<td><code>ui/summary.arrow</code>, <code>ui/grids/*.arrow</code></td>
+<td>Arrow IPC</td>
+<td>Tidy tables (<code>mapi_sdk.wire.to_arrow_table</code>): one column for each dim, then one column for each variable. The schema metadata <code>mapi.attrs</code> holds the attrs as JSON. From v0.9, the schema metadata <code>mapi.dims</code> holds the names of the dim columns as a JSON list</td>
 </tr>
 <tr>
 <td><code>ui/preprocess.json</code></td>

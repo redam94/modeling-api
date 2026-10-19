@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1894,6 +1924,17 @@
     <span class="md-ellipsis">
       
         Counterfactuals share their noise
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#circular-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circular outputs
       
     </span>
   </a>
@@ -5202,7 +5243,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5485,6 +5526,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#circular-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circular outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5618,6 +5670,28 @@ Thus, a Guided-mode slider that combines them keeps correct uncertainty bands.</
 <code>baseline/</code> and <code>delta/</code> groups. Bayesian plugins use <strong>common random numbers</strong>. The
 predictive noise of the two runs is the same draw. Thus, the delta shows the effect of the
 intervention, not the difference between two independent noise samples.</p>
+<h2 id="circular-outputs">Circular outputs<a class="headerlink" href="#circular-outputs" title="Permanent link">&para;</a></h2>
+<p>An angle wraps at one turn. Thus a summary on a line is not correct for an angle. For draws
+at 350 and 10 degrees, the linear mean is 180 degrees, but the correct mean is 0 degrees. A
+model can declare an output as circular (<code>OutputDecl.circular</code>, see
+<a href="../capabilities/#outputs-on-a-grid-or-a-circle">Capabilities</a>). The model then sets a <code>period</code>
+attr on the scored array, for example 360 for degrees or 24 for hours.</p>
+<p>For a circular output with <code>draws</code>, the summariser uses these rules:</p>
+<ul>
+<li><code>mean</code> is the circular mean of the draws.</li>
+<li><code>sd</code> is the circular standard deviation, <code>sqrt(-2 ln R)</code>.</li>
+<li><code>median</code>, each quantile and each interval (<code>hdi_&lt;p&gt;</code>, <code>eti_&lt;p&gt;</code>) come from the deviations
+  of the draws from the circular mean. Thus each interval is centred on the circular mean.</li>
+<li>Each value is in <code>[0, period)</code>. If <code>lower</code> is more than <code>upper</code>, the interval crosses the
+  seam (for example from 350 to 10 degrees).</li>
+<li>In <code>mode: counterfactual</code>, <code>delta/</code> is wrapped to <code>[-period/2, period/2)</code>.</li>
+</ul>
+<p>The holdout metrics of a circular output use the same rules. Each table of <code>summary.json</code>
+(<code>ScoreSummaryTable</code>) for a circular output has the field <code>period</code>. Thus a reader knows that
+the statistics are on the circle.</p>
+<p>The summary stays on a line if the scored array has no valid <code>period</code> attr, or if the request
+aggregates the output over a dim. A sum of angles is not an angle. The result then has a
+warning (<code>CAPABILITY_UNSUPPORTED</code>, severity <code>warning</code>).</p>
 <p>Next: <a href="../bundles/">Bundles</a>.</p>
 
 

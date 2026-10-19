@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5204,7 +5234,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5525,6 +5555,17 @@ labels). Thus the basis that it calculates at a forecast month is exactly the ba
 </span></code></pre></div>
 <p>Score payloads must also continue the fitted range without gaps
 (<code>NON_CONTIGUOUS_EXTENSION</code>). They cannot start before the fitted range (<code>COORD_NOT_ALLOWED</code>).</p>
+<p>The runner does a check of the mode before it builds a forecast payload:</p>
+<ul>
+<li>If the model does not declare the mode in <code>capabilities.score_modes</code>, the runner refuses the
+  request with <code>MODE_NOT_SUPPORTED</code>. The error lists the modes that the model supports.</li>
+<li>The labels of the horizon dim must be numbers or dates. A horizon along text labels (for
+  example the names of images or areas) gives <code>COORD_NOT_ALLOWED</code>.</li>
+<li>A request without data, without a scenario dataset and without a horizon gives
+  <code>SCHEMA_INVALID</code> ("the score request has no data"). Thus a model that has no <code>forecast</code> mode
+  always needs data to score. The Score page of the web app shows <strong>No new data</strong> only for
+  Forecast, or when a scenario dataset gives the values.</li>
+</ul>
 <h2 id="evaluate-the-way-you-will-forecast">Evaluate the way you will forecast<a class="headerlink" href="#evaluate-the-way-you-will-forecast" title="Permanent link">&para;</a></h2>
 <p><code>fit.mode: evaluate_then_refit</code> is the default for models that you can promote. In this mode,
 the platform does these steps:</p>

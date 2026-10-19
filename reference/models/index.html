@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5420,7 +5450,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -6530,6 +6560,9 @@ shows the output in two places:</p>
   95% maps and single draws, with a frame slider and a draw player.</li>
 <li>The <code>sci.*</code> plot recipes (see <a href="../plots/#scientific-model-pack-sci">Plot recipes</a>).</li>
 </ul>
+<p>An output that is an angle (a direction or a time of day) declares <code>circular</code>
+(<code>OutputDecl.circular</code>). Its metrics and score summaries are then on the circle (see
+<a href="../sdk/#circular-outputs">Circular outputs</a>).</p>
 <p>The runner images of <code>base-bayes</code> contain these plugins (namespace <code>sci</code>).</p>
 <div class="admonition tip">
 <p class="admonition-title">Tutorials</p>
@@ -6700,6 +6733,7 @@ the suggested spec. That spec reads the suggested dataset name
 <code>write_export(data, path, schema=...)</code> writes any dataset or tree. To add a case, add one
 <code>ExportCase</code> entry to <code>EXPORTS</code> (the docstring of the module shows an example).</p>
 <h3 id="scilgcp_grid-event-counts-on-a-map-over-time-e07"><code>sci.lgcp_grid</code> — event counts on a map over time (E07)<a class="headerlink" href="#scilgcp_grid-event-counts-on-a-map-over-time-e07" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e07-oklahoma-earthquakes/">E07 from start to end</a>.</p>
 <p>A log-Gaussian Cox process on a space-time grid. The total for each period follows a random
 walk. The share of each cell comes from a 2-D Hilbert-space GP (Matérn 5/2) whose map changes
 from one era (a group of periods) to the next.</p>
@@ -6756,6 +6790,7 @@ and <code>total(period)</code>. The sum of <code>rate</code> over the cells is e
 <p><code>from_challenges</code> puts the Oklahoma earthquake catalogue into 12 × 9 cells of 25 km for each
 quarter from 2009 to 2019. A fit on 2009–2017 takes approximately one minute with nutpie.</p>
 <h3 id="sciareal_bym2-disease-risk-on-a-map-of-areas-e18"><code>sci.areal_bym2</code> — disease risk on a map of areas (E18)<a class="headerlink" href="#sciareal_bym2-disease-risk-on-a-map-of-areas-e18" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e18-scottish-lip-cancer/">E18 from start to end</a>.</p>
 <p>A disease map for counts in areas (districts, counties). The count of each area is Poisson
 around its expected count times a relative risk <code>rr</code>. The log of <code>rr</code> is an intercept, plus a
 covariate effect, plus an area effect <code>u</code>. The <code>kind</code> setting selects the prior of <code>u</code>:</p>
@@ -6889,6 +6924,7 @@ have <code>P(rr &gt; 1) &gt; 0.95</code>. The fit takes a few seconds.</p>
 non-negative numbers, for an expected count that is not more than zero, and for a graph with
 islands when <code>islands</code> is <code>error</code>.</p>
 <h3 id="scifisher_kpp-a-reaction-diffusion-pde-e50"><code>sci.fisher_kpp</code> — a reaction-diffusion PDE (E50)<a class="headerlink" href="#scifisher_kpp-a-reaction-diffusion-pde-e50" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e50-scratch-assay/">E50 from start to end</a>.</p>
 <p>The Fisher-KPP equation <code>du/dt = D d²u/dx² + lam u (1 - u)</code> moves and grows cells into a
 scratch wound. The model solves the equation in the model graph (explicit Euler in
 <code>pytensor.scan</code>, zero flux at the edges). The counts are Poisson. With <code>delay: true</code>, the
@@ -6942,6 +6978,7 @@ scalar <code>wave_speed</code> (<code>2 sqrt(D lam)</code>, µm/h). A forecast c
 <p>If the Euler steps are not stable at the <code>cfl_quantile</code> of the prior of <code>D</code>, the model stops
 with <code>SETTINGS_INVALID</code>. The message gives the smallest <code>steps_per_hour</code> that is stable.</p>
 <h3 id="scitraction_force-cell-forces-from-gel-movement-e60"><code>sci.traction_force</code> — cell forces from gel movement (E60)<a class="headerlink" href="#scitraction_force-cell-forces-from-gel-movement-e60" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e60-traction-force/">E60 from start to end</a>.</p>
 <p>Fourier-transform traction cytometry as a Gaussian inverse problem. The data are a displacement
 field of a soft gel. The output is the traction field that the cells apply. NUTS samples only
 the noise sd and the prior spectrum. The model integrates the field out, with one closed-form
@@ -6994,6 +7031,7 @@ the model. Correlated noise from overlapping PIV windows causes it, and then the
 narrow. <code>challenges_settings(ds)</code> gives the settings for the real pyTFM colony of
 <code>from_challenges</code>.</p>
 <h3 id="scistrong_lens-a-galaxy-scale-strong-lens-e80"><code>sci.strong_lens</code> — a galaxy-scale strong lens (E80)<a class="headerlink" href="#scistrong_lens-a-galaxy-scale-strong-lens-e80" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e80-strong-lens/">E80 from start to end</a>.</p>
 <p>A pixel forward model of a strong gravitational lens in a telescope image. The mass is a
 singular isothermal ellipsoid with an optional external shear. Rays from each pixel (and from
 sub-pixels) go back to the source plane. The source and the lens light are Sérsic profiles,
@@ -7077,6 +7115,7 @@ caustic and the cut of each posterior draw as the derived group <code>critical_c
 SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that image the
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.</p>
 <h3 id="sciheat_plate-temperature-of-a-heated-plate-e51"><code>sci.heat_plate</code> — temperature of a heated plate (E51)<a class="headerlink" href="#sciheat_plate-temperature-of-a-heated-plate-e51" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e51-heat-plate-design/">E51 from start to end</a>.</p>
 <p>The 2-D steady heat equation of a thin plate. Heat moves in the plane of the plate
 (conductivity <code>k</code>) and goes out through the two faces (<code>h</code>) and the outer edges (<code>h_edge</code>). A
 part <code>eta</code> of the heater power goes into the plate. The model divides the plate into square
@@ -7165,6 +7204,7 @@ have equal steps, when the fit data has no reading or when <code>use_insulation<
 data has no <code>insulation</code>. A new layout without <code>heater_power</code> gives
 <code>MISSING_FUTURE_COVARIATE</code>. Cells that are not on the fitted plate give <code>UNSEEN_LEVELS</code>.</p>
 <h3 id="scituring_pattern-turing-patterns-from-early-images-e61"><code>sci.turing_pattern</code> — Turing patterns from early images (E61)<a class="headerlink" href="#scituring_pattern-turing-patterns-from-early-images-e61" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e61-turing-patterns/">E61 from start to end</a>.</p>
 <p>The Schnakenberg activator-substrate system makes spots or stripes (a Turing pattern). The
 model gets its rates from images of the activator that you take while the pattern starts to
 grow. In this phase the growth is linear. Thus each Fourier mode of the images is a complex
@@ -7279,6 +7319,7 @@ the spectral solver diverges in <code>simulate</code> (set a smaller <code>simul
 next times. The <code>NONLINEAR_REGIME</code> diagnostic shows when the images are more than 10% from
 their mean, because then the linear likelihood is not correct.</p>
 <h3 id="scistorm_localisation-molecule-positions-in-storm-frames-e58"><code>sci.storm_localisation</code> — molecule positions in STORM frames (E58)<a class="headerlink" href="#scistorm_localisation-molecule-positions-in-storm-frames-e58" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e58-storm-localisation/">E58 from start to end</a>.</p>
 <p>Single-molecule localisation microscopy (STORM, PALM, dSTORM). The data are the raw frames of
 an EMCCD camera. The model finds isolated spots and gives the position of each molecule with an
 error bar in nm. Detection, camera calibration and the patches use NumPy and <code>scipy.ndimage</code> at
@@ -7436,6 +7477,7 @@ at the edge of the crop, or near a bright spot outside the patch). Then the chai
 agree. Use <code>flat</code> for these frames. The model does not do the multi-emitter selection, the
 Laplace fits for the full movie or the blink counting of the notebook.</p>
 <h3 id="sciibp_features-shared-parts-of-small-images-e31"><code>sci.ibp_features</code> — shared parts of small images (E31)<a class="headerlink" href="#sciibp_features-shared-parts-of-small-images-e31" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e31-indian-buffet-digits/">E31 from start to end</a>.</p>
 <p>A latent feature model for small images, for example handwritten digits. Each image is the
 average image plus the features that it owns, plus Gaussian noise:
 <code>x = mu + z A + e</code>. Each <code>z</code> is 0 or 1. The prior of <code>z</code> is an Indian buffet process
@@ -7539,6 +7581,7 @@ The export spec also fits the top halves of the test digits, so its log density 
 separate fit on the 300 training digits only, as in the notebook, gives 0.283 and −0.34 nats
 in approximately 4 minutes.</p>
 <h3 id="scicolour_naming-how-the-speakers-of-a-language-name-colours-e77"><code>sci.colour_naming</code> — how the speakers of a language name colours (E77)<a class="headerlink" href="#scicolour_naming-how-the-speakers-of-a-language-name-colours-e77" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e77-colour-naming/">E77 from start to end</a>.</p>
 <p>The World Color Survey asked the speakers of 110 languages to name 330 colour chips. This model
 fits the naming of one language. The probability that a speaker gives term <code>t</code> to chip <code>c</code> is
 a softmax over the terms. The logit of each term is a quadratic surface in CIELAB colour space:
@@ -7648,6 +7691,7 @@ a chip has no CIELAB colour, or two chips have the same palette place. It stops 
 <code>SETTINGS_INVALID</code> when <code>kind: hierarchical</code> has only one speaker, or <code>n_random</code> is larger than
 the number of features (refused when the settings are parsed). Chips that are not in the fit give <code>UNSEEN_LEVELS</code>.</p>
 <h3 id="scicmb_field-the-cmb-sky-behind-a-mask-e79"><code>sci.cmb_field</code> — the CMB sky behind a mask (E79)<a class="headerlink" href="#scicmb_field-the-cmb-sky-behind-a-mask-e79" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e79-cmb-lmc-mask/">E79 from start to end</a>.</p>
 <p>Field-level inference of a temperature map of the cosmic microwave background (CMB). Each pixel
 of the sky is a parameter. The model samples the sky together with the power spectrum in bins
 (bandpowers). Masked pixels have no data term, and each pixel has its own noise level. Thus the
@@ -7783,6 +7827,7 @@ burn-in). It takes approximately one minute. On this patch, the log amplitude is
 The pixel sd is 2.5 µK where there are data, 32 µK in the small holes and 89 µK in the hole of
 the LMC.</p>
 <h3 id="scinetwork_latent_space-who-works-with-whom-e21"><code>sci.network_latent_space</code> — who works with whom (E21)<a class="headerlink" href="#scinetwork_latent_space-who-works-with-whom-e21" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e21-law-firm-network/">E21 from start to end</a>.</p>
 <p>A model of an undirected graph. Each pair of nodes <code>i &lt; j</code> has a tie or not
 (<code>Bernoulli</code>, logit link). The log odds have three parts:</p>
 <ul>
@@ -7893,6 +7938,7 @@ the fit did not see stops with <code>UNSEEN_LEVELS</code>. The model has no <cod
 <code>counterfactual</code> mode. The mixed-membership block models of the notebook are not part of the
 model.</p>
 <h3 id="scigraphical_model-direct-links-between-variables-e19"><code>sci.graphical_model</code> — direct links between variables (E19)<a class="headerlink" href="#scigraphical_model-direct-links-between-variables-e19" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e19-protein-signalling/">E19 from start to end</a>.</p>
 <p>A Gaussian graphical model. The model measures the partial correlation of each pair of
 variables: the correlation that stays when all the other variables are held constant. A zero
 partial correlation means that the two variables have no direct link. A link (an edge) is
@@ -7996,6 +8042,7 @@ above 0.5. Seven of them are in the consensus network. The fit takes approximate
 with nutpie. The neighbourhood model finds 6 edges, all in the consensus network, in
 approximately 2 minutes.</p>
 <h3 id="sciphylo_regression-traits-of-related-species-on-a-tree-e23"><code>sci.phylo_regression</code> — traits of related species on a tree (E23)<a class="headerlink" href="#sciphylo_regression-traits-of-related-species-on-a-tree-e23" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e23-phylogenetic-regression/">E23 from start to end</a>.</p>
 <p>A regression of one trait of species on other traits. Related species are alike because
 they share ancestors, so the residuals are correlated by a phylogeny (a tree with branch
 lengths). The model reads the correlation from the shared branch length of two species. On
@@ -8125,6 +8172,7 @@ no single root or has a cycle, a predictor has missing values, a value is not po
 log, or fewer than 3 species have a trait value. <code>UNSEEN_LEVELS</code> when a score requests a
 species that the fit did not see.</p>
 <h3 id="scicircular_regression-directions-and-times-of-day-e81"><code>sci.circular_regression</code> — directions and times of day (E81)<a class="headerlink" href="#scicircular_regression-directions-and-times-of-day-e81" title="Permanent link">&para;</a></h3>
+<p>Tutorial: <a href="../../tutorials/pymc-challenges/e81-wind-and-activity/">E81 from start to end</a>.</p>
 <p>The data are angles: the direction that a wind comes from, or the time of day of a
 photograph. 359 degrees is next to 1 degree, and 23:59 is next to 00:01. Thus the model uses
 densities on the circle, as the E81 case study does. It has four kinds:</p>
@@ -8270,8 +8318,9 @@ the notebook does. On the 12,023 reports of 2021–2022, <code>elpd_loo</code> i
 <code>from_challenges_activity</code> reads the camera-trap times of Barro Colorado Island for the ocelot
 and five species that it hunts. With <code>BCI_SPEC_YAML</code>, the overlap of the ocelot and the agouti
 is 0.30 (the notebook: 0.30).</p>
-<p><code>direction_hat</code> is a circular output (<code>OutputDecl.circular</code>, with its <code>period</code> attr: 360, 2π
-or 24). The holdout metrics of <code>evaluate</code> are circular: the point is the circular mean of the
+<p><code>direction_hat</code> and <code>mean_direction</code> are circular outputs (<code>OutputDecl.circular</code>, with their
+<code>period</code> attr: 360, 2π or 24). Their score summaries are on the circle: the circular mean, and
+intervals centred on it in <code>[0, period)</code>. The holdout metrics of <code>evaluate</code> are circular: the point is the circular mean of the
 draws, <code>mae</code>, <code>rmse</code> and <code>bias</code> use the error wrapped to half a turn (359° against 1° is an
 error of 2°), <code>coverage_&lt;p&gt;</code> and <code>interval_width_&lt;p&gt;</code> use central intervals of the draws around
 the circular mean (an interval may cross 0), and <code>crps</code> uses the arc distance. <code>mape</code>,

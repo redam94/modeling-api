@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2728,6 +2758,17 @@
     <span class="md-ellipsis">
       
         The model families, compared
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#science-models-compared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Science models, compared
       
     </span>
   </a>
@@ -5204,7 +5245,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5466,6 +5507,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#science-models-compared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Science models, compared
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#when-the-chooser-is-not-enough" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5513,11 +5565,11 @@ the model families, for persons who want the details. For the contract behind th
 <tbody>
 <tr>
 <td>What do you want to do?</td>
-<td>measure what marketing adds · plan a budget · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model</td>
+<td>measure what marketing adds · plan a budget · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model · make a map or an image from measurements · fit a physical model to measurements</td>
 </tr>
 <tr>
 <td>What does your data look like?</td>
-<td>one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time</td>
+<td>one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time · a map, an image or values on a regular grid</td>
 </tr>
 <tr>
 <td>How often do you record the data?</td>
@@ -5761,6 +5813,146 @@ can select explains itself. This also applies to your own plugins
 <a href="../../models/statsmodels/">statsmodels time-series models</a>,
 <a href="../time-series/">forecasting</a>, <a href="../sklearn/">tabular models</a> and
 <a href="../../reference/models/">the built-in models</a>.</p>
+<h2 id="science-models-compared">Science models, compared<a class="headerlink" href="#science-models-compared" title="Permanent link">&para;</a></h2>
+<p>The science models (<code>sci.*</code>, package <code>mapi-plugin-science</code>) come from the
+<a href="../../tutorials/pymc-challenges/">pymc-challenges case studies</a>. They are for maps,
+images, fields, graphs, trees and angles. All of them are Bayesian and give a range for each
+value. The <code>base-bayes</code> runner image contains them. The chooser shows them only when the
+catalog has the plugin.</p>
+<p>To find them with <strong>Help me choose</strong>, answer the goal "Make a map or an image from
+measurements" or "Fit a physical model to measurements". Then answer the data shape "A map,
+an image or values on a regular grid". The graph, tree and angle models use the goal
+"Understand what causes changes in a number" with the data shape "A table of items without a
+time order". Most of these models need expert-level statistics knowledge. Thus, if you answer
+"new to it", they rank lower and show a caution.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>api<span class="w"> </span>GET<span class="w"> </span><span class="s2">"/v1/catalog/recommendations?goal=map_fields&amp;data_shape=grid&amp;kind=model"</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Your data</th>
+<th>Use</th>
+<th>When to use it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Counts of events in each cell of a map, for each period</td>
+<td><code>sci.lgcp_grid</code></td>
+<td>You want a map of the rate and a forecast of the next periods</td>
+</tr>
+<tr>
+<td>Counts of cells across a scratch, at some times</td>
+<td><code>sci.fisher_kpp</code></td>
+<td>You want the speed at which cells move, divide and close the wound</td>
+</tr>
+<tr>
+<td>A map of the movement of a gel under cells</td>
+<td><code>sci.traction_force</code></td>
+<td>You want the force map and the strain energy</td>
+</tr>
+<tr>
+<td>A telescope image of a lens galaxy with a ring or arcs</td>
+<td><code>sci.strong_lens</code></td>
+<td>You want the Einstein radius and the source galaxy without the lens</td>
+</tr>
+<tr>
+<td>Temperatures at some points of a heated plate</td>
+<td><code>sci.heat_plate</code></td>
+<td>You want the heat properties and the temperature map of a new heater layout</td>
+</tr>
+<tr>
+<td>Images of a pattern of spots or stripes that starts to grow</td>
+<td><code>sci.turing_pattern</code></td>
+<td>You want the reaction and diffusion rates and the probability of a Turing pattern</td>
+</tr>
+<tr>
+<td>Raw frames of a STORM or PALM microscope (EMCCD camera)</td>
+<td><code>sci.storm_localisation</code></td>
+<td>You want the position of each molecule in nm, with an error bar</td>
+</tr>
+<tr>
+<td>Many small images of the same size</td>
+<td><code>sci.ibp_features</code></td>
+<td>You want the parts that the images share, or to fill in hidden pixels</td>
+</tr>
+<tr>
+<td>The colour names that the speakers of one language gave to colour chips</td>
+<td><code>sci.colour_naming</code></td>
+<td>You want the boundaries between the colour words and a map of the words</td>
+</tr>
+<tr>
+<td>A CMB temperature map of a small flat patch, with a mask</td>
+<td><code>sci.cmb_field</code></td>
+<td>You want the sky behind the mask and the bandpowers</td>
+</tr>
+<tr>
+<td>Counts of cases and expected counts for each area of a map</td>
+<td><code>sci.areal_bym2</code></td>
+<td>You want a map of the risk that borrows strength from the neighbour areas</td>
+</tr>
+<tr>
+<td>Ties between pairs of nodes (yes or no)</td>
+<td><code>sci.network_latent_space</code></td>
+<td>You want the effect of pair covariates and the chance of a tie for each pair</td>
+</tr>
+<tr>
+<td>The same variables, measured on many samples</td>
+<td><code>sci.graphical_model</code></td>
+<td>You want the direct links between the variables, with a probability for each link</td>
+</tr>
+<tr>
+<td>One trait value for each species, and a tree of the species</td>
+<td><code>sci.phylo_regression</code></td>
+<td>You want a slope across species that does not count shared ancestors many times</td>
+</tr>
+<tr>
+<td>Angles: wind directions or times of day</td>
+<td><code>sci.circular_regression</code></td>
+<td>You want the most probable direction for each hour and season, or the activity of species</td>
+</tr>
+</tbody>
+</table>
+<p>The About card of each model tells when <em>not</em> to use it. For example, <code>sci.areal_bym2</code> cannot
+predict areas that are not on the map, and <code>sci.cmb_field</code> is not correct for a patch of more
+than about 20 degrees. For all settings, see
+<a href="../../reference/models/#scientific-models-mapi-plugin-science">Scientific models</a>.</p>
+<p>The workflow gallery has recipes that compare science models or check them:</p>
+<table>
+<thead>
+<tr>
+<th>Recipe</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sci_spatial_ladder</code></td>
+<td>Fits <code>sci.areal_bym2</code> with iid, ICAR and BYM2 area effects and keeps the best model by <code>elpd_loo</code> and stacking weights</td>
+</tr>
+<tr>
+<td><code>sci_network_ladder</code></td>
+<td>Fits <code>sci.network_latent_space</code> with covariates, sociality and a latent space and keeps the best model</td>
+</tr>
+<tr>
+<td><code>sci_phylo_signal</code></td>
+<td>Fits <code>sci.phylo_regression</code> with four residual kinds and keeps the best model</td>
+</tr>
+<tr>
+<td><code>sci_calibrate_then_design</code></td>
+<td>Fits <code>sci.heat_plate</code> with one run held out, and predicts a new heater layout only if the holdout error and R-hat are in their limits</td>
+</tr>
+<tr>
+<td><code>sci_image_model_check</code></td>
+<td>Shows residual maps and predicted images next to the observed image of an image model</td>
+</tr>
+<tr>
+<td><code>bayes_workflow_audit</code></td>
+<td>Does the checks of a careful Bayesian workflow for each model that gives draws</td>
+</tr>
+</tbody>
+</table>
+<p>For the documents of these recipes, see the <a href="../workflow-cookbook/">workflow cookbook</a>.</p>
 <h2 id="when-the-chooser-is-not-enough">When the chooser is not enough<a class="headerlink" href="#when-the-chooser-is-not-enough" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Compare. Do not guess.</strong> Fit two candidates and compare them on the same holdout. Use

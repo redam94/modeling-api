@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3983,6 +4013,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#export-the-data-of-a-science-case-study-v09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export the data of a science case study v0.9
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5189,7 +5230,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5445,6 +5486,17 @@
     <span class="md-ellipsis">
       
         mapi serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export-the-data-of-a-science-case-study-v09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export the data of a science case study v0.9
       
     </span>
   </a>
@@ -5965,6 +6017,63 @@ If <code>DATABASE_URL</code> is not set, Postgres is the embedded <code>pgserver
 <code>MAPI_GCS_ENDPOINT</code>, the command starts the <a href="../gcs-shim/">GCS shim</a> in the same process. Runs
 use the <code>local-process</code> executor with the real <code>mapi-runner</code>. To also run the web app, use
 <code>make dev</code> (<a href="../../operations/local-development/">Local development</a>).</p>
+<h3 id="export-the-data-of-a-science-case-study-v09">Export the data of a science case study <span class="mapi-badge">v0.9</span><a class="headerlink" href="#export-the-data-of-a-science-case-study-v09" title="Permanent link">&para;</a></h3>
+<p><code>mapi-plugin-science</code> has its own command. It writes the dataset of a pymc-challenges case
+study to a file that you can upload (<code>mapi datasets upload</code>, or <strong>Datasets → New dataset</strong> in
+the web app). It is not a <code>mapi</code> command:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>--list
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>CASE<span class="w"> </span><span class="o">[</span>--challenges<span class="w"> </span>DIR<span class="o">]</span><span class="w"> </span><span class="o">[</span>--out<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--spec<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--synthetic<span class="o">]</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CASE</code></td>
+<td>—</td>
+<td>The case id, for example <code>e07</code>, <code>e81</code> or <code>e81b</code>. Upper case is also correct</td>
+</tr>
+<tr>
+<td><code>--list</code></td>
+<td>—</td>
+<td>Print each case (model, <code>dataset</code> or <code>tree</code>, title, notebook, data files and the suggested dataset), then stop</td>
+</tr>
+<tr>
+<td><code>--challenges DIR</code></td>
+<td><code>$MAPI_PYMC_CHALLENGES_DATA</code></td>
+<td>The <code>data/</code> directory of a local copy of pymc-challenges. A case without a data file (<code>e51</code>, <code>e61</code>) does not need it</td>
+</tr>
+<tr>
+<td><code>--out FILE</code></td>
+<td><code>&lt;dataset&gt;.nc</code></td>
+<td>The file to write. The suffix sets the format: <code>.nc</code> (NetCDF-4), <code>.zarr.zip</code> (a plain dataset) or <code>.tree.zip</code> (a tree dataset)</td>
+</tr>
+<tr>
+<td><code>--spec FILE</code></td>
+<td>—</td>
+<td>Also write the suggested spec (YAML). It reads <code>dataset://&lt;project&gt;/&lt;dataset&gt;@latest</code></td>
+</tr>
+<tr>
+<td><code>--synthetic</code></td>
+<td>off</td>
+<td>Write the simulated data of the model. You do not need pymc-challenges</td>
+</tr>
+</tbody>
+</table>
+<p>There are 16 cases: <code>e07</code>, <code>e50</code>, <code>e60</code>, <code>e80</code>, <code>e51</code>, <code>e61</code>, <code>e58</code>, <code>e31</code>, <code>e77</code>, <code>e79</code>,
+<code>e18</code>, <code>e21</code>, <code>e19</code>, <code>e23</code>, <code>e81</code> (the wind directions at Santa Barbara airport) and <code>e81b</code>
+(the camera-trap times at Barro Colorado). The
+<a href="../models/#export-the-data-of-a-case-study">case table</a> gives the model, the data files
+and the suggested dataset of each case.</p>
+<p>The command prints the file that it wrote and the dataset name to use for the upload. The
+exit status is 0 on success and 1 if a data file is missing or the data is not correct. It is
+2 for a usage error, for example an unknown case, or a case that needs data without
+<code>--challenges</code> and without <code>--synthetic</code>.</p>
 
 
 

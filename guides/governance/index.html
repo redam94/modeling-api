@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5326,7 +5356,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5825,7 +5855,7 @@ with its card, metric, default limits, necessary conditions and parameters. In s
 <tr>
 <td><code>recovery.simulated</code></td>
 <td>Does the model <strong>find known answers</strong>?</td>
-<td>The platform simulates data from the fit. A Bayesian model gives the data from its posterior predictive draws (one posterior draw and the noise of the model). Other models give the expected values plus block-bootstrapped residuals. The platform fits the model again <code>n_sims</code> times. The check counts how frequently the 90% intervals contain the known values: the values of the posterior draw, or the fitted values. The target is 90%. This is a parametric-bootstrap version of simulation-based calibration.</td>
+<td>The platform simulates data from the fit. A Bayesian model gives the data from its posterior predictive draws (one posterior draw and the noise of the model). Other models give the expected values plus block-bootstrapped residuals. The platform fits the model again <code>n_sims</code> times. The check counts how frequently the 90% intervals contain the known values: the values of the posterior draw, or the fitted values. The target is 90%. If the model has no predictive draws and the target holds whole numbers (counts), the check is <code>skipped</code>. The evidence counts the simulated datasets that the model cannot fit (<code>failed_simulations</code>). This is a parametric-bootstrap version of simulation-based calibration.</td>
 </tr>
 <tr>
 <td><code>convergence</code></td>

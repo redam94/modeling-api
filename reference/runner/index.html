@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5244,7 +5274,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5844,13 +5874,13 @@ this sequence:</p>
 <td><code>fit</code></td>
 <td>a <code>ModelSpec</code></td>
 <td><code>dataset</code>, optional <code>schema</code>, <code>side.&lt;name&gt;</code></td>
-<td><code>bundle.zarr.zip</code>, <code>bundle.manifest.json</code>, <code>diagnostics.json</code>, <code>plots.json</code>, <code>metrics.json</code>, <code>coords.json</code> (<code>{stage: {dim: CoordSummary}}</code>), <code>scorecard.json</code> (<code>Scorecard</code>, v0.4), <code>evaluation/…</code>, <code>ui/thin.zarr.zip</code>, <code>ui/summaries.json</code>, <code>ui/tree_index.json</code> (<code>mapi.tree-index/v1</code>), <code>ui/preprocess.json</code> (<code>mapi.preprocess/v1</code>), <code>ui/grids/*.arrow</code>, <code>ui/grids/response_curves.json</code> (<code>mapi.response-grid/v1</code>, v0.4), <code>ui/plotdata/*.arrow</code></td>
+<td><code>bundle.zarr.zip</code>, <code>bundle.manifest.json</code>, <code>diagnostics.json</code>, <code>plots.json</code>, <code>metrics.json</code> (<code>MetricsReport</code>. v0.9: <code>elpd</code> has the <code>elpd_loo</code>/<code>elpd_waic</code> estimates with their pointwise values), <code>coords.json</code> (<code>{stage: {dim: CoordSummary}}</code>), <code>scorecard.json</code> (<code>Scorecard</code>, v0.4), <code>evaluation/…</code>, <code>ui/thin.zarr.zip</code>, <code>ui/summaries.json</code>, <code>ui/tree_index.json</code> (<code>mapi.tree-index/v1</code>), <code>ui/preprocess.json</code> (<code>mapi.preprocess/v1</code>), <code>ui/grids/*.arrow</code>, <code>ui/grids/response_curves.json</code> (<code>mapi.response-grid/v1</code>, v0.4), <code>ui/plotdata/*.arrow</code></td>
 </tr>
 <tr>
 <td><code>score</code></td>
 <td>a <code>ScoreRequest</code>, or <code>{"request": …, "plots": […], "max_draws": n}</code></td>
 <td><code>bundle</code>, optional <code>bundle.manifest</code>, <code>dataset</code> (payload), <code>scenario</code>, <code>side.&lt;name&gt;</code>, <code>history</code> (v0.4)</td>
-<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>ui/summary.arrow</code>, <code>plots.json</code>. Forecasts add <code>ui/guided/forecast.json</code> (<code>mapi.forecast/v1</code>). Counterfactuals add <code>ui/guided/counterfactual.json</code> (<code>mapi.counterfactual/v1</code>) (v0.4).</td>
+<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>summary.json</code> (<code>ScoreSummary</code>: the summary as tables, at most 100 000 cells. v0.9: a circular output has <code>period</code>), <code>ui/summary.arrow</code>, <code>plots.json</code>. Forecasts add <code>ui/guided/forecast.json</code> (<code>mapi.forecast/v1</code>). Counterfactuals add <code>ui/guided/counterfactual.json</code> (<code>mapi.counterfactual/v1</code>) (v0.4).</td>
 </tr>
 <tr>
 <td><code>evaluate</code></td>
@@ -5884,6 +5914,21 @@ evaluation sub-bundle keeps the SDK layout (<code>evaluation/manifest.json</code
 <p>In <code>plots.json</code>, the runner moves inline Arrow datasets that are larger than 64 KiB to
 <code>ui/plotdata/&lt;plot&gt;.&lt;dataset&gt;.arrow</code>. The plot refers to them as <code>data_ref</code>, with their size
 and CRC32C.</p>
+<p>The Arrow views (<code>ui/summary.arrow</code>, <code>ui/grids/*.arrow</code>) are tidy tables from
+<code>mapi_sdk.wire.to_arrow_table</code>. From v0.9, the schema metadata <code>mapi.dims</code> gives the names of
+the dim columns as a JSON list. Thus the web app keeps a numeric dim, for example a grid
+position in cm, as a key column and not as a value.</p>
+<p><code>scorecard.json</code> does the data checks on the raw dataset. The check <code>data.missing</code> (v0.9)
+does not count these variables:</p>
+<ul>
+<li>the variables with the role <code>constant</code>, <code>index</code> or <code>mask</code> in the raw schema or in the
+  schema of the model stage</li>
+<li>the canonical variables that the model lists in <code>CustomModel.structural_missing</code>. The
+  runner gets them from the plugin registry. If it cannot find the plugin, the list is empty.</li>
+</ul>
+<p>The message of the check names the variables that it does not count.</p>
+<p>A <code>workflow_node</code> run gets a tree dataset input as its root node, and keeps the full tree
+(v0.9). Thus the <code>nodes</code> parameter of a model node can select other nodes of the tree.</p>
 <h3 id="mff-preset">MFF preset<a class="headerlink" href="#mff-preset" title="Permanent link">&para;</a></h3>
 <p>The preset reads a long table with the columns <code>Period</code>, <code>VariableName</code> and <code>VariableValue</code>.
 <code>Period</code> becomes the time dim (<code>date</code>, policy <code>extend</code>, inferred frequency). Each key column

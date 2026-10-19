@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -530,6 +532,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5224,7 +5254,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5602,6 +5632,11 @@ production. Their analysis must be repeatable and defensible.</p>
 <td>Each model, step, node and check has an <strong>About card</strong> in plain words. <strong>Help me choose</strong> asks some questions and gives a ranked shortlist with reasons (<a href="../guides/choosing-a-model/">Choosing a model</a>)</td>
 </tr>
 <tr>
+<td><strong>The Bayesian checks stay in a notebook</strong></td>
+<td>R-hat, the predictive check and the LOO comparison run one time, by hand, for one model. Nobody runs them again on the next version</td>
+<td>Posterior summaries, posterior predictive checks, stacking weights and plots are <strong>workflow nodes</strong>. The <code>bayes_workflow_audit</code> recipe runs the checks of a careful Bayesian workflow for each model that gives draws. Model ladders compare variants by <code>elpd_loo</code> (<a href="../tutorials/complex-workflows/">Complex workflows</a>)</td>
+</tr>
+<tr>
 <td><strong>You find data problems after the model</strong></td>
 <td>Gaps, a constant driver or a series that wanders show in the residuals one week later</td>
 <td>The <strong>Data Explorer</strong> makes a profile of each upload in the sandbox. It shows quality warnings, the stationarity of each series, cross-correlation with the KPI by lag, STL and collinearity (<a href="../guides/data-explorer/">Explore a dataset</a>)</td>
@@ -5642,7 +5677,7 @@ production. Their analysis must be repeatable and defensible.</p>
 <tr>
 <td>Freedom</td>
 <td>Any library, any code</td>
-<td>Any PyMC or scikit-learn model through the plugin contract. Built-in models for MMM (mmm-framework), twelve statsmodels time-series models, forecasting, demand and choice. Your own plugins run now on a deployment that you control (installed into its runner). Upload to a shared deployment comes in v0.6, first for allow-listed teams</td>
+<td>Any PyMC or scikit-learn model through the plugin contract. Built-in models for MMM (mmm-framework), twelve statsmodels time-series models, forecasting, demand and choice, and 15 science models for images, fields, maps and graphs. Your own plugins run now on a deployment that you control (installed into its runner). Upload to a shared deployment is planned for a later release, first for allow-listed teams (<a href="../roadmap/">roadmap</a>)</td>
 </tr>
 <tr>
 <td>Preprocessing at score time</td>
@@ -5705,7 +5740,7 @@ are the <em>statistics</em> of one analysis, not a data pipeline.</p>
 <tr>
 <td>A step is</td>
 <td>Any Python function or container</td>
-<td>A node from a catalog (51 nodes: 17 statistical tests, transforms, 7 train/test plans, order searches, fits, backtests, comparisons, governance, reports) or a saved sub-workflow</td>
+<td>A node from a catalog (56 nodes: 17 statistical tests, transforms, 7 train/test plans, order searches, fits, backtests, scores, posterior summaries, predictive checks, comparisons and stacking weights, governance, reports and plots) or a saved sub-workflow</td>
 </tr>
 <tr>
 <td>Between steps</td>
@@ -5730,7 +5765,7 @@ are the <em>statistics</em> of one analysis, not a data pipeline.</p>
 <tr>
 <td>Output</td>
 <td>The data that the tasks write</td>
-<td>Verdicts in plain language, a report, governance evidence and a model version that is ready to validate and promote</td>
+<td>Verdicts in plain language, a report with plots, governance evidence and a model version that is ready to validate and promote</td>
 </tr>
 </tbody>
 </table>
@@ -5810,7 +5845,7 @@ same platform, and connect the result to your own tools.</p>
 <td>Other models on the same platform</td>
 <td>No</td>
 <td>No</td>
-<td>Forecasting, macro systems (VAR/VECM), store demand, customer choice, your own</td>
+<td>Forecasting, macro systems (VAR/VECM), store demand, customer choice, science models, your own</td>
 </tr>
 <tr>
 <td>Who owns the posterior</td>
@@ -5900,17 +5935,21 @@ trade-offs.</p>
 <li><strong>Your model needs the network at run time</strong> (an API, a database). Runs have no egress, by
   design.</li>
 <li><strong>You want to upload public code to a hosted platform now</strong>. On a shared deployment,
-  uploaded plugins come first to allow-listed teams (v0.6). They come to the public only after
+  uploaded plugins are planned first for allow-listed teams, in a later release. They come to the public only after
   an external penetration test. On a deployment that you control, you can install and run
   your own plugins now.</li>
 </ul>
 <h2 id="where-it-stands">Where it stands<a class="headerlink" href="#where-it-stands" title="Permanent link">&para;</a></h2>
-<p>v0.5 is complete, and we tested it on a laptop. The workflow, governance, mmm-framework,
-explorer and CLI journeys pass end to end against a live stack. All earlier journeys also
-pass. The numbers on the <a href="../#measured-not-promised">home page</a> come from those runs.
-Two items are still open. We test the cloud controls against fakes until they meet a real
-Google Cloud project. Also, the study with five non-technical testers did not run yet.
-See <a href="../operations/m35-verification/">M3.5 verification</a>, <a href="../operations/m3-verification/">M3 verification</a>
+<p>v0.9 is complete, and we tested it on a laptop. We did the E18, E51 and E21 science
+tutorials in the web app on a local dev stack, with the real data of the notebooks. The
+<code>sci_spatial_ladder</code> recipe also ran from start to end in a browser. The other five new
+recipes run through the server orchestrator in a slow test, with small fits. The v0.5
+workflow, governance, mmm-framework, explorer and CLI journeys passed end to end against a
+live stack. The numbers on the <a href="../#measured-not-promised">home page</a> come from those
+runs. Two items are still open. We test the cloud controls against fakes until they meet a
+real Google Cloud project. Also, the study with five non-technical testers did not run yet.
+See <a href="../whats-new-0.9/#what-is-not-in-09-yet">What's new in 0.9</a>,
+<a href="../operations/m35-verification/">M3.5 verification</a>, <a href="../operations/m3-verification/">M3 verification</a>
 and the <a href="../roadmap/">roadmap</a>.</p>
 
 

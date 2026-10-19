@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5348,7 +5378,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -6027,18 +6057,27 @@ unstable by design. Pass ≤ 25%, warn ≤ 50%.</p>
    changes Beta or Gamma <code>beta</code>/<code>b</code> parameters.</li>
 <li>It gives the largest relative change of a key posterior mean (pass ≤ 20%).</li>
 </ol>
+<p>If the check finds no prior width in the settings, the result is <code>skipped</code> with the reason.
+For example, the check does not find the widths of <code>sci.areal_bym2</code> (<code>intercept_sd</code>,
+<code>slope_sd</code> and <code>sigma_scale</code>), because these names do not agree with the rules of step 2.</p>
 <p>Recovery is a small version of simulation-based calibration with <code>S</code> refits. It gives the
 coverage of the 90% intervals for the known values (target 90%, pass within 10 points). The
 check makes the simulated data in one of two ways:</p>
 <ul>
 <li>A Bayesian model that gives predictive draws: each dataset is one draw of the posterior
   predictive. It comes from one posterior draw and the noise of the model, so counts stay
-  whole numbers and ties stay 0 or 1. The known values are the values of that posterior draw.</li>
+  whole numbers and ties stay 0 or 1. The known values are the values of that posterior draw.
+  The draws come from the <code>predict</code> score mode with predictive draws. Thus the model must
+  have the <code>predict</code> mode.</li>
 <li>Other models: <code>y* = E[y] + ε*</code> with block-bootstrapped residuals. The known values are the
-  fitted values. The platform skips this check when the target holds whole numbers (counts),
-  because <code>E[y] + ε*</code> is not a whole number. It also skips it for autoregressive models,
-  because resampled residuals do not make the same dynamics as the model.</li>
+  fitted values. The platform skips this check when the target holds whole numbers (counts
+  or yes/no values), because <code>E[y] + ε*</code> is not a whole number. The result is <code>skipped</code>
+  with the reason. The platform also skips this check for autoregressive models that are not
+  Bayesian, because resampled residuals do not make the same dynamics as the model.</li>
 </ul>
+<p>If the model cannot fit one simulated dataset, the check continues with the next dataset.
+The evidence gives the number of these datasets (<code>failed_simulations</code>), and the message tells
+how many fits failed. If no refit gives parameter intervals, the result is <code>error</code>.</p>
 <h3 id="interpreting-a-set-of-results">Interpreting a set of results<a class="headerlink" href="#interpreting-a-set-of-results" title="Permanent link">&para;</a></h3>
 <p>A policy is a multiple-testing procedure. With twelve checks at their own thresholds, a good
 model will sometimes warn on something. Severities exist for this reason. Make the checks that

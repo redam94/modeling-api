@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -4615,6 +4645,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#science-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Science data v0.9
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#end-to-end-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5280,7 +5321,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5580,6 +5621,17 @@
     <span class="md-ellipsis">
       
         Everyday commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#science-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Science data v0.9
       
     </span>
   </a>
@@ -5889,6 +5941,33 @@ datasets again. <code>make</code> reads <code>SIZE</code> only from the make com
 (the compilers of conda) export their own <code>SIZE</code> variable.</p>
 <p><code>uv run python scripts/seed.py --export demo/</code> writes the same tables, the E33 score payloads
 and the spec as files. You can then upload these files through the web app.</p>
+<h2 id="science-data">Science data <span class="mapi-badge">v0.9</span><a class="headerlink" href="#science-data" title="Permanent link">&para;</a></h2>
+<p>The <code>sci.*</code> models of <code>mapi-plugin-science</code> use the data of the
+<a href="https://github.com/redam94/pymc-challenges">pymc-challenges</a> case studies. <code>make install</code>
+installs the plugin with the other workspace packages, so a <code>make dev</code> stack can fit these
+models. To get a dataset that you can upload, write it to a file with the export command:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_PYMC_CHALLENGES_DATA</span><span class="o">=</span>~/pymc-challenges/data<span class="w">      </span><span class="c1"># the data/ directory of a local copy</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>--list<span class="w">           </span><span class="c1"># the cases that you can export</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e18<span class="w"> </span>--out<span class="w"> </span>.local/science/scotland_lip.nc<span class="w"> </span>--spec<span class="w"> </span>.local/science/e18.yaml
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e50<span class="w"> </span>--synthetic<span class="w"> </span>--out<span class="w"> </span>.local/science/assay.nc
+</span></code></pre></div>
+<ul>
+<li><code>--challenges</code> gives the data directory. The default is <code>MAPI_PYMC_CHALLENGES_DATA</code>.</li>
+<li><code>--synthetic</code> writes the simulated data of the model. It does not need a copy of
+  pymc-challenges. The cases <code>e51</code> and <code>e61</code> do not need a data directory.</li>
+<li><code>--spec</code> also writes the suggested spec of the case.</li>
+<li>The suffix of <code>--out</code> sets the format: <code>.nc</code>, <code>.zarr.zip</code> or <code>.tree.zip</code>.</li>
+</ul>
+<p>The <a href="../../tutorials/pymc-challenges/">tutorials of the case studies</a> upload these files
+through the web app.</p>
+<p>The tests of the plugin that read the real data files run only when
+<code>MAPI_PYMC_CHALLENGES_DATA</code> is set. If it is not set, these tests skip. <code>MAPI_E21_DRAWS</code> sets
+the draws for each chain of the real-data fit of <code>sci.network_latent_space</code> (default 300).</p>
+<p><code>make docs-screenshots-science</code> captures the screenshots of the science tutorials again from a
+<code>make dev</code> stack. Before you run it, export the cases <code>e18</code>, <code>e51</code> and <code>e21</code> to
+<code>scotland_lip.nc</code>, <code>heat_plate_e51.nc</code> and <code>lazega_coworkers.nc</code> in <code>.local/science</code> (or in
+the folder that <code>MAPI_SCIENCE_DATA</code> gives). Refer to the header of
+<code>scripts/docs_screenshots_science.mjs</code> for the full procedure.</p>
 <h2 id="end-to-end-tests">End-to-end tests<a class="headerlink" href="#end-to-end-tests" title="Permanent link">&para;</a></h2>
 <p><code>make e2e</code> does the M1 flow through the stack:</p>
 <ul>
@@ -5901,9 +5980,9 @@ and the spec as files. You can then upload these files through the web app.</p>
 <p>Start <code>make dev</code> first. The two suites read the same <code>MAPI_*</code> variables. Thus, if you moved a
 port, export the variables in the shell that runs <code>make e2e</code>. The browser suite writes
 screenshots to <code>apps/web/e2e/screenshots/</code> (git ignores them).</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:8010<span class="w">   </span><span class="c1"># only if you moved the API</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>make<span class="w"> </span>dev<span class="w">                                     </span><span class="c1"># shell 1</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>make<span class="w"> </span>e2e<span class="w">                                     </span><span class="c1"># shell 2: about 25 minutes</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:8010<span class="w">   </span><span class="c1"># only if you moved the API</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>make<span class="w"> </span>dev<span class="w">                                     </span><span class="c1"># shell 1</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>make<span class="w"> </span>e2e<span class="w">                                     </span><span class="c1"># shell 2: about 25 minutes</span>
 </span></code></pre></div>
 <p><code>make e2e</code> also runs the M2 tenancy suite and the M3 suites. The M3 suites are the trust
 lifecycle and the whole Guided journey to an endpoint, webhooks, embeds, budget
@@ -5930,22 +6009,22 @@ port 5173. Thus run it only while <code>make dev</code> is stopped.</p>
 <p>You can run a component yourself, for example with a debugger or auto-reload. There are two
 procedures. In the first procedure, exclude the component and start it manually with the
 same environment:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>make<span class="w"> </span>dev<span class="w"> </span><span class="nv">WITHOUT</span><span class="o">=</span>api,web<span class="w">           </span><span class="c1"># web depends on api, so exclude it too</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/dev.py<span class="w"> </span>env<span class="k">)</span><span class="s2">"</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>mapi-server<span class="w"> </span>api<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>dev<span class="w"> </span><span class="nv">WITHOUT</span><span class="o">=</span>api,web<span class="w">           </span><span class="c1"># web depends on api, so exclude it too</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/dev.py<span class="w"> </span>env<span class="k">)</span><span class="s2">"</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>mapi-server<span class="w"> </span>api<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
 </span></code></pre></div>
 <p>In the second procedure, replace its command with <code>MAPI_DEV_&lt;NAME&gt;_CMD</code>. The command is
 shell-quoted. <code>&lt;NAME&gt;</code> is <code>GCS_SHIM</code>, <code>MIGRATE</code>, <code>API</code>, <code>WORKER</code>, <code>WEB</code> or <code>PLOTS</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">MAPI_DEV_API_CMD</span><span class="o">=</span><span class="s2">"uvicorn mapi_server.app:app --reload --host 127.0.0.1 --port 8000"</span><span class="w"> </span>make<span class="w"> </span>dev
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nv">MAPI_DEV_API_CMD</span><span class="o">=</span><span class="s2">"uvicorn mapi_server.app:app --reload --host 127.0.0.1 --port 8000"</span><span class="w"> </span>make<span class="w"> </span>dev
 </span></code></pre></div>
 <p>The readiness probe still applies. Thus a replacement <code>api</code> must answer <code>GET /healthz</code>.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <p><code>make dev</code> reads <strong>your shell environment</strong>. It does not read <code>.env</code>, which is only for
 docker compose. If you set nothing, all services use the defaults above. To change a value,
 export the variable first:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:9000<span class="w">          </span><span class="c1"># move the API (and its probe) to port 9000</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">DATABASE_URL</span><span class="o">=</span>postgresql://me@localhost/mapi<span class="w">  </span><span class="c1"># use your own PostgreSQL instead of pgserver</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>make<span class="w"> </span>dev
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MAPI_API_URL</span><span class="o">=</span>http://127.0.0.1:9000<span class="w">          </span><span class="c1"># move the API (and its probe) to port 9000</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">DATABASE_URL</span><span class="o">=</span>postgresql://me@localhost/mapi<span class="w">  </span><span class="c1"># use your own PostgreSQL instead of pgserver</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>make<span class="w"> </span>dev
 </span></code></pre></div>
 <p>Export the same <code>MAPI_*</code> URLs in each shell that connects to the stack (<code>make seed</code>,
 <code>make e2e</code>, the CLI, the Python client). The <a href="../configuration/">configuration reference</a>
@@ -5953,14 +6032,14 @@ lists all the variables. This includes the variables that only compose or the im
 <h2 id="where-state-lives">Where state lives<a class="headerlink" href="#where-state-lives" title="Permanent link">&para;</a></h2>
 <p>All local state is under <code>MAPI_DATA_DIR</code>. The default is <code>.local/</code> in the repository root,
 and git ignores it.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>.local/
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>├─ pg/                    PostgreSQL data directory (pgserver); log in pg/log
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>├─ gcs/                   GCS shim objects (buckets mapi-local-*)
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>│  └─ _shim/keys/         the shim's principals: control.json (control plane), exec.json (runs)
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>├─ keys/                  bundle-signing-p256.pem: signs bundle manifests (stands in for KMS)
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>├─ outbox/                the dev mailer's e-mails (make outbox, GET /dev/outbox)
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>├─ executions/            per-run scratch of the local executor (removed when a run ends)
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>└─ dev/supervisor.json    pid of the running supervisor and its services (make stop/status)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>.local/
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>├─ pg/                    PostgreSQL data directory (pgserver); log in pg/log
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>├─ gcs/                   GCS shim objects (buckets mapi-local-*)
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>│  └─ _shim/keys/         the shim's principals: control.json (control plane), exec.json (runs)
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>├─ keys/                  bundle-signing-p256.pem: signs bundle manifests (stands in for KMS)
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>├─ outbox/                the dev mailer's e-mails (make outbox, GET /dev/outbox)
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>├─ executions/            per-run scratch of the local executor (removed when a run ends)
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>└─ dev/supervisor.json    pid of the running supervisor and its services (make stop/status)
 </span></code></pre></div>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>

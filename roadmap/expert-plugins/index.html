@@ -27,7 +27,7 @@
     
     
       
-        <title>Next: expert plugins and MCP (v0.6) - modeling-api</title>
+        <title>Planned: expert plugins and MCP - modeling-api</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#expert-plugins-and-mcp-next-v06" class="md-skip">
+        <a href="#expert-plugins-and-mcp-planned" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Next: expert plugins and MCP (v0.6)
+              Planned: expert plugins and MCP
             
           </span>
         </div>
@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5109,7 +5139,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5127,7 +5157,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5175,10 +5205,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sweeps-as-jobs-and-what-v05-already-delivered" class="md-nav__link">
+  <a href="#sweeps-as-jobs-and-what-is-already-delivered" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sweeps as jobs, and what v0.5 already delivered
+        Sweeps as jobs, and what is already delivered
       
     </span>
   </a>
@@ -5442,10 +5472,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sweeps-as-jobs-and-what-v05-already-delivered" class="md-nav__link">
+  <a href="#sweeps-as-jobs-and-what-is-already-delivered" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sweeps as jobs, and what v0.5 already delivered
+        Sweeps as jobs, and what is already delivered
       
     </span>
   </a>
@@ -5480,19 +5510,22 @@
 
 
 
-<h1 id="expert-plugins-and-mcp-next-v06">Expert plugins and MCP <span class="mapi-badge mapi-badge--soon">next: v0.6</span><a class="headerlink" href="#expert-plugins-and-mcp-next-v06" title="Permanent link">&para;</a></h1>
+<h1 id="expert-plugins-and-mcp-planned">Expert plugins and MCP <span class="mapi-badge mapi-badge--soon">planned</span><a class="headerlink" href="#expert-plugins-and-mcp-planned" title="Permanent link">&para;</a></h1>
 <div class="admonition abstract">
-<p class="admonition-title">Status: next (milestone M4)</p>
+<p class="admonition-title">Status: planned, no release number yet</p>
 <p>v0.4 opened the hosted platform to declarative specs and built-in models. v0.5 added
 workflows, governance, the explorers and budget optimisation in the sandbox
-(<a href="../../whats-new-0.5/">what's new</a>). In v0.6, <strong>allow-listed experts can upload their own
-model plugins</strong>. v0.6 also gives AI assistants and agents a curated <strong>MCP server</strong>.
-Sweeps and simulation-based calibration become single parent runs. Public code upload
-for all users comes after v0.6, with its own controls (see the <a href="../#after-v06">roadmap</a>).</p>
+(<a href="../../whats-new-0.5/">what's new</a>). The plan before v0.5 put this work in v0.6 (M4).
+The releases v0.6 to v0.9 gave other features: the spec builder, scientific models, tree
+datasets (M4) and the science gallery (M5). Thus the items on this page are not done
+yet. With them, <strong>allow-listed experts can upload their own model plugins</strong>. AI
+assistants and agents also get a curated <strong>MCP server</strong>. Sweeps and simulation-based
+calibration become single parent runs. Public code upload for all users comes after
+these items, with its own controls (see the <a href="../#after-v06">roadmap</a>).</p>
 </div>
 <h2 id="plugin-upload-for-allow-listed-experts">Plugin upload for allow-listed experts<a class="headerlink" href="#plugin-upload-for-allow-listed-experts" title="Permanent link">&para;</a></h2>
 <p>Now, a data scientist can run their own <code>PyMCModel</code> or <code>SklearnModel</code> only on a deployment
-that they control. They install it into the environment of the runner. v0.6 makes this a
+that they control. They install it into the environment of the runner. This work makes it a
 product feature of a shared deployment. It is available to tenants that an operator put on
 the allow list:</p>
 <pre class="mermaid"><code>flowchart LR
@@ -5512,8 +5545,8 @@ the allow list:</p>
   web app makes forms from them.</li>
 <li><strong>Dev overlays</strong> for fast iteration. The target is less than five minutes from <code>push</code> to
   a runnable version.</li>
-<li><strong>A vetted tier.</strong> We ported the sibling marketing-mix and HMM models as plugins. They
-  are the proof that real models agree with the contract.</li>
+<li><strong>A vetted tier.</strong> We will port the sibling marketing-mix and HMM models as plugins. They
+  will show that real models agree with the contract.</li>
 </ul>
 <h2 id="an-mcp-server-for-agents">An MCP server for agents<a class="headerlink" href="#an-mcp-server-for-agents" title="Permanent link">&para;</a></h2>
 <p>The MCP server gives a curated set of tools to AI assistants and agents. For example, the
@@ -5521,7 +5554,7 @@ tools list and describe models, score an endpoint, read a run and get a plot. Th
 returns each string from a user or a plugin as clearly delimited untrusted text. Thus a model
 name cannot put hidden instructions into an agent. Tokens and scopes work the same as for
 other clients.</p>
-<h2 id="sweeps-as-jobs-and-what-v05-already-delivered">Sweeps as jobs, and what v0.5 already delivered<a class="headerlink" href="#sweeps-as-jobs-and-what-v05-already-delivered" title="Permanent link">&para;</a></h2>
+<h2 id="sweeps-as-jobs-and-what-is-already-delivered">Sweeps as jobs, and what is already delivered<a class="headerlink" href="#sweeps-as-jobs-and-what-is-already-delivered" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><code>optimize</code> runs</strong> (delivered in v0.5). The sandbox optimises budgets <em>next to the
   model</em> with the planning module of mmm-framework. It uses the response curves of the
@@ -5531,6 +5564,13 @@ other clients.</p>
 <li><strong><code>Sweep</code> and <code>SBC</code></strong> as one parent run that fans out and aggregates the results. For
   example, a sensitivity sweep over a prior, or simulation-based calibration of a new
   plugin. (The governance of v0.5 has a parametric-bootstrap version, <code>recovery.simulated</code>.)</li>
+<li><strong>Bayesian checks in a workflow</strong> (delivered in v0.9). The recipe <code>bayes_workflow_audit</code>
+  does a convergence gate, a posterior predictive check, a prior sensitivity check and a
+  recovery check in one workflow run. Since v0.9, <code>recovery.simulated</code> simulates each dataset
+  of a Bayesian model with predictive draws from its posterior predictive. <code>sci_spatial_ladder</code> fits its best model
+  again with wider and narrower priors
+  (<a href="../../concepts/workflows/#bayesian-models-in-a-workflow">Bayesian models in a workflow</a>).
+  These checks run as nodes of the workflow, not as one parent run of a sweep.</li>
 </ul>
 <h2 id="exit-criteria">Exit criteria<a class="headerlink" href="#exit-criteria" title="Permanent link">&para;</a></h2>
 <ul>

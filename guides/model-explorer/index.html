@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5237,7 +5267,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5589,7 +5619,7 @@ sections into groups by the question that they answer:</p>
 </tr>
 <tr>
 <td>What it learned</td>
-<td>Parameters (a table that you can sort and filter, with intervals, p-values, R-hat and ESS, and a forest plot for each parameter), contributions, response curves, impulse responses and variance decomposition</td>
+<td>Parameters (a table that you can sort and filter, with intervals, p-values, R-hat and ESS, and a forest plot for each parameter), contributions, response curves, impulse responses, variance decomposition and fields (the outputs of the model on a 2-D grid)</td>
 </tr>
 <tr>
 <td>Can you trust it?</td>
@@ -5802,6 +5832,20 @@ view does not include the tests. It gives a warning. For more sections, add
 </tr>
 </tbody>
 </table>
+<p>The science models have many outputs on a grid. Some examples:</p>
+<ul>
+<li><code>sci.heat_plate</code>: <code>field</code>, the temperature of each cell for each run.</li>
+<li><code>sci.turing_pattern</code>: <code>pattern</code>, <code>settled</code> and <code>turing_space</code>.</li>
+<li><code>sci.storm_localisation</code>: <code>render</code>, <code>patch_fit</code> and <code>frames_hat</code>.</li>
+<li><code>sci.ibp_features</code>: <code>ink_hat</code> and <code>features</code>.</li>
+<li><code>sci.graphical_model</code>: <code>pcor</code> and <code>edge_prob</code>.</li>
+<li><code>sci.network_latent_space</code>: <code>tie_prob</code> and <code>tie</code>.</li>
+<li><code>sci.circular_regression</code>: <code>density</code> and <code>overlap</code>.</li>
+</ul>
+<p>The <code>fields</code> section calculates its statistics on a line. It does not use the circular rules
+of an output that is an angle (<code>OutputDecl.circular</code>), as the score summaries do. At this
+time, no circular output of a bundled model has a <code>grid</code>. The section does not show an output
+that is not numeric, or an output that does not have the dims of its <code>grid</code>.</p>
 <h2 id="for-plugin-authors-what-the-explorer-reads">For plugin authors: what the explorer reads<a class="headerlink" href="#for-plugin-authors-what-the-explorer-reads" title="Permanent link">&para;</a></h2>
 <p>The explorer does not depend on the model. Plugins get these views if they follow some
 conventions:</p>

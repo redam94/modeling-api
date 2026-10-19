@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3543,6 +3573,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Representations and summaries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#circular-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circular outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3572,6 +3619,17 @@
     <span class="md-ellipsis">
       
         Bundles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#missing-values-by-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing values by design
       
     </span>
   </a>
@@ -5249,7 +5307,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5519,6 +5577,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Representations and summaries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#circular-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circular outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5548,6 +5623,17 @@
     <span class="md-ellipsis">
       
         Bundles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#missing-values-by-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing values by design
       
     </span>
   </a>
@@ -5678,6 +5764,9 @@ has a <code>draws</code> group. This group has 50 joint draws from the thinning 
 <h2 id="how-the-fit-works">How the fit works<a class="headerlink" href="#how-the-fit-works" title="Permanent link">&para;</a></h2>
 <p><code>fit.mode: evaluate_then_refit</code> (the default) does these steps:</p>
 <ol>
+<li>Parse the settings of the model (<code>plugin.parse_settings</code>). A settings rule that the JSON
+   Schema cannot give (a pydantic <code>model_validator</code>) refuses the fit here with
+   <code>SETTINGS_INVALID</code>, before the SDK changes the data.</li>
 <li>Bind the dataset names to canonical names. Do a check of the data against its schema.</li>
 <li>Run the stateless prefix of the pipeline on all the data, up to the split stage.</li>
 <li>Split the data. Fit the remaining steps and the model on <strong>train</strong>.</li>
@@ -5687,7 +5776,10 @@ has a <code>draws</code> group. This group has 50 joint draws from the thinning 
    context tails and the latest terminal state. The lineage of the production bundle has a link
    to the evaluation bundle.</li>
 </ol>
-<p><code>train_only</code> stops after step 4 and keeps the fit on train.</p>
+<p><code>train_only</code> stops after step 5 and keeps the fit on train.</p>
+<p>When <code>BindingMap</code> changes the name of a dim, it also changes that name in the <code>grid</code> attr of
+each variable (the keys <code>y</code>, <code>x</code>, <code>frame</code> and <code>component</code>). Thus a plot recipe finds the grid
+of an output after a <code>data.bind</code>.</p>
 <h2 id="how-the-score-works">How the score works<a class="headerlink" href="#how-the-score-works" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5698,8 +5790,16 @@ has a <code>draws</code> group. This group has 50 joint draws from the thinning 
 </thead>
 <tbody>
 <tr>
+<td>Mode</td>
+<td><code>score_bundle</code> refuses a mode that the fitted model does not support (<code>MODE_NOT_SUPPORTED</code>, with the supported modes in <code>context</code>). This check comes before all work for a mode. For example, a forecast never starts on a model that cannot forecast</td>
+</tr>
+<tr>
 <td>CoordPlan</td>
 <td>The SDK finds typed errors early from the metadata: <code>UNSEEN_LEVELS</code>, <code>COORD_NOT_ALLOWED</code>, <code>HORIZON_EXCEEDS_FIT</code> (409), <code>MISSING_FUTURE_COVARIATE</code>, <code>NON_CONTIGUOUS_EXTENSION</code>, <code>MODE_NOT_SUPPORTED</code>, ...</td>
+</tr>
+<tr>
+<td>Horizon</td>
+<td>A forecast makes the labels of the horizon after the last fitted label. A horizon along a dim with text labels gives <code>COORD_NOT_ALLOWED</code> at <code>/horizon/dim</code>, because text labels have no sequence. The labels must be numbers or dates</td>
 </tr>
 <tr>
 <td>Entry</td>
@@ -5769,6 +5869,41 @@ has a <code>draws</code> group. This group has 50 joint draws from the thinning 
 <p>If you ask for something that is not valid, the request fails with <code>CAPABILITY_UNSUPPORTED</code>.
 For example, you cannot add quantiles together, or get draws from a point model. The SDK does
 not return a number that can cause an incorrect decision.</p>
+<h3 id="circular-outputs">Circular outputs<a class="headerlink" href="#circular-outputs" title="Permanent link">&para;</a></h3>
+<p>An output can be an angle, for example a direction or a time of day. The model declares it
+with <code>OutputDecl.circular: true</code> (the default is <code>false</code>). It also sets a <code>period</code> attr (one
+turn, in the units of the output, for example 360, 2π or 24) on the scored array.
+<code>sci.circular_regression</code> declares <code>direction_hat</code> and <code>mean_direction</code> circular.</p>
+<p>For the <code>draws</code> representation, <code>summarise(..., periods={var: period})</code> calculates the
+summaries on the circle:</p>
+<ul>
+<li><code>mean</code> is the circular mean. <code>sd</code> is the circular standard deviation, <code>sqrt(-2 ln R)</code>
+  converted to the units of the output.</li>
+<li><code>median</code>, <code>q&lt;p&gt;</code>, <code>eti_&lt;p&gt;</code> and <code>hdi_&lt;p&gt;</code> come from the wrapped differences between the
+  draws and the circular mean. Thus each interval is centred on the circular mean.</li>
+<li>The mean, the median, the quantiles and the interval bounds are in <code>[0, period)</code>. An
+  interval with <code>lower</code> more than <code>upper</code> crosses the seam, for example from 350 to 10
+  degrees.</li>
+<li>The difference between a scenario and its baseline (<code>delta/summary</code>, <code>delta/draws</code>) is
+  wrapped to <code>[-period/2, period/2)</code> (<code>signed=True</code>). Thus 10 − 350 degrees is 20, not −340.</li>
+</ul>
+<p>The summary variable has the attr <code>circular_period</code> (<code>mapi_sdk.summarise.CIRCULAR_ATTR</code>).
+If the output has no valid <code>period</code> attr, or if the request aggregates it over a dim, the
+summary stays on a line. The result then has a <code>CAPABILITY_UNSUPPORTED</code> warning at
+<code>/output/summary</code>.</p>
+<p>The holdout metrics of a circular output use the same rules
+(<code>compute_metrics(..., period=...)</code>):</p>
+<ul>
+<li>The point is the circular mean of the draws.</li>
+<li><code>mae</code>, <code>rmse</code> and <code>bias</code> use the error wrapped to half a turn. Thus 359 degrees against 1
+  degree is an error of −2 degrees, not 358.</li>
+<li><code>coverage_&lt;p&gt;</code> and <code>interval_width_&lt;p&gt;</code> use central intervals of the draws around the
+  circular mean.</li>
+<li><code>crps</code> uses the arc distance.</li>
+<li>The SDK skips <code>mape</code>, <code>smape</code>, <code>wape</code> and <code>r2</code>, because they have no meaning on a circle.
+  It also skips all metrics if the representation is not <code>draws</code> or the <code>period</code> is not
+  valid. <code>skipped</code> gives the reason.</li>
+</ul>
 <h2 id="data-on-the-wire">Data on the wire<a class="headerlink" href="#data-on-the-wire" title="Permanent link">&para;</a></h2>
 <p><code>mapi_sdk.wire</code> reads and writes the formats of the platform. The readers think that each
 payload can be hostile.</p>
@@ -5787,7 +5922,12 @@ payload can be hostile.</p>
 </li>
 <li><strong>Rows</strong> (<code>stack_rows</code> / <code>unstack_rows</code>): These functions stack dims into rows and remove
   empty rows. Later, they restore the rows from the recorded row mask.</li>
-<li><strong>Arrow IPC</strong> (<code>to_arrow_table</code>, <code>write_arrow_ipc</code>): Tidy tables for UI views.</li>
+<li><strong>Arrow IPC</strong> (<code>to_arrow_table</code>, <code>write_arrow_ipc</code>): Tidy tables for UI views. One column
+  for each dim coordinate, then one column for each variable. The schema metadata
+  <code>mapi.attrs</code> holds the attrs of the variables and of the dataset as JSON. The schema
+  metadata <code>mapi.dims</code> holds the names of the dim columns as a JSON list. A reader uses it to
+  find the key columns. The type of a column does not tell this, for example for a numeric
+  dim such as a grid position in cm.</li>
 </ul>
 <p>The SDK never uses pickle.</p>
 <h2 id="data-checks-in-plain-language">Data checks in plain language<a class="headerlink" href="#data-checks-in-plain-language" title="Permanent link">&para;</a></h2>
@@ -5840,6 +5980,59 @@ payload can be hostile.</p>
 </ul>
 <p>The manifest records CRC32C and MD5 (in the form that GCS reports) and SHA-256 for each file.
 <code>Bundle.read</code> verifies them.</p>
+<p><code>metrics.json</code> is a <code>MetricsReport</code>. It has these fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>values</code></td>
+<td>The holdout metrics. <code>null</code> if a metric has no finite value</td>
+</tr>
+<tr>
+<td><code>skipped</code></td>
+<td>The metrics that the SDK did not calculate, with the reason</td>
+</tr>
+<tr>
+<td><code>n_holdout</code></td>
+<td>The number of holdout values that count</td>
+</tr>
+<tr>
+<td><code>split</code>, <code>evaluation_bundle</code>, <code>output_space</code></td>
+<td>The split, the link to the evaluation bundle and the output space of the metrics</td>
+</tr>
+<tr>
+<td><code>elpd</code></td>
+<td><code>{name: ElpdDetail}</code> for <code>elpd_loo</code> and <code>elpd_waic</code> (v0.9)</td>
+</tr>
+</tbody>
+</table>
+<p>The SDK calculates <code>elpd_loo</code> and <code>elpd_waic</code> only when <code>evaluate.metrics</code> lists them and the
+bundle has a <code>log_likelihood</code> group. For example, a PyMC model needs
+<code>fit.keep: {log_likelihood: true}</code>. An <code>ElpdDetail</code> (<code>mapi_sdk.bundle</code>) has these fields:</p>
+<ul>
+<li><code>elpd</code>: the estimate.</li>
+<li><code>se</code>: its standard error.</li>
+<li><code>p</code>: the effective number of parameters.</li>
+<li><code>n</code>: the number of data points.</li>
+<li><code>pointwise</code>: the value for each point, in the order of the flattened <code>log_likelihood</code>
+  variable. The field is <code>null</code> above 10 000 points (<code>mapi_sdk.metrics.MAX_POINTWISE_ELPD</code>).</li>
+</ul>
+<p>The workflow node <code>compare.stacking</code> uses the pointwise values. If the estimate is not finite
+(a log-likelihood of <code>-inf</code>), the SDK keeps no <code>elpd</code> entry for it. A bundle that has a <code>null</code>
+entry from an earlier version still loads.</p>
+<h2 id="missing-values-by-design">Missing values by design<a class="headerlink" href="#missing-values-by-design" title="Permanent link">&para;</a></h2>
+<p>Some datasets have <code>NaN</code> that are correct, for example the cells of a grid that have no
+sensor. A <code>CustomModel</code> lists these canonical variables in the class attribute
+<code>structural_missing</code> (the default is empty). The scorecard check <code>data.missing</code> (Few missing
+values) does not count their missing values. <code>sci.heat_plate</code> declares <code>temperature</code>.</p>
+<p>The check also does not count the variables with the role <code>constant</code>, <code>index</code> or <code>mask</code>. The
+message of the check names the variables that it does not count. Gaps in a target, a spend or
+a covariate count as before, also with <code>missing: allow</code>.</p>
 <h2 id="run-work-with-an-executor">Run work with an executor<a class="headerlink" href="#run-work-with-an-executor" title="Permanent link">&para;</a></h2>
 <p><code>InprocExecutor</code> implements the <code>Executor</code> protocol of the platform in your own process. Use it
 for notebooks and tests. Never use it for untrusted code:</p>

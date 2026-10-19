@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2180,6 +2210,28 @@
   
     <nav class="md-nav" aria-label="The node catalog">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bayesian-models-in-a-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bayesian models in a workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tree-datasets-in-a-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tree datasets in a workflow
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#traintest-plans" class="md-nav__link">
@@ -5258,7 +5310,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5571,6 +5623,28 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#bayesian-models-in-a-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bayesian models in a workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tree-datasets-in-a-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tree datasets in a workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#traintest-plans" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5752,6 +5826,16 @@ inputs have limits: 2000 characters, 400 tokens, nesting depth 32 and 10 000 eva
 <li><strong>Functions:</strong> <code>abs</code>, <code>min</code>, <code>max</code>, <code>len</code>, <code>round</code>, <code>any</code>, <code>all</code>, <code>exists</code>, <code>coalesce</code> and
   <code>if(condition, a, b)</code>. The <code>if</code> function evaluates only the selected value.</li>
 </ul>
+<p>A condition can also read the results of a Bayesian fit. These examples read the results of
+<code>model.summary</code> (node <code>s</code>) and <code>evaluate.ppc</code> (node <code>ppc</code>):</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>coalesce(nodes.s.max_rhat, 99) &lt; 1.01 and nodes.s.min_ess &gt;= 400
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>nodes.s.params['beta[north]'].hdi_low &gt; 0
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>nodes.s.focus.excludes_zero and nodes.ppc.ok
+</span></code></pre></div>
+<p>A condition cannot make an entry name from a parameter. Thus, to read a value that a workflow
+parameter names, set the <code>focus</code> parameter of <code>model.summary</code>. The result field <code>focus</code> then
+gives the mean, sd, HDI bounds, <code>p_positive</code> and <code>excludes_zero</code> of that value. R-hat is null
+when the fit has only one chain, so use <code>coalesce</code> for it.</p>
 <p>The rules are strict. Thus, a condition means exactly what it says:</p>
 <ul>
 <li><code>and</code>/<code>or</code>/<code>not</code> need true or false. Numbers are not "truthy".</li>
@@ -5817,9 +5901,9 @@ orchestrator goes through the graph in topological order. It does these actions:
 <ul>
 <li>It evaluates <strong>branches</strong> and <strong>selections</strong> itself, on JSON results only (<code>orchestrator</code>
   nodes). It records a <code>BranchDecision</code> with the values that the condition read.</li>
-<li>It sends <strong>tests, transforms, splits, searches, backtests, forecasts, evaluations and
-  governance checks</strong> to sandboxed <code>workflow_node</code> child runs. Only the sandbox decodes user
-  data.</li>
+<li>It sends <strong>tests, transforms, splits, order searches, backtests, forecasts, summaries,
+  scores, plots, evaluations, comparisons with Diebold-Mariano or stacking, and governance
+  checks</strong> to sandboxed <code>workflow_node</code> child runs. Only the sandbox decodes user data.</li>
 <li>It starts <strong>fits</strong> as usual <code>fit</code> child runs, and <strong>sub-workflows</strong> as child workflow runs
   (see <a href="../../guides/workflows/#where-nodes-run">where nodes run</a>).</li>
 </ul>
@@ -5832,6 +5916,11 @@ records its status, attempt, result, outputs, child runs and cost.</p>
 shortest interval is 15 minutes. The schedule handles daylight-saving gaps. <strong>Triggers</strong> run a
 workflow each time that a dataset gets a new version. A trigger has a binding to one of the
 inputs of the workflow. Terminal runs send a notification to webhooks.</p>
+<p>Some nodes give a <code>plot</code> output: <code>plot.render</code>, <code>model.forecast</code> and <code>evaluate.residuals</code>.
+The server puts each plot output through the plot sanitizer when it collects the output. An
+unsafe plot fails its node with <code>PLOT_UNSAFE</code>. <code>report.summary</code> has a <code>plots</code> input and puts
+each plot into a section of the report. The run view of the web app and the JSON report show
+these plots.</p>
 <h2 id="the-node-catalog">The node catalog<a class="headerlink" href="#the-node-catalog" title="Permanent link">&para;</a></h2>
 <p><code>GET /v1/catalog/workflow-nodes</code> lists all implementations. For each implementation, it gives
 its ports, parameter schema, result fields and an <a href="../about-and-choosing/">About card</a>.</p>
@@ -5899,6 +5988,59 @@ its ports, parameter schema, result fields and an <a href="../about-and-choosing
 </ul>
 <p>The null hypothesis of KPSS is the "good" case. Thus, its labels are the opposite of the
 labels of ADF. <code>mapi_spec.stattests.decide</code> keeps them correct.</p>
+<h3 id="bayesian-models-in-a-workflow">Bayesian models in a workflow<a class="headerlink" href="#bayesian-models-in-a-workflow" title="Permanent link">&para;</a></h3>
+<p>Five nodes work on the draws of a Bayesian fit:</p>
+<table>
+<thead>
+<tr>
+<th>Node</th>
+<th>What it gives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>model.summary</code></td>
+<td>The mean, sd, HDI, R-hat and bulk ESS of each parameter, <code>max_rhat</code>, <code>min_ess</code> and the number of divergent transitions</td>
+</tr>
+<tr>
+<td><code>evaluate.ppc</code></td>
+<td>A posterior predictive check: the coverage of the 50% and 90% ranges, the PIT distance from uniform, Bayesian p-values and <code>ok</code></td>
+</tr>
+<tr>
+<td><code>compare.stacking</code></td>
+<td>Stacking weights (or pseudo-BMA+ weights) of some fits, from the pointwise <code>elpd_loo</code> that <code>model.fit</code> keeps for data of up to 10 000 points</td>
+</tr>
+<tr>
+<td><code>model.score</code></td>
+<td>A score mode (<code>predict</code>, <code>simulate</code>, <code>forecast</code> or <code>counterfactual</code>) as a dataset that later nodes can use</td>
+</tr>
+<tr>
+<td><code>plot.render</code></td>
+<td>Any recipe of the plot catalog as a <code>plot</code> output. <code>source</code> is <code>auto</code>, <code>data</code>, <code>model</code> or <code>predictions</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Validation finds the <code>recipe</code> of <code>plot.render</code> in the bundled recipes and in the plot catalog.
+An unknown recipe gives <code>REF_UNRESOLVED</code>.</p>
+<h3 id="tree-datasets-in-a-workflow">Tree datasets in a workflow<a class="headerlink" href="#tree-datasets-in-a-workflow" title="Permanent link">&para;</a></h3>
+<p><code>model.fit</code> and <code>model.backtest</code> have the parameters <code>nodes</code> and <code>join</code>. They have the same
+meaning as <code>data.nodes</code> and <code>data.join</code> of a spec
+(<a href="../../guides/tree-data/#read-a-tree-in-a-spec-datanodes">Tree datasets</a>). If <code>nodes</code> is not
+set, the node reads the root node of the tree. <code>model.score</code>, <code>model.forecast</code> and
+<code>plot.render</code> with <code>source: predictions</code> send a tree input as a full tree. <code>plot.render</code> with
+<code>source: data</code> keeps the groups of a tree input.</p>
+<div class="admonition warning">
+<p class="admonition-title">Known gaps</p>
+<ul>
+<li>A backtest of a tree dataset gives the full tree to each fold. A tree-input model that
+  reads its target from the tree can see the test window. The node shows a warning.</li>
+<li><code>search.grid</code> has no <code>nodes</code> parameter.</li>
+<li>Nodes that fit again on changed flat data, and the ablations of governance checks, do
+  not give a tree to tree-input models.</li>
+<li>The HTML report does not show plot sections. Only the JSON report and the web run view
+  show them.</li>
+</ul>
+</div>
 <h3 id="traintest-plans">Train/test plans<a class="headerlink" href="#traintest-plans" title="Permanent link">&para;</a></h3>
 <p>A <code>SplitPlan</code> describes many folds at one time (<code>mapi_spec.splitplan</code>). Window plans have
 these fields: <code>horizons</code> (scored separately), a <code>step</code> between origins, a <code>gap</code> between
@@ -5944,24 +6086,42 @@ outer training window, for correct tuning.</p>
 </tr>
 <tr>
 <td><code>sci_phylo_signal</code></td>
-<td>Four fits of <code>sci.phylo_regression</code> (no tree, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck), ranked by <code>elpd_loo</code> and weighed by stacking. A branch on the slope of one predictor of the winner: does its range exclude zero? A plot of the tree and a report.</td>
+<td>Four fits of <code>sci.phylo_regression</code> (no tree, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck), ranked by <code>elpd_loo</code> and weighed by stacking. A branch on the slope of one predictor of the winner: does its range exclude zero? A plot of the tree and a report. See <a href="../../guides/workflow-cookbook/#trait-regression-across-species">the cookbook</a>.</td>
 </tr>
 <tr>
 <td><code>sci_calibrate_then_design</code></td>
-<td>A fit of <code>sci.heat_plate</code> with one calibration run held out. A branch on the error on that run and on R-hat. If the calibration is good enough, the predicted temperature field of a new heater layout, as a map. A report.</td>
+<td>A fit of <code>sci.heat_plate</code> with one calibration run held out. A branch on the error on that run and on R-hat. If the calibration is good enough, the predicted temperature field of a new heater layout, as a map. A report. See <a href="../../guides/workflow-cookbook/#calibrate-then-design">the cookbook</a>.</td>
 </tr>
 <tr>
 <td><code>bayes_workflow_audit</code></td>
-<td>Any Bayesian model: a fit with prior draws, a convergence gate, the posterior predictive check, prior sensitivity, the recovery of known values, the plots and a report</td>
+<td>Any Bayesian model: a fit with prior draws, a convergence gate, the posterior predictive check, prior sensitivity, the recovery of known values, the plots and a report. See <a href="../../guides/workflow-cookbook/#bayesian-workflow-audit">the cookbook</a>.</td>
 </tr>
 <tr>
 <td><code>sci_image_model_check</code></td>
-<td>An image model: a fit, residual maps, the observed image next to predicted images, the posterior predictive check and a report</td>
+<td>An image model: a fit, residual maps, the observed image next to predicted images, the posterior predictive check and a report. See <a href="../../guides/workflow-cookbook/#image-model-check">the cookbook</a>.</td>
 </tr>
 </tbody>
 </table>
 <p>To make a workflow from a template, use <code>POST /v1/workflows</code> with <code>{"template": "&lt;id&gt;"}</code>.
-Then edit its parameters or nodes, the same as for all other workflows.</p>
+Then edit its parameters or nodes, the same as for all other workflows. The
+<a href="../../tutorials/complex-workflows/">complex workflows tutorial</a> shows the patterns of the
+science recipes in the workflow editor.</p>
+<div class="admonition note">
+<p class="admonition-title">Known gaps of the science recipes</p>
+<ul>
+<li><code>governance.check</code> with <code>sensitivity.prior</code> cannot find the prior widths of
+  <code>sci.areal_bym2</code>, so the check is skipped. <code>sci_spatial_ladder</code> fits the model again
+  with these widths in its place.</li>
+<li>The graph check of <code>sci_network_ladder</code> plots the statistics of the simulated networks
+  only. The plot does not mark the statistics of the observed network.</li>
+<li><code>core.prior_predictive</code> cannot draw the prior draws of <code>sci.heat_plate</code>. Some science
+  models (for example <code>sci.cmb_field</code> and <code>sci.phylo_regression</code>) keep no prior draws.
+  <code>bayes_workflow_audit</code> then shows a failed prior plot and continues.</li>
+<li>Only <code>sci_spatial_ladder</code> ran end to end on a live dev stack and in a browser. The six
+  science and audit recipes run through the server orchestrator in a slow test, with
+  small fits.</li>
+</ul>
+</div>
 
 
 

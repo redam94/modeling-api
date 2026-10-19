@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5241,7 +5271,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5606,19 +5636,19 @@ three purposes:</p>
 <tbody>
 <tr>
 <td><code>mapi/base-bayes</code></td>
-<td><code>mapi-runner</code>, SDK, steps, plot recipes, <code>mapi-pymc</code>, the <code>mmm.*</code> and <code>tabular.*</code> plugins, a C++ compiler for PyTensor</td>
+<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-pymc</code>, the <code>mmm.*</code>, <code>tabular.*</code> and <code>sci.*</code> plugins (<code>mapi-plugin-science</code>, which uses SciPy), a C++ compiler for PyTensor</td>
 <td><code>10001</code></td>
 <td><code>mapi-runner</code></td>
 </tr>
 <tr>
 <td><code>mapi/base-ml</code></td>
-<td><code>mapi-runner</code>, SDK, steps, plot recipes, <code>mapi-sklearn</code> (<code>sklearn.*</code> plugins). <strong>No PyMC.</strong></td>
+<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-sklearn</code> (<code>sklearn.*</code> plugins). <strong>No PyMC.</strong></td>
 <td><code>10001</code></td>
 <td><code>mapi-runner</code></td>
 </tr>
 <tr>
 <td><code>mapi/base-forecast</code></td>
-<td><code>mapi-runner</code>, SDK, steps, plot recipes, <code>mapi-pymc</code>, the <code>ts.*</code> plugins</td>
+<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-pymc</code>, the <code>ts.*</code> plugins (<code>mapi-plugin-ts</code> and <code>mapi-plugin-statsmodels</code>)</td>
 <td><code>10001</code></td>
 <td><code>mapi-runner</code></td>
 </tr>
@@ -5630,7 +5660,7 @@ three purposes:</p>
 </tr>
 <tr>
 <td><code>mapi/server</code></td>
-<td>The control plane: <code>mapi-server</code>, <code>mapi-spec</code>, the JSON-only <code>mapi-plots</code> core, docker-py. <strong>No science dependencies.</strong></td>
+<td>The control plane: <code>mapi-server</code>, <code>mapi-spec</code>, the JSON-only <code>mapi-plots</code> core, the JSON-only <code>mapi-workflows</code> engine, docker-py. <strong>No science dependencies.</strong></td>
 <td><code>10001</code></td>
 <td><code>mapi-server api</code> (or <code>worker</code>, <code>migrate</code>)</td>
 </tr>

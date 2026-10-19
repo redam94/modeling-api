@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1973,6 +2003,28 @@
     <span class="md-ellipsis">
       
         The manifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs-on-a-grid-or-a-circle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs on a grid or a circle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-the-science-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: the science models
       
     </span>
   </a>
@@ -5191,7 +5243,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5442,6 +5494,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#outputs-on-a-grid-or-a-circle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs on a grid or a circle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-the-science-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: the science models
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#steps-have-manifests-too" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5560,6 +5634,14 @@ its forms from manifests. Neither of them imports the plugin.</p>
 <td>Long fits can write checkpoints and resume.</td>
 </tr>
 <tr>
+<td><code>calibration</code></td>
+<td>The calibration data that the model uses from the <code>calibration</code> block of a spec: <code>business_priors</code>, <code>lift_tests</code> or both.</td>
+</tr>
+<tr>
+<td><code>input</code></td>
+<td><code>dataset</code> (the default) or <code>tree</code>. A <code>tree</code> model also gets the full tree dataset, next to the flat output of the pipeline (<a href="../../guides/tree-data/#models-that-read-the-whole-tree">Tree datasets</a>).</td>
+</tr>
+<tr>
 <td><code>conditions_on_actuals</code></td>
 <td>Forecasts can have actuals. The model updates its state with them through its fitted parameters. Then it forecasts from the last actual (<a href="../forecasting-with-actuals/">Forecasts with actuals</a>). Without this capability, a forecast payload with target values gives <code>ACTUALS_NOT_SUPPORTED</code>.</td>
 </tr>
@@ -5588,7 +5670,7 @@ its forms from manifests. Neither of them imports the plugin.</p>
 </tr>
 <tr>
 <td><code>outputs</code></td>
-<td>Output variables with dims and units (<code>units_of: y</code> means "in the units of the target"; <code>circular: true</code> marks an angle: its holdout metrics and the score summaries of its draws wrap at the <code>period</code> attr of the scored array)</td>
+<td>Output variables with dims and units. <code>units_of: y</code> means "in the units of the target". Two optional fields tell how to show and summarise an output: <code>grid</code> and <code>circular</code> (see <a href="#outputs-on-a-grid-or-a-circle">Outputs on a grid or a circle</a>).</td>
 </tr>
 <tr>
 <td><code>derived</code></td>
@@ -5601,6 +5683,10 @@ its forms from manifests. Neither of them imports the plugin.</p>
 <tr>
 <td><code>resources</code></td>
 <td>Minimum and default resource class, estimated fit time, GPU</td>
+</tr>
+<tr>
+<td><code>about</code>, <code>family</code></td>
+<td>The <a href="../about-and-choosing/">About card</a> in plain language, and the model family that governance policies match (<code>mmm</code>, <code>forecast</code>, <code>ts_multivariate</code>, <code>tabular</code>, <code>choice</code>, <code>regime</code>). If <code>family</code> is not set, it is the namespace of the id.</td>
 </tr>
 </tbody>
 </table>
@@ -5616,6 +5702,94 @@ as a setting:</p>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">vars</span><span class="p">:</span>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">dims</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"{group_dim}"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"{time_dim}"</span><span class="p p-Indicator">],</span><span class="nt"> dtype</span><span class="p">:</span><span class="w"> </span><span class="nv">float64</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">target</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
+<h2 id="outputs-on-a-grid-or-a-circle">Outputs on a grid or a circle<a class="headerlink" href="#outputs-on-a-grid-or-a-circle" title="Permanent link">&para;</a></h2>
+<p>An output can declare a <strong><code>grid</code></strong> (<code>OutputDecl.grid</code>). The output is then a 2-D field, for
+example an image or a map. The grid has these fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>y</code>, <code>x</code></td>
+<td>The dims of the rows and the columns. These dims must be dims of the output.</td>
+</tr>
+<tr>
+<td><code>frame</code></td>
+<td>Optional. A third dim with one field for each label (for example years or times).</td>
+</tr>
+<tr>
+<td><code>component</code></td>
+<td>Optional. A dim of length two with the <code>(x, y)</code> parts of a vector field.</td>
+</tr>
+<tr>
+<td><code>origin</code></td>
+<td><code>upper</code> (the default: row 0 is at the top) or <code>lower</code></td>
+</tr>
+<tr>
+<td><code>colormap</code></td>
+<td><code>viridis</code> (the default), <code>magma</code>, <code>cividis</code>, <code>gray</code> or <code>diverging</code></td>
+</tr>
+<tr>
+<td><code>log</code></td>
+<td><code>true</code> shows log10 of the value, for counts and intensities. The default is <code>false</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The <strong>Fields</strong> section of the <a href="../../guides/model-explorer/">Model Explorer</a> shows each grid
+output with its uncertainty. The <code>sci.*</code> plot recipes also read the grid
+(<a href="../../reference/models/#scientific-models-mapi-plugin-science">Scientific models</a>).</p>
+<p>An output can declare <strong><code>circular: true</code></strong> (<code>OutputDecl.circular</code>). The output is then an
+angle, for example a direction or a time of day. The model sets a <code>period</code> attr (one turn, in
+the units of the output) on the scored array. The platform then does these calculations on
+the circle:</p>
+<ul>
+<li>The holdout metrics use the circular mean, errors wrapped to half a turn, intervals around
+  the circular mean and an arc-distance CRPS. The metrics <code>mape</code>, <code>smape</code>, <code>wape</code> and <code>r2</code>
+  are skipped.</li>
+<li>The score summaries of draws use the circular mean and intervals centred on it
+  (<a href="../representations/#circular-outputs">Circular outputs</a>).</li>
+</ul>
+<h2 id="example-the-science-models">Example: the science models<a class="headerlink" href="#example-the-science-models" title="Permanent link">&para;</a></h2>
+<p>The 15 models of <code>mapi-plugin-science</code> all use <code>inference: mcmc</code> and <code>representation: draws</code>.
+Their score modes are different:</p>
+<table>
+<thead>
+<tr>
+<th>Score modes</th>
+<th>Models</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>predict</code>, <code>forecast</code>, <code>evaluate</code></td>
+<td><code>sci.lgcp_grid</code>, <code>sci.fisher_kpp</code></td>
+</tr>
+<tr>
+<td><code>predict</code>, <code>simulate</code>, <code>evaluate</code></td>
+<td><code>sci.strong_lens</code>, <code>sci.heat_plate</code>, <code>sci.turing_pattern</code>, <code>sci.colour_naming</code>, <code>sci.cmb_field</code>, <code>sci.areal_bym2</code>, <code>sci.network_latent_space</code>, <code>sci.graphical_model</code>, <code>sci.phylo_regression</code>, <code>sci.circular_regression</code></td>
+</tr>
+<tr>
+<td><code>predict</code>, <code>evaluate</code></td>
+<td><code>sci.traction_force</code>, <code>sci.storm_localisation</code>, <code>sci.ibp_features</code></td>
+</tr>
+</tbody>
+</table>
+<p>Some of these models also show other capabilities:</p>
+<ul>
+<li>Most of them declare a <code>grid</code> on one or more outputs. <code>sci.areal_bym2</code> and
+  <code>sci.phylo_regression</code> have no grid outputs.</li>
+<li><code>sci.circular_regression</code> declares <code>direction_hat</code> and <code>mean_direction</code> as circular.</li>
+<li><code>sci.strong_lens</code> has <code>input: tree</code>.</li>
+<li><code>sci.traction_force</code>, <code>sci.strong_lens</code> and <code>sci.cmb_field</code> declare LOO invalid
+  (<code>loo_valid: false</code>). Thus validation refuses <code>elpd_loo</code> for them.</li>
+</ul>
+<p>A score request for a mode that the model does not declare gives <code>MODE_NOT_SUPPORTED</code>. The
+platform refuses it before it does work for that mode. The
+<a href="../../reference/models/">models reference</a> gives the outputs and settings of each model.</p>
 <h2 id="steps-have-manifests-too">Steps have manifests too<a class="headerlink" href="#steps-have-manifests-too" title="Permanent link">&para;</a></h2>
 <p>Each step exports a <strong>catalog entry</strong>. The entry contains these items:</p>
 <ul>

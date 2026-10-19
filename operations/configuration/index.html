@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5290,7 +5320,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -6191,7 +6221,7 @@ server reads it as the <em>deployment profile</em>.</p>
 </tr>
 <tr>
 <td><code>MAPI_DOCKER_IMAGES</code></td>
-<td><code>mmm</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>: <code>base-forecast</code></td>
+<td><code>mmm</code>, <code>sci</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>: <code>base-forecast</code></td>
 <td>Plugin namespace to runner image (JSON), with the tag of the workspace version</td>
 </tr>
 <tr>
@@ -6387,7 +6417,7 @@ server reads it as the <em>deployment profile</em>.</p>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_PLUGIN_BASES</code></td>
-<td><code>mmm</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>: <code>base-forecast</code></td>
+<td><code>mmm</code>, <code>sci</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>: <code>base-forecast</code></td>
 <td>Plugin namespace to base image family (JSON)</td>
 </tr>
 <tr>
@@ -6524,7 +6554,7 @@ the server secret, you cannot use the webhook secrets. Rotate them after the cha
 <tr>
 <td><code>MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES</code></td>
 <td><code>1048576</code></td>
-<td>The largest JSON output (tables, metrics, reports) that a node can return</td>
+<td>The largest JSON output (tables, metrics, reports, plots) that a node can return. A larger output fails the node (<code>INTEGRITY_FAILURE</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -6673,7 +6703,7 @@ the server secret, you cannot use the webhook secrets. Rotate them after the cha
 <tr>
 <td><code>MAPI_PUBLIC_CODE_UPLOAD_ENABLED</code></td>
 <td><code>false</code></td>
-<td>Cut line B (M5): let identity-verified <code>public</code> tenants run uploaded code. Off: public tenants run only built-in models and declarative specs</td>
+<td>Cut line B (planned): let identity-verified <code>public</code> tenants run uploaded code. Off: public tenants run only built-in models and declarative specs</td>
 </tr>
 </tbody>
 </table>

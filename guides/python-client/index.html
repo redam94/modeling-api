@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5464,7 +5494,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -6568,6 +6598,13 @@ node that failed.</p>
 </span><span id="__span-35-10"><a id="__codelineno-35-10" name="__codelineno-35-10" href="#__codelineno-35-10"></a><span class="n">model_ref</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s2">"model"</span><span class="p">]</span><span class="o">.</span><span class="n">ref</span>  <span class="c1"># model://growth/wf-weekly-readiness-fit@v1</span>
 </span><span id="__span-35-11"><a id="__codelineno-35-11" name="__codelineno-35-11" href="#__codelineno-35-11"></a><span class="n">report</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s2">"report"</span><span class="p">]</span><span class="o">.</span><span class="n">inline</span>  <span class="c1"># mapi.report/v1: every test, decision and table</span>
 </span></code></pre></div>
+<p>Since v0.9, a node can give a <code>plot</code> output (<code>plot.render</code>, <code>model.forecast</code> and
+<code>evaluate.residuals</code>). <code>api.workflows.node(run_id, node_id).outputs["plot"].inline</code> is the
+<code>PlotSpec</code> document of the plot. The server puts it through the plot sanitizer each time it
+sends it. If the plot is not safe, <code>inline</code> is <code>None</code>. The gallery also has recipes for
+Bayesian and science models, for example <code>sci_spatial_ladder</code> and <code>bayes_workflow_audit</code>. The
+<a href="../workflow-cookbook/#disease-map-which-spatial-model">workflow cookbook</a> shows how to run
+each one with the client.</p>
 <h3 id="governance">Governance<a class="headerlink" href="#governance" title="Permanent link">&para;</a></h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="n">gov</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[</span><span class="s2">"governance"</span><span class="p">]</span><span class="o">.</span><span class="n">result</span>  <span class="c1"># the policy in force, measured on the selected model</span>
 </span><span id="__span-36-2"><a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"passed"</span> <span class="k">if</span> <span class="n">gov</span><span class="p">[</span><span class="s2">"passed"</span><span class="p">]</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"failed: </span><span class="si">{</span><span class="n">gov</span><span class="p">[</span><span class="s1">'failed_checks'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>

@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3017,6 +3047,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="3. Write the model (6–11 min)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-notebook-models-of-science-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the notebook models of science needed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5265,7 +5312,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5534,6 +5581,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="3. Write the model (6–11 min)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-notebook-models-of-science-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the notebook models of science needed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5856,6 +5920,65 @@ safetensors). The platform rejects pickle.</p>
 </div>
 </div>
 </div>
+<h3 id="what-the-notebook-models-of-science-needed">What the notebook models of science needed<a class="headerlink" href="#what-the-notebook-models-of-science-needed" title="Permanent link">&para;</a></h3>
+<p>The 15 <code>sci.*</code> models came from notebooks in the same way. Some of them needed more than the
+three steps above. If your model is similar, see these sections:</p>
+<table>
+<thead>
+<tr>
+<th>Your model</th>
+<th>What to use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Its rules join two or more settings</td>
+<td>A pydantic <code>model_validator</code> on the settings. The SDK refuses bad settings before it uses the data.</td>
+<td><a href="../plugins/#settings-rules-that-need-no-data">Settings rules that need no data</a></td>
+</tr>
+<tr>
+<td>An output is an image, a map or a vector field</td>
+<td><code>grid</code> in the output declaration</td>
+<td><a href="../plugins/#outputs-that-are-images-or-maps">Outputs that are images or maps</a></td>
+</tr>
+<tr>
+<td>An output is a direction or a time of day</td>
+<td><code>circular: true</code>, and a <code>period</code> attribute on the scored array</td>
+<td><a href="../plugins/#outputs-that-are-angles">Outputs that are angles</a></td>
+</tr>
+<tr>
+<td>It makes new data from the posterior</td>
+<td>The <code>simulate</code> mode, and real predictive draws for <code>kind: predictive</code></td>
+<td><a href="../plugins/#score-modes">Score modes</a></td>
+</tr>
+<tr>
+<td>You compare variants by <code>elpd_loo</code></td>
+<td>A <code>log_likelihood</code> group, or <code>loo_valid=False</code> with a reason</td>
+<td><a href="../plugins/#models-that-give-elpd_loo">Models that give <code>elpd_loo</code></a></td>
+</tr>
+<tr>
+<td>NUTS gets stuck at the default start</td>
+<td><code>EnginePlan.initvals</code> and <code>jitter=False</code></td>
+<td><a href="../pymc/#start-every-chain-at-one-point">Start every chain at one point</a></td>
+</tr>
+<tr>
+<td>It has its own sampler (for example Gibbs)</td>
+<td>A <code>CustomModel</code> with <code>inference="mcmc"</code> and a <code>diagnostics</code> hook</td>
+<td><a href="../plugins/#a-model-with-its-own-sampler">A model with its own sampler</a></td>
+</tr>
+<tr>
+<td>Some NaN of an input are part of the design</td>
+<td><code>structural_missing</code></td>
+<td><a href="../plugins/#a-model">A model</a></td>
+</tr>
+<tr>
+<td>Users must upload the data of a case study</td>
+<td>An export case in <code>mapi_plugin_science.export.EXPORTS</code></td>
+<td><a href="../plugins/#data-for-a-case-study-mapi-plugin-science">Data for a case study</a></td>
+</tr>
+</tbody>
+</table>
 <h2 id="4-write-a-tiny-spec-1113-min">4. Write a tiny spec (11–13 min)<a class="headerlink" href="#4-write-a-tiny-spec-1113-min" title="Permanent link">&para;</a></h2>
 <p>The contract kit fits this spec. Keep it small and fast: use few draws and few trees.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">PyMC</label><label for="__tabbed_2_2">Custom (with a step)</label></div>
@@ -6120,6 +6243,12 @@ be a class, a tuple of classes or a function that returns them:</p>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>schema_template</code> in canonical names, with correct dim policies</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>capabilities</code>: representation, score modes, contribution scale</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>outputs</code> with <code>units_of</code>, so that the results come back in the units of the user</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>grid</code> on outputs that are images or maps, and <code>circular: true</code> (with a <code>period</code>
+  attribute) on outputs that are angles</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>score_modes</code> that list only the modes that <code>score</code> can do</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> rules that join settings in a <code>model_validator</code>, not in <code>fit</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> a <code>log_likelihood</code> group if users compare variants by <code>elpd_loo</code>, or
+  <code>loo_valid=False</code> with a reason</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> settings as a <code>ModelSettings</code> subclass with defaults and descriptions (they become
   the form in the UI)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> a tiny spec, and <code>check_model</code> passes in CI</li>

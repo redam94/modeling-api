@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5197,7 +5227,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5653,7 +5683,7 @@ needs no Docker socket and works with all daemons. The two executors have these 
 </tbody>
 </table>
 <p><strong>Docker executor settings.</strong> <code>MAPI_DOCKER_IMAGES</code> maps a plugin namespace to its runner
-image. <code>mmm.*</code> and <code>tabular.*</code> run in <code>mapi/base-bayes</code>, <code>sklearn.*</code> in <code>mapi/base-ml</code> and
+image. <code>mmm.*</code>, <code>sci.*</code> and <code>tabular.*</code> run in <code>mapi/base-bayes</code>, <code>sklearn.*</code> in <code>mapi/base-ml</code> and
 <code>ts.*</code> in <code>mapi/base-forecast</code>. A workflow node run goes to the image of the model that it
 runs. This is its <code>model</code> parameter (for example a backtest or search of <code>ts.sarimax</code>). If
 there is no <code>model</code> parameter, it is the plugin of the model version that is bound to the

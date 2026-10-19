@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5194,7 +5224,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5543,15 +5573,19 @@ page describes. The <code>mapi/web</code> image uses nginx for this.</p>
 </tr>
 <tr>
 <td>Score</td>
-<td>Set the mode (only the modes that the model can do), the horizon, <code>inputs_stage</code>, the input and scenario datasets, the side tables of the spec, the interventions and the output selector. Supplied side tables use the version from the fit by default. Pinned side tables use the same version again. The app sends <code>Prefer: wait=30</code>, then follows the run over SSE. It shows the plots of the run (<code>GET /v1/runs/{id}/plots</code>, sanitized) in the sandbox. It shows Arrow outputs as a table (summaries pivoted by statistic) and a quick chart</td>
+<td>Set the mode (only the modes that the model can do), the horizon, <code>inputs_stage</code>, the input and scenario datasets, the side tables of the spec, the interventions and the output selector. Supplied side tables use the version from the fit by default. Pinned side tables use the same version again. The app sends <code>Prefer: wait=30</code>, then follows the run over SSE. It shows the plots of the run (<code>GET /v1/runs/{id}/plots</code>, sanitized) in the sandbox. It shows Arrow outputs as a table (summaries pivoted by statistic) and a quick chart. The table keeps the dim columns that the <code>mapi.dims</code> metadata names as keys, also when they are numeric (v0.9). The <strong>No new data</strong> option shows only for Forecast, or when a scenario dataset gives the values (v0.9). For the other modes, a note tells why the option is not there</td>
 </tr>
 <tr>
 <td>Guided</td>
 <td>Use the task flow for analysts (<code>/guided</code>, <code>/guided/new/&lt;template&gt;</code>, <code>/guided/&lt;spec&gt;/&lt;step&gt;</code>). It has templates and questions. The browser makes a profile of the upload for the questions. Set business priors and lift tests, with a preview in a sandbox. Fit the model, with progress in plain language. See the report and the sanity scorecard. Use what-if sliders. The browser interpolates the response grid of each draw (<code>src/features/guided/whatif.ts</code>, tested against <code>packages/spec/tests/snapshots/whatif_golden.json</code>). Use "Run exact", forecasts, scenario presets, promotion and embed links. See <a href="../../guides/guided-tutorial/">Your first analysis in Guided mode</a></td>
 </tr>
 <tr>
+<td>Workflows</td>
+<td>See the gallery of templates, edit a workflow and run it. The run view shows the outputs of each node: tables, reports, governance evidence and links to files. It draws the <code>plot</code> outputs of nodes and the <code>plot</code> sections of reports in the sandbox (v0.9)</td>
+</tr>
+<tr>
 <td>Catalog, Settings</td>
-<td>See the steps, models and plots of the image. Set the theme and the persona (the app keeps it for each user). See the health of the connection</td>
+<td>See the steps, models and plots of the image. The plot catalog has a filter for each pack: All models, Marketing mix, Machine learning, Science and Networks. Set the theme and the persona (the app keeps it for each user). See the health of the connection</td>
 </tr>
 </tbody>
 </table>

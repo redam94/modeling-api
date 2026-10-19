@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5248,7 +5278,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5829,6 +5859,19 @@ takes more time, the answer is <code>202</code> with <code>done: false</code>. I
 </ul>
 <p>The response header <code>Preference-Applied</code> tells which wait the server used. Over HTTP, the
 <code>ScoreRequest</code> needs its <code>apiVersion</code> and <code>kind</code>. The Python client fills them in.</p>
+<p>The request must give data to score: <code>data</code>, inline values, a <code>scenario</code> dataset or a
+<code>horizon</code>. If it gives none of them, the server refuses it before a run starts
+(<code>SCHEMA_INVALID</code> at <code>/data</code>, "the score request has no data").</p>
+<p><code>ui/summary.arrow</code> names its dim columns in the schema metadata <code>mapi.dims</code> (a JSON list).
+Use this list to find the keys of a row. A dim with numeric labels, for example a grid
+position in cm, has a numeric type, the same as a statistic. In <code>summary.json</code>, each table of
+a circular output (<code>OutputDecl.circular</code>) has the field <code>period</code>. Its statistics are then on
+the circle:</p>
+<ul>
+<li><code>mean</code> is the circular mean, and <code>sd</code> is the circular standard deviation.</li>
+<li>Each interval and quantile is centred on the circular mean.</li>
+<li>All values are in <code>[0, period)</code>. An interval with <code>lower</code> more than <code>upper</code> crosses the seam.</li>
+</ul>
 <h2 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models/</span><span class="nv">$M</span><span class="s2">/versions/</span><span class="nv">$MV</span><span class="s2">:score"</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"request": {"apiVersion": "mapi/v1", "kind": "ScoreRequest",</span>

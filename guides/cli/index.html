@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5331,7 +5361,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -6007,6 +6037,9 @@ a new run from a run that failed.</p>
 <p><code>mapi score --remote @</code> sends <code>Prefer: wait=60</code>. To change the time, use <code>--wait</code>. If the run
 takes longer, the command follows the run. It shows the outputs with their sizes and CRC32C.
 With <code>-o</code>, it downloads the result tree and checks it against that CRC32C.</p>
+<p>The request must give data to score: <code>data</code>, inline values, a <code>scenario</code> dataset or a
+forecast <code>horizon</code>. If it gives none of them, the server refuses the request before a run
+starts (<code>SCHEMA_INVALID</code> on <code>/data</code>, "the score request has no data").</p>
 <h3 id="endpoints-webhooks-and-sharing">Endpoints, webhooks and sharing <span class="mapi-badge">v0.4</span><a class="headerlink" href="#endpoints-webhooks-and-sharing" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>promote<span class="w"> </span>geo-mmm-prod<span class="w"> </span>model://growth/eu-geo-mmm@v3<span class="w">   </span><span class="c1"># asks first; --yes skips</span>
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>ls
@@ -6159,6 +6192,44 @@ driver. The search selected ARIMA(1, 1, 1) by AIC.</p>
 version. <code>-p name=value</code> sets a parameter. If the value parses as JSON, the CLI sends it as
 JSON (<code>-p 'horizons=[1,4,13]'</code>). The <a href="../workflow-cookbook/">workflow cookbook</a> has complete
 documents that you can start from.</p>
+<p>Since v0.9, <code>mapi workflows templates</code> also lists the recipes for Bayesian and science models.
+Start each one with <code>mapi workflows init &lt;id&gt;</code>. The cookbook shows the commands for each one:</p>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Cookbook section</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sci_spatial_ladder</code></td>
+<td><a href="../workflow-cookbook/#disease-map-which-spatial-model">Disease map: which spatial model?</a></td>
+</tr>
+<tr>
+<td><code>sci_network_ladder</code></td>
+<td><a href="../workflow-cookbook/#network-ties-which-model">Network ties: which model?</a></td>
+</tr>
+<tr>
+<td><code>sci_phylo_signal</code></td>
+<td><a href="../workflow-cookbook/#trait-regression-across-species">Trait regression across species</a></td>
+</tr>
+<tr>
+<td><code>sci_calibrate_then_design</code></td>
+<td><a href="../workflow-cookbook/#calibrate-then-design">Calibrate, then design</a></td>
+</tr>
+<tr>
+<td><code>bayes_workflow_audit</code></td>
+<td><a href="../workflow-cookbook/#bayesian-workflow-audit">Bayesian workflow audit</a></td>
+</tr>
+<tr>
+<td><code>sci_image_model_check</code></td>
+<td><a href="../workflow-cookbook/#image-model-check">Image model check</a></td>
+</tr>
+</tbody>
+</table>
+<p>To get the data of a science case study, use <code>python -m mapi_plugin_science.export &lt;case&gt;</code>.
+Then upload the file with <code>mapi datasets upload</code>.</p>
 <p><strong>Governance</strong>: the check catalog, policies, validations and approval by a second person.
 <code>mapi validate model</code> waits for the checks. It shows each result in plain words with the
 suggested action. <code>mapi approve</code> needs a signed-in reviewer who did not submit the model:</p>

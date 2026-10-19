@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5227,7 +5257,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5612,7 +5642,7 @@ same file.</p>
 </tr>
 <tr>
 <td><code>data.bind</code></td>
-<td>Maps <strong>canonical</strong> names (the names that plugins and steps use) to <strong>dataset</strong> names. By default, the outputs get the dataset names again</td>
+<td>Maps <strong>canonical</strong> names (the names that plugins and steps use) to <strong>dataset</strong> names. By default, the outputs get the dataset names again. When a dim gets a new name, the <code>grid</code> attr of each variable gets the new name too (v0.9)</td>
 </tr>
 <tr>
 <td><code>data.split</code></td>
@@ -5632,7 +5662,7 @@ same file.</p>
 </tr>
 <tr>
 <td><code>evaluate</code></td>
-<td>Holdout metrics (<code>elpd_loo</code>, <code>coverage_90</code>, <code>mape</code>, <code>rmse</code>, ...)</td>
+<td>Holdout metrics (<code>elpd_loo</code>, <code>coverage_90</code>, <code>mape</code>, <code>rmse</code>, ...). <code>elpd_loo</code> and <code>elpd_waic</code> need a <code>log_likelihood</code> group, for example <code>model.fit.keep: {log_likelihood: true}</code>. If not, <code>metrics.json</code> gives the reason in <code>skipped</code>. A <a href="../sdk/#circular-outputs">circular output</a> gets circular metrics and skips <code>mape</code>, <code>smape</code>, <code>wape</code> and <code>r2</code></td>
 </tr>
 <tr>
 <td><code>execution</code></td>
@@ -5789,7 +5819,13 @@ Each problem has a stable <code>code</code> and a JSON pointer to the incorrect 
 <p>Before something runs, the API does a check of each score request against the fitted model.
 It finds these problems:</p>
 <ul>
+<li>A mode that the model does not support (<code>MODE_NOT_SUPPORTED</code>). The runner also does this
+  check first, before all work for the mode.</li>
+<li>A request without data: no <code>data</code>, no inline values, no <code>scenario</code> and no <code>horizon</code>
+  (<code>SCHEMA_INVALID</code> at <code>/data</code>, "the score request has no data").</li>
 <li>Unseen levels on fixed dims (<code>UNSEEN_LEVELS</code>).</li>
+<li>A horizon along a dim that is not a model dim, or that does not have the policy <code>extend</code>
+  (<code>COORD_NOT_ALLOWED</code>).</li>
 <li>Horizons that are longer than the fit can support (<code>HORIZON_EXCEEDS_FIT</code>, HTTP 409). You must
   fit the model again.</li>
 <li>Missing future values of covariates (<code>MISSING_FUTURE_COVARIATE</code>).</li>
@@ -5797,6 +5833,12 @@ It finds these problems:</p>
 <li>Summaries that the uncertainty representation of the model cannot support
   (<code>CAPABILITY_UNSUPPORTED</code>). An example is the sum of quantiles.</li>
 </ul>
+<p>The runner does more checks when the run starts. For example, a horizon along a dim with
+text labels gives <code>COORD_NOT_ALLOWED</code>, because text labels have no sequence.</p>
+<p>The summaries of a circular output (<code>OutputDecl.circular</code>, for example a wind direction) are
+on the circle: the circular mean, and intervals centred on it in <code>[0, period)</code>. In
+<code>summary.json</code>, the table of such an output has the field <code>period</code>. An interval with <code>lower</code>
+more than <code>upper</code> crosses the seam. Refer to <a href="../sdk/#circular-outputs">Circular outputs</a>.</p>
 <h2 id="json-schemas">JSON Schemas<a class="headerlink" href="#json-schemas" title="Permanent link">&para;</a></h2>
 <p>Editors can use the published JSON Schemas to validate specs while you type
 (<code>GET /v1/schemas/modelspec.json</code>, or <code>python -m mapi_spec export-schemas ./schemas</code>).</p>

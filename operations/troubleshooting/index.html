@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Fixes for the problems you are most likely to meet running modeling-api - port conflicts, a stale stack, PostgreSQL, migrations, the web app and plots, scoring errors, Docker Compose.">
+        <meta name="description" content="Fixes for the problems you are most likely to meet running modeling-api - port conflicts, a stale stack, PostgreSQL, migrations, the web app and plots, scoring errors, workflows and science models, Docker Compose.">
       
       
         <meta name="author" content="Matthew Reda">
@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -4973,6 +5003,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#workflows-and-science-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflows and science models v0.9
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#docker-and-compose" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5202,7 +5243,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5475,6 +5516,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#workflows-and-science-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflows and science models v0.9
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#docker-and-compose" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5656,6 +5708,38 @@ suggests the next resource class. Under compose, increase <code>MAPI_WORKER_MEMO
 <dd>The signed manifest of the bundle does not verify. Thus the API does not mint download
 links. Locally, this occurs when somebody deleted <code>.local/keys/</code>. You cannot trust the
 old model versions after this. Fit again.</dd>
+<dt><code>SCHEMA_INVALID</code>: "the score request has no data"</dt>
+<dd>The request has no data, no scenario dataset and no forecast horizon. The server refuses
+it before a run starts. Give a dataset, a scenario dataset or a horizon. The Score page
+shows <strong>No new data</strong> only for <strong>Forecast</strong>, or when a scenario dataset gives the values.</dd>
+<dt><code>SETTINGS_INVALID</code> before the fit starts</dt>
+<dd>The settings of the model break a rule that uses more than one field. The harness reads
+the settings before it transforms or splits the data, so this error comes early. The
+message tells which settings to change. For example, <code>sci.storm_localisation</code> refuses a
+render of more than 50 million values.</dd>
+</dl>
+<h2 id="workflows-and-science-models">Workflows and science models <span class="mapi-badge">v0.9</span><a class="headerlink" href="#workflows-and-science-models" title="Permanent link">&para;</a></h2>
+<dl>
+<dt><code>EXPRESSION_ERROR</code> in a branch node</dt>
+<dd>The condition could not be calculated. Usually, it compares a value that is null or not
+there, for example the R-hat of a fit with one chain. Wrap the reference in
+<code>coalesce(...)</code> or <code>exists(...)</code>, or fit two or more chains.</dd>
+<dt><code>PLOT_UNSAFE</code> on a workflow node</dt>
+<dd>The <code>plot</code> output of the node did not pass the plot sanitizer, so the node failed. The
+server does a check of each plot output when it collects it, and again when it serves
+it. Look at the recipe and the settings of the <code>plot.render</code> node.</dd>
+<dt>The tests of the science plugin skip</dt>
+<dd>The tests that read the real data of pymc-challenges run only when
+<code>MAPI_PYMC_CHALLENGES_DATA</code> gives the <code>data/</code> directory of a local copy. Refer to
+<a href="../local-development/#science-data">Science data</a>.</dd>
+<dt><code>make docs-screenshots-science</code> stops at an upload (<code>ENOENT</code>)</dt>
+<dd>The script reads <code>scotland_lip.nc</code>, <code>heat_plate_e51.nc</code> and <code>lazega_coworkers.nc</code> from
+<code>.local/science</code>, or from the folder that <code>MAPI_SCIENCE_DATA</code> gives. Export them first
+with <code>python -m mapi_plugin_science.export</code>.</dd>
+<dt>The recipe monitor screenshot shows <strong>Reused</strong></dt>
+<dd><code>make docs-screenshots-science</code> ran before on the same stack. The server used the earlier
+results of the recipe again. To capture a run in progress, use a new stack (a new
+<code>MAPI_DATA_DIR</code>).</dd>
 </dl>
 <h2 id="docker-and-compose">Docker and compose<a class="headerlink" href="#docker-and-compose" title="Permanent link">&para;</a></h2>
 <dl>

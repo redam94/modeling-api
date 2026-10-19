@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5238,7 +5268,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5677,6 +5707,91 @@ the API of a stack that runs (<code>make dev</code>), as a user does: spec → <
 <td><code>mmm.bayesian</code></td>
 <td>The draft of the <code>geo_mmm</code> Guided template with business priors (ROI, contribution share, baseline share). The fit translates the priors, and a lift test is in the likelihood. Both agree with the simulation. ROI, baseline share and lift are checked against the truth. A forecast and the channel-off preset.</td>
 </tr>
+<tr>
+<td><code>sm_arimax</code></td>
+<td><code>ts.sarimax</code></td>
+<td>Weekly sales for each geo with price and promotion drivers. An ARIMAX model for each series (statsmodels)</td>
+</tr>
+<tr>
+<td><code>sm_vecm_macro</code></td>
+<td><code>ts.vecm</code></td>
+<td>US real GDP, consumption and investment in log levels. A VECM with the Johansen cointegration rank</td>
+</tr>
+<tr>
+<td><code>e07_lgcp</code></td>
+<td><code>sci.lgcp_grid</code></td>
+<td>Earthquake counts on a space-time grid. A log-Gaussian Cox process with a 2-D HSGP map</td>
+</tr>
+<tr>
+<td><code>e18_areal</code></td>
+<td><code>sci.areal_bym2</code></td>
+<td>A disease map on a graph of areas (BYM2). The polygons stay for the map</td>
+</tr>
+<tr>
+<td><code>e50_kpp</code></td>
+<td><code>sci.fisher_kpp</code></td>
+<td>A scratch assay as a Fisher-KPP reaction-diffusion PDE that the model solves</td>
+</tr>
+<tr>
+<td><code>e51_heat_plate</code></td>
+<td><code>sci.heat_plate</code></td>
+<td>A heated plate, calibrated with the 2-D steady heat equation that the model solves</td>
+</tr>
+<tr>
+<td><code>e60_traction</code></td>
+<td><code>sci.traction_force</code></td>
+<td>Traction force microscopy. A Gaussian inverse problem in Fourier space</td>
+</tr>
+<tr>
+<td><code>e80_lens</code></td>
+<td><code>sci.strong_lens</code></td>
+<td>A galaxy-scale strong lens. A forward model of each pixel of a mock image</td>
+</tr>
+<tr>
+<td><code>e61_turing</code></td>
+<td><code>sci.turing_pattern</code></td>
+<td>Schnakenberg kinetics from early images of a Turing pattern</td>
+</tr>
+<tr>
+<td><code>e58_storm</code></td>
+<td><code>sci.storm_localisation</code></td>
+<td>Molecule positions in raw STORM frames (a Gaussian PSF with Poisson counts)</td>
+</tr>
+<tr>
+<td><code>e31_ibp</code></td>
+<td><code>sci.ibp_features</code></td>
+<td>Binary features of small images. An Indian buffet process</td>
+</tr>
+<tr>
+<td><code>e77_colour_naming</code></td>
+<td><code>sci.colour_naming</code></td>
+<td>Colour names of one language as a softmax over CIELAB values</td>
+</tr>
+<tr>
+<td><code>e79_cmb</code></td>
+<td><code>sci.cmb_field</code></td>
+<td>A masked CMB map. A Gibbs sampler for the sky behind the mask and the bandpowers</td>
+</tr>
+<tr>
+<td><code>e21_network</code></td>
+<td><code>sci.network_latent_space</code></td>
+<td>The ties of a graph, with sociality and a latent space</td>
+</tr>
+<tr>
+<td><code>e19_ggm</code></td>
+<td><code>sci.graphical_model</code></td>
+<td>A Gaussian graphical model. Partial correlations and edge probabilities of proteins</td>
+</tr>
+<tr>
+<td><code>e23_phylo</code></td>
+<td><code>sci.phylo_regression</code></td>
+<td>A regression across primate species, with residuals that the phylogeny correlates</td>
+</tr>
+<tr>
+<td><code>e81_circular</code></td>
+<td><code>sci.circular_regression</code></td>
+<td>Wind directions on the circle. A von Mises regression</td>
+</tr>
 </tbody>
 </table>
 <h3 id="deferred">Deferred<a class="headerlink" href="#deferred" title="Permanent link">&para;</a></h3>
@@ -5693,15 +5808,15 @@ the list of the plan, the fixtures and the deferrals agree:</p>
 <tbody>
 <tr>
 <td>E13 state-space</td>
-<td>A state-space plugin with the <code>filter</code> mode (vetted plugins, M4)</td>
+<td>A state-space plugin with the <code>filter</code> mode (vetted plugins, planned)</td>
 </tr>
 <tr>
 <td>E82-slim GP Bayesian optimisation</td>
-<td>The <code>recommend</code> mode and Campaign runs (M6)</td>
+<td>The <code>recommend</code> mode and Campaign runs (planned)</td>
 </tr>
 <tr>
 <td>E45</td>
-<td>A plugin for its model (vetted plugins, M4)</td>
+<td>A plugin for its model (vetted plugins, planned)</td>
 </tr>
 </tbody>
 </table>

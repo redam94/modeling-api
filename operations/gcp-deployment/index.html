@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5362,7 +5392,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5898,7 +5928,7 @@ remain after the offline M2 verification are in
 <tr>
 <td>The <strong>cold start</strong> of a base image of about 2.5 GB keeps the p95 of time-to-<code>RUNNING</code> below 90 s</td>
 <td>The M2 latency target (met offline, only against the fake backend)</td>
-<td>Smaller images, or warm capacity (M6)</td>
+<td>Smaller images, or warm capacity (planned)</td>
 </tr>
 <tr>
 <td>The path from the <strong>Logging sink to Pub/Sub</strong> carries the labels of the execution in some seconds. Pub/Sub can push to an internal-only service</td>
@@ -6530,7 +6560,7 @@ does not read, <code>tests/infra</code> fails. These are the plain values:</p>
 </tbody>
 </table>
 <p>One orchestrator serves one exec pool, and an environment deploys <strong>one</strong> orchestrator. Runs
-go only to <code>control.dispatch_pool</code>. Until tier placement across pools (M5), keep all tenants
+go only to <code>control.dispatch_pool</code>. Until tier placement across pools (planned), keep all tenants
 on that pool. A second pool, for example a separate exec project for <code>public</code> tenants, needs
 a second orchestrator outside this module.</p>
 <p><strong>The two</strong> orchestrators must then set <code>MAPI_DISPATCH_TIERS</code> with no common tiers. For

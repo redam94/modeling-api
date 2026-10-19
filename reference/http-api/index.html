@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5665,7 +5695,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -7148,6 +7178,23 @@ transitions between them.</p>
 </tr>
 </tbody>
 </table>
+<p><strong>Score summaries.</strong> When a score run succeeds, <code>ScoreCallResult.summary</code> (<code>ScoreSummary</code>)
+holds the requested summary as plain tables (the <code>summary.json</code> of the run). Each
+<code>ScoreSummaryTable</code> has the coordinate columns (one for each dim), then one column for each
+statistic. If the summary has more than 100 000 cells, <code>truncated</code> is <code>true</code>. Use the
+<code>score.zarr.zip</code> output for all the values. From v0.9, the table of a circular output
+(<code>OutputDecl.circular</code>, for example a direction) has the field <code>period</code> (one turn, in the
+units of the output). The statistics are then on the circle:</p>
+<ul>
+<li><code>mean</code> is the circular mean, and the intervals are centred on it.</li>
+<li>The mean, the median, the quantiles and the interval bounds are in <code>[0, period)</code>. An
+  interval with <code>lower</code> more than <code>upper</code> crosses the seam (from 350 to 10 degrees).</li>
+<li><code>sd</code> is the circular standard deviation.</li>
+</ul>
+<p>Other tables do not have the field. Refer to <a href="../sdk/#circular-outputs">Circular outputs</a>.</p>
+<p>A score call needs data. If the request has no <code>data</code>, no <code>inline</code> values, no <code>scenario</code> and
+no <code>horizon</code>, the API refuses it with <strong>422 <code>SCHEMA_INVALID</code></strong> at <code>/data</code> ("the score request
+has no data"). A mode that the model does not support gives <strong>422 <code>MODE_NOT_SUPPORTED</code></strong>.</p>
 <p>The API makes artifact links only after two checks are satisfactory:</p>
 <ol>
 <li>The authorization check.</li>
@@ -8488,6 +8535,17 @@ other runs (<code>Idempotency-Key</code>, the quota checks, cost). <code>POST â€
 <code>workflow.run.failed</code>). These events also go to webhooks: validation transitions
 (<code>model.validated</code>, <code>model.rejected</code>, ...), <code>dataset.version.created</code> and
 <code>optimize.completed</code>.</p>
+<p><strong>Plot outputs (v0.9).</strong> The node kind <code>plot</code> is new. The nodes <code>plot.render</code>,
+<code>model.forecast</code> and <code>evaluate.residuals</code> give <code>plot</code> outputs, and a <code>report.summary</code> can have
+<code>plot</code> sections. The server sends each plot output through the plot sanitizer two times:</p>
+<ol>
+<li>When it collects the outputs of a node. An unsafe plot fails the node with <code>PLOT_UNSAFE</code>.</li>
+<li>When it serves node runs, run outputs and the plot sections of reports. If a stored plot
+   is not safe, the response has <code>null</code> in its place.</li>
+</ol>
+<p>Workflow validation finds the <code>recipe</code> of <code>plot.render</code> in the bundled recipes and in the
+plot catalog. If it does not find the recipe, it reports <code>REF_UNRESOLVED</code> at
+<code>/nodes/&lt;i&gt;/with/recipe</code>.</p>
 <p><strong>Promotion.</strong> A governance policy that applies to a model can set
 <code>require_validated_for_promotion</code>. In this case, <code>PUT /v1/endpoints/{alias}</code> refuses a version
 if its validation status is not <code>validated</code> (<code>409 NOT_VALIDATED</code>). No override can pass this

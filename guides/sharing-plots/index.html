@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5260,7 +5290,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5767,8 +5797,9 @@ into the tool that shows the plot, or put it in a frame:</p>
 <code>plot.embed_revoke</code>).</p>
 <h3 id="what-can-be-embedded">What can be embedded<a class="headerlink" href="#what-can-be-embedded" title="Permanent link">&para;</a></h3>
 <p>You can embed only the plots that a model version drew with one of the <strong>platform's own
-recipes</strong> (<code>core.*</code>, <code>mmm.*</code>, <code>ml.*</code>, <code>ts.*</code>, <code>choice.*</code>). The platform refuses plots from a
-model plugin and plots that a person wrote. The answer is <code>422 EMBED_NOT_ALLOWED</code>. This rule
+recipes</strong> (<code>core.*</code>, <code>mmm.*</code>, <code>ml.*</code>, <code>ts.*</code>, <code>choice.*</code>). The science pack (<code>sci.*</code>) and
+the network pack (<code>net.*</code>) are not in this list. Thus you cannot embed their plots. Share them
+in the project, or render them to an image. The platform refuses plots from a model plugin and plots that a person wrote. The answer is <code>422 EMBED_NOT_ALLOWED</code>. This rule
 exists because a shared link runs the spec of the plot in the browser of a stranger. Also in the
 sandbox, a spec can navigate its own frame. Thus shared views run only specs that the platform
 wrote. Share other plots in the project, or render them to an image.</p>

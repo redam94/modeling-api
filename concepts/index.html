@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5100,7 +5130,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5408,7 +5438,8 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
 <p><strong><a href="labelled-data/">Labelled data</a></strong></p>
 <p>Data is an <code>xr.Dataset</code>. A <code>DataSchema</code> gives each dim a policy (<code>fixed</code>, <code>extend</code>,
 <code>new_levels</code>). It gives each variable a role, units and rules for missing values. Bindings
-map your names to the canonical names of a model, and back.</p>
+map your names to the canonical names of a model, and back. A dataset can also be a tree
+of groups (v0.8). A spec selects the nodes of the tree that it reads.</p>
 </li>
 <li>
 <p><strong><a href="pipelines/">Pipelines and stages</a></strong></p>
@@ -5419,7 +5450,7 @@ at the last reshape and record the output space.</p>
 <li>
 <p><strong><a href="representations/">Representations and summaries</a></strong></p>
 <p>Draws, quantiles, intervals, points and moments. The representation sets which summaries
-exist and which aggregations are correct.</p>
+exist and which aggregations are correct. The summaries of an angle are on the circle.</p>
 </li>
 <li>
 <p><strong><a href="bundles/">Bundles</a></strong></p>
@@ -5441,7 +5472,8 @@ never ignores the actuals.</p>
 <li>
 <p><strong><a href="capabilities/">Capabilities and manifests</a></strong></p>
 <p>The static data that a model declares about itself: representation, score modes,
-outputs, derived quantities and the preprocessing that it owns.</p>
+outputs, derived quantities and the preprocessing that it owns. An output can be a field
+on a grid or an angle on a circle.</p>
 </li>
 <li>
 <p><strong><a href="tenancy-and-auth/">Tenancy and authentication</a></strong> <span class="mapi-badge">v0.3</span></p>
@@ -5467,8 +5499,9 @@ rendered and embedded plots. The trust lifecycle from sign-up to deletion.</p>
 <li>
 <p><strong><a href="workflows/">Workflows</a></strong> <span class="mapi-badge">v0.5</span></p>
 <p>Versioned DAGs of statistical tests, transforms, branches, train/test plans, searches,
-fits, comparisons, governance and reports. Workflows have typed ports, a safe condition
-language, a cache, schedules and triggers.</p>
+fits, comparisons, governance and reports. Bayesian checks, stacking weights, scores and
+plots are nodes too. Workflows have typed ports, a safe condition language, a cache,
+schedules and triggers.</p>
 </li>
 <li>
 <p><strong><a href="governance/">Governance</a></strong> <span class="mapi-badge">v0.5</span></p>
@@ -5526,7 +5559,7 @@ deterministic <em>Help me choose</em> ranking.</p>
 </tr>
 <tr>
 <td><strong>Workflow</strong></td>
-<td>A versioned graph of nodes (tests, transforms, splits, searches, fits, checks, reports). A workflow run is a parent run. Its nodes run in the orchestrator, as sandboxed <code>workflow_node</code> runs or as child fits.</td>
+<td>A versioned graph of nodes (tests, transforms, splits, searches, fits, summaries, scores, checks, plots, reports). A workflow run is a parent run. Its nodes run in the orchestrator, as sandboxed <code>workflow_node</code> runs or as child fits.</td>
 </tr>
 <tr>
 <td><strong>Policy</strong></td>

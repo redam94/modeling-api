@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5291,7 +5321,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5718,7 +5748,7 @@ base image and resource class, and it selects one Job for each attempt:</p>
 </thead>
 <tbody>
 <tr>
-<td><code>base-bayes</code> (<code>mmm.*</code>, <code>tabular.*</code>, ingest, describe)</td>
+<td><code>base-bayes</code> (<code>mmm.*</code>, <code>sci.*</code>, <code>tabular.*</code>, ingest, describe)</td>
 <td><code>mapi-prod-base-bayes-s</code></td>
 <td><code>mapi-prod-base-bayes-m</code></td>
 <td><code>mapi-prod-base-bayes-l</code></td>
@@ -5746,7 +5776,7 @@ infrastructure must make exactly these Jobs. Each Job must have:</p>
 <li>The static environment <code>MAPI_BOOTSTRAP_URL=gs://mapi-{env}-bootstrap/{nonce}</code>.</li>
 <li>The deny-all network and the restricted Google APIs VIP.</li>
 </ul>
-<p>XL runs are for the GKE executor (M6). The dispatcher refuses XL runs for <code>cloudrun-jobs</code>.</p>
+<p>XL runs are for the GKE executor (planned). The dispatcher refuses XL runs for <code>cloudrun-jobs</code>.</p>
 <h2 id="what-one-attempt-looks-like">What one attempt looks like<a class="headerlink" href="#what-one-attempt-looks-like" title="Permanent link">&para;</a></h2>
 <ol>
 <li>The dispatcher writes the intent row <code>(run, attempt, nonce)</code> and the bootstrap object
@@ -6004,7 +6034,7 @@ to <code>internal</code> and <code>self_hosted_trusted</code> tenants.</p>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_PLUGIN_BASES</code></td>
-<td><code>mmm</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>: <code>base-forecast</code></td>
+<td><code>mmm</code>, <code>sci</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>: <code>base-forecast</code></td>
 <td>Plugin namespace to base (JSON)</td>
 </tr>
 <tr>

@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5305,7 +5335,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -6120,6 +6150,10 @@ the string columns of these DataFrames.</p>
 <td><code>spend_var</code>, <code>outcome_var</code>, <code>plan</code>, <code>channel</code>, <code>reference</code>, <code>hdi_prob</code></td>
 </tr>
 <tr>
+<td><code>mmm.prior_beliefs</code></td>
+<td><code>channel</code> (channel), <code>height</code> (26, the height of one channel row)</td>
+</tr>
+<tr>
 <td><code>ml.feature_importance</code></td>
 <td><code>top</code> (20), <code>feature_dim</code> (feature), <code>source</code> (auto | importance | coefficients)</td>
 </tr>
@@ -6282,6 +6316,11 @@ profiles and trajectories. They read draws (<code>chain</code>/<code>draw</code>
   <code>geometry</code> group, the group of the output or the root. It draws the areas as filled
   shapes on axes with equal scales. It does not use a geographic projection or a base
   map. If the outlines have too many points, the recipe uses fewer points.</li>
+<li>The <strong>Observed</strong> panel of <code>sci.area_map</code> reads <code>observed</code>, else the variable with the name of
+  the output in <code>observed_data</code>. If there is none, the recipe reads the variable that the
+  attr <code>mapi_observed</code> of the output names. A model sets this attr when it keeps the observed
+  value under a different name. For example, <code>sci.areal_bym2</code> keeps the raw SMR as <code>smr</code> for
+  its output <code>rr</code>.</li>
 <li><code>sci.phylogeny</code> reads the tree from <code>parent(node)</code>: the position of the parent node, or
   -1 for the root. The optional variables are <code>branch_length(node)</code> (default 1),
   <code>is_tip(node)</code> (default: the nodes that are not a parent) and <code>tip_label(node)</code>. The
@@ -6373,7 +6412,8 @@ can be probabilities, weights or partial correlations.</p>
 </ul>
 <p>The plot sandbox shows the Plotly <code>frames</code>, <code>sliders</code> and <code>updatemenus</code> of these plots. In
 dark mode, it changes the palette colours of the traces to their dark variants, the same as
-for Vega-Lite.</p>
+for Vega-Lite. It also applies the theme to each polar subplot (<code>barpolar</code>, <code>scatterpolar</code>),
+for example in <code>sci.rose</code>.</p>
 <p>The convergence diagnostics are rank-normalised split R-hat and bulk/tail ESS (Vehtari et al.
 2021). The package calculates them with numpy. Tests make sure that the values agree exactly
 with ArviZ.</p>

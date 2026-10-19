@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5414,7 +5444,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -6244,7 +6274,7 @@ starts.</p>
 </tr>
 <tr>
 <td><strong>Values to score</strong></td>
-<td>Select one: <strong>Type values</strong>, <strong>Use a dataset</strong> or <strong>No new data</strong>. The grid of <strong>Type values</strong> starts with the periods to score and each fitted level. You can paste rows from a spreadsheet. You can also use <strong>Fill blanks</strong> to put one value in all the empty cells of a column. The app sends typed values inline (<code>ScoreCall.inline</code>, a maximum of 5 MB). The server checks them against the inputs of the model. You do not upload a file. For <strong>Use a dataset</strong>, <strong>Upload</strong> makes a dataset. Evaluate and filter need a dataset. <strong>No new data</strong> shows only for a forecast, which continues from the end of the fit, or when you give a <strong>Scenario dataset</strong> under <strong>Advanced</strong>. For the other modes, the server refuses a request without data, so the page does not show the option and tells you why.</td>
+<td>Select one: <strong>Type values</strong>, <strong>Use a dataset</strong> or <strong>No new data</strong>. The grid of <strong>Type values</strong> starts with the periods to score and each fitted level. You can paste rows from a spreadsheet. You can also use <strong>Fill blanks</strong> to put one value in all the empty cells of a column. The app sends typed values inline (<code>ScoreCall.inline</code>, a maximum of 5 MB). The server checks them against the inputs of the model. You do not upload a file. For <strong>Use a dataset</strong>, <strong>Upload</strong> makes a dataset. Evaluate and filter need a dataset. <strong>No new data</strong> shows only for a forecast, which continues from the end of the fit, or when you give a <strong>Scenario dataset</strong> under <strong>Advanced</strong>. For predict, simulate and what if without a scenario dataset, the server refuses a request without data. The page then does not show the option, and a note tells you why. If the model cannot forecast, the note tells you that the model always needs values to score.</td>
 </tr>
 <tr>
 <td><strong>Future values … not given</strong></td>
@@ -6319,7 +6349,10 @@ are one-step-ahead: each one is the value that the model expected before it saw 
   for a counterfactual.</li>
 <li>The outputs with their sizes and signed links. <code>score.zarr.zip</code> is the full <code>xr.DataTree</code>.
   <code>ui/summary.arrow</code> is the summary table.</li>
-<li>The summary as a table, with one row for each coordinate and one column for each statistic.</li>
+<li>The summary as a table, with one row for each coordinate and one column for each statistic.
+  A dim with numeric labels stays a key column, for example the grid positions <code>y_cm</code> and
+  <code>x_cm</code> of <code>sci.heat_plate</code>. Thus a grid output keeps one row for each cell. The summary
+  table names its dims in the schema metadata <code>mapi.dims</code>.</li>
 <li>A quick chart. You can plot it again by a different column.</li>
 </ul>
 <p>If the model did not see a market before (for example FR above), the platform draws it from
@@ -6330,6 +6363,10 @@ visual editor and a live run monitor. The editor has a node palette, typed ports
 view. See <a href="../workflows/#in-the-web-app">In the web app</a>. <strong>Governance</strong> edits policies,
 follows validations and holds the queue of the reviewers. See
 <a href="../governance/#in-the-web-app">In the web app</a>.</p>
+<p>Since v0.9, the run monitor draws the plots of a workflow run. These are the <code>plot</code> outputs of
+nodes (<code>plot.render</code>, <code>model.forecast</code> and <code>evaluate.residuals</code>) and the <code>plot</code> sections of a
+<code>report.summary</code>. Each plot of a node shows with its caption. If the data of a plot is in a
+file, the app tells you to click <strong>Download</strong>. The HTML report does not show plot sections.</p>
 <div class="grid">
 <p><img alt="The workflow editor: palette, canvas with typed ports, node editor" class="mapi-shot" src="../../assets/screenshots/workflows-editor.png" /></p>
 <p><img alt="A validation that waits for a reviewer, with its checks and evidence" class="mapi-shot" src="../../assets/screenshots/governance-validation.png" /></p>
@@ -6361,10 +6398,17 @@ these contents, and its digest identifies them:</p>
 <ul>
 <li><strong>Models</strong>: inference, representation, score modes and base image.</li>
 <li><strong>Steps</strong>: kind, if it learns state, invertibility and summary.</li>
-<li><strong>Plots</strong>: recipe, title, audience and the bundle groups that it needs.</li>
+<li><strong>Plots</strong>: a card for each plot recipe, with an example plot made from synthetic data, its
+  pack, its title, a summary and the bundle groups that it needs. The buttons above the cards
+  filter the recipes by pack: <strong>All plots</strong>, <strong>All models</strong> (<code>core</code>), <strong>Marketing mix</strong>
+  (<code>mmm</code>), <strong>Machine learning</strong> (<code>ml</code>), <strong>Science</strong> (<code>sci</code>) and <strong>Networks</strong> (<code>net</code>). A pack
+  shows only when the catalog has a recipe of that pack. You can also type words in the search
+  field.</li>
 </ul>
-<p>Click a row to see its full entry. Specs can use only the items in this list. The
-<a href="../../reference/generated/models-catalog/">generated catalogs</a> have the same data.</p>
+<p>Click a row of <strong>Models</strong> or <strong>Steps</strong> to see its full entry. Click a plot card to see its
+About card, a larger interactive example and its technical details. Specs can use only the
+items in this list. The <a href="../../reference/generated/models-catalog/">generated catalogs</a> have
+the same data.</p>
 <p>Since v0.5, the catalog opens on <strong>Browse</strong>. It shows each item that a user can select, with
 its plain-language About card. <strong>Help me choose</strong> is one click away (see <a href="../../concepts/about-and-choosing/#in-the-web-app">About cards and
 choosing</a>).</p>

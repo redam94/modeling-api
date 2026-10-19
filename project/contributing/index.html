@@ -473,6 +473,8 @@
       
         
       
+        
+      
     
     
     
@@ -525,6 +527,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -5095,7 +5125,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5679,12 +5709,29 @@ scope:</p>
   the two scripts before each build.</li>
 <li><strong>New <code>MAPI_*</code> variables go into the configuration reference</strong>
   (<code>docs/operations/configuration.md</code>). A test looks for these variables in the source tree.</li>
-<li><strong>Screenshots</strong> are in <code>docs/assets/screenshots/</code>. Each screenshot must be 300 KB or less,
+<li>
+<p><strong>Screenshots</strong> are in <code>docs/assets/screenshots/</code>. Each screenshot must be 300 KB or less,
   and a page must use it. <code>make docs-screenshots</code> captures them again from a stack that runs and has
-  seed data.</li>
-<li><code>make docs-build</code> must pass (<code>mkdocs build --strict</code>, with anchor validation).</li>
-<li>Write for two types of readers. An analyst wants to know what a feature does for them. A
-  data scientist wants to know exactly how it works.</li>
+  seed data. Other targets capture one set each:</p>
+<ul>
+<li>from a <code>make dev</code> stack: <code>docs-screenshots-admin</code> and <code>docs-screenshots-science</code> (the
+  science tutorials, with the datasets of
+  <a href="../../operations/local-development/#science-data">Science data</a>);</li>
+<li>from the web app in mock mode: <code>docs-screenshots-guided</code>, <code>docs-screenshots-integrations</code>,
+  <code>docs-screenshots-tutorials</code>, <code>docs-screenshots-explorers</code> and
+  <code>docs-screenshots-workflows</code>.</li>
+</ul>
+<p>The <a href="../../operations/configuration/#documentation">configuration reference</a> lists the
+variables that these scripts read.
+- <strong>The cookbook documents are tested.</strong> <code>conformance/tests/test_docs_v05.py</code> makes sure that
+  each <code>docs/snippets/cookbook_*.yaml</code> is a valid workflow. It also makes sure that the
+  documents of the six M5 recipes (<code>cookbook_sci_*.yaml</code> and
+  <code>cookbook_bayes_workflow_audit.yaml</code>) are the same as their gallery templates. If you change
+  one of these templates, change its document too.
+- <code>make docs-build</code> must pass (<code>mkdocs build --strict</code>, with anchor validation).
+- Write for two types of readers. An analyst wants to know what a feature does for them. A
+  data scientist wants to know exactly how it works.</p>
+</li>
 </ul>
 
 

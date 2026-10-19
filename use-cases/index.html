@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Six problems modeling-api is built for - marketing-mix budget planning on mmm-framework, a governed forecasting pipeline, macro and VAR/VECM analysis, weekly forecasting, demand by store and customer choice - with the data each needs, what you get and the tutorials that walk through them.">
+        <meta name="description" content="Seven problems modeling-api is built for - marketing-mix budget planning on mmm-framework, a governed forecasting pipeline, macro and VAR/VECM analysis, weekly forecasting, demand by store, customer choice and science models of images, fields, maps and graphs - with the data each needs, what you get and the tutorials that walk through them.">
       
       
         <meta name="author" content="Matthew Reda">
@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -530,6 +532,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -714,6 +744,17 @@
     <span class="md-ellipsis">
       
         Customer choice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#science-models-images-fields-maps-and-graphs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Science models: images, fields, maps and graphs
       
     </span>
   </a>
@@ -5224,7 +5265,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5519,6 +5560,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#science-models-images-fields-maps-and-graphs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Science models: images, fields, maps and graphs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#your-own-model" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5597,6 +5649,12 @@ scorecard, governance policies, the explorers, endpoints, snippets, webhooks and
 <td>Guided <em>Customer choice</em></td>
 <td><code>choice.multinomial_logit</code></td>
 <td>Which product does a shopper pick, and how does a price change shift that?</td>
+</tr>
+<tr>
+<td><a href="#science-models-images-fields-maps-and-graphs">Science models</a></td>
+<td>A pymc-challenges tutorial, then a science recipe (for example <code>sci_spatial_ladder</code>)</td>
+<td>15 <code>sci.*</code> models, for example <code>sci.areal_bym2</code>, <code>sci.heat_plate</code> and <code>sci.network_latent_space</code></td>
+<td>What does the model of a research notebook tell, and can the analysis repeat with the same checks?</td>
 </tr>
 </tbody>
 </table>
@@ -5765,6 +5823,52 @@ trip.</p>
 <p><strong>Start here.</strong>
 <a href="../guides/guided-tutorial/">The Guided tutorial</a> (pick <em>Customer choice</em>) →
 <a href="../reference/models/">Built-in models</a>.</p>
+<h2 id="science-models-images-fields-maps-and-graphs">Science models: images, fields, maps and graphs<a class="headerlink" href="#science-models-images-fields-maps-and-graphs" title="Permanent link">&para;</a></h2>
+<p><strong>The question.</strong> A research notebook fits a Bayesian model to an image, a field, a map or
+a graph. For example: which districts have a high risk of a disease, and does a covariate
+explain it? Which conductivity does a heated plate have, and which field does a new heater
+layout give? Which effects explain the ties of a network? The analysis must repeat, and a
+person who does not write PyMC code must be able to read it.</p>
+<p><strong>The data.</strong> The data of the notebook, as a file that you can upload. The export helper
+writes it:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>--list
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e18<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>--challenges<span class="w"> </span>&lt;path<span class="w"> </span>to<span class="w"> </span>pymc-challenges&gt;/data<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span>--out<span class="w"> </span>scotland_lip_cancer.nc<span class="w"> </span>--spec<span class="w"> </span>scotland_lip_cancer.yaml
+</span></code></pre></div>
+<p>The file keeps the schema of the model. Thus the upload gives the correct role to each
+variable. Without a copy of pymc-challenges, <code>--synthetic</code> writes data that the model
+simulates.</p>
+<p><strong>What you get.</strong></p>
+<ul>
+<li>15 science models, for example disease maps (<code>sci.areal_bym2</code>), a heat equation
+  (<code>sci.heat_plate</code>), Turing patterns (<code>sci.turing_pattern</code>), STORM frames
+  (<code>sci.storm_localisation</code>), the CMB sky (<code>sci.cmb_field</code>), networks
+  (<code>sci.network_latent_space</code>), graphical models (<code>sci.graphical_model</code>), phylogenies
+  (<code>sci.phylo_regression</code>) and angles (<code>sci.circular_regression</code>).</li>
+<li>Plots for each type of data: area maps, field maps, image residuals, predictive image
+  grids, network graphs, phylogenies, polar roses, colour swatches and power spectra.</li>
+<li>The Model Explorer: the <strong>Fields</strong>, <strong>Plots</strong>, <strong>Parameters</strong> and <strong>Diagnostics</strong>
+  sections. The <strong>Score</strong> page predicts and simulates new data.</li>
+<li>Recipes that do the Bayesian workflow:<ul>
+<li><code>sci_spatial_ladder</code>, <code>sci_network_ladder</code> and <code>sci_phylo_signal</code> compare model
+  variants by <code>elpd_loo</code> and stacking weights. Then they tell if an effect is clear.</li>
+<li><code>sci_calibrate_then_design</code> predicts a new design only if the calibration passes its
+  checks.</li>
+<li><code>bayes_workflow_audit</code> and <code>sci_image_model_check</code> do the convergence, predictive,
+  prior and recovery checks.</li>
+</ul>
+</li>
+</ul>
+<p>We did the E18 tutorial in the web app with the real data. The BYM2 map has an <code>elpd_loo</code> of
+−153.0, and the notebook gives −152.7. The effect of outdoor work stays clear. The
+<code>sci_spatial_ladder</code> recipe took 46 s and selected the ICAR model. The notebook also gives the
+ICAR model the best <code>elpd_loo</code>.</p>
+<p><strong>Start here.</strong>
+<a href="../tutorials/pymc-challenges/">pymc-challenges in the web app</a> →
+<a href="../tutorials/pymc-challenges/e18-scottish-lip-cancer/">E18 Lip cancer disease map</a> →
+<a href="../tutorials/complex-workflows/">Complex workflows</a> →
+<a href="../reference/models/#scientific-models-mapi-plugin-science">Scientific models</a>.</p>
 <h2 id="your-own-model">Your own model<a class="headerlink" href="#your-own-model" title="Permanent link">&para;</a></h2>
 <p>If none of these use cases is correct for you, write your own model. A PyMC model is one
 <code>build()</code> method, and an sklearn model is one <code>estimator()</code>. The platform does the

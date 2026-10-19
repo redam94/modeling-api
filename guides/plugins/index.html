@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3023,6 +3053,89 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="A model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#settings-rules-that-need-no-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings rules that need no data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outputs-that-are-images-or-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs that are images or maps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outputs-that-are-angles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs that are angles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#models-that-give-elpd_loo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Models that give elpd_loo
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-model-with-its-own-sampler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A model with its own sampler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-for-a-case-study-mapi-plugin-science" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data for a case study (mapi-plugin-science)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5193,7 +5306,7 @@
   <span class="md-ellipsis">
     
   
-    Next: expert plugins and MCP (v0.6)
+    Planned: expert plugins and MCP
   
 
     
@@ -5441,6 +5554,89 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="A model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#settings-rules-that-need-no-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings rules that need no data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outputs-that-are-images-or-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs that are images or maps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outputs-that-are-angles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs that are angles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#models-that-give-elpd_loo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Models that give elpd_loo
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-model-with-its-own-sampler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A model with its own sampler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-for-a-case-study-mapi-plugin-science" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data for a case study (mapi-plugin-science)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5604,40 +5800,193 @@ sensor. The scorecard check <code>data.missing</code> then does not count these 
 gaps in observed series: the check must show them.</p>
 <p><code>FitOutput.native</code> is only for safe native formats (skops, xgboost JSON, safetensors). The
 platform rejects pickle when it writes a bundle and when it reads a bundle.</p>
+<h3 id="settings-rules-that-need-no-data">Settings rules that need no data<a class="headerlink" href="#settings-rules-that-need-no-data" title="Permanent link">&para;</a></h3>
+<p>Put the rules that join two or more settings in a pydantic <code>model_validator</code> of your
+<code>ModelSettings</code> class. An example is "set <code>offset_adu</code> and <code>scale_adu</code> together" in
+<code>sci.storm_localisation</code>. The SDK parses the settings before it transforms, splits or fits the
+data. Thus a bad value stops the fit at the start with <code>SETTINGS_INVALID</code>
+(<code>/model/settings</code>). Do not put such rules in <code>fit</code>: there, they fail only after the data
+steps. Note: spec validation does a check of the JSON Schema only. It does not run the
+validator.</p>
+<h3 id="outputs-that-are-images-or-maps">Outputs that are images or maps<a class="headerlink" href="#outputs-that-are-images-or-maps" title="Permanent link">&para;</a></h3>
+<p>If an output is a 2-D field (an image, a map or a vector field), give it a <code>grid</code>
+(<code>OutputDecl.grid</code>):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">outputs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="s2">"sky"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        <span class="s2">"dims"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"row"</span><span class="p">,</span> <span class="s2">"col"</span><span class="p">],</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"uK"</span><span class="p">,</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="s2">"grid"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"y"</span><span class="p">:</span> <span class="s2">"row"</span><span class="p">,</span> <span class="s2">"x"</span><span class="p">:</span> <span class="s2">"col"</span><span class="p">,</span> <span class="s2">"origin"</span><span class="p">:</span> <span class="s2">"lower"</span><span class="p">,</span> <span class="s2">"colormap"</span><span class="p">:</span> <span class="s2">"diverging"</span><span class="p">},</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="p">},</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">}</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>y</code>, <code>x</code></td>
+<td>The dims of the rows and of the columns of the raster</td>
+</tr>
+<tr>
+<td><code>frame</code></td>
+<td>Optional. A third dim, with one raster for each level (for example years)</td>
+</tr>
+<tr>
+<td><code>component</code></td>
+<td>Optional. A dim of length two with the <code>(x, y)</code> parts of a vector field</td>
+</tr>
+<tr>
+<td><code>origin</code></td>
+<td><code>upper</code> (default: row 0 at the top) or <code>lower</code></td>
+</tr>
+<tr>
+<td><code>colormap</code></td>
+<td><code>viridis</code> (default), <code>magma</code>, <code>cividis</code>, <code>gray</code> or <code>diverging</code></td>
+</tr>
+<tr>
+<td><code>log</code></td>
+<td><code>true</code> draws log10 of the value (for counts and intensities). The default is <code>false</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The dims in <code>grid</code> must be different from each other. The Model Explorer shows the output in
+its <strong>Fields</strong> section. The <code>sci.*</code> image recipes (<code>sci.field_map</code>, <code>sci.image_residuals</code>,
+<code>sci.ppc_image_grid</code>) find the grid in the manifest, or in a <code>grid</code> attribute of the scored
+variable. When the binding of a spec renames dims, the platform also renames them in the
+<code>grid</code> attribute.</p>
+<h3 id="outputs-that-are-angles">Outputs that are angles<a class="headerlink" href="#outputs-that-are-angles" title="Permanent link">&para;</a></h3>
+<p>If an output is an angle (a direction or a time of day), set <code>circular: true</code> in its
+declaration. Then, in <code>score</code>, set the attribute <code>period</code> on the array. The period is one
+full turn in the units of the output, for example <code>360</code> (degrees), <code>2π</code> (radians) or <code>24</code>
+(hours):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">outputs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"direction_hat"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"dims"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"obs"</span><span class="p">],</span> <span class="s2">"units_of"</span><span class="p">:</span> <span class="s2">"direction"</span><span class="p">,</span> <span class="s2">"circular"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}}</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># in score(): the angles in [0, 360)</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">pred</span><span class="p">[</span><span class="s2">"direction_hat"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">theta</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s2">"chain"</span><span class="p">,</span> <span class="s2">"draw"</span><span class="p">,</span> <span class="s2">"obs"</span><span class="p">),</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"predictive"</span><span class="p">,</span> <span class="s2">"period"</span><span class="p">:</span> <span class="mf">360.0</span><span class="p">}</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>The platform then calculates on the circle:</p>
+<ul>
+<li>The holdout metrics use the circular mean of the draws and errors that wrap at half a turn
+  (359 against 1 is an error of -2). <code>crps</code> uses the arc distance. The intervals are centred
+  on the circular mean. The metrics <code>mape</code>, <code>smape</code>, <code>wape</code> and <code>r2</code> are skipped.</li>
+<li>The score summaries of draws use the circular mean and the circular standard deviation.
+  Each value is in <code>[0, period)</code>. An interval with <code>lower</code> more than <code>upper</code> crosses the seam.
+  The summary table (<code>summary.json</code>) has the field <code>period</code>.</li>
+<li>The difference between a scenario and its baseline wraps to <code>[-period/2, period/2)</code>.</li>
+</ul>
+<p>The circular metrics need the <code>draws</code> representation. An output without a valid <code>period</code>
+attribute, or an output aggregated over a dim, keeps the summary on a line, and the result has
+a warning.</p>
+<h3 id="score-modes">Score modes<a class="headerlink" href="#score-modes" title="Permanent link">&para;</a></h3>
+<p>Declare in <code>capabilities.score_modes</code> only the modes that <code>score</code> can do. The SDK refuses
+each other mode with <code>MODE_NOT_SUPPORTED</code> before it builds a forecast horizon or a payload.
+Thus <code>score</code> never gets a mode that you did not declare. Read the mode in <code>ctx.mode</code> and the
+output kind in <code>ctx.kind</code> (<code>expected</code> or <code>predictive</code>).</p>
+<p>In <code>simulate</code> mode, return new data that the model makes from its posterior: new latent values
+and the noise of the model. For example, <code>sci.cmb_field</code> draws a new patch of sky from the
+spectrum of each posterior draw, and then adds noise. In <code>predict</code> mode with
+<code>kind: predictive</code>, keep the latent values of each posterior draw and add only the noise. Set
+the attribute <code>kind: predictive</code> on such draws. The governance check <code>recovery.simulated</code>
+makes its simulated datasets from these draws.</p>
+<h3 id="models-that-give-elpd_loo">Models that give <code>elpd_loo</code><a class="headerlink" href="#models-that-give-elpd_loo" title="Permanent link">&para;</a></h3>
+<p>The fit calculates <code>elpd_loo</code> and <code>elpd_waic</code> from a <code>log_likelihood</code> group, if the spec
+lists the metric in <code>evaluate.metrics</code>. Put the group in <code>FitOutput.groups</code>, next to
+<code>posterior</code>, with the same <code>chain</code> and <code>draw</code> dims. Usually, keep it when
+<code>cfg.keep.log_likelihood</code> is true. A model for comparisons can always keep it, as
+<code>sci.areal_bym2</code> does. For data of up to 10,000 points, the fit also keeps the
+pointwise values (<code>MetricsReport.elpd</code>), and the workflow node <code>compare.stacking</code> uses them.</p>
+<p>If pointwise LOO is not correct for your model, declare <code>loo_valid=False</code> and a
+<code>loo_invalid_reason</code> in <code>Capabilities</code>. An example is a model where all pixels depend on one
+latent field. The fit then skips the metric with that reason.</p>
+<h3 id="a-model-with-its-own-sampler">A model with its own sampler<a class="headerlink" href="#a-model-with-its-own-sampler" title="Permanent link">&para;</a></h3>
+<p>A <code>CustomModel</code> can run its own MCMC sampler, for example a Gibbs sampler. <code>sci.cmb_field</code>
+does this. Follow these rules:</p>
+<ul>
+<li>Declare <code>inference="mcmc"</code> and <code>representation=Representation.DRAWS</code>.</li>
+<li>Read <code>cfg.tune</code>, <code>cfg.draws</code>, <code>cfg.chains</code> and <code>cfg.seed</code> (use <code>ctx.seed</code> when <code>cfg.seed</code>
+  is <code>None</code>). If the spec names an <code>engine</code> that your sampler does not use, tell the user with
+  <code>ctx.info</code>.</li>
+<li>Call <code>ctx.check_cancelled()</code> and <code>ctx.progress(fraction, message)</code> in the loop of the
+  sampler.</li>
+<li>Return <code>posterior</code> and <code>sample_stats</code> with the dims <code>chain</code> and <code>draw</code>, and also
+  <code>observed_data</code>.</li>
+<li>Override the <code>diagnostics(fitted, ds)</code> hook. Call
+  <code>mapi_pymc.convergence_diagnostics(posterior, sample_stats, var_names=[...])</code> for R-hat
+  and ESS, and add the diagnostics of your sampler. <code>sci.cmb_field</code> adds <code>CG_NOT_CONVERGED</code>.</li>
+<li>Give each draw of a score its own generator, seeded from the seed of the score, the chain
+  and the draw. Then declare <code>deterministic_given_seed=True</code>.</li>
+</ul>
+<h3 id="data-for-a-case-study-mapi-plugin-science">Data for a case study (<code>mapi-plugin-science</code>)<a class="headerlink" href="#data-for-a-case-study-mapi-plugin-science" title="Permanent link">&para;</a></h3>
+<p>If you add a model to <code>mapi-plugin-science</code>, add an export case so that users can upload its
+data. <code>mapi_plugin_science.export.EXPORTS</code> maps a case id to an <code>ExportCase</code>. The case id is
+<code>e</code> and the notebook number (<code>e18</code>), with a letter for a second dataset of the same notebook
+(<code>e81b</code>). Add one <code>_register(ExportCase(...))</code> entry at the end of <code>export.py</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">_register</span><span class="p">(</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">ExportCase</span><span class="p">(</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        <span class="n">case</span><span class="o">=</span><span class="s2">"e18"</span><span class="p">,</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="n">title</span><span class="o">=</span><span class="s2">"Disease mapping of lip cancer in Scotland"</span><span class="p">,</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="n">notebook</span><span class="o">=</span><span class="s2">"E18_areal_models_icar_bym2.py"</span><span class="p">,</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">model</span><span class="o">=</span><span class="s2">"sci.areal_bym2"</span><span class="p">,</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="n">files</span><span class="o">=</span><span class="p">(</span><span class="n">areal_data</span><span class="o">.</span><span class="n">CHALLENGES_FILE</span><span class="p">,),</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="n">loader</span><span class="o">=</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">areal_data</span><span class="o">.</span><span class="n">from_challenges</span><span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="n">areal_data</span><span class="o">.</span><span class="n">CHALLENGES_FILE</span><span class="p">),</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="n">synthetic</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">areal_data</span><span class="o">.</span><span class="n">areal_dataset</span><span class="p">(),</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="n">schema</span><span class="o">=</span><span class="n">areal_data</span><span class="o">.</span><span class="n">AREAL_SCHEMA</span><span class="p">,</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="n">project</span><span class="o">=</span><span class="s2">"epidemiology"</span><span class="p">,</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="n">dataset</span><span class="o">=</span><span class="s2">"scotland_lip_cancer"</span><span class="p">,</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="n">spec</span><span class="o">=</span><span class="n">areal_data</span><span class="o">.</span><span class="n">SCOTLAND_SPEC_YAML</span><span class="p">,</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="p">)</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="p">)</span>
+</span></code></pre></div>
+<ul>
+<li><code>files</code> lists the files that the loader reads from the <code>data/</code> directory of
+  pymc-challenges. Use an empty tuple when the notebook simulates its data (E51, E61).</li>
+<li><code>synthetic</code> returns the simulated data of the model, in the same layout.</li>
+<li><code>schema</code> is the raw <code>DataSchema</code> of the model (a <code>TreeSchema</code> for a tree dataset).</li>
+<li><code>spec</code> is the suggested spec as YAML, or a function of the exported data that returns it.
+  Its <code>data.dataset</code> must be <code>dataset://&lt;project&gt;/&lt;dataset&gt;@latest</code>.</li>
+</ul>
+<p>The tests make sure that each suggested spec validates against the schema of its exported
+file. A slow test fits each spec on the simulated data. Then
+<code>python -m mapi_plugin_science.export --list</code> shows the case.</p>
 <h2 id="run-the-contract-kit">Run the contract kit<a class="headerlink" href="#run-the-contract-kit" title="Permanent link">&para;</a></h2>
 <p><code>mapi-sdk</code> installs a pytest plugin. Thus the fixtures are available in all test suites:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelFixture</span><span class="p">,</span> <span class="n">toy</span>  <span class="c1"># toy: small reference steps and models</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">mapi_contract</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_step_follows_the_contract</span><span class="p">(</span><span class="n">mapi_check_step</span><span class="p">,</span> <span class="n">mapi_panel</span><span class="p">):</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">data</span><span class="p">,</span> <span class="n">_fx</span> <span class="o">=</span> <span class="n">mapi_panel</span>  <span class="c1"># a daily market x channel panel and its FX side table</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">report</span> <span class="o">=</span> <span class="n">mapi_check_step</span><span class="p">(</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="n">toy</span><span class="o">.</span><span class="n">ScaleStep</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="p">{</span><span class="s2">"vars"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"spend_local"</span><span class="p">],</span> <span class="s2">"over"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"date"</span><span class="p">],</span> <span class="s2">"unseen_levels"</span><span class="p">:</span> <span class="s2">"pooled"</span><span class="p">}</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="p">)</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="k">assert</span> <span class="n">report</span><span class="o">.</span><span class="n">ok</span><span class="p">,</span> <span class="n">report</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="n">SPEC</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="s2">apiVersion: mapi/v1</span>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="s2">kind: ModelSpec</span>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="s2">metadata: {name: toy, project: demo}</span>
-</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="s2">data:</span>
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="s2">  dataset: dataset://demo/panel@latest</span>
-</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="s2">  bind: {dims: {geo: market, time: date}, vars: {y: revenue_local, spend: spend_local}}</span>
-</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="s2">  split: {kind: time_holdout, dim: time, last: 14}</span>
-</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="s2">model: {use: toy.linear@^1, fit: </span><span class="si">{seed: 1}</span><span class="s2">}</span>
-</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="s2">evaluate: {metrics: [rmse]}</span>
-</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="s2">"""</span>
-</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>
-</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>
-</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">mapi_contract</span>
-</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_model_follows_the_contract</span><span class="p">(</span><span class="n">mapi_check_model</span><span class="p">,</span> <span class="n">mapi_panel</span><span class="p">,</span> <span class="n">mapi_toy_registry</span><span class="p">):</span>
-</span><span id="__span-2-29"><a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>    <span class="n">data</span><span class="p">,</span> <span class="n">_fx</span> <span class="o">=</span> <span class="n">mapi_panel</span>
-</span><span id="__span-2-30"><a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    <span class="n">fixture</span> <span class="o">=</span> <span class="n">ModelFixture</span><span class="p">(</span><span class="n">spec</span><span class="o">=</span><span class="n">SPEC</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">mapi_toy_registry</span><span class="p">)</span>
-</span><span id="__span-2-31"><a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    <span class="n">report</span> <span class="o">=</span> <span class="n">mapi_check_model</span><span class="p">(</span><span class="n">toy</span><span class="o">.</span><span class="n">LinearModel</span><span class="p">,</span> <span class="n">fixture</span><span class="p">)</span>  <span class="c1"># raises ContractViolation on failure</span>
-</span><span id="__span-2-32"><a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    <span class="k">assert</span> <span class="n">report</span><span class="o">.</span><span class="n">ok</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelFixture</span><span class="p">,</span> <span class="n">toy</span>  <span class="c1"># toy: small reference steps and models</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">mapi_contract</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_step_follows_the_contract</span><span class="p">(</span><span class="n">mapi_check_step</span><span class="p">,</span> <span class="n">mapi_panel</span><span class="p">):</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">data</span><span class="p">,</span> <span class="n">_fx</span> <span class="o">=</span> <span class="n">mapi_panel</span>  <span class="c1"># a daily market x channel panel and its FX side table</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">report</span> <span class="o">=</span> <span class="n">mapi_check_step</span><span class="p">(</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">toy</span><span class="o">.</span><span class="n">ScaleStep</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="p">{</span><span class="s2">"vars"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"spend_local"</span><span class="p">],</span> <span class="s2">"over"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"date"</span><span class="p">],</span> <span class="s2">"unseen_levels"</span><span class="p">:</span> <span class="s2">"pooled"</span><span class="p">}</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="p">)</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="k">assert</span> <span class="n">report</span><span class="o">.</span><span class="n">ok</span><span class="p">,</span> <span class="n">report</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="n">SPEC</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="s2">apiVersion: mapi/v1</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="s2">kind: ModelSpec</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="s2">metadata: {name: toy, project: demo}</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="s2">data:</span>
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="s2">  dataset: dataset://demo/panel@latest</span>
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="s2">  bind: {dims: {geo: market, time: date}, vars: {y: revenue_local, spend: spend_local}}</span>
+</span><span id="__span-5-21"><a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="s2">  split: {kind: time_holdout, dim: time, last: 14}</span>
+</span><span id="__span-5-22"><a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="s2">model: {use: toy.linear@^1, fit: </span><span class="si">{seed: 1}</span><span class="s2">}</span>
+</span><span id="__span-5-23"><a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="s2">evaluate: {metrics: [rmse]}</span>
+</span><span id="__span-5-24"><a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="s2">"""</span>
+</span><span id="__span-5-25"><a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>
+</span><span id="__span-5-26"><a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>
+</span><span id="__span-5-27"><a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">mapi_contract</span>
+</span><span id="__span-5-28"><a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_model_follows_the_contract</span><span class="p">(</span><span class="n">mapi_check_model</span><span class="p">,</span> <span class="n">mapi_panel</span><span class="p">,</span> <span class="n">mapi_toy_registry</span><span class="p">):</span>
+</span><span id="__span-5-29"><a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>    <span class="n">data</span><span class="p">,</span> <span class="n">_fx</span> <span class="o">=</span> <span class="n">mapi_panel</span>
+</span><span id="__span-5-30"><a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>    <span class="n">fixture</span> <span class="o">=</span> <span class="n">ModelFixture</span><span class="p">(</span><span class="n">spec</span><span class="o">=</span><span class="n">SPEC</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">mapi_toy_registry</span><span class="p">)</span>
+</span><span id="__span-5-31"><a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>    <span class="n">report</span> <span class="o">=</span> <span class="n">mapi_check_model</span><span class="p">(</span><span class="n">toy</span><span class="o">.</span><span class="n">LinearModel</span><span class="p">,</span> <span class="n">fixture</span><span class="p">)</span>  <span class="c1"># raises ContractViolation on failure</span>
+</span><span id="__span-5-32"><a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>    <span class="k">assert</span> <span class="n">report</span><span class="o">.</span><span class="n">ok</span>
 </span></code></pre></div>
 <p><code>check_step</code> does a check of these items:</p>
 <ul>
@@ -5678,9 +6027,9 @@ platform rejects pickle when it writes a bundle and when it reads a bundle.</p>
 <p>The last check calls the <code>check_fast_score(fitted, ds, *, seed)</code> hook of the plugin.
 <code>PyMCModel</code> gives this hook.</p>
 <p>If a check fails, it raises <code>ContractViolation</code> with a report that is easy to read:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>contract kit: step acme.scale@1.0.0
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  [PASS] catalog_entry: exported acme.scale@1.0.0
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  [FAIL] transform_never_learns: AssertionError: ...
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>contract kit: step acme.scale@1.0.0
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  [PASS] catalog_entry: exported acme.scale@1.0.0
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  [FAIL] transform_never_learns: AssertionError: ...
 </span></code></pre></div>
 <p><code>mapi_sdk.testing.toy</code> contains small, real reference implementations that you can copy. It has
 the scale, log1p, lag, resample, Fourier and FX steps, and the point, draws and quantile models.</p>
