@@ -18,6 +18,9 @@ from mapi_spec.workflow_nodes import NODE_IMPLEMENTATIONS, SUBWORKFLOW_NODE
 from mapi_workflows.runtime.evaluate import EVALUATE_NODES
 from mapi_workflows.runtime.governance import GOVERNANCE_NODES
 from mapi_workflows.runtime.models import MODEL_NODES
+from mapi_workflows.runtime.plots import PLOT_NODES
+from mapi_workflows.runtime.posterior import POSTERIOR_NODES
+from mapi_workflows.runtime.scoring import SCORE_NODES
 from mapi_workflows.runtime.search import SEARCH_NODES
 from mapi_workflows.runtime.splits import SPLIT_NODES
 from mapi_workflows.runtime.stattests import TEST_NODES
@@ -40,6 +43,9 @@ def builtin_nodes() -> dict[str, NodeFn]:
         MODEL_NODES,
         EVALUATE_NODES,
         GOVERNANCE_NODES,
+        POSTERIOR_NODES,
+        SCORE_NODES,
+        PLOT_NODES,
     ):
         out.update(table)
     return out

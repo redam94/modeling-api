@@ -1,0 +1,694 @@
+"""Write the data of a pymc-challenges case study to a file you can upload (NetCDF, zarr zip).
+
+The ``from_challenges`` loaders build the dataset of a ``sci.*`` model from a local copy of
+pymc-challenges. This module writes that dataset to a file, so a web-app user can upload
+it (Datasets -> New dataset) and fit the model with the suggested spec::
+
+    python -m mapi_plugin_science.export --list
+    python -m mapi_plugin_science.export e07 --challenges ~/pymc-challenges/data --out quakes.nc
+    python -m mapi_plugin_science.export e80 --out lens.nc --spec lens.yaml
+    python -m mapi_plugin_science.export e50 --synthetic --out assay.nc
+
+``--challenges`` defaults to ``$MAPI_PYMC_CHALLENGES_DATA``; ``--synthetic`` writes the
+model's own simulated data instead (no pymc-challenges copy needed). The format comes from
+the suffix of ``--out``: ``.nc`` (NetCDF-4 through h5netcdf; a tree dataset keeps one HDF5
+group for each node), ``.zarr.zip`` (a plain dataset) or ``.tree.zip`` (a tree dataset, the
+``data.tree.zip`` wire format). The file carries the raw schema of the model's data
+contract (the ``mapi_schema`` attribute, or ``mapi_tree_schema`` on the root of a tree), so
+the ingest gives each variable its role.
+
+Registering a case
+------------------
+:data:`EXPORTS` maps a case id (``e07``: the notebook number; ``e81b``: a second dataset of
+notebook E81) to an :class:`ExportCase`.
+A new model module registers its case with ONE entry at the end of this file, next to the
+others::
+
+    _register(
+        ExportCase(
+            case="e18",
+            title="Disease mapping of lip cancer in Scotland",
+            notebook="E18_areal_models_icar_bym2.py",
+            model="sci.areal_bym2",
+            files=(areal_data.CHALLENGES_FILE,),
+            loader=lambda d: areal_data.from_challenges(d / areal_data.CHALLENGES_FILE),
+            synthetic=lambda: areal_data.areal_dataset(),
+            schema=areal_data.AREAL_SCHEMA,
+            project="epidemiology",
+            dataset="scotland_lip_cancer",
+            spec=areal_data.SCOTLAND_SPEC_YAML,
+        )
+    )
+
+``loader`` receives the pymc-challenges ``data/`` directory; ``spec`` is a YAML string (or a
+function of the exported data, when its settings depend on it) whose ``data.dataset`` names
+``dataset://<project>/<dataset>@latest``; ``schema`` is the model's raw ``DataSchema`` (a
+``TreeSchema`` for a tree case). Import the data module at the top of this file.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Final
+
+import numpy as np
+import xarray as xr
+from mapi_sdk.tree import TREE_SCHEMA_ATTR, write_tree_zip
+from mapi_sdk.wire import write_zarr_zip
+from mapi_spec.schema import DataSchema
+from mapi_spec.tree import TreeSchema
+
+from mapi_plugin_science import (
+    areal_data,
+    circular_data,
+    cmb_data,
+    colour_naming_data,
+    ggm_data,
+    heat_plate_data,
+    ibp_data,
+    kpp_data,
+    lens_data,
+    lgcp_data,
+    network_data,
+    phylo_data,
+    storm_data,
+    traction_data,
+    turing_data,
+)
+from mapi_plugin_science.challenges import CHALLENGES_ENV
+
+__all__ = [
+    "EXPORTS",
+    "FORMATS",
+    "SCHEMA_ATTR",
+    "ExportCase",
+    "ExportData",
+    "export_case",
+    "main",
+    "write_export",
+]
+
+ExportData = xr.Dataset | xr.DataTree
+"""What a case exports: a plain dataset or (M4) a tree dataset."""
+
+SCHEMA_ATTR: Final = "mapi_schema"
+"""Dataset attribute with the raw ``DataSchema`` JSON (read by the ingest)."""
+
+FORMATS: Final = (".nc", ".zarr.zip", ".tree.zip")
+"""The output suffixes :func:`write_export` knows."""
+
+
+@dataclass(frozen=True, slots=True)
+class ExportCase:
+    """One case study whose data can be exported (see the module docstring)."""
+
+    case: str
+    """Case id: ``e`` + the notebook number (``e07``), plus a letter for a second dataset of
+    the same notebook (``e81b``)."""
+    title: str
+    notebook: str
+    """The pymc-challenges notebook (``notebook_src/examples/<notebook>``)."""
+    model: str
+    """The catalog model that fits the data (``sci.lgcp_grid``)."""
+    files: tuple[str, ...]
+    """The files the loader reads from the pymc-challenges ``data/`` directory (empty when
+    the notebook simulates its data, as E51 and E61 part A do: the loader then needs no
+    directory)."""
+    loader: Callable[[Path], ExportData]
+    """Builds the data from the ``data/`` directory (``from_challenges``)."""
+    synthetic: Callable[[], ExportData]
+    """The model's own simulated data, in the same layout (no files needed)."""
+    schema: DataSchema | TreeSchema
+    """The raw schema of the model's data contract (stored in the file)."""
+    project: str
+    dataset: str
+    """The suggested dataset name (the spec reads ``dataset://<project>/<dataset>``)."""
+    spec: str | Callable[[ExportData], str]
+    """The suggested spec YAML, or a function of the exported data that makes it."""
+
+    @property
+    def tree(self) -> bool:
+        """True when the case exports a tree dataset."""
+        return isinstance(self.schema, TreeSchema)
+
+    def missing(self, data_dir: Path) -> list[str]:
+        """The files of :attr:`files` that ``data_dir`` does not have."""
+        return [f for f in self.files if not (data_dir / f).is_file()]
+
+    def load(self, data_dir: Path) -> ExportData:
+        """The real data, from the pymc-challenges ``data/`` directory."""
+        missing = self.missing(data_dir)
+        if missing:
+            raise FileNotFoundError(
+                f"{self.case}: {data_dir} has no {', '.join(missing)} (set --challenges or "
+                f"{CHALLENGES_ENV} to the data/ directory of pymc-challenges)"
+            )
+        return self.loader(data_dir)
+
+    def spec_yaml(self, data: ExportData) -> str:
+        """The suggested spec for ``data``."""
+        return self.spec if isinstance(self.spec, str) else self.spec(data)
+
+
+EXPORTS: dict[str, ExportCase] = {}
+"""Every exportable case, by case id."""
+
+
+def _register(case: ExportCase) -> ExportCase:
+    if case.case in EXPORTS:
+        raise ValueError(f"export case {case.case!r} is registered twice")
+    EXPORTS[case.case] = case
+    return case
+
+
+# ==================================================================================== write
+
+
+def _attr(value: Any) -> Any:
+    """An attribute value NetCDF can store (``None`` -> drop, bool -> int, else JSON)."""
+    if value is None:
+        return None
+    if isinstance(value, bool | np.bool_):
+        return int(value)
+    if isinstance(value, str | int | float | np.integer | np.floating):
+        return value
+    if isinstance(value, np.ndarray) and value.dtype.kind in "iuf":
+        return value
+    return json.dumps(value, default=str)
+
+
+def _clean(attrs: Mapping[Any, Any]) -> dict[str, Any]:
+    return {str(k): v for k, v in ((k, _attr(v)) for k, v in attrs.items()) if v is not None}
+
+
+def _netcdf_ready(ds: xr.Dataset) -> xr.Dataset:
+    out = ds.copy()
+    out.attrs = _clean(ds.attrs)
+    for name in out.variables:
+        out[name].attrs = _clean(out[name].attrs)
+    return out
+
+
+def _with_schema(data: ExportData, schema: DataSchema | TreeSchema | None) -> ExportData:
+    if schema is None:
+        return data
+    text = schema.model_dump_json(exclude_none=True)
+    if isinstance(data, xr.DataTree):
+        if not isinstance(schema, TreeSchema):
+            raise TypeError("a tree dataset needs a TreeSchema")
+        out = data.copy()
+        out.attrs = {**out.attrs, TREE_SCHEMA_ATTR: text}
+        return out
+    if not isinstance(schema, DataSchema):
+        raise TypeError("a plain dataset needs a DataSchema")
+    ds = data.copy()
+    ds.attrs = {**ds.attrs, SCHEMA_ATTR: text}
+    return ds
+
+
+def _suffix(path: Path) -> str:
+    name = path.name.lower()
+    for s in FORMATS:
+        if name.endswith(s):
+            return s
+    raise ValueError(f"{path}: unknown format (use one of {', '.join(FORMATS)})")
+
+
+def write_export(
+    data: ExportData, out: str | Path, *, schema: DataSchema | TreeSchema | None = None
+) -> Path:
+    """Write ``data`` to ``out`` (format by suffix, see :data:`FORMATS`) with ``schema``
+    stored in its attributes. Returns the path."""
+    path = Path(out)
+    kind = _suffix(path)
+    data = _with_schema(data, schema)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if kind == ".nc":
+        if isinstance(data, xr.DataTree):
+            tree = data.copy()
+            for node in tree.subtree:
+                node.dataset = _netcdf_ready(node.to_dataset(inherit=False))
+            tree.to_netcdf(path, engine="h5netcdf")
+        else:
+            _netcdf_ready(data).to_netcdf(path, engine="h5netcdf")
+    elif kind == ".tree.zip":
+        if not isinstance(data, xr.DataTree):
+            raise ValueError(f"{path}: a plain dataset is written as .nc or .zarr.zip")
+        write_tree_zip(data, path)
+    else:
+        if isinstance(data, xr.DataTree):
+            raise ValueError(f"{path}: a tree dataset is written as .nc or .tree.zip")
+        write_zarr_zip(data, path)
+    return path
+
+
+def export_case(
+    case: str | ExportCase,
+    out: str | Path,
+    *,
+    data_dir: str | Path | None = None,
+    synthetic: bool = False,
+    spec_out: str | Path | None = None,
+) -> tuple[Path, ExportData]:
+    """Load a case (its real data from ``data_dir``, or its synthetic data) and write it to
+    ``out``; with ``spec_out`` also write the suggested spec there. Returns the file and
+    the data."""
+    c = EXPORTS[case] if isinstance(case, str) else case
+    if synthetic:
+        data = c.synthetic()
+    else:
+        if data_dir is None and c.files:
+            raise ValueError(f"{c.case}: give the pymc-challenges data/ directory")
+        data = c.load(Path(data_dir or ".").expanduser())
+    path = write_export(data, out, schema=c.schema)
+    if spec_out is not None:
+        sp = Path(spec_out)
+        sp.parent.mkdir(parents=True, exist_ok=True)
+        sp.write_text(c.spec_yaml(data).lstrip("\n"), encoding="utf-8")
+    return path, data
+
+
+# ====================================================================================== CLI
+
+
+def _summary(data: ExportData) -> str:
+    if isinstance(data, xr.DataTree):
+        parts = [
+            f"{node.path} ({', '.join(str(v) for v in node.data_vars) or 'group'})"
+            for node in data.subtree
+        ]
+        return "tree: " + "; ".join(parts)
+    dims = ", ".join(f"{k}={v}" for k, v in data.sizes.items())
+    return f"variables {', '.join(str(v) for v in data.data_vars)} on {dims}"
+
+
+def _list() -> str:
+    lines = []
+    for c in EXPORTS.values():
+        kind = "tree" if c.tree else "dataset"
+        lines.append(
+            f"{c.case}  {c.model:<22} {kind:<7} {c.title}\n"
+            f"     notebook: {c.notebook}; "
+            f"files: {', '.join(c.files) or 'none (the notebook simulates the data)'}; "
+            f"suggested dataset: {c.project}/{c.dataset}"
+        )
+    return "\n".join(lines)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """``python -m mapi_plugin_science.export`` (see the module docstring)."""
+    import os
+
+    p = argparse.ArgumentParser(
+        prog="python -m mapi_plugin_science.export",
+        description="Write the data of a pymc-challenges case study to an uploadable file.",
+    )
+    p.add_argument("case", nargs="?", help="case id, e.g. e07 (see --list)")
+    p.add_argument("--list", action="store_true", help="list the cases and exit")
+    p.add_argument(
+        "--challenges",
+        default=os.environ.get(CHALLENGES_ENV),
+        help=f"the pymc-challenges data/ directory (default: ${CHALLENGES_ENV})",
+    )
+    p.add_argument("--out", help="output file: .nc, .zarr.zip or .tree.zip (default: <dataset>.nc)")
+    p.add_argument("--spec", help="also write the suggested spec YAML to this file")
+    p.add_argument("--synthetic", action="store_true", help="write simulated data instead")
+    args = p.parse_args(argv)
+    if args.list:
+        print(_list())
+        return 0
+    if not args.case:
+        p.error("give a case id (or --list)")
+    case = EXPORTS.get(str(args.case).lower())
+    if case is None:
+        p.error(f"unknown case {args.case!r}; known: {', '.join(EXPORTS)}")
+    if not args.synthetic and not args.challenges and case.files:
+        p.error(f"give --challenges (or set {CHALLENGES_ENV}), or use --synthetic")
+    out = args.out or f"{case.dataset}.nc"
+    try:
+        path, data = export_case(
+            case, out, data_dir=args.challenges, synthetic=args.synthetic, spec_out=args.spec
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(f"wrote {path} ({_summary(data)})")
+    print(f"upload it as dataset {case.project}/{case.dataset} and fit {case.model}")
+    if args.spec:
+        print(f"wrote the suggested spec to {args.spec}")
+    return 0
+
+
+# ==================================================================================== cases
+
+_KPP_REAL_SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: scratch-assay-pc3-kpp, project: biology}
+data:
+  dataset: dataset://biology/scratch_assay_pc3@latest
+  bind:
+    dims: {t: hours, x: position}
+    vars: {count: cells}
+  split: {kind: time_holdout, dim: t, last: 1}
+model:
+  use: sci.fisher_kpp@^1
+  settings: {steps_per_hour: 10, delay: true, max_extension: 4}
+  fit:
+    mode: evaluate_then_refit
+    seed: 50
+    tune: 1000
+    draws: 1000
+    chains: 4
+    engine: nutpie
+    keep: {log_likelihood: true}
+evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
+outputs:
+  plots: [core.convergence, core.posterior_forest, sci.profile_bands, sci.field_map]
+"""
+"""E50: the PC-3 assay with the notebook grid; the 48 h counts are held out. The fit keeps
+the pointwise log-likelihood, so ``elpd_loo`` can compare the models with and without the
+delay."""
+
+
+def _traction_spec(data: ExportData) -> str:
+    """E60: the settings of the file. The fit uses the full raster (``train_only``, so no
+    metrics); ``sci.vector_field`` draws the ``traction`` output (``sci.field_map`` cannot:
+    the output has a ``component`` dim)."""
+    assert isinstance(data, xr.Dataset)
+    s = traction_data.challenges_settings(data)
+    settings = ", ".join(f"{k}: {json.dumps(v)}" for k, v in s.items())
+    return f"""
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {{name: pytfm-colony-traction, project: biophysics}}
+data:
+  dataset: dataset://biophysics/pytfm_colony_ko04@latest
+model:
+  use: sci.traction_force@^1
+  settings: {{{settings}}}
+  fit: {{mode: train_only, seed: 60, tune: 1000, draws: 1000, chains: 4}}
+outputs: {{plots: [core.convergence, core.posterior_forest, sci.vector_field]}}
+"""
+
+
+def _naming_spec(data: ExportData) -> str:
+    """E77: hold out the notebook's 9 Nafaanra speakers. The synthetic data has other
+    speakers, so its spec holds out 2 random speakers (as :data:`NAMING_SPEC_YAML`)."""
+    assert isinstance(data, xr.Dataset)
+    speakers = {str(s) for s in np.asarray(data["speaker"].values)}
+    spec = colour_naming_data.NAFAANRA_SPEC_YAML
+    if set(colour_naming_data.NAFAANRA_HELD_OUT) <= speakers:
+        return spec
+    groups = ", ".join(colour_naming_data.NAFAANRA_HELD_OUT)
+    return spec.replace(
+        f"split: {{kind: leave_group_out, dim: speaker, groups: [{groups}]}}",
+        "split: {kind: leave_group_out, dim: speaker, n: 2, seed: 1}",
+    )
+
+
+def _cmb_spec(data: ExportData) -> str:
+    """E79: the Planck patch with the default bandpower bins. The synthetic map is too
+    small for the first default bin, so its spec uses the bins of the tiny synthetic fit."""
+    assert isinstance(data, xr.Dataset)
+    spec = cmb_data.PLANCK_SPEC_YAML
+    if not str(data.attrs.get("source", "")).endswith("synthetic"):
+        return spec
+    edges = ", ".join(f"{e:g}" for e in cmb_data.TINY_EDGES)
+    return spec.replace("    border: 8\n", f"    border: 8\n    bin_edges: [{edges}]\n")
+
+
+def _storm_spec(data: ExportData) -> str:
+    assert isinstance(data, xr.Dataset)
+    if "offset_adu" in data.attrs:
+        return storm_data.challenges_spec(data)
+    # synthetic: the simulated camera's offset and gain
+    return storm_data.STORM_SPEC_YAML.replace(
+        "dataset://microscopy/storm_synthetic@latest",
+        "dataset://microscopy/dannhauser2022_unc13_dstorm@latest",
+    )
+
+
+_register(
+    ExportCase(
+        case="e07",
+        title="Induced earthquakes in Oklahoma (space-time counts)",
+        notebook="E07_spatiotemporal_earthquakes.py",
+        model="sci.lgcp_grid",
+        files=(lgcp_data.CHALLENGES_CSV,),
+        loader=lambda d: lgcp_data.from_challenges(d / lgcp_data.CHALLENGES_CSV),
+        synthetic=lambda: lgcp_data.lgcp_dataset(),
+        schema=lgcp_data.LGCP_SCHEMA,
+        project="geoscience",
+        dataset="oklahoma_quakes_grid",
+        spec=lgcp_data.OKLAHOMA_SPEC_YAML,
+    )
+)
+_register(
+    ExportCase(
+        case="e50",
+        title="Scratch assay of PC-3 cells (Fisher-KPP)",
+        notebook="E50_reaction_diffusion_signaling.py",
+        model="sci.fisher_kpp",
+        files=("scratch_assay_pc3.csv",),
+        loader=lambda d: kpp_data.from_challenges(d / "scratch_assay_pc3.csv"),
+        synthetic=lambda: kpp_data.kpp_dataset(),
+        schema=kpp_data.KPP_SCHEMA,
+        project="biology",
+        dataset="scratch_assay_pc3",
+        spec=_KPP_REAL_SPEC,
+    )
+)
+_register(
+    ExportCase(
+        case="e60",
+        title="Traction forces of a cell colony (pyTFM)",
+        notebook="E60_traction_force_microscopy.py",
+        model="sci.traction_force",
+        files=(traction_data.CHALLENGES_FILE,),
+        loader=lambda d: traction_data.from_challenges(d / traction_data.CHALLENGES_FILE),
+        synthetic=lambda: traction_data.traction_dataset(),
+        schema=traction_data.TRACTION_SCHEMA,
+        project="biophysics",
+        dataset="pytfm_colony_ko04",
+        spec=_traction_spec,
+    )
+)
+_register(
+    ExportCase(
+        case="e80",
+        title="Strong lens SDSS J1627-0053 (HST F814W)",
+        notebook="E80_strong_lensing.py",
+        model="sci.strong_lens",
+        files=(lens_data.CHALLENGES_NPZ,),
+        loader=lambda d: lens_data.from_challenges(d / lens_data.CHALLENGES_NPZ),
+        synthetic=lambda: lens_data.lens_dataset(),
+        schema=lens_data.LENS_SCHEMA,
+        project="astronomy",
+        dataset="slacs_j1627_f814w",
+        spec=lens_data.SLACS_SPEC_YAML,
+    )
+)
+_register(
+    ExportCase(
+        case="e51",
+        title="Calibration of a heated plate (2-D steady heat equation)",
+        notebook="E51_heat_equation_design.py",
+        model="sci.heat_plate",
+        files=(),
+        loader=lambda d: heat_plate_data.from_challenges(d),
+        synthetic=lambda: heat_plate_data.heat_plate_dataset(),
+        schema=heat_plate_data.HEAT_SCHEMA,
+        project="engineering",
+        dataset="heat_plate_e51",
+        spec=heat_plate_data.E51_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e61",
+        title="Early images of a growing Turing pattern (Schnakenberg, part A)",
+        notebook=turing_data.NOTEBOOK,
+        model="sci.turing_pattern",
+        files=(),
+        loader=lambda d: turing_data.from_challenges(d),
+        synthetic=lambda: turing_data.turing_dataset(),
+        schema=turing_data.TURING_SCHEMA,
+        project="biology",
+        dataset="e61_turing_early_images",
+        spec=turing_data.NOTEBOOK_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e58",
+        title="Raw dSTORM frames of Unc-13 at a synapse (single-molecule localisation)",
+        notebook="E58_storm_localization_microscopy.py",
+        model="sci.storm_localisation",
+        files=(storm_data.CHALLENGES_FILE,),
+        loader=lambda d: storm_data.from_challenges(d / storm_data.CHALLENGES_FILE),
+        synthetic=lambda: storm_data.storm_dataset(),
+        schema=storm_data.STORM_SCHEMA,
+        project="microscopy",
+        dataset="dannhauser2022_unc13_dstorm",
+        spec=_storm_spec,
+    )
+)
+_register(
+    ExportCase(
+        case="e31",
+        title="Handwritten digits (UCI optdigits), latent binary features",
+        notebook="E31_indian_buffet_process.py",
+        model="sci.ibp_features",
+        files=(ibp_data.CHALLENGES_FILE, ibp_data.CHALLENGES_TEST_FILE),
+        loader=lambda d: ibp_data.from_challenges(d / ibp_data.CHALLENGES_FILE),
+        synthetic=lambda: ibp_data.ibp_dataset(),
+        schema=ibp_data.IBP_SCHEMA,
+        project="vision",
+        dataset="optdigits_e31",
+        spec=ibp_data.DIGITS_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e77",
+        title="Colour naming in Nafaanra (World Color Survey)",
+        notebook="E77_colour_naming.py",
+        model="sci.colour_naming",
+        files=colour_naming_data.CHALLENGES_FILES,
+        loader=lambda d: colour_naming_data.from_challenges(d / colour_naming_data.CHALLENGES_FILE),
+        synthetic=lambda: colour_naming_data.naming_dataset(),
+        schema=colour_naming_data.NAMING_SCHEMA,
+        project="linguistics",
+        dataset="wcs_nafaanra",
+        spec=_naming_spec,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e79",
+        title="Planck SMICA CMB map around the Large Magellanic Cloud",
+        notebook="E79_cmb_field_level.py",
+        model="sci.cmb_field",
+        files=(cmb_data.CHALLENGES_FILE, cmb_data.THEORY_FILE),
+        loader=lambda d: cmb_data.from_challenges(d / cmb_data.CHALLENGES_FILE),
+        synthetic=lambda: cmb_data.cmb_dataset(),
+        schema=cmb_data.CMB_SCHEMA,
+        project="astronomy",
+        dataset="planck_smica_lmc",
+        spec=_cmb_spec,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e18",
+        title="Lip cancer in the districts of Scotland (disease mapping)",
+        notebook="E18_areal_models_icar_bym2.py",
+        model="sci.areal_bym2",
+        files=(areal_data.CHALLENGES_FILE,),
+        loader=lambda d: areal_data.from_challenges(d / areal_data.CHALLENGES_FILE),
+        synthetic=lambda: areal_data.areal_dataset(),
+        schema=areal_data.AREAL_SCHEMA,
+        project="epidemiology",
+        dataset="scotland_lip_cancer",
+        spec=areal_data.SCOTLAND_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e21",
+        title="Coworkers of the 71 lawyers of a law firm (Lazega)",
+        notebook="E21_network_models.py",
+        model="sci.network_latent_space",
+        files=(network_data.CHALLENGES_FILE, network_data.ATTRIBUTES_FILE),
+        loader=lambda d: network_data.from_challenges(d / network_data.CHALLENGES_FILE),
+        synthetic=lambda: network_data.network_dataset(),
+        schema=network_data.NETWORK_SCHEMA,
+        project="sociology",
+        dataset="lazega_coworkers",
+        spec=network_data.LAZEGA_SPEC_YAML,
+    )
+)
+
+_register(
+    ExportCase(
+        case="e19",
+        title="Protein signalling network of T cells (Sachs et al. 2005)",
+        notebook="E19_graphical_models.py",
+        model="sci.graphical_model",
+        files=(ggm_data.CHALLENGES_FILE, ggm_data.CONSENSUS_FILE),
+        loader=lambda d: ggm_data.from_challenges(d / ggm_data.CHALLENGES_FILE),
+        synthetic=lambda: ggm_data.ggm_dataset(),
+        schema=ggm_data.GGM_SCHEMA,
+        project="biology",
+        dataset="sachs_cd3cd28",
+        spec=ggm_data.SACHS_SPEC_YAML,
+    )
+)
+_register(
+    ExportCase(
+        case="e23",
+        title="Brain size of primates on their phylogeny",
+        notebook="E23_phylogenetic_regression.py",
+        model="sci.phylo_regression",
+        files=(phylo_data.CHALLENGES_FILE, phylo_data.CHALLENGES_TREE),
+        loader=lambda d: phylo_data.from_challenges(d / phylo_data.CHALLENGES_FILE),
+        synthetic=lambda: phylo_data.phylo_dataset(),
+        schema=phylo_data.PHYLO_SCHEMA,
+        project="biology",
+        dataset="primates301",
+        spec=phylo_data.PRIMATES_SPEC_YAML,
+    )
+)
+
+
+def _dataset(data: ExportData) -> xr.Dataset:
+    assert isinstance(data, xr.Dataset)
+    return data
+
+
+_register(
+    ExportCase(
+        case="e81",
+        title="Hourly wind directions at Santa Barbara airport (circular regression)",
+        notebook="E81_circular_data.py",
+        model="sci.circular_regression",
+        files=(circular_data.CHALLENGES_FILE,),
+        loader=lambda d: circular_data.from_challenges(d / circular_data.CHALLENGES_FILE),
+        synthetic=lambda: circular_data.wind_dataset(),
+        schema=circular_data.WIND_SCHEMA,
+        project="meteorology",
+        dataset="ksba_wind_2021_2023",
+        spec=lambda data: circular_data.ksba_spec_yaml(_dataset(data)),
+    )
+)
+_register(
+    ExportCase(
+        case="e81b",
+        title="Camera-trap times of the ocelot and five prey at Barro Colorado (activity)",
+        notebook="E81_circular_data.py",
+        model="sci.circular_regression",
+        files=(circular_data.ACTIVITY_FILE,),
+        loader=lambda d: circular_data.from_challenges_activity(d / circular_data.ACTIVITY_FILE),
+        synthetic=lambda: circular_data.activity_dataset(),
+        schema=circular_data.ACTIVITY_SCHEMA,
+        project="ecology",
+        dataset="bci_camera_traps",
+        spec=circular_data.BCI_SPEC_YAML,
+    )
+)
+
+
+if __name__ == "__main__":  # pragma: no cover - the CLI
+    raise SystemExit(main())

@@ -281,11 +281,17 @@ Prior sensitivity does these steps:
    changes Beta or Gamma `beta`/`b` parameters.
 3. It gives the largest relative change of a key posterior mean (pass ≤ 20%).
 
-Recovery is a parametric-bootstrap version of simulation-based calibration. It uses
-`y* = E[y] + ε*` with block-bootstrapped residuals and `S` refits. It gives the coverage of the
-90% intervals for the fitted values (target 90%, pass within 10 points). The platform skips
-this check for autoregressive models. For these models, resampled residuals do not make the
-same dynamics as the model.
+Recovery is a small version of simulation-based calibration with `S` refits. It gives the
+coverage of the 90% intervals for the known values (target 90%, pass within 10 points). The
+check makes the simulated data in one of two ways:
+
+- A Bayesian model that gives predictive draws: each dataset is one draw of the posterior
+  predictive. It comes from one posterior draw and the noise of the model, so counts stay
+  whole numbers and ties stay 0 or 1. The known values are the values of that posterior draw.
+- Other models: `y* = E[y] + ε*` with block-bootstrapped residuals. The known values are the
+  fitted values. The platform skips this check when the target holds whole numbers (counts),
+  because `E[y] + ε*` is not a whole number. It also skips it for autoregressive models,
+  because resampled residuals do not make the same dynamics as the model.
 
 ### Interpreting a set of results
 

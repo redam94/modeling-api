@@ -1,0 +1,30 @@
+# E81: directions for new hours, the frame roses, simulated angles and typed errors.
+- name: predict_tail
+  request: {mode: predict, output: {summary: [mean, q5, q95]}}
+  payload: "tail:2"
+  expect: {vars: [direction_hat, resultant, density, mean_direction, resultant_length],
+           sizes: {report: 2, stat: 3, angle: 72}}
+- name: next_day
+  request: {mode: predict, output: {summary: [mean]}}
+  payload: next_day
+  expect: {vars: [direction_hat, resultant], sizes: {report: 24}}
+- name: predictive_draws
+  request: {mode: predict, output: {kind: predictive, draws: 20}}
+  payload: "tail:2"
+  expect: {groups: [summary, draws], vars: [direction_hat]}
+- name: simulate_next_day
+  request: {mode: simulate, seed: 7}
+  payload: next_day
+  expect: {vars: [direction_hat], sizes: {report: 24}}
+- name: gap_after_fit
+  request: {mode: predict}
+  payload: gapped
+  expect_error: NON_CONTIGUOUS_EXTENSION
+- name: missing_hour
+  request: {mode: predict}
+  payload: no_hour
+  expect_error: MISSING_FUTURE_COVARIATE
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: obs, periods: 2}}
+  payload: "tail:2"
+  expect_error: MODE_NOT_SUPPORTED

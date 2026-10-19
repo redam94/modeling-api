@@ -1,0 +1,29 @@
+# E58: spot positions, the render, the fitted patches and the camera image; frame windows;
+# typed errors off the chip and for modes the model does not have.
+- name: predict_spots
+  request: {mode: predict, output: {summary: [mean, sd, q5, q95], draws: 5}}
+  payload: fit_data
+  expect:
+    groups: [summary, draws]
+    vars: [x, y, photons, background, psf_sd, render, patch_fit, frames_hat]
+    sizes: {py: 11, px: 11, stat: 4}
+- name: predictive_patches
+  request: {mode: predict, output: {kind: predictive}}
+  payload: fit_data
+  expect: {vars: [patch_fit, frames_hat, x]}
+- name: frame_window
+  request: {mode: predict}
+  payload: window
+  expect: {vars: [frames_hat, x]}
+- name: rows_outside_the_chip
+  request: {mode: predict}
+  payload: outside
+  expect_error: UNSEEN_LEVELS
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: frames, multiply: 1.1}]}
+  payload: fit_data
+  drop_targets: false
+  expect_error: MODE_NOT_SUPPORTED
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: frame, periods: 2}}
+  expect_error: MODE_NOT_SUPPORTED

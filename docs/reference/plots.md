@@ -180,6 +180,7 @@ standard_recipes() -> list[Recipe]       # entry point  mapi.plots: core
 mapi_plots.packs.mmm.mmm_recipes()       # entry point  mapi.plots: mmm
 mapi_plots.packs.ml.ml_recipes()         # entry point  mapi.plots: ml
 mapi_plots.packs.sci.sci_recipes()       # entry point  mapi.plots: sci (Plotly)
+mapi_plots.packs.net.net_recipes()       # entry point  mapi.plots: net (Plotly)
 Recipe.render(data, **settings) -> PlotSpec       # also Recipe(data, **settings)
 Recipe.catalog_entry() -> PlotCatalogEntry        # id, version, persona, required groups/representation
 
@@ -238,6 +239,11 @@ the string columns of these DataFrames.
 | `core.model_comparison` | `ic` (auto: precomputed table, else WAIC), `var`, `model_dim` (model) |
 | `core.counterfactual` | `var`, `along`, `hdi_prob` (0.9), `bins` (30) |
 | `core.decision_distribution` | `var`, `candidate`, `hdi_prob`, `higher_is_better` (true), `max_candidates` (12) |
+| `core.pair` | `var_names`, `max_params` (5), `max_draws` (500), `bins` (20), `width` (520) |
+| `core.ridge` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive), `dim`, `select`, `hdi_prob` (0.94), `max_levels` (30), `max_draws` (4 000), `points` (100), `overlap` (1.6), `descending` (true) |
+| `core.rank_matrix` | `var`, `group`, `dim`, `select`, `descending` (true: rank 1 is the largest value), `max_items` (30), `max_draws` (4 000), `labels` (auto \| always \| never) |
+| `core.calibration` | `var`, `observed_var`, `kind` (auto \| continuous \| binary), `prob` (0.95), `bins` (10), `n_sim` (1 000), `seed` (0) |
+| `core.state_sequence` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive \| root), `state_dim` (state), `along`, `observed_var`, `select`, `max_states` (10), `max_times` (2 000), `max_draws` (4 000), `width` (640), `height` (140) |
 | `mmm.response_curves` | `var`, `channel`, `grid`, `spend_var` (spend), `current_var` (current_spend), `hdi_prob`, `facet` |
 | `mmm.marginal_cost` | the same as response curves, + `metric` (cost \| roi), `clip_quantile` (0.98) |
 | `mmm.budget_plans` | `spend_var`, `outcome_var`, `plan`, `channel`, `reference`, `hdi_prob` |
@@ -246,6 +252,27 @@ the string columns of these DataFrames.
 | `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
 | `sci.profile_bands` | `var`, `group`, `observed_var`, `along`, `by`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_curves` (12), `max_draws` (1 000), `colormap` (viridis), `log` (false), `width` (640), `height` (360) |
 | `sci.ensemble` | `var`, `group`, `observed_var`, `along`, `select`, `n_draws` (40), `levels` ([0.9]), `point` (median \| mean \| none), `max_draws` (2 000), `seed` (0), `log` (false), `width` (640), `height` (320) |
+| `sci.area_map` | `var`, `group`, `observed`, `stats` (observed, mean, sd, exceedance; also median), `threshold` (1 for a non-negative output, else 0), `mark_above` (0.95), `log_scale` (false), `show_edges` (false), `select`, `colormap` (viridis), `classes` (9), `max_draws` (2 000), `max_vertices` (40 000), `columns` (2), `width` (760), `height` (340, one row of panels) |
+| `sci.phylogeny` | `var`, `group`, `tip_dim`, `observed`, `interval` (0.9), `point` (mean \| median), `max_tips` (400), `max_draws` (2 000), `labels` (up to 80 tips), `select`, `colormap` (viridis), `width` (780), `height` (0: from the number of tips) |
+| `sci.rose` | `var`, `group`, `observed`, `angle_dim`, `units` (radians \| degrees \| hours \| days), `period`, `bins` (24), `frame`, `select`, `interval` (0.9), `scale` (auto \| count \| share), `clockwise`, `max_draws` (1 000), `max_frames` (24), `width` (560), `height` (520) |
+| `sci.image_residuals` | the same as `sci.field_map` (no `stats`, `n_draws`), + `observed_var`, `sigma` (a variable or a number), `sigma_kind` (sd \| variance \| inverse_variance), `columns` (2), `hist_height` (200; 0: no histogram). `group` auto reads posterior_predictive, predictions, posterior |
+| `sci.ppc_image_grid` | the same as `sci.field_map` (no `stats`), + `observed_var`, `n_draws` (5, at most 11), `shuffle` (false), `seed` (0). `group` auto reads posterior_predictive, predictions, posterior |
+| `sci.swatches` | `var`, `group`, `observed_var`, `channel` (rgb), `item`, `row` (row), `col` (col), `arrange` (auto \| list \| map), `prob`, `prob_as` (border \| opacity), `select`, `n_draws` (3), `max_draws` (400), `max_items` (60, list only), `tile` (20 px), `columns` (2), `seed` (0), `width` (640) |
+| `sci.power_spectrum` | `var`, `group`, `observed_var`, `error_var` (default `<observed>_sd`), `theory`, `along`, `x_coord`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_draws` (2 000), `log_x`, `log_y` (false), `width` (640), `height` (360) |
+| `sci.point_pattern` | `points` (the point dim), `x` (x), `y` (y), `sd_x` (sd_x), `sd_y` (sd_y), `radius` (radius), `group` (auto \| none \| a variable), `field` (auto \| none \| a variable), `field_stat` (mean \| median \| sd), `ellipses` (auto), `level` (0.9), `observed` (true), `select`, `max_points` (20 000), `max_ellipses` (2 000), `max_cells` (40 000), `colormap`, `origin`, `marker_size` (6), `width` (640), `height` (560) |
+| `net.graph` | `var`, `node_dim`, `positions` (auto \| none \| a variable), `threshold` (auto), `signed` (auto), `directed` (auto), `group` (auto \| none \| a variable), `truth` (auto \| none \| a variable), `panels` (both \| graph \| matrix), `select`, `labels` (auto), `max_nodes` (300), `max_edges` (2 000), `seed` (0), `width` (900), `height` (440) |
+
+### Extra core recipes
+
+These five recipes are in the core pack (`mapi_plots.recipes.extras`, Vega-Lite):
+
+| Recipe | What it shows |
+|---|---|
+| `core.pair` | A corner plot of up to `max_params` scalar parameter elements. Below the diagonal: thinned draws of each pair. On the diagonal: a histogram of each parameter. Red points are divergent transitions (`sample_stats.diverging`). |
+| `core.ridge` | One density for each level of `dim`, sorted by the mean, with a dot for the mean and a bar for the HDI. Each curve has the same peak height. |
+| `core.rank_matrix` | P(rank = k) for each item, sorted by the expected rank, and the matrix of P(row above column). Input: draws `(…, item)`. |
+| `core.calibration` | Continuous targets: the PIT-ECDF difference with a simultaneous envelope (simulated). Targets with values 0 and 1: a reliability diagram with a binomial band for each bin and a histogram of the predicted probabilities. |
+| `core.state_sequence` | The observed series (points coloured by the most likely state) above the stacked state probabilities. Input: probabilities `(…, state, time)` with or without draws, or integer state draws `(chain, draw, time)`. |
 
 ### Scientific-model pack (`sci.*`)
 
@@ -260,6 +287,52 @@ profiles and trajectories. They read draws (`chain`/`draw` or `sample` dims) fro
 | `sci.vector_field` | The length of a vector as colours, arrows of the mean vector, and the sd of the length. |
 | `sci.profile_bands` | The median and the 50% and 90% bands along `along`, one curve for each level of `by`, and the actual values. A slider shows one level with its bands. |
 | `sci.ensemble` | Some draws as thin lines, the 90% band of all draws, the median and the actual values. |
+| `sci.area_map` | A map of areas (polygons) coloured by the observed value, the mean, the sd and the probability that the value is above `threshold`. A cross marks each area where this probability is above `mark_above`. |
+| `sci.phylogeny` | A tree of the tips (species) next to a strip with the estimate and its interval for each tip, and the observed values. |
+| `sci.rose` | A polar chart of angles: a rose of the observed angles with the 90% range of simulated data in each sector, or a curve around the circle with its limits. |
+| `sci.image_residuals` | The observed image, the model mean, the residual and the normalised residual `(obs - mean) / sqrt(sd² + σ²)`, with a histogram of the normalised residuals against N(0, 1). |
+| `sci.ppc_image_grid` | The observed image next to `n_draws` images from the model on one colour scale. With `shuffle`, the panels are in a random order and the caption names the real one. |
+| `sci.swatches` | Squares in the colours of an sRGB output `(…, item, rgb)` in [0, 1]: observed, mean and some draws. A map when the item dim has `row` and `col` coords. |
+| `sci.power_spectrum` | A binned spectrum `(…, bin)` against a coord such as `ell`: median, 50% and 90% bands, a theory curve and the observed values with error bars. |
+| `sci.point_pattern` | One dot for each point (localisation, event) at its mean position, an error ellipse for each point, and an optional image or intensity field below the points. |
+
+Data for the map, tree and polar recipes:
+
+- `sci.area_map` reads the outlines of the areas from `ring_x(area, vertex)` and
+  `ring_y(area, vertex)`. Fill the unused vertices with NaN. A NaN between points starts
+  a new ring, for example an island. The first dim is the area dim. The optional
+  `adjacency(area, area_)` matrix (not zero for neighbours) gives the lines of
+  `show_edges`. The recipe finds these variables in `observed_data`, `constant_data`, a
+  `geometry` group, the group of the output or the root. It draws the areas as filled
+  shapes on axes with equal scales. It does not use a geographic projection or a base
+  map. If the outlines have too many points, the recipe uses fewer points.
+- `sci.phylogeny` reads the tree from `parent(node)`: the position of the parent node, or
+  -1 for the root. The optional variables are `branch_length(node)` (default 1),
+  `is_tip(node)` (default: the nodes that are not a parent) and `tip_label(node)`. The
+  tips match the levels of the output by label. If there are no labels, tip k (in node
+  order) is level k.
+- `sci.rose` reads angles in `units`. One turn is 2π radians, 360 degrees, 24 hours or
+  365.25 days, or `period`. If the output has an angle dim (`angle_dim`, or a dim called
+  `angle`, `direction`, `hour` and so on), the recipe draws a curve. Otherwise it counts
+  the angles in `bins` sectors.
+
+Notes on the image and spectrum recipes (`mapi_plots.packs.sci_images`):
+
+- `sci.image_residuals` and `sci.ppc_image_grid` need the observed image in `observed_data`,
+  with the grid dims of the output. The recipe uses the variable with the same name, the
+  `observed_var` setting or the only observed variable.
+- Draws from `posterior_predictive` already hold the noise of the data, so
+  `sci.image_residuals` adds no σ to them. For a noise-free output (`posterior` or
+  `predictions`), it uses `sigma` or a variable named `sigma`.
+- With `log`, `sci.image_residuals` shows the observed, mean and residual panels as log10.
+  It computes the normalised residual and its histogram in the data's units, because σ is
+  in those units.
+- `sci.swatches` writes the colours as `#rrggbb` text in the dataset. The plot sandbox does
+  not change these colours in dark mode, because they are data.
+- Colours that a recipe takes from a colour scale (the groups of `net.graph` and
+  `sci.point_pattern`, the classes of `sci.area_map`, the curves of `sci.profile_bands`) are
+  also data. They do not change in dark mode, as a colour scale does not. All other colours
+  come from the palette and have a dark variant.
 
 Statistics of `sci.field_map`:
 
@@ -284,6 +357,36 @@ The size of a field plot has limits:
 - A field of 189 × 193 cells with six panels and one frame has its full resolution.
 - `max_frames` sets the maximum number of frames. The slider shows frames at equal
   intervals.
+
+`sci.point_pattern` reads the variables `x` and `y` with one value for each level of the
+point dim. Draws give the posterior mean and an ellipse from the 2 × 2 covariance of the
+draws. A score summary gives its point statistic and an ellipse from its `sd`. Plain values
+use the `sd_x` and `sd_y` variables (or a `radius` variable, drawn as a circle) when they
+exist. The ellipse holds the position with probability `level`. The `field` is a gridded
+output (by default the first output with a `grid`), drawn below the points in the same units.
+
+### Network pack (`net.*`)
+
+| Recipe | What it shows |
+|---|---|
+| `net.graph` | A node-link drawing of the links above `threshold` (line width shows the value, blue and red show the sign, arrows show the direction) and a heatmap of the full matrix. Dotted lines and open squares show the known or observed links. |
+
+`net.graph` reads an edge variable with two node dims: the second dim has the name of the
+first plus `_`, for example `(node, node_)` or `(var, var_)`. The values can be draws (the
+recipe uses the posterior mean), a score summary (its point statistic) or plain values. They
+can be probabilities, weights or partial correlations.
+
+- `positions`: a variable `(node, latent_dim)`, for example the latent positions of a latent
+  space model. The recipe uses the posterior mean of the first two coordinates. Without it,
+  the recipe calculates a layout from the mean weights (a spectral start and seeded
+  Fruchterman–Reingold steps). The layout puts strongly linked nodes near each other.
+- `group`: a variable with one value for each node (by default `node_group` or `group`).
+  Categories get one colour each and a legend. Continuous values get a colour scale.
+- `truth`: a known or observed adjacency `(node, node_)`. By default the recipe uses one from
+  `observed_data` or `constant_data`.
+- `threshold`: by default 0.5 for values in [0, 1], else 10% of the largest absolute value.
+  With draws, the tooltip at the middle of a link shows the share of draws above the
+  threshold.
 
 The plot sandbox shows the Plotly `frames`, `sliders` and `updatemenus` of these plots. In
 dark mode, it changes the palette colours of the traces to their dark variants, the same as

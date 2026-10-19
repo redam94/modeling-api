@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from typing import Any
+
 import numpy as np
 import pymc as pm
 import pytest
@@ -236,3 +239,53 @@ def test_nutpie_progress_snapshots_and_cancel(linear_model: tuple) -> None:
     )
     assert "cannot restore its adaptation" in retry.notes[0]
     assert sink.load(KEY) is None
+
+
+def test_initvals_without_jitter_start_every_chain_at_one_point(
+    linear_model: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = linear_model[0]
+    starts: list[dict[str, np.ndarray]] = []
+    real = pm.init_nuts
+
+    def spy(**kw: Any) -> Any:
+        points, step = real(**kw)
+        starts.extend(points)
+        return points, step
+
+    monkeypatch.setattr(pm, "init_nuts", spy)
+    start = {"alpha": 0.3, "beta": -1.5, "sigma": 0.7}
+    plan = _plan(tune=20, draws=10, checkpoint_every=None, initvals=start, jitter=False)
+    result = run_engine(model, plan)
+    assert result.idata["posterior"].to_dataset().sizes["draw"] == 10
+    assert len(starts) == 2
+    for point in starts:
+        assert float(point["alpha"]) == pytest.approx(0.3)
+        assert float(point["beta"]) == pytest.approx(-1.5)
+        assert float(point["sigma_log__"]) == pytest.approx(np.log(0.7))
+    # the default plan still jitters: the chains start at different points
+    starts.clear()
+    run_engine(model, _plan(tune=5, draws=5, checkpoint_every=None))
+    assert float(starts[0]["beta"]) != float(starts[1]["beta"])
+
+
+@pytest.mark.skipif(not engine_available("nutpie"), reason="nutpie is not installed")
+def test_nutpie_gets_the_start_point_and_no_jitter(
+    linear_model: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import nutpie
+
+    seen: dict[str, Any] = {}
+    real = nutpie.compile_pymc_model
+
+    def spy(model: pm.Model, **kw: Any) -> Any:
+        seen.update(kw)
+        return real(model, **kw)
+
+    monkeypatch.setattr(nutpie, "compile_pymc_model", spy)
+    start = {"alpha": 0.3, "beta": -1.5, "sigma": 0.7}
+    plan = _plan(engine="nutpie", tune=20, draws=10, checkpoint_every=None)
+    run_engine(linear_model[0], plan)
+    assert seen == {"initial_points": None, "jitter_rvs": None}
+    run_engine(linear_model[0], replace(plan, initvals=start, jitter=False))
+    assert seen == {"initial_points": start, "jitter_rvs": set()}

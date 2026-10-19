@@ -1,0 +1,80 @@
+# Workflow cookbook: does an image model make images like the observed image?
+# Fit -> parameter summary -> residual maps and a grid of predicted images -> posterior
+# predictive check -> one report.
+# (the gallery template sci_image_model_check; validated and run by
+# conformance/tests/test_docs_v05.py)
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: sci-image-model-check, project: templates}
+params:
+  model: {type: string, required: true, description: "The image model, for example sci.cmb_field@^1"}
+  settings: {type: object, default: {}, description: The settings of the model (see its About card)}
+  bind:
+    type: object
+    default: {}
+    description: The binding of the dataset names to the names of the model (dims and vars), as in data.bind of a model spec
+  draws: {type: integer, default: 1000, minimum: 10, maximum: 100000, description: The posterior draws for each chain}
+  tune: {type: integer, default: 1000, minimum: 0, maximum: 100000, description: The tuning steps for each chain (the sampler drops them)}
+  chains: {type: integer, default: 4, minimum: 2, maximum: 16, description: "The number of chains (two or more, so that R-hat is available)"}
+  seed: {type: integer, default: 1, minimum: 0, description: The random seed of the fit}
+  var: {type: string, default: "", description: "The predicted image variable (empty: the plots find it)"}
+  frame: {type: string, default: "", description: "The dim with one image for each level, for example run or t (empty: the plots find it)"}
+  n_draws: {type: integer, default: 5, minimum: 1, maximum: 11, description: The predicted images next to the observed image}
+  shuffle: {type: boolean, default: false, description: Hide which panel is the observed image (the caption gives the answer)}
+  statistic: {type: string, default: sd, enum: [mean, sd, max, min], description: The statistic of the predictive p-value}
+inputs:
+  data: {type: dataset, description: The observed image (or images) and the inputs of the model}
+nodes:
+- id: fit
+  use: model.fit
+  inputs: {data: inputs.data}
+  with:
+    model: {$param: model}
+    settings: {$param: settings}
+    bind: {$param: bind}
+    fit: {draws: {$param: draws}, tune: {$param: tune}, chains: {$param: chains}, seed: {$param: seed}}
+- {id: summary, use: model.summary, label: Parameters and convergence, inputs: {model: fit.model}}
+# Both plots read the in-sample predictions with the observed image (source: predictions).
+# An empty var or frame becomes null, and the recipe finds the image and the slider dim.
+- id: residuals
+  use: plot.render
+  label: Residual maps
+  inputs: {model: fit.model}
+  with:
+    recipe: sci.image_residuals
+    source: predictions
+    settings:
+      var: {$expr: "if(params.var == '', null, params.var)"}
+      frame: {$expr: "if(params.frame == '', null, params.frame)"}
+- id: grid
+  use: plot.render
+  label: Observed and predicted images
+  inputs: {model: fit.model}
+  with:
+    recipe: sci.ppc_image_grid
+    source: predictions
+    settings:
+      var: {$expr: "if(params.var == '', null, params.var)"}
+      frame: {$expr: "if(params.frame == '', null, params.frame)"}
+      n_draws: {$param: n_draws}
+      shuffle: {$param: shuffle}
+# Coverage, PIT and a p-value over all the pixels (needs 10 or more predictive draws).
+- id: ppc
+  use: evaluate.ppc
+  label: Predictions against the data
+  inputs: {model: fit.model}
+  on_failure: continue
+  with: {statistic: {$param: statistic}}
+- id: report
+  use: report.summary
+  inputs:
+    items: [summary.table]
+    metrics: [ppc.metrics]
+    plots: [residuals.plot, grid.plot]
+    model: fit.model
+  with: {title: Image model check}
+outputs:
+  model: fit.model
+  report: report.report
+  summary: summary.table
+  ppc: ppc.metrics

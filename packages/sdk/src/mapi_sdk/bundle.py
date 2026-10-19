@@ -49,7 +49,7 @@ from mapi_spec.loader import canonical_json
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import FitConfig, ModelSpec
 from mapi_spec.validate import ResolvedSpec
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator
 
 from mapi_sdk.binding import BindingMap
 from mapi_sdk.errors import BundleError, MapiError, WireFormatError
@@ -64,6 +64,7 @@ __all__ = [
     "BUNDLE_FORMAT",
     "Bundle",
     "BundleManifest",
+    "ElpdDetail",
     "FileDigest",
     "MetricsReport",
     "assert_no_pickle",
@@ -98,6 +99,21 @@ def file_digest(data: bytes) -> FileDigest:
     )
 
 
+class ElpdDetail(BaseModel):
+    """M5: an ``elpd_loo``/``elpd_waic`` estimate with its standard error, its effective
+    number of parameters and (up to :data:`mapi_sdk.metrics.MAX_POINTWISE_ELPD` points) the
+    pointwise values, in the order of the flattened ``log_likelihood`` variable. Workflow
+    nodes use the pointwise values for stacking weights (``compare.stacking``)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    elpd: float
+    se: float | None = None
+    p: float | None = None
+    n: int = 0
+    pointwise: list[float] | None = None
+
+
 class MetricsReport(BaseModel):
     """Holdout metrics computed through the score path, plus skipped metrics and why."""
 
@@ -109,6 +125,18 @@ class MetricsReport(BaseModel):
     split: dict[str, JsonValue] | None = None
     evaluation_bundle: str | None = None
     output_space: str | None = None
+    elpd: dict[str, ElpdDetail] = Field(default_factory=dict)
+
+    @field_validator("elpd", mode="before")
+    @classmethod
+    def _drop_missing_elpd(cls, v: Any) -> Any:
+        # a non-finite elpd is written as null: such an entry is no estimate, and a bundle
+        # that holds one must still load
+        if isinstance(v, dict):
+            return {
+                k: d for k, d in v.items() if not (isinstance(d, dict) and d.get("elpd") is None)
+            }
+        return v
 
 
 class BundleManifest(BaseModel):

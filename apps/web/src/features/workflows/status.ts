@@ -62,6 +62,7 @@ export const KIND_LABEL: Record<NodeKind, string> = {
   select: "Selection",
   governance: "Governance",
   report: "Report",
+  plot: "Plot",
   subworkflow: "Sub-workflow",
 };
 
@@ -78,5 +79,6 @@ export const KIND_COLOR: Record<NodeKind, string> = {
   select: "var(--series-8)",
   governance: "var(--warning)",
   report: "var(--series-8)",
+  plot: "var(--series-5)",
   subworkflow: "var(--series-1)",
 };

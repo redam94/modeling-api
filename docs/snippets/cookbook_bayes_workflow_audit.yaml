@@ -1,0 +1,153 @@
+# Workflow cookbook: the checks of a careful Bayesian workflow for any model with draws.
+# Prior predictive draws -> convergence gate -> posterior predictive check, prior
+# sensitivity and simulated recovery -> plots -> one report.
+# (the gallery template bayes_workflow_audit; validated and run by
+# conformance/tests/test_docs_v05.py)
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: bayes-workflow-audit, project: templates}
+params:
+  model:
+    type: string
+    required: true
+    description: The model to audit, for example tabular.hierarchical_glm@^1 or sci.heat_plate@^1
+  settings: {type: object, default: {}, description: The settings of the model (see its About card)}
+  bind:
+    type: object
+    default: {}
+    description: The binding of the dataset names to the names of the model (dims and vars), as in data.bind of a model spec
+  draws: {type: integer, default: 1000, minimum: 10, maximum: 100000, description: The posterior draws for each chain}
+  tune: {type: integer, default: 1000, minimum: 0, maximum: 100000, description: The tuning steps for each chain (the sampler drops them)}
+  chains: {type: integer, default: 4, minimum: 2, maximum: 16, description: "The number of chains (two or more, so that R-hat is available)"}
+  seed: {type: integer, default: 1, minimum: 0, description: The random seed of the fit}
+  prior_predictive:
+    type: object
+    default: {draws: 500}
+    description: "The prior predictive draws of the fit, as {draws: N}. Type {} for a model that cannot sample its priors (the workflow then does not draw the prior plot)"
+  vars: {type: array, default: [], description: "The parameters of the pair plot and the estimate plot (empty: the plots select them)"}
+  rhat_max: {type: number, default: 1.01, minimum: 1.0, maximum: 1.5, description: The largest R-hat that passes}
+  min_ess: {type: number, default: 400, minimum: 0, description: The smallest bulk effective sample size that passes (100 for each of 4 chains)}
+  statistic: {type: string, default: sd, enum: [mean, sd, max, min], description: The statistic of the predictive p-value}
+  prior_scales: {type: array, default: [0.5, 2.0], description: "The prior widths that the sensitivity check tries, as multiples of the model priors"}
+  n_sims: {type: integer, default: 20, minimum: 5, maximum: 100, description: The simulated datasets of the recovery check (each one is a fit)}
+inputs:
+  data: {type: dataset, description: The dataset that the model fits}
+nodes:
+# 1. Fit the model and keep draws from the priors (unless prior_predictive is {}).
+- id: fit
+  use: model.fit
+  label: Fit with prior draws
+  inputs: {data: inputs.data}
+  with:
+    model: {$param: model}
+    settings: {$param: settings}
+    bind: {$param: bind}
+    fit:
+      draws: {$param: draws}
+      tune: {$param: tune}
+      chains: {$param: chains}
+      seed: {$param: seed}
+      prior_predictive: {$expr: "if(len(params.prior_predictive) > 0, params.prior_predictive, null)"}
+- id: has_prior
+  use: branch.if
+  label: Prior draws?
+  with:
+    condition: len(params.prior_predictive) > 0
+    explain_then: The run asked for draws from the priors, so the workflow compared them with the data.
+    explain_else: The run did not ask for draws from the priors, so the workflow did not draw the prior plot.
+# 2. Can the priors make data like the observed data? (A plot that fails does not stop the audit.)
+- id: prior_plot
+  use: plot.render
+  label: Prior predictive check
+  inputs: {model: fit.model}
+  when: has_prior.then
+  on_failure: continue
+  with: {recipe: core.prior_predictive, source: model}
+# 3. The parameters, R-hat, the bulk ESS and the divergences; a pair plot of a few parameters.
+- {id: summary, use: model.summary, label: Parameters and convergence, inputs: {model: fit.model}}
+- id: pair_plot
+  use: plot.render
+  label: Pair plot
+  inputs: {model: fit.model}
+  on_failure: continue
+  with:
+    recipe: core.pair
+    source: model
+    settings:
+      var_names: {$expr: "if(len(params.vars) > 0, params.vars, null)"}
+# 4. The gate: the other checks only mean something when the chains agree.
+- id: converged
+  use: branch.if
+  label: Did the sampler converge?
+  with:
+    condition: coalesce(nodes.summary.max_rhat, 99) < params.rhat_max and coalesce(nodes.summary.min_ess, 0) >= params.min_ess
+    explain_then: R-hat and the effective sample size are in their limits, so the chains agree. The workflow did the checks of the predictions and the priors.
+    explain_else: R-hat is too large or the effective sample size is too small, so the chains do not agree. The workflow stopped the audit. Fit with more draws and tuning steps, or change the model.
+# 5. Posterior predictive check (coverage, PIT, a p-value) and its plot.
+- id: ppc
+  use: evaluate.ppc
+  label: Predictions against the data
+  inputs: {model: fit.model}
+  when: converged.then
+  on_failure: continue
+  with: {statistic: {$param: statistic}}
+- id: ppc_plot
+  use: plot.render
+  label: Posterior predictive check
+  inputs: {model: fit.model}
+  when: converged.then
+  on_failure: continue
+  with: {recipe: core.ppc, source: predictions}
+# 6. Refits: wider and narrower priors, and data simulated from the fit.
+- id: sensitivity
+  use: governance.check
+  label: Prior sensitivity
+  inputs: {model: fit.model, data: inputs.data}
+  when: converged.then
+  with:
+    check: sensitivity.prior
+    params: {scales: {$param: prior_scales}}
+- id: recovery
+  use: governance.check
+  label: Recovery of known values
+  inputs: {model: fit.model, data: inputs.data}
+  when: converged.then
+  with:
+    check: recovery.simulated
+    params: {n_sims: {$param: n_sims}}
+# 7. The verdict; a skipped check (one that does not apply to the model) does not block.
+- id: trusted
+  use: branch.if
+  label: Can you trust the model?
+  when: converged.then
+  with:
+    condition: coalesce(nodes.ppc.ok, false) and nodes.sensitivity.status not in ['fail', 'error'] and nodes.recovery.status not in ['fail', 'error']
+    explain_then: No check failed. The model makes data like the observed data, and the prior and recovery checks did not fail. Read their warnings, then use the estimates.
+    explain_else: One or more checks failed. Look at the predictive check, the prior sensitivity and the recovery evidence before you use the estimates.
+- id: estimates
+  use: plot.render
+  label: Estimates
+  inputs: {model: fit.model}
+  when: trusted.then
+  on_failure: continue
+  with:
+    recipe: core.posterior_forest
+    source: model
+    settings:
+      var_names: {$expr: "if(len(params.vars) > 0, params.vars, null)"}
+# 8. One report: the decisions, the table, the predictive scores and the plots that ran.
+- id: report
+  use: report.summary
+  inputs:
+    items: [summary.table]
+    metrics: [ppc.metrics]
+    plots: [prior_plot.plot, pair_plot.plot, ppc_plot.plot, estimates.plot]
+    model: fit.model
+  with: {title: Bayesian workflow audit}
+outputs:
+  model: fit.model
+  report: report.report
+  summary: summary.table
+  ppc: ppc.metrics
+  sensitivity: sensitivity.evidence
+  recovery: recovery.evidence

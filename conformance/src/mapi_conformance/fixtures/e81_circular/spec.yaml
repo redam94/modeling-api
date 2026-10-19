@@ -1,0 +1,23 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: wind-direction-circular, project: meteorology, labels: {corpus: e81}}
+data:
+  dataset: dataset://meteorology/wind_reports@latest
+  bind:
+    dims: {obs: report}
+    vars: {direction: wind_from, hour: hour_lst, day: day_of_year}
+  split: {kind: time_holdout, dim: obs, last: 200}
+model:
+  use: sci.circular_regression@^1
+  settings: {kind: von_mises, units: degrees, daily_harmonics: 3, annual_harmonics: 2,
+             interaction_harmonics: 2, frames: 8}
+  fit:
+    mode: evaluate_then_refit
+    seed: 81
+    tune: 500
+    draws: 500
+    chains: 4
+    engine: pymc
+    keep: {log_likelihood: true, posterior_predictive: {thin: 10}}
+evaluate: {metrics: [elpd_loo]}
+outputs: {plots: [core.convergence, core.posterior_forest, sci.rose, sci.field_map]}

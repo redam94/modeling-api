@@ -14,6 +14,19 @@ export interface DecodedTable {
   rows: Row[];
   totalRows: number;
   truncated: boolean;
+  /** The dim columns, from the `mapi.dims` schema metadata of a platform view (absent otherwise). */
+  dims?: string[];
+}
+
+function dimsOf(table: Table): string[] | undefined {
+  const raw = table.schema.metadata.get("mapi.dims");
+  if (!raw) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.every((d) => typeof d === "string") ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export const DEFAULT_MAX_ROWS = 200_000;
@@ -64,7 +77,8 @@ export function tableToRows(table: Table, maxRows = DEFAULT_MAX_ROWS): DecodedTa
     for (const { name, type, vec } of vectors) row[name] = toScalar(vec?.get(r) as unknown, type);
     rows[r] = row;
   }
-  return { columns, rows, totalRows: table.numRows, truncated: table.numRows > n };
+  const dims = dimsOf(table);
+  return { columns, rows, totalRows: table.numRows, truncated: table.numRows > n, ...(dims ? { dims } : {}) };
 }
 
 export function decodeArrow(bytes: Uint8Array | ArrayBuffer, maxRows = DEFAULT_MAX_ROWS): DecodedTable {

@@ -19,7 +19,9 @@ import pandas as pd
 import xarray as xr
 
 __all__ = [
+    "area_map_tree",
     "bundle_tree",
+    "calibration_tree",
     "contributions",
     "counterfactual_tree",
     "decision_dataset",
@@ -27,12 +29,21 @@ __all__ = [
     "example_inputs",
     "feature_importance_tree",
     "field_tree",
+    "group_effects_tree",
+    "image_tree",
+    "network_tree",
     "panel_data",
+    "phylogeny_tree",
     "plans_dataset",
+    "point_pattern_tree",
     "prior_beliefs_dataset",
     "profile_tree",
+    "regime_tree",
     "response_curves",
+    "rose_tree",
     "score_tree",
+    "spectrum_tree",
+    "swatch_tree",
     "vector_tree",
 ]
 
@@ -372,6 +383,365 @@ def ensemble_tree() -> xr.DataTree:
     )
 
 
+def calibration_tree(binary: bool = False) -> xr.DataTree:
+    """``posterior_predictive.y(chain, draw, obs)`` and ``observed_data.y(obs)`` for 200
+    observations. The model's ranges are too narrow: the data spread 1.4 times more than the
+    predictions. With ``binary``, ``y`` is 0/1 and the model is too sure at both ends."""
+    rng = _rng(17)
+    n = 200
+    mu = rng.normal(0.0, 2.0, n)
+    coords = {"obs": np.arange(n)}
+    if binary:
+        p_true = 1 / (1 + np.exp(-mu))
+        y = (rng.random(n) < p_true).astype(float)
+        p_model = 1 / (1 + np.exp(-1.6 * mu))
+        draws = (rng.random((CHAINS, DRAWS, n)) < p_model).astype(float)
+    else:
+        y = mu + 1.4 * rng.standard_normal(n)
+        draws = mu + rng.standard_normal((CHAINS, DRAWS, n))
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-calibration"}),
+            "/posterior_predictive": xr.Dataset({"y": (("chain", "draw", "obs"), draws)}, coords),
+            "/observed_data": xr.Dataset({"y": (("obs",), y)}, coords),
+        }
+    )
+
+
+def group_effects_tree() -> xr.DataTree:
+    """``posterior.effect(chain, draw, school)``: the effect of a programme in eight
+    schools (the classic hierarchical example). School A is clearly the best, the middle
+    schools overlap, and the small schools have wide ranges."""
+    rng = _rng(15)
+    schools = list("ABCDEFGH")
+    centre = np.array([14.0, 8.0, 6.0, 7.5, 4.0, 5.5, 10.0, 8.5])
+    spread = np.array([3.0, 4.0, 6.0, 4.5, 3.5, 5.0, 3.5, 7.0])
+    draws = centre + spread * rng.standard_normal((CHAINS, DRAWS, 8))
+    post = xr.Dataset(
+        {"effect": (("chain", "draw", "school"), draws)},
+        coords={"chain": np.arange(CHAINS), "draw": np.arange(DRAWS), "school": schools},
+    )
+    return xr.DataTree.from_dict(
+        {"/": xr.Dataset(attrs={"bundle_id": "bundle-groups"}), "/posterior": post}
+    )
+
+
+def regime_tree() -> xr.DataTree:
+    """``posterior.state_prob(chain, draw, state, time)`` and ``observed_data.y(time)``: a
+    two-state market (calm, volatile) over 150 days. The volatile spells are clear; the model
+    is unsure at the switches."""
+    rng = _rng(16)
+    n = 150
+    truth = np.zeros(n, dtype=int)
+    truth[40:65] = 1
+    truth[100:120] = 1
+    y = np.where(truth == 1, 3.0, 0.8) * rng.standard_normal(n)
+    logit = np.where(truth == 1, 2.5, -2.5)
+    for edge in (40, 65, 100, 120):  # softer at the switches
+        idx = np.arange(max(0, edge - 3), min(n, edge + 3))
+        logit[idx] *= np.abs(idx - edge + 0.5) / 3.5
+    p1 = 1 / (1 + np.exp(-(logit[None, None] + 0.6 * rng.standard_normal((CHAINS, 40, n)))))
+    probs = np.stack([1 - p1, p1], axis=2)
+    days = pd.date_range("2024-01-01", periods=n, freq="D")
+    coords = {"state": ["calm", "volatile"], "time": days}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-regimes"}),
+            "/posterior": xr.Dataset(
+                {"state_prob": (("chain", "draw", "state", "time"), probs)}, coords
+            ),
+            "/observed_data": xr.Dataset({"y": (("time",), y)}, {"time": days}),
+        }
+    )
+
+
+def area_map_tree() -> xr.DataTree:
+    """``posterior.rr(chain, draw, area)``: relative risk of a disease in 30 districts (a
+    6 x 5 grid; the last district also owns an island), the observed ratio ``smr`` and the
+    expected counts in ``observed_data``, polygons and neighbours in ``constant_data``. The
+    risk is high in the north-east; small districts have extreme observed ratios."""
+    rng = _rng(15)
+    nx, ny = 6, 5
+    names = [f"D{i + 1:02d}" for i in range(nx * ny)]
+    ring_x = np.full((nx * ny, 11), np.nan)
+    ring_y = np.full((nx * ny, 11), np.nan)
+    adjacency = np.zeros((nx * ny, nx * ny), dtype=np.int8)
+    for a in range(nx * ny):
+        r, c = divmod(a, nx)
+        ring_x[a, :5] = [c, c + 1, c + 1, c, c]
+        ring_y[a, :5] = [r, r, r + 1, r + 1, r]
+        for rr, cc in ((r + 1, c), (r, c + 1)):
+            if rr < ny and cc < nx:
+                adjacency[a, rr * nx + cc] = adjacency[rr * nx + cc, a] = 1
+    ring_x[-1, 6:10] = [6.3, 6.8, 6.6, 6.3]  # an island after the NaN gap
+    ring_y[-1, 6:10] = [5.2, 5.3, 5.8, 5.2]
+    col, row = np.arange(nx * ny) % nx, np.arange(nx * ny) // nx
+    log_rr = 0.5 * (col / nx + row / ny) - 0.5
+    expected = rng.uniform(2.0, 40.0, nx * ny)
+    cases = rng.poisson(expected * np.exp(log_rr))
+    sd = 1 / np.sqrt(expected + 4)
+    draws = np.exp(log_rr + rng.normal(size=(CHAINS, 60, nx * ny)) * sd)
+    area = {"area": names}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior": xr.Dataset({"rr": (("chain", "draw", "area"), draws)}, area),
+            "/observed_data": xr.Dataset(
+                {"smr": (("area",), cases / expected), "expected": (("area",), expected)}, area
+            ),
+            "/constant_data": xr.Dataset(
+                {
+                    "ring_x": (("area", "vertex"), ring_x),
+                    "ring_y": (("area", "vertex"), ring_y),
+                    "adjacency": (("area", "area_"), adjacency),
+                },
+                {"area": names, "area_": names},
+            ),
+        }
+    )
+
+
+def phylogeny_tree() -> xr.DataTree:
+    """``posterior_predictive.body_mass(chain, draw, species)`` on a tree of 16 species
+    (``parent``, ``branch_length``, ``is_tip`` and ``tip_label`` in ``constant_data``) and the
+    observed trait with three species missing. Close relatives have close values."""
+    rng = _rng(16)
+    # a balanced tree: node 0 is the root; nodes 1..14 are internal, 15..30 are tips
+    parent = np.array([-1] + [(i - 1) // 2 for i in range(1, 31)])
+    length = np.concatenate([[0.0], rng.uniform(0.3, 1.2, 30)])
+    is_tip = np.arange(31) >= 15
+    species = [f"sp_{chr(97 + i)}" for i in range(16)]
+    labels = [""] * 15 + species
+    trait = np.zeros(31)
+    for v in range(1, 31):
+        trait[v] = trait[parent[v]] + rng.normal(0, np.sqrt(length[v]))
+    truth = trait[15:] + 3.0
+    draws = truth + rng.normal(size=(CHAINS, 80, 16)) * rng.uniform(0.2, 0.6, 16)
+    observed = truth + rng.normal(0, 0.2, 16)
+    observed[[2, 9, 13]] = np.nan
+    node = {"node": np.arange(31)}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior_predictive": xr.Dataset(
+                {"body_mass": (("chain", "draw", "species"), draws)}, {"species": species}
+            ),
+            "/observed_data": xr.Dataset(
+                {"body_mass": (("species",), observed)}, {"species": species}
+            ),
+            "/constant_data": xr.Dataset(
+                {
+                    "parent": (("node",), parent),
+                    "branch_length": (("node",), length),
+                    "is_tip": (("node",), is_tip),
+                    "tip_label": (("node",), labels),
+                },
+                node,
+            ),
+        }
+    )
+
+
+def rose_tree() -> xr.DataTree:
+    """``posterior_predictive.wind_dir(chain, draw, report)`` and ``observed_data.wind_dir``:
+    400 wind directions in degrees. Most winds come from the south-west, some from the
+    north-east; the model has the south-west peak but too few north-east winds."""
+    rng = _rng(17)
+    n = 400
+    obs = np.where(
+        rng.random(n) < 0.7, rng.vonmises(np.radians(225), 3.0, n), rng.vonmises(0.8, 4.0, n)
+    )
+    pred = np.where(
+        rng.random((CHAINS, 50, n)) < 0.82,
+        rng.vonmises(np.radians(225), 2.5, (CHAINS, 50, n)),
+        rng.vonmises(0.8, 3.0, (CHAINS, 50, n)),
+    )
+    report = {"report": np.arange(n)}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior_predictive": xr.Dataset(
+                {"wind_dir": (("chain", "draw", "report"), np.degrees(pred) % 360)}, report
+            ),
+            "/observed_data": xr.Dataset(
+                {"wind_dir": (("report",), np.degrees(obs) % 360)}, report
+            ),
+        }
+    )
+
+
+def image_tree() -> xr.DataTree:
+    """``posterior_predictive.image(chain, draw, row, col)`` and ``observed_data.image``: a
+    galaxy with a smooth disc on a 40x40 image. The model has the disc but misses a small
+    companion at the bottom right, so the residuals show a bright spot there."""
+    rng = _rng(15)
+    yy, xx = np.meshgrid(np.linspace(-1, 1, 40), np.linspace(-1, 1, 40), indexing="ij")
+    disc = 2.0 * np.exp(-((xx / 0.5) ** 2 + (yy / 0.3) ** 2))
+    companion = 0.9 * np.exp(-((xx - 0.55) ** 2 + (yy - 0.5) ** 2) / 0.006)
+    noise = 0.12
+    fit = disc * rng.normal(1.0, 0.03, size=(CHAINS, 50, 1, 1))
+    pred = fit + rng.normal(0, noise, size=(CHAINS, 50, 40, 40))
+    obs = disc + companion + rng.normal(0, noise, size=(40, 40))
+    coords = {"row": np.arange(40), "col": np.arange(40)}
+    grid = json.dumps({"y": "row", "x": "col"})
+    da = xr.DataArray(pred, dims=["chain", "draw", "row", "col"], coords=coords, name="image")
+    da.attrs["grid"] = grid
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior_predictive": da.to_dataset(),
+            "/observed_data": xr.Dataset({"image": (("row", "col"), obs)}, coords),
+        }
+    )
+
+
+def swatch_tree() -> xr.DataTree:
+    """``posterior.chip_rgb(chain, draw, chip, rgb)``: the colour that the model gives to
+    each of 96 chips on an 6 x 16 map (row letters, column numbers), the measured colour and
+    ``posterior.p_mode(chain, draw, chip)``, the chance that the chip has its usual name.
+    The model is sure of the light chips and not sure of the dark ones."""
+    rng = _rng(16)
+    rows, n_cols = list("ABCDEF"), 16
+    r_grid, c_grid = np.meshgrid(np.arange(len(rows)), np.arange(n_cols), indexing="ij")
+    r_idx, c_idx = r_grid.ravel(), c_grid.ravel()
+    hue = c_idx / n_cols * 2 * np.pi
+    light = 0.85 - 0.12 * r_idx
+    base = np.stack(
+        [light + 0.25 * np.cos(hue + k * 2 * np.pi / 3) for k in range(3)], axis=1
+    ).clip(0, 1)
+    spread = 0.02 + 0.03 * r_idx[:, None]
+    draws = (base[None, None] + rng.normal(size=(CHAINS, 40, len(base), 3)) * spread).clip(0, 1)
+    observed = (base + rng.normal(0, 0.02, size=base.shape)).clip(0, 1)
+    p = 1 / (1 + np.exp(-(3.0 - 0.6 * r_idx + rng.normal(0, 0.3, size=(CHAINS, 40, len(base))))))
+    coords = {
+        "chip": np.arange(len(base)),
+        "rgb": ["r", "g", "b"],
+        "row": ("chip", [rows[i] for i in r_idx]),
+        "col": ("chip", c_idx),
+    }
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior": xr.Dataset(
+                {
+                    "chip_rgb": (("chain", "draw", "chip", "rgb"), draws),
+                    "p_mode": (("chain", "draw", "chip"), p),
+                },
+                coords,
+            ),
+            "/observed_data": xr.Dataset({"chip_rgb": (("chip", "rgb"), observed)}, coords),
+        }
+    )
+
+
+def spectrum_tree() -> xr.DataTree:
+    """``posterior.bandpower(chain, draw, bin)`` with an ``ell`` coord, the observed
+    bandpowers with their sd and a theory curve ``constant_data.theory_dl(ell_fine)``: a
+    sky patch with acoustic peaks. The patch has a little less power than the theory at
+    small scales (high ell)."""
+    rng = _rng(17)
+    ell = np.linspace(60, 1900, 24)
+    fine = np.linspace(30, 2000, 300)
+
+    def dl(x: np.ndarray) -> np.ndarray:
+        return 5500 * np.exp(-x / 1400) * (0.55 + 0.45 * np.cos((x - 220) / 160) ** 2)
+
+    tilt = 1 - 0.08 * ell / 1900
+    sd = 0.04 * dl(ell) + 40
+    draws = dl(ell) * tilt * rng.normal(1.0, 0.03, size=(CHAINS, 200, 1))
+    draws = draws + rng.normal(0, 1, size=draws.shape) * sd * 0.5
+    obs = dl(ell) * tilt + rng.normal(0, 1, size=ell.shape) * sd
+    coords = {"bin": np.arange(len(ell)), "ell": ("bin", ell)}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior": xr.Dataset({"bandpower": (("chain", "draw", "bin"), draws)}, coords),
+            "/observed_data": xr.Dataset(
+                {"bandpower": (("bin",), obs), "bandpower_sd": (("bin",), sd)}, coords
+            ),
+            "/constant_data": xr.Dataset(
+                {"theory_dl": (("ell_fine",), dl(fine))}, {"ell_fine": fine}
+            ),
+        }
+    )
+
+
+def network_tree() -> xr.DataTree:
+    """``posterior.tie_prob(chain, draw, node, node_)`` and ``position(chain, draw, node,
+    latent_dim)``: 18 lawyers in three offices. Lawyers in the same office work together more
+    often; ``observed_data.tie`` holds the actual ties and ``constant_data.node_group`` the
+    office of each lawyer."""
+    rng = _rng(15)
+    n = 18
+    office = np.repeat(["Boston", "Hartford", "Providence"], 6)
+    centre = {"Boston": (-0.8, 0.4), "Hartford": (0.7, 0.6), "Providence": (0.0, -0.8)}
+    base = np.array([centre[o] for o in office]) + rng.normal(0, 0.3, (n, 2))
+    pos = base[None, None] + rng.normal(0, 0.08, (CHAINS, 30, n, 2))
+    dist = np.sqrt(((pos[..., :, None, :] - pos[..., None, :, :]) ** 2).sum(-1))
+    prob = 1 / (1 + np.exp(-(2.2 - 3.0 * dist)))
+    idx = np.arange(n)
+    prob[..., idx, idx] = np.nan
+    ties = (rng.random((n, n)) < np.nan_to_num(prob).mean(axis=(0, 1))).astype(float)
+    ties = np.triu(ties, 1) + np.triu(ties, 1).T
+    names = [f"L{i + 1:02d}" for i in range(n)]
+    coords = {"node": names, "node_": names}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-net"}),
+            "/posterior": xr.Dataset(
+                {
+                    "tie_prob": (("chain", "draw", "node", "node_"), prob),
+                    "position": (("chain", "draw", "node", "latent_dim"), pos),
+                },
+                coords={**coords, "latent_dim": [0, 1]},
+            ),
+            "/observed_data": xr.Dataset({"tie": (("node", "node_"), ties)}, coords),
+            "/constant_data": xr.Dataset({"node_group": (("node",), office)}, {"node": names}),
+        }
+    )
+
+
+def point_pattern_tree() -> xr.DataTree:
+    """``posterior.x(chain, draw, spot)`` and ``y``: 40 fluorescent spots found in a
+    microscope image, in two clusters, with ``posterior.render(chain, draw, row, col)`` (the
+    image the model draws). Dim spots have larger, tilted error ellipses."""
+    rng = _rng(16)
+    n = 40
+    cluster = np.where(np.arange(n) < 24, "membrane", "vesicle")
+    cx = np.where(cluster == "membrane", 0.35, 0.7) + rng.normal(0, 0.1, n)
+    cy = np.where(cluster == "membrane", 0.6, 0.3) + rng.normal(0, 0.08, n)
+    bright = rng.uniform(0.3, 1.0, n)
+    sd = 0.006 + 0.012 * (1 - bright)
+    rho = rng.uniform(-0.6, 0.6, n)
+    z1, z2 = rng.normal(size=(2, CHAINS, 40, n))
+    x = cx + sd * z1
+    y = cy + sd * (rho * z1 + np.sqrt(1 - rho**2) * z2)
+    g = np.linspace(0, 1, 40)
+    yy, xx = np.meshgrid(g, g, indexing="ij")
+    img = sum(
+        b * np.exp(-((xx - a) ** 2 + (yy - c) ** 2) / (2 * 0.02**2))
+        for a, c, b in zip(cx, cy, bright, strict=True)
+    )
+    render = img[None, None] + rng.normal(0, 0.03, (CHAINS, 40, 40, 40))
+    spots = [f"s{i + 1}" for i in range(n)]
+    post = xr.Dataset(
+        {
+            "x": (("chain", "draw", "spot"), x),
+            "y": (("chain", "draw", "spot"), y),
+            "render": (("chain", "draw", "row", "col"), render),
+        },
+        coords={"spot": spots, "row": g, "col": g},
+    )
+    post["render"].attrs["grid"] = json.dumps({"y": "row", "x": "col", "origin": "lower"})
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-sci"}),
+            "/posterior": post,
+            "/constant_data": xr.Dataset({"group": (("spot",), cluster)}, {"spot": spots}),
+        }
+    )
+
+
 def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     """``{recipe id: (input data, render options)}`` for every bundled recipe."""
     bundle = bundle_tree()
@@ -399,4 +769,21 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "sci.vector_field": (vector_tree(), {}),
         "sci.profile_bands": (profile_tree(), {}),
         "sci.ensemble": (ensemble_tree(), {}),
+        "core.pair": (bundle, {}),
+        "core.ridge": (group_effects_tree(), {}),
+        "core.rank_matrix": (group_effects_tree(), {}),
+        "core.calibration": (calibration_tree(), {}),
+        "core.state_sequence": (regime_tree(), {}),
+        "sci.area_map": (area_map_tree(), {"observed": "smr", "show_edges": True}),
+        "sci.phylogeny": (phylogeny_tree(), {}),
+        "sci.rose": (rose_tree(), {"units": "degrees", "bins": 16}),
+        "sci.image_residuals": (
+            image_tree(),
+            {"columns": 4, "width": 900, "height": 220, "hist_height": 160},
+        ),
+        "sci.ppc_image_grid": (image_tree(), {"n_draws": 5}),
+        "sci.swatches": (swatch_tree(), {"prob": "p_mode", "n_draws": 2}),
+        "sci.power_spectrum": (spectrum_tree(), {"theory": "theory_dl"}),
+        "sci.point_pattern": (point_pattern_tree(), {}),
+        "net.graph": (network_tree(), {}),
     }

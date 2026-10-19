@@ -1559,6 +1559,79 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "speed": ["minutes", "can_wait"],
         },
     ),
+    "sci.network_latent_space": _a(
+        "Who works with whom in a network",
+        "Explains which pairs of people (or other nodes) have a tie, from what they have in "
+        "common, how active each one is and a hidden map of the group. It gives the chance "
+        "of a tie for every pair, with a range.",
+        [
+            "You have a table of ties between pairs, for example who worked with whom",
+            "You want to know how much a shared office or team adds to the chance of a tie",
+            "You want the chance of a tie for pairs that you did not observe",
+            "You want a map that puts nodes with many shared ties near each other",
+        ],
+        [
+            "The ties have a direction (A chose B, but B did not choose A)",
+            "The ties are counts or weights, not yes or no",
+            "You need ties for a new node that was not in the fit",
+            "The network has many thousands of nodes (the model looks at every pair)",
+        ],
+        [
+            "A square table with 1 for a tie, 0 for no tie and an empty cell when you do not know",
+            "Optional: values for each pair, for example 1 when the two are in the same office",
+            "Optional: a group code for each node, for colors in the plots",
+        ],
+        [
+            "Each pair has a tie or not, and the two directions are the same",
+            "When the model knows the pair values, the activity of the two nodes and their "
+            "places on the map, the pairs are independent",
+            "Nodes near each other on the hidden map have more ties",
+        ],
+        [
+            "The chance of a tie for each pair, with a range (a square map)",
+            "The change in the log odds of a tie for each pair value",
+            "The activity of each node and its place on the hidden map, with a range",
+            "Simulated networks and their statistics, to compare with the data",
+        ],
+        _X,
+        _MIN,
+        "Use the coworker network of the 71 lawyers of a law firm. A shared office adds about "
+        "2.5 to the log odds of a tie, and the hidden map puts the offices and the two types "
+        "of law in different places.",
+        related=["sci.lgcp_grid"],
+        expert="Undirected dyad logistic model (pymc-challenges E21): tie_ij ~ Bernoulli(logit^-1"
+        "(alpha + x_ij beta + s_i + s_j - ||z_i - z_j||)) over the observed pairs i < j. kind "
+        "covariates drops s and z, kind sociality drops z; covariates: false drops x. Priors: "
+        "alpha ~ N(-2, 2), beta ~ N(0, 1), s = sigma_s s_raw with sigma_s ~ HalfNormal(1), "
+        "z = sigma_z z_raw (latent_dims, default 2) with sigma_z ~ HalfNormal(2), all "
+        "non-centred. The likelihood is invariant to rotation, reflection and translation of "
+        "z, so the raw draws do not mix (r_hat of about 1.5 without covariates); every draw is "
+        "aligned by generalised Procrustes analysis to a reference kept in the bundle, and "
+        "convergence is judged on the aligned positions. The pointwise log-likelihood is "
+        "stored per dyad (leave-one-dyad-out PSIS-LOO), so a workflow can compare the kinds. "
+        "Mixed-membership block models of the notebook are not ported. On Lazega: elpd_loo "
+        "-1060 (Erdos-Renyi), -894 (covariates), -764 (sociality), -761 (latent space).",
+        refs=[
+            (
+                "Hoff, Raftery and Handcock (2002), Latent space approaches to social network "
+                "analysis, Journal of the American Statistical Association",
+                "https://doi.org/10.1198/016214502388618906",
+            ),
+            (
+                "Lazega (2001), The Collegial Phenomenon: The Social Mechanisms of Cooperation "
+                "among Peers in a Corporate Law Partnership, Oxford University Press",
+                None,
+            ),
+        ],
+        fits={
+            "goal": ["explain_drivers", "predict_values"],
+            "data_shape": ["table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
     "sci.traction_force": _a(
         "Cell forces from gel movement",
         "Calculates the forces that cells apply to a soft gel from the measured movement of the "
@@ -1705,6 +1778,796 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "experience": ["expert"],
         },
     ),
+    "sci.heat_plate": _a(
+        "Temperature of a heated plate",
+        "Learns how a metal plate moves and loses heat from a few temperature sensors. It then "
+        "predicts the temperature map of the plate for a new layout of heaters, with a range.",
+        [
+            "You heat a flat plate and measure its temperature at some points",
+            "You want the heat properties of the plate: conduction, heat loss and the part of the "
+            "heater power that goes into the plate",
+            "You want to know the temperature map before you build a new heater layout",
+        ],
+        [
+            "The temperatures change with time and you have no steady readings",
+            "The plate is thick, or it is not flat",
+            "The grid cells are not square, or the positions do not have equal steps",
+            "Much of the heat goes out by radiation at high temperatures (the model is linear)",
+        ],
+        [
+            "A square grid of cells over the plate, with the positions of the cell centers in cm",
+            "One run for each heater layout: the power in W that goes into each cell",
+            "The sensor readings in degC for each run. Cells without a sensor are empty",
+            "Optional: a map of the cells with insulation on the back face",
+        ],
+        [
+            "The plate is at a steady temperature in each run",
+            "Heat moves in the plane of the plate and goes out through the two faces and the edges",
+            "The room temperature does not change, and the heat loss is proportional to the "
+            "temperature above the room",
+            "The sensor noise is the same for all sensors",
+        ],
+        [
+            "The temperature map of each run, and of new heater layouts, with a range",
+            "The conduction, the face and edge heat loss, and the heater efficiency",
+            "The heat-spreading length in cm: how far heat goes from one heater",
+            "Simulated sensor readings with noise",
+        ],
+        _X,
+        _MIN,
+        "Three runs with one 10 W heater each and twelve sensors on a 40 x 20 cm brass plate "
+        "give a conduction of about 59 W/m/K and a heat-spreading length of 12.8 cm.",
+        related=["sci.fisher_kpp", "sci.traction_force"],
+        expert="2-D steady heat equation k delta lap(u) - h (1 + m_back) u + eta q = 0 with edge "
+        "loss h_edge (pymc-challenges E51), discretised by finite volumes on square cells: "
+        "A(theta) u = eta q, A = -k delta L + diag(h (1 + m_back) dx^2 + h_edge delta dx "
+        "n_edge), solved for each run inside the model with pytensor.tensor.linalg.solve "
+        "(gradients through the solve). Readings ~ Normal(T_room + u, sigma) at the finite cells "
+        "only; the pointwise log-likelihood has one value per reading (LOO is valid). Priors: k "
+        "~ LogNormal(log 50, 0.5), h ~ LogNormal(log 10, 0.5), h_edge ~ LogNormal(log 10, 0.7), "
+        "eta ~ Beta(40, 4), sigma ~ HalfNormal(0.5). The field is linear in the heater powers, "
+        "so one fit predicts any new layout. k, h and eta are strongly correlated (rises depend "
+        "on eta/k and eta/h); h_edge is weakly identified from interior sensors (its E51 "
+        "interval misses the truth).",
+        refs=[
+            (
+                "Incropera, DeWitt, Bergman and Lavine, Fundamentals of Heat and Mass Transfer "
+                "(extended surfaces and fins)",
+                None,
+            ),
+            (
+                "Patankar (1980), Numerical Heat Transfer and Fluid Flow (the finite-volume "
+                "method)",
+                None,
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "fit_physics"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
+    "sci.turing_pattern": _a(
+        "Turing patterns from early images",
+        "Measures the reaction and diffusion rates of two chemicals that make spots or stripes, "
+        "from images taken while the pattern starts to grow. It also gives the expected spacing "
+        "of the pattern and the probability that the chemicals can make a pattern at all.",
+        [
+            "You have images of a pattern (spots or stripes) taken while it is still faint",
+            "You want the rates of an activator and an inhibitor (or substrate) system, with a "
+            "range",
+            "You want to know if the rates satisfy the Turing conditions, and the expected "
+            "wavelength of the pattern",
+        ],
+        [
+            "You have only one image of a pattern that is already fully formed (it gives only "
+            "the wavelength)",
+            "The images are not square, have gaps or are not periodic at the edges",
+            "The chemistry is not an activator and a substrate of the Schnakenberg type",
+        ],
+        [
+            "Images of the activator on a square grid of pixels at some early times, with the "
+            "time since the start",
+            "The side of the square in the length unit of the model (the activator diffuses at "
+            "a rate of 1 in this unit)",
+        ],
+        [
+            "The pattern starts from a uniform state with small random noise in each pixel",
+            "The images are taken while the pattern is still small (a few percent of the mean "
+            "level), so its growth is linear",
+            "The camera noise is independent from pixel to pixel",
+            "The square repeats at its edges (the Fourier transform uses this)",
+        ],
+        [
+            "The supply rates a and b, the diffusion ratio d and the reaction scale, with a range",
+            "The growth rate of each wavenumber (the dispersion relation) and the wavelength",
+            "The probability that the Turing conditions hold, and a map of it over the supply "
+            "rates",
+            "Predicted and simulated pattern images, and the pattern after it has settled",
+        ],
+        _X,
+        _MIN,
+        "Four noisy 128 x 128 images at t = 4, 8, 12 and 16 recover a diffusion ratio of 20 to "
+        "within about 12% and a wavelength of 13 length units.",
+        related=["sci.fisher_kpp", "sci.traction_force"],
+        expert="Schnakenberg kinetics u_t = g (a - u + u^2 v) + lap u, v_t = g (b - u^2 v) + "
+        "d lap v (pymc-challenges E61 part A). Linearised about the uniform state, each Fourier "
+        "mode of the activator images is complex Gaussian with C(k) = s0^2 U U^T + sigma^2 I, U "
+        "the first row of exp(A(k) t) from a closed-form 2 x 2 matrix exponential; modes are "
+        "independent and grouped by integer |k|^2 into summed outer products, and a Woodbury "
+        "identity reduces the likelihood to 2 x 2 algebra (a pm.Potential). Only |k|^2 < k2_max "
+        "enters. Priors: s ~ LogNormal(0, 0.5), rho ~ Beta(2, 5), d ~ LogNormal(log 10, 1), "
+        "g ~ LogNormal(0, 0.7), s0 and sigma ~ LogNormal(log 1e-3, 1.5). NUTS samples a "
+        "parameterisation whitened by the Laplace approximation at the mode. Predictions "
+        "condition each mode on the fitted images; simulate runs a semi-implicit spectral "
+        "solver per draw. Pointwise log-likelihood per Fourier mode (PSIS-LOO over modes).",
+        refs=[
+            (
+                "Turing (1952), The chemical basis of morphogenesis",
+                "https://doi.org/10.1098/rstb.1952.0012",
+            ),
+            (
+                "Schnakenberg (1979), Simple chemical reaction systems with limit cycle behaviour",
+                "https://doi.org/10.1016/0022-5193(79)90042-0",
+            ),
+            (
+                "Murray (2003), Mathematical Biology II: Spatial Models and Biomedical "
+                "Applications",
+                None,
+            ),
+        ],
+        fits={
+            "goal": ["fit_physics", "map_fields"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
+    "sci.storm_localisation": _a(
+        "Molecule positions in STORM images",
+        "Finds single glowing molecules in raw frames of a STORM or PALM microscope and "
+        "measures the position of each one to a few nanometres, with an error bar. It also "
+        "makes a super-resolution image from the positions.",
+        [
+            "You have raw camera frames of a STORM, PALM or dSTORM recording (EMCCD camera)",
+            "You need the position of each molecule with an error bar in nm",
+            "You want a super-resolution image where each point shows its own error",
+        ],
+        [
+            "The spots in a frame touch each other (the model fits one molecule in each spot)",
+            "The frames came from an sCMOS camera with a different gain for each pixel",
+            "The molecules are out of focus or you need their depth (3-D)",
+            "You need all spots of a long recording (the model fits a sample of isolated spots)",
+        ],
+        [
+            "The raw camera counts (ADU) of each frame, on a grid of whole pixels",
+            "The size of a camera pixel in the sample, in nm",
+            "The camera offset and gain. Or frames with a range of background brightness, so "
+            "that the model can measure them",
+        ],
+        [
+            "The image of one molecule is a Gaussian spot on a flat (or sloped) background",
+            "Each camera pixel counts photons with the extra noise of an EMCCD gain register "
+            "(half of the photons count)",
+            "Each fitted spot holds one molecule and no other spot is near it",
+        ],
+        [
+            "The position of each molecule in nm, with a range",
+            "The photons, the background and the width of each spot",
+            "A super-resolution image of the positions",
+            "The model image of each spot, to compare with the data",
+        ],
+        _X,
+        _MIN,
+        "200 isolated spots of a dSTORM recording of the protein Unc-13 at a synapse give "
+        "positions with a median error of 7.5 nm and about 2,900 photons in each spot.",
+        related=["sci.strong_lens", "sci.traction_force"],
+        expert="Batched single-emitter localisation (one emitter per 11 x 11 patch, every spot "
+        "with its own position, photons, background and PSF sd) with a pixel-integrated "
+        "Gaussian PSF (erf) and a Poisson likelihood of the EMCCD effective counts "
+        "z = (ADU - offset) / (2 g), mean photons / 2. Detection, the photon-transfer "
+        "calibration (np.polyfit of the robust temporal variance against the median) and the "
+        "patch extraction run in NumPy and scipy.ndimage at fit time. kind plane adds a "
+        "log-linear background slope per patch, so elpd_loo (per pixel, "
+        "fit.keep.log_likelihood) can compare the two backgrounds. Multi-emitter model "
+        "selection, the Laplace fitter of the notebook and blink counting are not part of "
+        "the model.",
+        refs=[
+            (
+                "Mortensen et al. (2010), Optimized localization analysis for single-molecule "
+                "tracking and super-resolution microscopy",
+                "https://doi.org/10.1038/nmeth.1447",
+            ),
+            (
+                "Rust, Bates & Zhuang (2006), Sub-diffraction-limit imaging by stochastic "
+                "optical reconstruction microscopy (STORM)",
+                "https://doi.org/10.1038/nmeth929",
+            ),
+            (
+                "Dannhaeuser et al. (2022), Endogenous tagging of Unc-13 reveals nanoscale "
+                "reorganization at active zones during presynaptic homeostatic potentiation",
+                "https://doi.org/10.3389/fncel.2022.1074304",
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "fit_physics"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential"],
+            "experience": ["expert"],
+        },
+    ),
+    "sci.ibp_features": _a(
+        "Shared parts of small images",
+        "Finds a small set of parts that many images share, for example strokes of "
+        "handwritten digits. Each image is the average image plus the parts it has, and the "
+        "model fills in the pixels that you hide.",
+        [
+            "You have many small images of the same size (up to about 100 pixels each)",
+            "You want to see which parts the images share and which images have each part",
+            "You want to complete images with missing pixels, for example the bottom half of "
+            "a digit",
+        ],
+        [
+            "The images are large, or they need more than about 10 parts (each part doubles "
+            "the time)",
+            "You need one stable answer about each part: different chains often find different "
+            "parts, so the convergence checks can show warnings",
+            "The pixels are counts with many exact zeros and you need correct ranges for each "
+            "pixel (the noise model is Gaussian)",
+        ],
+        [
+            "Images on one grid of rows and columns, with the ink of each pixel from 0 to 1",
+            "Empty values for the pixels the model must not see",
+            "Optional: a mask that hides pixels from the fit but keeps them for comparison",
+        ],
+        [
+            "Each image owns each part or not. The parts add to the average image",
+            "The pixel noise is the same at all pixels (noise_sd sets the level of detail)",
+            "At most n_features parts. Earlier parts are more frequent",
+        ],
+        [
+            "The image of each part, and how frequent each part is",
+            "For each image, the probability that it owns each part",
+            "The completed images with a range for each pixel",
+            "The log-likelihood of each image, to compare variants with elpd_loo",
+        ],
+        _X,
+        _MIN,
+        "With 8 parts, 300 handwritten digits complete the hidden bottom half of 200 digits by "
+        "other writers with an error of 0.28 ink units.",
+        related=["sci.strong_lens"],
+        expert="Linear-Gaussian latent feature model x = mu + z A + e with a stick-breaking "
+        "Indian buffet process prior (Teh, Gorur & Ghahramani 2007) truncated at K features. "
+        "The binary matrix is summed out exactly over the 2^K patterns of each image (a "
+        "logsumexp Potential over the seen pixels), so NUTS samples A, the sticks, alpha and "
+        "sigma_A (and sigma_X for kind free_noise). Every chain starts without jitter at half "
+        "of K random centred images with nu = 0.8, because the default start can collapse to "
+        "no features. The posterior over A is multimodal: chains often disagree on pi (r-hat "
+        "1.15-1.9 in the E31 notebook), the convergence diagnostics warn, and "
+        "TRUNCATION_BINDS warns when the last pi is not small. Completions use the exact "
+        "pattern posterior of each image given its seen pixels. Pointwise log-likelihood per "
+        "image supports elpd_loo between K, noise levels and kinds.",
+        refs=[
+            (
+                "Griffiths & Ghahramani (2011), The Indian buffet process: an introduction and "
+                "review",
+                "https://jmlr.org/papers/v12/griffiths11a.html",
+            ),
+            (
+                "Teh, Gorur & Ghahramani (2007), Stick-breaking construction for the Indian "
+                "buffet process",
+                "https://proceedings.mlr.press/v2/teh07a.html",
+            ),
+            (
+                "Alpaydin & Kaynak (1998), Optical recognition of handwritten digits, UCI "
+                "Machine Learning Repository",
+                "https://doi.org/10.24432/C50P49",
+            ),
+        ],
+        fits={
+            "goal": ["map_fields"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
+    "sci.colour_naming": _a(
+        "How people name colours",
+        "Shows how the speakers of one language name colour chips: which word each speaker "
+        "is likely to use for each chip, and a map of the words on the chip palette.",
+        [
+            "Each speaker of a language named each chip of a colour palette once",
+            "You want to know where the boundaries between the colour words are, with a range",
+            "You want to predict how a new speaker will name the chips",
+            "You want to know how many colour categories the language really has",
+        ],
+        [
+            "You have more than one language in the data (fit one language at a time)",
+            "The words are not colour names, or the items do not have a colour",
+            "You want to know which chip is the best example of a word (the model gives the "
+            "chip that the most speakers agree on, which is a different thing)",
+            "You have more than 40 different words (merge the rare words into one word first)",
+        ],
+        [
+            "The word that each speaker gave to each chip (an empty cell when there is no answer)",
+            "The CIELAB colour (L*, a*, b*) of each chip",
+            "The row and the column of each chip on the palette (for the maps)",
+        ],
+        [
+            "Each word has a region in colour space with a smooth shape",
+            "The speakers share the shapes. Each speaker can use a word more or less and move "
+            "its boundaries (setting kind: hierarchical)",
+            "Given the speaker, each chip is named independently of the other chips",
+            "A missing answer does not depend on the chip or the word",
+        ],
+        [
+            "The probability of each word for each speaker and chip, also for new speakers",
+            "A map of each word on the palette: the share of speakers who use it, with a range",
+            "The palette in the colour of the most probable word of each chip",
+            "The effective number of colour categories, for one speaker and for the language",
+        ],
+        _I,
+        _MIN,
+        "The 29 Nafaanra speakers of the World Color Survey use four words. Nine speakers that "
+        "the model did not see are named correctly for 88% of the chips.",
+        related=["choice.multinomial_logit"],
+        expert="Multinomial logistic regression on 10 standardised quadratic CIELAB features "
+        "(1, L, a, b, L^2, a^2, b^2, ab, La, Lb), the well-conditioned natural form of Gaussian "
+        "categories (pymc-challenges E77). W ~ ZeroSumNormal(3) over terms. kind: hierarchical "
+        "adds speaker effects on the intercept and the linear weights, W_s = W + sd z_s with "
+        "sd ~ HalfNormal(1) and z ~ ZeroSumNormal(1) (non-centred). The likelihood is a "
+        "potential over the observed responses (pooled: the chip x term count table). "
+        "features: grid_line / grid_circle are the printed-grid variants (hue as a line or a "
+        "circle) for an elpd_loo ladder. New speakers get fresh effects per draw (new-level "
+        "strategy hyperprior); the language-level shares average 20 simulated speakers per "
+        "draw. Pointwise log-likelihood is per chip (leave-one-chip-out). Effective "
+        "categories = exp(I(chip; term)).",
+        refs=[
+            (
+                "Kay, Berlin, Maffi, Merrifield & Cook (2009), The World Color Survey, CSLI "
+                "Publications",
+                "https://linguistics.berkeley.edu/wcs/",
+            ),
+            (
+                "Kay & Regier (2003), Resolving the question of color naming universals, PNAS "
+                "100:9085-9089",
+                "https://doi.org/10.1073/pnas.1532837100",
+            ),
+        ],
+        fits={
+            "goal": ["understand_choices", "map_fields"],
+            "data_shape": ["choices", "grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["intermediate", "expert"],
+            "speed": ["minutes"],
+        },
+    ),
+    "sci.cmb_field": _a(
+        "Sky map behind a mask (CMB)",
+        "Fills the masked holes of a map of the cosmic microwave background with skies that "
+        "agree with the data, and measures how strong the sky is at each angular scale. It "
+        "shows how sure it is at each pixel.",
+        [
+            "You have a temperature map of the CMB on a small flat patch, with a mask and a "
+            "noise level for each pixel",
+            "You want to know what the sky looks like behind the mask, with a range for each pixel",
+            "You need the power spectrum of the patch in bins (bandpowers) without the bias that "
+            "a mask gives to a simple estimate",
+        ],
+        [
+            "The patch is large (more than about 20 degrees): the flat-sky approximation fails",
+            "The map has strong foreground residuals outside the mask",
+            "You need polarisation or lensing (the model has temperature only)",
+        ],
+        [
+            "A temperature map on a regular grid of pixels in uK, with NaN where the mask removes "
+            "a pixel",
+            "The noise sd of each pixel",
+            "A reference spectrum D_ell (for example the Planck best fit) for multipoles 0, 1, 2, "
+            "... and optionally the pixel window of the source map",
+            "The pixel size and the beam width of the map",
+        ],
+        [
+            "The sky is a Gaussian random field with the same statistics in all directions",
+            "The power in each bin is the reference power times a free factor",
+            "The noise is Gaussian and independent from pixel to pixel",
+            "The patch is flat. The model adds a border without data so that the edges need not "
+            "repeat",
+        ],
+        [
+            "Probable sky maps (constrained realisations) with a mean and an sd for each pixel",
+            "The bandpowers (D_ell in uK^2) and their ratio to the reference",
+            "The amplitude and the tilt of the spectrum relative to the reference",
+            "Simulated maps of other patches with the same spectrum",
+        ],
+        _X,
+        _MIN,
+        "The Planck SMICA map around the Large Magellanic Cloud (16 % of the pixels masked) "
+        "gives a pixel sd of 2.5 uK where there are data and about 90 uK in the hole. Its "
+        "amplitude is within 2 % of the Planck spectrum.",
+        related=["sci.traction_force", "sci.strong_lens"],
+        expert="Field-level inference on a flat periodic torus (the raster plus an unobserved "
+        "border). The Hartley coefficients of the sky are independent Gaussians with the reference "
+        "spectrum folded through the beam, the pixel windows and aliasing, times exp(q_b) per "
+        "bandpower bin (flat prior on q_b). A Wandelt-Eriksen Gibbs sampler alternates a "
+        "constrained realisation by preconditioned conjugate gradients (dense preconditioner on"
+        " the large scales), an inverse-gamma draw of each bandpower and a non-centred "
+        "rescaling move (Metropolis). NumPy and FFTs only, no NUTS. The amplitude and tilt come"
+        " from the exact Gaussian posterior of a linear model of the binned q_b. No pointwise "
+        "LOO: all pixels share one latent field.",
+        refs=[
+            (
+                "Wandelt, Larson & Lakshminarayanan (2004), Global, exact cosmic microwave "
+                "background data analysis using Gibbs sampling",
+                "https://arxiv.org/abs/astro-ph/0310080",
+            ),
+            (
+                "Eriksen et al. (2004), Power spectrum estimation from high-resolution maps by "
+                "Gibbs sampling",
+                "https://arxiv.org/abs/astro-ph/0407028",
+            ),
+            (
+                "Jewell, Levin & Anderson (2004), Application of Monte Carlo algorithms to the "
+                "Bayesian analysis of the cosmic microwave background",
+                "https://arxiv.org/abs/astro-ph/0209560",
+            ),
+            (
+                "Planck Collaboration (2020), Planck 2018 results IV: diffuse component separation",
+                "https://arxiv.org/abs/1807.06208",
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "fit_physics"],
+            "data_shape": ["grid"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential"],
+            "experience": ["expert"],
+        },
+    ),
+    "sci.areal_bym2": _a(
+        "Disease risk on a map of areas",
+        "Estimates the risk of a disease in each area of a map (a district or a county) from "
+        "small counts, and uses the neighbouring areas to make the estimates of small areas "
+        "more stable. It also gives the probability that the risk of each area is above the "
+        "national level.",
+        [
+            "You have counts of cases and expected counts for each area of a map",
+            "Some areas are small, so their raw rates are noisy",
+            "You want a map of the risk and of the areas where it is surely high",
+            "You want to know if a cause (a covariate) explains the map, and how much the "
+            "answer changes when the areas share their risk with their neighbours",
+        ],
+        [
+            "You have the location of each case, not counts for each area (use a point model)",
+            "The values are not counts, for example a mean income for each area",
+            "You must predict areas that are not on the map (the graph has only the fitted areas)",
+            "The data change over time and you want a forecast",
+        ],
+        [
+            "A count of cases and an expected count (age-standardised) for each area",
+            "One covariate for each area, for example a percentage",
+            "Which areas are neighbours (an adjacency matrix), for example from shared borders",
+            "The outline of each area (polygon points), for the maps and to link islands",
+        ],
+        [
+            "The count of an area is Poisson around its expected count times its relative risk",
+            "Neighbouring areas have similar risks (kind icar, car or bym2), or the areas are "
+            "independent (kind iid)",
+            "An island is linked to the area with the closest border, unless you change the "
+            "islands setting",
+            "The covariate has the same effect in every area",
+        ],
+        [
+            "The smoothed relative risk of each area, with a range",
+            "The probability that the relative risk of each area is above 1",
+            "The expected cases of each area, and new counts and maps (simulate)",
+            "The effect of the covariate, the size of the area effects and the share of them "
+            "that follows the map (rho, kind bym2)",
+        ],
+        _X,
+        _SEC,
+        "Map lip cancer in the 56 districts of Scotland from 1975 to 1980. Get the smoothed "
+        "relative risk of each district, find the 19 districts where the risk is surely "
+        "above the national level, and see the effect of outdoor work fall from 1.96 to 1.5 "
+        "per 10 points when neighbours share their risk.",
+        related=["sci.lgcp_grid", "tabular.hierarchical_glm"],
+        expert="Poisson(E_i exp(b0 + b1 x_i + u_i)) with x = (covariate - mean) / "
+        "covariate_scale (pymc-challenges E18). kind: poisson (u = 0), iid (u = sigma "
+        "theta), icar (sigma pm.ICAR(W), soft sum-to-zero), car (pm.CAR with alpha ~ "
+        "U(0, 1), tau = 1 / sigma^2; alpha piles up near 1 and b0 mixes slowly) or bym2 "
+        "(Riebler et al. 2016: u = sigma (sqrt(rho / s) phi + sqrt(1 - rho) theta), s = "
+        "geometric mean of diag(pinv(D - W)), rho ~ Beta(1, 1)). b0, b1 ~ N(0, 1), sigma "
+        "~ HalfNormal(1). islands: link_nearest joins each area without neighbours (then "
+        "each separate piece) to the area with the closest polygon vertex; isolate keeps "
+        "them (iid and icar only: an isolated ICAR node has a flat prior); error refuses. "
+        "The pointwise log-likelihood is always kept, so elpd_loo compares the kinds (Pareto "
+        "k is often high: one parameter per area). A mask_block split over area holds "
+        "districts out of the likelihood but keeps them in the graph (leave-areas-out). "
+        "simulate draws new area effects per draw with a hand-written ICAR sampler "
+        "(eigenvectors of the Laplacian), as pm.ICAR cannot be forward-sampled. On the "
+        "Scottish data the AFF effect drops from 0.67 (iid) to about 0.4 (spatial kinds): "
+        "spatial confounding.",
+        refs=[
+            (
+                "Riebler et al. (2016), An intuitive Bayesian spatial model for disease "
+                "mapping that accounts for scaling",
+                "https://arxiv.org/abs/1601.01180",
+            ),
+            (
+                "Besag, York and Mollié (1991), Bayesian image restoration, with two "
+                "applications in spatial statistics",
+                None,  # lead: add the DOI (not given in the E18 source)
+            ),
+            (
+                "Clayton and Kaldor (1987), Empirical Bayes estimates of age-standardized "
+                "relative risks for use in disease mapping",
+                None,  # lead: add the DOI (not given in the E18 source)
+            ),
+        ],
+        fits={
+            "goal": ["map_fields", "explain_drivers"],
+            "data_shape": ["grid", "table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["intermediate", "expert"],
+            "speed": ["seconds", "minutes"],
+        },
+    ),
+    "sci.graphical_model": _a(
+        "Direct links between measured variables",
+        "Finds which variables are directly linked to each other when the effect of all the "
+        "other variables is removed. It gives the probability of each link and shows the links "
+        "as a network.",
+        [
+            "You measured the same set of variables on many samples, for example proteins in "
+            "single cells",
+            "You want to know which pairs are linked directly, not only through other variables",
+            "You want a probability for each link, and a network to compare with a known one",
+        ],
+        [
+            "You need the direction of each link (cause and effect): the network has no arrows",
+            "The samples come from different conditions or treatments (fit each one separately)",
+            "The relations are strongly curved or the values have very long tails (the model "
+            "sees only straight-line relations)",
+            "You have more than about 50 variables (the fit becomes slow)",
+        ],
+        [
+            "One value for each variable in each sample, with no missing values",
+            "Samples that are independent and come from one condition",
+            "Optional: a known network as a matrix of 0 and 1, to compare with",
+        ],
+        [
+            "The variables have a joint normal distribution after the fit centres and scales them",
+            "A link is present when the partial correlation is larger than the threshold (0.1 "
+            "by default)",
+            "With kind neighbourhood: most variables have only a few direct links",
+        ],
+        [
+            "The partial correlation of each pair of variables, with a range",
+            "The probability of a link for each pair (a matrix and a network)",
+            "With kind dense: values for new samples, and simulated samples",
+            "A score for each sample to compare models (elpd_loo)",
+        ],
+        _I,
+        _MIN,
+        "Measure 11 proteins in 853 T cells. Get 8 links with a probability above 0.5, for "
+        "example Erk with Akt and Raf with Mek. Compare them with the 20 links of the published "
+        "signalling network: 7 of the 8 are in it.",
+        related=["sci.lgcp_grid"],
+        expert="Gaussian graphical model (pymc-challenges E19). kind dense: z ~ MvNormal(mu, L "
+        "L^T) on the standardised data, L ~ LKJCholeskyCov(eta = 2, sd ~ Exponential(1)), mu ~ "
+        "Normal(0, 1); the precision Omega = L^-T L^-1 comes from a triangular solve and the "
+        "partial correlations rho_jk = -Omega_jk / sqrt(Omega_jj Omega_kk) are deterministics. "
+        "An edge is |rho| > delta (default 0.1), so P(edge) = P(|rho| > delta | data). The LKJ "
+        "prior is a dense-graph prior (83% prior probability for each edge in 11 dimensions). "
+        "kind neighbourhood: Meinshausen-Buhlmann neighbourhood selection, one regularised "
+        "horseshoe regression per variable in one model (tau0 = p0 / (P - 1 - p0) / sqrt(n), "
+        "c^2 ~ InvGamma(2, 2)), with AND, OR or symmetric rho = sign(B_jk) sqrt(B_jk B_kj) "
+        "rules; it conditions on the other variables, so it scores only the graph. A "
+        "horseshoe directly on Omega is not offered: most of its prior is not positive "
+        "definite. Pointwise log-likelihood per sample: joint (dense) or the sum of the full "
+        "conditionals (both kinds, comparable by elpd_loo).",
+        refs=[
+            (
+                "Sachs et al. (2005), Causal protein-signaling networks derived from "
+                "multiparameter single-cell data, Science",
+                "https://doi.org/10.1126/science.1105809",
+            ),
+            (
+                "Meinshausen and Buhlmann (2006), High-dimensional graphs and variable "
+                "selection with the lasso, Annals of Statistics",
+                "https://doi.org/10.1214/009053606000000281",
+            ),
+            (
+                "Piironen and Vehtari (2017), Sparsity information and regularization in the "
+                "horseshoe and other shrinkage priors",
+                "https://arxiv.org/abs/1707.01694",
+            ),
+        ],
+        fits={
+            "goal": ["explain_drivers"],
+            "data_shape": ["table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["intermediate", "expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
+    "sci.phylo_regression": _a(
+        "Traits of related species",
+        "Measures how one trait of species changes with other traits when related species are "
+        "alike because they share ancestors. It also predicts a missing trait of a species "
+        "from its relatives.",
+        [
+            "You have one value of a trait for each species and a family tree of the species",
+            "You want a slope across species that does not count shared ancestry many times",
+            "You want to fill in a trait that some species do not have, from their relatives",
+            "You want to compare models of how traits change along the tree",
+        ],
+        [
+            "You do not have a tree with branch lengths for the species",
+            "You have many measurements of each species and the spread inside a species is "
+            "important (the model uses one value for each species)",
+            "Some species do not have a value of a predictor (remove them first)",
+            "You have more than about 2000 species (each step uses a dense matrix)",
+        ],
+        [
+            "One value of the trait for each species (it can be missing for some species)",
+            "One value of each predictor for each species, with no missing values",
+            "The tree as one row for each node: the parent node, the branch length and the "
+            "label of each tip, with tip labels equal to the species names",
+        ],
+        [
+            "The traits change at random along the branches of the tree (Brownian motion), "
+            "with a species part (lambda) or a pull to an optimum (ou)",
+            "The slopes are the same in all parts of the tree",
+            "The trait and the predictors are positive when the log is taken",
+        ],
+        [
+            "The slope of each predictor, with a range",
+            "The trait of each species predicted from its relatives, with a range",
+            "The part of the variation that follows the tree (lambda)",
+            "A score for each species that lets you compare the kinds of model (elpd_loo)",
+        ],
+        _X,
+        _SEC,
+        "Use the brain volume, body mass and group size of 186 primates on a tree of 73 "
+        "million years. With the tree, the slope of group size drops from 0.12 to about 0.03.",
+        related=["sci.lgcp_grid"],
+        expert="Phylogenetic generalised least squares in PyMC (pymc-challenges E23): trait ~ "
+        "MvNormal(a + X b, K) on log, standardised values; a ~ N(0, 1), b ~ N(0, 0.5). K from "
+        "the shared branch length C = A diag(l) A^T, R = C / T: iid sigma^2 I; brownian "
+        "sigma^2 R; lambda sigma^2 (lam R + (1 - lam) I), lam ~ Beta(1, 1); ou eta2 "
+        "exp(-rho D / 2T), with the prior on the identified Brownian rate eta2 rho by default. "
+        "Missing traits are predicted by Gaussian conditioning on the observed species. "
+        "log_likelihood holds the leave-one-out conditional density from Q = K^-1 (one "
+        "inverse for each draw), so elpd_loo compares the kinds; the marginal density gives "
+        "the opposite ranking. Sampled with NUTS on dense O(N^3) factorisations.",
+        refs=[
+            (
+                "Felsenstein (1985), Phylogenies and the comparative method, The American "
+                "Naturalist",
+                None,
+            ),
+            (
+                "Pagel (1999), Inferring the historical patterns of biological evolution, Nature",
+                None,
+            ),
+            (
+                "Street, Navarrete, Reader and Laland (2017), Coevolution of cultural "
+                "intelligence, extended life history, sociality, and brain size in primates, "
+                "PNAS",
+                None,
+            ),
+            (
+                "Burkner, Gabry and Vehtari (2021), Efficient leave-one-out cross-validation "
+                "for Bayesian non-factorized normal and Student-t models, Computational "
+                "Statistics",
+                "https://arxiv.org/abs/1810.10559",
+            ),
+        ],
+        fits={
+            "goal": ["explain_drivers", "predict_values"],
+            "data_shape": ["table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["seconds", "minutes"],
+        },
+    ),
+    "sci.circular_regression": _a(
+        "Directions and times of day",
+        "Finds how a direction or a time of day changes with the hour and the season, for "
+        "example where the wind comes from. It also shows when each animal species is "
+        "active and how much two species are active at the same time.",
+        [
+            "Your values are angles: wind directions, compass bearings or times of day",
+            "You want the most probable direction for each hour and season, with a range",
+            "You want the daily activity of animals from camera-trap times, or the overlap of "
+            "two species",
+        ],
+        [
+            "The values are not on a circle (for example a temperature)",
+            "You need the speed of the wind as well as its direction (the model uses only the "
+            "direction)",
+            "The wind is calm (a calm has no direction: remove those rows first)",
+            "You need forecasts of the next hours from the last values (the model uses only the "
+            "hour and the day of the year)",
+        ],
+        [
+            "One row for each report or record, with the angle in degrees, radians or hours",
+            "For directions: the hour of the day (0 to 24) and the day of the year of each row",
+            "For activity: the group (species) of each record",
+        ],
+        [
+            "The hour of the day and the day of the year change the direction smoothly (a few "
+            "harmonics of each)",
+            "Rows are independent when the hour and the season are known",
+            "Activity: the density over the day is smooth, and an animal is fully active at "
+            "the peak of its curve",
+        ],
+        [
+            "The mean direction and the mean resultant length for each row and for each block "
+            "of hours or each group",
+            "The density of the angles around the circle for each block or group, with a range",
+            "Simulated angles for new hours and days",
+            "Activity: the fraction of the day each group is active, and the overlap of each "
+            "pair of groups",
+        ],
+        _X,
+        _MIN,
+        "Hourly winds at Santa Barbara airport come from the west-southwest in the "
+        "afternoon (the sea breeze) and from the east at night. The ocelot and the agouti "
+        "share only 30% of their daily activity.",
+        related=["sci.lgcp_grid"],
+        expert="pymc-challenges E81. Von Mises regression with the canonical link: natural "
+        "parameters eta = F B, log p = eta . (cos t, sin t) - log(2 pi I0(|eta|)), concave in B "
+        "(no wrapped prior, no seam at +-pi, no second mode of the tan-half link). F holds an "
+        "intercept and harmonics of the hour and the day of year plus their products (19 "
+        "features by default). Kinds: von_mises, projected_normal (angle of N(F B, I)), "
+        "regime_mixture (two von Mises regimes on fewer features, the second one's "
+        "probability through a logistic gate on all features, labels anchored by the prior "
+        "directions), activity (log-Fourier density per group, a_k, b_k ~ N(0, (tau/k)^2), "
+        "fitted through the trigonometric moments, tau ~ HalfNormal(2)). Priors N(0, 2) on "
+        "intercepts and N(0, 1) on the other coefficients; regime_mixture instead centres "
+        "each regime intercept on 2 (cos mu_r, sin mu_r) with sd 1, gives the gate "
+        "intercept N(0, 1.5) and the other coefficients N(0, 1). Pointwise log densities "
+        "(per radian) support elpd_loo across kinds. Activity level 1 / (2 pi max f) "
+        "(Rowcliffe et al. 2014), overlap Delta = int min(f_i, f_j).",
+        refs=[
+            (
+                "Fisher (1993), Statistical analysis of circular data, Cambridge University Press",
+                None,
+            ),
+            (
+                "Rowcliffe et al. (2014), Quantifying levels of animal activity using camera "
+                "trap data, Methods in Ecology and Evolution",
+                "https://doi.org/10.1111/2041-210X.12278",
+            ),
+            (
+                "Ridout and Linkie (2009), Estimating overlap of daily activity patterns from "
+                "camera trap data, JABES",
+                "https://doi.org/10.1198/jabes.2009.08038",
+            ),
+        ],
+        fits={
+            "goal": ["explain_drivers", "predict_values"],
+            "data_shape": ["table"],
+            "frequency": ["not_time"],
+            "uncertainty": ["essential", "nice"],
+            "experience": ["expert"],
+            "speed": ["minutes", "can_wait"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
@@ -1719,7 +2582,23 @@ SURVIVING_MODEL_IDS: Final[frozenset[str]] = frozenset(
 the scikit-learn models of ``mapi-sklearn``)."""
 
 SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
-    {"sci.lgcp_grid", "sci.fisher_kpp", "sci.traction_force", "sci.strong_lens"}
+    {
+        "sci.lgcp_grid",
+        "sci.fisher_kpp",
+        "sci.traction_force",
+        "sci.strong_lens",
+        "sci.heat_plate",
+        "sci.turing_pattern",
+        "sci.storm_localisation",
+        "sci.ibp_features",
+        "sci.colour_naming",
+        "sci.cmb_field",
+        "sci.areal_bym2",
+        "sci.network_latent_space",
+        "sci.graphical_model",
+        "sci.phylo_regression",
+        "sci.circular_regression",
+    }
 )
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
 problems ported from the pymc-challenges case studies)."""

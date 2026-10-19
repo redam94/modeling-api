@@ -1,0 +1,196 @@
+# Workflow cookbook: which spatial model for a disease map? Fit iid, ICAR and BYM2 area
+# effects on the same areas, compare them by PSIS-LOO (ranking and stacking weights), keep the
+# best one, read its covariate effect, check convergence, refit it with wider and narrower
+# priors when the chains agree and the effect is clear, and draw the relative-risk map.
+# This is the sci_spatial_ladder template of the gallery (a test keeps the two the same).
+# (validated and run by conformance/tests/test_docs_v05.py)
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: disease-map-ladder, project: epidemiology}
+params:
+  # the names of the area dims and of the covariate in your dataset (the e18 export)
+  bind:
+    type: object
+    default: {dims: {area: district, area_: district_}, vars: {covariate: aff}}
+    description: The names in your dataset of the area dims and of the covariate (the default
+      fits the e18 export)
+  islands:
+    type: string
+    default: link_nearest
+    enum: [link_nearest, isolate, error]
+    description: What to do with areas that have no neighbours. link_nearest links each one to
+      the area with the closest border
+  hdi_prob: {type: number, default: 0.94, minimum: 0.5, maximum: 0.999,
+             description: The probability inside the range of each parameter}
+  prior_scale:
+    type: number
+    default: 2.0
+    minimum: 1.1
+    maximum: 10
+    description: When the effect is clear, the workflow fits the best model again with the
+      prior widths multiplied and divided by this value
+  # one MCMC configuration for every rung, so the rungs are comparable
+  draws: {type: integer, default: 1000, minimum: 50, maximum: 20000,
+          description: The posterior draws to keep in each chain}
+  tune: {type: integer, default: 1000, minimum: 50, maximum: 20000,
+         description: The warm-up steps of each chain (the sampler discards them)}
+  chains: {type: integer, default: 4, minimum: 2, maximum: 16,
+           description: 'The number of chains (two or more, for R-hat)'}
+  target_accept: {type: number, default: 0.9, minimum: 0.6, maximum: 0.99,
+                  description: The target acceptance rate of the sampler. A higher value gives
+                    smaller steps and fewer divergences}
+  engine: {type: string, default: pymc, enum: [pymc, nutpie],
+           description: The sampler (nutpie is faster on large data)}
+  seed: {type: integer, default: 18, minimum: 0, maximum: 2147483647,
+         description: The random seed of each fit}
+inputs:
+  data: {type: dataset, description: 'Counts, expected counts, a covariate, the adjacency matrix
+      and the outlines of the areas'}
+nodes:
+# 1. Three rungs on all the data. PSIS-LOO scores each area as if the fit had not seen it.
+- id: iid
+  use: model.fit
+  label: Independent areas
+  inputs: {data: inputs.data}
+  with:
+    model: sci.areal_bym2@^1
+    bind: {$param: bind}
+    settings: {kind: iid, islands: {$param: islands}}
+    fit: &fit
+      mode: train_only
+      draws: {$param: draws}
+      tune: {$param: tune}
+      chains: {$param: chains}
+      target_accept: {$param: target_accept}
+      engine: {$param: engine}
+      seed: {$param: seed}
+    evaluate: {metrics: [elpd_loo]}
+- id: icar
+  use: model.fit
+  label: Neighbours share risk (ICAR)
+  inputs: {data: inputs.data}
+  with:
+    model: sci.areal_bym2@^1
+    bind: {$param: bind}
+    settings: {kind: icar, islands: {$param: islands}}
+    fit: *fit
+    evaluate: {metrics: [elpd_loo]}
+- id: bym2
+  use: model.fit
+  label: Neighbours and noise (BYM2)
+  inputs: {data: inputs.data}
+  with:
+    model: sci.areal_bym2@^1
+    bind: {$param: bind}
+    settings: {kind: bym2, islands: {$param: islands}}
+    fit: *fit
+    evaluate: {metrics: [elpd_loo]}
+# 2. Rank the rungs, weigh them by stacking and keep the best one.
+- id: compare
+  use: compare.models
+  inputs: {candidates: [iid.metrics, icar.metrics, bym2.metrics]}
+  with: {metric: elpd_loo, direction: max}
+- id: weights
+  use: compare.stacking
+  label: Stacking weights
+  inputs: {candidates: [iid.metrics, icar.metrics, bym2.metrics]}
+- id: best
+  use: select.best
+  inputs: {table: compare.table, models: [iid.model, icar.model, bym2.model]}
+  with: {metric: elpd_loo, direction: max}
+# 3. Is the covariate effect clear in the best rung?
+- id: effect
+  use: model.summary
+  label: Covariate effect
+  inputs: {model: best.model}
+  with: {vars: [b0, b1, sigma], hdi_prob: {$param: hdi_prob}}
+- id: converged
+  use: governance.check
+  label: Did the chains agree?
+  inputs: {model: best.model, data: inputs.data}
+  with: {check: convergence}
+# an effect is clear only when the chains of the best model agree
+- id: clear
+  use: branch.if
+  label: Is the effect clear?
+  with:
+    condition: >-
+      coalesce(nodes.converged.status, 'error') not in ['fail', 'error'] and
+      (nodes.effect.params.b1.hdi_low > 0 or nodes.effect.params.b1.hdi_high < 0)
+    explain_then: The chains of the best model agree, and the range of the covariate effect
+      does not include zero. The covariate has a clear effect on the risk. The workflow fits
+      the best model again with wider and narrower priors.
+    explain_else: The chains of the best model do not agree, or the range of the covariate
+      effect includes zero. Look at the convergence evidence first. When the chains agree,
+      the data does not show a clear effect of the covariate when the areas share their
+      risk.
+# 4. A clear effect must come from the data, not from the priors: refit the best rung
+#    (kind = the id of the winner) with the prior widths x prior_scale and / prior_scale.
+- id: wide
+  use: model.fit
+  label: Wider priors
+  when: clear.then
+  inputs: {data: inputs.data}
+  with:
+    model: sci.areal_bym2@^1
+    bind: {$param: bind}
+    settings:
+      kind: {$expr: nodes.best.selected}
+      islands: {$param: islands}
+      intercept_sd: {$expr: params.prior_scale}
+      slope_sd: {$expr: params.prior_scale}
+      sigma_scale: {$expr: params.prior_scale}
+    fit: *fit
+- id: narrow
+  use: model.fit
+  label: Narrower priors
+  when: clear.then
+  inputs: {data: inputs.data}
+  with:
+    model: sci.areal_bym2@^1
+    bind: {$param: bind}
+    settings:
+      kind: {$expr: nodes.best.selected}
+      islands: {$param: islands}
+      intercept_sd: {$expr: 1 / params.prior_scale}
+      slope_sd: {$expr: 1 / params.prior_scale}
+      sigma_scale: {$expr: 1 / params.prior_scale}
+    fit: *fit
+- id: effect_wide
+  use: model.summary
+  label: 'Wider priors: effect'
+  inputs: {model: wide.model}
+  when: clear.then
+  with: {vars: [b1], hdi_prob: {$param: hdi_prob}}
+- id: effect_narrow
+  use: model.summary
+  label: 'Narrower priors: effect'
+  inputs: {model: narrow.model}
+  when: clear.then
+  with: {vars: [b1], hdi_prob: {$param: hdi_prob}}
+# 5. The map and the report (skipped nodes leave their tables out of the report).
+- id: map
+  use: plot.render
+  label: Relative risk map
+  inputs: {model: best.model}
+  with:
+    recipe: sci.area_map
+    source: model
+    settings: {var: rr, stats: [mean, sd, exceedance], threshold: 1.0}
+    title: Relative risk of each area (best model)
+- id: report
+  use: report.summary
+  inputs:
+    items: [compare.table, weights.table, effect.table, effect_wide.table, effect_narrow.table]
+    metrics: [iid.metrics, icar.metrics, bym2.metrics]
+    model: best.model
+    plots: [map.plot]
+  with: {title: 'Disease map: which spatial model?'}
+outputs:
+  model: best.model
+  comparison: compare.table
+  weights: weights.table
+  effect: effect.table
+  map: map.plot
+  convergence: converged.evidence
+  report: report.report

@@ -6,6 +6,10 @@ reference, with the replayable steps of upstream transforms first in the pipelin
 in-process runtime fits it with the SDK harness; the control plane stores it as the spec
 revision of a ``fit`` child run (``wf-<workflow>-<node>``), so the fitted model version is
 an ordinary, scoreable version of the model of that name.
+
+For a tree dataset the node's optional ``nodes`` and ``join`` parameters become
+``data.nodes`` and ``data.join`` (the nodes merged into the flat pipeline input); without
+them the spec reads the root node.
 """
 
 from __future__ import annotations
@@ -79,6 +83,17 @@ def model_spec_document(
     }
     if split:
         doc["data"]["split"] = dict(split)
+    raw_nodes = params.get("nodes")
+    raw_join = params.get("join")
+    join = raw_join if isinstance(raw_join, str) and raw_join else "exact"
+    if isinstance(raw_nodes, dict) and raw_nodes:
+        doc["data"]["nodes"] = {
+            str(k): dict(v) if isinstance(v, dict) else v for k, v in raw_nodes.items()
+        }
+        if join != "exact":
+            doc["data"]["join"] = join
+    elif join != "exact":
+        raise ValueError("the node's 'join' is only used with 'nodes' (a tree dataset)")
     ev = params.get("evaluate")
     if isinstance(ev, dict):
         doc["evaluate"] = dict(ev)

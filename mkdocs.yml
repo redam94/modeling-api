@@ -137,6 +137,24 @@ nav:
       - "Embed a chart in Notion, Slack or BI": tutorials/embed-a-chart.md
       - Receive webhooks: guides/webhook-receivers.md
       - Optimise a budget: tutorials/optimise-a-budget.md
+      - Complex workflows: tutorials/complex-workflows.md
+      - Science models from pymc-challenges:
+          - tutorials/pymc-challenges/index.md
+          - "E07 Earthquakes in Oklahoma": tutorials/pymc-challenges/e07-oklahoma-earthquakes.md
+          - "E18 Lip cancer disease map": tutorials/pymc-challenges/e18-scottish-lip-cancer.md
+          - "E19 Protein signalling graph": tutorials/pymc-challenges/e19-protein-signalling.md
+          - "E21 Law-firm network": tutorials/pymc-challenges/e21-law-firm-network.md
+          - "E23 Primate phylogenetic regression": tutorials/pymc-challenges/e23-phylogenetic-regression.md
+          - "E31 Indian buffet process on digits": tutorials/pymc-challenges/e31-indian-buffet-digits.md
+          - "E50 Scratch assay PDE": tutorials/pymc-challenges/e50-scratch-assay.md
+          - "E51 Heat plate design": tutorials/pymc-challenges/e51-heat-plate-design.md
+          - "E58 STORM localisation": tutorials/pymc-challenges/e58-storm-localisation.md
+          - "E60 Traction force microscopy": tutorials/pymc-challenges/e60-traction-force.md
+          - "E61 Turing patterns": tutorials/pymc-challenges/e61-turing-patterns.md
+          - "E77 Colour naming": tutorials/pymc-challenges/e77-colour-naming.md
+          - "E79 CMB behind the LMC mask": tutorials/pymc-challenges/e79-cmb-lmc-mask.md
+          - "E80 Strong gravitational lens": tutorials/pymc-challenges/e80-strong-lens.md
+          - "E81 Wind and animal activity": tutorials/pymc-challenges/e81-wind-and-activity.md
   - Concepts:
       - concepts/index.md
       - Architecture overview: concepts/architecture.md

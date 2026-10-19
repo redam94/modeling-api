@@ -316,6 +316,13 @@ docs-screenshots-workflows: ## Recapture the v0.5 workflow and governance screen
 		$(PNPM) --filter @mapi/web exec playwright test e2e/workflow-screenshots.spec.ts
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-workflows docs/assets/screenshots --max-kb 150 --only $(DOCS_WORKFLOW_SHOTS)
 
+DOCS_SCIENCE_SHOTS := science-upload-preview,science-spec-editor,science-run-progress,science-fields-heat-plate,science-area-map,science-network-graph,science-recipe-monitor,science-recipe-report
+
+.PHONY: docs-screenshots-science
+docs-screenshots-science: ## Recapture the science tutorial screenshots (E18, E51, E21 and a recipe) from a dev stack (see the script)
+	node scripts/docs_screenshots_science.mjs .local/screenshots-science
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-science docs/assets/screenshots --max-kb 150 --only $(DOCS_SCIENCE_SHOTS)
+
 ## ---------------------------------------------------------------- release
 .PHONY: release-check
 release-check: ## One version everywhere, a dated CHANGELOG entry, no plan files tracked, pinned images, current notices

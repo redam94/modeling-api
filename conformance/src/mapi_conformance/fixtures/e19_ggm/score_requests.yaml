@@ -1,0 +1,25 @@
+# E19: the graph of the fitted proteins, new cells (pooled), simulated cells and typed errors.
+# The protein count follows the data size (6 tiny, 11 full): expectations.py checks it.
+- name: predict_graph
+  request: {mode: predict, output: {summary: [mean, q5, q95], draws: 5}}
+  payload: new_cells
+  expect:
+    groups: [summary, draws]
+    vars: [pcor, edge_prob, level]
+    sizes: {cell: 5, stat: 3}
+- name: simulate_cells
+  request: {mode: simulate, output: {draws: 20}}
+  payload: new_cells
+  expect: {vars: [level], sizes: {cell: 5}}
+- name: unknown_protein
+  request: {mode: predict}
+  payload: extra_protein
+  expect_error: UNSEEN_LEVELS
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: cell, periods: 2}}
+  payload: new_cells
+  expect_error: MODE_NOT_SUPPORTED
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: level, multiply: 1.1}]}
+  payload: new_cells
+  expect_error: MODE_NOT_SUPPORTED

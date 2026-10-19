@@ -15,6 +15,7 @@ dependencies = ["mapi-spec", "jsonschema>=4.23"]
 runtime = [
   "mapi-sdk",
   "mapi-steps",
+  "mapi-plots[recipes]",
   "numpy>=2.0",
   "pandas>=2.2",
   "xarray>=2025.1",
@@ -38,4 +39,5 @@ packages = ["src/mapi_workflows"]
 mapi-spec = { workspace = true }
 mapi-sdk = { workspace = true }
 mapi-steps = { workspace = true }
+mapi-plots = { workspace = true }
 mapi-plugin-statsmodels = { workspace = true }

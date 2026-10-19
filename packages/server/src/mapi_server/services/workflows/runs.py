@@ -13,7 +13,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import timedelta
+from typing import Any, cast
 
+from mapi_plots.sanitize import SanitizeError, sanitize_plot
 from mapi_spec.api import new_id
 from mapi_spec.audit import AuditAction
 from mapi_spec.cost import RunCost
@@ -55,7 +57,9 @@ from mapi_server.services.workflows.store import load_revision, workflow_ref
 __all__ = [
     "ACTIVE_STATUSES",
     "PARENT_STATE",
+    "clean_plot",
     "node_run_dto",
+    "output_dto",
     "request_cancel",
     "set_parent_state",
     "start_workflow_run",
@@ -355,6 +359,43 @@ async def request_cancel(session: AsyncSession, wr: m.WorkflowRunRow) -> bool:
     return True
 
 
+def clean_plot(doc: JsonValue) -> dict[str, JsonValue]:
+    """A plot output of a node (sandbox-written JSON) through the plot sanitizer; raises
+    :class:`SanitizeError` when it is unsafe."""
+    plot = sanitize_plot(doc).plot  # type: ignore[arg-type]
+    return cast(dict[str, JsonValue], plot.model_dump(mode="json", exclude_none=True))
+
+
+def _served_plot(doc: JsonValue) -> dict[str, JsonValue] | None:
+    try:
+        return clean_plot(doc)
+    except SanitizeError:
+        return None  # the rule for stored fit plots: an unsafe plot is dropped on read
+
+
+def output_dto(raw: Mapping[str, Any]) -> NodeOutputRef:
+    """A stored node output as served: plots (and the plots of report sections) go through
+    the sanitizer again on every read, as a fit's ``plots.json`` does."""
+    ref = NodeOutputRef.model_validate(raw)
+    if ref.inline is None:
+        return ref
+    if ref.type is PortType.PLOT:
+        return ref.model_copy(update={"inline": _served_plot(ref.inline)})
+    if ref.type is PortType.REPORT and isinstance(ref.inline, dict):
+        sections = ref.inline.get("sections")
+        if isinstance(sections, list) and any(
+            isinstance(sec, dict) and sec.get("plot") is not None for sec in sections
+        ):
+            clean = [
+                {**sec, "plot": _served_plot(sec["plot"])}
+                if isinstance(sec, dict) and sec.get("plot") is not None
+                else sec
+                for sec in sections
+            ]
+            return ref.model_copy(update={"inline": {**ref.inline, "sections": clean}})
+    return ref
+
+
 def node_run_dto(row: m.WorkflowNodeRunRow) -> NodeRun:
     return NodeRun(
         node_id=row.node_id,
@@ -368,7 +409,7 @@ def node_run_dto(row: m.WorkflowNodeRunRow) -> NodeRun:
         cached_from=row.cached_from,
         params=row.params,
         result=row.result,
-        outputs={k: NodeOutputRef.model_validate(v) for k, v in row.outputs.items()},
+        outputs={k: output_dto(v) for k, v in row.outputs.items()},
         skipped_reason=row.skipped_reason,
         error=NodeError.model_validate(row.error) if row.error else None,
         started_at=row.started_at,
@@ -473,7 +514,7 @@ async def workflow_run_dto(
         inputs={k: str(v) for k, v in wr.inputs.items()},
         nodes=[node_run_dto(n) for n in nodes],
         decisions=[BranchDecision.model_validate(d) for d in wr.decisions],
-        outputs={k: NodeOutputRef.model_validate(v) for k, v in wr.outputs.items()},
+        outputs={k: output_dto(v) for k, v in wr.outputs.items()},
         cost=cost,
         error=NodeError.model_validate(wr.error) if wr.error else None,
         created_at=wr.created_at,

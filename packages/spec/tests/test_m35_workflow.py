@@ -380,6 +380,8 @@ def test_the_node_catalog() -> None:
         "governance.check", "report.summary", "report.evidence_pack", "branch.if",
         "subworkflow.run",
     }  # fmt: skip
+    expected |= {"model.summary", "evaluate.ppc", "compare.stacking"}  # M5
+    expected |= {"model.score", "plot.render"}  # M5
     assert set(NODE_IMPLEMENTATIONS) == expected
     for impl in NODE_IMPLEMENTATIONS.values():
         assert impl.about.title and impl.params_schema.get("type") == "object", impl.id

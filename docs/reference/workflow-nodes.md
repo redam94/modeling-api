@@ -1026,6 +1026,8 @@ Fits a model again on each fold of a split plan and measures its forecast error 
 | `bind` | object |  |  |
 | `metrics` | array | `["mae", "rmse", "mape", "mase"]` |  |
 | `refit` | boolean | `true` | Fit again on each fold (if false, fit one time and roll forward) |
+| `nodes` | object |  | Tree datasets: the nodes merged into the model input (data.nodes: {name: {path, vars?, prefix?}}). If not given, the node reads the root node |
+| `join` | `exact` \\| `inner` \\| `outer` | `"exact"` | Tree datasets: how the coords of the selected nodes align (data.join) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `metrics` (object), `by_horizon` (object), `n_folds` (integer).
 
@@ -1053,6 +1055,8 @@ Fits a model from the catalog to the data and saves it as a model version. It ca
 | `pipeline` | array |  | Preprocessing steps |
 | `bind` | object |  | Binding to canonical names |
 | `evaluate` | object |  | Evaluation block (metrics) |
+| `nodes` | object |  | Tree datasets: the nodes merged into the model input (data.nodes: {name: {path, vars?, prefix?}}). If not given, the node reads the root node |
+| `join` | `exact` \\| `inner` \\| `outer` | `"exact"` | Tree datasets: how the coords of the selected nodes align (data.join) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `model_version` (string), `metrics` (object), `scorecard` (string).
 
@@ -1079,6 +1083,60 @@ Uses a fitted model version to forecast the future periods. It uses future drive
 | `summary` | array | `["mean", "hdi_90"]` |  |
 
 Result fields (`nodes.<id>.<field>` in conditions): `total` (number).
+
+### `model.score` — Score a model
+
+Uses a fitted model version to predict, simulate, forecast or test a scenario. It gives the predictions as a dataset for the next steps.
+
+*Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
+
+**Use it when:** You want predictions or simulations of a fitted model in the workflow; A plot or a second model must use the predictions.
+
+**Avoid it when:** You only want a forecast with a fan chart (use model.forecast).
+
+**Example:** Simulate 200 graphs from the fitted network model to check its fit.
+
+**Inputs:** `model` (model_version), `data` (dataset, optional).
+
+**Outputs:** `scores` (dataset).
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `mode` | `predict` \\| `simulate` \\| `forecast` \\| `counterfactual` | `"predict"` | The score mode |
+| `request` | object |  | More fields of the score request (horizon, output, select, interventions, seed, future_covariates) |
+| `group` | string |  | The group of the score result to output (default: predictions, else summary) |
+
+Result fields (`nodes.<id>.<field>` in conditions): `mode` (string), `n_vars` (integer), `group` (string), `representation` (string).
+
+??? note "Expert detail"
+    The node runs the score path of a score run (mapi_sdk.harness.score_bundle) with the full representation. 'request' takes the fields of a ScoreRequest (horizon, output, select, interventions, seed, future_covariates).
+
+### `model.summary` — Summarise the parameters
+
+Gives the estimate, the spread and the credible range of each parameter of a fitted Bayesian model, with checks that the sampler converged.
+
+*Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
+
+**Use it when:** You want to branch on a parameter, for example when its range excludes zero; You must stop when the sampler did not converge (R-hat, effective sample size).
+
+**Avoid it when:** Models that give only point estimates (the node needs draws).
+
+**Example:** slope: mean 0.42, 94% range 0.18 to 0.66, R-hat 1.00. The range excludes zero.
+
+**Inputs:** `model` (model_version).
+
+**Outputs:** `table` (table).
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `vars` | array |  | The posterior variables (default: all of them) |
+| `hdi_prob` | number | `0.94` | The probability inside the HDI |
+| `focus` | string |  | One value to give in the result field focus: its name in the table (beta[north]) or only its label (north) |
+
+Result fields (`nodes.<id>.<field>` in conditions): `params` (object), `max_rhat` (number), `min_ess` (number), `n_divergent` (integer), `n_params` (integer), `truncated` (boolean), `focus` (object).
+
+??? note "Expert detail"
+    Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of several dims joined by ', '), at most 200 values; max_rhat and min_ess check all the values (up to 20 000). Read the values with nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no sample_stats. focus names one value (beta[north], or only north when one selected variable has that label), so a condition can read nodes.<id>.focus.excludes_zero when the label comes from a workflow parameter.
 
 ## Evaluation (`evaluate`)
 
@@ -1133,6 +1191,35 @@ Result fields (`nodes.<id>.<field>` in conditions): `mae` (number), `rmse` (numb
 
 ??? note "Expert detail"
     MASE scales by the in-sample seasonal-naive MAE (Hyndman & Koehler 2006); CRPS from draws or quantiles.
+
+### `evaluate.ppc` — Check the predictions against the data
+
+Simulates new data from a fitted Bayesian model and compares it with the observed data. It shows if the model can make data that looks like the real data.
+
+*Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
+
+**Use it when:** After each Bayesian fit, before you trust its ranges; You must stop a workflow when the model does not agree with the data.
+
+**Avoid it when:** Models that give only point estimates or summaries (the node needs draws).
+
+**Example:** 88% of the values are in the 90% range and p = 0.41 for the mean: the check passes.
+
+**Inputs:** `model` (model_version).
+
+**Outputs:** `metrics` (metrics).
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `statistic` | `mean` \\| `sd` \\| `max` \\| `min` | `"mean"` | The statistic of the p-value |
+| `n_draws` | integer | `400` | The number of predictive draws to use |
+| `p_min` | number | `0.025` | The smallest p-value (and 1 - p_min the largest) that passes |
+| `coverage_tolerance` | number | `0.1` | The largest gap between the coverage and its level that passes |
+| `pit_ks_max` | number |  | The largest PIT distance that passes (default: 1.36 / sqrt(n)) |
+
+Result fields (`nodes.<id>.<field>` in conditions): `coverage_50` (number), `coverage_90` (number), `pit_ks` (number), `p_values` (object), `ok` (boolean), `verdict_plain` (string).
+
+??? note "Expert detail"
+    Posterior predictive draws come from the score path (predict, output kind predictive) on the fit data. coverage_p is the share of observations inside the central p interval of their predictive draws; pit_ks is the Kolmogorov-Smirnov distance of the PIT values P(y_rep < y) + 0.5 P(y_rep = y) from uniform, with the limit 1.36 / sqrt(n) unless pit_ks_max is set; the p-value is P(T(y_rep) >= T(y)) for T = statistic. ok needs both coverages within coverage_tolerance of nominal, the p-value in [p_min, 1 - p_min] and pit_ks under its limit.
 
 ### `evaluate.residuals` — Test the model's errors
 
@@ -1211,6 +1298,33 @@ Puts the scores of several models and benchmarks in one table. You can see which
 | `direction` | `min` \\| `max` | `"min"` | Better when |
 
 Result fields (`nodes.<id>.<field>` in conditions): `ranking` (array), `best` (string).
+
+### `compare.stacking` — Weigh models by their predictions
+
+Gives each candidate model a weight from how well it predicts each data point that it did not see. A mix of the models with these weights predicts best.
+
+*Runs in* a sandboxed `workflow_node` run. *Difficulty:* expert. *Typical runtime:* seconds.
+
+**Use it when:** You fitted several Bayesian models of the same data and none is clearly best; You want to average the predictions of the models, not select one of them.
+
+**Avoid it when:** The models used different data (the scores are not comparable).
+
+**Example:** Weights: bym2 0.71, icar 0.29, iid 0.00.
+
+**Inputs:** `candidates` (metrics, several).
+
+**Outputs:** `table` (table).
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `metric` | `elpd_loo` \\| `elpd_waic` | `"elpd_loo"` | The elpd estimate to use |
+| `method` | `stacking` \\| `pseudo_bma_plus` | `"stacking"` | The weights to give |
+| `n_bootstrap` | integer | `1000` | Bootstrap draws for pseudo-BMA+ |
+
+Result fields (`nodes.<id>.<field>` in conditions): `weights` (object), `pseudo_bma` (object), `best` (string), `method` (string), `note_plain` (string).
+
+??? note "Expert detail"
+    Stacking maximises sum_i log sum_k w_k exp(elpd_loo_ik) over the simplex (Yao, Vehtari, Simpson & Gelman 2018), from the pointwise PSIS-LOO values that model.fit stores for data of at most 10 000 points. pseudo_bma (always reported) is pseudo-BMA+: softmax weights averaged over a Bayesian bootstrap of the pointwise elpd. Without pointwise values the weights are pseudo-BMA from elpd ± se (method pseudo_bma_se) or from elpd alone (pseudo_bma), and note_plain says so.
 
 ## Selection (`select`)
 
@@ -1353,7 +1467,7 @@ Writes a short report of the workflow results: the test verdicts, the decisions,
 
 **Example:** Sales wander, so the workflow applied a difference. ARIMAX(2,1,1) was 30% better than seasonal naive.
 
-**Inputs:** `items` (table, several, optional), `tests` (test_result, several, optional), `metrics` (metrics, several, optional), `model` (model_version, optional).
+**Inputs:** `items` (table, several, optional), `tests` (test_result, several, optional), `metrics` (metrics, several, optional), `model` (model_version, optional), `plots` (plot, several, optional).
 
 **Outputs:** `report` (report).
 
@@ -1361,6 +1475,38 @@ Writes a short report of the workflow results: the test verdicts, the decisions,
 |---|---|---|---|
 | `title` | string |  |  |
 | `sections` | array |  | Node ids to include (default: all) |
+
+## Plot (`plot`)
+
+Draws a plot from the plot catalog in the run, for the run view and the report.
+
+### `plot.render` — Draw a plot
+
+Draws a plot from the plot catalog with a model or a dataset of earlier steps. The run shows the plot, and a report can include it.
+
+*Runs in* a sandboxed `workflow_node` run. *Difficulty:* beginner. *Typical runtime:* seconds.
+
+**Use it when:** You want a chart of a model or of predictions in the run and in the report.
+
+**Avoid it when:** The Model Explorer already shows the chart that you need.
+
+**Example:** Draw sci.field_map of the fitted heat plate model.
+
+**Inputs:** `model` (model_version, optional), `data` (dataset, optional).
+
+**Outputs:** `plot` (plot).
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `recipe` | string | **required** | Plot recipe ref (id or id@range), for example core.ppc_fan |
+| `settings` | object |  | The settings of the recipe |
+| `source` | `auto` \\| `data` \\| `model` \\| `predictions` | `"auto"` | Where the recipe reads its data |
+| `title` | string |  | The title of the plot (default: the recipe title) |
+
+Result fields (`nodes.<id>.<field>` in conditions): `recipe` (string), `kind` (string), `source` (string), `bytes` (integer).
+
+??? note "Expert detail"
+    The node renders the recipe with mapi_plots.recipes.render_plots and the sanitizer. With 'source: auto' it tries the dataset, the model bundle and then the in-sample predictions of the model with the observed values.
 
 ## Sub-workflow (`subworkflow`)
 

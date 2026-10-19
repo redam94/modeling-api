@@ -126,3 +126,34 @@ def test_the_summary_carries_the_actuals_next_to_their_predictions() -> None:
     # a plain forecast has none
     _, preq, ptree = _scored(None)
     assert actuals_tables(bundle, preq, None, ptree) == []
+
+
+def test_the_summary_tables_mark_circular_outputs_with_their_period() -> None:
+    """``summary.json`` carries the ``period`` of a circular output summarised on the circle,
+    so a reader knows that an interval with lower > upper crosses the seam."""
+    from mapi_sdk.summarise import summarise
+    from mapi_spec import Representation
+
+    rng = np.random.default_rng(0)
+    north = (rng.normal(0.0, 5.0, (2, 200, 2)) % 360.0).astype(float)
+    pred = xr.Dataset(
+        {
+            "heading": (("chain", "draw", "obs"), north, {"period": 360.0}),
+            "speed": (("chain", "draw", "obs"), north + 1.0),
+        },
+        coords={"obs": ["a", "b"]},
+    )
+    summary = summarise(pred, Representation.DRAWS, ["mean", "hdi_90"], periods={"heading": 360.0})
+    doc = summary_document(xr.DataTree.from_dict({"summary": summary}))
+    assert doc is not None
+    parsed = ScoreSummary.model_validate(doc)
+    tables = {t.variable: t for t in parsed.tables}
+    assert tables["heading"].period == 360.0 and tables["speed"].period is None
+    assert "period" not in parsed.model_dump(mode="json")["tables"][1]  # speed: omitted
+    cols = tables["heading"].columns
+    for row in tables["heading"].rows:
+        cell = dict(zip(cols, row, strict=True))
+        mean, lo, hi = cell["mean"], cell["hdi_90_lower"], cell["hdi_90_upper"]
+        assert isinstance(mean, float) and isinstance(lo, float) and isinstance(hi, float)
+        assert min(mean, 360.0 - mean) < 2.0  # north, not south
+        assert lo > 300.0 and hi < 60.0  # the interval crosses the seam

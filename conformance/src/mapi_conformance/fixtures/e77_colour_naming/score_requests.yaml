@@ -1,0 +1,27 @@
+# E77: a fitted and a new speaker, sampled names, simulated speakers and typed refusals.
+- name: predict_new_speaker
+  request: {mode: predict, output: {summary: [mean, q5, q95], draws: 5}}
+  payload: new_speaker
+  expect:
+    groups: [summary, draws]
+    vars: [p_name, p_term, mode_term_rgb, p_top, k_eff_speaker, k_eff_language]
+    sizes: {speaker: 2, rgb: 3, stat: 3}
+- name: predictive_names
+  request: {mode: predict, output: {kind: predictive}}
+  payload: new_speaker
+  expect: {vars: [p_name], sizes: {speaker: 2}}
+- name: simulate_speakers
+  request: {mode: simulate, output: {kind: predictive}}
+  payload: fit_data
+  expect: {vars: [p_name, p_term]}
+- name: chips_off_the_palette
+  request: {mode: predict}
+  payload: new_chips
+  expect_error: UNSEEN_LEVELS
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: chip, periods: 2}}
+  expect_error: MODE_NOT_SUPPORTED
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: cie_a, multiply: 1.1}]}
+  payload: fit_data
+  expect_error: MODE_NOT_SUPPORTED

@@ -20,7 +20,9 @@ Outputs (:func:`output_files`): every dataset output port is written as
 ``out/<port>/data.zarr.zip`` with ``schema.json``, ``summary.json`` (coordinate summaries,
 as an ingest writes them) and ``meta.json`` (the replayable pipeline that derives it from
 its root input); JSON outputs are inlined in ``node_result.json`` up to
-:data:`MAX_INLINE_OUTPUT` bytes, else written as ``out/<port>.json``. Model versions cannot
+:data:`MAX_INLINE_OUTPUT` bytes (plots: :data:`MAX_INLINE_PLOT`, while the sidecar stays
+under :data:`~mapi_spec.workflow.NODE_RESULT_MAX_BYTES`), else written as
+``out/<port>.json``. Model versions cannot
 come out of a ``workflow_node`` run: nodes that make one (``model.fit``) run as ``fit`` runs.
 
 Driver context the control plane resolved travels in reserved, underscore-prefixed
@@ -42,6 +44,7 @@ from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.governance import GovernancePolicy
 from mapi_spec.workflow import (
+    NODE_RESULT_MAX_BYTES,
     WORKFLOW_RUN_INPUT_PREFIX,
     NodeOutputRef,
     NodeResultSidecar,
@@ -63,6 +66,7 @@ from pydantic import JsonValue, ValidationError
 
 __all__ = [
     "MAX_INLINE_OUTPUT",
+    "MAX_INLINE_PLOT",
     "OUTPUT_PREFIX",
     "OutputFile",
     "execute_job",
@@ -72,6 +76,9 @@ __all__ = [
 ]
 
 MAX_INLINE_OUTPUT: Final = 64 * 1024
+MAX_INLINE_PLOT: Final = 256 * 1024
+"""A plot output is inlined up to this size (and while the sidecar fits its cap)."""
+_SIDECAR_RESERVE: Final = 16 * 1024
 OUTPUT_PREFIX: Final = "out/"
 _MODEL_SUFFIXES: Final = (".manifest", ".data")
 
@@ -183,6 +190,11 @@ def output_files(
     files: list[OutputFile] = []
     outputs: dict[str, NodeOutputRef] = {}
     deferred: list[str] = []
+    room = (
+        NODE_RESULT_MAX_BYTES
+        - _SIDECAR_RESERVE
+        - len(json.dumps(outcome.result, separators=(",", ":"), default=str).encode())
+    )
     for port, value in outcome.outputs.items():
         want = impl.outputs.get(port)
         if want is None:
@@ -199,8 +211,10 @@ def output_files(
         body = json.dumps(
             value, sort_keys=True, separators=(",", ":"), allow_nan=False, default=str
         ).encode()
-        if len(body) <= MAX_INLINE_OUTPUT:
+        cap = MAX_INLINE_PLOT if want is PortType.PLOT else MAX_INLINE_OUTPUT
+        if len(body) <= min(cap, room):
             outputs[port] = NodeOutputRef(type=want, inline=json.loads(body))
+            room -= len(body)
         else:
             name = f"{OUTPUT_PREFIX}{port}.json"
             files.append(OutputFile(name, body))

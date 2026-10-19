@@ -66,6 +66,7 @@ import numpy as np
 import xarray as xr
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.registry import Registry
+from mapi_spec.errors import MapiError
 from mapi_spec.governance import (
     GOVERNANCE_CHECKS,
     GOVERNANCE_OUTPUT,
@@ -1663,6 +1664,48 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
 _DYNAMIC_FAMILIES: Final = frozenset({"forecast", "ts_multivariate", "regime"})
 
 
+def _predictive_draws(env: GovernanceEnv, y: str) -> xr.DataArray | None:
+    """The model's own predictive draws of ``y`` (dims ``sample`` + the data's dims), or
+    ``None`` when it gives none.
+
+    A Bayesian model simulates new data in its own way (counts, ties, censored values), so
+    the recovery check uses these draws when it can. Each sample comes from one posterior
+    draw with the model's own noise (``predict`` with ``kind: predictive``). ``predict`` keeps
+    the latent values of that draw: a ``simulate`` mode can draw new latent effects (a new map
+    of area effects), and then the known values of those effects are not in the posterior.
+    """
+    if env.kind != "bayesian":
+        return None
+    if "predict" not in env.bundle.model.manifest.capabilities.score_modes:
+        return None
+    try:
+        preds = predict(
+            env.bundle,
+            env.data,
+            env.registry,
+            kind="predictive",
+            side_tables=env.side_tables,
+            seed=env.seed,
+            tree=env.tree,
+        )
+    except MapiError as exc:
+        env.log(f"recovery.simulated: no predictive draws ({exc}); using residuals")
+        return None
+    p = next((q for q in preds if q.target == y), None)
+    if p is None or p.draws is None or "sample" not in p.draws.dims:
+        return None
+    if p.draws.attrs.get("kind") == "expected":
+        return None
+    dims = tuple(str(d) for d in env.data[y].dims)
+    if set(p.draws.dims) != {"sample", *dims}:
+        return None
+    return p.draws.transpose("sample", *dims)
+
+
+def _is_count(da: xr.DataArray) -> bool:
+    return bool(np.issubdtype(da.dtype, np.integer) or np.issubdtype(da.dtype, np.bool_))
+
+
 def _recovery(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if not env.targets:
         return _skip(check, "the model has no target to simulate")
@@ -1685,39 +1728,87 @@ def _recovery(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     n_sims = min(_pint(check.params, "n_sims", 20), env.refitter.remaining)
     if n_sims < 3:
         return _error(check, "the refit budget has space for fewer than 3 simulations")
-    p = _first(env.predictions(), env.targets[0])
     y = env.targets[0]
-    t = env.time_dim
-    resid = np.asarray(p.resid.values, dtype=float)
-    point = np.asarray(p.point.values, dtype=float)
     rng = env.rng(check.check)
+    observed = env.data[y]
+    draws = _predictive_draws(env, y)
+    simulate: Callable[[], tuple[np.ndarray, int | None]]
+    if draws is not None:
+        n_samples = int(draws.sizes["sample"])
+        missing = ~np.isfinite(np.asarray(observed.values, dtype=float))
+
+        def simulate() -> tuple[np.ndarray, int | None]:
+            k = int(rng.integers(n_samples))
+            sim = np.asarray(draws.isel(sample=k).values, dtype=float)
+            return np.where(missing, np.nan, sim), k
+
+        how = (
+            "y drawn from the posterior predictive of the model (one posterior draw for each "
+            "simulation, with the model's own noise); coverage of 90% intervals of "
+            f"{len(truth)} key parameters at the values of that draw"
+        )
+    else:
+        if _is_count(observed):
+            return _skip(
+                check,
+                f"{y} holds whole numbers (counts or yes/no values) and the model gives no "
+                "predictive draws of it. The fitted values plus residuals are not whole "
+                "numbers, so the check cannot simulate data that the model can fit",
+            )
+        p = _first(env.predictions(), y)
+        t = env.time_dim
+        resid = np.asarray(p.resid.values, dtype=float)
+        point = np.asarray(p.point.values, dtype=float)
+        axis = p.observed.get_axis_num(t) if t and t in p.observed.dims else 0
+        n = resid.shape[axis] if resid.ndim else 1
+        block = max(1, n // 20) if t else 1
+
+        def simulate() -> tuple[np.ndarray, int | None]:
+            idx = np.concatenate(
+                [
+                    np.arange(s, min(s + block, n))
+                    for s in rng.integers(0, max(1, n - block + 1), size=n // block + 1)
+                ]
+            )[:n]
+            noise = np.take(np.nan_to_num(resid), idx, axis=axis)
+            return np.where(np.isfinite(point), point + noise, np.nan), None
+
+        how = (
+            "y = E[y] + block-bootstrapped residuals; coverage of 90% intervals of "
+            f"{len(truth)} key parameters at the fitted values"
+        )
     spec = env.refitter.spec(split=None)
     hits: dict[str, list[bool]] = {e.name: [] for e in truth}
-    axis = p.observed.get_axis_num(t) if t and t in p.observed.dims else 0
-    n = resid.shape[axis] if resid.ndim else 1
-    block = max(1, n // 20) if t else 1
+    failed: list[str] = []
     for _i in range(n_sims):
-        idx = np.concatenate(
-            [
-                np.arange(s, min(s + block, n))
-                for s in rng.integers(0, max(1, n - block + 1), size=n // block + 1)
-            ]
-        )[:n]
-        noise = np.take(np.nan_to_num(resid), idx, axis=axis)
-        sim = np.where(np.isfinite(point), point + noise, np.nan)
-        data = env.data.assign({y: env.data[y].copy(data=sim.astype(env.data[y].dtype))})
+        sim, k = simulate()
+        data = env.data.assign({y: observed.copy(data=sim.astype(observed.dtype))})
         try:
             b = env.refitter.fit(data, spec)
         except BudgetExhausted:
             break
+        except MapiError as exc:  # one simulated dataset the model cannot fit
+            failed.append(f"{type(exc).__name__}: {str(exc)[:500]}")
+            env.log(f"recovery.simulated: a simulated refit failed: {exc}")
+            continue
         got = {e.name: e for _v, _c, e in _estimates(b)}
         for e0 in truth:
             e = got.get(e0.name)
             if e is None or e.lower is None or e.upper is None:
                 continue
-            hits[e0.name].append(e.lower <= e0.estimate <= e.upper)
+            known = e0.estimate
+            if k is not None and e0.draws is not None and e0.draws.size == n_samples:
+                known = float(e0.draws[k])
+            hits[e0.name].append(e.lower <= known <= e.upper)
     total = sum(len(v) for v in hits.values())
     if total == 0:
+        if failed:
+            return _error(
+                check,
+                f"the model could not fit the simulated data ({len(failed)} of "
+                f"{len(failed)} fits failed).",
+                failed[0],
+            )
         return _error(check, "no simulated refit gave parameter intervals")
     coverage = sum(sum(v) for v in hits.values()) / total
     per = {nm: round(sum(v) / len(v), 4) for nm, v in hits.items() if v}
@@ -1728,6 +1819,8 @@ def _recovery(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         ),
         _metric("simulations", float(sims)),
     ]
+    if failed:
+        ev.append(_metric("failed_simulations", float(len(failed))))
     status = check_status(check.check, coverage, check.thresholds)
     if status is CheckStatus.PASS:
         msg = (
@@ -1749,13 +1842,13 @@ def _recovery(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             else "The model is not confident enough. The priors are possibly too wide, or "
             "the model is too flexible."
         )
+    if failed:
+        msg += f" The model could not fit {len(failed)} of the simulated datasets."
     return result(
         check,
         coverage,
         msg,
-        expert=f"Parametric bootstrap (SBC-lite): {sims} simulations of y = E[y] + block-"
-        f"bootstrapped residuals; coverage of 90% intervals of {len(truth)} key parameters at "
-        "the fitted values.",
+        expert=f"Parametric bootstrap (SBC-lite): {sims} simulations of {how}.",
         action=action,
         evidence=ev,
     )

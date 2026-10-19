@@ -33,7 +33,7 @@ ports, parameters and result fields.
 
 ## Start from the gallery
 
-The gallery has four templates. Each template has an About card in plain language
+The gallery has ten templates. Each template has an About card in plain language
 (`GET /v1/workflow-templates`):
 
 | Template | Select it when |
@@ -42,6 +42,12 @@ The gallery has four templates. Each template has an About card in plain languag
 | `var_vecm_cointegration` | Some series move together (for example sales, price and distribution). You want to know if they have a long-run relation before you select a VECM or a VAR. |
 | `mmm_governed` | You need a marketing mix model that must pass the governance policy before a person uses it. |
 | `forecast_bakeoff` | You do not know which forecast model is correct for the data. SARIMAX, ETS, Theta and a smooth trend compete on the same folds. |
+| `sci_spatial_ladder` | You have counts of a disease for each area of a map. You want to know if the areas share their risk with their neighbours, and if the effect of a covariate stays clear in the best model. |
+| `sci_network_ladder` | You have the ties of a network and traits of its nodes. You want to know if the shared traits explain the ties, or if the activity of each node and a hidden map also help. |
+| `sci_phylo_signal` | You compare a trait across species that a tree relates. You want to know if an effect stays clear when the model includes the tree. |
+| `sci_calibrate_then_design` | You measured a heated plate in some calibration runs. You want to predict the temperature field of a new heater layout, but only if the calibration predicts a run that it did not see. |
+| `bayes_workflow_audit` | You have a Bayesian model and you want the checks of a careful Bayesian workflow in one run: the priors, convergence, the posterior predictive check, prior sensitivity and recovery of known values. |
+| `sci_image_model_check` | Your model predicts an image. You want to see where on the image the model goes wrong, and if the predicted images look like the observed image. |
 
 When you make a workflow from a template, the server copies the template document into your
 project as revision 1. After that, the workflow is yours and you can edit it.
@@ -500,6 +506,171 @@ notice. You can also use `@latest`. If a workflow runs itself, directly or throu
 different workflow, it fails with `WORKFLOW_INVALID`. Sub-workflows can go a maximum of 8
 levels deep.
 
+### Check and weigh Bayesian models
+
+```yaml
+# fit_a and fit_b are model.fit nodes of two model variants on the same data, each with
+#   evaluate: {metrics: [elpd_loo]}
+- {id: weights, use: compare.stacking, inputs: {candidates: [fit_a.metrics, fit_b.metrics]}}
+- {id: s, use: model.summary, inputs: {model: fit_b.model},
+   with: {vars: [beta, sigma], hdi_prob: 0.9}}
+- {id: ppc, use: evaluate.ppc, inputs: {model: fit_b.model},
+   with: {statistic: sd, n_draws: 400}}
+- {id: robust, use: branch.if,
+   with: {condition: "nodes.s.params['beta[0]'].hdi_low > 0 and nodes.s.max_rhat < 1.01 and nodes.ppc.ok"}}
+- {id: report, use: report.summary, when: robust.then,
+   inputs: {items: [weights.table, s.table], metrics: [ppc.metrics]}}
+```
+
+These three nodes need a Bayesian model, that is a model that gives draws. For a model
+that gives only point estimates, they fail with `CAPABILITY_UNSUPPORTED`.
+
+**`model.summary`** gives the mean, the sd, the HDI bounds (`hdi_low`, `hdi_high`), R-hat
+and the bulk effective sample size (`ess_bulk`) of each parameter in `vars`. If `vars` is
+empty, it uses all the parameters. The node gives each element of a vector parameter as a
+separate entry, with the labels of its dimensions in brackets (`beta[north]`, or
+`gamma[north, 2024]` for two dimensions). Conditions read an entry with brackets and quotes:
+`nodes.s.params['beta[north]'].hdi_low`. A scalar parameter also has a short form:
+`nodes.s.params.sigma.mean`. The result also gives `max_rhat`, `min_ess` and `n_divergent`
+(`null` if the model does not record divergences). Thus you can stop a workflow when the
+sampler did not converge. The node gives a maximum of 200 entries. If there are more, it
+sets `truncated` and shows a warning. `max_rhat` and `min_ess` always check all the values
+of the variables in `vars` (a maximum of 20 000), also the values that the table does not
+keep. Above 20 000 values, the node shows a warning.
+
+A condition cannot build the name of an entry from a parameter. To branch on a value that a
+parameter names, set `focus` to the name of the entry (`beta[north]`) or only to its label
+(`north`). The label must belong to only one variable in `vars`. The result field `focus`
+then gives the `name`, `mean`, `sd`, `hdi_low` and `hdi_high` of that value. It also gives
+`p_positive` (the share of draws above zero) and `excludes_zero` (true if the HDI does not
+include zero). A condition reads it as `nodes.s.focus.excludes_zero`. The
+[`sci_phylo_signal` recipe](workflow-cookbook.md#trait-regression-across-species) uses it.
+
+**`evaluate.ppc`** simulates new data from the model on its fit data (the `predict` score
+mode with predictive draws) and compares the simulated data with the observed target:
+
+| Result | Meaning |
+|---|---|
+| `coverage_50`, `coverage_90` | The share of observed values in the central 50% and 90% range of their simulated values |
+| `pit_ks` | The distance between the PIT values and a uniform distribution (0 is best) |
+| `p_values` | For each target, P(T(simulated) ≥ T(observed)) for the statistic T in `statistic` (`mean`, `sd`, `max` or `min`) |
+| `ok` | True if each coverage is in `coverage_tolerance` (0.1) of its level, the p-value is between `p_min` and `1 - p_min` (0.025), and `pit_ks` is less than `pit_ks_max` (default 1.36 / √n) |
+
+The check uses the data that the model learned from. Thus a model that is too flexible can
+pass. Use a holdout and `evaluate.metrics` to measure the accuracy on new data. The
+`metrics` output contains the coverages, `pit_ks` and `ppc_p_<statistic>`, so
+`compare.models` can compare them.
+
+**`compare.stacking`** gives each candidate a weight. A mix of the candidates with these
+weights gives the best leave-one-out predictions (stacking, Yao and others 2018). Each
+candidate must come from a `model.fit` node with `evaluate: {metrics: [elpd_loo]}` (or
+`elpd_waic` with `metric: elpd_waic`). That fit keeps the elpd value of each data point
+(for a maximum of 10 000 points). The result gives `weights` (they add up to 1), `best` (the
+candidate with the largest weight) and `pseudo_bma` (the pseudo-BMA+ weights from a
+Bayesian bootstrap). Set `method: pseudo_bma_plus` to use the pseudo-BMA+ weights as
+`weights`. If a candidate has no values for each point (more than 10 000 points), or the
+candidates have different numbers of points, the node cannot do stacking. Then it gives
+pseudo-BMA weights from elpd and its standard error, `method` is `pseudo_bma_se`, and
+`note_plain` and a warning tell you why. All candidates must use the same data points in the
+same order. The node cannot find a difference in order.
+
+### Score a model and draw plots
+
+```yaml
+- id: sims
+  use: model.score
+  inputs: {model: fit0.model}
+  with: {mode: predict}             # predict, simulate, forecast or counterfactual
+- id: fan
+  use: plot.render
+  label: Fit and forecast
+  inputs: {data: sims.scores}
+  with: {recipe: core.ppc_fan, settings: {levels: [0.5, 0.9]}}
+- id: fitted
+  use: plot.render
+  inputs: {model: fit0.model}
+  with: {recipe: core.fit_vs_actual, source: predictions}
+- id: fc
+  use: model.forecast
+  inputs: {model: fit0.model}
+  with: {horizon: 8}
+- id: report
+  use: report.summary
+  inputs: {tests: [adf.result], plots: [fan.plot, fitted.plot, fc.plot]}
+```
+
+`model.score` runs a score mode of the model, the same as a score run. `request` gives the
+other fields of the score request (`horizon`, `output`, `select`, `interventions`, `seed`,
+`future_covariates`). Without `data`, the node scores the fit data. For a forecast, `data`
+gives the future drivers, and the default horizon is 12 periods. The `scores` output is a
+dataset: the draws if the model gives draws, else the `summary` (statistics along a `stat`
+dimension). To get a different group of the score result, set `group` (for example
+`predictions`). Result fields: `mode`, `n_vars`, `group` and `representation`. If the model
+cannot do the mode, the node fails with `CAPABILITY_UNSUPPORTED`.
+
+`plot.render` draws a recipe of the [plot catalog](../reference/plots.md). Put the id in
+`recipe` (`core.ppc_fan` or `core.ppc_fan@^1`), and the settings of the recipe in `settings`.
+All recipe ids of the catalog work, plugin recipes too. The node needs a `model` or a `data`
+input, or both. With `source: auto` (the default), it tries these inputs in this sequence:
+
+1. The dataset on `data` (for example the `scores` of `model.score`).
+2. The bundle of the model on `model` (posterior draws, observed data).
+3. The in-sample predictions of the model, with the observed target as `observed_data`.
+
+Set `source` to `data`, `model` or `predictions` to use only one of them. The result fields
+are `recipe` (the id and version that drew the plot), `kind` (`vega-lite` or `plotly`),
+`source` and `bytes`. If no input has the data that the recipe needs, the node fails with
+`SCHEMA_INVALID`, and the reason of each input is in the error. The validation of the
+workflow finds an unknown recipe id (`REF_UNRESOLVED` on `/nodes/<i>/with/recipe`). The
+recipe checks its `settings` only when the node runs. A plot that is larger than 1 MiB fails with `PAYLOAD_TOO_LARGE`: use
+fewer draws, panels or frames in the settings of the recipe.
+
+`model.forecast` also draws its fan chart (`core.ppc_fan`) on its `plot` output.
+`evaluate.residuals` draws the errors over time (`core.residuals_over_time`). If these plots
+cannot be drawn, the node gives a warning and has no `plot` output. Its other outputs do not
+change.
+
+`report.summary` adds a `plot` section for each plot on its `plots` port. The section
+contains the plot (`plot`) and its caption (`text`). Only the JSON report and the web run
+view show these sections. The HTML report does not show them. A plot that is larger than 256 KB, or
+plots after the first 1 MiB of plots, stay in the node output. Then the section tells which
+node has the plot. The run view in the web app shows the plots of the nodes and of the
+report.
+
+A plot output is a `PlotSpec` document with its datasets in the document (`inline_arrow`).
+The sandbox puts a plot of up to 256 KB in the node result. It writes a larger plot to
+`out/<port>.json`, and the server reads it back (up to `MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES`).
+The server puts each plot output through the plot sanitizer before it keeps it, and again
+each time it sends it. A plot that the sanitizer refuses fails its node with `PLOT_UNSAFE`.
+
+### Tree datasets
+
+A workflow input can be a tree dataset (a dataset version with groups, or an `xr.DataTree`
+in the local runner). `model.fit` and `model.backtest` take `nodes` and `join`, as a spec's
+`data` block does:
+
+```yaml
+- id: fit
+  use: model.fit
+  inputs: {data: inputs.data}
+  with:
+    model: toy.tree_linear@^1
+    nodes: {sales: {path: /sales}, media: {path: /media}}
+    join: inner                       # exact (default), inner or outer
+```
+
+The model reads the merged variables of the selected nodes. A tree-input model also gets the
+whole tree. `model.score`, `model.forecast` and `plot.render` (`source: predictions`) select
+the same nodes from a tree on their `data` input, and give a tree-input model the tree of that
+input, not the tree of its fit. With `source: data`, `plot.render` reads all the groups of a
+tree input (for example `geometry` for `sci.area_map` or `tree` for `sci.phylogeny`).
+
+Limits:
+
+- A backtest of a tree dataset gives the full tree to each fold. A tree-input model that
+  reads its target from the tree can see the test window. The node shows a warning.
+- `search.grid` has no `nodes` parameter.
+
 ### Failures, retries and time limits
 
 ```yaml
@@ -531,7 +702,7 @@ The control plane never decodes your data. Each node implementation declares whe
 | Runs in | Nodes | How |
 |---|---|---|
 | The orchestrator | `branch.if`, `compare.models`, `select.best`, `select.threshold`, `report.summary`, `report.evidence_pack` | Only on the JSON results of upstream nodes, in the API process. There is no child run and no cost. |
-| A sandboxed `workflow_node` run | tests, transforms, splits, order searches, `model.backtest`, `model.forecast`, `evaluate.*`, `compare.diebold_mariano`, `governance.*` | A child run on the same executor and isolation as fits. It reads its inputs through signed URLs that are pinned to a generation. It writes a result. The finalizer does a check of that result. |
+| A sandboxed `workflow_node` run | tests, transforms, splits, order searches, `model.backtest`, `model.forecast`, `model.summary`, `model.score`, `plot.render`, `evaluate.*`, `compare.diebold_mariano`, `compare.stacking`, `governance.*` | A child run on the same executor and isolation as fits. It reads its inputs through signed URLs that are pinned to a generation. It writes a result. The finalizer does a check of that result. |
 | A child `fit` run | `model.fit`, and the winner of `search.grid` (after a `workflow_node` run scored the grid) | A usual fit of a stored spec with the name `wf-<workflow>-<node>`. Thus the model version is a usual model version (scoring, endpoints, approvals). |
 | A child workflow run | `subworkflow.run` | The child workflow, with its own nodes. |
 
@@ -652,8 +823,11 @@ row-level security, as all other data are.
 
 ## Known limitations in v0.5
 
-- The nodes `evaluate.residuals` and `model.forecast` do not make plot outputs yet. They make
-  their tables and results.
+- A backtest of a tree dataset gives the full tree to each fold (see
+  [Tree datasets](#tree-datasets)). `search.grid` has no `nodes` parameter.
+- The HTML report does not show `plot` sections. The JSON report and the web run view show
+  them.
+
 - Detrending, STL adjustment and lag/lead features are not separate nodes. Use
   `transform.steps` with the preprocessing steps of the catalog.
 - In the web editor, each browser keeps the node positions as a view preference. The document

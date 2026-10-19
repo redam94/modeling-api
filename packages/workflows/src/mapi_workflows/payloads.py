@@ -11,7 +11,10 @@ split_plan     ``mapi.split-plan/v1`` the plan, the dim and length it was cut ov
 metrics        ``mapi.metrics/v1``    one candidate per model or benchmark: averages, per
                                      horizon, per fold, and the model ref it came from
 table          ``mapi.table/v1``      columns and rows (search grids, comparisons)
-report         ``mapi.report/v1``     a plain-language report: summary and sections
+report         ``mapi.report/v1``     a plain-language report: summary and sections (a
+                                     ``plot`` section carries a plot payload)
+plot           (PlotSpec)            :class:`mapi_spec.plots.PlotSpec` JSON: ``kind``,
+                                     ``spec`` and ``inline_arrow`` datasets
 evidence       ``mapi.evidence/v1``   governance :class:`~mapi_spec.governance.CheckResult` s
 =============  ====================  ===================================================
 
@@ -34,6 +37,7 @@ __all__ = [
     "REPORT_FORMAT",
     "SPLIT_PLAN_FORMAT",
     "TABLE_FORMAT",
+    "ElpdPayload",
     "EvidencePayload",
     "MetricsCandidate",
     "MetricsPayload",
@@ -67,6 +71,18 @@ def clean_number(value: object) -> float | None:
     return f if math.isfinite(f) else None
 
 
+class ElpdPayload(_Payload):
+    """M5: an elpd estimate of a fitted model (``elpd_loo`` or ``elpd_waic``): the value, its
+    standard error, the effective number of parameters and, for data of at most 10 000
+    points, the pointwise values (``compare.stacking`` uses them)."""
+
+    elpd: float
+    se: float | None = None
+    p: float | None = None
+    n: int = 0
+    pointwise: list[float] | None = None
+
+
 class MetricsCandidate(_Payload):
     """The scores of one model or benchmark on a set of test periods.
 
@@ -89,6 +105,9 @@ class MetricsCandidate(_Payload):
     )
     origins: list[int | None] | None = Field(
         None, description="Per fold, the position of its first test period (fold spacing)"
+    )
+    elpd: dict[str, ElpdPayload] | None = Field(
+        None, description="M5: elpd estimates by metric name, with pointwise values"
     )
 
     @property
@@ -113,12 +132,21 @@ class TablePayload(_Payload):
 
 
 class ReportSection(_Payload):
+    """One section of a report. ``kind`` is ``text``, ``test``, ``decision``, ``table``,
+    ``metrics``, ``plot``, ``selection``, ``search``, ``skipped``, ``failed`` or ``model``
+    (evidence packs add ``evidence``, ``lineage`` and ``scorecard``)."""
+
     title: str
     node_id: str | None = None
     kind: str = "text"
     status: str | None = None
     text: str = ""
     table: TablePayload | None = None
+    plot: dict[str, JsonValue] | None = Field(
+        None,
+        description="A plot section's PlotSpec JSON (None when it is too large to embed: "
+        "the node output has it)",
+    )
 
 
 class ReportPayload(_Payload):

@@ -269,3 +269,15 @@ def test_long_layout_index_variables_follow_the_canonical_order() -> None:
     assert list(labels) == ["c", "new", "a", "c"]
     assert canon["county_idx"].dtype == np.int64
     assert list(plan.dims["county"].new) == ["new"]
+
+
+def test_entry_fit_end_has_no_last_text_label() -> None:
+    from mapi_sdk.actuals import entry_fit_end
+
+    coords = {
+        "raw": xr.Dataset(coords={"img": ["a", "c", "b"], "t": [3, 1, 2], "e": np.array([], int)})
+    }
+    assert entry_fit_end(coords, "raw", "img") is None
+    assert entry_fit_end(coords, "raw", "t") == 3
+    assert entry_fit_end(coords, "raw", "e") is None
+    assert entry_fit_end(coords, "raw", "missing") is None

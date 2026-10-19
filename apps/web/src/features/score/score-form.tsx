@@ -1,8 +1,9 @@
 /**
  * The score request, as guided steps: what to do (the modes the version supports, in plain
  * words), how far (a forecast's periods), the values to score - typed into a grid built from
- * the model's inputs (`GET …/inputs`), a dataset, or nothing new - and what-if changes. The
- * rarely changed settings (entry stage, side tables, output, seed) sit under Advanced.
+ * the model's inputs (`GET …/inputs`), a dataset, or nothing new (only where the server accepts
+ * a request without data: see `noDataRule`) - and what-if changes. The rarely changed settings
+ * (entry stage, side tables, output, seed) sit under Advanced.
  */
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Gauge, Plus, Trash2, TriangleAlert } from "lucide-react";
@@ -20,7 +21,9 @@ import { cn } from "@/lib/utils";
 import { freqUnit, gridColumns, gridToInline, inputVars, plural, seedRows, summarize, targets } from "./inputs";
 import {
   buildScoreRequest,
+  DATASET_ONLY,
   defaultScoreForm,
+  noDataRule,
   asRepresentation,
   REPRESENTATIONS,
   SUMMARY_OPTIONS,
@@ -38,9 +41,6 @@ const ALL_MODES: ScoreMode[] = ["predict", "forecast", "counterfactual", "simula
 
 /** Problems in fields under Advanced (it opens to show them). */
 const ADVANCED_FIELDS = /^(inputsStage|scenario|sideTables\.|summary|draws|vars|seed)/;
-
-/** Modes that read a dataset only (the server refuses inline data for them). */
-const DATASET_ONLY: ScoreMode[] = ["filter", "evaluate"];
 
 const FUTURE_OPTIONS: { value: FutureCovariates; label: string; hint: string }[] = [
   { value: "carry_last", label: "Repeat the last value", hint: "A blank future value gets the latest value of its series." },
@@ -168,13 +168,15 @@ export function ScoreFormView({
     if (hdim) setForm((f) => ({ ...f, horizonDim: hdim }));
   }, [hdim]);
 
-  // Typed values need the inputs; dataset-only modes need a dataset.
+  // Typed values need the inputs; dataset-only modes need a dataset. "No new data" only where
+  // the server accepts a request without data (a forecast, or a scenario dataset).
   const canType = Boolean(inputs?.input_table?.columns?.length) && !DATASET_ONLY.includes(form.mode) && form.inputsStage === (inputs?.snapshot.inputs_stage ?? "raw");
+  const noData = noDataRule(form.mode, modes, form.scenario);
   useEffect(() => {
     // Fall back once the inputs are known (or failed to load).
-    if (form.source === "typed" && !canType && (inputs !== null || inputsError)) setForm((f) => ({ ...f, source: DATASET_ONLY.includes(f.mode) ? "dataset" : f.mode === "forecast" ? "none" : "dataset" }));
-    if (form.source === "none" && DATASET_ONLY.includes(form.mode)) setForm((f) => ({ ...f, source: "dataset" }));
-  }, [canType, form.source, form.mode, inputs, inputsError]);
+    if (form.source === "typed" && !canType && (inputs !== null || inputsError)) setForm((f) => ({ ...f, source: noData.ok ? "none" : "dataset" }));
+    if (form.source === "none" && !noData.ok) setForm((f) => ({ ...f, source: canType ? "typed" : "dataset" }));
+  }, [canType, noData.ok, form.source, inputs, inputsError]);
 
   // The grid: seeded from the inputs for the mode and periods until the user edits it.
   const columns = useMemo(() => (inputs ? gridColumns(inputs, form.mode) : []), [inputs, form.mode]);
@@ -211,11 +213,11 @@ export function ScoreFormView({
     if (form.source === "typed") {
       if (summary.filled) notes.push({ ok: true, text: `${summary.filled} typed value${summary.filled === 1 ? "" : "s"} over ${plural(summary.rows, "row")}` });
       else if (form.mode === "forecast") notes.push({ ok: true, text: "No values are typed. The forecast fills in future inputs as you select below." });
-      else notes.push({ ok: false, text: "No values are typed. Type one or more values, or score without new data." });
+      else notes.push({ ok: false, text: noData.ok ? "No values are typed. Type one or more values, or score without new data." : "No values are typed. Type one or more values, or use a dataset." });
     } else if (form.source === "dataset") {
       notes.push(form.data.trim() ? { ok: true, text: `Data from ${form.data.trim()}` } : { ok: false, text: "No dataset is selected. Select a dataset." });
     } else {
-      notes.push({ ok: true, text: form.mode === "forecast" ? "No new data: the model forecasts from the end of the fit" : "No new data: the model scores in-sample" });
+      notes.push({ ok: true, text: form.mode === "forecast" ? "No new data: the model forecasts from the end of the fit" : `No new data: the model scores the scenario dataset ${form.scenario.trim()}` });
     }
     if (form.mode === "forecast" && futureVars.length && form.futureCovariates === "supplied") {
       const missing = form.source === "typed" ? futureVars.filter((v) => summary.emptyColumns.includes(v) || summary.partialDrivers.includes(v)) : form.source === "none" ? futureVars : [];
@@ -233,7 +235,7 @@ export function ScoreFormView({
       try {
         const data = gridToInline(columns, rows, hdim);
         if (data) inline = { data: data };
-        else if (form.mode !== "forecast") extra.push({ field: "values", message: "No values are typed. Type one or more values, or select “No new data”." });
+        else if (form.mode !== "forecast") extra.push({ field: "values", message: noData.ok ? "No values are typed. Type one or more values, or select “No new data”." : "No values are typed. Type one or more values, or use a dataset." });
       } catch (e) {
         extra.push({ field: "values", message: e instanceof Error ? e.message : String(e) });
       }
@@ -342,10 +344,15 @@ export function ScoreFormView({
           options={[
             ...(canType ? [{ value: "typed" as const, label: "Type values", title: "Type the values here. You do not have to upload a file." }] : []),
             { value: "dataset" as const, label: "Use a dataset", title: "Use a dataset that you uploaded in Datasets." },
-            ...(!DATASET_ONLY.includes(form.mode) ? [{ value: "none" as const, label: "No new data", title: form.mode === "forecast" ? "Forecast from the end of the fit." : "Score the fitted data." }] : []),
+            ...(noData.ok ? [{ value: "none" as const, label: "No new data", title: form.mode === "forecast" ? "Forecast from the end of the fit." : "Score the scenario dataset." }] : []),
           ]}
           className="w-fit"
         />
+        {!noData.ok && !DATASET_ONLY.includes(form.mode) ? (
+          <p className="text-xs text-muted-foreground" data-testid="no-data-reason">
+            {noData.reason}
+          </p>
+        ) : null}
         {inputsMissing ? (
           <p className="text-xs text-muted-foreground">The platform did not keep the inputs of this version when it was fitted, so you cannot type values. Use a dataset, or fit the model again.</p>
         ) : null}

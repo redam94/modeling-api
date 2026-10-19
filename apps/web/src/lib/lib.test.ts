@@ -211,6 +211,36 @@ describe("score summaries", () => {
     expect(pivotStats(plain)).toBe(plain);
   });
 
+  it("keeps a numeric dim of the view as a key (a grid in cm is not a value)", () => {
+    const grid = {
+      columns: [
+        { name: "stat", type: "Utf8" },
+        { name: "run", type: "Utf8" },
+        { name: "y_cm", type: "Float64" },
+        { name: "x_cm", type: "Float64" },
+        { name: "field", type: "Float64" },
+      ],
+      rows: [
+        { stat: "mean", run: "a", y_cm: 1, x_cm: 1, field: 30 },
+        { stat: "mean", run: "a", y_cm: 1, x_cm: 2, field: 31 },
+        { stat: "sd", run: "a", y_cm: 1, x_cm: 1, field: 0.1 },
+        { stat: "sd", run: "a", y_cm: 1, x_cm: 2, field: 0.2 },
+      ],
+      totalRows: 4,
+      truncated: false,
+      dims: ["stat", "run", "y_cm", "x_cm"],
+    };
+    const out = pivotStats(grid);
+    expect(out.columns.map((c) => c.name)).toEqual(["run", "y_cm", "x_cm", "field_mean", "field_sd"]);
+    expect(out.rows).toEqual([
+      { run: "a", y_cm: 1, x_cm: 1, field_mean: 30, field_sd: 0.1 },
+      { run: "a", y_cm: 1, x_cm: 2, field_mean: 31, field_sd: 0.2 },
+    ]);
+    // without the metadata, a numeric column is a value (the old views)
+    const { dims: _dims, ...old } = grid;
+    expect(pivotStats(old).rows).toHaveLength(1);
+  });
+
   it("drops rows a broadcast variable repeats", () => {
     const rows = pivotStats(table).rows;
     expect(distinctOn(rows, ["date", "market", "y_hat_mean", undefined])).toHaveLength(1);

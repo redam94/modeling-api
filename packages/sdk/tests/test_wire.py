@@ -371,6 +371,7 @@ def test_arrow_view_roundtrip_and_limits() -> None:
     assert set(table.column_names) >= {"geo", "time", "y", "label"}
     meta = json.loads(table.schema.metadata[b"mapi.attrs"])
     assert meta["vars"]["y"] == {"units": "EUR"}
+    assert set(json.loads(table.schema.metadata[b"mapi.dims"])) == {"geo", "time"}
     data = wire.write_arrow_ipc(table)
     assert wire.read_arrow_ipc(data).equals(table)
     with pytest.raises(PayloadLimitError):
