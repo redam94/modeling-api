@@ -664,6 +664,25 @@ def _cookbook_cli_lines() -> list[list[str]]:
     return [argv for block in _BASH.findall(page) for argv in _cli_lines(block)]
 
 
+_INDENTED_BASH = re.compile(r"^( *)```bash\n(.*?)^\1```", re.M | re.S)
+
+
+def _tutorial_cli_lines() -> list[list[str]]:
+    pages = sorted((DOCS / "tutorials" / "pymc-challenges").glob("*.md"))
+    pages.append(DOCS / "tutorials" / "complex-workflows.md")
+    lines = []
+    for page in pages:
+        for indent, block in _INDENTED_BASH.findall(page.read_text("utf-8")):
+            text = "\n".join(line[len(indent) :] for line in block.splitlines())
+            text = re.sub(r"<<'?EOF'?.*?^EOF$", "", text, flags=re.M | re.S)
+            lines.extend(_cli_lines(text))
+    return lines
+
+
+def test_every_cli_command_and_option_in_the_science_tutorials_exists() -> None:
+    _check_cli_lines(_tutorial_cli_lines(), minimum=60)
+
+
 def test_every_cli_command_and_option_in_the_walkthrough_exists() -> None:
     _check_cli_lines(_cli_lines(), minimum=25)
 
