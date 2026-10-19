@@ -605,3 +605,94 @@ def test_outputs_with_their_own_units_are_not_inverted(
     assert not bool((pred["y_hat"] == 0.5).all())
     space = json.loads(out.attrs["output_space"])
     assert "share" not in space and "y_hat" in space
+
+
+def test_circular_outputs_are_summarised_on_the_circle(
+    registry: Registry,
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+) -> None:
+    """An output declared ``circular`` (with a ``period`` attr) gets circular score summaries:
+    the summary mean is the circular mean of the draws, intervals wrap into [0, period), and
+    the scenario-minus-baseline difference is wrapped to [-period/2, period/2). An output
+    without a valid period keeps the linear summary with a warning."""
+    from typing import ClassVar
+
+    from mapi_sdk.models import PREDICTIONS, Fitted, ScoreContext
+    from mapi_sdk.testing import toy
+    from mapi_spec.spec import ScoreRequest
+
+    class _Compass(toy.BayesLinearModel):
+        id = "test.compass"
+        outputs: ClassVar[dict[str, Any]] = {
+            **toy.BayesLinearModel.outputs,
+            "heading": {"dims": ["geo", "time"], "units": "deg", "circular": True},
+            "bearing": {"dims": ["geo", "time"], "units": "deg", "circular": True},
+        }
+
+        def score(
+            self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+        ) -> xr.DataTree:
+            node = super().score(fitted, ds, req, ctx)[PREDICTIONS]
+            assert isinstance(node, xr.DataTree)
+            y_hat = node.to_dataset()["y_hat"]
+            heading = ((y_hat * 37.0) % 360.0).assign_attrs(period=360.0)
+            bearing = heading.copy().assign_attrs(period="one turn")  # not a number
+            return xr.DataTree.from_dict(
+                {PREDICTIONS: xr.Dataset({"y_hat": y_hat, "heading": heading, "bearing": bearing})}
+            )
+
+    reg = registry.copy()
+    reg.register_model(_Compass)
+    data, fx = panel
+    bundle = fit_spec(
+        e33_spec(model="test.compass@^1", mode="train_only", metrics="rmse"),
+        data,
+        {"fx": fx},
+        reg,
+        raw_schema=raw_schema,
+    )
+    out = score_bundle(
+        bundle,
+        req(
+            "mode: counterfactual\ninterventions: [{var: spend_local, sel: {channel: tv}, multiply: 1.5}]\n"
+            "output: {summary: [mean, eti_90], names: canonical}\n"
+        ),
+        data.isel(date=slice(-28, None)),
+        registry=reg,
+        return_full=True,
+    )
+    summary = out["summary"].to_dataset()
+    full = out["predictions"].to_dataset()["heading"]
+    base = out["baseline/predictions"].to_dataset()["heading"]
+    k = np.pi / 180.0
+
+    def circ_mean(x: xr.DataArray) -> xr.DataArray:
+        s = np.sin(x * k).mean(("chain", "draw"))
+        c = np.cos(x * k).mean(("chain", "draw"))
+        return xr.apply_ufunc(np.arctan2, s, c) / k
+
+    heading = summary["heading"]
+    assert heading.attrs["circular_period"] == 360.0
+    np.testing.assert_allclose(
+        heading.sel(stat="mean").values, (circ_mean(full) % 360.0).values, atol=1e-6
+    )
+    for stat in ("mean", "eti_90_lower", "eti_90_upper"):
+        v = heading.sel(stat=stat).values
+        assert ((v >= 0) & (v < 360)).all(), stat
+    # the difference of two angles is signed and wrapped: never beyond half a turn
+    delta = out["delta/predictions"].to_dataset()["heading"]
+    assert float(delta.min()) >= -180.0 and float(delta.max()) < 180.0
+    assert float(abs(full - base).max()) > 180.0  # the unwrapped difference would be
+    dsum = out["delta/summary"].to_dataset()["heading"]
+    want = circ_mean((full - base + 180.0) % 360.0 - 180.0)
+    np.testing.assert_allclose(dsum.sel(stat="mean").values, want.values, atol=1e-6)
+    # a circular output without a valid period: linear, with a warning
+    assert "circular_period" not in summary["bearing"].attrs
+    np.testing.assert_allclose(
+        summary["bearing"].sel(stat="mean").values, full.mean(("chain", "draw")).values
+    )
+    issues = json.loads(out.attrs["issues"])
+    assert any("'bearing' is a circular output" in i["message"] for i in issues)
+    assert not any("'heading' is a circular output" in i["message"] for i in issues)

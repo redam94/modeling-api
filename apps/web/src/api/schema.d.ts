@@ -11112,7 +11112,7 @@ export interface components {
         OutputDecl: {
             /**
              * Circular
-             * @description The output is an angle on a circle (a direction, a time of day). The model sets a 'period' attr (one turn, in the output's units) on the scored array; holdout metrics then use the circular mean and wrapped errors
+             * @description The output is an angle on a circle (a direction, a time of day). The model sets a 'period' attr (one turn, in the output's units) on the scored array; holdout metrics then use the circular mean and wrapped errors, and the score summaries of draws use the circular mean and intervals centred on it, wrapped into [0, period)
              * @default false
              */
             circular?: boolean;
@@ -14097,6 +14097,8 @@ export interface components {
          * ScoreSummaryTable
          * @description One output variable's summary as a table: the coordinate columns (one per dim), then
          *     one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
+         *     ``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the
+         *     circle (see the field).
          * @example {
          *       "columns": [
          *         "geo",
@@ -14120,6 +14122,11 @@ export interface components {
         ScoreSummaryTable: {
             /** Columns */
             columns: string[];
+            /**
+             * Period
+             * @description Set for a circular output (an angle that wraps at one turn, in the output's units): the statistics are on the circle. `mean` is the circular mean, the intervals are centred on it, and every value is in [0, period). An interval with lower > upper crosses the seam (from 350 to 10 degrees)
+             */
+            period?: number | null;
             /** Rows */
             rows: (string | number | boolean | null)[][];
             /** Variable */

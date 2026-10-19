@@ -763,6 +763,7 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
         "mean_direction": {
             "dims": [FRAME_DIM],
             "units_of": TARGET,
+            "circular": True,
             "description": "Direction of the mean resultant vector of each frame",
         },
         "resultant_length": {
@@ -1035,7 +1036,10 @@ class CircularRegressionModel(CustomModel[CircularRegressionSettings]):
         }
         fields, field_coords = _field_arrays(s, out)
         for name, (dims, arr) in fields.items():
-            pred[name] = _da(dr(arr, dims), {"kind": "posterior"})
+            attrs: dict[str, Any] = {"kind": "posterior"}
+            if name == "mean_direction":  # an angle: summarised on the circle
+                attrs["period"] = period
+            pred[name] = _da(dr(arr, dims), attrs)
         coords.update(field_coords)
         result = xr.Dataset(pred, coords=coords)
         return xr.DataTree.from_dict({PREDICTIONS: result})

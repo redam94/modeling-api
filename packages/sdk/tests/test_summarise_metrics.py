@@ -378,3 +378,81 @@ def test_circular_metrics_wrap_at_the_seam() -> None:
     assert "draws" in why["mae"]
     _, why = compute_metrics(pred, obs, Representation.DRAWS, ["mae"], period=float("nan"))
     assert "period" in why["mae"]
+
+
+def _seam_draws(centre: float, sd: float, n_obs: int = 1, period: float = 360.0) -> xr.DataArray:
+    rng = np.random.default_rng(1)
+    draws = (centre + rng.normal(0.0, sd, (2, 500, n_obs))) % period
+    return xr.DataArray(draws, dims=("chain", "draw", "obs"), attrs={"period": period})
+
+
+def _gap(a: float, b: float) -> float:
+    return abs((a - b + 180.0) % 360.0 - 180.0)
+
+
+def test_circular_summaries_at_the_seam() -> None:
+    """Draws around north (350..10 degrees): the circular mean is near 0, not 180; the
+    intervals are centred on it, cross the seam (lower > upper) and are as narrow as the
+    spread; a linear summary (no ``periods``) shows the defect this guards."""
+    da = _seam_draws(0.0, 5.0)
+    names = ["mean", "sd", "median", "hdi_90", "eti_90", "q5", "q95"]
+    linear = summarise(xr.Dataset({"d": da}), Representation.DRAWS, names)["d"]
+    assert 100 < linear.sel(stat="mean").item() < 260  # the linear mean points south
+    assert "circular_period" not in linear.attrs
+    out = summarise(xr.Dataset({"d": da}), Representation.DRAWS, names, periods={"d": 360.0})
+    s = out["d"].isel(obs=0)
+    assert out["d"].attrs["circular_period"] == 360.0 and out["d"].attrs["period"] == 360.0
+    vals = {str(k): float(s.sel(stat=k)) for k in s["stat"].values}
+    assert all(0.0 <= v < 360.0 for v in vals.values()), vals
+    assert _gap(vals["mean"], 0.0) < 1.0 and _gap(vals["median"], 0.0) < 1.0
+    assert vals["sd"] == pytest.approx(5.0, rel=0.1)
+    for lo, hi in (("hdi_90_lower", "hdi_90_upper"), ("eti_90_lower", "eti_90_upper")):
+        assert vals[lo] > 300.0 and vals[hi] < 60.0, vals  # crosses the seam
+        width = (vals[hi] - vals[lo]) % 360.0
+        assert width == pytest.approx(2 * 1.645 * 5.0, rel=0.15)
+    assert vals["q5"] == pytest.approx(vals["eti_90_lower"])
+    assert vals["q95"] == pytest.approx(vals["eti_90_upper"])
+
+
+def test_circular_summaries_agree_with_linear_ones_away_from_the_seam() -> None:
+    """Draws around 180 degrees: on the circle and on a line the summaries are the same
+    (to the difference of the circular and the arithmetic mean), in hours too."""
+    da = _seam_draws(180.0, 4.0, n_obs=2)
+    names = ["mean", "hdi_90", "eti_80"]
+    ds = xr.Dataset({"d": da, "other": da})
+    linear = summarise(ds, Representation.DRAWS, names)
+    out = summarise(ds, Representation.DRAWS, names, periods={"d": 360.0})
+    np.testing.assert_allclose(out["d"].values, linear["d"].values, atol=0.3)
+    xr.testing.assert_identical(out["other"], linear["other"])
+    hours = xr.DataArray(np.full((1, 4, 1), 23.5), dims=("chain", "draw", "obs"))
+    hours[0, :2, 0] = 0.5  # 23:30 and 00:30: the mean is midnight, not noon
+    mean = summarise(xr.Dataset({"h": hours}), Representation.DRAWS, ["mean"], periods={"h": 24})
+    assert _gap(mean["h"].sel(stat="mean").item() * 15.0, 0.0) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_signed_circular_summaries_of_a_difference() -> None:
+    """A difference of two angles is wrapped to [-period/2, period/2): a scenario 10 degrees
+    west of a baseline near north gives -10, not 350."""
+    da = (_seam_draws(-10.0, 2.0) + 180.0) % 360.0 - 180.0
+    out = summarise(
+        xr.Dataset({"d": da}),
+        Representation.DRAWS,
+        ["mean", "eti_90"],
+        periods={"d": 360.0},
+        signed=True,
+    )["d"].isel(obs=0)
+    assert float(out.sel(stat="mean")) == pytest.approx(-10.0, abs=0.5)
+    assert -20.0 < float(out.sel(stat="eti_90_lower")) < float(out.sel(stat="eti_90_upper")) < 0
+
+
+def test_circular_periods_ignore_other_representations_and_bad_periods() -> None:
+    """Only draws are summarised on the circle; a model's own quantiles and an invalid
+    period keep the plain summary."""
+    q = xr.DataArray(
+        [[350.0, 0.0, 10.0]], dims=("obs", "quantile"), coords={"quantile": [0.05, 0.5, 0.95]}
+    )
+    got = summarise(xr.Dataset({"d": q}), Representation.QUANTILES, ["median"], periods={"d": 360})
+    assert got["d"].sel(stat="median").item() == 0.0 and "circular_period" not in got["d"].attrs
+    ds = xr.Dataset({"d": _seam_draws(0.0, 5.0)})
+    bad = summarise(ds, Representation.DRAWS, ["mean"], periods={"d": 0.0})
+    xr.testing.assert_identical(bad, summarise(ds, Representation.DRAWS, ["mean"]))
