@@ -5,6 +5,29 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### M5 phase 3 — Workflow recipes for science models
+
+#### Added
+- **`sci_spatial_ladder`** in the workflow gallery. It fits `sci.areal_bym2` with iid, ICAR and
+  BYM2 area effects and compares them by `elpd_loo` and stacking weights. It keeps the best
+  model and gives the range of the covariate effect. When the effect is clear, it fits the best
+  model again with wider and narrower priors. It also does a convergence check, draws a risk
+  map and writes a report.
+- **`sci_network_ladder`** in the workflow gallery. It fits `sci.network_latent_space` with
+  covariates, sociality and a latent space and compares them by `elpd_loo` and stacking
+  weights. It gives the pair effects of the best model, a network plot, simulated networks
+  with their statistics and a report.
+- Two sections in the workflow cookbook, with the documents in
+  `docs/snippets/cookbook_sci_{spatial,network}_ladder.yaml`. A test makes sure that each
+  document is the same as its gallery template, and slow tests run the two documents.
+
+#### Known gaps
+- `governance.check` with `sensitivity.prior` cannot find the prior widths of
+  `sci.areal_bym2` (`intercept_sd`, `slope_sd`, `sigma_scale`), so the check is skipped. The
+  spatial ladder fits the model again with these widths in its place.
+- The graph check of the network ladder plots the statistics of the simulated networks only.
+  The plot does not mark the statistics of the observed network.
+
 ### M5 phase 2 — Science gallery models
 
 #### Added
