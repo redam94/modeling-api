@@ -29,7 +29,7 @@ shows the sections that apply first.
 - Mock datasets for eleven pymc-challenges cases and the E80 lens tree, and screenshots of
   the new sections (`make docs-screenshots-explorers` also records them).
 - Each pymc-challenges tutorial has a step "Explore the data". The guide
-  [Explore a dataset](docs/guides/data-explorer.md#scientific-data) has a new part
+  Explore a dataset (`docs/guides/data-explorer.md`) has a new part
   "Scientific data".
 
 #### Changed
