@@ -120,6 +120,16 @@ milestone releases are tagged on `main`.
 - `ScoreSummaryTable` (`summary.json`) has a new field `period` for a circular output, so that
   a reader knows that the statistics are on the circle.
 - `sci.circular_regression` also declares `mean_direction` circular, with a `period` attr.
+- `governance.check` with `recovery.simulated` gave `error` for `sci.lgcp_grid` and
+  `sci.areal_bym2`, and `skipped` for `sci.network_latent_space`. The check added residuals to
+  the fitted values, so the simulated counts were not whole numbers and the refits failed. Now
+  a Bayesian model with predictive draws simulates each dataset from its posterior predictive
+  (one posterior draw and the noise of the model). The known values are the values of that
+  draw. A count target without predictive draws gives `skipped` with the reason. A simulated
+  dataset that the model cannot fit is counted in the evidence (`failed_simulations`).
+- The governance checks found no predictions for a model whose output has the name of its
+  canonical target when the dataset binds the target to a different name (`tie` bound to
+  `cowork` in `sci.network_latent_space`). They now look for the dataset name too.
 
 #### Known gaps
 - `governance.check` with `sensitivity.prior` cannot find the prior widths of
@@ -131,7 +141,6 @@ milestone releases are tagged on `main`.
   the sensor dim, the observed data is on the grid). Some science models (for example
   `sci.cmb_field` and `sci.phylo_regression`) keep no prior draws. The audit then shows a
   failed prior plot and continues.
-- The recovery check gives `error` for `sci.lgcp_grid` and `sci.areal_bym2`.
 - The scorecard check "Few missing values" counts every NaN of the raw dataset. It fails for
   data with missing values by design: the padding of the outlines of `sci.areal_bym2`
   (`ring_x`, `ring_y`) and the cells without a thermocouple of `sci.heat_plate`. The E18 and

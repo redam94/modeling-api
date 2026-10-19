@@ -550,8 +550,8 @@ the fit stops. The audit adds a posterior predictive check, a prior sensitivity 
 recovery check on simulated data. Its prior sensitivity check changes only prior widths with
 names such as `prior_sigma`. The prior widths of `sci.areal_bym2` have other names
 (`intercept_sd`, `slope_sd` and `sigma_scale`), so this check is `skipped`. Thus the ladder
-recipe above fits the model again with these widths itself. For this model, the recovery check
-can end with the status `error`. Then the branch `trusted` of the audit takes the else arm.
+recipe above fits the model again with these widths itself. The recovery check simulates the
+counts from the posterior predictive of the model, so each simulated dataset has whole counts.
 
 ## 9. The same with the CLI and the Python client
 
