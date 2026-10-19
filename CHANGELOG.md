@@ -5,6 +5,25 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.9.1] — Science gallery docs — 2026-10-19
+
+This release updates the documentation for v0.9.0. It has no code changes.
+
+### Changed
+- New page "What's new in 0.9", linked from the home page and the nav.
+- The README, home page, why, use cases and getting started pages describe the science
+  models, the new plots, the new workflow nodes and recipes, and the pymc-challenges
+  tutorials. The counts of models, plots, recipes and nodes agree with the code.
+- The roadmap covers v0.5.1 to v0.9. Plugin upload and the MCP server are "planned"; they
+  are no longer said to come in v0.6. Old M4 to M6 labels for planned work are removed.
+- Concepts, guides and reference pages describe circular and grid outputs, custom samplers,
+  start values, export cases, the new SDK and spec fields, the Score page options, the
+  scorecard missing-values rule and the `recovery.simulated` check.
+- The conformance guide lists all 26 fixtures. Each science model section in the model
+  reference links to its tutorial.
+- Operations pages list the new environment variables and `make docs-screenshots-science`.
+  The package READMEs describe the new recipes, nodes and fields.
+
 ## [0.9.0] — Science gallery — 2026-10-19
 
 This release adds eleven science models from the pymc-challenges case studies, for images,
