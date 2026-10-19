@@ -321,6 +321,10 @@ shows the output in two places:
   95% maps and single draws, with a frame slider and a draw player.
 - The `sci.*` plot recipes (see [Plot recipes](plots.md#scientific-model-pack-sci)).
 
+An output that is an angle (a direction or a time of day) declares `circular`
+(`OutputDecl.circular`). Its metrics and score summaries are then on the circle (see
+[Circular outputs](sdk.md#circular-outputs)).
+
 The runner images of `base-bayes` contain these plugins (namespace `sci`).
 
 !!! tip "Tutorials"
@@ -393,6 +397,8 @@ In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, a
 
 ### `sci.lgcp_grid` — event counts on a map over time (E07)
 
+Tutorial: [E07 from start to end](../tutorials/pymc-challenges/e07-oklahoma-earthquakes.md).
+
 A log-Gaussian Cox process on a space-time grid. The total for each period follows a random
 walk. The share of each cell comes from a 2-D Hilbert-space GP (Matérn 5/2) whose map changes
 from one era (a group of periods) to the next.
@@ -417,6 +423,8 @@ and `total(period)`. The sum of `rate` over the cells is equal to `total`.
 quarter from 2009 to 2019. A fit on 2009–2017 takes approximately one minute with nutpie.
 
 ### `sci.areal_bym2` — disease risk on a map of areas (E18)
+
+Tutorial: [E18 from start to end](../tutorials/pymc-challenges/e18-scottish-lip-cancer.md).
 
 A disease map for counts in areas (districts, counties). The count of each area is Poisson
 around its expected count times a relative risk `rr`. The log of `rr` is an intercept, plus a
@@ -498,6 +506,8 @@ islands when `islands` is `error`.
 
 ### `sci.fisher_kpp` — a reaction-diffusion PDE (E50)
 
+Tutorial: [E50 from start to end](../tutorials/pymc-challenges/e50-scratch-assay.md).
+
 The Fisher-KPP equation `du/dt = D d²u/dx² + lam u (1 - u)` moves and grows cells into a
 scratch wound. The model solves the equation in the model graph (explicit Euler in
 `pytensor.scan`, zero flux at the edges). The counts are Poisson. With `delay: true`, the
@@ -523,6 +533,8 @@ If the Euler steps are not stable at the `cfl_quantile` of the prior of `D`, the
 with `SETTINGS_INVALID`. The message gives the smallest `steps_per_hour` that is stable.
 
 ### `sci.traction_force` — cell forces from gel movement (E60)
+
+Tutorial: [E60 from start to end](../tutorials/pymc-challenges/e60-traction-force.md).
 
 Fourier-transform traction cytometry as a Gaussian inverse problem. The data are a displacement
 field of a soft gel. The output is the traction field that the cells apply. NUTS samples only
@@ -552,6 +564,8 @@ narrow. `challenges_settings(ds)` gives the settings for the real pyTFM colony o
 `from_challenges`.
 
 ### `sci.strong_lens` — a galaxy-scale strong lens (E80)
+
+Tutorial: [E80 from start to end](../tutorials/pymc-challenges/e80-strong-lens.md).
 
 A pixel forward model of a strong gravitational lens in a telescope image. The mass is a
 singular isothermal ellipsoid with an optional external shear. Rays from each pixel (and from
@@ -592,6 +606,8 @@ SDSS J1627-0053 (an 81 × 81 cutout and a PSF from the star stamps). On that ima
 posterior Einstein radius is 1.223 ± 0.001 arcsec. The fit takes approximately 5 to 7 minutes.
 
 ### `sci.heat_plate` — temperature of a heated plate (E51)
+
+Tutorial: [E51 from start to end](../tutorials/pymc-challenges/e51-heat-plate-design.md).
 
 The 2-D steady heat equation of a thin plate. Heat moves in the plane of the plate
 (conductivity `k`) and goes out through the two faces (`h`) and the outer edges (`h_edge`). A
@@ -643,6 +659,8 @@ data has no `insulation`. A new layout without `heater_power` gives
 `MISSING_FUTURE_COVARIATE`. Cells that are not on the fitted plate give `UNSEEN_LEVELS`.
 
 ### `sci.turing_pattern` — Turing patterns from early images (E61)
+
+Tutorial: [E61 from start to end](../tutorials/pymc-challenges/e61-turing-patterns.md).
 
 The Schnakenberg activator-substrate system makes spots or stripes (a Turing pattern). The
 model gets its rates from images of the activator that you take while the pattern starts to
@@ -708,6 +726,8 @@ next times. The `NONLINEAR_REGIME` diagnostic shows when the images are more tha
 their mean, because then the linear likelihood is not correct.
 
 ### `sci.storm_localisation` — molecule positions in STORM frames (E58)
+
+Tutorial: [E58 from start to end](../tutorials/pymc-challenges/e58-storm-localisation.md).
 
 Single-molecule localisation microscopy (STORM, PALM, dSTORM). The data are the raw frames of
 an EMCCD camera. The model finds isolated spots and gives the position of each molecule with an
@@ -806,6 +826,8 @@ Laplace fits for the full movie or the blink counting of the notebook.
 
 ### `sci.ibp_features` — shared parts of small images (E31)
 
+Tutorial: [E31 from start to end](../tutorials/pymc-challenges/e31-indian-buffet-digits.md).
+
 A latent feature model for small images, for example handwritten digits. Each image is the
 average image plus the features that it owns, plus Gaussian noise:
 `x = mu + z A + e`. Each `z` is 0 or 1. The prior of `z` is an Indian buffet process
@@ -872,6 +894,8 @@ separate fit on the 300 training digits only, as in the notebook, gives 0.283 an
 in approximately 4 minutes.
 
 ### `sci.colour_naming` — how the speakers of a language name colours (E77)
+
+Tutorial: [E77 from start to end](../tutorials/pymc-challenges/e77-colour-naming.md).
 
 The World Color Survey asked the speakers of 110 languages to name 330 colour chips. This model
 fits the naming of one language. The probability that a speaker gives term `t` to chip `c` is
@@ -946,6 +970,8 @@ a chip has no CIELAB colour, or two chips have the same palette place. It stops 
 the number of features (refused when the settings are parsed). Chips that are not in the fit give `UNSEEN_LEVELS`.
 
 ### `sci.cmb_field` — the CMB sky behind a mask (E79)
+
+Tutorial: [E79 from start to end](../tutorials/pymc-challenges/e79-cmb-lmc-mask.md).
 
 Field-level inference of a temperature map of the cosmic microwave background (CMB). Each pixel
 of the sky is a parameter. The model samples the sky together with the power spectrum in bins
@@ -1027,6 +1053,8 @@ the LMC.
 
 ### `sci.network_latent_space` — who works with whom (E21)
 
+Tutorial: [E21 from start to end](../tutorials/pymc-challenges/e21-law-firm-network.md).
+
 A model of an undirected graph. Each pair of nodes `i < j` has a tie or not
 (`Bernoulli`, logit link). The log odds have three parts:
 
@@ -1104,6 +1132,8 @@ model.
 
 ### `sci.graphical_model` — direct links between variables (E19)
 
+Tutorial: [E19 from start to end](../tutorials/pymc-challenges/e19-protein-signalling.md).
+
 A Gaussian graphical model. The model measures the partial correlation of each pair of
 variables: the correlation that stays when all the other variables are held constant. A zero
 partial correlation means that the two variables have no direct link. A link (an edge) is
@@ -1169,6 +1199,8 @@ with nutpie. The neighbourhood model finds 6 edges, all in the consensus network
 approximately 2 minutes.
 
 ### `sci.phylo_regression` — traits of related species on a tree (E23)
+
+Tutorial: [E23 from start to end](../tutorials/pymc-challenges/e23-phylogenetic-regression.md).
 
 A regression of one trait of species on other traits. Related species are alike because
 they share ancestors, so the residuals are correlated by a phylogeny (a tree with branch
@@ -1240,6 +1272,8 @@ log, or fewer than 3 species have a trait value. `UNSEEN_LEVELS` when a score re
 species that the fit did not see.
 
 ### `sci.circular_regression` — directions and times of day (E81)
+
+Tutorial: [E81 from start to end](../tutorials/pymc-challenges/e81-wind-and-activity.md).
 
 The data are angles: the direction that a wind comes from, or the time of day of a
 photograph. 359 degrees is next to 1 degree, and 23:59 is next to 00:01. Thus the model uses
@@ -1331,8 +1365,9 @@ the notebook does. On the 12,023 reports of 2021–2022, `elpd_loo` is −17,385
 and five species that it hunts. With `BCI_SPEC_YAML`, the overlap of the ocelot and the agouti
 is 0.30 (the notebook: 0.30).
 
-`direction_hat` is a circular output (`OutputDecl.circular`, with its `period` attr: 360, 2π
-or 24). The holdout metrics of `evaluate` are circular: the point is the circular mean of the
+`direction_hat` and `mean_direction` are circular outputs (`OutputDecl.circular`, with their
+`period` attr: 360, 2π or 24). Their score summaries are on the circle: the circular mean, and
+intervals centred on it in `[0, period)`. The holdout metrics of `evaluate` are circular: the point is the circular mean of the
 draws, `mae`, `rmse` and `bias` use the error wrapped to half a turn (359° against 1° is an
 error of 2°), `coverage_<p>` and `interval_width_<p>` use central intervals of the draws around
 the circular mean (an interval may cross 0), and `crps` uses the arc distance. `mape`,

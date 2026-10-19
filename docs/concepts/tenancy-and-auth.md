@@ -210,7 +210,7 @@ owner. The token of an admin with `models:read` can only read.
 | `runs:create` | `models:read`, plus submit and cancel runs, score models and endpoints, and render plots |
 | `score:{target}` | Score one model by its id, for example `score:mdl_01jaf3r1s2t3v4w5x6y7z8a9b0` (`POST /v1/models/{id}/versions/{v}:score`). `score:*` covers all models in the project. When endpoints exist, an endpoint alias works in the same way, for example `score:geo-mmm-prod`. |
 | `datasets:write` | Make datasets and add versions |
-| `plugins:publish` | Publish and yank plugins (plugin upload comes in v0.6) |
+| `plugins:publish` | Publish and yank plugins (plugin upload is planned for a later release) |
 | `endpoints:promote` | Make, promote, roll back and delete endpoints, and read models (CI pipelines). It never overrides a gate. |
 | `webhooks:manage` | Manage the webhooks of the project and replay deliveries |
 | `workflows:write` (v0.5) | Make workflows and save revisions (workflow-as-code from CI) |

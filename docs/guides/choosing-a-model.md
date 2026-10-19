@@ -18,8 +18,8 @@ There are eight questions. All are optional. The goal has the most weight:
 
 | Question | Answers |
 |---|---|
-| What do you want to do? | measure what marketing adds · plan a budget · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model |
-| What does your data look like? | one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time |
+| What do you want to do? | measure what marketing adds · plan a budget · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model · make a map or an image from measurements · fit a physical model to measurements |
+| What does your data look like? | one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time · a map, an image or values on a regular grid |
 | How often do you record the data? | daily · weekly · monthly or less often · not over time |
 | How much history? | under a year · one to three years · more |
 | Other columns that could explain it? | yes (prices, promotions, weather, spend) · no |
@@ -174,6 +174,61 @@ For the details of each family, see these pages:
 [statsmodels time-series models](../models/statsmodels.md),
 [forecasting](time-series.md), [tabular models](sklearn.md) and
 [the built-in models](../reference/models.md).
+
+## Science models, compared
+
+The science models (`sci.*`, package `mapi-plugin-science`) come from the
+[pymc-challenges case studies](../tutorials/pymc-challenges/index.md). They are for maps,
+images, fields, graphs, trees and angles. All of them are Bayesian and give a range for each
+value. The `base-bayes` runner image contains them. The chooser shows them only when the
+catalog has the plugin.
+
+To find them with **Help me choose**, answer the goal "Make a map or an image from
+measurements" or "Fit a physical model to measurements". Then answer the data shape "A map,
+an image or values on a regular grid". The graph, tree and angle models use the goal
+"Understand what causes changes in a number" with the data shape "A table of items without a
+time order". Most of these models need expert-level statistics knowledge. Thus, if you answer
+"new to it", they rank lower and show a caution.
+
+```bash
+api GET "/v1/catalog/recommendations?goal=map_fields&data_shape=grid&kind=model"
+```
+
+| Your data | Use | When to use it |
+|---|---|---|
+| Counts of events in each cell of a map, for each period | `sci.lgcp_grid` | You want a map of the rate and a forecast of the next periods |
+| Counts of cells across a scratch, at some times | `sci.fisher_kpp` | You want the speed at which cells move, divide and close the wound |
+| A map of the movement of a gel under cells | `sci.traction_force` | You want the force map and the strain energy |
+| A telescope image of a lens galaxy with a ring or arcs | `sci.strong_lens` | You want the Einstein radius and the source galaxy without the lens |
+| Temperatures at some points of a heated plate | `sci.heat_plate` | You want the heat properties and the temperature map of a new heater layout |
+| Images of a pattern of spots or stripes that starts to grow | `sci.turing_pattern` | You want the reaction and diffusion rates and the probability of a Turing pattern |
+| Raw frames of a STORM or PALM microscope (EMCCD camera) | `sci.storm_localisation` | You want the position of each molecule in nm, with an error bar |
+| Many small images of the same size | `sci.ibp_features` | You want the parts that the images share, or to fill in hidden pixels |
+| The colour names that the speakers of one language gave to colour chips | `sci.colour_naming` | You want the boundaries between the colour words and a map of the words |
+| A CMB temperature map of a small flat patch, with a mask | `sci.cmb_field` | You want the sky behind the mask and the bandpowers |
+| Counts of cases and expected counts for each area of a map | `sci.areal_bym2` | You want a map of the risk that borrows strength from the neighbour areas |
+| Ties between pairs of nodes (yes or no) | `sci.network_latent_space` | You want the effect of pair covariates and the chance of a tie for each pair |
+| The same variables, measured on many samples | `sci.graphical_model` | You want the direct links between the variables, with a probability for each link |
+| One trait value for each species, and a tree of the species | `sci.phylo_regression` | You want a slope across species that does not count shared ancestors many times |
+| Angles: wind directions or times of day | `sci.circular_regression` | You want the most probable direction for each hour and season, or the activity of species |
+
+The About card of each model tells when *not* to use it. For example, `sci.areal_bym2` cannot
+predict areas that are not on the map, and `sci.cmb_field` is not correct for a patch of more
+than about 20 degrees. For all settings, see
+[Scientific models](../reference/models.md#scientific-models-mapi-plugin-science).
+
+The workflow gallery has recipes that compare science models or check them:
+
+| Recipe | What it does |
+|---|---|
+| `sci_spatial_ladder` | Fits `sci.areal_bym2` with iid, ICAR and BYM2 area effects and keeps the best model by `elpd_loo` and stacking weights |
+| `sci_network_ladder` | Fits `sci.network_latent_space` with covariates, sociality and a latent space and keeps the best model |
+| `sci_phylo_signal` | Fits `sci.phylo_regression` with four residual kinds and keeps the best model |
+| `sci_calibrate_then_design` | Fits `sci.heat_plate` with one run held out, and predicts a new heater layout only if the holdout error and R-hat are in their limits |
+| `sci_image_model_check` | Shows residual maps and predicted images next to the observed image of an image model |
+| `bayes_workflow_audit` | Does the checks of a careful Bayesian workflow for each model that gives draws |
+
+For the documents of these recipes, see the [workflow cookbook](workflow-cookbook.md).
 
 ## When the chooser is not enough
 

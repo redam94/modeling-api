@@ -298,7 +298,7 @@ Then do the steps of the form:
 |---|---|
 | **What do you want to do?** | Select a mode. The page shows only the modes that the plugin declares: **Forecast**, **Predict**, **What if** (counterfactual), **Simulate**, **Evaluate** and, for state-space models, **Update with new data** (filter). |
 | **How far ahead?** | For a forecast: type the number of periods after the fitted end. The model uses its own time dim. |
-| **Values to score** | Select one: **Type values**, **Use a dataset** or **No new data**. The grid of **Type values** starts with the periods to score and each fitted level. You can paste rows from a spreadsheet. You can also use **Fill blanks** to put one value in all the empty cells of a column. The app sends typed values inline (`ScoreCall.inline`, a maximum of 5 MB). The server checks them against the inputs of the model. You do not upload a file. For **Use a dataset**, **Upload** makes a dataset. Evaluate and filter need a dataset. **No new data** shows only for a forecast, which continues from the end of the fit, or when you give a **Scenario dataset** under **Advanced**. For the other modes, the server refuses a request without data, so the page does not show the option and tells you why. |
+| **Values to score** | Select one: **Type values**, **Use a dataset** or **No new data**. The grid of **Type values** starts with the periods to score and each fitted level. You can paste rows from a spreadsheet. You can also use **Fill blanks** to put one value in all the empty cells of a column. The app sends typed values inline (`ScoreCall.inline`, a maximum of 5 MB). The server checks them against the inputs of the model. You do not upload a file. For **Use a dataset**, **Upload** makes a dataset. Evaluate and filter need a dataset. **No new data** shows only for a forecast, which continues from the end of the fit, or when you give a **Scenario dataset** under **Advanced**. For predict, simulate and what if without a scenario dataset, the server refuses a request without data. The page then does not show the option, and a note tells you why. If the model cannot forecast, the note tells you that the model always needs values to score. |
 | **Future values … not given** | For a forecast: select the value that empty future inputs get. The options are the last value, the value of the same period one year before, zero, or none. If you select none, you must give each value. |
 | **Changes** | Change a variable on some levels before the model scores, for example multiply `spend` by `1.2` where `channel=tv`. **What if** compares the result with the changes and without them. |
 
@@ -343,6 +343,9 @@ The run returns the actuals that it used in `ScoreSummary.actuals`.
 - The outputs with their sizes and signed links. `score.zarr.zip` is the full `xr.DataTree`.
   `ui/summary.arrow` is the summary table.
 - The summary as a table, with one row for each coordinate and one column for each statistic.
+  A dim with numeric labels stays a key column, for example the grid positions `y_cm` and
+  `x_cm` of `sci.heat_plate`. Thus a grid output keeps one row for each cell. The summary
+  table names its dims in the schema metadata `mapi.dims`.
 - A quick chart. You can plot it again by a different column.
 
 If the model did not see a market before (for example FR above), the platform draws it from
@@ -355,6 +358,11 @@ visual editor and a live run monitor. The editor has a node palette, typed ports
 view. See [In the web app](workflows.md#in-the-web-app). **Governance** edits policies,
 follows validations and holds the queue of the reviewers. See
 [In the web app](governance.md#in-the-web-app).
+
+Since v0.9, the run monitor draws the plots of a workflow run. These are the `plot` outputs of
+nodes (`plot.render`, `model.forecast` and `evaluate.residuals`) and the `plot` sections of a
+`report.summary`. Each plot of a node shows with its caption. If the data of a plot is in a
+file, the app tells you to click **Download**. The HTML report does not show plot sections.
 
 <div class="grid" markdown>
 
@@ -393,10 +401,17 @@ these contents, and its digest identifies them:
 
 - **Models**: inference, representation, score modes and base image.
 - **Steps**: kind, if it learns state, invertibility and summary.
-- **Plots**: recipe, title, audience and the bundle groups that it needs.
+- **Plots**: a card for each plot recipe, with an example plot made from synthetic data, its
+  pack, its title, a summary and the bundle groups that it needs. The buttons above the cards
+  filter the recipes by pack: **All plots**, **All models** (`core`), **Marketing mix**
+  (`mmm`), **Machine learning** (`ml`), **Science** (`sci`) and **Networks** (`net`). A pack
+  shows only when the catalog has a recipe of that pack. You can also type words in the search
+  field.
 
-Click a row to see its full entry. Specs can use only the items in this list. The
-[generated catalogs](../reference/generated/models-catalog.md) have the same data.
+Click a row of **Models** or **Steps** to see its full entry. Click a plot card to see its
+About card, a larger interactive example and its technical details. Specs can use only the
+items in this list. The [generated catalogs](../reference/generated/models-catalog.md) have
+the same data.
 
 Since v0.5, the catalog opens on **Browse**. It shows each item that a user can select, with
 its plain-language About card. **Help me choose** is one click away (see [About cards and

@@ -81,6 +81,14 @@ You can add these optional groups:
 
 The bundle always contains `posterior`, `sample_stats`, `observed_data` and `constant_data`.
 
+To get `elpd_loo`, keep the log-likelihood (`keep: {log_likelihood: true}`) and list
+`elpd_loo` in `evaluate.metrics`. The fit then also keeps the pointwise values in
+`MetricsReport.elpd`, for data of up to 10,000 points. The workflow node `compare.stacking`
+uses these values to calculate stacking weights. If LOO is not correct for your model (for
+example, all observations share one latent field), declare `loo_valid=False` and the reason
+in `loo_invalid_reason` in the `Capabilities` of the model. The fit then skips `elpd_loo` with
+that reason.
+
 ### Segmented sampling and checkpoints
 
 With `engine: pymc` and `checkpoint.every_draws`, the sampler tunes one time. Then it makes the
@@ -99,6 +107,34 @@ contains the draws until that time. This is sufficient for a partial result. But
 starts again, the sampler starts from the beginning.
 
 Each engine reports the progress of each chain ("chain 2/4: sampling 150/500, 0 divergences").
+
+### Start every chain at one point
+
+By default, each MCMC chain starts at the initial point of the model with a random jitter.
+Some posteriors have a trap near that point. An example is a feature model where all the
+features switch off. For such a model, set two fields of `EnginePlan` (`mapi_pymc`):
+
+* `initvals`: the start values, by the name of each free variable, on the constrained scale
+  (as `pm.sample(initvals=...)`).
+* `jitter`: `False` starts each chain at exactly that point. The default is `True`.
+
+`engine: pymc`, `nutpie` and the external NUTS bridges (`numpyro`, `blackjax`) use the two
+fields. `map`, `advi` and `pathfinder` ignore them. `PyMCModel.fit` does not set them. Thus a
+model that needs a start point builds its `pm.Model` in a `CustomModel` and calls
+`run_engine` itself, as `sci.ibp_features` does:
+
+```python
+from dataclasses import replace
+from mapi_pymc import EngineHooks, EnginePlan, run_engine
+
+plan = EnginePlan.from_config(cfg, default_engine="nutpie", seed=seed)
+plan = replace(plan, initvals={"A": a0, "nu": nu0}, jitter=False)
+result = run_engine(model, plan, EngineHooks(progress=ctx.progress, cancel=ctx.cancel))
+posterior = result.group("posterior")
+```
+
+The convergence checks then need a call of `mapi_pymc.convergence_diagnostics` in the
+`diagnostics` hook of the model (see [Write a step or a model plugin](plugins.md)).
 
 ### Diagnostics
 
@@ -122,6 +158,13 @@ delta then shows only the intervention, not two independent noise draws. Some di
 not have an inverse CDF (Poisson, negative binomial). For these distributions, the platform uses
 the seeded stream of the sampler. The `noise` attribute of the output records the method that
 the platform used.
+
+The governance check `recovery.simulated` uses these predictive draws. For a Bayesian model
+with a `predict` mode, it makes each simulated dataset from one posterior draw and the noise
+of the model (`predict` with `kind: predictive`). Then it fits the model again and finds the
+values of that draw. If the model gives no predictive draws, or if the draws have the
+attribute `kind: expected`, the check adds residuals to the fitted values. If the target holds counts and the model has no predictive draws, the check
+is skipped. Thus give real predictive draws, also for counts.
 
 ## Fast scoring with a FrozenPredictor
 

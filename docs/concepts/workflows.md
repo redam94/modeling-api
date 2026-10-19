@@ -124,6 +124,20 @@ coalesce(nodes.search.best_score, 0) < 500 and exists(nodes.za.details.break_at)
 - **Functions:** `abs`, `min`, `max`, `len`, `round`, `any`, `all`, `exists`, `coalesce` and
   `if(condition, a, b)`. The `if` function evaluates only the selected value.
 
+A condition can also read the results of a Bayesian fit. These examples read the results of
+`model.summary` (node `s`) and `evaluate.ppc` (node `ppc`):
+
+```text
+coalesce(nodes.s.max_rhat, 99) < 1.01 and nodes.s.min_ess >= 400
+nodes.s.params['beta[north]'].hdi_low > 0
+nodes.s.focus.excludes_zero and nodes.ppc.ok
+```
+
+A condition cannot make an entry name from a parameter. Thus, to read a value that a workflow
+parameter names, set the `focus` parameter of `model.summary`. The result field `focus` then
+gives the mean, sd, HDI bounds, `p_positive` and `excludes_zero` of that value. R-hat is null
+when the fit has only one chain, so use `coalesce` for it.
+
 The rules are strict. Thus, a condition means exactly what it says:
 
 - `and`/`or`/`not` need true or false. Numbers are not "truthy".
@@ -160,9 +174,9 @@ orchestrator goes through the graph in topological order. It does these actions:
 
 - It evaluates **branches** and **selections** itself, on JSON results only (`orchestrator`
   nodes). It records a `BranchDecision` with the values that the condition read.
-- It sends **tests, transforms, splits, searches, backtests, forecasts, evaluations and
-  governance checks** to sandboxed `workflow_node` child runs. Only the sandbox decodes user
-  data.
+- It sends **tests, transforms, splits, order searches, backtests, forecasts, summaries,
+  scores, plots, evaluations, comparisons with Diebold-Mariano or stacking, and governance
+  checks** to sandboxed `workflow_node` child runs. Only the sandbox decodes user data.
 - It starts **fits** as usual `fit` child runs, and **sub-workflows** as child workflow runs
   (see [where nodes run](../guides/workflows.md#where-nodes-run)).
 
@@ -176,6 +190,12 @@ records its status, attempt, result, outputs, child runs and cost.
 shortest interval is 15 minutes. The schedule handles daylight-saving gaps. **Triggers** run a
 workflow each time that a dataset gets a new version. A trigger has a binding to one of the
 inputs of the workflow. Terminal runs send a notification to webhooks.
+
+Some nodes give a `plot` output: `plot.render`, `model.forecast` and `evaluate.residuals`.
+The server puts each plot output through the plot sanitizer when it collects the output. An
+unsafe plot fails its node with `PLOT_UNSAFE`. `report.summary` has a `plots` input and puts
+each plot into a section of the report. The run view of the web app and the JSON report show
+these plots.
 
 ## The node catalog
 
@@ -207,6 +227,39 @@ Each test returns a `StatTestResult`. It contains these items:
 The null hypothesis of KPSS is the "good" case. Thus, its labels are the opposite of the
 labels of ADF. `mapi_spec.stattests.decide` keeps them correct.
 
+### Bayesian models in a workflow
+
+Five nodes work on the draws of a Bayesian fit:
+
+| Node | What it gives |
+|---|---|
+| `model.summary` | The mean, sd, HDI, R-hat and bulk ESS of each parameter, `max_rhat`, `min_ess` and the number of divergent transitions |
+| `evaluate.ppc` | A posterior predictive check: the coverage of the 50% and 90% ranges, the PIT distance from uniform, Bayesian p-values and `ok` |
+| `compare.stacking` | Stacking weights (or pseudo-BMA+ weights) of some fits, from the pointwise `elpd_loo` that `model.fit` keeps for data of up to 10 000 points |
+| `model.score` | A score mode (`predict`, `simulate`, `forecast` or `counterfactual`) as a dataset that later nodes can use |
+| `plot.render` | Any recipe of the plot catalog as a `plot` output. `source` is `auto`, `data`, `model` or `predictions`. |
+
+Validation finds the `recipe` of `plot.render` in the bundled recipes and in the plot catalog.
+An unknown recipe gives `REF_UNRESOLVED`.
+
+### Tree datasets in a workflow
+
+`model.fit` and `model.backtest` have the parameters `nodes` and `join`. They have the same
+meaning as `data.nodes` and `data.join` of a spec
+([Tree datasets](../guides/tree-data.md#read-a-tree-in-a-spec-datanodes)). If `nodes` is not
+set, the node reads the root node of the tree. `model.score`, `model.forecast` and
+`plot.render` with `source: predictions` send a tree input as a full tree. `plot.render` with
+`source: data` keeps the groups of a tree input.
+
+!!! warning "Known gaps"
+    - A backtest of a tree dataset gives the full tree to each fold. A tree-input model that
+      reads its target from the tree can see the test window. The node shows a warning.
+    - `search.grid` has no `nodes` parameter.
+    - Nodes that fit again on changed flat data, and the ablations of governance checks, do
+      not give a tree to tree-input models.
+    - The HTML report does not show plot sections. Only the JSON report and the web run view
+      show them.
+
 ### Train/test plans
 
 A `SplitPlan` describes many folds at one time (`mapi_spec.splitplan`). Window plans have
@@ -230,10 +283,25 @@ outer training window, for correct tuning.
 | `forecast_bakeoff` | A backtest of SARIMAX, ETS, Theta and the smooth-trend model on the same folds, against benchmarks. The platform fits the best model again. |
 | `sci_spatial_ladder` | `sci.areal_bym2` with iid, ICAR and BYM2 area effects, compared by `elpd_loo` and stacking weights. The best model, the range of its covariate effect, fits with wider and narrower priors when the effect is clear, a convergence check, a risk map and a report. See [the cookbook](../guides/workflow-cookbook.md#disease-map-which-spatial-model). |
 | `sci_network_ladder` | `sci.network_latent_space` with covariates, sociality and a latent space, compared by `elpd_loo` and stacking weights. The pair effects of the best model, a network plot, simulated networks with their statistics and a report. See [the cookbook](../guides/workflow-cookbook.md#network-ties-which-model). |
-| `sci_phylo_signal` | Four fits of `sci.phylo_regression` (no tree, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck), ranked by `elpd_loo` and weighed by stacking. A branch on the slope of one predictor of the winner: does its range exclude zero? A plot of the tree and a report. |
-| `sci_calibrate_then_design` | A fit of `sci.heat_plate` with one calibration run held out. A branch on the error on that run and on R-hat. If the calibration is good enough, the predicted temperature field of a new heater layout, as a map. A report. |
-| `bayes_workflow_audit` | Any Bayesian model: a fit with prior draws, a convergence gate, the posterior predictive check, prior sensitivity, the recovery of known values, the plots and a report |
-| `sci_image_model_check` | An image model: a fit, residual maps, the observed image next to predicted images, the posterior predictive check and a report |
+| `sci_phylo_signal` | Four fits of `sci.phylo_regression` (no tree, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck), ranked by `elpd_loo` and weighed by stacking. A branch on the slope of one predictor of the winner: does its range exclude zero? A plot of the tree and a report. See [the cookbook](../guides/workflow-cookbook.md#trait-regression-across-species). |
+| `sci_calibrate_then_design` | A fit of `sci.heat_plate` with one calibration run held out. A branch on the error on that run and on R-hat. If the calibration is good enough, the predicted temperature field of a new heater layout, as a map. A report. See [the cookbook](../guides/workflow-cookbook.md#calibrate-then-design). |
+| `bayes_workflow_audit` | Any Bayesian model: a fit with prior draws, a convergence gate, the posterior predictive check, prior sensitivity, the recovery of known values, the plots and a report. See [the cookbook](../guides/workflow-cookbook.md#bayesian-workflow-audit). |
+| `sci_image_model_check` | An image model: a fit, residual maps, the observed image next to predicted images, the posterior predictive check and a report. See [the cookbook](../guides/workflow-cookbook.md#image-model-check). |
 
 To make a workflow from a template, use `POST /v1/workflows` with `{"template": "<id>"}`.
-Then edit its parameters or nodes, the same as for all other workflows.
+Then edit its parameters or nodes, the same as for all other workflows. The
+[complex workflows tutorial](../tutorials/complex-workflows.md) shows the patterns of the
+science recipes in the workflow editor.
+
+!!! note "Known gaps of the science recipes"
+    - `governance.check` with `sensitivity.prior` cannot find the prior widths of
+      `sci.areal_bym2`, so the check is skipped. `sci_spatial_ladder` fits the model again
+      with these widths in its place.
+    - The graph check of `sci_network_ladder` plots the statistics of the simulated networks
+      only. The plot does not mark the statistics of the observed network.
+    - `core.prior_predictive` cannot draw the prior draws of `sci.heat_plate`. Some science
+      models (for example `sci.cmb_field` and `sci.phylo_regression`) keep no prior draws.
+      `bayes_workflow_audit` then shows a failed prior plot and continues.
+    - Only `sci_spatial_ladder` ran end to end on a live dev stack and in a browser. The six
+      science and audit recipes run through the server orchestrator in a slow test, with
+      small fits.

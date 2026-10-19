@@ -41,6 +41,17 @@ phi = hsgp_basis(dom.scale(ctx.position("t")), s.m, dom.L)   # same at fit and a
 Score payloads must also continue the fitted range without gaps
 (`NON_CONTIGUOUS_EXTENSION`). They cannot start before the fitted range (`COORD_NOT_ALLOWED`).
 
+The runner does a check of the mode before it builds a forecast payload:
+
+- If the model does not declare the mode in `capabilities.score_modes`, the runner refuses the
+  request with `MODE_NOT_SUPPORTED`. The error lists the modes that the model supports.
+- The labels of the horizon dim must be numbers or dates. A horizon along text labels (for
+  example the names of images or areas) gives `COORD_NOT_ALLOWED`.
+- A request without data, without a scenario dataset and without a horizon gives
+  `SCHEMA_INVALID` ("the score request has no data"). Thus a model that has no `forecast` mode
+  always needs data to score. The Score page of the web app shows **No new data** only for
+  Forecast, or when a scenario dataset gives the values.
+
 ## Evaluate the way you will forecast
 
 `fit.mode: evaluate_then_refit` is the default for models that you can promote. In this mode,

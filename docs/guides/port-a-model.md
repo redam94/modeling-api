@@ -101,6 +101,23 @@ spec, users bind the names of their own dataset to it.
     contains small JSON. `native` contains bytes in a **safe** format only (skops, xgboost JSON,
     safetensors). The platform rejects pickle.
 
+### What the notebook models of science needed
+
+The 15 `sci.*` models came from notebooks in the same way. Some of them needed more than the
+three steps above. If your model is similar, see these sections:
+
+| Your model | What to use | See |
+|---|---|---|
+| Its rules join two or more settings | A pydantic `model_validator` on the settings. The SDK refuses bad settings before it uses the data. | [Settings rules that need no data](plugins.md#settings-rules-that-need-no-data) |
+| An output is an image, a map or a vector field | `grid` in the output declaration | [Outputs that are images or maps](plugins.md#outputs-that-are-images-or-maps) |
+| An output is a direction or a time of day | `circular: true`, and a `period` attribute on the scored array | [Outputs that are angles](plugins.md#outputs-that-are-angles) |
+| It makes new data from the posterior | The `simulate` mode, and real predictive draws for `kind: predictive` | [Score modes](plugins.md#score-modes) |
+| You compare variants by `elpd_loo` | A `log_likelihood` group, or `loo_valid=False` with a reason | [Models that give `elpd_loo`](plugins.md#models-that-give-elpd_loo) |
+| NUTS gets stuck at the default start | `EnginePlan.initvals` and `jitter=False` | [Start every chain at one point](pymc.md#start-every-chain-at-one-point) |
+| It has its own sampler (for example Gibbs) | A `CustomModel` with `inference="mcmc"` and a `diagnostics` hook | [A model with its own sampler](plugins.md#a-model-with-its-own-sampler) |
+| Some NaN of an input are part of the design | `structural_missing` | [A model](plugins.md#a-model) |
+| Users must upload the data of a case study | An export case in `mapi_plugin_science.export.EXPORTS` | [Data for a case study](plugins.md#data-for-a-case-study-mapi-plugin-science) |
+
 ## 4. Write a tiny spec (11–13 min)
 
 The contract kit fits this spec. Keep it small and fast: use few draws and few trees.
@@ -212,6 +229,12 @@ acme = "acme_models.steps:STEPS"          # STEPS = (ScaleStep,)
     - [x] `schema_template` in canonical names, with correct dim policies
     - [x] `capabilities`: representation, score modes, contribution scale
     - [x] `outputs` with `units_of`, so that the results come back in the units of the user
+    - [x] `grid` on outputs that are images or maps, and `circular: true` (with a `period`
+      attribute) on outputs that are angles
+    - [x] `score_modes` that list only the modes that `score` can do
+    - [x] rules that join settings in a `model_validator`, not in `fit`
+    - [x] a `log_likelihood` group if users compare variants by `elpd_loo`, or
+      `loo_valid=False` with a reason
     - [x] settings as a `ModelSettings` subclass with defaults and descriptions (they become
       the form in the UI)
     - [x] a tiny spec, and `check_model` passes in CI

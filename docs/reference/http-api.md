@@ -299,6 +299,25 @@ transitions between them.
 | `POST /v1/models/{model_id}/versions/{version}:score` | Score with replayed preprocessing. Accepts `Prefer: wait=N` (200 if the run is complete, if not 202) and `Idempotency-Key`. `inline` holds `data`/`scenario` that you type in (XrJSON, maximum 5 MB each). The API does a check of them against the inputs of the version. | `ScoreCall` | `ScoreCallResult` | 200 | `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `ACTUALS_NOT_SUPPORTED`, `ACTUALS_INVALID`, `PAYLOAD_TOO_LARGE` |
 | `GET /v1/models/{model_id}/versions/{version}/inputs` | The data that a score call can send. This is the input contract (canonical names, variables that the future needs, fitted coordinates) and the input table. Use `?periods=N` (1-200) for the number of periods after the fit | — | `ModelInputSchema` | 200 | `NOT_FOUND`, `CAPABILITY_UNSUPPORTED` |
 
+**Score summaries.** When a score run succeeds, `ScoreCallResult.summary` (`ScoreSummary`)
+holds the requested summary as plain tables (the `summary.json` of the run). Each
+`ScoreSummaryTable` has the coordinate columns (one for each dim), then one column for each
+statistic. If the summary has more than 100 000 cells, `truncated` is `true`. Use the
+`score.zarr.zip` output for all the values. From v0.9, the table of a circular output
+(`OutputDecl.circular`, for example a direction) has the field `period` (one turn, in the
+units of the output). The statistics are then on the circle:
+
+- `mean` is the circular mean, and the intervals are centred on it.
+- The mean, the median, the quantiles and the interval bounds are in `[0, period)`. An
+  interval with `lower` more than `upper` crosses the seam (from 350 to 10 degrees).
+- `sd` is the circular standard deviation.
+
+Other tables do not have the field. Refer to [Circular outputs](sdk.md#circular-outputs).
+
+A score call needs data. If the request has no `data`, no `inline` values, no `scenario` and
+no `horizon`, the API refuses it with **422 `SCHEMA_INVALID`** at `/data` ("the score request
+has no data"). A mode that the model does not support gives **422 `MODE_NOT_SUPPORTED`**.
+
 The API makes artifact links only after two checks are satisfactory:
 
 1. The authorization check.
@@ -777,6 +796,18 @@ other runs (`Idempotency-Key`, the quota checks, cost). `POST …:optimize` obey
 `workflow.run.failed`). These events also go to webhooks: validation transitions
 (`model.validated`, `model.rejected`, ...), `dataset.version.created` and
 `optimize.completed`.
+
+**Plot outputs (v0.9).** The node kind `plot` is new. The nodes `plot.render`,
+`model.forecast` and `evaluate.residuals` give `plot` outputs, and a `report.summary` can have
+`plot` sections. The server sends each plot output through the plot sanitizer two times:
+
+1. When it collects the outputs of a node. An unsafe plot fails the node with `PLOT_UNSAFE`.
+2. When it serves node runs, run outputs and the plot sections of reports. If a stored plot
+   is not safe, the response has `null` in its place.
+
+Workflow validation finds the `recipe` of `plot.render` in the bundled recipes and in the
+plot catalog. If it does not find the recipe, it reports `REF_UNRESOLVED` at
+`/nodes/<i>/with/recipe`.
 
 **Promotion.** A governance policy that applies to a model can set
 `require_validated_for_promotion`. In this case, `PUT /v1/endpoints/{alias}` refuses a version
