@@ -105,6 +105,24 @@ shows the tabs **Schema**, **Coordinates**, **Missingness**, **Preview** and **A
 
 The dataset is one plain array. It is not a tree, and you do not need the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Profiles and spectra**.
+
+- The profile shows `cells` along `position`, with one line for each of the 5 times in
+  `hours`. Use the picker to show one time. The table gives the peak of each line.
+- Look at how the cells fill the scratch from line to line. The Fisher-KPP model describes
+  this movement.
+- **Over time** shows `hours` as a sequence. The time patterns are in **Not for this data**:
+  5 times are not sufficient, and `hours` is not a time dim of the schema.
+- **Data quality** does not give the warning `SHORT_HISTORY`.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. In the sidebar, click **Build**. Click **New spec**. The editor opens with the geo MMM

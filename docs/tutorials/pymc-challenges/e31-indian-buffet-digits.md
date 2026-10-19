@@ -131,6 +131,25 @@ pixels are not missing: the mask hides them.
 
 The file is one flat dataset, so the tree path (HDF5 groups and nodes) does not apply here.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Images and fields**.
+
+- The viewer shows `pixels`, the 8 × 6 images of the digits. The frame slider goes from
+  digit to digit. The viewer shows 24 of the 500 digits. The mask `visible` shows as a
+  layer.
+- Below the viewer, the mean image of each class (the coord `label`) shows the typical shape
+  of each digit from 0 to 9.
+- The histogram shows the values of all pixels.
+- The time sections and **Group comparison** are in **Not for this data**. The digits are
+  not time and not groups.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

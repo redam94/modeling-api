@@ -128,6 +128,26 @@ likelihood, and it predicts their brain volume from their relatives.
 The tree is part of the same plain dataset, on the dim `node`. You do not need the tree fields
 ("Put this file in a node of a tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Tree**.
+
+- The tree has 452 nodes and 186 tips. The strips next to the tips show `brain`, `body` and
+  `group_size` for each species. The explorer matches the tips to the species by label.
+- The table of the phylogenetic signal gives Moran's I of each trait on the tree. A small
+  p-value shows that near species have similar traits. This is the question of step 6.2.
+- **Correlations** uses the three traits of the 186 species. The variables of the tree
+  (`parent`, `branch_length`, `is_tip` and `tip_label`) are geometry. They are not in the
+  statistics.
+- The section **Tree** shows the tree in the data. It is not the same as a tree dataset (HDF5
+  groups).
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

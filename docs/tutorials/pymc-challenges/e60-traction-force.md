@@ -108,6 +108,24 @@ model needs a value at each pixel.
 The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
 tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Images and fields**.
+
+- The viewer shows `displacement` as a vector field: the colour shows the magnitude, and the
+  arrows show the direction. The grid has 189 × 193 cells. The viewer shows the mean of
+  blocks of cells (95 × 97).
+- The mask `force_mask` (the colony) shows as a layer.
+- The histogram of each component (x and y) is below the viewer.
+- Most other sections are in **Not for this data**. The data is one field, without time and
+  without groups.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

@@ -129,6 +129,27 @@ points of the shorter outlines.
 The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
 tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Map**.
+
+- The map shows the 56 districts. Select `cases`, `expected`, `aff` or the ratio `cases` /
+  `expected` (the standardised morbidity ratio) to set the colours. The lines join the
+  neighbour districts.
+- The list of areas with no neighbour shows Orkney, Shetland and the Western Isles. The model
+  links them when it fits (step 6.1).
+- The table of Moran's I tells if neighbour districts have similar values. A positive value
+  with a small p-value is a reason for a spatial model.
+- `ring_x`, `ring_y` and `adjacency` are geometry. They are not in **Distributions**,
+  **Unusual values** or **Data quality**.
+- The time sections are in **Not for this data**. The data has no time dim.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

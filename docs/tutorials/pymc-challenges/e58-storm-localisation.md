@@ -137,6 +137,24 @@ no missing values. The model needs each pixel of each frame.
 The file is a plain dataset, not a tree. Do not open "Put this file in a node of a tree
 (optional)".
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Images and fields**.
+
+- The viewer shows `frames`, the camera images of 40 × 40 pixels. The frame slider shows 24
+  of the 2,000 frames.
+- The line below the image covers all 2,000 frames: the mean, the minimum and the maximum of
+  each frame. A peak of the maximum is a frame with a bright spot (a molecule that blinks).
+- The histogram shows the values of all pixels. Most pixels show only the background.
+- The time sections are in **Not for this data**. The frame number is a list of images, not a
+  time dim of the schema.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
