@@ -33,7 +33,7 @@ ports, parameters and result fields.
 
 ## Start from the gallery
 
-The gallery has six templates. Each template has an About card in plain language
+The gallery has ten templates. Each template has an About card in plain language
 (`GET /v1/workflow-templates`):
 
 | Template | Select it when |
@@ -42,8 +42,12 @@ The gallery has six templates. Each template has an About card in plain language
 | `var_vecm_cointegration` | Some series move together (for example sales, price and distribution). You want to know if they have a long-run relation before you select a VECM or a VAR. |
 | `mmm_governed` | You need a marketing mix model that must pass the governance policy before a person uses it. |
 | `forecast_bakeoff` | You do not know which forecast model is correct for the data. SARIMAX, ETS, Theta and a smooth trend compete on the same folds. |
+| `sci_spatial_ladder` | You have counts of a disease for each area of a map. You want to know if the areas share their risk with their neighbours, and if the effect of a covariate stays clear in the best model. |
+| `sci_network_ladder` | You have the ties of a network and traits of its nodes. You want to know if the shared traits explain the ties, or if the activity of each node and a hidden map also help. |
 | `sci_phylo_signal` | You compare a trait across species that a tree relates. You want to know if an effect stays clear when the model includes the tree. |
 | `sci_calibrate_then_design` | You measured a heated plate in some calibration runs. You want to predict the temperature field of a new heater layout, but only if the calibration predicts a run that it did not see. |
+| `bayes_workflow_audit` | You have a Bayesian model and you want the checks of a careful Bayesian workflow in one run: the priors, convergence, the posterior predictive check, prior sensitivity and recovery of known values. |
+| `sci_image_model_check` | Your model predicts an image. You want to see where on the image the model goes wrong, and if the predicted images look like the observed image. |
 
 When you make a workflow from a template, the server copies the template document into your
 project as revision 1. After that, the workflow is yours and you can edit it.

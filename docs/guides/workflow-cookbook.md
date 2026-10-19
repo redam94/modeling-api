@@ -1,10 +1,10 @@
 ---
-description: Complete, tested workflow recipes - unit roots, differencing, AR/MA order search, a rolling-origin backtest against naive, selection and governance - with the Python client and the CLI commands to run them, plus VAR/VECM cointegration, a forecast bake-off and two ladders of science models (disease maps and networks).
+description: Complete, tested workflow recipes - unit roots, differencing, AR/MA order search, a rolling-origin backtest against naive, selection and governance - with the Python client and the CLI commands to run them, plus VAR/VECM cointegration, a forecast bake-off and six recipes for Bayesian science models (spatial and network ladders, a regression across species, calibrate-then-design, a workflow audit and an image model check).
 ---
 
 # Workflow cookbook <span class="mapi-badge">v0.5</span>
 
-This page gives five complete analyses. Each analysis is one YAML document. You can save,
+This page gives nine complete analyses. Each analysis is one YAML document. You can save,
 run and schedule it, and give it to a colleague. The tests of the documentation validate each
 document on this page against the node catalog and run it from start to end. Thus the
 documents that you copy operate correctly. For the format, see
@@ -21,6 +21,8 @@ the [workflows guide](workflows.md#cookbook).
 | [Which model explains the ties of a network?](#network-ties-which-model) | Do shared traits explain the ties, or do the activity of each node and a hidden map also help? Can the best model make networks like the real network? |
 | [Does an effect across species stay when the tree is in the model?](#trait-regression-across-species) | Which correlation of relatives (none, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck) predicts best? Is the slope of the predictor clear of zero in the winner? |
 | [Can I trust a calibration to design with it?](#calibrate-then-design) | What are the material and the losses of a heated plate? Does the calibration predict a run that it did not see? What temperature field does a new heater layout give? |
+| [Can I trust this Bayesian model?](#bayesian-workflow-audit) | Do the priors make sense? Do the chains agree? Does the model make data like my data? Do the priors set the results? Does the model find known values? |
+| [Where does my image model go wrong?](#image-model-check) | Do the predicted images look like the observed image? Where on the image are the residuals large? |
 
 ## Readiness to ARIMAX
 
@@ -856,6 +858,194 @@ Read the results in this sequence:
 
 If the branch takes the else arm, the workflow skips `design` and `field`. The report tells
 you to add calibration runs or thermocouples.
+
+## Bayesian workflow audit
+
+**In plain words.** A Bayesian model gives ranges, not only numbers. Before you use the
+ranges, do the checks of a careful Bayesian workflow:
+
+- Can the model make data like your data before it sees the data (the priors)?
+- Do the chains of the sampler agree (R-hat and the effective sample size)?
+- Can the fitted model make data like your data (the posterior predictive check)?
+- Do the results change much when the priors are wider or narrower?
+- Does the model find known values in data that it simulated?
+
+This workflow does all five checks on one model and writes one report with the plots. It
+works with each model that gives posterior draws. You give the model, its settings and the
+binding as parameters, the same as in a model spec.
+
+**For the statistician.** The fit keeps `prior_predictive.draws` prior predictive draws
+(500 by default) for `core.prior_predictive`. `model.summary` gives the rank-normalised
+split R-hat and the bulk ESS of all the posterior values. The branch `converged` needs R-hat
+under `rhat_max` (1.01) and the ESS at or over `min_ess` (400, that is 100 for each of 4
+chains). Only then do the other checks run:
+
+- `evaluate.ppc`: the coverage of the 50% and 90% ranges, the PIT distance and the p-value
+  of `statistic` (sd by default).
+- `governance.check` with `sensitivity.prior`: refits with the prior widths times each of
+  `prior_scales`.
+- `governance.check` with `recovery.simulated`: `n_sims` refits on targets that the fit
+  simulated.
+
+The branch `trusted` needs `ppc.ok` and no `fail` or `error` from the two refit checks. A
+check that does not apply to the model (`skipped`) does not block. The plots use
+`on_failure: continue`. If a recipe cannot read the model, the report tells why, and the
+audit continues. The defaults are for real use: 4 chains of 1000 draws after 1000 tuning
+steps. The recovery check fits the model `n_sims` more times, at the refit budget of the
+governance run.
+
+### The document
+
+```yaml
+--8<-- "cookbook_bayes_workflow_audit.yaml"
+```
+
+!!! note
+    A model that cannot sample its priors (for example `sci.areal_bym2`, because of its
+    ICAR prior) fails the fit when the run asks for prior draws. For such a model, set
+    `prior_predictive` to `{}`. The branch `has_prior` then skips the prior plot.
+
+### Run it with the CLI
+
+```bash
+mapi workflows init bayes_workflow_audit --name radon-audit   # writes radon-audit.yaml
+mapi workflows apply radon-audit.yaml -m "audit of the radon model"
+mapi workflows run radon-audit \
+  --input data=dataset://environment/radon_homes@latest \
+  --param model=tabular.hierarchical_glm@^1 \
+  --param 'settings={"group_dim": "county", "covariates": ["floor"], "group_covariates": ["log_uranium"]}' \
+  --param 'bind={"dims": {"obs": "home"}, "vars": {"y": "log_radon"}}' \
+  --param 'vars=["intercept", "beta", "sigma"]' \
+  --watch
+RUN=$(mapi --json workflows runs radon-audit -n 1 | jq -r '.[0].run_id')
+mapi workflows status "$RUN"                  # each decision and what each check found
+mapi workflows node "$RUN" summary            # R-hat, ESS and the range of each parameter
+mapi workflows node "$RUN" recovery           # the recovery check and its evidence
+```
+
+### Run it with the Python client
+
+```python
+from mapi_client import Client
+
+api = Client()
+workflow = api.workflows.create(template="bayes_workflow_audit")
+run = api.workflows.run(
+    workflow.id,
+    inputs={"data": "dataset://environment/radon_homes@latest"},
+    params={
+        "model": "tabular.hierarchical_glm@^1",
+        "settings": {"group_dim": "county", "covariates": ["floor"],
+                     "group_covariates": ["log_uranium"]},
+        "bind": {"dims": {"obs": "home"}, "vars": {"y": "log_radon"}},
+        "vars": ["intercept", "beta", "sigma"],
+    },
+    wait=True,
+)
+nodes = {n.node_id: n for n in run.nodes}
+print(nodes["converged"].result["arm"])        # "then": the chains agree
+print(nodes["ppc"].result["verdict_plain"])    # the posterior predictive check in words
+print(nodes["sensitivity"].result["message_plain"])
+print(nodes["recovery"].result["message_plain"])
+print(nodes["trusted"].result["arm"])          # "then": no check failed
+report = run.outputs["report"].inline          # mapi.report/v1 with the plots in it
+```
+
+### Read the outputs
+
+| Output | What it tells you |
+|---|---|
+| `has_prior`, `converged`, `trusted` | The three decisions, with the values that each condition read. The report starts with their plain words. |
+| `summary` (table) | The mean, sd, 94% HDI, R-hat and bulk ESS of each parameter (the first 200 values). The result also has `max_rhat`, `min_ess` and `n_divergent`. |
+| `prior_plot` | The data that the priors can make (grey) and your data (black). If your data is far from the grey curves, the priors are on the wrong scale. |
+| `pair_plot` | The draws of two parameters at a time. Red points are divergent transitions. Look at funnels and strong correlations. |
+| `ppc`, `ppc_plot` | The share of the observations in the 50% and 90% ranges, the PIT distance, and the p-value of the statistic. `ok` is true when all of them pass. |
+| `sensitivity` | The largest relative change of a key estimate when the priors change. Above 0.2 is `warn`, above 0.5 is `fail`. `skipped` if the settings do not set the priors. |
+| `recovery` | How often the 90% ranges contained the known values in the simulated data (target 90%). |
+| `estimates` | The posterior forest of the parameters. It shows only when no check failed. |
+
+If the chains do not agree, the workflow skips the checks and the report tells you to fit with
+more draws and tuning steps, or to change the model. A run on a laptop audited the radon model
+(8 counties, 64 homes, 2 chains of 100 draws for the test). R-hat was below 1.07 and 91% of
+the homes were in the 90% ranges. The sensitivity check gave `warn` (the uranium effect moved
+by 41% with priors two times narrower), recovery gave `pass` and the branch `trusted` took the
+`then` arm.
+
+## Image model check
+
+**In plain words.** When a model predicts a full image, a table of numbers does not show
+where the model is wrong. This workflow fits the model and puts its predicted images next to
+the observed image. It shows the residuals as maps, so that you can see the areas where the
+model does not agree with the data. Use it for a sky map (`sci.cmb_field`), a lensed galaxy
+(`sci.strong_lens`), a Turing pattern (`sci.turing_pattern`) or a different model that
+predicts an image.
+
+**For the statistician.** The plots read the in-sample predictions of the model
+(`source: predictions`) with the observed image as `observed_data`:
+
+- `sci.image_residuals` shows the observed image, the posterior predictive mean, the residual
+  and the normalised residual (obs − mean) / √(sd² + σ²), with a histogram against N(0, 1).
+- `sci.ppc_image_grid` shows the observed image next to `n_draws` predicted images on one
+  colour scale. With `shuffle: true` the observed image has a random position, and the
+  caption gives the answer.
+- `evaluate.ppc` pools all the pixels: the coverage of the 50% and 90% ranges, the PIT
+  distance and a p-value. It needs 10 or more predictive draws. If it fails, the report tells
+  why and the plots stay.
+
+The parameters `var` and `frame` select the image variable and the dim of the slider when the
+recipes cannot find them.
+
+### The document
+
+```yaml
+--8<-- "cookbook_sci_image_model_check.yaml"
+```
+
+### Run it with the CLI
+
+```bash
+mapi workflows init sci_image_model_check --name lens-check   # writes lens-check.yaml
+mapi workflows apply lens-check.yaml
+mapi workflows run lens-check \
+  --input data=dataset://astronomy/mock_lens@latest \
+  --param model=sci.strong_lens@^1 \
+  --param 'settings={"pixel_scale": 0.1, "subsample": 1, "lens_light_components": 1, "external_shear": false}' \
+  --param shuffle=true \
+  --watch
+RUN=$(mapi --json workflows runs lens-check -n 1 | jq -r '.[0].run_id')
+mapi workflows node "$RUN" ppc                # coverage, PIT distance and the p-value
+mapi workflows output "$RUN" residuals plot --out residuals.json   # the plot as a file
+```
+
+### Run it with the Python client
+
+```python
+workflow = api.workflows.create(template="sci_image_model_check")
+run = api.workflows.run(
+    workflow.id,
+    inputs={"data": "dataset://science/cmb_synthetic@latest"},
+    params={"model": "sci.cmb_field@^1", "var": "sky",
+            "settings": {"pixel_arcmin": 7.5, "beam_fwhm_arcmin": 5.0, "border": 4}},
+    wait=True,
+)
+nodes = {n.node_id: n for n in run.nodes}
+print(nodes["residuals"].result["title"])      # "Residuals of sky"
+print(nodes["ppc"].result["coverage_90"])      # the share of the pixels in the 90% ranges
+report = run.outputs["report"].inline          # the table, the scores and the two plots
+```
+
+### Read the outputs
+
+| Output | What it tells you |
+|---|---|
+| `residuals` | Four maps on the image grid. The normalised residuals must look like noise with sd near 1. A pattern (a ring, an edge, a blob) shows structure that the model does not have. |
+| `grid` | The observed image and the predicted images. If the model fits, the observed image looks like one of them. |
+| `ppc` | The coverage of the 50% and 90% ranges over all the pixels, the PIT distance and `ok`. |
+| `summary` | The parameters, R-hat and the bulk ESS. |
+
+A run on a laptop checked the mock lens of `sci.strong_lens` (24 × 24 pixels, 2 chains of 100
+draws for the test). 92% of the pixels were in the 90% ranges, the PIT distance was 0.03
+(limit 0.06) and `ok` was true.
 
 ## Make your own
 

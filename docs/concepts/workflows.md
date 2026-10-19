@@ -232,6 +232,8 @@ outer training window, for correct tuning.
 | `sci_network_ladder` | `sci.network_latent_space` with covariates, sociality and a latent space, compared by `elpd_loo` and stacking weights. The pair effects of the best model, a network plot, simulated networks with their statistics and a report. See [the cookbook](../guides/workflow-cookbook.md#network-ties-which-model). |
 | `sci_phylo_signal` | Four fits of `sci.phylo_regression` (no tree, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck), ranked by `elpd_loo` and weighed by stacking. A branch on the slope of one predictor of the winner: does its range exclude zero? A plot of the tree and a report. |
 | `sci_calibrate_then_design` | A fit of `sci.heat_plate` with one calibration run held out. A branch on the error on that run and on R-hat. If the calibration is good enough, the predicted temperature field of a new heater layout, as a map. A report. |
+| `bayes_workflow_audit` | Any Bayesian model: a fit with prior draws, a convergence gate, the posterior predictive check, prior sensitivity, the recovery of known values, the plots and a report |
+| `sci_image_model_check` | An image model: a fit, residual maps, the observed image next to predicted images, the posterior predictive check and a report |
 
 To make a workflow from a template, use `POST /v1/workflows` with `{"template": "<id>"}`.
 Then edit its parameters or nodes, the same as for all other workflows.

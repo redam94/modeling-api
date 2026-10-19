@@ -395,6 +395,198 @@ def test_the_heat_plate_recipe_stops_before_the_design_when_the_error_is_too_lar
     assert "Add calibration runs" in values["report"]["summary_plain"]
 
 
+# ===================================================== M5: the Bayesian model-check templates
+
+_BAYES_TEMPLATES = ("bayes_workflow_audit", "sci_image_model_check")
+_TINY_FIT = {"draws": 100, "tune": 100, "chains": 2, "seed": 3}
+"""Tiny fits for the tests; the templates default to 4 x 1000 draws after 1000 tuning steps."""
+
+
+@pytest.mark.parametrize("template", _BAYES_TEMPLATES)
+def test_the_cookbook_shows_the_bayesian_templates_as_they_are(template: str) -> None:
+    from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES
+
+    path = SNIPPETS / f"cookbook_{template}.yaml"
+    assert _doc(path) == WORKFLOW_TEMPLATES[template].document, (
+        f"{path.name} is stale: it must equal the gallery template {template}"
+    )
+
+
+def _science_registry() -> Any:
+    """The science registry plus the PyMC tabular models (a Bayesian model that is not a
+    ``sci.*`` model)."""
+    from mapi_plugin_tabular import PLUGINS as TABULAR
+    from mapi_workflows.testing import science_registry
+
+    reg = science_registry()
+    reg.register(list(TABULAR))
+    return reg
+
+
+def _case(data: Any, schema: Any, spec_yaml: str, **settings: Any) -> tuple[Any, dict[str, Any]]:
+    """A dataset with its schema and the model, settings and binding of its model spec."""
+    data.attrs["mapi_schema"] = schema.model_dump_json(exclude_none=True)
+    spec = yaml.safe_load(spec_yaml)
+    params = {
+        "model": spec["model"]["use"],
+        "settings": {**spec["model"].get("settings", {}), **settings},
+        "bind": spec["data"].get("bind", {}),
+        **_TINY_FIT,
+    }
+    return data, params
+
+
+def _run_template(template: str, data: Any, params: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
+    from mapi_spec.workflow import WorkflowRunStatus
+    from mapi_spec.workflow_templates import instantiate_template
+    from mapi_workflows.payloads import ReportPayload
+    from mapi_workflows.runtime.local import LocalRunner
+
+    spec = instantiate_template(template, name="audit", project="science")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = LocalRunner(registry=_science_registry()).run(
+            spec, inputs={"data": data}, params=params
+        )
+    assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
+    report = ReportPayload.model_validate(res.values["report"])
+    return {n.node_id: n for n in res.nodes}, {
+        s.node_id: s for s in report.sections if s.node_id is not None
+    }
+
+
+def _trusted(nodes: dict[str, Any]) -> bool:
+    """The condition of the 'trusted' branch, from the results of the checks."""
+    ok = nodes["ppc"].result is not None and nodes["ppc"].result["ok"] is True
+    bad = {"fail", "error"}
+    return (
+        ok
+        and nodes["sensitivity"].result["status"] not in bad
+        and nodes["recovery"].result["status"] not in bad
+    )
+
+
+def _drew(node: Any, recipe: str, kind: str) -> None:
+    assert node.status.value == "succeeded", node.error
+    assert node.result["recipe"].startswith(recipe + "@") and node.result["kind"] == kind
+
+
+@pytest.mark.slow
+def test_the_audit_recipe_checks_a_hierarchical_glm() -> None:
+    """A PyMC model that is not a sci model: radon in 8 counties."""
+    from mapi_plugin_tabular.datasets import RADON_SCHEMA, RADON_SPEC_YAML, radon_dataset
+
+    data, params = _case(radon_dataset(counties=8, homes=64), RADON_SCHEMA, RADON_SPEC_YAML)
+    params |= {"prior_predictive": {"draws": 50}, "rhat_max": 1.1, "min_ess": 50, "n_sims": 5,
+               "vars": ["intercept", "beta", "sigma"]}  # fmt: skip
+    nodes, sections = _run_template("bayes_workflow_audit", data, params)
+    assert nodes["has_prior"].result == {"value": True, "arm": "then"}
+    _drew(nodes["prior_plot"], "core.prior_predictive", "vega-lite")
+    _drew(nodes["pair_plot"], "core.pair", "vega-lite")
+    summary = nodes["summary"].result
+    assert summary["max_rhat"] < 1.1 and summary["min_ess"] >= 50
+    assert {"intercept", "sigma"} <= set(summary["params"])
+    assert nodes["converged"].result == {"value": True, "arm": "then"}
+    ppc = nodes["ppc"].result
+    assert ppc["ok"] is True and 0.75 <= ppc["coverage_90"] <= 1.0
+    _drew(nodes["ppc_plot"], "core.ppc", "vega-lite")
+    # the model's settings set its priors, so the sensitivity check refits with them
+    assert nodes["sensitivity"].result["status"] in ("pass", "warn")
+    assert nodes["recovery"].result["status"] in ("pass", "warn")
+    assert nodes["trusted"].result == {"value": True, "arm": "then"}
+    _drew(nodes["estimates"], "core.posterior_forest", "vega-lite")
+    # the report: the decisions, the table, the scores and the four plots, embedded
+    for nid in ("has_prior", "converged", "trusted"):
+        assert sections[nid].kind == "decision"
+    assert sections["summary"].kind == "table" and sections["ppc"].kind == "metrics"
+    for nid in ("prior_plot", "pair_plot", "ppc_plot", "estimates"):
+        assert sections[nid].kind == "plot" and sections[nid].plot is not None, nid
+
+
+@pytest.mark.slow
+def test_the_audit_recipe_checks_a_science_model_and_stops_when_chains_disagree() -> None:
+    """sci.lgcp_grid at a tiny size: the default gate stops the audit, a looser gate (for
+    the test only) lets every check run."""
+    from mapi_plugin_science.lgcp_data import LGCP_SCHEMA, LGCP_SPEC_YAML, lgcp_dataset
+
+    data, params = _case(lgcp_dataset(), LGCP_SCHEMA, LGCP_SPEC_YAML)
+    params["prior_predictive"] = {"draws": 50}
+    nodes, sections = _run_template("bayes_workflow_audit", data, params)
+    assert nodes["summary"].result["max_rhat"] >= 1.01  # 2 x 100 draws do not converge
+    assert nodes["converged"].result == {"value": False, "arm": "else"}
+    for nid in ("ppc", "ppc_plot", "sensitivity", "recovery", "trusted", "estimates"):
+        assert nodes[nid].status.value == "skipped", nid
+        if nid != "trusted":  # a branch that did not run gives no report line
+            assert sections[nid].kind == "skipped", nid
+    assert "do not agree" in sections["converged"].text
+    _drew(nodes["prior_plot"], "core.prior_predictive", "vega-lite")
+    assert sections["prior_plot"].plot is not None
+
+    nodes, sections = _run_template(
+        "bayes_workflow_audit", data, params | {"rhat_max": 1.5, "min_ess": 5, "n_sims": 5}
+    )
+    assert nodes["converged"].result == {"value": True, "arm": "then"}
+    assert isinstance(nodes["ppc"].result["ok"], bool)
+    _drew(nodes["ppc_plot"], "core.ppc", "vega-lite")
+    for nid in ("sensitivity", "recovery"):
+        assert nodes[nid].status.value == "succeeded", nid
+    trusted = _trusted(nodes)
+    assert nodes["trusted"].result == {"value": trusted, "arm": "then" if trusted else "else"}
+    assert nodes["estimates"].status.value == ("succeeded" if trusted else "skipped")
+    assert sections["trusted"].kind == "decision"
+
+
+@pytest.mark.slow
+def test_the_audit_recipe_skips_the_prior_plot_without_prior_draws() -> None:
+    """sci.areal_bym2 cannot sample its ICAR prior: prior_predictive {} keeps the fit."""
+    from mapi_plugin_science.areal_data import AREAL_SCHEMA, AREAL_SPEC_YAML, areal_dataset
+
+    data, params = _case(areal_dataset(), AREAL_SCHEMA, AREAL_SPEC_YAML)
+    params |= {"prior_predictive": {}, "rhat_max": 1.5, "min_ess": 5, "n_sims": 5}
+    nodes, sections = _run_template("bayes_workflow_audit", data, params)
+    assert nodes["has_prior"].result == {"value": False, "arm": "else"}
+    assert nodes["prior_plot"].status.value == "skipped"
+    assert nodes["converged"].result == {"value": True, "arm": "then"}
+    _drew(nodes["pair_plot"], "core.pair", "vega-lite")
+    _drew(nodes["ppc_plot"], "core.ppc", "vega-lite")
+    trusted = _trusted(nodes)
+    assert nodes["trusted"].result["value"] is trusted
+    assert sections["has_prior"].kind == "decision"
+
+
+@pytest.mark.slow
+def test_the_image_check_recipe_on_a_strong_lens() -> None:
+    from mapi_plugin_science.lens_data import LENS_SCHEMA, LENS_SPEC_YAML, lens_dataset
+
+    data, params = _case(lens_dataset(), LENS_SCHEMA, LENS_SPEC_YAML)
+    nodes, sections = _run_template("sci_image_model_check", data, params | {"shuffle": True})
+    _drew(nodes["residuals"], "sci.image_residuals", "plotly")
+    _drew(nodes["grid"], "sci.ppc_image_grid", "plotly")
+    assert nodes["residuals"].result["source"] == "predictions"
+    ppc = nodes["ppc"].result
+    assert ppc["ok"] is True and ppc["n_obs"] == data.sizes["row"] * data.sizes["col"]
+    assert nodes["summary"].result["n_params"] > 0
+    for nid in ("residuals", "grid"):
+        assert sections[nid].kind == "plot" and sections[nid].plot is not None, nid
+    assert sections["summary"].kind == "table" and sections["ppc"].kind == "metrics"
+
+
+@pytest.mark.slow
+def test_the_image_check_recipe_on_a_cmb_patch_keeps_its_plots_when_the_check_fails() -> None:
+    """The tiny CMB spec keeps 8 predictive fields: too few for the predictive check (it
+    needs 10). The check fails, the plots and the report do not."""
+    from mapi_plugin_science.cmb_data import CMB_SCHEMA, CMB_SPEC_YAML, cmb_dataset
+
+    data, params = _case(cmb_dataset(), CMB_SCHEMA, CMB_SPEC_YAML)
+    nodes, sections = _run_template("sci_image_model_check", data, params | {"var": "sky"})
+    _drew(nodes["residuals"], "sci.image_residuals", "plotly")
+    _drew(nodes["grid"], "sci.ppc_image_grid", "plotly")
+    assert nodes["ppc"].status.value == "failed"
+    assert sections["ppc"].kind == "failed" and "10 predictive draws" in sections["ppc"].text
+    for nid in ("residuals", "grid"):
+        assert sections[nid].kind == "plot" and sections[nid].plot is not None, nid
+
+
 def test_the_policy_file_is_a_valid_policy() -> None:
     from mapi_spec.api import GovernancePolicyCreate
 
@@ -452,8 +644,10 @@ def test_client_snippets_call_methods_the_client_has() -> None:
     client.close()
 
 
-def _cli_lines() -> list[list[str]]:
-    text = (SNIPPETS / "cli_v05.sh").read_text("utf-8").replace("\\\n", " ")
+def _cli_lines(text: str | None = None) -> list[list[str]]:
+    if text is None:
+        text = (SNIPPETS / "cli_v05.sh").read_text("utf-8")
+    text = text.replace("\\\n", " ")
     out = []
     for line in text.splitlines():
         line = line.split(" #", 1)[0].strip()
@@ -462,13 +656,28 @@ def _cli_lines() -> list[list[str]]:
     return out
 
 
+_BASH = re.compile(r"^```bash\n(.*?)^```", re.M | re.S)
+
+
+def _cookbook_cli_lines() -> list[list[str]]:
+    page = (DOCS / "guides" / "workflow-cookbook.md").read_text("utf-8")
+    return [argv for block in _BASH.findall(page) for argv in _cli_lines(block)]
+
+
 def test_every_cli_command_and_option_in_the_walkthrough_exists() -> None:
+    _check_cli_lines(_cli_lines(), minimum=25)
+
+
+def test_every_cli_command_and_option_in_the_cookbook_exists() -> None:
+    _check_cli_lines(_cookbook_cli_lines(), minimum=10)
+
+
+def _check_cli_lines(lines: list[list[str]], *, minimum: int) -> None:
     import typer
     from mapi_cli.main import app
 
     root = typer.main.get_command(app)
-    lines = _cli_lines()
-    assert len(lines) >= 25
+    assert len(lines) >= minimum
     for argv in lines:
         cmd: Any = root
         args = argv[1:]
