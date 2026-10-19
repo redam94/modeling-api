@@ -60,7 +60,7 @@ function scalar(v: unknown): Scalar {
 
 /** Text from data that Plotly draws: markup characters are replaced, so it is never HTML. */
 export function plotlyText(v: unknown): string {
-  return textOf(v).replace(/</g, "‹").replace(/>/g, "›").replace(/&/g, "+").slice(0, 200);
+  return textOf(v).replace(/</g, "‹").replace(/>/g, "›").replace(/&/g, "+").replace(/javascript\s*:/gi, "javascript ").slice(0, 200);
 }
 
 /** Every `step`-th index of `n` so that at most `max` stay (the first and the last kept). */

@@ -16,7 +16,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type P
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { availableStats, cellAt, colorTicks, decodeRaster, displayRange, frameStatIndex, frameValues, gradientCss, paint, paintMask, rasterRange, type ColorScale, type FieldStat } from "./fields";
+import { availableStats, cellAt, colorTicks, decodeRaster, displayRange, frameStatIndex, frameValues, gradientCss, maskWord, paint, paintMask, rasterRange, type ColorScale, type FieldStat } from "./fields";
 import { num } from "./ui";
 import type { FieldArrows, FieldEntry, FieldRaster, FrameStats } from "./views";
 
@@ -418,7 +418,7 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
               {maskValues ? (
                 <>
                   <dt className="text-muted-foreground">{maskLabel ?? "Mask"}</dt>
-                  <dd>{maskValues[at] === 0 ? "outside" : "inside"}</dd>
+                  <dd>{maskWord(maskValues[at] ?? NaN)}</dd>
                 </>
               ) : null}
               {fr.sd ? (
