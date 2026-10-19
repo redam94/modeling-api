@@ -228,6 +228,8 @@ outer training window, for correct tuning.
 | `var_vecm_cointegration` | A Johansen test. If the series are tied together, a VECM with the selected rank. If not, differences, a lag search and a VAR. Granger tests and a report. |
 | `mmm_governed` | Driver collinearity, the mmm-framework marketing mix model with a holdout, the governance policy, a report and an evidence pack |
 | `forecast_bakeoff` | A backtest of SARIMAX, ETS, Theta and the smooth-trend model on the same folds, against benchmarks. The platform fits the best model again. |
+| `bayes_workflow_audit` | Any Bayesian model: a fit with prior draws, a convergence gate, the posterior predictive check, prior sensitivity, the recovery of known values, the plots and a report |
+| `sci_image_model_check` | An image model: a fit, residual maps, the observed image next to predicted images, the posterior predictive check and a report |
 
 To make a workflow from a template, use `POST /v1/workflows` with `{"template": "<id>"}`.
 Then edit its parameters or nodes, the same as for all other workflows.

@@ -5,6 +5,28 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### M5 phase 3 — Workflow recipes for Bayesian models
+
+#### Added
+- **Two gallery templates** with About cards, cookbook sections
+  (`docs/snippets/cookbook_<id>.yaml`) and run tests with the local runner:
+  - `bayes_workflow_audit`: the checks of a careful Bayesian workflow for each model that
+    gives draws (the `model` parameter). The fit keeps prior draws for the prior plot.
+    A gate on R-hat and the effective sample size controls the posterior predictive
+    check, the prior sensitivity check and the recovery check. The report has the prior,
+    pair, predictive and estimate plots.
+  - `sci_image_model_check`: residual maps and a grid of predicted images next to the
+    observed image for an image model (for example `sci.strong_lens` or `sci.cmb_field`),
+    with the posterior predictive check and a report.
+
+#### Known gaps
+- `core.prior_predictive` cannot draw the prior draws of `sci.heat_plate` (the draws are on
+  the sensor dim, the observed data is on the grid). Some science models (for example
+  `sci.cmb_field` and `sci.phylo_regression`) keep no prior draws. The audit then shows a
+  failed prior plot and continues.
+- `evaluate.ppc` cannot find the target of `sci.phylo_regression` in its predictions. The
+  recovery check gives `error` for `sci.lgcp_grid` and `sci.areal_bym2`.
+
 ### M5 phase 2 — Science gallery models
 
 #### Added

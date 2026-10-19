@@ -16,6 +16,13 @@ id                          what it automates
 ``forecast_bakeoff``        one expanding-window backtest for SARIMAX, ETS, Theta and the
                             smooth-trend model against naive benchmarks -> compare -> select
                             the winner -> refit it -> report
+``bayes_workflow_audit``    any Bayesian model (``model`` parameter): fit with prior
+                            predictive draws -> prior plot -> parameter summary and a
+                            convergence gate -> predictive check, prior sensitivity and
+                            simulated recovery -> pair, predictive and estimate plots -> report
+``sci_image_model_check``   an image model (``sci.cmb_field``, ``sci.strong_lens``, …): fit ->
+                            residual maps and a predictive image grid -> predictive check ->
+                            report
 ==========================  ================================================================
 
 Templates are complete :class:`~mapi_spec.workflow.WorkflowSpec` documents that pass
@@ -450,9 +457,300 @@ FORECAST_BAKEOFF = WorkflowTemplate(
     tags=["forecast", "comparison"],
 )  # fmt: skip
 
+# ================================================================ M5: Bayesian model checks
+
+_FIT_PARAMS: dict[str, Any] = {
+    "draws": {"type": "integer", "default": 1000, "minimum": 10, "maximum": 100000,
+              "description": "The posterior draws for each chain"},
+    "tune": {"type": "integer", "default": 1000, "minimum": 0, "maximum": 100000,
+             "description": "The tuning steps for each chain (the sampler drops them)"},
+    "chains": {"type": "integer", "default": 4, "minimum": 2, "maximum": 16,
+               "description": "The number of chains (two or more, so that R-hat is "
+                              "available)"},
+    "seed": {"type": "integer", "default": 1, "minimum": 0,
+             "description": "The random seed of the fit"},
+}  # fmt: skip
+_FIT: dict[str, Any] = {"draws": _p("draws"), "tune": _p("tune"), "chains": _p("chains"),
+                        "seed": _p("seed")}  # fmt: skip
+_MODEL_PARAMS: dict[str, Any] = {
+    "settings": {"type": "object", "default": {},
+                 "description": "The settings of the model (see its About card)"},
+    "bind": {"type": "object", "default": {},
+             "description": "The binding of the dataset names to the names of the model "
+                            "(dims and vars), as in data.bind of a model spec"},
+}  # fmt: skip
+
+
+def _or_null(param: str) -> dict[str, str]:
+    """A string parameter, or null when it is empty (the recipe then finds the value)."""
+    return _x(f"if(params.{param} == '', null, params.{param})")
+
+
+_VARS = _x("if(len(params.vars) > 0, params.vars, null)")
+"""The ``vars`` parameter, or null (all the variables) when it is empty."""
+
+
+BAYES_WORKFLOW_AUDIT = WorkflowTemplate(
+    id="bayes_workflow_audit",
+    about=About(
+        title="Bayesian workflow audit",
+        summary_plain="Fits a Bayesian model and does each check of a careful workflow: the "
+        "starting assumptions, the sampler, the predictions, the effect of the priors and "
+        "the recovery of known values. Then it writes one report with the plots.",
+        use_when=["You want to trust a Bayesian model before you use its ranges",
+                  "A reviewer asks for the standard checks of a Bayesian workflow",
+                  "You changed a model and want to do all the checks again"],
+        avoid_when=["The model gives only point estimates (the checks need draws)",
+                    "You need a result in seconds (the recovery check fits the model many "
+                    "times)"],
+        data_needs=["A dataset that the model can fit",
+                    "The model reference, its settings and, if the names are different, "
+                    "the binding of the dataset to the model"],
+        assumptions=["The model gives posterior draws and can predict the fit data",
+                     "The fit has two or more chains, so that the workflow can measure R-hat"],
+        outputs=["A fitted model version",
+                 "A table of the parameters with R-hat and the effective sample size",
+                 "The coverage of the 50% and 90% ranges, the PIT distance and a p-value",
+                 "The prior sensitivity and recovery evidence",
+                 "A report with the prior predictive, pair, predictive and estimate plots"],
+        difficulty=Difficulty.INTERMEDIATE,
+        typical_runtime=TypicalRuntime.LONG,
+        example="Radon in 85 counties: R-hat 1.00, 89% of the homes in the 90% ranges, and "
+        "priors two times wider move the floor effect by 3%. The audit passes.",
+        related=["model.fit", "model.summary", "evaluate.ppc", "plot.render",
+                 "governance.check", "sensitivity.prior", "recovery.simulated",
+                 "tabular.hierarchical_glm"],
+        references=[AboutReference(title="Gelman et al. (2020), Bayesian Workflow",
+                                   url="https://arxiv.org/abs/2011.01808"),
+                    AboutReference(title="Gabry et al. (2019), Visualization in Bayesian "
+                                   "workflow", url="https://arxiv.org/abs/1709.01449")],
+        expert_notes="The fit keeps prior_predictive.draws prior predictive draws for "
+        "core.prior_predictive (set prior_predictive to {} for a model that cannot sample "
+        "its priors, for example an ICAR prior). The branch 'converged' needs the largest R-hat "
+        "(rank-normalised split R-hat over all the posterior values, up to 20 000) under "
+        "rhat_max and the smallest bulk ESS at or over min_ess. Only then do evaluate.ppc, "
+        "sensitivity.prior (refits with the prior widths times each of prior_scales) and "
+        "recovery.simulated (n_sims refits on simulated targets, at the refit budget of the "
+        "governance run) run. The branch 'trusted' needs ppc.ok and no fail or error from "
+        "the two governance checks. A check that does not apply (skipped) does not block. "
+        "The plots use on_failure: continue, so a recipe that cannot read a model gives a "
+        "line in the report and does not stop the audit.",
+        fits={"goal": ["validate_model"], "uncertainty": ["essential"],
+              "experience": ["intermediate", "expert"]},
+    ),
+    document=_doc(
+        "bayes-workflow-audit",
+        params={
+            "model": {"type": "string", "required": True,
+                      "description": "The model to audit, for example "
+                                     "tabular.hierarchical_glm@^1 or sci.heat_plate@^1"},
+            **_MODEL_PARAMS,
+            **_FIT_PARAMS,
+            "prior_predictive": {"type": "object", "default": {"draws": 500},
+                                 "description": "The prior predictive draws of the fit, as "
+                                                "{draws: N}. Type {} for a model that cannot "
+                                                "sample its priors (the workflow then does "
+                                                "not draw the prior plot)"},
+            "vars": {"type": "array", "default": [],
+                     "description": "The parameters of the pair plot and the estimate "
+                                    "plot (empty: the plots select them)"},
+            "rhat_max": {"type": "number", "default": 1.01, "minimum": 1.0, "maximum": 1.5,
+                         "description": "The largest R-hat that passes"},
+            "min_ess": {"type": "number", "default": 400, "minimum": 0,
+                        "description": "The smallest bulk effective sample size that "
+                                       "passes (100 for each of 4 chains)"},
+            "statistic": {"type": "string", "default": "sd",
+                          "enum": ["mean", "sd", "max", "min"],
+                          "description": "The statistic of the predictive p-value"},
+            "prior_scales": {"type": "array", "default": [0.5, 2.0],
+                             "description": "The prior widths that the sensitivity check "
+                                            "tries, as multiples of the model priors"},
+            "n_sims": {"type": "integer", "default": 20, "minimum": 5, "maximum": 100,
+                       "description": "The simulated datasets of the recovery check (each "
+                                      "one is a fit)"},
+        },
+        inputs={"data": {"type": "dataset", "description": "The dataset that the model fits"}},
+        nodes=[
+            {"id": "fit", "use": "model.fit", "label": "Fit with prior draws",
+             "inputs": {"data": "inputs.data"},
+             "with": {"model": _p("model"), "settings": _p("settings"), "bind": _p("bind"),
+                      "fit": {**_FIT, "prior_predictive": _x(
+                          "if(len(params.prior_predictive) > 0, params.prior_predictive, "
+                          "null)")}}},
+            {"id": "has_prior", "use": "branch.if", "label": "Prior draws?",
+             "with": {"condition": "len(params.prior_predictive) > 0",
+                      "explain_then": "The run asked for draws from the priors, so the "
+                                      "workflow compared them with the data.",
+                      "explain_else": "The run did not ask for draws from the priors, so "
+                                      "the workflow did not draw the prior plot."}},
+            {"id": "prior_plot", "use": "plot.render", "label": "Prior predictive check",
+             "inputs": {"model": "fit.model"}, "when": "has_prior.then",
+             "on_failure": "continue",
+             "with": {"recipe": "core.prior_predictive", "source": "model"}},
+            {"id": "summary", "use": "model.summary", "label": "Parameters and convergence",
+             "inputs": {"model": "fit.model"}},
+            {"id": "pair_plot", "use": "plot.render", "label": "Pair plot",
+             "inputs": {"model": "fit.model"}, "on_failure": "continue",
+             "with": {"recipe": "core.pair", "source": "model",
+                      "settings": {"var_names": _VARS}}},
+            {"id": "converged", "use": "branch.if", "label": "Did the sampler converge?",
+             "with": {"condition": "coalesce(nodes.summary.max_rhat, 99) < params.rhat_max "
+                                   "and coalesce(nodes.summary.min_ess, 0) >= params.min_ess",
+                      "explain_then": "R-hat and the effective sample size are in their "
+                                      "limits, so the chains agree. The workflow did the "
+                                      "checks of the predictions and the priors.",
+                      "explain_else": "R-hat is too large or the effective sample size is "
+                                      "too small, so the chains do not agree. The workflow "
+                                      "stopped the audit. Fit with more draws and tuning "
+                                      "steps, or change the model."}},
+            {"id": "ppc", "use": "evaluate.ppc", "label": "Predictions against the data",
+             "inputs": {"model": "fit.model"}, "when": "converged.then",
+             "on_failure": "continue", "with": {"statistic": _p("statistic")}},
+            {"id": "ppc_plot", "use": "plot.render", "label": "Posterior predictive check",
+             "inputs": {"model": "fit.model"}, "when": "converged.then",
+             "on_failure": "continue",
+             "with": {"recipe": "core.ppc", "source": "predictions"}},
+            {"id": "sensitivity", "use": "governance.check", "label": "Prior sensitivity",
+             "inputs": {"model": "fit.model", "data": "inputs.data"},
+             "when": "converged.then",
+             "with": {"check": "sensitivity.prior",
+                      "params": {"scales": _p("prior_scales")}}},
+            {"id": "recovery", "use": "governance.check", "label": "Recovery of known values",
+             "inputs": {"model": "fit.model", "data": "inputs.data"},
+             "when": "converged.then",
+             "with": {"check": "recovery.simulated", "params": {"n_sims": _p("n_sims")}}},
+            {"id": "trusted", "use": "branch.if", "label": "Can you trust the model?",
+             "when": "converged.then",
+             "with": {"condition": "coalesce(nodes.ppc.ok, false) and "
+                                   "nodes.sensitivity.status not in ['fail', 'error'] and "
+                                   "nodes.recovery.status not in ['fail', 'error']",
+                      "explain_then": "No check failed. The model makes data like the "
+                                      "observed data, and the prior and recovery checks "
+                                      "did not fail. Read their warnings, then use the "
+                                      "estimates.",
+                      "explain_else": "One or more checks failed. Look at the predictive "
+                                      "check, the prior sensitivity and the recovery "
+                                      "evidence before you use the estimates."}},
+            {"id": "estimates", "use": "plot.render", "label": "Estimates",
+             "inputs": {"model": "fit.model"}, "when": "trusted.then",
+             "on_failure": "continue",
+             "with": {"recipe": "core.posterior_forest", "source": "model",
+                      "settings": {"var_names": _VARS}}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["summary.table"], "metrics": ["ppc.metrics"],
+                        "plots": ["prior_plot.plot", "pair_plot.plot", "ppc_plot.plot",
+                                  "estimates.plot"],
+                        "model": "fit.model"},
+             "with": {"title": "Bayesian workflow audit"}},
+        ],
+        outputs={"model": "fit.model", "report": "report.report",
+                 "summary": "summary.table", "ppc": "ppc.metrics",
+                 "sensitivity": "sensitivity.evidence", "recovery": "recovery.evidence"},
+    ),
+    tags=["bayesian", "diagnostics", "governance"],
+)  # fmt: skip
+
+_IMAGE = {"var": _or_null("var"), "frame": _or_null("frame")}
+SCI_IMAGE_MODEL_CHECK = WorkflowTemplate(
+    id="sci_image_model_check",
+    about=About(
+        title="Image model check",
+        summary_plain="Fits a model that predicts an image and compares its predicted images "
+        "with the observed image. It shows the differences as maps and writes a report.",
+        use_when=["Your model predicts a full image, for example a sky map, a lensed galaxy "
+                  "or a pattern",
+                  "You want to see where on the image the model does not agree with the data"],
+        avoid_when=["The observed values are only at a few points (the residual maps are "
+                    "then almost empty)",
+                    "The model does not predict an image"],
+        data_needs=["An observed image with two image dims, for example y and x",
+                    "The model reference, its settings and, if the names are different, "
+                    "the binding of the dataset to the model"],
+        assumptions=["The model gives predictive draws of the image on the grid of the "
+                     "observed image",
+                     "The noise of the data is in the predictive draws or in a variable "
+                     "named sigma"],
+        outputs=["A fitted model version",
+                 "A table of the parameters with R-hat and the effective sample size",
+                 "Maps of the observed image, the mean prediction and the residuals",
+                 "The observed image next to predicted images on one colour scale",
+                 "The coverage of the 50% and 90% ranges and a report"],
+        difficulty=Difficulty.INTERMEDIATE,
+        typical_runtime=TypicalRuntime.MINUTES,
+        example="A sky map: the normalised residuals look like noise with sd 1.02, 91% of "
+        "the pixels are in the 90% ranges, and you cannot find the real map in the grid.",
+        related=["model.fit", "plot.render", "evaluate.ppc", "model.summary",
+                 "sci.cmb_field", "sci.strong_lens", "sci.turing_pattern"],
+        references=[AboutReference(title="Gabry et al. (2019), Visualization in Bayesian "
+                                   "workflow", url="https://arxiv.org/abs/1709.01449")],
+        expert_notes="Both plots read the in-sample predictions of the model (source: "
+        "predictions) with the observed target as observed_data. sci.image_residuals shows "
+        "the observed image, the mean, the residual and (obs - mean) / sqrt(sd^2 + sigma^2). "
+        "The recipe adds no sigma to posterior_predictive draws. var selects the image "
+        "variable when the model has more than one, and frame selects the dim of the slider "
+        "(for example run or t). The predictive check pools all the pixels. It needs 10 or "
+        "more predictive draws, and it does not stop the workflow when it fails.",
+        fits={"goal": ["validate_model", "map_fields", "fit_physics"],
+              "data_shape": ["grid"]},
+    ),
+    document=_doc(
+        "sci-image-model-check",
+        params={
+            "model": {"type": "string", "required": True,
+                      "description": "The image model, for example sci.cmb_field@^1"},
+            **_MODEL_PARAMS,
+            **_FIT_PARAMS,
+            "var": {"type": "string", "default": "",
+                    "description": "The predicted image variable (empty: the plots find it)"},
+            "frame": {"type": "string", "default": "",
+                      "description": "The dim with one image for each level, for example "
+                                     "run or t (empty: the plots find it)"},
+            "n_draws": {"type": "integer", "default": 5, "minimum": 1, "maximum": 11,
+                        "description": "The predicted images next to the observed image"},
+            "shuffle": {"type": "boolean", "default": False,
+                        "description": "Hide which panel is the observed image (the "
+                                       "caption gives the answer)"},
+            "statistic": {"type": "string", "default": "sd",
+                          "enum": ["mean", "sd", "max", "min"],
+                          "description": "The statistic of the predictive p-value"},
+        },
+        inputs={"data": {"type": "dataset",
+                         "description": "The observed image (or images) and the inputs of "
+                                        "the model"}},
+        nodes=[
+            {"id": "fit", "use": "model.fit", "inputs": {"data": "inputs.data"},
+             "with": {"model": _p("model"), "settings": _p("settings"), "bind": _p("bind"),
+                      "fit": _FIT}},
+            {"id": "summary", "use": "model.summary", "label": "Parameters and convergence",
+             "inputs": {"model": "fit.model"}},
+            {"id": "residuals", "use": "plot.render", "label": "Residual maps",
+             "inputs": {"model": "fit.model"},
+             "with": {"recipe": "sci.image_residuals", "source": "predictions",
+                      "settings": _IMAGE}},
+            {"id": "grid", "use": "plot.render", "label": "Observed and predicted images",
+             "inputs": {"model": "fit.model"},
+             "with": {"recipe": "sci.ppc_image_grid", "source": "predictions",
+                      "settings": {**_IMAGE, "n_draws": _p("n_draws"),
+                                   "shuffle": _p("shuffle")}}},
+            {"id": "ppc", "use": "evaluate.ppc", "label": "Predictions against the data",
+             "inputs": {"model": "fit.model"}, "on_failure": "continue",
+             "with": {"statistic": _p("statistic")}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["summary.table"], "metrics": ["ppc.metrics"],
+                        "plots": ["residuals.plot", "grid.plot"], "model": "fit.model"},
+             "with": {"title": "Image model check"}},
+        ],
+        outputs={"model": "fit.model", "report": "report.report",
+                 "summary": "summary.table", "ppc": "ppc.metrics"},
+    ),
+    tags=["science", "image", "diagnostics"],
+)  # fmt: skip
+
 WORKFLOW_TEMPLATES: Final[dict[str, WorkflowTemplate]] = {
-    t.id: t for t in (TS_READINESS_ARIMAX, VAR_VECM, MMM_GOVERNED, FORECAST_BAKEOFF)
-}
+    t.id: t
+    for t in (TS_READINESS_ARIMAX, VAR_VECM, MMM_GOVERNED, FORECAST_BAKEOFF,
+              BAYES_WORKFLOW_AUDIT, SCI_IMAGE_MODEL_CHECK)
+}  # fmt: skip
 """The gallery (``GET /v1/workflow-templates``)."""
 
 
