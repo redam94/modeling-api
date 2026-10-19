@@ -162,7 +162,8 @@ const catalogRoute = createRoute({
 });
 
 // M3.5: the explorers, model comparison, budget optimisation and Help me choose.
-export const DATA_EXPLORER_TABS = ["overview", "distributions", "timeseries", "missingness", "outliers", "correlation", "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality"] as const;
+// v0.10: + the eight sections for scientific data (a hand copy of `features/explore/views.ts DATA_SECTIONS`).
+export const DATA_EXPLORER_TABS = ["overview", "distributions", "timeseries", "missingness", "outliers", "correlation", "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality", "structure", "images", "profiles", "map", "network", "tree", "circular", "points"] as const;
 export const MODEL_EXPLORER_TABS = ["summary", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd", "fields", "forecast", "backtest", "governance", "lineage"] as const;
 
 const exploreDataRoute = createRoute({

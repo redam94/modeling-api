@@ -235,3 +235,31 @@ export function cellAt(fx: number, fy: number, width: number, height: number, or
   const shown = Math.max(0, Math.min(height - 1, Math.floor(fy * height)));
   return { row: origin === "lower" ? height - 1 - shown : shown, col };
 }
+
+/**
+ * RGBA pixels of a mask overlay (data mode): the cells outside the mask (value 0) are shaded
+ * with a light/dark checker that shows on any colour map; the other cells stay transparent.
+ */
+export function paintMask(mask: ArrayLike<number>, width: number, height: number, origin: "upper" | "lower" = "upper"): Uint8ClampedArray<ArrayBuffer> {
+  const out = new Uint8ClampedArray(width * height * 4);
+  for (let r = 0; r < height; r++) {
+    const row = origin === "lower" ? height - 1 - r : r;
+    for (let c = 0; c < width; c++) {
+      const v = mask[r * width + c]!;
+      if (!Number.isFinite(v) || v !== 0) continue;
+      const o = 4 * (row * width + c);
+      const light = (r + c) % 2 === 0 ? 255 : 0;
+      out[o] = light;
+      out[o + 1] = light;
+      out[o + 2] = light;
+      out[o + 3] = 150;
+    }
+  }
+  return out;
+}
+
+/** The index of a frame's label in the frame statistics (`-1` when it is not there). */
+export function frameStatIndex(coords: readonly unknown[], label: unknown): number {
+  const key = String(label);
+  return coords.findIndex((c) => String(c) === key);
+}

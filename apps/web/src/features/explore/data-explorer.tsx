@@ -4,6 +4,10 @@
  * options) from an explore run started here (`POST …/explore`, polled with
  * `GET /v1/explorations/{run_id}`). Guided mode shows each section's plain reading first;
  * Expert mode shows every statistic and the run options.
+ *
+ * v0.10: the runner detects the shapes of the data (images, maps, networks, trees, directions,
+ * points, series) and orders the sections by relevance; the sections that do not apply leave
+ * the list for a closed "Not for this data" list (they still open from a link, `shapes.ts`).
  */
 import { FlaskConical, Settings2 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
@@ -35,9 +39,11 @@ import {
   VifSection,
 } from "./data-sections";
 import { ExplorerNav, RecipePlots, RunBanner, SectionGate, type NavEntry } from "./explorer-shell";
-import { DATA_ORDER, DATA_SECTION_META, periodUnit } from "./sections-meta";
+import { CircularSection, ImagesSection, MapSection, NetworkSection, PointsSection, ProfilesSection, StructureSection, TreeSection } from "./science-sections";
+import { DATA_GROUPS, DATA_ORDER, DATA_SECTION_META, periodUnit } from "./sections-meta";
+import { missingSections, navPlan, runIndex } from "./shapes";
 import { SectionCard } from "./ui";
-import { DATA_SECTIONS, type DataSection, type SectionViews } from "./views";
+import { DATA_SECTIONS, type DataSection, type SectionViews, type StructureHints } from "./views";
 
 export interface DataExplorerProps {
   datasetId: string;
@@ -56,6 +62,27 @@ export interface DataExplorerProps {
 export function defaultDataRequest(schema: DataSchema | null | undefined, missing: readonly DataSection[]): DataExploreRequest {
   const kpi = Object.entries(schema?.vars ?? {}).find(([, v]) => v.role === "target")?.[0];
   return { sections: missing.length ? [...missing] : [...DATA_SECTIONS], ...(kpi ? { kpi } : {}) };
+}
+
+function allDims(schema: DataSchema | null | undefined): string[] {
+  return Object.keys(schema?.dims ?? {});
+}
+
+const ANGLE_UNITS = [
+  { value: "deg", label: "degrees" },
+  { value: "rad", label: "radians" },
+  { value: "h", label: "hours (time of day)" },
+  { value: "d", label: "days (day of the year)" },
+];
+
+/** The hints without empty fields (`null` when no hint is set). */
+export function cleanHints(h: StructureHints | null | undefined): StructureHints | null {
+  if (!h) return null;
+  const out: StructureHints = {};
+  for (const k of ["y_dim", "x_dim", "frame_dim", "node_dim", "time_dim"] as const) if (h[k]) out[k] = h[k];
+  const angles = Object.entries(h.angle_vars ?? {}).filter(([v, u]) => v && u);
+  if (angles.length) out.angle_vars = Object.fromEntries(angles);
+  return Object.keys(out).length ? out : null;
 }
 
 function categoricalDims(schema: DataSchema | null | undefined): string[] {
@@ -88,8 +115,24 @@ function OptionsDialog({
   const [req, setReq] = useState<DataExploreRequest>(initial);
   const vars = Object.keys(schema?.vars ?? {});
   const dims = categoricalDims(schema);
+  const anyDims = allDims(schema);
   const sections = req.sections ?? [...DATA_SECTIONS];
   const set = (patch: Partial<DataExploreRequest>) => setReq((r) => ({ ...r, ...patch }));
+  const hints = req.hints ?? {};
+  const setHint = (patch: Partial<StructureHints>) => setReq((r) => ({ ...r, hints: { ...(r.hints ?? {}), ...patch } }));
+  const [angleVar, angleUnits] = Object.entries(hints.angle_vars ?? {})[0] ?? ["", "deg"];
+  const dimSelect = (id: string, key: "y_dim" | "x_dim" | "frame_dim" | "node_dim" | "time_dim", label: string, hint?: string) => (
+    <Field label={label} htmlFor={id} {...(hint ? { hint } : {})}>
+      <NativeSelect id={id} value={hints[key] ?? ""} onChange={(e) => setHint({ [key]: e.target.value || null })}>
+        <option value="">Find it automatically</option>
+        {anyDims.map((d) => (
+          <option key={d} value={d}>
+            {d}
+          </option>
+        ))}
+      </NativeSelect>
+    </Field>
+  );
   const valid = sections.length > 0 && (req.facet_by ?? []).length <= 2;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -100,7 +143,10 @@ function OptionsDialog({
           className="grid gap-5"
           onSubmit={(e) => {
             e.preventDefault();
-            if (valid) onRun({ ...req, sections });
+            if (!valid) return;
+            const { hints: raw, ...rest } = req;
+            const clean = cleanHints(raw);
+            onRun({ ...rest, sections, ...(clean ? { hints: clean } : {}) });
           }}
         >
           <fieldset className="grid gap-2">
@@ -182,6 +228,36 @@ function OptionsDialog({
               Prewhiten before the cross-correlation (this prevents false peaks)
             </label>
           </div>
+          <fieldset className="grid gap-3 rounded-lg border p-4" data-testid="explore-hints">
+            <legend className="px-1 text-[13px] font-medium">Shape of the data (hints)</legend>
+            <p className="text-xs text-muted-foreground">The explorer finds images, maps, networks, trees, directions and series automatically. If it finds the wrong shape, tell it which dimension has which role. A hint changes only that dimension or variable.</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {dimSelect("hint-y", "y_dim", "Rows of an image (y)")}
+              {dimSelect("hint-x", "x_dim", "Columns of an image (x)")}
+              {dimSelect("hint-frame", "frame_dim", "Frames of an image or a movie")}
+              {dimSelect("hint-node", "node_dim", "Nodes of a network")}
+              {dimSelect("hint-time", "time_dim", "Time", "Select the dimension that is time. Only a time dimension gives the time views (memory, trend and season).")}
+              <Field label="Angle or time of day" htmlFor="hint-angle" hint="Select a variable that is a direction or a time of day, and its units.">
+                <div className="flex gap-2">
+                  <NativeSelect id="hint-angle" value={angleVar} onChange={(e) => setHint({ angle_vars: e.target.value ? { [e.target.value]: angleUnits } : {} })}>
+                    <option value="">Find them automatically</option>
+                    {vars.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                  <NativeSelect aria-label="Units of the angle" value={angleUnits} disabled={!angleVar} onChange={(e) => setHint({ angle_vars: angleVar ? { [angleVar]: e.target.value } : {} })} className="w-44">
+                    {ANGLE_UNITS.map((u) => (
+                      <option key={u.value} value={u.value}>
+                        {u.label}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+              </Field>
+            </div>
+          </fieldset>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
@@ -198,10 +274,10 @@ function OptionsDialog({
 
 // ------------------------------------------------------------------------------ one section
 
-function SectionContent({ section, view, expert, unit }: { section: DataSection; view: SectionViews[DataSection]; expert: boolean; unit: string }): ReactNode {
+function SectionContent({ section, view, expert, unit, onSection }: { section: DataSection; view: SectionViews[DataSection]; expert: boolean; unit: string; onSection: (s: DataSection) => void }): ReactNode {
   switch (section) {
     case "overview":
-      return <OverviewSection view={view as SectionViews["overview"]} expert={expert} />;
+      return <OverviewSection view={view as SectionViews["overview"]} expert={expert} onSection={onSection} />;
     case "distributions":
       return <DistributionsSection view={view as SectionViews["distributions"]} expert={expert} />;
     case "timeseries":
@@ -226,6 +302,22 @@ function SectionContent({ section, view, expert, unit }: { section: DataSection;
       return <GroupsSection view={view as SectionViews["groups"]} expert={expert} />;
     case "quality":
       return <QualitySection view={view as SectionViews["quality"]} expert={expert} />;
+    case "structure":
+      return <StructureSection view={view as SectionViews["structure"]} expert={expert} onSection={onSection} />;
+    case "images":
+      return <ImagesSection view={view as SectionViews["images"]} expert={expert} />;
+    case "profiles":
+      return <ProfilesSection view={view as SectionViews["profiles"]} expert={expert} />;
+    case "map":
+      return <MapSection view={view as SectionViews["map"]} expert={expert} />;
+    case "network":
+      return <NetworkSection view={view as SectionViews["network"]} expert={expert} />;
+    case "tree":
+      return <TreeSection view={view as SectionViews["tree"]} expert={expert} />;
+    case "circular":
+      return <CircularSection view={view as SectionViews["circular"]} expert={expert} />;
+    case "points":
+      return <PointsSection view={view as SectionViews["points"]} expert={expert} />;
   }
 }
 
@@ -239,6 +331,7 @@ function SectionPanel({
   onCompute,
   canRun,
   running,
+  onSection,
 }: {
   target: ExplorerTarget;
   section: DataSection;
@@ -249,6 +342,7 @@ function SectionPanel({
   onCompute: () => void;
   canRun: boolean;
   running: boolean;
+  onSection: (s: DataSection) => void;
 }) {
   const view = useSectionView(target, state, runId, section);
   const meta = DATA_SECTION_META[section];
@@ -268,7 +362,7 @@ function SectionPanel({
           </div>
         }
       >
-        {view.data ? <SectionContent section={section} view={view.data} expert={expert} unit={unit} /> : null}
+        {view.data ? <SectionContent section={section} view={view.data} expert={expert} unit={unit} onSection={onSection} /> : null}
         <RecipePlots target={target} state={state} runId={runId} expert={expert} />
       </SectionGate>
     </SectionCard>
@@ -287,7 +381,10 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
   const [optionsOpen, setOptionsOpen] = useState(false);
   const states = useMemo(() => mergeSections(DATA_ORDER, base.data, run.data), [base.data, run.data]);
   const byId = new Map(states.map((s) => [s.section, s]));
-  const missing = states.filter((s) => s.status === "missing").map((s) => s.section);
+  const plan = useMemo(() => navPlan(states, [runIndex(run.data), base.data]), [states, run.data, base.data]);
+  const missing = missingSections(states, plan);
+  const listed = plan.shown.length;
+  const ready = plan.shown.filter((s) => (byId.get(s)?.status ?? "missing") !== "missing").length;
   const running = Boolean(run.data && !run.data.done) || start.isPending;
   const unit = periodUnit(timeFreq(schema));
 
@@ -301,7 +398,8 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
       onError: (e) => toast.error("The explore run did not start", errorMessage(e)),
     });
 
-  const entries: NavEntry[] = DATA_ORDER.map((s) => ({ id: s, title: DATA_SECTION_META[s].title, group: DATA_SECTION_META[s].group, state: byId.get(s) }));
+  const entries: NavEntry[] = plan.shown.map((s) => ({ id: s, title: DATA_SECTION_META[s].title, group: DATA_SECTION_META[s].group, state: byId.get(s) }));
+  const hidden = plan.hidden.map((h) => ({ id: h.section, title: h.title, message: h.message }));
 
   return (
     <div className="grid gap-5">
@@ -310,7 +408,7 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
           {base.isPending
             ? "Loading the views…"
             : missing.length
-              ? `${states.length - missing.length} of ${states.length} views are ready. The sandbox computes the others (${missing.map((s) => DATA_SECTION_META[s].title.toLowerCase()).join(", ")}) when you ask for them.`
+              ? `${ready} of ${listed} views are ready. The sandbox computes the others (${missing.map((s) => DATA_SECTION_META[s].title.toLowerCase()).join(", ")}) when you ask for them.`
               : "Every view is ready."}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -328,7 +426,7 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
       </div>
       <RunBanner exploration={run.data} error={run.error} title="Computing the views" />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
-        <ExplorerNav entries={entries} current={section} onSelect={(id) => onSection(id as DataSection)} label="Data Explorer sections" />
+        <ExplorerNav entries={entries} hidden={hidden} groupOrder={DATA_GROUPS} current={section} onSelect={(id) => onSection(id as DataSection)} label="Data Explorer sections" />
         <SectionPanel
           key={section}
           target={target}
@@ -339,6 +437,7 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
           unit={unit}
           canRun={canRun}
           running={running}
+          onSection={onSection}
           onCompute={() => explore({ ...defaultDataRequest(schema, missing), sections: [...new Set([section, ...missing])] })}
         />
       </div>

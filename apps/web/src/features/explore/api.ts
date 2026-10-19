@@ -4,7 +4,7 @@
  * and the signed view links they hand out, merged into one list of sections.
  */
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import type { JsonObject } from "@mapi/plot-sandbox/protocol";
+import type { JsonObject, PlotDatasets } from "@mapi/plot-sandbox/protocol";
 
 import { ApiError, api, newIdempotencyKey, unwrap, unwrapWithStatus } from "@/api/client";
 import type { components } from "@/api/schema";
@@ -12,13 +12,19 @@ import { datasetArtifactLink, modelArtifactLink, qk, useProjectScope, type Proje
 import type { ArtifactLink, PlotSpec } from "@/api/types";
 import { fetchArtifactJson } from "@/lib/artifacts";
 
-import { EXPLORE_INDEX, parseIndex, parseView, plotsName, viewName, type ExplorerIndexView, type ExplorerSection, type SectionViews } from "./views";
+import { resolvePlotDatasets } from "@/features/plots/plot-data";
+
+import { EXPLORE_INDEX, parseIndex, parseView, plotsName, skipReason, viewName, type ExplorerIndexView, type ExplorerSection, type SectionViews, type SkipReason, type StructureHints } from "./views";
 
 type Arrayify<T> = T extends (infer E)[] ? Arrayify<E>[] : T extends object ? { [K in keyof T]: Arrayify<T[K]> } : T;
 type S = { [K in keyof components["schemas"]]: Arrayify<components["schemas"][K]> };
 
 export type Exploration = S["Exploration"];
-export type DataExploreRequest = S["DataExploreRequest"];
+/**
+ * `POST …/explore` of a dataset. v0.10: every one of the 21 sections, and `hints` that override
+ * the structure detection (the OpenAPI types still list the 13 sections of v0.5).
+ */
+export type DataExploreRequest = Omit<S["DataExploreRequest"], "sections"> & { sections?: string[]; hints?: StructureHints | null };
 export type ModelExploreRequest = S["ModelExploreRequest"];
 export type ModelCompareRequest = S["ModelCompareRequest"];
 export type ModelValidation = S["ModelValidation"];
@@ -135,7 +141,8 @@ export function useStartExploration(t: ExplorerTarget) {
               api.POST("/v1/datasets/{dataset_id}/versions/{version}/explore", {
                 params: { path: { dataset_id: t.id, version: t.version }, header: { "Idempotency-Key": key } },
                 headers: s.headers,
-                body: body as DataExploreRequest,
+                // the OpenAPI types still list the 13 sections of v0.5 and no hints
+                body: body as unknown as S["DataExploreRequest"],
               }),
             )
           : await unwrapWithStatus(
@@ -178,6 +185,8 @@ export interface SectionState<T extends ExplorerSection = ExplorerSection> {
   status: SectionStatus;
   /** Why a section is skipped or failed, in plain words. */
   message: string | null;
+  /** v0.10: why a section is skipped (`null`: unknown, e.g. an index from before v0.10). */
+  reason?: SkipReason | null;
   /** Where the view lives: written by the ingest/fit, or by an explore run. */
   origin: "base" | "run";
   hasPlots: boolean;
@@ -210,6 +219,7 @@ export function mergeSections<T extends ExplorerSection>(order: readonly T[], ba
       section,
       status,
       message: ref.message_plain ?? null,
+      reason: status === "skipped" ? skipReason(ref) : null,
       origin: ref === r ? "run" : "base",
       hasPlots: typeof (ref as Record<string, unknown>).plots === "string",
       view: safeView(ref.view),
@@ -242,6 +252,39 @@ export function useSectionView<K extends ExplorerSection>(t: ExplorerTarget, sta
   });
 }
 
+/** A recipe plot ready for the sandbox: its kind, body and datasets (decoded in the app). */
+export interface RecipePlot {
+  plot: PlotSpec;
+  kind: "vega-lite" | "plotly";
+  datasets: PlotDatasets;
+}
+
+const refuseLinkedData = (): Promise<never> => Promise.reject(new Error("an explorer plot must carry its data inline"));
+
+/**
+ * The recipe plots of a plots document: Vega-Lite (data inline in `spec.datasets`) and, since
+ * v0.10, Plotly (the runner's `sci.*`/`net.*` recipes; inline Arrow datasets only, a dataset at
+ * a path is refused). Other kinds and plots whose data does not decode are left out.
+ */
+export async function recipePlots(raw: unknown): Promise<RecipePlot[]> {
+  if (!Array.isArray(raw)) return [];
+  const out: RecipePlot[] = [];
+  for (const p of raw) {
+    if (typeof p !== "object" || p === null || typeof (p as { spec?: unknown }).spec !== "object") continue;
+    const plot = p as PlotSpec;
+    const kind = (p as { kind?: unknown }).kind;
+    if (kind === "vega-lite") out.push({ plot, kind, datasets: {} });
+    else if (kind === "plotly") {
+      try {
+        out.push({ plot, kind, datasets: await resolvePlotDatasets(plot, refuseLinkedData) });
+      } catch {
+        // a plot whose data the app cannot decode is left out; the others still show
+      }
+    }
+  }
+  return out;
+}
+
 /** The section's platform plots (`ui/explore/plots/<section>.json`, mapi_plots.explorer recipes). */
 export function useSectionPlots(t: ExplorerTarget, state: SectionState | undefined, runId: string | null, enabled: boolean) {
   const s = useProjectScope();
@@ -252,11 +295,9 @@ export function useSectionPlots(t: ExplorerTarget, state: SectionState | undefin
     queryKey: exploreKeys.plots(s.key, t, origin === "run" ? `run:${runId ?? ""}` : "base", section),
     enabled: enabled && state?.status === "ok" && state.hasPlots,
     staleTime: 10 * 60_000,
-    queryFn: async ({ signal }): Promise<PlotSpec[]> => {
+    queryFn: async ({ signal }): Promise<RecipePlot[]> => {
       const link = await resolveLink(qc, s, t, origin, runId, state?.plots ?? plotsName(section));
-      const raw = await fetchArtifactJson(link, { signal });
-      if (!Array.isArray(raw)) return [];
-      return raw.filter((p): p is PlotSpec => typeof p === "object" && p !== null && typeof (p as { spec?: unknown }).spec === "object" && (p as { kind?: unknown }).kind === "vega-lite");
+      return recipePlots(await fetchArtifactJson(link, { signal }));
     },
   });
 }
