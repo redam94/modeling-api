@@ -333,8 +333,14 @@ _ROLE_PLAIN: Final = {
 
 
 def _plural(n: int, word: str) -> str:
-    # a dim name that is plural already (``species``, ``cells``) keeps its form
-    return f"{n} {word}" + ("" if n == 1 or word.endswith("s") else "s")
+    """``3 classes``, ``4 statuses``, ``5 boxes``, ``2 geos``; a dim name that is plural
+    already (``species``, ``cells``) keeps its form."""
+    if n == 1:
+        return f"{n} {word}"
+    low = word.lower()
+    if low.endswith(("ss", "us", "x", "z", "ch", "sh")):
+        return f"{n} {word}es"
+    return f"{n} {word}" + ("" if low.endswith("s") else "s")
 
 
 _MIDNIGHT = re.compile(r"^(\d{4}-\d{2}-\d{2})[T ]00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:?00)?$")

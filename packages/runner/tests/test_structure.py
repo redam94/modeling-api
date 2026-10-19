@@ -292,3 +292,143 @@ def test_a_tree_with_a_cycle_or_without_a_root_is_not_a_tree() -> None:
     assert detect_structure(ds, None).first("tree") is None
     ok = xr.Dataset({"parent": ("node", np.array([-1, 0, 0]))})
     assert detect_structure(ok, None).first("tree") is not None
+
+
+# ------------------------------------------------- review: MMM and tabular data stay plain
+
+
+def _weekly(n: int = 104) -> pd.DatetimeIndex:
+    return pd.date_range("2022-01-03", periods=n, freq="W-MON")
+
+
+def test_a_target_named_y_and_merge_suffixes_are_data_not_positions() -> None:
+    from mapi_sdk.schema import infer_schema
+
+    rng = np.random.default_rng(0)
+    ds = xr.Dataset(
+        {v: ("date", rng.gamma(2, 1, 104)) for v in ("y", "x", "price")},
+        coords={"date": _weekly()},
+    )
+    s = detect_structure(ds, infer_schema(ds, targets=["y"]))
+    assert s.plain and not s.geometry_vars and s.first("points") is None
+    # pandas merge suffixes and compass suffixes on a table of stores
+    for a, b in (("sales_x", "sales_y"), ("sales_east", "sales_north")):
+        stores = xr.Dataset(
+            {a: ("store", rng.gamma(2, 1, 40)), b: ("store", rng.gamma(2, 1, 40))},
+            coords={"store": [f"s{i}" for i in range(40)]},
+        )
+        assert detect_structure(stores, None).first("points") is None, a
+    # x and y of a regression on observations are not positions without a proof
+    reg = xr.Dataset({"x": ("obs", rng.random(50)), "y": ("obs", rng.random(50))})
+    assert detect_structure(reg, None).first("points") is None
+    # ... with length units, or integer lattice positions, they are
+    for v in ("x", "y"):
+        reg[v].attrs["units"] = "m"
+    assert detect_structure(reg, None).first("points") is not None
+    lat = xr.Dataset(
+        {
+            "lat": ("store", rng.uniform(30, 45, 50), {"units": "degrees"}),
+            "lon": ("store", rng.uniform(-120, -75, 50), {"units": "degrees"}),
+            "revenue": ("store", rng.gamma(2, 1, 50)),
+        }
+    )
+    pts = detect_structure(lat, None).first("points")
+    assert pts is not None and (pts.extra["x"], pts.extra["y"]) == ("lon", "lat")
+    assert detect_structure(lat, None).first("circular") is None  # degrees, not angles
+
+
+def test_an_mmm_panel_with_integer_codes_is_not_an_image() -> None:
+    from mapi_runner.worker.explore_data import data_context, iter_series
+    from mapi_sdk.schema import infer_schema
+
+    rng = np.random.default_rng(0)
+    ds = xr.Dataset(
+        {
+            "spend": (("date", "geo", "channel"), rng.gamma(2, 1, (104, 6, 5))),
+            "sales": (("date", "geo"), rng.gamma(2, 1, (104, 6))),
+        },
+        coords={"date": _weekly(), "geo": [501, 502, 503, 504, 505, 506], "channel": np.arange(5)},
+    )
+    schema = infer_schema(ds, targets=["sales"], roles={"spend": "spend"})
+    s = detect_structure(ds, schema)
+    assert s.plain and s.kinds == ["timeseries"]
+    c = data_context(ds, schema)
+    assert len(list(iter_series(c, "spend"))) == 30  # one per geo and channel, not summed
+    # a design matrix (obs, feature) and an integer week x geo table are not images
+    xm = xr.Dataset(
+        {"x": (("obs", "feature"), rng.normal(size=(200, 8)))},
+        coords={"obs": np.arange(200), "feature": np.arange(8)},
+    )
+    assert detect_structure(xm, None).first("image") is None
+    # an unnamed square grid without time is still an image
+    grid = xr.Dataset({"z": (("a", "b"), rng.normal(size=(32, 32)))})
+    assert detect_structure(grid, None).first("image") is not None
+
+
+def test_an_integer_week_or_step_that_extends_is_time_or_a_sequence() -> None:
+    from mapi_runner.worker.explore_data import data_context
+    from mapi_sdk.schema import infer_schema
+
+    rng = np.random.default_rng(0)
+    for coords in (np.arange(1, 105), np.arange(104)):
+        ds = xr.Dataset(
+            {"sales": (("week", "geo"), rng.gamma(2, 1, (104, 3))),
+             "spend": (("week", "geo"), rng.gamma(2, 1, (104, 3)))},
+            coords={"week": coords, "geo": list("abc")},
+        )  # fmt: skip
+        schema = infer_schema(
+            ds, targets=["sales"], roles={"spend": "spend"}, policies={"week": "extend"}
+        )
+        c = data_context(ds, schema)
+        assert c.time_dim == "week" and c.strong_time, coords[:2]
+        assert "timeseries" not in c.shapes.not_applicable
+    # a step number (E24) is a sequence: Over time applies, the lag views do not
+    steps = xr.Dataset(
+        {"step_length": (("animal", "step"), rng.gamma(2, 1, (4, 40)))},
+        coords={"animal": list("abcd"), "step": np.arange(40)},
+    )
+    sch = DataSchema.model_validate(
+        {
+            "dims": {
+                "animal": {"kind": "categorical"},
+                "step": {"kind": "integer", "policy": "extend"},
+            },
+            "vars": {"step_length": {"dims": ["animal", "step"], "dtype": "float64"}},
+        }
+    )
+    assert time_strength(steps, sch, "step") == 1
+    assert detect_structure(steps, sch).sequence_dim == "step"
+
+
+def test_durations_temperatures_and_positions_are_not_circular() -> None:
+    n = 60
+    ds = xr.Dataset(
+        {
+            "hours_open": ("n", np.linspace(8, 12, n), {"units": "hours"}),
+            "man_hours": ("n", np.linspace(1, 20, n), {"units": "h"}),
+            "months_active": ("n", np.linspace(1, 11, n), {"units": "months"}),
+            "temperature": ("n", np.linspace(20, 95, n), {"units": "degrees"}),
+            "lat": ("n", np.linspace(30, 45, n), {"units": "degrees"}),
+            "hour_lst": ("n", np.linspace(0, 23, n), {"units": "h"}),
+            "wind_from": ("n", np.linspace(0, 350, n), {"units": "deg"}),
+            "month": ("n", np.linspace(1, 12, n), {"units": "month"}),
+        }
+    )
+    for v in ("hours_open", "man_hours", "months_active", "temperature", "lat"):
+        assert angle_period(ds, None, v) is None, v
+    assert angle_period(ds, None, "hour_lst") == (24.0, "h")
+    assert angle_period(ds, None, "wind_from") == (360.0, "deg")
+    assert angle_period(ds, None, "month") == (12.0, "month")
+
+
+def test_a_dim_that_only_layers_a_network_has_no_groups() -> None:
+    rng = np.random.default_rng(2)
+    ds = xr.Dataset(
+        {
+            "tie": (("lawyer", "lawyer_"), (rng.random((20, 20)) > 0.8).astype(float)),
+            "same": (("lawyer", "lawyer_", "covariate"), rng.random((20, 20, 3))),
+        },
+        coords={"covariate": ["office", "practice", "gender"]},
+    )
+    s = detect_structure(ds, None)
+    assert "groups" in s.not_applicable and "covariate" not in s.categorical_dims

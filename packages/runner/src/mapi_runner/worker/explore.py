@@ -55,7 +55,7 @@ from mapi_runner.worker.explore_data import (
     ingest_sections,
 )
 from mapi_runner.worker.explore_model import FIT_SECTIONS, MODEL_SECTION_FUNCS, ModelContext
-from mapi_runner.worker.explore_science import science_plots
+from mapi_runner.worker.explore_science import INGEST_IMAGE_CELLS, image_cells, science_plots
 from mapi_runner.worker.refit import Refitter
 
 __all__ = [
@@ -188,6 +188,16 @@ def write_data_explorer(
         context = data_context(ds, schema, req)
         if sections is None:
             wanted = set(ingest_sections(context.shapes)) | set(context.shapes.not_applicable)
+            cells = image_cells(context.shapes, ds)
+            if cells > INGEST_IMAGE_CELLS:
+                # a large movie: the ingest leaves "images" out, an explore run computes it
+                wanted.discard("images")
+                ctx.warning(
+                    "EXPLORE_DEFERRED",
+                    "the images view is computed on demand",
+                    f"the images have {cells:,} cells (the ingest computes "
+                    f"{INGEST_IMAGE_CELLS:,} or fewer). Run the deeper checks to compute it.",
+                )
             sections = [s for s in DATA_SECTIONS if s in wanted]
         return write_sections(
             ctx,

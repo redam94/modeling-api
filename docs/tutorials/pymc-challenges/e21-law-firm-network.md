@@ -133,7 +133,7 @@ Look at the data before you build the spec.
 2. Click **Network**.
 
 - The first entry shows `cowork`, the ties between the 71 lawyers. The matrix puts similar
-  lawyers next to each other. The drawing gives each office a colour.
+  lawyers next to each other. The node-link graph gives each office a colour.
 - The table of homophily gives the fraction of ties in the same office, and the fraction that
   you expect by chance. A much larger fraction shows that the office explains many ties.
 - The second entry shows `homophily`: one matrix for each of the 6 covariates

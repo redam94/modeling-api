@@ -32,7 +32,7 @@ import type {
   VarDistribution,
   VifView,
 } from "./views";
-import { num, pct } from "./ui";
+import { count, num, pct } from "./ui";
 
 export type Tone = "neutral" | "good" | "warn" | "bad";
 
@@ -81,13 +81,17 @@ function q(item: VarDistribution, key: number): number | null {
   return null;
 }
 
-/** A variable with only the values 0 and 1 (an indicator, the ties of a network): its histogram has no values between. */
+/**
+ * A variable with only the values 0 and 1 (an indicator, the ties of a network): the bins go
+ * from exactly 0 to exactly 1 and no value is between. A two-valued variable such as {0.2, 0.7}
+ * or a dose {0, 0.5} also has its values in the first and last bins, but its edges are not 0 and 1.
+ */
 function isBinary(item: VarDistribution): boolean {
   const h = item.histogram;
   if (!h || item.mean == null || item.mean < 0 || item.mean > 1) return false;
   const lo = h.edges[0]!;
   const hi = h.edges[h.edges.length - 1]!;
-  if (lo < 0 || hi > 1) return false;
+  if (lo !== 0 || hi !== 1) return false;
   // every count is in the first or the last bin
   return h.counts.every((n, i) => n === 0 || i === 0 || i === h.counts.length - 1);
 }
@@ -392,9 +396,9 @@ export function imageReading(e: ImageEntry): Reading {
   const size = `${e.source_height} x ${e.source_width}`;
   const frames = e.frames.length + (e.omitted_frames ?? 0);
   const fs = e.frame_stats?.coords.length ?? frames;
-  parts.push(`${e.var} is ${e.kind === "vector" ? "a vector field" : "an image"} of ${size} cells${fs > 1 ? `, with ${num(fs)} frames${e.frame_dim ? ` along ${e.frame_dim}` : ""}` : ""}.`);
+  parts.push(`${e.var} is ${e.kind === "vector" ? "a vector field" : "an image"} of ${size} cells${fs > 1 ? `, with ${count(fs)} frames${e.frame_dim ? ` along ${e.frame_dim}` : ""}` : ""}.`);
   if (e.downsampled) parts.push(`The picture shows block means of ${e.height} x ${e.width} cells.`);
-  if ((e.omitted_frames ?? 0) > 0) parts.push(`The slider shows ${e.frames.length} of the ${num(frames)} frames, evenly spaced.`);
+  if ((e.omitted_frames ?? 0) > 0) parts.push(`The slider shows ${e.frames.length} of the ${count(frames)} frames, evenly spaced.`);
   const st = e.stats;
   if (st && isNum(st.min) && isNum(st.max)) parts.push(`The values go from ${num(st.min, 3)} to ${num(st.max, 3)}${e.units ? ` ${e.units}` : ""}.`);
   let tone: Tone = "neutral";
@@ -482,7 +486,10 @@ export function circularMean(e: Pick<CircularEntry, "units">, g: CircularGroup):
 }
 
 export function circularReading(e: CircularEntry): Reading {
-  const groups = e.groups ?? [];
+  const all = e.groups ?? [];
+  // with groups, the runner puts the pooled rose "all" first: it is not a group
+  const pooled = all.length > 1 ? all.find((g) => String(g.label) === "all") : undefined;
+  const groups = pooled ? all.filter((g) => g !== pooled) : all;
   const peaked = groups.filter((g) => isNum(g.rayleigh_p) && g.rayleigh_p < 0.05);
   const word = (e.units ?? "").toLowerCase().startsWith("h") ? "time of day" : "direction";
   if (!groups.length) return { text: `${e.var} has no values.`, tone: "neutral" };
@@ -494,15 +501,15 @@ export function circularReading(e: CircularEntry): Reading {
       : { text: `${e.var} has no clear preferred ${word}. The values spread around the circle.`, tone: "neutral" };
   }
   const by = e.group_by ?? "group";
-  const parts = [`One rose for each ${by} (${groups.length}).`];
+  const parts = [`One rose for each ${by} (${groups.length})${pooled ? ", and one for all the records together" : ""}.`];
   if (peaked.length) parts.push(`${listWords(peaked.map((g) => `${String(g.label)} (about ${circularMean(e, g) ?? "—"})`))} ${peaked.length === 1 ? "has" : "have"} a preferred ${word}.`);
   else parts.push(`No ${by} has a clear preferred ${word}.`);
   return { text: parts.join(" "), tone: "neutral" };
 }
 
 export function pointsReading(v: PointsView): Reading {
-  const parts = [`${plural(v.n, "point")} along ${v.point_dim}, at ${v.x} and ${v.y}${v.lattice ? " (a grid of cells)" : ""}.`];
-  if (v.sample.x.length < v.n) parts.push(`The plot shows an even sample of ${num(v.sample.x.length)} points.`);
+  const parts = [`${count(v.n)} ${v.n === 1 ? "point" : "points"} along ${v.point_dim}, at ${v.x} and ${v.y}${v.lattice ? " (a grid of cells)" : ""}.`];
+  if (v.sample.x.length < v.n) parts.push(`The plot shows an even sample of ${count(v.sample.x.length)} points.`);
   if (v.answers) {
     const agree = v.answers.agreement.filter(isNum);
     const mean = agree.length ? agree.reduce((a, b) => a + b, 0) / agree.length : null;

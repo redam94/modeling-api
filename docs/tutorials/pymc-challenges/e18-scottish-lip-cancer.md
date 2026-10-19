@@ -140,8 +140,9 @@ Look at the data before you build the spec.
 - The map shows the 56 districts. Select `cases`, `expected`, `aff` or the ratio `cases` /
   `expected` (the standardised morbidity ratio) to set the colours. The lines join the
   neighbour districts.
-- The list of areas with no neighbour shows Orkney, Shetland and the Western Isles. The model
-  links them when it fits (step 6.1).
+- The list of areas with no neighbour shows the labels of the data: `Okney` (Orkney),
+  `Shetland` and `WesternIsles` (the Western Isles). The model links them when it fits
+  (step 6.1).
 - The table of Moran's I tells if neighbour districts have similar values. A positive value
   with a small p-value is a reason for a spatial model.
 - `ring_x`, `ring_y` and `adjacency` are geometry. They are not in **Distributions**,

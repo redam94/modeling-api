@@ -296,6 +296,11 @@ describe("circular", () => {
     expect(Object.keys(cl).filter((k) => k.startsWith("polar"))).toEqual(["polar", "polar2"]);
     // 12:00 is half a turn
     expect((clock.spec.data as { theta?: unknown }[]).filter((t) => Array.isArray(t.theta)).map((t) => t.theta)).toContainEqual([180, 180]);
+    // the hover names the bin in hours, not in degrees
+    const bar = (clock.spec.data as { type: string; hovertemplate?: string; customdata?: unknown }[])[0]!;
+    expect(bar.hovertemplate).toBe("%{customdata}: %{r}<extra></extra>");
+    expect(bar.customdata).toEqual({ $ref: "g0.label" });
+    expect(String(clock.datasets.g0![0]!.label)).toMatch(/^0–\d+ h$/);
   });
 
   it("draws a pair of circular variables as counts per pair of bins", () => {

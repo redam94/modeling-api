@@ -219,6 +219,9 @@ def test_dataset_summaries_count_a_pair_of_dims_once() -> None:
     assert describe_dataset(None, species).summary_generated == (
         "Data for 186 species, with 1 measure: brain."
     )
+    for dim, words in (("class", "3 classes"), ("status", "3 statuses"), ("geo", "3 geos")):
+        three = DataSummary(vars=["y"], coords={dim: CoordSummary(kind="categorical", size=3)})
+        assert describe_dataset(None, three).summary_generated.startswith(f"Data for {words},")
 
 
 def test_dataset_summaries_show_dates_without_midnight_times() -> None:

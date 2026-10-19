@@ -126,6 +126,11 @@ describe("plain readings (data)", () => {
     const ties = { var: "cowork", facet: {}, n: 5041, mean: 0.15, skew: 1.96, zero_share: 0.85, quantiles: { "0.25": 0, "0.5": 0, "0.75": 0 }, histogram: { edges: [0, 0.25, 0.5, 0.75, 1], counts: [4285, 0, 0, 756] } };
     expect(distributionReading(ties as never)).toEqual({ text: "cowork has only the values 0 and 1. 15% of the values are 1.", tone: "neutral" });
     expect(distributionReading({ ...ties, histogram: { edges: [0, 1, 2], counts: [10, 5] } }).text).toMatch(/^Half of the values/);
+    // two values that are not 0 and 1 ({0.2, 0.7}, a dose {0, 0.5}) are not an indicator
+    const two = { ...ties, var: "x", mean: 0.45, histogram: { edges: [0.2, 0.45, 0.7], counts: [55, 45] } };
+    expect(distributionReading(two as never).text).not.toMatch(/only the values 0 and 1/);
+    const dose = { ...ties, var: "dose", mean: 0.25, histogram: { edges: [0, 0.25, 0.5], counts: [50, 50] } };
+    expect(distributionReading(dose as never).text).not.toMatch(/only the values 0 and 1/);
     const corr = view("correlation", ds.ingest.views.correlation);
     expect(correlationPairs(corr)[0]).toMatchObject({ a: "spend[social]", b: "price" });
     expect(correlationReading(corr)).toMatchObject({ tone: "warn" });
@@ -282,6 +287,12 @@ describe("scientific data: plain readings", () => {
     const c = scienceExample("circular");
     expect(circularReading(c.items[0]!).text).toMatch(/^wind_from has a preferred direction: about 182°/);
     expect(circularReading(c.items[1]!).text).toMatch(/ocelot \(about 00:30\) and agouti \(about 12:00\) have a preferred time of day/);
+    // the pooled rose "all" that the runner puts first is not a group
+    const clock = c.items[1]!;
+    const pooled = { ...clock, groups: [{ ...clock.groups[0]!, label: "all" }, ...clock.groups] };
+    const read = circularReading(pooled).text;
+    expect(read).toMatch(new RegExp(`^One rose for each ${clock.group_by ?? "group"} \\(${clock.groups.length}\\), and one for all the records together\\.`));
+    expect(read).not.toMatch(/all \(about/);
     const pts = scienceExample("points");
     expect(pointsReading(pts).text).toMatch(/^3 points along chip, at wcs_col and wcs_row \(a grid of cells\)\./);
     expect(modeCounts(pts)).toEqual([

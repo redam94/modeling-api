@@ -82,6 +82,19 @@ export function missingSections(states: readonly SectionState<DataSection>[], pl
   return pool.filter((s) => (byId.get(s)?.status ?? "missing") === "missing");
 }
 
+/**
+ * "7 of 13 views are ready. ...": the sections of the list that are missing by name. For a
+ * dataset from before v0.10, the sections for scientific data are not in the list: they are
+ * named apart, so the numbers agree with the list.
+ */
+export function readyText(ready: number, listed: number, missing: readonly DataSection[], shown: readonly DataSection[]): string {
+  const inList = missing.filter((s) => shown.includes(s));
+  const extra = missing.length > inList.length;
+  const names = inList.map((s) => DATA_SECTION_META[s].title.toLowerCase()).join(", ");
+  if (!inList.length) return `${ready} of ${listed} views are ready. The sandbox computes the views for scientific data when you ask for them.`;
+  return `${ready} of ${listed} views are ready. The sandbox computes the others (${names})${extra ? " and the views for scientific data" : ""} when you ask for them.`;
+}
+
 const SHAPE_WORDS: Record<ShapeKind, string> = {
   timeseries: "Series over time",
   sequence: "Series along an index",

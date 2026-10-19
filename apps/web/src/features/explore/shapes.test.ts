@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { mergeSections, type Exploration } from "./api";
 import { CLASSIC_ORDER, DATA_ORDER } from "./sections-meta";
-import { isAdaptive, missingSections, navPlan, runIndex, sectionOrder, shapeSection, shapeWord } from "./shapes";
+import { isAdaptive, missingSections, navPlan, readyText, runIndex, sectionOrder, shapeSection, shapeWord } from "./shapes";
 import { DATA_SECTIONS, SCIENCE_SECTIONS, type ExplorerIndexView } from "./views";
 
 const ref = (section: string, extra: Record<string, unknown> = {}) => ({ section, view: `ui/explore/${section}.json`, ...extra });
@@ -47,6 +47,10 @@ describe("section list", () => {
     const missing = missingSections(states, plan);
     expect(missing).toEqual(expect.arrayContaining(["ccf", "stl", ...SCIENCE_SECTIONS]));
     expect(missing).not.toContain("overview");
+    // the header names only the sections of the list, and the science views apart
+    const text = readyText(7, plan.shown.length, missing, plan.shown);
+    expect(text).toMatch(/^7 of 13 views are ready\. The sandbox computes the others \(.*\) and the views for scientific data when you ask for them\.$/);
+    expect(text).not.toMatch(/images|network/);
   });
 
   it("orders the list by relevance and hides the sections that do not apply", () => {

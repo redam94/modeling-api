@@ -138,7 +138,7 @@ Look at the data before you build the spec.
   4 times of `t`. Look at the pattern of spots in each frame.
 - **Over time** shows one series: the mean of all cells at each time. The explorer does not
   make a series for each cell.
-- The time patterns are in **Not for this data**: 4 times are not sufficient.
+- The time patterns are in **Not for this data**: `t` is an ordered sequence, not time.
 - **Data quality** does not give the warning `SHORT_HISTORY`.
 
 Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).

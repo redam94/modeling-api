@@ -144,7 +144,7 @@ export function StructureSection({ view, expert, onSection }: P<StructureView> &
           rowKey={(d) => d.name}
           columns={[
             { key: "name", header: "Dimension", cell: (d) => <span className="font-mono text-xs">{d.name}</span> },
-            { key: "size", header: "Size", numeric: true, cell: (d) => num(d.size) },
+            { key: "size", header: "Size", numeric: true, cell: (d) => count(d.size) },
             { key: "kind", header: "Kind", cell: (d) => d.kind ?? "—" },
             { key: "role", header: "Role in the data", cell: (d) => <Badge variant="outline">{d.role_in_data}</Badge> },
             { key: "range", header: "From – to", cell: (d) => (d.start != null ? `${str(d.start)} – ${str(d.end)}` : "—") },
@@ -235,7 +235,7 @@ export function ImagesSection({ view, expert }: P<ImagesView>) {
           columns={[
             { key: "var", header: "Image", cell: (f) => <span className={cn("font-mono text-xs", f === e && "font-semibold")}>{imageLabel(f)}</span> },
             { key: "size", header: "Cells", cell: (f) => `${f.source_height} x ${f.source_width}` },
-            { key: "frames", header: "Frames", numeric: true, cell: (f) => num(f.frame_stats?.coords.length ?? f.frames.length + (f.omitted_frames ?? 0)) },
+            { key: "frames", header: "Frames", numeric: true, cell: (f) => count(f.frame_stats?.coords.length ?? f.frames.length + (f.omitted_frames ?? 0)) },
             { key: "min", header: "Min", numeric: true, cell: (f) => num(f.stats?.min) },
             { key: "mean", header: "Mean", numeric: true, cell: (f) => num(f.stats?.mean) },
             { key: "max", header: "Max", numeric: true, cell: (f) => num(f.stats?.max) },
@@ -386,6 +386,8 @@ export function NetworkSection({ view, expert }: P<NetworkView>) {
   const useAttr = attr && attrs.includes(attr) ? attr : null;
   const links = useMemo(() => (e ? nodeLinkPlot(e, useAttr) : null), [e, useAttr]);
   const matrix = useMemo(() => (e ? networkMatrixPlot(e) : null), [e]);
+  // a network without a matrix (too many nodes) always draws the nodes and ties
+  const mode = matrix ? show : "links";
   const degree = useMemo(() => (e?.degree_hist ? countsHistogramPlot(e.degree_hist, { title: e.weighted ? "Strength" : "Degree (ties per node)" }) : null), [e]);
   if (!e) return <p className="text-muted-foreground">The data has no networks.</p>;
   const reading = networkReading(e);
@@ -395,14 +397,14 @@ export function NetworkSection({ view, expert }: P<NetworkView>) {
         {items.length > 1 ? <Picker label="Network" value={String(pick)} options={items.map((it, i) => ({ value: String(i), label: seriesLabel(it.var, it.facet) }))} onChange={(v) => setPick(Number(v))} /> : null}
         <Toggle
           label="Draw as"
-          value={matrix ? show : "links"}
+          value={mode}
           options={[{ value: "links", label: "Nodes and ties" }, ...(matrix ? [{ value: "matrix" as const, label: "Matrix" }] : [])]}
           onChange={setShow}
         />
-        {attrs.length && show === "links" ? <Picker label="Colour by" value={attr} options={[{ value: "", label: "Nothing" }, ...attrs.map((a) => ({ value: a, label: a }))]} onChange={setAttr} /> : null}
+        {attrs.length && mode === "links" ? <Picker label="Colour by" value={attr} options={[{ value: "", label: "Nothing" }, ...attrs.map((a) => ({ value: a, label: a }))]} onChange={setAttr} /> : null}
       </div>
       <PlainSummary tone={reading.tone}>{reading.text}</PlainSummary>
-      {show === "matrix" && matrix ? (
+      {mode === "matrix" && matrix ? (
         <SciPlotView plot={matrix} title={`Ties of ${e.var} (matrix)`} height={460} caption="The rows and columns are in an order that puts connected nodes together (seriation)." />
       ) : (
         <SciPlotView plot={links} title={`Ties of ${e.var}`} height={460} caption="The size of a node gives its number of ties." />
@@ -414,7 +416,7 @@ export function NetworkSection({ view, expert }: P<NetworkView>) {
           <dt className="text-muted-foreground">Nodes</dt>
           <dd className="tabular">{count(e.n_nodes)}</dd>
           <dt className="text-muted-foreground">Ties</dt>
-          <dd className="tabular">{num((e.edges ?? []).length + (e.omitted_edges ?? 0))}</dd>
+          <dd className="tabular">{count((e.edges ?? []).length + (e.omitted_edges ?? 0))}</dd>
           <dt className="text-muted-foreground">Kind</dt>
           <dd>{[e.binary ? "binary" : "weighted", e.signed ? "signed" : null, e.directed ? "directed" : "undirected"].filter(Boolean).join(", ")}</dd>
           <dt className="text-muted-foreground">Density</dt>

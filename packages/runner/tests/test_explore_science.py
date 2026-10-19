@@ -167,7 +167,9 @@ def test_science_plots_add_the_plotly_recipes() -> None:
         c = data_context(ds, schema)
         plots = science_plots(section, ds, c.shapes)
         assert plots and all(p["kind"] == "plotly" for p in plots), case
-        assert plots[0]["id"] == rid
+        assert plots[0]["id"].startswith(rid)
+        ids = [p["id"] for p in plots]
+        assert len(set(ids)) == len(ids), ids  # unique React keys and export names
         for p in plots:
             sanitize_plot(p)
     ds, schema = case_data("e07")
@@ -516,7 +518,12 @@ def test_points_lab_colours_answers_and_caps() -> None:
     assert all(a is None or 0 < a <= 1 for a in v.answers.agreement)
     assert v.clark_evans is None
     rng = np.random.default_rng(5)
-    cloud = xr.Dataset({"x": ("p", rng.random(8000)), "y": ("p", rng.random(8000))})
+    cloud = xr.Dataset(
+        {
+            "x": ("p", rng.random(8000), {"units": "km"}),
+            "y": ("p", rng.random(8000), {"units": "km"}),
+        }
+    )
     p = DATA_SECTION_FUNCS["points"](data_context(cloud, None))
     assert isinstance(p, PointsView)
     assert len(p.sample.index) == MAX_POINTS and p.density is not None
@@ -621,3 +628,106 @@ def test_the_ingest_of_the_real_data(case: str, tmp_path: Path) -> None:
     if case == "e19":
         groups = status.get("groups")
         assert groups is None or groups.status == "skipped"
+
+
+# ------------------------------------------------------------------ review: big data, warnings
+
+
+def test_image_statistics_match_numpy_and_use_float32_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The statistics are read a few frames at a time (here 3) and still match numpy on all
+    the cells; the sample for the histogram is capped."""
+    import mapi_runner.worker.explore_science as sci
+
+    monkeypatch.setattr(sci, "_CHUNK_CELLS", 3 * 20 * 24)
+    monkeypatch.setattr(sci, "_SAMPLE_CELLS", 2000)
+    rng = np.random.default_rng(4)
+    a = rng.gamma(2.0, 3.0, (50, 20, 24))
+    a[3, 2, 2] = np.nan
+    ds = xr.Dataset({"movie": (("frame", "row", "col"), a)}, coords={"frame": np.arange(50)})
+    (e,) = DATA_SECTION_FUNCS["images"](data_context(ds, None)).fields  # type: ignore[attr-defined]
+    fin = a[np.isfinite(a)]
+    assert e.stats.min == pytest.approx(fin.min(), rel=1e-6)
+    assert e.stats.max == pytest.approx(fin.max(), rel=1e-6)
+    assert e.stats.mean == pytest.approx(fin.mean(), rel=1e-5)
+    assert e.stats.sd == pytest.approx(fin.std(ddof=1), rel=1e-4)
+    assert e.stats.missing_share == pytest.approx(1 / a.size)
+    assert e.frame_stats is not None and len(e.frame_stats.mean) == 50
+    assert e.frame_stats.mean[7] == pytest.approx(a[7].mean(), rel=1e-5)
+    assert e.frame_stats.missing_share[3] == pytest.approx(1 / (20 * 24))
+    assert e.histogram is not None and sum(e.histogram.counts) <= 2000
+
+
+def test_the_ingest_leaves_a_large_movie_for_an_explore_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import mapi_runner.worker.explore as explore_mod
+
+    monkeypatch.setattr(explore_mod, "INGEST_IMAGE_CELLS", 10_000)
+    rng = np.random.default_rng(5)
+    ds = xr.Dataset(
+        {"movie": (("frame", "row", "col"), rng.random((40, 20, 20)).astype(np.float32))},
+        coords={"frame": np.arange(40)},
+    )
+    ctx = FakeCtx(tmp_path)
+    index = write_data_explorer(ctx, ds, None, ref="dataset://sci/movie@v1")  # type: ignore[arg-type]
+    assert index is not None
+    assert "images" not in {r.section for r in index.sections}  # missing: computed on demand
+    assert any(code == "EXPLORE_DEFERRED" for code, *_ in ctx.warnings)
+    assert "images" in (index.order or [])
+
+
+def test_saturation_needs_a_pile_up_at_the_maximum() -> None:
+    from mapi_runner.worker.explore_science import saturated_share, structure_warnings
+
+    rng = np.random.default_rng(6)
+    # a heater set-point: few levels, many cells at the top level -> not saturated
+    plate = np.zeros((3, 12, 24))
+    plate[:, 5:7, 10:14] = 10.0
+    # a 12-bit detector clipped at 4095
+    det = np.minimum(rng.normal(3000, 800, (4, 32, 32)).round(), 4095)
+    # a smooth field with no pile-up (the maximum is one cell)
+    smooth = rng.normal(0, 1, (4, 32, 32))
+    ds = xr.Dataset(
+        {
+            "heater_w": (("run", "row", "col"), plate),
+            "counts": (("shot", "r2", "c2"), det),
+            "smooth": (("shot", "r2", "c2"), smooth),
+        },
+        coords={
+            "row": np.arange(12),
+            "col": np.arange(24),
+            "r2": np.arange(32),
+            "c2": np.arange(32),
+        },
+    )
+    flagged = {
+        w.var for w in structure_warnings(data_context(ds, None)) if w.code == "IMAGE_SATURATED"
+    }
+    assert flagged == {"counts"}
+    assert saturated_share(plate.ravel().astype(np.float32), 0.0, 10.0) == 0.0
+    assert saturated_share(det.ravel(), float(det.min()), 4095.0) > 0.05
+    for case in ("e51", "e79"):
+        cds, sch = case_data(case)
+        q = DATA_SECTION_FUNCS["quality"](data_context(cds, sch))
+        assert not [w for w in q.items if w.code == "IMAGE_SATURATED"], case  # type: ignore[attr-defined]
+
+
+def test_moran_of_a_map_layer_with_frames_uses_their_mean() -> None:
+    ds, _schema = case_data("e18")
+    rng = np.random.default_rng(7)
+    n = ds.sizes["district"]
+    base = ds["cases"].values.astype(float)
+    # frame 0 is noise, the mean over the frames is the clustered cases
+    noise = rng.permutation(base)
+    framed = np.stack([noise, base * 2, base * 4 - noise])  # mean: 2 x cases
+    ds = ds.assign(cases_by_year=(("year", "district"), framed))
+    ds = ds.assign_coords(year=[2001, 2002, 2003])
+    v = DATA_SECTION_FUNCS["map"](data_context(ds, None))
+    assert isinstance(v, MapView)
+    row = next(m for m in v.moran if m.var == "cases_by_year")
+    plain = next(m for m in v.moran if m.var == "cases")
+    assert row.morans_i == pytest.approx(plain.morans_i, abs=1e-9)
+    assert any("mean of each area over the frames" in w for w in v.warnings_plain)
+    assert n == len(v.areas)

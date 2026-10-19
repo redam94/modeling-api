@@ -189,10 +189,19 @@ class DataContext:
         return frozenset(v for shape in self.shapes.of("profile") for v in shape.vars)
 
     def reduced_dims(self) -> set[str]:
-        """Dims that are reduced in a series (pixels, positions, observation ids)."""
-        if self.shapes.plain:
+        """Dims that are reduced in a series: the pixels, positions and observation ids of a
+        picture shape (image, profile, map, points, circular). The other dims (an integer
+        geo or channel code of a panel) still split the series."""
+        s = self.shapes
+        if s.plain:
             return set()
-        return {d for d, r in self.shapes.dim_roles.items() if r in _REDUCED_ROLES}
+        return {
+            d
+            for shape in s.shapes
+            if shape.kind not in ("timeseries", "sequence")
+            for d in shape.dims.values()
+            if s.dim_roles.get(d) in _REDUCED_ROLES
+        }
 
     @property
     def max_series(self) -> int:

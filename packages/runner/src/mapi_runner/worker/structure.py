@@ -11,14 +11,18 @@ shape               found when
 ``areal_map``       ``ring_x`` and ``ring_y`` on the same two dims ``(area, vertex)``
 ``network``         a numeric variable on a pair of dims ``(X, X_)`` of the same size
 ``image``           a numeric variable on a spatial pair of dims (``row``/``col``, ``y``/``x``,
-                    ``lat``/``lon``, with a prefix or suffix), else on its last two numeric dims
+                    ``lat``/``lon``, with a prefix or suffix), else (no time dim, no media,
+                    spend or control) on its last two numeric dims of 8+ levels
 ``vector_field``    an image with a ``component`` dim of size 2
-``circular``        a numeric variable in degrees, radians, hours or days of the year
+``circular``        a numeric variable in degrees or radians (not a lat/lon/temperature), or in
+                    hours/days/months with a name of a time of day (``hour_lst``)
 ``profile``         variables along a numeric non-time axis (position, multipole, ...)
-``points``          two numeric variables with x-like and y-like names on one dim
+``points``          two numeric variables with position names on one dim that is not time
+                    (``x``/``y`` also need integers, length units or a dim of points)
 ``table``           a 2-D variable ``(item, columns)`` with a small categorical ``columns`` dim
 ``timeseries``      variables on a time dim (``kind: time`` or a datetime coord)
-``sequence``        variables on an extend-policy, strictly increasing numeric dim
+``sequence``        variables on an extend-policy, strictly increasing numeric dim (a label
+                    index only with a time-word name or media/spend along it)
 ==================  =========================================================================
 
 The geometry of a shape (polygon rings, neighbour and tree links, x/y positions) is not data:
@@ -59,10 +63,18 @@ _SPATIAL_PAIRS: Final = (
     ("row", "col"), ("y", "x"), ("lat", "lon"), ("latitude", "longitude"), ("i", "j"),
     ("north", "east"), ("row", "column"),
 )  # fmt: skip
-_ANGLE_WORDS: Final = re.compile(
-    r"(direction|bearing|angle|heading|azimuth|_from$|hour|clock|time_of_day|day_of_year"
-    r"|phase|month|aspect|wind_dir)"
-)
+_ANGLE_TOKENS: Final = frozenset(
+    {"direction", "dir", "bearing", "angle", "heading", "azimuth", "hour", "clock", "phase",
+     "month", "aspect", "orientation", "doy"}
+)  # fmt: skip
+"""Whole name parts (split at ``_``) that name an angle or a time of day: ``hour_lst`` and
+``wind_dir`` match, ``hours_open`` and ``months_active`` (durations) do not."""
+_ANGLE_PHRASES: Final = re.compile(r"(time_of_day|hour_of_day|day_of_year|_from$)")
+_NOT_ANGLE_TOKENS: Final = frozenset(
+    {"lat", "latitude", "lon", "lng", "long", "longitude", "temp", "temperature", "celsius",
+     "fahrenheit", "slope", "elevation", "altitude", "zenith", "tilt", "incline"}
+)  # fmt: skip
+"""Name parts of a variable in degrees that is not circular (a position, a temperature)."""
 ANGLE_PERIODS: Final[dict[str, tuple[float, str]]] = {
     "deg": (360.0, "deg"), "degree": (360.0, "deg"), "degrees": (360.0, "deg"),
     "rad": (2 * np.pi, "rad"), "radian": (2 * np.pi, "rad"), "radians": (2 * np.pi, "rad"),
@@ -73,8 +85,38 @@ ANGLE_PERIODS: Final[dict[str, tuple[float, str]]] = {
 """Units of a circular variable: ``units -> (period, canonical units)``."""
 _COMPONENT_LABELS: Final = ({"x", "y"}, {"u", "v"}, {"0", "1"}, {"dx", "dy"}, {"east", "north"})
 _CHANNEL_NAMES: Final = ("rgb", "channel", "channels", "band", "bands", "colour", "color")
-_X_NAME: Final = re.compile(r"(^|_)(x|col|column|lon|longitude|east|easting)$")
-_Y_NAME: Final = re.compile(r"(^|_)(y|row|lat|latitude|north|northing)$")
+_X_STRONG: Final = frozenset({"col", "column", "lon", "lng", "longitude", "easting"})
+_Y_STRONG: Final = frozenset({"row", "lat", "latitude", "northing"})
+_X_BARE: Final = frozenset({"x", "east"})
+_Y_BARE: Final = frozenset({"y", "north"})
+_POS_PARTS: Final = frozenset(
+    {"pos", "position", "coord", "coords", "loc", "location", "centroid", "center", "centre",
+     "site", "station", "grid", "cell", "pixel", "px", "point", "pt", "chip", "m", "km", "cm",
+     "mm", "um", "nm", "pix", "deg", "ft", "mi"}
+)  # fmt: skip
+"""The other name parts of a position named ``x`` or ``y`` (``pos_x``, ``x_km``): ``sales_x``
+(a pandas merge suffix) is not a position."""
+_POINT_DIMS: Final = re.compile(
+    r"(point|site|station|location|loc|cell|chip|plot|sensor|well|tree|stand|quadrat|sample)"
+)
+_LENGTH_UNITS: Final = frozenset(
+    {"m", "km", "cm", "mm", "um", "nm", "px", "pixel", "pixels", "deg", "degree", "degrees",
+     "degrees_east", "degrees_north", "ft", "mi", "au", "arcsec", "arcmin"}
+)  # fmt: skip
+_TIME_NAMES: Final = frozenset(
+    {"t", "time", "times", "step", "steps", "period", "periods", "week", "weeks", "day", "days",
+     "date", "dates", "month", "months", "quarter", "quarters", "year", "years", "epoch",
+     "iteration", "iter", "generation", "tick", "wave", "visit"}
+)  # fmt: skip
+"""Name parts of a dim that orders observations in time (``week``, ``step``, ``t``)."""
+_CALENDAR_NAMES: Final = re.compile(
+    r"^(time|date|dates|week|weeks|day|days|month|months|quarter|quarters|year|years"
+    r"|period|periods)$"
+)
+"""Names of an ``extend`` dim with numbers as coords that is real time (an integer week of an
+MMM panel): the time patterns apply."""
+_DRIVER_ROLES: Final = frozenset({Role.TARGET, Role.MEDIA, Role.SPEND, Role.CONTROL, Role.EXPOSURE})
+_SPEND_ROLES: Final = frozenset({Role.MEDIA, Role.SPEND})
 _LAB_TRIPLES: Final = (("cie_l", "cie_a", "cie_b"), ("L", "a", "b"), ("lab_l", "lab_a", "lab_b"))
 _GEOMETRY_TREE: Final = ("parent", "branch_length", "is_tip", "tip_label")
 _PICTURE_SECTION: Final = {
@@ -192,16 +234,43 @@ def is_label_index(ds: xr.Dataset, schema: DataSchema | None, dim: str) -> bool:
     return bool(np.array_equal(v, np.arange(v.size)) or np.array_equal(v, np.arange(1, v.size + 1)))
 
 
+def _tokens(name: str) -> list[str]:
+    return [t for t in re.split(r"[^a-z0-9]+", name.lower()) if t]
+
+
+def _drives(ds: xr.Dataset, schema: DataSchema | None, dim: str) -> bool:
+    """Media or spend varies along ``dim`` (an MMM panel on a week number). A target alone
+    does not tell: each row of a table of observations has a target (E02 ``home``)."""
+    if schema is None:
+        return False
+    return any(
+        v in ds.data_vars and dim in ds[v].dims and spec.role in _SPEND_ROLES
+        for v, spec in schema.vars.items()
+    )
+
+
 def time_strength(ds: xr.Dataset, schema: DataSchema | None, dim: str) -> int:
-    """2: a real time dim (``kind: time`` or a datetime coord); 1: an ordered sequence
-    (``policy: extend``, numeric, strictly increasing, not a label index); 0: not time."""
+    """2: a real time dim (``kind: time``, a datetime coord, or an ``extend`` dim with a
+    calendar name such as ``week``); 1: an ordered sequence (``policy: extend``, numeric,
+    strictly increasing); 0: not time.
+
+    A label index (coords ``0..n-1`` or ``1..n``) with ``policy: extend`` is a sequence only
+    when its name is a time word (``step``, ``t``) or media or spend vary along it.
+    Else it is a list of observations (E81 ``report``): never time."""
     kind, policy = _kind(ds, schema, dim)
     if kind == "time" or _coord(ds, dim).dtype.kind == "M":
         return 2
-    if policy == "extend" and _numeric_coord(ds, dim) and not is_label_index(ds, schema, dim):
-        v = _coord(ds, dim).astype(float)
-        if v.size >= 2 and bool(np.all(np.diff(v) > 0)):
-            return 1
+    if policy != "extend" or not _numeric_coord(ds, dim):
+        return 0
+    v = _coord(ds, dim).astype(float)
+    if v.size < 2 or not bool(np.all(np.diff(v) > 0)):
+        return 0
+    if _CALENDAR_NAMES.match(dim.lower()):
+        return 2
+    if not is_label_index(ds, schema, dim):
+        return 1
+    if set(_tokens(dim)) & _TIME_NAMES or _drives(ds, schema, dim):
+        return 1
     return 0
 
 
@@ -211,27 +280,34 @@ def _matches(name: str, word: str) -> bool:
 
 
 def _spatial_pair(
-    ds: xr.Dataset, schema: DataSchema | None, dims: Sequence[str]
+    ds: xr.Dataset, schema: DataSchema | None, dims: Sequence[str], fallback: bool = True
 ) -> tuple[tuple[str, str], bool] | None:
-    """``((y, x), named)`` of a variable's dims: a named spatial pair, else its last two
-    numeric dims (``named`` False)."""
+    """``((y, x), named)`` of a variable's dims: a named spatial pair, else (``fallback``)
+    its last two numeric dims when both have 8 or more levels, the aspect ratio is 4 or
+    less and no dim of the variable is time (``named`` False). ``fallback`` is False for data
+    with a time dim or with media, spend or control variables.
+
+    The fallback never takes a panel (``spend(date, geo, channel)`` with integer codes) or a
+    design matrix ``(obs, feature)`` as an image: name the dims, or give the ``y_dim`` and
+    ``x_dim`` hints."""
     nd = [d for d in dims if _numeric_coord(ds, d)]
     for a, b in _SPATIAL_PAIRS:
         for d1 in nd:
             for d2 in nd:
                 if d1 != d2 and _matches(d1, a) and _matches(d2, b):
                     return (d1, d2), True
-    if len(dims) >= 2:
+    if fallback and len(dims) >= 2:
         y, x = dims[-2], dims[-1]
+        ny, nx = int(ds.sizes[y]), int(ds.sizes[x])
         if (
             y in nd
             and x in nd
-            and ds.sizes[y] >= 4
-            and ds.sizes[x] >= 4
-            and time_strength(ds, schema, y) == 0
-            and time_strength(ds, schema, x) == 0
+            and ny >= 8
+            and nx >= 8
+            and max(ny, nx) <= 4 * min(ny, nx)
             and not _AXIS_WORDS.search(y.lower())
             and not _AXIS_WORDS.search(x.lower())
+            and all(time_strength(ds, schema, d) == 0 for d in dims)
         ):
             return (y, x), False
     return None
@@ -247,7 +323,10 @@ def angle_period(
     units = schema.vars[var].units if schema is not None and var in schema.vars else None
     units = units or da.attrs.get("units")
     found = ANGLE_PERIODS.get(str(units).strip().lower()) if units else None
-    named = bool(_ANGLE_WORDS.search(var.lower()))
+    toks = set(_tokens(var))
+    named = bool(toks & _ANGLE_TOKENS or _ANGLE_PHRASES.search(var.lower()))
+    if toks & _NOT_ANGLE_TOKENS and not named:
+        return None  # a latitude, a longitude or a temperature in degrees
     if found is None:
         period = da.attrs.get("period")
         circular = str(da.attrs.get("circular", "")).lower() in ("1", "true", "yes")
@@ -282,14 +361,50 @@ def angle_period(
 # ------------------------------------------------------------------------ detection
 
 
+def _strong_position(name: str, strong: frozenset[str]) -> bool:
+    """``wcs_col``, ``site_lat``, ``longitude``: a name part that is only a position."""
+    toks = _tokens(name)
+    return bool(toks) and toks[-1] in strong
+
+
+def _position_name(name: str, strong: frozenset[str], bare: frozenset[str]) -> bool:
+    """A position name: a strong word (``lon``, ``wcs_col``), or ``x``/``y`` (``east``/
+    ``north``) alone or with position parts only (``pos_x``, ``x_km``)."""
+    if _strong_position(name, strong):
+        return True
+    toks = _tokens(name)
+    hits = [t for t in toks if t in bare]
+    return len(hits) == 1 and all(t in bare or t in _POS_PARTS for t in toks)
+
+
+def _position_proof(ds: xr.Dataset, schema: DataSchema | None, dim: str, xv: str, yv: str) -> bool:
+    """``x`` and ``y`` are positions (not a predictor and a response): both are integers (a
+    lattice), both have length or angle units, or the dim names points (``site``)."""
+    if all(ds[v].dtype.kind in "iu" for v in (xv, yv)):
+        return True
+
+    def units(v: str) -> str:
+        spec = schema.vars.get(v) if schema is not None else None
+        u = (spec.units if spec is not None else None) or ds[v].attrs.get("units") or ""
+        return str(u).strip().lower()
+
+    if all(units(v) in _LENGTH_UNITS for v in (xv, yv)):
+        return True
+    return bool(_POINT_DIMS.search(dim.lower()))
+
+
 def _num(da: xr.DataArray) -> bool:
     return bool(np.issubdtype(da.dtype, np.number) or np.issubdtype(da.dtype, np.bool_))
 
 
 def _plural(n: int, word: str) -> str:
-    if n == 1 or len(word) < 2 or word.endswith("s"):
+    """``3 classes``, ``40 steps``; ``186 species`` and ``56 cells`` keep their form."""
+    if n == 1 or len(word) < 2:
         return f"{n} {word}"
-    return f"{n} {word}s"
+    low = word.lower()
+    if low.endswith(("ss", "us", "x", "z", "ch", "sh")):
+        return f"{n} {word}es"
+    return f"{n} {word}" + ("" if low.endswith("s") else "s")
 
 
 def detect_structure(
@@ -318,6 +433,7 @@ def detect_structure(
     index_vars = {v for v in data_vars if roles.get(v) is Role.INDEX}
     dim_roles: dict[str, str] = {}
 
+    mmm = any(roles.get(v) in (Role.MEDIA, Role.SPEND, Role.CONTROL) for v in data_vars)
     strength = {d: time_strength(ds, schema, d) for d in dims}
     hinted_time = time_dim or hints.time_dim
     if hinted_time is not None and hinted_time in sizes:
@@ -439,7 +555,8 @@ def detect_structure(
                 )
                 break
 
-    # 4. images and vector fields
+    # 4. images and vector fields (the unnamed fallback: no time dim, no MMM roles)
+    fallback_ok = not any(strength.values()) and not mmm
     image_groups: dict[tuple[Any, ...], list[str]] = {}
     image_facts: dict[tuple[Any, ...], dict[str, Any]] = {}
     for v in num:
@@ -456,7 +573,7 @@ def detect_structure(
             pair: tuple[str, str] | None = (hints.y_dim, hints.x_dim)
             named = True
         else:
-            found = _spatial_pair(ds, schema, vdims)
+            found = _spatial_pair(ds, schema, vdims, fallback_ok)
             pair, named = found if found is not None else (None, False)
         if pair is None:
             continue
@@ -600,14 +717,26 @@ def detect_structure(
                 )
             )
 
-    # 6. points: two numeric vars with x-like and y-like names on one dim (>= 10 levels)
+    # 6. points: two numeric vars with x-like and y-like names on one dim (>= 10 levels) that
+    #    is not time; a target or a driver is never a position
     for d in dims:
-        one = [v for v in num if ds[v].dims == (d,) and v not in consumed and v not in masks]
-        xs = [v for v in one if _X_NAME.search(v.lower())]
-        ys = [v for v in one if _Y_NAME.search(v.lower())]
-        if not xs or not ys or sizes[d] < 10:
+        if strength[d]:
             continue
-        xv, yv = xs[0], ys[0]
+        one = [v for v in num if ds[v].dims == (d,) and v not in consumed and v not in masks]
+        cand = [v for v in one if roles.get(v) not in _DRIVER_ROLES]
+        xs = [v for v in cand if _position_name(v, _X_STRONG, _X_BARE)]
+        ys = [v for v in cand if _position_name(v, _Y_STRONG, _Y_BARE)]
+        pairs = [
+            (xv, yv)
+            for xv in xs
+            for yv in ys
+            if _strong_position(xv, _X_STRONG)
+            or _strong_position(yv, _Y_STRONG)
+            or _position_proof(ds, schema, d, xv, yv)
+        ]
+        if not pairs or sizes[d] < 10:
+            continue
+        xv, yv = pairs[0]
         lattice = all(ds[v].dtype.kind in "iu" for v in (xv, yv))
         lab = next((t for t in _LAB_TRIPLES if all(c in one for c in t)), None)
         answers = next(
@@ -654,7 +783,7 @@ def detect_structure(
         ):
             continue
         axis_word = bool(_AXIS_WORDS.search(d.lower()))
-        if is_label_index(ds, schema, d) and not axis_word:
+        if not axis_word and (is_label_index(ds, schema, d) or set(_tokens(d)) & _TIME_NAMES):
             continue
         pvs = tuple(
             v
@@ -667,6 +796,12 @@ def detect_structure(
         )
         if not pvs:
             continue
+        if (
+            not axis_word
+            and _coord(ds, d).dtype.kind in "iu"
+            and (mmm or any(strength[str(e)] == 2 for v in pvs for e in ds[v].dims))
+        ):
+            continue  # integer codes (a geo or a channel id of a panel), not an axis
         frames = sorted({str(e) for v in pvs for e in ds[v].dims if e != d})
         consumed.update(pvs)
         dim_roles[d] = "along"
@@ -786,6 +921,9 @@ def detect_structure(
 
     excluded = {"y", "x", "node", "pair", "area", "vertex", "item", "index", "tip", "component"}
     non_data = geometry | masks | labels | set(group_vars)
+    # a dim that only splits a network into layers (E21 homophily per covariate) has no
+    # groups of values to compare
+    net_vars = {v for s in shapes if s.kind == "network" for v in s.vars}
     categorical = tuple(
         d
         for d in dims
@@ -793,7 +931,7 @@ def detect_structure(
         and 2 <= sizes[d] <= 50
         and dim_roles.get(d) not in excluded
         and not strength[d]
-        and any(d in ds[v].dims for v in num if v not in non_data)
+        and any(d in ds[v].dims for v in num if v not in non_data and v not in net_vars)
     )
     unit_dim = _unit_dim(ds, num, non_data, shapes)
     var_use: dict[str, str] = {}

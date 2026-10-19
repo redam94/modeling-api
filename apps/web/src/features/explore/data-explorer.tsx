@@ -41,7 +41,7 @@ import {
 import { ExplorerNav, RecipePlots, RunBanner, SectionGate, type NavEntry } from "./explorer-shell";
 import { CircularSection, ImagesSection, MapSection, NetworkSection, PointsSection, ProfilesSection, StructureSection, TreeSection } from "./science-sections";
 import { DATA_GROUPS, DATA_ORDER, DATA_SECTION_META, periodUnit } from "./sections-meta";
-import { missingSections, navPlan, runIndex } from "./shapes";
+import { missingSections, navPlan, readyText, runIndex } from "./shapes";
 import { SectionCard } from "./ui";
 import { DATA_SECTIONS, type DataSection, type SectionViews, type StructureHints } from "./views";
 
@@ -425,7 +425,7 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
           {base.isPending
             ? "Loading the views…"
             : missing.length
-              ? `${ready} of ${listed} views are ready. The sandbox computes the others (${missing.map((s) => DATA_SECTION_META[s].title.toLowerCase()).join(", ")}) when you ask for them.`
+              ? readyText(ready, listed, missing, plan.shown)
               : "Every view is ready."}
         </p>
         <div className="flex flex-wrap gap-2">

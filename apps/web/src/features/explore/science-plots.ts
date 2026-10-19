@@ -576,8 +576,10 @@ export function rosePlot(entry: CircularEntry): SciPlot | null {
     const centres = binCentresDeg(entry.bins, entry.period);
     const widths = binWidthsDeg(entry.bins, entry.period);
     const ds = `g${k}`;
-    datasets[ds] = g.counts.map((c, i) => ({ theta: centres[i] ?? 0, width: widths[i] ?? 360 / g.counts.length, count: c }));
-    traces.push({ type: "barpolar", subplot: id, r: { $ref: `${ds}.count` }, theta: { $ref: `${ds}.theta` }, width: { $ref: `${ds}.width` }, name: plotlyText(g.label ?? "all"), marker: { line: { width: 0.5 } }, hovertemplate: "%{theta:.0f}°: %{r}<extra></extra>" });
+    // the hover names the bin in the units of the data (13–14 h, not 203°)
+    const unit = entry.units ? ` ${plotlyText(entry.units)}` : "";
+    datasets[ds] = g.counts.map((c, i) => ({ theta: centres[i] ?? 0, width: widths[i] ?? 360 / g.counts.length, count: c, label: `${binLabel(entry.bins, i)}${unit}` }));
+    traces.push({ type: "barpolar", subplot: id, r: { $ref: `${ds}.count` }, theta: { $ref: `${ds}.theta` }, width: { $ref: `${ds}.width` }, customdata: { $ref: `${ds}.label` }, name: plotlyText(g.label ?? "all"), marker: { line: { width: 0.5 } }, hovertemplate: "%{customdata}: %{r}<extra></extra>" });
     const max = Math.max(0, ...g.counts);
     if (finite(g.mean_direction) && finite(g.resultant_length) && max > 0) {
       const deg = (g.mean_direction / entry.period) * 360;

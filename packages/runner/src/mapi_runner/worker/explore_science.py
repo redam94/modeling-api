@@ -26,8 +26,9 @@ from __future__ import annotations
 
 import itertools
 import math
+import re
 import warnings
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
@@ -113,7 +114,10 @@ if TYPE_CHECKING:
     from mapi_runner.worker.explore_data import DataContext
 
 __all__ = [
+    "INGEST_IMAGE_CELLS",
     "SCIENCE_SECTION_FUNCS",
+    "image_cells",
+    "saturated_share",
     "science_plots",
     "shape_views",
     "structure_warnings",
@@ -345,8 +349,47 @@ def _colormap(var: str, lo: float, hi: float, single: bool) -> str:
     return "viridis"
 
 
+_SAMPLE_CELLS: Final = 5_000_000
+"""Cells of the sample that gives the histogram, the skew and the saturated share."""
+_CHUNK_CELLS: Final = 4_000_000
+"""Cells read at a time (float32) for the statistics of all the frames."""
+INGEST_IMAGE_CELLS: Final = 50_000_000
+"""Above this many cells in all the images, the ingest does not compute ``images``: the
+section is computed on demand (an explore run)."""
+
+
+def image_cells(structure: Structure, ds: xr.Dataset) -> int:
+    """The cells of all the variables of the image and vector-field shapes."""
+    return sum(int(ds[v].size) for s in structure.of("image", "vector_field") for v in s.vars)
+
+
+def saturated_share(sample: np.ndarray, lo: float, hi: float) -> float:
+    """The share of ``sample`` (finite values) at the maximum ``hi`` when it is a pile-up of
+    a saturated detector, else 0.
+
+    A pile-up: the values have 32 or more distinct levels (not a field with a few levels,
+    such as a heater set-point), and the maximum is a detector ceiling (``2**k - 1``, 1.0) or
+    has 4 times more values than the bin of width ``(hi - lo) / 50`` below it."""
+    if sample.size == 0 or not hi > lo:
+        return 0.0
+    at_max = int(np.count_nonzero(sample == hi))
+    if at_max < 2:
+        return 0.0
+    distinct = np.unique(sample if sample.size <= 200_000 else sample[:: sample.size // 200_000])
+    if distinct.size < 32:
+        return 0.0
+    ceiling = hi == 1.0 or (
+        hi >= 1 and float(hi) == float(int(hi)) and (int(hi) + 1) & int(hi) == 0
+    )
+    below = int(np.count_nonzero((sample >= hi - (hi - lo) / 50) & (sample < hi)))
+    if ceiling or at_max >= 4 * max(below, 1):
+        return at_max / sample.size
+    return 0.0
+
+
 class _Img:
-    """One image entry to encode: values ``(F, C, H, W)``, C = 2 for a vector field."""
+    """One image entry to encode: values ``(F, C, H, W)`` (C = 2 for a vector field), read a
+    few frames at a time as float32 (never all the frames as float64)."""
 
     def __init__(
         self,
@@ -370,11 +413,12 @@ class _Img:
         if comp is None:
             da = da.expand_dims("__comp")
         order = (frame or "__frame", comp or "__comp", y, x)
-        self.values = np.asarray(da.transpose(*order).values, dtype=float)
+        self.fdim = order[0]
+        self.da = da.transpose(*order)
+        self.n_frames = int(self.da.sizes[self.fdim])
+        self.h, self.w = int(self.da.sizes[y]), int(self.da.sizes[x])
         self.frame_labels = _labels(ds, frame) if frame is not None else [None]
         self.y_labels, self.x_labels = _labels(ds, y), _labels(ds, x)
-        mag = np.sqrt(np.sum(self.values**2, axis=1)) if comp is not None else self.values[:, 0]
-        self.mag = mag  # (F, H, W)
         mask_var = shape.extra.get("mask")
         self.mask_var = mask_var if isinstance(mask_var, str) else None
         self.mask: np.ndarray | None = None
@@ -388,10 +432,94 @@ class _Img:
             self.mask = arr
         self.group_coord = shape.extra.get("group_coord") if frame is not None else None
 
+    def values(self, frames: Sequence[int] | slice) -> np.ndarray:
+        """``(k, C, H, W)`` float32 of some frames."""
+        sel = frames if isinstance(frames, slice) else list(frames)
+        return np.asarray(self.da.isel({self.fdim: sel}).values, dtype=np.float32)
+
+    def magnitude(self, vals: np.ndarray) -> np.ndarray:
+        """``(k, H, W)``: the value, or the length of the vector."""
+        if self.comp is None:
+            return vals[:, 0]
+        return np.asarray(np.sqrt(np.sum(vals * vals, axis=1)), dtype=np.float32)
+
+    def chunks(self, frames: Sequence[int] | None = None) -> Iterator[tuple[list[int], np.ndarray]]:
+        """``(frame indices, values (k, C, H, W))`` of ``frames`` (default all), a few
+        frames at a time."""
+        idx = list(range(self.n_frames)) if frames is None else list(frames)
+        per = max(1, _CHUNK_CELLS // max(1, self.h * self.w * (2 if self.comp else 1)))
+        for start in range(0, len(idx), per):
+            part = idx[start : start + per]
+            contiguous = part == list(range(part[0], part[-1] + 1))
+            yield part, self.values(slice(part[0], part[-1] + 1) if contiguous else part)
+
+
+class _Summary:
+    """Statistics of all the cells of an image, computed a few frames at a time, and a
+    sample of at most :data:`_SAMPLE_CELLS` cells for the histogram and the skew."""
+
+    def __init__(self, img: _Img) -> None:
+        n_frames, cells = img.n_frames, img.h * img.w
+        self.stat_idx = even(n_frames, MAX_FRAME_STATS) if img.frame is not None else []
+        stat_pos = {f: k for k, f in enumerate(self.stat_idx)}
+        k = len(self.stat_idx)
+        self.f_mean, self.f_sd = np.full(k, np.nan), np.full(k, np.nan)
+        self.f_lo, self.f_hi, self.f_miss = np.full(k, np.nan), np.full(k, np.nan), np.zeros(k)
+        sample_frames = set(even(n_frames, max(1, _SAMPLE_CELLS // max(1, cells))))
+        n, mean, m2 = 0, 0.0, 0.0
+        lo, hi = np.inf, -np.inf
+        missing, total = 0, 0
+        parts: list[np.ndarray] = []
+        comp_parts: list[np.ndarray] = []
+        for frames, vals in img.chunks():
+            mag = img.magnitude(vals)
+            flat = mag.reshape(len(frames), -1)
+            ok = np.isfinite(flat)
+            total += flat.size
+            missing += int(flat.size - np.count_nonzero(ok))
+            fin = flat[ok].astype(np.float64)
+            if fin.size:
+                lo, hi = min(lo, float(fin.min())), max(hi, float(fin.max()))
+                cm = float(fin.mean())
+                cm2 = float(((fin - cm) ** 2).sum())
+                tot = n + fin.size
+                delta = cm - mean
+                m2 += cm2 + delta * delta * n * fin.size / tot
+                mean += delta * fin.size / tot
+                n = tot
+            del fin
+            picked = [i for i, f in enumerate(frames) if f in stat_pos]
+            if picked:
+                sub = flat[picked]
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    pos = [stat_pos[frames[i]] for i in picked]
+                    self.f_mean[pos] = np.nanmean(sub, axis=1, dtype=np.float64)
+                    if sub.shape[1] > 1:
+                        self.f_sd[pos] = np.nanstd(sub, axis=1, ddof=1, dtype=np.float64)
+                    self.f_lo[pos] = np.nanmin(sub, axis=1)
+                    self.f_hi[pos] = np.nanmax(sub, axis=1)
+                self.f_miss[pos] = np.mean(~np.isfinite(sub), axis=1)
+            keep = [i for i, f in enumerate(frames) if f in sample_frames]
+            if keep:
+                s = flat[keep]
+                parts.append(s[np.isfinite(s)])
+                if img.comp is not None:
+                    comp_parts.append(vals[keep].transpose(1, 0, 2, 3).reshape(2, -1))
+        sample = np.concatenate(parts) if parts else np.zeros(0, np.float32)
+        if sample.size > _SAMPLE_CELLS:
+            sample = sample[:: -(-sample.size // _SAMPLE_CELLS)]
+        self.sample = sample
+        self.components = np.concatenate(comp_parts, axis=1) if comp_parts else None
+        self.n, self.lo, self.hi = n, (lo if n else 0.0), (hi if n else 0.0)
+        self.mean = mean if n else None
+        self.sd = math.sqrt(m2 / (n - 1)) if n > 1 else None
+        self.missing_share = missing / total if total else 0.0
+
 
 def _plan(img: _Img, budget: int) -> tuple[int, list[int], int]:
     """Block factor, frames and group rasters that fit ``budget`` cells."""
-    h, w = img.mag.shape[-2:]
+    h, w = img.h, img.w
     f = max(1, -(-max(h, w) // MAX_FIELD_PIXELS))
     n_groups = 0
     if img.group_coord is not None:
@@ -409,47 +537,35 @@ def _plan(img: _Img, budget: int) -> tuple[int, list[int], int]:
         f += 1
 
 
-def _frame_stats(img: _Img) -> FrameStats | None:
+def _frame_stats(img: _Img, s: _Summary) -> FrameStats | None:
     if img.frame is None:
         return None
-    n = img.mag.shape[0]
-    idx = even(n, MAX_FRAME_STATS)
-    flat = img.mag[idx].reshape(len(idx), -1)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        mean = np.nanmean(flat, axis=1)
-        sd = np.nanstd(flat, axis=1, ddof=1) if flat.shape[1] > 1 else np.full(len(idx), np.nan)
-        lo = np.nanmin(flat, axis=1)
-        hi = np.nanmax(flat, axis=1)
-    miss = np.mean(~np.isfinite(flat), axis=1)
     return FrameStats(
-        coords=[img.frame_labels[i] for i in idx],
-        mean=_floats(mean),
-        sd=_floats(sd),
-        min=_floats(lo),
-        max=_floats(hi),
-        missing_share=[float(m) for m in miss],
-        downsampled=len(idx) < n,
+        coords=[img.frame_labels[i] for i in s.stat_idx],
+        mean=_floats(s.f_mean),
+        sd=_floats(s.f_sd),
+        min=_floats(s.f_lo),
+        max=_floats(s.f_hi),
+        missing_share=[float(m) for m in s.f_miss],
+        downsampled=len(s.stat_idx) < img.n_frames,
     )
 
 
 def _image_entry(c: DataContext, img: _Img, budget: int) -> ImageEntry:
     f, frames, n_groups = _plan(img, budget)
-    allv = img.mag
-    fin = allv[np.isfinite(allv)]
-    lo = float(fin.min()) if fin.size else 0.0
-    hi = float(fin.max()) if fin.size else 0.0
-    log = bool(fin.size and lo > 0 and hi / lo > 1e3)
+    s = _Summary(img)
+    lo, hi = s.lo, s.hi
+    log = bool(s.n and lo > 0 and hi / lo > 1e3)
     enc = "log10" if log else "linear"
     vector = img.comp is not None
     out: list[FieldFrame] = []
     for i in frames:
-        mean = block_mean(img.mag[i], f, f)
+        vals = img.values([i])
         out.append(
             FieldFrame(
                 label=img.frame_labels[i] if img.frame is not None else None,
-                mean=encode_raster(mean, enc),
-                arrows=arrows(block_mean(img.values[i], f, f)) if vector else None,
+                mean=encode_raster(block_mean(img.magnitude(vals)[0], f, f), enc),
+                arrows=arrows(block_mean(vals[0], f, f)) if vector else None,
             )
         )
     groups: list[ImageGroupMean] = []
@@ -458,34 +574,41 @@ def _image_entry(c: DataContext, img: _Img, budget: int) -> ImageEntry:
         levels = list(dict.fromkeys(labels))
         for level in levels[:n_groups]:
             pick = [k for k, lab in enumerate(labels) if lab == level]
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", RuntimeWarning)
-                m = np.nanmean(img.mag[pick], axis=0)
-            groups.append(
-                ImageGroupMean(
-                    label=level, n=len(pick), mean=encode_raster(block_mean(m, f, f), enc)
-                )
-            )
+            total: np.ndarray | None = None
+            count: np.ndarray | None = None
+            for _part, vals in img.chunks(pick):
+                bm = block_mean(img.magnitude(vals), f, f)
+                ok = np.isfinite(bm)
+                add = np.where(ok, bm, 0.0).sum(axis=0)
+                cnt = ok.sum(axis=0)
+                total = add if total is None else total + add
+                count = cnt if count is None else count + cnt
+            assert total is not None and count is not None
+            with np.errstate(invalid="ignore", divide="ignore"):
+                m = np.where(count > 0, total / np.maximum(count, 1), np.nan)
+            groups.append(ImageGroupMean(label=level, n=len(pick), mean=encode_raster(m, enc)))
     mask = encode_raster(block_mean(img.mask, f, f)) if img.mask is not None else None
+    fin = s.sample
     hist = _histogram(fin)
     skew = 0.0
     if fin.size > 2 and hi > lo:
-        sd0 = float(fin.std())
-        skew = float(np.mean(((fin - fin.mean()) / sd0) ** 3)) if sd0 > 0 else 0.0
-    saturated = float(np.mean(fin == hi)) if fin.size and hi > lo else 0.0
+        f64 = fin.astype(np.float64)
+        sd0 = float(f64.std())
+        skew = float(np.mean(((f64 - f64.mean()) / sd0) ** 3)) if sd0 > 0 else 0.0
+        del f64
     stats = ImageStats(
-        min=fv(lo) if fin.size else None,
-        max=fv(hi) if fin.size else None,
-        mean=fv(fin.mean()) if fin.size else None,
-        sd=fv(fin.std(ddof=1)) if fin.size > 1 else None,
-        missing_share=float(np.mean(~np.isfinite(allv))) if allv.size else 0.0,
-        saturated_share=saturated if saturated >= 1.0 / max(fin.size, 1) * 2 else 0.0,
+        min=fv(lo) if s.n else None,
+        max=fv(hi) if s.n else None,
+        mean=fv(s.mean) if s.mean is not None else None,
+        sd=fv(s.sd) if s.sd is not None else None,
+        missing_share=s.missing_share,
+        saturated_share=saturated_share(fin, lo, hi),
     )
     components: list[ImageComponent] = []
-    if vector and img.comp is not None:
+    if vector and img.comp is not None and s.components is not None:
         for k, label in enumerate(_labels(c.ds, img.comp)[:2]):
-            components.append(ImageComponent(label=label, histogram=_histogram(img.values[:, k])))
-    h, w = img.mag.shape[-2:]
+            components.append(ImageComponent(label=label, histogram=_histogram(s.components[k])))
+    h, w = img.h, img.w
     spec = c.schema.vars.get(img.var) if c.schema is not None else None
     return ImageEntry(
         output=img.var[:128],
@@ -515,7 +638,7 @@ def _image_entry(c: DataContext, img: _Img, budget: int) -> ImageEntry:
         omitted_frames=len(img.frame_labels) - len(frames) if img.frame is not None else 0,
         mask_var=img.mask_var,
         mask=mask,
-        frame_stats=_frame_stats(img),
+        frame_stats=_frame_stats(img, s),
         histogram=hist,
         log_counts=skew > 2.0,
         stats=stats,
@@ -527,7 +650,7 @@ def _image_entry(c: DataContext, img: _Img, budget: int) -> ImageEntry:
 
 def images(c: DataContext) -> ImagesView:
     shapes = _need(c, "image", "vector_field")
-    todo: list[_Img] = []
+    todo: list[tuple[Shape, str, dict[str, Any], dict[str, int]]] = []
     omitted: list[str] = []
     for shape in shapes:
         facets = [d for d in shape.extra.get("facets", ()) if d in c.ds.dims]
@@ -541,10 +664,10 @@ def images(c: DataContext) -> ImagesView:
                 if len(todo) >= MAX_FIELDS:
                     omitted.append(f"{var}{list(facet.values()) if facet else ''}"[:256])
                     continue
-                sel = dict(zip(facets, idx, strict=True))
-                todo.append(_Img(c, shape, var, facet, sel))
+                todo.append((shape, var, facet, dict(zip(facets, idx, strict=True))))
     budget = MAX_FIELD_CELLS // max(1, len(todo))
-    entries = [_image_entry(c, img, budget) for img in todo]
+    # one image at a time: its frames are read a few at a time, never all at once
+    entries = [_image_entry(c, _Img(c, *item), budget) for item in todo]
     warn: list[str] = []
     if any(e.downsampled for e in entries):
         warn.append("Some images have more pixels than the viewer shows. It shows block means.")
@@ -771,8 +894,17 @@ def map_(c: DataContext) -> MapView:
                 if np.isfinite(d[i, j]):
                     w[i, j] = w[j, i] = 1.0
     moran: list[MoranRow] = []
+    framed: list[str] = []
     for layer in layers:
         vals = np.array([np.nan if v is None else v for v in layer.values], dtype=float)
+        if layer.frame_dim is not None:
+            # a variable on (area, other): Moran's I of the mean over the frames, not of the
+            # first frame that the map shows first
+            arr = np.asarray(ds[layer.var].transpose(layer.frame_dim, area).values, dtype=float)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                vals = np.nanmean(arr, axis=0)
+            framed.append(f"{layer.var} (mean over {layer.frame_dim})")
         i_, e_, z_, p_ = _moran(vals, w)
         moran.append(
             MoranRow(
@@ -792,6 +924,12 @@ def map_(c: DataContext) -> MapView:
         warn.append("The data has no neighbour variable. Moran's I uses the 4 nearest areas.")
     if isolates:
         warn.append(f"{len(isolates)} area(s) have no neighbour.")
+    if framed:
+        warn.append(
+            "Moran's I uses the mean of each area over the frames for "
+            + ", ".join(framed[:8])
+            + "."
+        )
     return MapView(
         area_dim=area,
         areas=_labels(ds, area),
@@ -1430,6 +1568,26 @@ def points(c: DataContext) -> PointsView:
 # --------------------------------------------------------------------------- quality
 
 
+_NOT_MEASURED: Final = frozenset(
+    {Role.CONSTANT, Role.WEIGHT, Role.CONTROL, Role.EXPOSURE, Role.MASK, Role.INDEX}
+)
+
+
+def _num_da(da: xr.DataArray) -> bool:
+    return bool(np.issubdtype(da.dtype, np.number))
+
+
+def _sample_cells(da: xr.DataArray) -> np.ndarray:
+    """At most about :data:`_SAMPLE_CELLS` finite values of ``da`` (float32): an even
+    sample along its first dim when it is larger."""
+    if da.size > _SAMPLE_CELLS and da.ndim >= 1:
+        d = str(da.dims[0])
+        per = max(1, da.size // int(da.sizes[d]))
+        da = da.isel({d: even(int(da.sizes[d]), max(1, _SAMPLE_CELLS // per))})
+    a = np.asarray(da.values, dtype=np.float32).ravel()
+    return a[np.isfinite(a)]
+
+
 def _qw(
     code: str, severity: str, message: str, action: str | None = None, var: str | None = None
 ) -> QualityWarning:
@@ -1527,21 +1685,26 @@ def structure_warnings(c: DataContext) -> list[QualityWarning]:
                 )
     for shape in s.of("image"):
         for v in shape.vars:
-            a = np.asarray(ds[v].values, dtype=float)
-            fin = a[np.isfinite(a)]
-            if fin.size >= 100 and float(fin.max()) > float(fin.min()):
-                share = float(np.mean(fin == fin.max()))
-                if share >= 0.01:
-                    out.append(
-                        _qw(
-                            "IMAGE_SATURATED",
-                            "warning",
-                            f"{share:.1%} of the cells of {v!r} are at the maximum value.",
-                            "The detector or the scale can be saturated. Values at the "
-                            "maximum can be larger in reality.",
-                            v,
-                        )
+            if c.roles.get(v) in _NOT_MEASURED:
+                continue  # a setting or a weight, not a reading of a detector
+            da = ds[v]
+            if da.size < 100 or not _num_da(da):
+                continue
+            lo, hi = float(da.min(skipna=True)), float(da.max(skipna=True))
+            if not np.isfinite(lo) or not hi > lo:
+                continue
+            share = saturated_share(_sample_cells(da), lo, hi)
+            if share >= 0.01:
+                out.append(
+                    _qw(
+                        "IMAGE_SATURATED",
+                        "warning",
+                        f"{share:.1%} of the cells of {v!r} are at the maximum value.",
+                        "The detector or the scale can be saturated. Values at the "
+                        "maximum can be larger in reality.",
+                        v,
                     )
+                )
     return out
 
 
@@ -1603,6 +1766,11 @@ def science_plots(section: str, ds: xr.Dataset, structure: Structure) -> list[di
 
         if len(json.dumps(doc, separators=(",", ":"))) > _MAX_PLOT_BYTES:
             continue
+        # one id per plot: three roses (or two networks) of a section must not share one
+        which = opts.get("observed") or opts.get("var")
+        if which and sum(1 for r, _o in calls if r == rid) > 1:
+            safe = re.sub(r"[^A-Za-z0-9_.\-]", "_", str(which))
+            doc["id"] = f"{doc.get('id') or rid}.{safe}"[:128]
         out.append(doc)
     return out
 

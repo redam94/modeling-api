@@ -118,7 +118,7 @@ Look at the data before you build the spec.
 - Look at how the cells fill the scratch from line to line. The Fisher-KPP model describes
   this movement.
 - **Over time** shows `hours` as a sequence. The time patterns are in **Not for this data**:
-  5 times are not sufficient, and `hours` is not a time dim of the schema.
+  `hours` is an ordered sequence, not time.
 - **Data quality** does not give the warning `SHORT_HISTORY`.
 
 Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).

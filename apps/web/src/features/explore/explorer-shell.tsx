@@ -214,8 +214,8 @@ export function RecipePlots({ target, state, runId, expert }: { target: Explorer
         <div className="grid gap-4 border-t p-4">
           {plots.isError ? <ErrorNotice error={plots.error} title="The app could not load the plots" /> : null}
           {plots.isPending ? <Skeleton className="h-60" /> : null}
-          {(plots.data ?? []).map(({ plot: p, kind, datasets }) => (
-            <div key={p.id} className="grid gap-1">
+          {(plots.data ?? []).map(({ plot: p, kind, datasets }, i) => (
+            <div key={`${p.id}-${i}`} className="grid gap-1">
               <PlotFrame kind={kind} spec={recipeBody(p)} datasets={datasets} title={p.title} exportName={p.id} />
               {p.caption_plain ? <p className="text-xs text-muted-foreground">{p.caption_plain}</p> : null}
             </div>

@@ -130,7 +130,7 @@ Look at the data before you build the spec.
 2. Click **Network**.
 
 - The network shows `consensus`, the graph of the 11 proteins from the literature, as a
-  matrix and as a drawing.
+  matrix and as a node-link graph.
 - **Correlations** uses the 11 proteins as columns and the 853 cells as rows. Compare the
   strong correlations with the edges of the network.
 - **Group comparison** and the time sections are in **Not for this data**. The cells are not
