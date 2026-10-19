@@ -307,11 +307,11 @@ api -X POST "$API/v1/datasets/$DATASET_ID/versions/1/explore" -d '{
 
 | Hint | Meaning |
 |---|---|
-| `y_dim`, `x_dim` | The two dims of the image |
+| `y_dim`, `x_dim` | The two dims of the image. Give the two hints together. |
 | `frame_dim` | The dim that gives the frames of the images |
 | `node_dim` | The dim of the nodes of a network |
-| `angle_vars` | Variables that are angles or times of day, with their units (`deg`, `rad`, `h` or `d`) |
-| `time_dim` | The dim that is time |
+| `angle_vars` | Variables that are angles or times, with their units: `deg`, `rad`, `h` (hour of the day), `d` (day of the year) or `month` |
+| `time_dim` | The dim that is time. If the request also has `time_dim`, the two values must be the same. |
 
 A hint changes only the variable or the dim that it names. The other rules stay the same.
 
