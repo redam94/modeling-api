@@ -385,13 +385,13 @@ export function nodeLinkPlot(entry: NetworkEntry, attr: string | null = null): S
   if (edges.length) {
     layers.push({
       data: { name: "edges" },
-      mark: { type: "rule", strokeWidth: 0.8 },
+      mark: { type: "rule", strokeWidth: 1.4 },
       encoding: {
         x: axis,
         y: yaxis,
         x2: { field: "x2" },
         y2: { field: "y2" },
-        opacity: entry.weighted ? { field: "w", type: "quantitative", scale: { type: "symlog", range: [0.08, 0.7] }, legend: null } : { value: 0.35 },
+        opacity: entry.weighted ? { field: "w", type: "quantitative", scale: { type: "symlog", range: [0.15, 0.8] }, legend: null } : { value: 0.55 },
         ...(entry.signed ? { color: { field: "sign", type: "nominal", title: "Sign", scale: { domain: ["positive", "negative"], range: ["#4a6fa5", "#c0392b"] } } } : { color: { value: "#8a8f98" } }),
       },
     });
@@ -479,7 +479,7 @@ export function dendrogramPlot(view: TreeView, traits: readonly string[] = []): 
       width: 120,
       height,
       data: { name: ds },
-      mark: { type: "tick", thickness: 2 },
+      mark: { type: "circle", size: 36, opacity: 0.9 },
       encoding: {
         x: { field: "value", type: "quantitative", title, scale: { zero: false } },
         y: yEnc,
@@ -560,18 +560,18 @@ export function rosePlot(entry: CircularEntry): SciPlot | null {
     }
     const col = k % cols;
     const row = Math.floor(k / cols);
-    const pad = 0.06;
+    const pad = 0.07;
     const x0 = col / cols + pad / 2;
     const x1 = (col + 1) / cols - pad / 2;
-    const y1 = 1 - row / rowsN - pad;
+    const y1 = 1 - row / rowsN - (groups.length > 1 ? 2 * pad : pad / 2);
     const y0 = 1 - (row + 1) / rowsN + pad / 2;
     layout[id] = {
       domain: { x: [x0, x1], y: [y0, y1] },
       angularaxis: { rotation, direction, tickmode: "array", tickvals: ticks.tickvals, ticktext: ticks.ticktext },
       radialaxis: { showticklabels: false, ticks: "" },
     };
-    if (groups.length > 1 || g.label !== null) {
-      (layout.annotations as JsonObject[]).push({ text: `${plotlyText(g.label ?? "all")} (n = ${g.n})`, x: (x0 + x1) / 2, y: y1 + 0.035, xref: "paper", yref: "paper", showarrow: false, xanchor: "center", yanchor: "bottom", font: { size: 12 } });
+    if (groups.length > 1) {
+      (layout.annotations as JsonObject[]).push({ text: `${plotlyText(g.label ?? "all")} (n = ${g.n})`, x: (x0 + x1) / 2, y: y1 + pad, xref: "paper", yref: "paper", showarrow: false, xanchor: "center", yanchor: "bottom", font: { size: 12 } });
     }
   });
   return { kind: "plotly", datasets, spec: { data: traces, layout } };

@@ -84,6 +84,12 @@ function Toggle<T extends string>({ label, value, options, onChange }: { label: 
 
 const str = (v: unknown) => (v === null || v === undefined ? "—" : textOf(v));
 
+/** "image: 9 x 12 cells" → "9 x 12 cells" (the chip names the shape already). */
+export function shapeDetail(label: string): string {
+  const i = label.indexOf(": ");
+  return i > 0 && i < 30 ? label.slice(i + 2) : label;
+}
+
 // ------------------------------------------------------------------------------ structure
 
 /** The shapes as links to the sections that show them (Overview and Structure). */
@@ -96,7 +102,7 @@ export function ShapeChips({ shapes, onSection }: { shapes: readonly { kind: str
         const text = (
           <>
             <span className="font-medium">{shapeWord(s.kind)}</span>
-            <span className="text-muted-foreground">{s.label_plain}</span>
+            <span className="text-muted-foreground">{shapeDetail(s.label_plain)}</span>
           </>
         );
         return (
@@ -392,7 +398,7 @@ export function NetworkSection({ view, expert }: P<NetworkView>) {
           options={[{ value: "links", label: "Nodes and ties" }, ...(matrix ? [{ value: "matrix" as const, label: "Matrix" }] : [])]}
           onChange={setShow}
         />
-        {attrs.length && show === "links" ? <Picker label="Colour the nodes by" value={attr} options={[{ value: "", label: "Nothing" }, ...attrs.map((a) => ({ value: a, label: a }))]} onChange={setAttr} /> : null}
+        {attrs.length && show === "links" ? <Picker label="Colour by" value={attr} options={[{ value: "", label: "Nothing" }, ...attrs.map((a) => ({ value: a, label: a }))]} onChange={setAttr} /> : null}
       </div>
       <PlainSummary tone={reading.tone}>{reading.text}</PlainSummary>
       {show === "matrix" && matrix ? (

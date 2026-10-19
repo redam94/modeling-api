@@ -373,7 +373,7 @@ export function imageReading(e: ImageEntry): Reading {
   const size = `${e.source_height} x ${e.source_width}`;
   const frames = e.frames.length + (e.omitted_frames ?? 0);
   const fs = e.frame_stats?.coords.length ?? frames;
-  parts.push(`${e.var} is ${e.kind === "vector" ? "a vector field" : "an image"} of ${size} cells${fs > 1 ? `, with ${num(fs)} ${e.frame_dim ?? "frames"}` : ""}.`);
+  parts.push(`${e.var} is ${e.kind === "vector" ? "a vector field" : "an image"} of ${size} cells${fs > 1 ? `, with ${num(fs)} frames${e.frame_dim ? ` along ${e.frame_dim}` : ""}` : ""}.`);
   if (e.downsampled) parts.push(`The picture shows block means of ${e.height} x ${e.width} cells.`);
   if ((e.omitted_frames ?? 0) > 0) parts.push(`The slider shows ${e.frames.length} of the ${num(frames)} frames, evenly spaced.`);
   const st = e.stats;

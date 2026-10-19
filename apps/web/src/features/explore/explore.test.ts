@@ -238,7 +238,7 @@ describe("scientific data: plain readings", () => {
     expect(structureReading({ shapes: [], dims: [], vars: [] }).text).toMatch(/no special shape/);
     const img = scienceExample("images").fields[0]!;
     const r = imageReading(img);
-    expect(r.text).toMatch(/^quakes is an image of 2 x 3 cells, with 2 quarter\./);
+    expect(r.text).toMatch(/^quakes is an image of 2 x 3 cells, with 2 frames along quarter\./);
     expect(r.text).toMatch(/at the maximum value/);
     expect(r.tone).toBe("warn");
     expect(imageReading(scienceExample("images").fields[1]!).text).toMatch(/^displacement is a vector field of 4 x 4 cells\. The picture shows block means of 2 x 2 cells\./);
